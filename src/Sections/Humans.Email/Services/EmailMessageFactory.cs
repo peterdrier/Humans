@@ -53,26 +53,6 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
             "facilitated_message", MessageCategory.FacilitatedMessages, ReplyTo: replyTo);
     }
 
-    public EmailMessage CoordinatorRotaMessage(CoordinatorRotaMessageRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        var content = renderer.RenderCoordinatorRotaMessage(
-            request.RecipientName, request.SenderName, request.SenderEmail,
-            request.RotaName, request.MessageText, request.ShiftLines, request.Culture);
-        return new EmailMessage(request.RecipientEmail, request.RecipientName, content.Subject, content.HtmlBody,
-            "coordinator_rota_message", MessageCategory.VolunteerUpdates, ReplyTo: request.SenderEmail);
-    }
-
-    public EmailMessage CoordinatorTeamRotasMessage(CoordinatorTeamRotasMessageRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        var content = renderer.RenderCoordinatorTeamRotasMessage(
-            request.RecipientName, request.SenderName, request.SenderEmail,
-            request.TeamName, request.MessageText, request.ShiftGroups, request.Culture);
-        return new EmailMessage(request.RecipientEmail, request.RecipientName, content.Subject, content.HtmlBody,
-            "coordinator_team_rotas_message", MessageCategory.VolunteerUpdates, ReplyTo: request.SenderEmail);
-    }
-
     public EmailMessage WorkspaceCredentials(string recoveryEmail, string userName, string workspaceEmail, string tempPassword, string? culture = null)
     {
         var content = renderer.RenderWorkspaceCredentials(userName, workspaceEmail, tempPassword, culture);

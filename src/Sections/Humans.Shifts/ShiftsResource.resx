@@ -394,4 +394,9 @@
   <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Tag preferences saved.</value></data>
   <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>No day off was set for that day.</value></data>
   <data name="Shifts_AccountCannotSignUp" xml:space="preserve"><value>Your account cannot sign up for shifts.</value></data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_Subject" xml:space="preserve"><value>A message about your shifts on {0}</value><comment>{0} = rota name (HTML-encoded)</comment></data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_Body" xml:space="preserve"><value>&lt;p&gt;Dear {0},&lt;/p&gt;&lt;p&gt;A message from the coordinator of &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;FYI, your shifts on this rota are:&lt;/p&gt;{4}&lt;p&gt;Thank you,&lt;/p&gt;{5}</value><comment>{0}=recipient name, {1}=sender name, {2}=rota name, {3}=message body, {4}=shift list HTML, {5}=sender contact block HTML</comment></data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve"><value>(no shifts on this rota yet)</value></data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_Subject" xml:space="preserve"><value>A message about your shifts with {0}</value><comment>{0} = team name (HTML-encoded)</comment></data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve"><value>&lt;p&gt;Dear {0},&lt;/p&gt;&lt;p&gt;A message from the coordinator of &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;FYI, your shifts across this team's upcoming rotas:&lt;/p&gt;{4}&lt;p&gt;Thank you,&lt;/p&gt;{5}</value><comment>{0}=recipient name, {1}=sender name, {2}=team name, {3}=message body, {4}=per-rota shift groups HTML, {5}=sender contact block HTML</comment></data>
 </root>

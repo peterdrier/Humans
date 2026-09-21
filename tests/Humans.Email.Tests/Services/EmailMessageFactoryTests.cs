@@ -57,27 +57,6 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansFact]
-    public void CoordinatorRotaMessage_RoutesRepliesToCoordinator_VolunteerUpdates()
-    {
-        var request = new CoordinatorRotaMessageRequest(
-            RecipientEmail: "rcpt@x.com",
-            RecipientName: "Rcpt",
-            SenderName: "Coord",
-            SenderEmail: "coord@x.com",
-            RotaName: "Gate",
-            MessageText: "Hello",
-            ShiftLines: ["Mon"],
-            Culture: "en");
-
-        var msg = _factory.CoordinatorRotaMessage(request);
-
-        msg.RecipientEmail.Should().Be("rcpt@x.com");
-        msg.TemplateName.Should().Be("coordinator_rota_message");
-        msg.Category.Should().Be(MessageCategory.VolunteerUpdates);
-        msg.ReplyTo.Should().Be("coord@x.com");
-    }
-
-    [HumansFact]
     public void TicketTransferTeamNotification_RoutesToTicketsInbox_System()
     {
         var msg = _factory.TicketTransferTeamNotification(

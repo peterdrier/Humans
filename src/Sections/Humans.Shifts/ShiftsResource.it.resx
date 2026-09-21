@@ -1179,4 +1179,19 @@
   <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Preferenze tag salvate.</value></data>
   <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>Nessun giorno libero era impostato per quel giorno.</value></data>
   <data name="Shifts_AccountCannotSignUp" xml:space="preserve"><value>Il tuo account non può iscriversi ai turni.</value></data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_Subject" xml:space="preserve">
+    <value>Un messaggio sulle tue fasce in {0}</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Un messaggio dal coordinatore di &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Per tua informazione, le tue fasce in questo turno sono:&lt;/p&gt;{4}&lt;p&gt;Grazie,&lt;/p&gt;{5}</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
+    <value>(ancora nessuna fascia in questo turno)</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_Subject" xml:space="preserve">
+    <value>Un messaggio sulle tue fasce con {0}</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Un messaggio dal coordinatore di &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Per tua informazione, le tue fasce nei prossimi turni del team:&lt;/p&gt;{4}&lt;p&gt;Grazie,&lt;/p&gt;{5}</value>
+  </data>
 </root>

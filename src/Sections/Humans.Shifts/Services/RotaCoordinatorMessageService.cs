@@ -19,7 +19,7 @@ internal sealed class RotaCoordinatorMessageService(
     ITeamServiceRead teamService,
     IUserServiceRead userService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    ShiftsEmails emailMessages,
     IAuditLogService auditLogService,
     EventCalendarResolver calendarResolver,
     IClock clock,
@@ -241,7 +241,7 @@ internal sealed class RotaCoordinatorMessageService(
     /// </summary>
     private async Task<DispatchSummary> DispatchToRecipientsAsync<TRequest>(
         IReadOnlyList<RotaSignupGroup> rotaGroups,
-        Func<UserInfo, IReadOnlyList<RotaShiftGroup>, TRequest> buildRequest,
+        Func<UserInfo, IReadOnlyList<CoordinatorRotaShiftGroup>, TRequest> buildRequest,
         Func<TRequest, CancellationToken, Task> enqueue,
         (string Type, string Id) logScope,
         CancellationToken ct)
@@ -300,7 +300,7 @@ internal sealed class RotaCoordinatorMessageService(
                     var lines = BuildShiftLines(
                         g.Select(e => e.Signup).ToList(),
                         group.EventSettings);
-                    return new RotaShiftGroup(group.RotaName, lines);
+                    return new CoordinatorRotaShiftGroup(group.RotaName, lines);
                 })
                 .OrderBy(g => g.RotaName, StringComparer.OrdinalIgnoreCase)
                 .ToList();

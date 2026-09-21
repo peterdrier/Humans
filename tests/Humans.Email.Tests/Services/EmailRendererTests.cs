@@ -32,44 +32,6 @@ public sealed class EmailRendererTests
     }
 
     [HumansFact]
-    public void CoordinatorRotaMessage_renders_markdown_instead_of_html_encoded_plain_text()
-    {
-        var renderer = CreateRenderer();
-
-        var content = renderer.RenderCoordinatorRotaMessage(
-            "Recipient",
-            "Sender",
-            null,
-            "Saturday Bar",
-            "**Heads up** — early start\r\n\r\nSee you there",
-            ["Saturday 10:00-14:00"]);
-
-        content.HtmlBody.Should().Contain("<p><strong>Heads up</strong>");
-        content.HtmlBody.Should().Contain("<p>See you there</p>");
-        content.HtmlBody.Should().NotContain("&lt;strong&gt;");
-        content.HtmlBody.Should().NotContain("<br");
-    }
-
-    [HumansFact]
-    public void CoordinatorTeamRotasMessage_renders_markdown_instead_of_html_encoded_plain_text()
-    {
-        var renderer = CreateRenderer();
-
-        var content = renderer.RenderCoordinatorTeamRotasMessage(
-            "Recipient",
-            "Sender",
-            null,
-            "Bar Team",
-            "**Heads up** — early start\r\n\r\nSee you there",
-            [new RotaShiftGroup("Saturday Bar", ["Saturday 10:00-14:00"])]);
-
-        content.HtmlBody.Should().Contain("<p><strong>Heads up</strong>");
-        content.HtmlBody.Should().Contain("<p>See you there</p>");
-        content.HtmlBody.Should().NotContain("&lt;strong&gt;");
-        content.HtmlBody.Should().NotContain("<br");
-    }
-
-    [HumansFact]
     public void WorkgroupNotice_EveryKindEveryCulture_RendersNonEmptyContentWithNoRawKeyLeak()
     {
         var renderer = CreateRealRenderer();
@@ -171,10 +133,6 @@ public sealed class EmailRendererTests
         {
             ["Email_FacilitatedMessage_Body"] =
                 "<p>Hi {0},</p><p>{1} sent you a message:</p>{2}{3}",
-            ["Email_CoordinatorRotaMessage_Body"] =
-                "<p>Dear {0},</p><p>From {1} on {2}:</p>{3}{4}{5}",
-            ["Email_CoordinatorTeamRotasMessage_Body"] =
-                "<p>Dear {0},</p><p>From {1} on {2}:</p>{3}{4}{5}",
         };
         var localizer = Substitute.For<IStringLocalizer<EmailResource>>();
         localizer[Arg.Any<string>()].Returns(call =>

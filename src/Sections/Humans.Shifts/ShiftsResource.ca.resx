@@ -1179,4 +1179,19 @@
   <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Preferències d'etiquetes desades.</value></data>
   <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>No hi havia cap dia lliure marcat per a aquest dia.</value></data>
   <data name="Shifts_AccountCannotSignUp" xml:space="preserve"><value>El teu compte no pot inscriure's en torns.</value></data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_Subject" xml:space="preserve">
+    <value>Un missatge sobre les teves franges a {0}</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un missatge del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Per a la teva informaci&#xF3;, les teves franges en aquest torn s&#xF3;n:&lt;/p&gt;{4}&lt;p&gt;Gr&#xE0;cies,&lt;/p&gt;{5}</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
+    <value>(encara no hi ha franges en aquest torn)</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_Subject" xml:space="preserve">
+    <value>Un missatge sobre les teves franges amb {0}</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un missatge del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Per a la teva informaci&#xF3;, les teves franges en els propers torns de l'equip:&lt;/p&gt;{4}&lt;p&gt;Gr&#xE0;cies,&lt;/p&gt;{5}</value>
+  </data>
 </root>

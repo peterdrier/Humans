@@ -3,6 +3,7 @@ using Humans.Issues.Contracts;
 using Humans.Base.Interfaces.Caching;
 using Humans.Calendar.Contracts;
 using Humans.EarlyEntry.Contracts;
+using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Base.Hosting;
@@ -100,6 +101,11 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         // Rota coordinator "email a rota".
         services.AddScoped<IRotaCoordinatorMessageService, RotaCoordinatorMessageService>();
+
+        // The section's own email templates plus their gallery samples
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<ShiftsEmails>();
+        services.AddScoped<IEmailPreviewContributor, ShiftsEmailPreviews>();
 
         // Policy-backing handler. ShiftDepartmentManager's policy is this section's, in
         // SectionPolicies.

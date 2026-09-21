@@ -30,12 +30,6 @@ public interface IEmailMessageFactory
     /// <summary>Facilitated volunteer-to-volunteer message (FacilitatedMessages); reply-to is the sender when contact info is shared.</summary>
     EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null);
 
-    /// <summary>Coordinator "email a rota" message to one signup (VolunteerUpdates); reply-to is the coordinator.</summary>
-    EmailMessage CoordinatorRotaMessage(CoordinatorRotaMessageRequest request);
-
-    /// <summary>Coordinator team-level "email all rotas" message to one signup (VolunteerUpdates); reply-to is the coordinator.</summary>
-    EmailMessage CoordinatorTeamRotasMessage(CoordinatorTeamRotasMessageRequest request);
-
     /// <summary>Workspace credentials email (always-send, immediate drain).</summary>
     EmailMessage WorkspaceCredentials(string recoveryEmail, string userName, string workspaceEmail, string tempPassword, string? culture = null);
 

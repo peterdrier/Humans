@@ -1179,4 +1179,19 @@
   <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Tag-Einstellungen gespeichert.</value></data>
   <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>Für diesen Tag war kein freier Tag markiert.</value></data>
   <data name="Shifts_AccountCannotSignUp" xml:space="preserve"><value>Mit deinem Konto kannst du dich nicht für Schichten anmelden.</value></data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_Subject" xml:space="preserve">
+    <value>Eine Nachricht zu deinen Schichten in {0}</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Liebe/r {0},&lt;/p&gt;&lt;p&gt;Eine Nachricht vom Koordinator von &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Zur Info, deine Schichten in diesem Dienstplan sind:&lt;/p&gt;{4}&lt;p&gt;Danke,&lt;/p&gt;{5}</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
+    <value>(noch keine Schichten in diesem Dienstplan)</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_Subject" xml:space="preserve">
+    <value>Eine Nachricht zu deinen Schichten bei {0}</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Liebe/r {0},&lt;/p&gt;&lt;p&gt;Eine Nachricht vom Koordinator von &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Zur Info, deine Schichten in den kommenden Dienstpl&#xE4;nen dieses Teams:&lt;/p&gt;{4}&lt;p&gt;Danke,&lt;/p&gt;{5}</value>
+  </data>
 </root>

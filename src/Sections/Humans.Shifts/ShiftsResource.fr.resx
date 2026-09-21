@@ -1179,4 +1179,19 @@
   <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Préférences de tags enregistrées.</value></data>
   <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>Aucun jour de repos n'était défini pour ce jour.</value></data>
   <data name="Shifts_AccountCannotSignUp" xml:space="preserve"><value>Votre compte ne peut pas s'inscrire à des créneaux.</value></data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_Subject" xml:space="preserve">
+    <value>Un message concernant vos cr&#xE9;neaux sur {0}</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Un message du coordinateur de &lt;strong&gt;{2}&lt;/strong&gt; :&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Pour information, vos cr&#xE9;neaux sur ce roulement sont :&lt;/p&gt;{4}&lt;p&gt;Merci,&lt;/p&gt;{5}</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
+    <value>(aucun cr&#xE9;neau sur ce roulement pour l'instant)</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_Subject" xml:space="preserve">
+    <value>Un message concernant vos cr&#xE9;neaux avec {0}</value>
+  </data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Un message du coordinateur de &lt;strong&gt;{2}&lt;/strong&gt; :&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Pour information, vos cr&#xE9;neaux dans les prochains roulements de cette &#xE9;quipe :&lt;/p&gt;{4}&lt;p&gt;Merci,&lt;/p&gt;{5}</value>
+  </data>
 </root>

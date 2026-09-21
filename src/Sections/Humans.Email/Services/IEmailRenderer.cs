@@ -58,35 +58,6 @@ internal interface IEmailRenderer
         string? culture = null);
 
     /// <summary>
-    /// "Email a rota" message from the coordinator to a single signup on the
-    /// rota. Body contains the coordinator's free-text message plus the
-    /// recipient's chronologically-ordered shift list on this rota.
-    /// </summary>
-    EmailContent RenderCoordinatorRotaMessage(
-        string recipientName,
-        string senderName,
-        string? senderEmail,
-        string rotaName,
-        string messageText,
-        IReadOnlyList<string> shiftLines,
-        string? culture = null);
-
-    /// <summary>
-    /// Team-level "email all rotas" message from a coordinator to a single signup.
-    /// Body contains the coordinator's free-text message plus the recipient's
-    /// shifts grouped by rota (each group already chronological and formatted in
-    /// the rota's timezone).
-    /// </summary>
-    EmailContent RenderCoordinatorTeamRotasMessage(
-        string recipientName,
-        string senderName,
-        string? senderEmail,
-        string teamName,
-        string messageText,
-        IReadOnlyList<RotaShiftGroup> shiftGroups,
-        string? culture = null);
-
-    /// <summary>
     /// Workspace credentials email sent after provisioning a @nobodies.team account.
     /// </summary>
     EmailContent RenderWorkspaceCredentials(string userName, string workspaceEmail, string tempPassword, string? culture = null);

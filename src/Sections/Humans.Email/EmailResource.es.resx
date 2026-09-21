@@ -194,21 +194,6 @@
 &lt;p&gt;El equipo de Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = removed email, {2} = current Google email</comment>
   </data>
-  <data name="Email_CoordinatorRotaMessage_Subject" xml:space="preserve">
-    <value>Un mensaje sobre tus franjas en {0}</value>
-  </data>
-  <data name="Email_CoordinatorRotaMessage_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un mensaje del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Para tu informaci&#xF3;n, tus franjas en este turno son:&lt;/p&gt;{4}&lt;p&gt;Gracias,&lt;/p&gt;{5}</value>
-  </data>
-  <data name="Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
-    <value>(todav&#xED;a no hay franjas en este turno)</value>
-  </data>
-  <data name="Email_CoordinatorTeamRotasMessage_Subject" xml:space="preserve">
-    <value>Un mensaje sobre tus franjas con {0}</value>
-  </data>
-  <data name="Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un mensaje del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Para tu informaci&#xF3;n, tus franjas en los pr&#xF3;ximos turnos del equipo:&lt;/p&gt;{4}&lt;p&gt;Gracias,&lt;/p&gt;{5}</value>
-  </data>
 
   <!-- ======================== -->
   <!-- Workgroup notice         -->

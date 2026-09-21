@@ -185,7 +185,8 @@ Repository: `IShiftManagementRepository`.
 | EventSettings | R (team-level dispatch path — active event resolved via `EventCalendarResolver`, not this repo) |
 
 Cross-section calls via `ITeamServiceRead`, `IUserServiceRead`,
-`IEmailService`, `IEmailMessageFactory`, `IAuditLogService`. Implements
+`IEmailService`, `IAuditLogService`; builds its own messages through the
+section's `ShiftsEmails`. Implements
 per-rota (`SendRotaMessageAsync`) and team-level
 (`SendTeamRotasMessageAsync`) dispatch — groups active signups
 by user across one or many rotas and enqueues one personalised email per

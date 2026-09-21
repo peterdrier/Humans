@@ -26,45 +26,6 @@ public interface IEmailService : IApplicationService
     Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Payload for a coordinator "email a rota" message to a single signup.
-/// <see cref="ShiftLines"/> are pre-rendered, chronologically-ordered shift labels
-/// for the recipient on this rota (e.g. "Mon July 6 @ 19:30") — the renderer
-/// HTML-encodes them, it does not parse or sort them.
-/// </summary>
-public record CoordinatorRotaMessageRequest(
-    string RecipientEmail,
-    string RecipientName,
-    string SenderName,
-    string? SenderEmail,
-    string RotaName,
-    string MessageText,
-    IReadOnlyList<string> ShiftLines,
-    string? Culture = null);
-
-/// <summary>
-/// Payload for a coordinator team-level "email all rotas" message to a single signup.
-/// <see cref="ShiftGroups"/> are pre-rendered, per-rota lists of chronologically-ordered
-/// shift labels for the recipient (each rota's shifts in the rota's own timezone) — the
-/// renderer HTML-encodes them, it does not parse or sort them.
-/// </summary>
-public record CoordinatorTeamRotasMessageRequest(
-    string RecipientEmail,
-    string RecipientName,
-    string SenderName,
-    string? SenderEmail,
-    string TeamName,
-    string MessageText,
-    IReadOnlyList<RotaShiftGroup> ShiftGroups,
-    string? Culture = null);
-
-/// <summary>
-/// A recipient's shifts on a single rota, ready for the team-level coordinator
-/// message renderer. <see cref="ShiftLines"/> are already chronological and
-/// formatted in the rota's timezone.
-/// </summary>
-public sealed record RotaShiftGroup(string RotaName, IReadOnlyList<string> ShiftLines);
-
 /// <summary>What a working-group notice is about; picks the subject and body copy.</summary>
 public enum WorkgroupNoticeKind
 {
