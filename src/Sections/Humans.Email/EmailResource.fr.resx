@@ -70,17 +70,9 @@
   <data name="Email_AccountDeleted_Subject" xml:space="preserve">
     <value>Votre compte a été supprimé</value>
   </data>
-  <data name="Email_AddedToTeam_Subject" xml:space="preserve">
-    <value>Vous avez été ajouté(e) à l'équipe {0}</value>
-    <comment>{0} = team name</comment>
-  </data>
   <data name="Email_ReasonLine" xml:space="preserve">
     <value>&lt;p&gt;&lt;strong&gt;Motif :&lt;/strong&gt; {0}&lt;/p&gt;</value>
     <comment>{0} = reason text (HTML-encoded by caller)</comment>
-  </data>
-  <data name="Email_ResourcesSection" xml:space="preserve">
-    <value>&lt;p&gt;Votre équipe dispose des ressources suivantes :&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value>
-    <comment>{0} = resource list items HTML</comment>
   </data>
   <data name="Email_ApplicationSubmitted_Body" xml:space="preserve">
     <value>&lt;h2&gt;Nouvelle demande d'adhésion&lt;/h2&gt;
@@ -175,15 +167,6 @@
 &lt;p&gt;Merci d'avoir fait partie de notre communauté. Si vous souhaitez nous rejoindre à nouveau, vous êtes bienvenu(e) pour créer un nouveau compte.&lt;/p&gt;
 &lt;p&gt;Cordialement,&lt;br/&gt;L'équipe Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
-  </data>
-  <data name="Email_AddedToTeam_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Bienvenue dans {1} !&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Vous avez été ajouté(e) à l'équipe &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
-{2}
-&lt;p&gt;&lt;a href="{3}"&gt;Voir la page de l'équipe&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;L'équipe Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment>
   </data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve">
     <value>Message Humans de : {0}</value>

@@ -33,9 +33,6 @@ public interface IEmailMessageFactory
     /// <summary>Account deleted confirmation (always-send).</summary>
     EmailMessage AccountDeleted(string userEmail, string userName, string? culture = null);
 
-    /// <summary>Added-to-team notification (TeamUpdates).</summary>
-    EmailMessage AddedToTeam(string userEmail, string userName, string teamName, string teamSlug, IEnumerable<(string Name, string? Url)> resources, string? culture = null);
-
     /// <summary>
     /// Survey invitation — operational (System category, always-send).
     /// <paramref name="answerToken"/> is the invite token; the URL is built by the renderer.

@@ -57,11 +57,6 @@ internal interface IEmailRenderer
     EmailContent RenderAccountDeleted(string userName, string? culture = null);
 
     /// <summary>
-    /// Added to team notification.
-    /// </summary>
-    EmailContent RenderAddedToTeam(string userName, string teamName, string teamSlug, IReadOnlyList<(string Name, string? Url)> resources, string? culture = null);
-
-    /// <summary>
     /// Survey invitation — links to the tokenised answering wizard and optionally replaces the
     /// standard localized subject/message with safely rendered author copy.
     /// </summary>
@@ -203,8 +198,8 @@ internal interface IEmailRenderer
     /// <summary>
     /// Working-group register notice — dispatches on <see cref="WorkgroupNoticeRequest.Kind"/>
     /// to render the matching template. Builds the working-group link from
-    /// <see cref="WorkgroupNoticeRequest.WorkgroupSlug"/> the same way <see cref="RenderAddedToTeam"/>
-    /// builds the team link from a slug.
+    /// <see cref="WorkgroupNoticeRequest.WorkgroupSlug"/> the same way a team link is
+    /// built from a team slug.
     /// </summary>
     EmailContent RenderWorkgroupNotice(WorkgroupNoticeRequest request);
 

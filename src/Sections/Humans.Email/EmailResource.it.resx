@@ -70,17 +70,9 @@
   <data name="Email_AccountDeleted_Subject" xml:space="preserve">
     <value>Il Suo account è stato eliminato</value>
   </data>
-  <data name="Email_AddedToTeam_Subject" xml:space="preserve">
-    <value>È stato/a aggiunto/a al team {0}</value>
-    <comment>{0} = team name</comment>
-  </data>
   <data name="Email_ReasonLine" xml:space="preserve">
     <value>&lt;p&gt;&lt;strong&gt;Motivo:&lt;/strong&gt; {0}&lt;/p&gt;</value>
     <comment>{0} = reason text (HTML-encoded by caller)</comment>
-  </data>
-  <data name="Email_ResourcesSection" xml:space="preserve">
-    <value>&lt;p&gt;Il tuo team ha le seguenti risorse:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value>
-    <comment>{0} = resource list items HTML</comment>
   </data>
   <data name="Email_ApplicationSubmitted_Body" xml:space="preserve">
     <value>&lt;h2&gt;Nuova domanda di adesione&lt;/h2&gt;
@@ -175,15 +167,6 @@
 &lt;p&gt;Grazie per aver fatto parte della nostra comunità. Se desideri tornare, sei benvenuto/a a creare un nuovo account.&lt;/p&gt;
 &lt;p&gt;Cordiali saluti,&lt;br/&gt;Il team di Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
-  </data>
-  <data name="Email_AddedToTeam_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Benvenuto/a in {1}!&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;Sei stato/a aggiunto/a al team &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
-{2}
-&lt;p&gt;&lt;a href="{3}"&gt;Visualizza la pagina del team&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment>
   </data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve">
     <value>Messaggio Humans da: {0}</value>

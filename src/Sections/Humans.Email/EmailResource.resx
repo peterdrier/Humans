@@ -46,9 +46,7 @@
   <data name="Email_VerifyEmail_Subject" xml:space="preserve"><value>Verify Your Email Address</value></data>
   <data name="Email_DeletionRequested_Subject" xml:space="preserve"><value>Account Deletion Requested</value></data>
   <data name="Email_AccountDeleted_Subject" xml:space="preserve"><value>Your Account Has Been Deleted</value></data>
-  <data name="Email_AddedToTeam_Subject" xml:space="preserve"><value>You've been added to {0}</value><comment>{0} = team name</comment></data>
   <data name="Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {0}&lt;/p&gt;</value><comment>{0} = reason text (HTML-encoded by caller)</comment></data>
-  <data name="Email_ResourcesSection" xml:space="preserve"><value>&lt;p&gt;Your team has the following resources:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value><comment>{0} = resource list items HTML</comment></data>
   <data name="Email_ApplicationSubmitted_Body" xml:space="preserve"><value>&lt;h2&gt;New Membership Application&lt;/h2&gt;
 &lt;p&gt;A new membership application has been submitted.&lt;/p&gt;
 &lt;ul&gt;
@@ -136,12 +134,6 @@
 &lt;p&gt;As requested, your Humans account has been permanently deleted. All your personal data has been removed from our systems.&lt;/p&gt;
 &lt;p&gt;Thank you for being part of our community. If you ever wish to rejoin, you're welcome to create a new account.&lt;/p&gt;
 &lt;p&gt;Best wishes,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name</comment></data>
-  <data name="Email_AddedToTeam_Body" xml:space="preserve"><value>&lt;h2&gt;Welcome to {1}!&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;You have been added to the &lt;strong&gt;{1}&lt;/strong&gt; team.&lt;/p&gt;
-{2}
-&lt;p&gt;&lt;a href="{3}"&gt;View Team Page&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment></data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve"><value>Humans Message from: {0}</value><comment>{0} = sender name</comment></data>
   <data name="Email_FacilitatedMessage_Body" xml:space="preserve"><value>&lt;h2&gt;Message from {1}&lt;/h2&gt;&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;{1} has sent you a message through Humans:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{2}&lt;/p&gt;&lt;hr /&gt;{3}</value><comment>{0}=recipient, {1}=sender, {2}=message, {3}=contact info html</comment></data>
   <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve"><value>This human chose not to share their contact information.</value></data>

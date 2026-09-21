@@ -82,22 +82,6 @@ internal sealed class EmailRenderer(
             L("Email_AccountDeleted_Subject"),
             Lf("Email_AccountDeleted_Body", HtmlEncode(userName))));
 
-    public EmailContent RenderAddedToTeam(string userName, string teamName, string teamSlug, IReadOnlyList<(string Name, string? Url)> resources, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var teamUrl = $"{_settings.BaseUrl}/Teams/{teamSlug}";
-            var resourcesHtml = resources.Count > 0
-                ? Lf("Email_ResourcesSection",
-                    string.Join("\n", resources.Select(r =>
-                        !string.IsNullOrEmpty(r.Url)
-                            ? $"<li><a href=\"{r.Url}\">{HtmlEncode(r.Name)}</a></li>"
-                            : $"<li>{HtmlEncode(r.Name)}</li>")))
-                : "";
-            return new EmailContent(
-                Lf("Email_AddedToTeam_Subject", teamName),
-                Lf("Email_AddedToTeam_Body", HtmlEncode(userName), HtmlEncode(teamName), resourcesHtml, teamUrl));
-        });
-
     public EmailContent RenderSurveyInvitation(
         string userName,
         string surveyTitle,

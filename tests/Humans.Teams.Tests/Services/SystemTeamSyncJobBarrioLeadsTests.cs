@@ -10,6 +10,7 @@ using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 using Humans.Teams.Services;
+using Humans.Teams.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -42,7 +43,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly IGoogleDriveActivityClient _googleClient = Substitute.For<IGoogleDriveActivityClient>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    private readonly TeamsEmails _emailMessages = TestTeamsEmails.Create();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 

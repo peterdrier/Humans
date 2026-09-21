@@ -59,13 +59,6 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
             "account_deleted", DoNotPersist: true);
     }
 
-    public EmailMessage AddedToTeam(string userEmail, string userName, string teamName, string teamSlug, IEnumerable<(string Name, string? Url)> resources, string? culture = null)
-    {
-        var content = renderer.RenderAddedToTeam(userName, teamName, teamSlug, resources.ToList(), culture);
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "added_to_team", MessageCategory.TeamUpdates);
-    }
-
     public EmailMessage SurveyInvitation(
         string userEmail,
         string userName,

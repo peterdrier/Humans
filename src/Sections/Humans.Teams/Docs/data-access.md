@@ -118,6 +118,19 @@ over `ITeamManagementService`, `ITeamResourceService`,
 `IShiftManagementServiceRead`, `ISettingsService` and `IUserServiceRead`;
 the mapper and the directory builder are pure.
 
+### TeamsEmails (Scoped, internal)
+
+No repository. Pure builder — reads `TeamsResource` (via
+`IStringLocalizer<TeamsResource>`) and `EmailSettings`, writes nothing.
+Returns `EmailMessage` values for `TeamService` and `SystemTeamSyncJob` to
+pass to `IEmailService.SendAsync`. No DB access, no cache.
+
+### TeamsEmailPreviews (Scoped)
+
+No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
+registered in `Section.Register`) — builds one sample per template via
+`TeamsEmails` for `/Email/EmailPreview`. No DB access, no cache.
+
 ---
 
 

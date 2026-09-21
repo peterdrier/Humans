@@ -237,7 +237,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - **Shifts.Contracts:** `IShiftManagementServiceRead` for the team page's shifts card; `IShiftAuthorizationInvalidator` after coordinator changes. Rotas belong to a department or sub-team, and coordinator/manager status is what scopes their shift management.
 - **Notifications.Contracts:** `INotificationEmitter` on join-request events; `INotificationMeterCacheInvalidator`.
 - **AuditLog.Contracts + AuditLog:** `IAuditLogService` for every membership and EE mutation; the full section for `<vc:audit-log>` in `TeamAdmin/Members`.
-- **Email.Contracts:** the reconciler's "added to team" mail.
+- **Email.Contracts:** transport only (`IEmailService.SendAsync`) for the reconciler's "added to team" mail. Teams owns the template: `TeamsEmails` (internal) builds the `EmailMessage` from Teams' own `Teams_Email_*` keys in `TeamsResource`, rendered in the recipient's culture via `CultureScope`, and `TeamsEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
 - **Gdpr.Contracts:** `IUserDataContributor` (export + erasure).
 - **EarlyEntry** (full section): `IEarlyEntryProvider` — `GetEarlyEntriesAsync` projects grants from `EarlyEntryEnabled` teams to the cross-section `EarlyEntryGrant` view (`"{TeamName}: {ProjectName}"`) via `TeamEarlyEntryProjection`; `IEarlyEntryInvalidator` on grant writes.
 - **Camps.Contracts:** active camp lead assignments feed the Barrio Leads system team via `ICampLeadDirectory`.

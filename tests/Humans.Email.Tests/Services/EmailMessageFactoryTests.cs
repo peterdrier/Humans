@@ -48,15 +48,6 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansFact]
-    public void AddedToTeam_StampsTeamUpdates()
-    {
-        var msg = _factory.AddedToTeam("a@x.com", "Alice", "Alpha", "alpha", [], "en");
-
-        msg.TemplateName.Should().Be("added_to_team");
-        msg.Category.Should().Be(MessageCategory.TeamUpdates);
-    }
-
-    [HumansFact]
     public void SurveyInvitation_forwards_custom_copy_and_preserves_policy()
     {
         var msg = _factory.SurveyInvitation(

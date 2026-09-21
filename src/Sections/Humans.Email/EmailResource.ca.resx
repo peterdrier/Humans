@@ -70,17 +70,9 @@
   <data name="Email_AccountDeleted_Subject" xml:space="preserve">
     <value>El teu compte ha estat eliminat</value>
   </data>
-  <data name="Email_AddedToTeam_Subject" xml:space="preserve">
-    <value>T'han afegit a l'equip {0}</value>
-    <comment>{0} = team name</comment>
-  </data>
   <data name="Email_ReasonLine" xml:space="preserve">
     <value>&lt;p&gt;&lt;strong&gt;Motiu:&lt;/strong&gt; {0}&lt;/p&gt;</value>
     <comment>{0} = reason text (HTML-encoded by caller)</comment>
-  </data>
-  <data name="Email_ResourcesSection" xml:space="preserve">
-    <value>&lt;p&gt;El teu equip té els recursos següents:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value>
-    <comment>{0} = resource list items HTML</comment>
   </data>
   <data name="Email_ApplicationSubmitted_Body" xml:space="preserve">
     <value>&lt;h2&gt;Nova sol·licitud de membres&lt;/h2&gt;
@@ -175,15 +167,6 @@
 &lt;p&gt;Gràcies per haver format part de la nostra comunitat. Si algun dia vols tornar, pots crear un compte nou.&lt;/p&gt;
 &lt;p&gt;Una salutació,&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
-  </data>
-  <data name="Email_AddedToTeam_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Benvingut/da a {1}!&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;T’han afegit a l’equip &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
-{2}
-&lt;p&gt;&lt;a href="{3}"&gt;Veure la pàgina de l’equip&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;L’equip de Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment>
   </data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve">
     <value>Missatge de Humans de: {0}</value>
