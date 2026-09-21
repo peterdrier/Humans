@@ -16,6 +16,26 @@ public sealed class EventSettingsViewModelTests
     private static IReadOnlyList<ValidationResult> Validate(EventSettingsViewModel model) =>
         [.. model.Validate(new ValidationContext(model))];
 
+    /// <summary>
+    /// The path MVC actually takes: attributes first, then <c>Validate</c>. <see cref="Validate"/>
+    /// alone never runs the <c>[Range]</c>s, so the "&lt; 0" half of the sub-period rule is
+    /// invisible to it.
+    /// </summary>
+    private static IReadOnlyList<ValidationResult> ValidateFully(EventSettingsViewModel model)
+    {
+        List<ValidationResult> results = [];
+        Validator.TryValidateObject(model, new ValidationContext(model), results, validateAllProperties: true);
+        return results;
+    }
+
+    /// <summary>The defaults plus the three `[Required]` fields the operator always fills in.</summary>
+    private static EventSettingsViewModel FilledForm() => new()
+    {
+        EventName = "Nowhere 2026",
+        TimeZoneId = "Europe/Madrid",
+        GateOpeningDate = "2026-07-09",
+    };
+
     [HumansFact]
     public void TheShippedDefaults_Validate()
     {
@@ -51,6 +71,25 @@ public sealed class EventSettingsViewModelTests
         // "pre-build"; only a first-crew boundary the build window has not
         // reached yet is broken.
         Validate(new EventSettingsViewModel { BuildStartOffset = -30 }).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void TheShippedDefaults_PassFullModelValidation()
+    {
+        ValidateFully(FilledForm()).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void ASubPeriodOnOrAfterGateDay_IsRejectedByTheFieldRange()
+    {
+        // Ordering still holds (-9 < 1), so only the [Range] can catch this — and only
+        // under full model validation.
+        var model = FilledForm();
+        model.FinishingWeekendStartOffset = 1;
+
+        ValidateFully(model).Should().ContainSingle()
+            .Which.MemberNames.Should().ContainSingle(
+                nameof(EventSettingsViewModel.FinishingWeekendStartOffset));
     }
 
     [HumansFact]

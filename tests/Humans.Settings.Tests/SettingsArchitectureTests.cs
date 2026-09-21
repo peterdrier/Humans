@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Humans.Base.Authorization;
 using Humans.Settings.Controllers;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Settings.Tests;
 
@@ -25,6 +26,35 @@ public sealed class SettingsArchitectureTests
             authorize!.Policy.Should().Be(PolicyNames.AdminOnly,
                 because: $"{controller.Name} writes the app-wide event values");
         }
+    }
+
+    /// <summary>
+    /// <c>/Settings/Admin</c> is POST-only: the form it serves lives on the
+    /// <c>/Settings#event</c> tab and both outcomes redirect back to it. A GET here would be a
+    /// second, admin-exempt screen for the same form.
+    /// </summary>
+    [HumansFact]
+    public void TheAdminEndpoint_ExposesNoGet()
+    {
+        typeof(SettingsAdminController)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .SelectMany(method => method.GetCustomAttributes<HttpGetAttribute>())
+            .Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// The page itself is members-only, not admin-only — it renders whatever tabs the viewer
+    /// is allowed, including none at all. Gating it on <see cref="PolicyNames.AdminOnly"/>
+    /// would hide every other section's tab.
+    /// </summary>
+    [HumansFact]
+    public void TheSettingsPage_IsAuthenticatedOnly()
+    {
+        var authorize = typeof(SettingsController).GetCustomAttribute<AuthorizeAttribute>();
+
+        authorize.Should().NotBeNull();
+        authorize!.Policy.Should().BeNull();
+        authorize.Roles.Should().BeNull();
     }
 
     /// <summary>
