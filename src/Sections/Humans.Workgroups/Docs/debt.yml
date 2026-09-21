@@ -1,9 +1,6 @@
 version: 1
 next_id: 2
 inbox: []
-# WG-1 closed 2026-09-21 (peterdrier/Humans#1785): added a WorkgroupsModelWarmupFixture
-# assembly fixture (tests/Humans.Workgroups.Tests/Infrastructure/) that builds the EF model
-# once before any test runs, so it no longer falls inside whichever test's timeout budget.
 # Emptied 2026-09-14: the one entry here asked for grant revocation when
 # SettingKeys.WorkgroupsRootDriveFolderId is replaced. Peter, on
 # peterdrier/Humans#1650: "this is fine, I won't do that" — the root is set once
