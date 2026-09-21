@@ -105,4 +105,20 @@ public interface IHoldedClient
     /// returning the prefix. One contact carrying an unreadable value is skipped and logged — an
     /// unreadable page envelope is not.</summary>
     Task<IReadOnlyList<HoldedContactDto>> ListContactsAsync(CancellationToken ct = default);
+
+    /// <summary>Lists a treasury account's bank movements over a date window, newest-first order not
+    /// guaranteed. Cursor-paginated internally. The window is also applied client-side, so the contract
+    /// holds whether or not Holded honours the date query parameters.</summary>
+    /// REASON: nothing in the client can read the bank feed; #1185 makes the bank line the trigger.
+    Task<IReadOnlyList<HoldedBankMovementDto>> ListBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default);
+
+    /// <summary>Reconciles one bank movement against the documents that settle it. Split reconciliation
+    /// (several documents on one line) is supported. Throws <c>HoldedPermanentException</c> when Holded
+    /// refuses the pairing — unlike a payment, a refused reconcile moved no money, so there is nothing
+    /// to lose by throwing.</summary>
+    /// REASON: #1185 requires the Sabadell line to end up reconciled; no existing method can.
+    Task ReconcileBankMovementAsync(
+        string treasuryAccountId, string movementId,
+        IReadOnlyList<HoldedReconcileDocumentRef> documents, CancellationToken ct = default);
 }
