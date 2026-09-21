@@ -1,4 +1,4 @@
-using AwesomeAssertions;
+﻿using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Governance.Domain;
@@ -1749,9 +1749,10 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // The merge leaves the roster row on the archived id deliberately — it records who
         // was entitled when the vote opened. Users resolves that id forward, so the member is
         // reminded at the address they read, not at the `@merged.local` sentinel (#1704).
-        _fx.Messages.Received(1).AssemblyVoteReminder(
-            survivor + "@example.org", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<LocalDateTime>(),
-            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string?>());
+        await _fx.Email.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "assembly_vote_reminder"
+                && m.RecipientEmail == survivor + "@example.org"),
+            Arg.Any<CancellationToken>());
 
         var stamped = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
             .SingleAsync(r => r.Id == row.Id, Xunit.TestContext.Current.CancellationToken);
@@ -1775,9 +1776,9 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _fx.Messages.DidNotReceive().AssemblyVoteReminder(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<LocalDateTime>(),
-            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string?>());
+        await _fx.Email.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "assembly_vote_reminder"),
+            Arg.Any<CancellationToken>());
         var stored = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
             .SingleAsync(r => r.Id == archivedRow.Id, Xunit.TestContext.Current.CancellationToken);
         stored.ReminderSentAt.Should().BeNull();
@@ -1796,9 +1797,10 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         await _fx.Service.RunLapseAndReminderSweepAsync(
             Xunit.TestContext.Current.CancellationToken);
 
-        _fx.Messages.Received(1).AssemblyVoteOpened(
-            survivor + "@example.org", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<LocalDateTime>(),
-            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string?>());
+        await _fx.Email.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "assembly_vote_opened"
+                && m.RecipientEmail == survivor + "@example.org"),
+            Arg.Any<CancellationToken>());
 
         var stamped = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
             .SingleAsync(r => r.Id == row.Id, Xunit.TestContext.Current.CancellationToken);
@@ -1822,9 +1824,10 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         await _fx.Service.RunLapseAndReminderSweepAsync(
             Xunit.TestContext.Current.CancellationToken);
 
-        _fx.Messages.Received(1).AssemblyVoteOpened(
-            survivor + "@example.org", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<LocalDateTime>(),
-            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string?>());
+        await _fx.Email.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "assembly_vote_opened"
+                && m.RecipientEmail == survivor + "@example.org"),
+            Arg.Any<CancellationToken>());
 
         var rows = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
             .Where(r => r.VoteId == vote.Id)

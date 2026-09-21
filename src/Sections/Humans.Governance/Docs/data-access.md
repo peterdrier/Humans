@@ -45,7 +45,7 @@ Repository: `IApplicationRepository`.
 Cross-section calls via `IUserService`, `IRoleAssignmentService`,
 `IEmailService`, `IUserEmailService`, `INotificationEmitter`,
 `ISystemTeamSync`, `IAuditLogService`, `IHumansMetrics`,
-`IEmailMessageFactory`. Implements `IApplicationDecisionService` (which
+and the section's own `GovernanceEmails` builder. Implements `IApplicationDecisionService` (which
 extends `IApplicationServiceRead`), `IUserDataContributor`, `IUserMerge`.
 `EraseForUserAsync` calls `IApplicationRepository.ScrubFreeTextForUserAsync`,
 which clears the applicant's own free text (motivation, additional info,
@@ -71,7 +71,7 @@ No cache, no caching decorator — one vote at a time and ~120 voters.
 
 Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
 `IRoleAssignmentService`, `ITeamServiceRead`, `IEmailService`,
-`IEmailMessageFactory`, `INotificationEmitter`,
+the section's own `GovernanceEmails` builder, `INotificationEmitter`,
 `INotificationAutoResolve`, `IAuditLogService`, `IGoogleTranslationService`,
 `IClock`. Implements
 `IAssemblyVoteService`, `IUserDataContributor`, `IUserMerge`. Nothing on

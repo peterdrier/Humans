@@ -30,7 +30,7 @@ internal sealed class ApplicationDecisionService(
     IRoleAssignmentService roleAssignmentService,
     IAuditLogService auditLogService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    GovernanceEmails emailMessages,
     IUserEmailService userEmailService,
     INotificationEmitter notificationService,
     ISystemTeamSync syncJob,

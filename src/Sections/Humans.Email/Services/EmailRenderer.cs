@@ -1,4 +1,4 @@
-using Humans.Users.Contracts;
+﻿using Humans.Users.Contracts;
 using System.Globalization;
 using Humans.Email.Contracts;
 using Humans.Base.Configuration;
@@ -8,7 +8,6 @@ using Microsoft.Extensions.Options;
 
 using Humans.Events.Contracts;
 
-using NodaTime;
 
 namespace Humans.Email.Services;
 
@@ -30,22 +29,6 @@ internal sealed class EmailRenderer(
             Lf("Email_ApplicationSubmitted_Subject", applicantName),
             Lf("Email_ApplicationSubmitted_Body", HtmlEncode(applicantName), applicationId, _settings.BaseUrl));
     }
-
-    public EmailContent RenderApplicationApproved(string userName, MembershipTier tier, string? culture = null)
-        => RenderLocalized(culture, () => new EmailContent(
-            L("Email_ApplicationApproved_Subject"),
-            Lf("Email_ApplicationApproved_Body", HtmlEncode(userName), tier, _settings.BaseUrl)));
-
-    public EmailContent RenderApplicationRejected(string userName, MembershipTier tier, string reason, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var reasonHtml = string.IsNullOrEmpty(reason)
-                ? ""
-                : Lf("Email_ReasonLine", HtmlEncode(reason));
-            return new EmailContent(
-                L("Email_ApplicationRejected_Subject"),
-                Lf("Email_ApplicationRejected_Body", HtmlEncode(userName), tier, reasonHtml, _settings.AdminAddress));
-        });
 
     public EmailContent RenderSignupRejected(string userName, string? reason, string? culture = null)
         => RenderLocalized(culture, () =>
@@ -125,11 +108,6 @@ internal sealed class EmailRenderer(
                 Lf("Email_AddedToTeam_Subject", teamName),
                 Lf("Email_AddedToTeam_Body", HtmlEncode(userName), HtmlEncode(teamName), resourcesHtml, teamUrl));
         });
-
-    public EmailContent RenderTermRenewalReminder(string userName, string tierName, string expiresAt, string? culture = null)
-        => RenderLocalized(culture, () => new EmailContent(
-            Lf("Email_TermRenewalReminder_Subject", tierName),
-            Lf("Email_TermRenewalReminder_Body", HtmlEncode(userName), HtmlEncode(tierName), HtmlEncode(expiresAt), _settings.BaseUrl)));
 
     public EmailContent RenderSurveyInvitation(
         string userName,
@@ -554,30 +532,4 @@ internal sealed class EmailRenderer(
     private string AbsoluteUrl(string path) =>
         $"{_settings.BaseUrl.TrimEnd('/')}/{path.TrimStart('/')}";
 
-    public EmailContent RenderAssemblyVoteOpened(string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var indicativeHtml = isOfficial ? "" : L("Email_AssemblyVote_IndicativeNote");
-            return new EmailContent(
-                Lf("Email_AssemblyVoteOpened_Subject", voteTitle),
-                Lf("Email_AssemblyVoteOpened_Body", HtmlEncode(userName), HtmlEncode(voteTitle), HtmlEncode(closesAt.ToDateTime()), AbsoluteUrl(voteUrl), indicativeHtml));
-        });
-
-    public EmailContent RenderAssemblyVoteReminder(string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var indicativeHtml = isOfficial ? "" : L("Email_AssemblyVote_IndicativeNote");
-            return new EmailContent(
-                Lf("Email_AssemblyVoteReminder_Subject", voteTitle),
-                Lf("Email_AssemblyVoteReminder_Body", HtmlEncode(userName), HtmlEncode(voteTitle), HtmlEncode(closesAt.ToDateTime()), AbsoluteUrl(voteUrl), indicativeHtml));
-        });
-
-    public EmailContent RenderAssemblyVoteCancelled(string userName, string voteTitle, string reason, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var reasonHtml = Lf("Email_ReasonLine", HtmlEncode(reason));
-            return new EmailContent(
-                Lf("Email_AssemblyVoteCancelled_Subject", voteTitle),
-                Lf("Email_AssemblyVoteCancelled_Body", HtmlEncode(userName), HtmlEncode(voteTitle), reasonHtml));
-        });
 }

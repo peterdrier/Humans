@@ -1,4 +1,4 @@
-using Humans.Users.Contracts;
+﻿using Humans.Users.Contracts;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using NodaTime;
@@ -14,20 +14,6 @@ namespace Humans.Email.Services;
 /// </summary>
 internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessageFactory
 {
-    public EmailMessage ApplicationApproved(string userEmail, string userName, MembershipTier tier, string? culture = null)
-    {
-        var content = renderer.RenderApplicationApproved(userName, tier, culture);
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "application_approved", MessageCategory.Governance);
-    }
-
-    public EmailMessage ApplicationRejected(string userEmail, string userName, MembershipTier tier, string reason, string? culture = null)
-    {
-        var content = renderer.RenderApplicationRejected(userName, tier, reason, culture);
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "application_rejected", MessageCategory.Governance);
-    }
-
     public EmailMessage ReConsentsRequired(string userEmail, string userName, IEnumerable<string> documentNames, string? culture = null)
     {
         var content = renderer.RenderReConsentsRequired(userName, documentNames.ToList(), culture);
@@ -85,13 +71,6 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
         var content = renderer.RenderSignupRejected(userName, reason, culture);
         return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
             "signup_rejected", MessageCategory.System);
-    }
-
-    public EmailMessage TermRenewalReminder(string userEmail, string userName, string tierName, string expiresAt, string? culture = null)
-    {
-        var content = renderer.RenderTermRenewalReminder(userName, tierName, expiresAt, culture);
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "term_renewal_reminder", MessageCategory.Governance);
     }
 
     public EmailMessage SurveyInvitation(
@@ -263,24 +242,4 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
             templateName, MessageCategory.Governance);
     }
 
-    public EmailMessage AssemblyVoteOpened(string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)
-    {
-        var content = renderer.RenderAssemblyVoteOpened(userName, voteTitle, closesAt, isOfficial, voteUrl, culture);
-        return new EmailMessage(toEmail, userName, content.Subject, content.HtmlBody,
-            "assembly_vote_opened", MessageCategory.System);
-    }
-
-    public EmailMessage AssemblyVoteReminder(string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)
-    {
-        var content = renderer.RenderAssemblyVoteReminder(userName, voteTitle, closesAt, isOfficial, voteUrl, culture);
-        return new EmailMessage(toEmail, userName, content.Subject, content.HtmlBody,
-            "assembly_vote_reminder", MessageCategory.System);
-    }
-
-    public EmailMessage AssemblyVoteCancelled(string toEmail, string userName, string voteTitle, string reason, string? culture = null)
-    {
-        var content = renderer.RenderAssemblyVoteCancelled(userName, voteTitle, reason, culture);
-        return new EmailMessage(toEmail, userName, content.Subject, content.HtmlBody,
-            "assembly_vote_cancelled", MessageCategory.System);
-    }
 }

@@ -1,8 +1,9 @@
-using Hangfire;
+﻿using Hangfire;
 using NodaTime;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
+using Humans.Governance.Services;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
@@ -19,16 +20,13 @@ namespace Humans.Governance.Jobs;
 /// <see cref="IApplicationDecisionService"/>, and stitches applicant display
 /// info via <see cref="IUserServiceRead"/>, so the job never touches a section
 /// DbContext directly (design-rules §2c).
-///
-/// <c>public</c> because Shell names the concrete type at registration; HUM0034
-/// makes every other public type in a section assembly an error.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class TermRenewalReminderJob(
+internal sealed class TermRenewalReminderJob(
     IApplicationDecisionService applicationDecisionService,
     IUserServiceRead userService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    GovernanceEmails emailMessages,
     INotificationEmitter notificationService,
     IHumansMetrics metrics,
     ILogger<TermRenewalReminderJob> logger,

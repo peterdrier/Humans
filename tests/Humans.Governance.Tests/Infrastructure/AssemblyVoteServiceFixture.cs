@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+﻿using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
 using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
@@ -39,7 +39,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
     public readonly IUserServiceRead Users = Substitute.For<IUserServiceRead>();
     public readonly IUserEmailService UserEmails = Substitute.For<IUserEmailService>();
     public readonly IEmailService Email = Substitute.For<IEmailService>();
-    public readonly IEmailMessageFactory Messages = Substitute.For<IEmailMessageFactory>();
+    public readonly GovernanceEmails Messages = TestGovernanceEmails.Create();
     public readonly INotificationEmitter Notifications = Substitute.For<INotificationEmitter>();
     public readonly INotificationAutoResolve NotificationResolve = Substitute.For<INotificationAutoResolve>();
     public readonly IGoogleTranslationService Translation = Substitute.For<IGoogleTranslationService>();

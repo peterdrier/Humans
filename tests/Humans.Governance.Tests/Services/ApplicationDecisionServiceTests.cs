@@ -1,4 +1,4 @@
-using Humans.Auth.Contracts;
+﻿using Humans.Auth.Contracts;
 using Humans.Governance.Domain;
 using NodaTime.Testing;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -56,7 +56,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly ApplicationRepository _repository;
     private readonly IUserService _userService;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    private readonly GovernanceEmails _emailMessages = TestGovernanceEmails.Create();
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
@@ -459,11 +459,12 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received().ApplicationApproved(
-            "alice@test.com",
-            "Alice",
-            MembershipTier.Colaborador,
-            "en");
+        await _emailService.Received().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "application_approved"
+                && m.RecipientEmail == "alice@test.com"
+                && m.RecipientName == "Alice"
+                && m.Subject == "Email_ApplicationApproved_Subject#en"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -492,16 +493,14 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received().ApplicationApproved(
-            "bob.notify@test.com",
-            "Bob",
-            MembershipTier.Colaborador,
-            "en");
-        _emailMessages.DidNotReceive().ApplicationApproved(
-            string.Empty,
-            Arg.Any<string>(),
-            Arg.Any<MembershipTier>(),
-            Arg.Any<string>());
+        await _emailService.Received().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "application_approved"
+                && m.RecipientEmail == "bob.notify@test.com"
+                && m.RecipientName == "Bob"),
+            Arg.Any<CancellationToken>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == string.Empty),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -526,11 +525,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.DidNotReceive().ApplicationApproved(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<MembershipTier>(),
-            Arg.Any<string>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "application_approved"),
+            Arg.Any<CancellationToken>());
     }
 
     // --- Reject flow ---

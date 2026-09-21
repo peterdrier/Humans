@@ -36,8 +36,6 @@
   <!-- Common / Shared          -->
   <!-- ======================== -->
   <data name="Email_ApplicationSubmitted_Subject" xml:space="preserve"><value>New Membership Application: {0}</value><comment>{0} = applicant name</comment></data>
-  <data name="Email_ApplicationApproved_Subject" xml:space="preserve"><value>Welcome to the association!</value></data>
-  <data name="Email_ApplicationRejected_Subject" xml:space="preserve"><value>Regarding Your Membership Application</value></data>
   <data name="Email_SignupRejected_Subject" xml:space="preserve"><value>Regarding Your Signup</value></data>
   <data name="Email_SurveyInvitation_Subject" xml:space="preserve"><value>Please complete: {0}</value><comment>{0} = survey title</comment></data>
   <data name="Email_SurveyReminder_Subject" xml:space="preserve"><value>Reminder: {0}</value><comment>{0} = survey title</comment></data>
@@ -50,7 +48,6 @@
   <data name="Email_DeletionRequested_Subject" xml:space="preserve"><value>Account Deletion Requested</value></data>
   <data name="Email_AccountDeleted_Subject" xml:space="preserve"><value>Your Account Has Been Deleted</value></data>
   <data name="Email_AddedToTeam_Subject" xml:space="preserve"><value>You've been added to {0}</value><comment>{0} = team name</comment></data>
-  <data name="Email_TermRenewalReminder_Subject" xml:space="preserve"><value>Your {0} Membership Term Is Expiring Soon</value><comment>{0} = tier name</comment></data>
   <data name="Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {0}&lt;/p&gt;</value><comment>{0} = reason text (HTML-encoded by caller)</comment></data>
   <data name="Email_ResourcesSection" xml:space="preserve"><value>&lt;p&gt;Your team has the following resources:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value><comment>{0} = resource list items HTML</comment></data>
   <data name="Email_ApplicationSubmitted_Body" xml:space="preserve"><value>&lt;h2&gt;New Membership Application&lt;/h2&gt;
@@ -60,23 +57,6 @@
     &lt;li&gt;&lt;strong&gt;Application ID:&lt;/strong&gt; {1}&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Review Application&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
-  <data name="Email_ApplicationApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Your Application Has Been Approved!&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;We're delighted to inform you that your {1} application has been approved. Welcome to the association!&lt;/p&gt;
-&lt;p&gt;You can now access your profile and explore teams:&lt;/p&gt;
-&lt;ul&gt;
-    &lt;li&gt;&lt;a href="{2}/Profile"&gt;View Your Profile&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{2}/Teams"&gt;Browse Teams&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Review Legal Documents&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;If you have any questions, don't hesitate to reach out.&lt;/p&gt;
-&lt;p&gt;Welcome aboard!&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = tier, {2} = base URL</comment></data>
-  <data name="Email_ApplicationRejected_Body" xml:space="preserve"><value>&lt;h2&gt;Application Update&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;Thank you for your interest in joining us. After careful review, we regret to inform you that we are unable to approve your {1} application at this time.&lt;/p&gt;
-{2}
-&lt;p&gt;If you have any questions or would like to discuss this decision, please contact us at &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Best regards,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = tier, {2} = reason HTML (or empty), {3} = admin email</comment></data>
   <data name="Email_SignupRejected_Body" xml:space="preserve"><value>&lt;h2&gt;Signup Update&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;Thank you for your interest in joining us. After careful review, we regret to inform you that we are unable to approve your signup at this time.&lt;/p&gt;
@@ -169,13 +149,6 @@
 {2}
 &lt;p&gt;&lt;a href="{3}"&gt;View Team Page&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment></data>
-  <data name="Email_TermRenewalReminder_Body" xml:space="preserve"><value>&lt;h2&gt;Membership Term Renewal&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;Your &lt;strong&gt;{1}&lt;/strong&gt; term is expiring on &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
-&lt;p&gt;If you would like to continue as a {1}, please submit a renewal application before your term ends.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Submit Renewal Application&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;If you do not renew, you will remain an active human but will no longer have {1}-level access.&lt;/p&gt;
-&lt;p&gt;Thank you for your continued involvement!&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment></data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve"><value>Humans Message from: {0}</value><comment>{0} = sender name</comment></data>
   <data name="Email_FacilitatedMessage_Body" xml:space="preserve"><value>&lt;h2&gt;Message from {1}&lt;/h2&gt;&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;{1} has sent you a message through Humans:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{2}&lt;/p&gt;&lt;hr /&gt;{3}</value><comment>{0}=recipient, {1}=sender, {2}=message, {3}=contact info html</comment></data>
   <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve"><value>This human chose not to share their contact information.</value></data>
@@ -265,26 +238,4 @@
   <data name="Email_WorkgroupNotice_DispositionRecorded_Subject" xml:space="preserve"><value>Board disposition recorded: {0}</value><comment>{0} = working group name</comment></data>
   <data name="Email_WorkgroupNotice_DispositionRecorded_Body" xml:space="preserve"><value>&lt;h2&gt;Board Disposition Recorded&lt;/h2&gt;{0}&lt;p&gt;The Board has recorded its disposition for &lt;strong&gt;{1}&lt;/strong&gt;: {2}.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;View working group&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = greeting HTML, {1} = working group name, {2} = disposition and note, {3} = working group URL</comment></data>
 
-  <data name="Email_AssemblyVote_IndicativeNote" xml:space="preserve"><value>&lt;p&gt;&lt;em&gt;Your ballot is indicative and will not be counted in the official result.&lt;/em&gt;&lt;/p&gt;</value></data>
-  <data name="Email_AssemblyVoteOpened_Subject" xml:space="preserve"><value>A vote is open: {0}</value><comment>{0} = vote title</comment></data>
-  <data name="Email_AssemblyVoteOpened_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
-&lt;p&gt;Hi {0},&lt;/p&gt;
-&lt;p&gt;A vote is open in the General Assembly. It closes on &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
-{4}
-&lt;p&gt;&lt;a href="{3}"&gt;Cast your ballot&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Thank you,&lt;br/&gt;The Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = closing time, {3} = vote URL, {4} = indicative-ballot note HTML, empty when official</comment></data>
-  <data name="Email_AssemblyVoteReminder_Subject" xml:space="preserve"><value>Vote closing soon: {0}</value><comment>{0} = vote title</comment></data>
-  <data name="Email_AssemblyVoteReminder_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
-&lt;p&gt;Hi {0},&lt;/p&gt;
-&lt;p&gt;The vote &lt;strong&gt;{1}&lt;/strong&gt; closes in about 24 hours and you have not voted yet.&lt;/p&gt;
-&lt;p&gt;It closes on &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
-{4}
-&lt;p&gt;&lt;a href="{3}"&gt;Cast your ballot&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Thank you,&lt;br/&gt;The Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = closing time, {3} = vote URL, {4} = indicative-ballot note HTML, empty when official</comment></data>
-  <data name="Email_AssemblyVoteCancelled_Subject" xml:space="preserve"><value>Vote cancelled: {0}</value><comment>{0} = vote title</comment></data>
-  <data name="Email_AssemblyVoteCancelled_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
-&lt;p&gt;Hi {0},&lt;/p&gt;
-&lt;p&gt;The vote &lt;strong&gt;{1}&lt;/strong&gt; has been cancelled.&lt;/p&gt;
-{2}
-&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = reason line HTML</comment></data>
 </root>

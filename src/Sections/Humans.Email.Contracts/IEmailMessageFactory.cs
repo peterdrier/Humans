@@ -1,4 +1,4 @@
-using Humans.Users.Contracts;
+﻿using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Email.Contracts;
@@ -15,12 +15,6 @@ namespace Humans.Email.Contracts;
 /// </summary>
 public interface IEmailMessageFactory
 {
-    /// <summary>Application approved notification (Governance).</summary>
-    EmailMessage ApplicationApproved(string userEmail, string userName, MembershipTier tier, string? culture = null);
-
-    /// <summary>Application rejected notification (Governance).</summary>
-    EmailMessage ApplicationRejected(string userEmail, string userName, MembershipTier tier, string reason, string? culture = null);
-
     /// <summary>Re-consent required notification (always-send).</summary>
     EmailMessage ReConsentsRequired(string userEmail, string userName, IEnumerable<string> documentNames, string? culture = null);
 
@@ -44,9 +38,6 @@ public interface IEmailMessageFactory
 
     /// <summary>Signup rejection notification (System).</summary>
     EmailMessage SignupRejected(string userEmail, string userName, string? reason, string? culture = null);
-
-    /// <summary>Term renewal reminder (Governance).</summary>
-    EmailMessage TermRenewalReminder(string userEmail, string userName, string tierName, string expiresAt, string? culture = null);
 
     /// <summary>
     /// Survey invitation — operational (System category, always-send).
@@ -116,12 +107,4 @@ public interface IEmailMessageFactory
     /// <summary>Working-group register notice (Governance category) — one method, the kind picks the copy.</summary>
     EmailMessage WorkgroupNotice(WorkgroupNoticeRequest request);
 
-    /// <summary>Assembly vote opened notification to a roster member (System); indicative ballots are called out.</summary>
-    EmailMessage AssemblyVoteOpened(string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null);
-
-    /// <summary>Assembly vote T-24h reminder to a roster member who has not voted yet (System); indicative ballots are called out.</summary>
-    EmailMessage AssemblyVoteReminder(string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null);
-
-    /// <summary>Assembly vote cancelled notification to a roster member (System).</summary>
-    EmailMessage AssemblyVoteCancelled(string toEmail, string userName, string voteTitle, string reason, string? culture = null);
 }

@@ -33,7 +33,7 @@ internal sealed class AssemblyVoteService(
     IUserServiceRead users,
     IUserEmailService userEmails,
     IEmailService email,
-    IEmailMessageFactory messages,
+    GovernanceEmails messages,
     INotificationEmitter notifications,
     INotificationAutoResolve notificationResolve,
     IAuditLogService audit,

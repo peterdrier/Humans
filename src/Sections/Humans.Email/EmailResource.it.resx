@@ -44,12 +44,6 @@
     <value>Nuova domanda di iscrizione: {0}</value>
     <comment>{0} = applicant name</comment>
   </data>
-  <data name="Email_ApplicationApproved_Subject" xml:space="preserve">
-    <value>Benvenuto/a nell'associazione!</value>
-  </data>
-  <data name="Email_ApplicationRejected_Subject" xml:space="preserve">
-    <value>Riguardo la Sua domanda di iscrizione</value>
-  </data>
   <data name="Email_SignupRejected_Subject" xml:space="preserve">
     <value>Riguardo la Sua registrazione</value>
   </data>
@@ -83,10 +77,6 @@
     <value>È stato/a aggiunto/a al team {0}</value>
     <comment>{0} = team name</comment>
   </data>
-  <data name="Email_TermRenewalReminder_Subject" xml:space="preserve">
-    <value>Il tuo mandato di {0} sta per scadere</value>
-    <comment>{0} = tier name</comment>
-  </data>
   <data name="Email_ReasonLine" xml:space="preserve">
     <value>&lt;p&gt;&lt;strong&gt;Motivo:&lt;/strong&gt; {0}&lt;/p&gt;</value>
     <comment>{0} = reason text (HTML-encoded by caller)</comment>
@@ -104,29 +94,6 @@
 &lt;/ul&gt;
 &lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Esaminare la domanda&lt;/a&gt;&lt;/p&gt;</value>
     <comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment>
-  </data>
-  <data name="Email_ApplicationApproved_Body" xml:space="preserve">
-    <value>&lt;h2&gt;La tua domanda è stata approvata!&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;Siamo lieti di informarti che la tua domanda di {1} è stata approvata. Benvenuto/a nell'associazione!&lt;/p&gt;
-&lt;p&gt;Ora puoi accedere al tuo profilo ed esplorare i team:&lt;/p&gt;
-&lt;ul&gt;
-    &lt;li&gt;&lt;a href="{2}/Profile"&gt;Visualizza il tuo profilo&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{2}/Teams"&gt;Esplora i team&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Consulta i documenti legali&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;Se hai domande, non esitare a contattarci.&lt;/p&gt;
-&lt;p&gt;Benvenuto/a!&lt;br/&gt;Il team di Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = tier, {2} = base URL</comment>
-  </data>
-  <data name="Email_ApplicationRejected_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Aggiornamento sulla domanda&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;Grazie per il tuo interesse. Dopo un'attenta valutazione, ci dispiace informarti che non possiamo approvare la tua domanda di {1} in questo momento.&lt;/p&gt;
-{2}
-&lt;p&gt;Se hai domande o desideri discutere questa decisione, contattaci a &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Cordiali saluti,&lt;br/&gt;Il team di Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = tier, {2} = reason HTML (or empty), {3} = admin email</comment>
   </data>
   <data name="Email_SignupRejected_Body" xml:space="preserve">
     <value>&lt;h2&gt;Aggiornamento sulla registrazione&lt;/h2&gt;
@@ -229,16 +196,6 @@
 &lt;p&gt;&lt;a href="{3}"&gt;Visualizza la pagina del team&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Il team di Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment>
-  </data>
-  <data name="Email_TermRenewalReminder_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Rinnovo del mandato&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;Il tuo mandato di &lt;strong&gt;{1}&lt;/strong&gt; scade il &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
-&lt;p&gt;Se desideri continuare come {1}, invia una domanda di rinnovo prima della scadenza del tuo mandato.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Invia domanda di rinnovo&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Senza rinnovo, rimarrai un human attivo ma non avrai più l'accesso di livello {1}.&lt;/p&gt;
-&lt;p&gt;Grazie per il tuo impegno!&lt;br/&gt;Il team di Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment>
   </data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve">
     <value>Messaggio Humans da: {0}</value>
@@ -399,26 +356,4 @@
   <data name="Email_WorkgroupNotice_DispositionRecorded_Subject" xml:space="preserve"><value>Decisione del Consiglio registrata: {0}</value></data>
   <data name="Email_WorkgroupNotice_DispositionRecorded_Body" xml:space="preserve"><value>&lt;h2&gt;Decisione del Consiglio registrata&lt;/h2&gt;{0}&lt;p&gt;Il Consiglio ha registrato la propria decisione per &lt;strong&gt;{1}&lt;/strong&gt;: {2}.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Visualizza gruppo di lavoro&lt;/a&gt;&lt;/p&gt;</value></data>
 
-  <data name="Email_AssemblyVote_IndicativeNote" xml:space="preserve"><value>&lt;p&gt;&lt;em&gt;Il tuo voto è indicativo e non sarà conteggiato nel risultato ufficiale.&lt;/em&gt;&lt;/p&gt;</value></data>
-  <data name="Email_AssemblyVoteOpened_Subject" xml:space="preserve"><value>È aperta una votazione: {0}</value><comment>{0} = vote title</comment></data>
-  <data name="Email_AssemblyVoteOpened_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;È aperta una votazione nell'Assemblea Generale. Si chiude il &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
-{4}
-&lt;p&gt;&lt;a href="{3}"&gt;Vota ora&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Grazie,&lt;br/&gt;Il Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = closing time, {3} = vote URL, {4} = indicative-ballot note HTML, empty when official</comment></data>
-  <data name="Email_AssemblyVoteReminder_Subject" xml:space="preserve"><value>La votazione si chiude a breve: {0}</value><comment>{0} = vote title</comment></data>
-  <data name="Email_AssemblyVoteReminder_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;La votazione &lt;strong&gt;{1}&lt;/strong&gt; si chiude tra circa 24 ore e non hai ancora votato.&lt;/p&gt;
-&lt;p&gt;Si chiude il &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
-{4}
-&lt;p&gt;&lt;a href="{3}"&gt;Vota ora&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Grazie,&lt;br/&gt;Il Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = closing time, {3} = vote URL, {4} = indicative-ballot note HTML, empty when official</comment></data>
-  <data name="Email_AssemblyVoteCancelled_Subject" xml:space="preserve"><value>Votazione annullata: {0}</value><comment>{0} = vote title</comment></data>
-  <data name="Email_AssemblyVoteCancelled_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;La votazione &lt;strong&gt;{1}&lt;/strong&gt; è stata annullata.&lt;/p&gt;
-{2}
-&lt;p&gt;Il team di Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = reason line HTML</comment></data>
 </root>

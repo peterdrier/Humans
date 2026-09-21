@@ -44,12 +44,6 @@
     <value>Nova sol·licitud de membres: {0}</value>
     <comment>{0} = applicant name</comment>
   </data>
-  <data name="Email_ApplicationApproved_Subject" xml:space="preserve">
-    <value>Benvingut/da a l'associació!</value>
-  </data>
-  <data name="Email_ApplicationRejected_Subject" xml:space="preserve">
-    <value>Sobre la teva sol·licitud de membres</value>
-  </data>
   <data name="Email_SignupRejected_Subject" xml:space="preserve">
     <value>Sobre el teu registre</value>
   </data>
@@ -83,10 +77,6 @@
     <value>T'han afegit a l'equip {0}</value>
     <comment>{0} = team name</comment>
   </data>
-  <data name="Email_TermRenewalReminder_Subject" xml:space="preserve">
-    <value>El teu mandat de {0} està a punt d’expirar</value>
-    <comment>{0} = tier name</comment>
-  </data>
   <data name="Email_ReasonLine" xml:space="preserve">
     <value>&lt;p&gt;&lt;strong&gt;Motiu:&lt;/strong&gt; {0}&lt;/p&gt;</value>
     <comment>{0} = reason text (HTML-encoded by caller)</comment>
@@ -104,29 +94,6 @@
 &lt;/ul&gt;
 &lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Revisa la sol·licitud&lt;/a&gt;&lt;/p&gt;</value>
     <comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment>
-  </data>
-  <data name="Email_ApplicationApproved_Body" xml:space="preserve">
-    <value>&lt;h2&gt;La teva sol·licitud ha estat aprovada!&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Ens complau informar-te que la teva sol·licitud de {1} ha estat aprovada. Benvingut/da a l'associació!&lt;/p&gt;
-&lt;p&gt;Ara pots accedir al teu perfil i explorar equips:&lt;/p&gt;
-&lt;ul&gt;
-    &lt;li&gt;&lt;a href="{2}/Profile"&gt;Veure el teu perfil&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{2}/Teams"&gt;Explorar equips&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Revisar documents legals&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;Si tens alguna pregunta, no dubtis a contactar-nos.&lt;/p&gt;
-&lt;p&gt;Benvingut/da!&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = tier, {2} = base URL</comment>
-  </data>
-  <data name="Email_ApplicationRejected_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Actualització de la sol·licitud&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Gràcies pel teu interès a unir-te a nosaltres. Després d’una revisió acurada, lamentem informar-te que no podem aprovar la teva sol·licitud de {1} en aquest moment.&lt;/p&gt;
-{2}
-&lt;p&gt;Si tens alguna pregunta o vols comentar aquesta decisió, contacta’ns a &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Una salutació,&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = tier, {2} = reason HTML (or empty), {3} = admin email</comment>
   </data>
   <data name="Email_SignupRejected_Body" xml:space="preserve">
     <value>&lt;h2&gt;Actualització del registre&lt;/h2&gt;
@@ -229,16 +196,6 @@
 &lt;p&gt;&lt;a href="{3}"&gt;Veure la pàgina de l’equip&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;L’equip de Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment>
-  </data>
-  <data name="Email_TermRenewalReminder_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Renovació de mandat&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;El teu mandat de &lt;strong&gt;{1}&lt;/strong&gt; expira el &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
-&lt;p&gt;Si vols continuar com a {1}, envia una sol·licitud de renovació abans que finalitzi el teu mandat.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Envia una sol·licitud de renovació&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Si no renoves, continuaràs sent un human actiu però ja no tindràs accés de nivell {1}.&lt;/p&gt;
-&lt;p&gt;Gràcies per la teva participació!&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment>
   </data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve">
     <value>Missatge de Humans de: {0}</value>
@@ -399,26 +356,4 @@
   <data name="Email_WorkgroupNotice_DispositionRecorded_Subject" xml:space="preserve"><value>Resolució de la Junta registrada: {0}</value></data>
   <data name="Email_WorkgroupNotice_DispositionRecorded_Body" xml:space="preserve"><value>&lt;h2&gt;Resolució de la Junta registrada&lt;/h2&gt;{0}&lt;p&gt;La Junta ha registrat la seva resolució per a &lt;strong&gt;{1}&lt;/strong&gt;: {2}.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Veure grup de treball&lt;/a&gt;&lt;/p&gt;</value></data>
 
-  <data name="Email_AssemblyVote_IndicativeNote" xml:space="preserve"><value>&lt;p&gt;&lt;em&gt;El teu vot és indicatiu i no es comptarà en el resultat oficial.&lt;/em&gt;&lt;/p&gt;</value></data>
-  <data name="Email_AssemblyVoteOpened_Subject" xml:space="preserve"><value>Hi ha una votació oberta: {0}</value><comment>{0} = vote title</comment></data>
-  <data name="Email_AssemblyVoteOpened_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Hi ha una votació oberta a l'Assemblea General. Es tanca el &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
-{4}
-&lt;p&gt;&lt;a href="{3}"&gt;Emet el teu vot&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Gràcies,&lt;br/&gt;El Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = closing time, {3} = vote URL, {4} = indicative-ballot note HTML, empty when official</comment></data>
-  <data name="Email_AssemblyVoteReminder_Subject" xml:space="preserve"><value>La votació es tanca aviat: {0}</value><comment>{0} = vote title</comment></data>
-  <data name="Email_AssemblyVoteReminder_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;La votació &lt;strong&gt;{1}&lt;/strong&gt; es tanca d'aquí a unes 24 hores i encara no has votat.&lt;/p&gt;
-&lt;p&gt;Es tanca el &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
-{4}
-&lt;p&gt;&lt;a href="{3}"&gt;Emet el teu vot&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Gràcies,&lt;br/&gt;El Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = closing time, {3} = vote URL, {4} = indicative-ballot note HTML, empty when official</comment></data>
-  <data name="Email_AssemblyVoteCancelled_Subject" xml:space="preserve"><value>Votació cancel·lada: {0}</value><comment>{0} = vote title</comment></data>
-  <data name="Email_AssemblyVoteCancelled_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;La votació &lt;strong&gt;{1}&lt;/strong&gt; ha estat cancel·lada.&lt;/p&gt;
-{2}
-&lt;p&gt;L'equip de Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = reason line HTML</comment></data>
 </root>

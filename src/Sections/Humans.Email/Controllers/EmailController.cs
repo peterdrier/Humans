@@ -1,4 +1,4 @@
-using Humans.Email.Contracts;
+﻿using Humans.Email.Contracts;
 using Humans.Email.Services;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
@@ -155,10 +155,6 @@ internal sealed class EmailController(
     [
         (r, c) => BuildPreviewItem("application-submitted", "Application Submitted (to Admin)", c.Settings.AdminAddress,
             r.RenderApplicationSubmitted(Guid.Empty, c.Name)),
-        (r, c) => BuildPreviewItem("application-approved", "Application Approved", c.Email,
-            r.RenderApplicationApproved(c.Name, MembershipTier.Colaborador, c.Culture)),
-        (r, c) => BuildPreviewItem("application-rejected", "Application Rejected", c.Email,
-            r.RenderApplicationRejected(c.Name, MembershipTier.Asociado, "Incomplete profile information", c.Culture)),
         (r, c) => BuildPreviewItem("signup-rejected", "Signup Rejected", c.Email,
             r.RenderSignupRejected(c.Name, "Incomplete profile information", c.Culture)),
         (r, c) => BuildPreviewItem("reconsent-required", "Re-Consent Required (single doc)", c.Email,
@@ -181,8 +177,6 @@ internal sealed class EmailController(
             r.RenderAccountDeleted(c.Name, c.Culture)),
         (r, c) => BuildPreviewItem("added-to-team", "Added to Team", c.Email,
             r.RenderAddedToTeam(c.Name, "Art Collective", "art-collective", SampleResources, c.Culture)),
-        (r, c) => BuildPreviewItem("term-renewal-reminder", "Term Renewal Reminder", c.Email,
-            r.RenderTermRenewalReminder(c.Name, "Colaborador", "April 1, 2026", c.Culture)),
         (r, c) => BuildPreviewItem("facilitated-message", "Facilitated Message (with contact info)", c.Email,
             r.RenderFacilitatedMessage(c.Name, "Alex Firestone", FacilitatedMessageSampleText, true, "alex@example.com", c.Culture)),
         (r, c) => BuildPreviewItem("facilitated-message-anon", "Facilitated Message (without contact info)", c.Email,

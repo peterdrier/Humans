@@ -1,4 +1,4 @@
-using Humans.Users.Contracts;
+﻿using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Email.Services;
@@ -28,19 +28,6 @@ public sealed class EmailMessageFactoryTests
         _factory = new EmailMessageFactory(_renderer);
     }
 
-    [HumansFact]
-    public void ApplicationApproved_StampsGovernanceCategory()
-    {
-        var msg = _factory.ApplicationApproved("a@x.com", "Alice", MembershipTier.Colaborador, "en");
-
-        msg.RecipientEmail.Should().Be("a@x.com");
-        msg.RecipientName.Should().Be("Alice");
-        msg.Subject.Should().Be("Subj");
-        msg.HtmlBody.Should().Be("<p>Body</p>");
-        msg.TemplateName.Should().Be("application_approved");
-        msg.Category.Should().Be(MessageCategory.Governance);
-        msg.ReplyTo.Should().BeNull();
-    }
 
     [HumansFact]
     public void ReConsentsRequired_IsAlwaysSend_NullCategory()

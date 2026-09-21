@@ -1,7 +1,6 @@
-using Humans.Users.Contracts;
+﻿using Humans.Users.Contracts;
 using Humans.Email.Contracts;
 
-using NodaTime;
 
 namespace Humans.Email.Services;
 
@@ -21,16 +20,6 @@ internal interface IEmailRenderer
     /// Application submitted notification (to admin, always English).
     /// </summary>
     EmailContent RenderApplicationSubmitted(Guid applicationId, string applicantName);
-
-    /// <summary>
-    /// Application approved notification.
-    /// </summary>
-    EmailContent RenderApplicationApproved(string userName, MembershipTier tier, string? culture = null);
-
-    /// <summary>
-    /// Application rejected notification.
-    /// </summary>
-    EmailContent RenderApplicationRejected(string userName, MembershipTier tier, string reason, string? culture = null);
 
     /// <summary>
     /// Signup rejected notification.
@@ -76,11 +65,6 @@ internal interface IEmailRenderer
     /// Added to team notification.
     /// </summary>
     EmailContent RenderAddedToTeam(string userName, string teamName, string teamSlug, IReadOnlyList<(string Name, string? Url)> resources, string? culture = null);
-
-    /// <summary>
-    /// Term renewal reminder for Colaborador/Asociado.
-    /// </summary>
-    EmailContent RenderTermRenewalReminder(string userName, string tierName, string expiresAt, string? culture = null);
 
     /// <summary>
     /// Survey invitation — links to the tokenised answering wizard and optionally replaces the
@@ -229,12 +213,4 @@ internal interface IEmailRenderer
     /// </summary>
     EmailContent RenderWorkgroupNotice(WorkgroupNoticeRequest request);
 
-    /// <summary>Assembly vote opened — notifies a roster member; indicative ballots get the "not counted" caveat.</summary>
-    EmailContent RenderAssemblyVoteOpened(string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null);
-
-    /// <summary>Assembly vote T-24h reminder for a roster member who has not voted yet.</summary>
-    EmailContent RenderAssemblyVoteReminder(string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null);
-
-    /// <summary>Assembly vote cancelled — notifies a roster member with the cancellation reason.</summary>
-    EmailContent RenderAssemblyVoteCancelled(string userName, string voteTitle, string reason, string? culture = null);
 }

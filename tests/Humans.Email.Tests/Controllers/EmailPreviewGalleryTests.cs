@@ -21,7 +21,7 @@ namespace Humans.Email.Tests.Controllers;
 /// </summary>
 public sealed class EmailPreviewGalleryTests
 {
-    private const string LegacyId = "application-approved";
+    private const string LegacyId = "welcome";
 
     private sealed class StubContributor(params string[] ids) : IEmailPreviewContributor
     {

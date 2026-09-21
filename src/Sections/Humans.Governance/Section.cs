@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces;
+using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Governance.Data;
@@ -82,6 +83,11 @@ public sealed class Section : ISection
             [AssemblyBallotChoice.Abstain] = "bg-secondary",
             [AssemblyBallotChoice.Ranked] = "bg-primary",
         });
+
+        // Governance owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<GovernanceEmails>();
+        services.AddScoped<IEmailPreviewContributor, GovernanceEmailPreviews>();
 
         services.AddScoped<TermRenewalReminderJob>();
 
