@@ -127,12 +127,6 @@ internal interface IEmailRenderer
     EmailContent RenderWorkspaceCredentials(string userName, string workspaceEmail, string tempPassword, string? culture = null);
 
     /// <summary>
-    /// Event lifecycle notification — dispatches on <see cref="EventLifecycleNotification.NewStatus"/>
-    /// to render the matching template (submitted / approved / rejected / resubmit-requested).
-    /// </summary>
-    EmailContent RenderEventLifecycle(EventLifecycleNotification request, string? culture = null);
-
-    /// <summary>
     /// Variant 1 group sub-template — Google Group removal, loss of access
     /// (issue peterdrier/Humans#639).
     /// </summary>

@@ -130,14 +130,6 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
             TimeSensitiveTemplates.WorkspaceCredentials);
     }
 
-    public EmailMessage EventLifecycle(EventLifecycleNotification request, string userEmail)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        var content = renderer.RenderEventLifecycle(request);
-        return new EmailMessage(userEmail, request.UserName, content.Subject, content.HtmlBody,
-            request.TemplateName());
-    }
-
     public EmailMessage GoogleGroupRemovalLossOfAccess(string removedEmail, string userName, string groupName, string groupEmail, string? culture = null)
     {
         var content = renderer.RenderGoogleGroupRemovalLossOfAccess(userName, groupName, groupEmail, culture);

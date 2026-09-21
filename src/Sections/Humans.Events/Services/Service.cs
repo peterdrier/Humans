@@ -21,7 +21,7 @@ internal sealed class EventService(
     ISettingsService settingsService,
     IUserServiceRead userService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    EventsEmails emailMessages,
     IClock clock,
     ILogger<EventService> logger)
     // IUserDataContributor is implemented by CachingEventService, which delegates here —

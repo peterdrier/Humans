@@ -4,7 +4,6 @@ using Humans.Email.Contracts;
 using Humans.Email.Services;
 using NSubstitute;
 using NSubstitute.Extensions;
-using Humans.Events.Contracts;
 using Humans.Tickets.Contracts;
 
 namespace Humans.Email.Tests.Services;
@@ -118,19 +117,6 @@ public sealed class EmailMessageFactoryTests
         msg.RecipientEmail.Should().Be("new@x.com");
         msg.RecipientName.Should().Be("new@x.com");
         msg.TemplateName.Should().Be("magic_link_signup");
-        msg.Category.Should().BeNull();
-    }
-
-    [HumansFact]
-    public void EventLifecycle_PicksTemplateFromStatus()
-    {
-        var request = new EventLifecycleNotification(EventStatus.Approved, "Bob", "My Event");
-
-        var msg = _factory.EventLifecycle(request, "bob@x.com");
-
-        msg.RecipientEmail.Should().Be("bob@x.com");
-        msg.RecipientName.Should().Be("Bob");
-        msg.TemplateName.Should().Be("event_approved");
         msg.Category.Should().BeNull();
     }
 

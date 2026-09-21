@@ -1,5 +1,4 @@
 using Humans.Base.Interfaces;
-using Humans.Events.Contracts;
 
 namespace Humans.Email.Contracts;
 
@@ -100,30 +99,3 @@ public sealed record WorkgroupNoticeRequest(
     string WorkgroupSlug,
     string? Detail = null,
     string? Culture = null);
-
-/// <summary>
-/// Payload for an event lifecycle notification. <see cref="NewStatus"/> picks
-/// the template: <see cref="EventStatus.Pending"/> = submission received,
-/// <see cref="EventStatus.Approved"/> = approved, <see cref="EventStatus.Rejected"/>
-/// = rejected (requires <see cref="Reason"/> and <see cref="ActionUrl"/> for the
-/// edit link), <see cref="EventStatus.ResubmitRequested"/> = changes requested
-/// (also requires <see cref="Reason"/> and <see cref="ActionUrl"/>).
-/// </summary>
-public record EventLifecycleNotification(
-    EventStatus NewStatus,
-    string UserName,
-    string EventTitle,
-    string? Reason = null,
-    string? ActionUrl = null,
-    string? Culture = null)
-{
-    public string TemplateName() => NewStatus switch
-    {
-        EventStatus.Pending => "event_submitted",
-        EventStatus.Approved => "event_approved",
-        EventStatus.Rejected => "event_rejected",
-        EventStatus.ResubmitRequested => "event_resubmit_requested",
-        _ => throw new InvalidOperationException(
-            $"EventLifecycleNotification does not support status {NewStatus}")
-    };
-}

@@ -6,9 +6,6 @@ using Humans.Base.Extensions;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
-using Humans.Events.Contracts;
-
-
 namespace Humans.Email.Services;
 
 /// <summary>
@@ -277,53 +274,6 @@ internal sealed class EmailRenderer(
             Lf("Email_GoogleAccessRemoval_SecondaryCleanup_Subject", HtmlEncode(removedEmail)),
             Lf("Email_GoogleAccessRemoval_SecondaryCleanup_Body",
                 HtmlEncode(userName), HtmlEncode(removedEmail), HtmlEncode(currentGoogleEmail))));
-
-    public EmailContent RenderEventLifecycle(EventLifecycleNotification request, string? culture = null)
-    {
-        using (new CultureScope(culture ?? request.Culture, logger))
-        {
-            var userName = HtmlEncode(request.UserName);
-            var eventTitle = HtmlEncode(request.EventTitle);
-            var reason = HtmlEncode(request.Reason ?? string.Empty);
-            var actionUrl = HtmlEncode(request.ActionUrl ?? string.Empty);
-
-            return request.NewStatus switch
-            {
-                EventStatus.Pending => new EmailContent(
-                    "Your event submission has been received",
-                    $"""
-                        <p>Hi {userName},</p>
-                        <p>Your event <strong>{eventTitle}</strong> has been received and is now in the moderation queue.
-                        You will be notified once it has been reviewed.</p>
-                        <p><a href="{actionUrl}">View your submissions</a></p>
-                        """),
-                EventStatus.Approved => new EmailContent(
-                    "Your event has been approved",
-                    $"""
-                        <p>Hi {userName},</p>
-                        <p>Your event <strong>{eventTitle}</strong> has been approved and will appear in the event guide.</p>
-                        """),
-                EventStatus.Rejected => new EmailContent(
-                    "Your event submission was not approved",
-                    $"""
-                        <p>Hi {userName},</p>
-                        <p>Your event <strong>{eventTitle}</strong> was not approved for the event guide.</p>
-                        <p><strong>Reason:</strong> {reason}</p>
-                        <p>You can edit and resubmit your event here: <a href="{actionUrl}">Edit event</a></p>
-                        """),
-                EventStatus.ResubmitRequested => new EmailContent(
-                    "Changes requested for your event submission",
-                    $"""
-                        <p>Hi {userName},</p>
-                        <p>The moderation team has requested changes to your event <strong>{eventTitle}</strong> before it can be approved.</p>
-                        <p><strong>Feedback:</strong> {reason}</p>
-                        <p>Please update and resubmit here: <a href="{actionUrl}">Edit event</a></p>
-                        """),
-                _ => throw new ArgumentOutOfRangeException(nameof(request),
-                    $"EventLifecycleNotification does not support status {request.NewStatus}")
-            };
-        }
-    }
 
     public EmailContent RenderTicketTransferRequested(
         string senderName, string receiverName, string ticketLabel, string? culture = null)
