@@ -34,7 +34,10 @@ public class UsersAdminControllerPurgeTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IAccountDeletionService _deletion = Substitute.For<IAccountDeletionService>();
+    private readonly IHumanLifecycleService _lifecycle = Substitute.For<IHumanLifecycleService>();
+    private readonly IOnboardingIntake _onboarding = Substitute.For<IOnboardingIntake>();
     private readonly IWebHostEnvironment _environment = Substitute.For<IWebHostEnvironment>();
+    private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly Guid _adminUserId = Guid.NewGuid();
 
     public UsersAdminControllerPurgeTests()
@@ -42,6 +45,11 @@ public class UsersAdminControllerPurgeTests
         _environment.EnvironmentName.Returns("Development");
         _userService.GetUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(new User { Id = _adminUserId, PreferredLanguage = "en" }.ToUserInfo()));
+        _localizer[Arg.Any<string>()].Returns(call =>
+        {
+            var key = call.Arg<string>();
+            return new LocalizedString(key, key);
+        });
         _userService.GetRawUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(new User { Id = _adminUserId, PreferredLanguage = "en" }.ToUserInfo()));
     }
@@ -56,8 +64,8 @@ public class UsersAdminControllerPurgeTests
             Substitute.For<IApplicationServiceRead>(),
             Substitute.For<IConsentServiceRead>(),
             Substitute.For<ICampaignServiceRead>(),
-            Substitute.For<IHumanLifecycleService>(),
-            Substitute.For<IOnboardingIntake>(),
+            _lifecycle,
+            _onboarding,
             Substitute.For<IAuditLogService>(),
             Substitute.For<IUsersAudienceService>(),
             _deletion,
@@ -65,7 +73,7 @@ public class UsersAdminControllerPurgeTests
             Substitute.For<IClock>(),
             Substitute.For<IAuthorizationService>(),
             NullLogger<UsersAdminController>.Instance,
-            Substitute.For<IStringLocalizer<SharedResource>>());
+            _localizer);
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _adminUserId.ToString())
@@ -110,5 +118,47 @@ public class UsersAdminControllerPurgeTests
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(UsersAdminController.AdminDetail));
         await _deletion.DidNotReceive().PurgeAsync(Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SuspendHuman_ForwardsActorAndNotesThenRedirectsToDetail()
+    {
+        var target = Guid.NewGuid();
+        _lifecycle.SuspendAsync(target, _adminUserId, "Repeatedly misses shifts", Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+
+        var result = await BuildController().SuspendHuman(target, "Repeatedly misses shifts");
+
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be(nameof(UsersAdminController.AdminDetail));
+        await _lifecycle.Received(1).SuspendAsync(target, _adminUserId, "Repeatedly misses shifts", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UnsuspendHuman_ForwardsActorThenRedirectsToDetail()
+    {
+        var target = Guid.NewGuid();
+        _lifecycle.UnsuspendAsync(target, _adminUserId, Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+
+        var result = await BuildController().UnsuspendHuman(target);
+
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be(nameof(UsersAdminController.AdminDetail));
+        await _lifecycle.Received(1).UnsuspendAsync(target, _adminUserId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RejectSignup_ForwardsActorAndReasonThenRedirectsToDetail()
+    {
+        var target = Guid.NewGuid();
+        _onboarding.RejectSignupAsync(target, _adminUserId, "Duplicate signup", Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+
+        var result = await BuildController().RejectSignup(target, "Duplicate signup");
+
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be(nameof(UsersAdminController.AdminDetail));
+        await _onboarding.Received(1).RejectSignupAsync(target, _adminUserId, "Duplicate signup", Arg.Any<CancellationToken>());
     }
 }
