@@ -567,10 +567,8 @@ internal sealed class HoldedClient : IHoldedClient
         {
             return items.Select(n => new HoldedBankMovementDto
             {
-                Id = Prop(n, "id")?.GetValue<string>() ?? throw new HoldedPermanentException(
-                    "Holded bank movement is missing required field 'id' — refusing the page."),
-                AccountId = Prop(n, "account")?.GetValue<string>() ?? throw new HoldedPermanentException(
-                    "Holded bank movement is missing required field 'account' — refusing the page."),
+                Id = ReadRequiredString(Prop(n, "id"), "id"),
+                AccountId = ReadRequiredString(Prop(n, "account"), "account"),
                 Date = ParseBankMovementDate(Prop(n, "date")?.GetValue<string>() ?? ""),
                 Amount = ReadRequiredDecimalV2(Prop(n, "amount"), "amount"),
                 Description = Prop(n, "description")?.GetValue<string>(),
@@ -579,9 +577,7 @@ internal sealed class HoldedClient : IHoldedClient
                 // would let a response shape change turn an already-settled line into a bookable
                 // one. Absent means unreadable, like 'id' and 'account' above. An unknown *present*
                 // value needs no guard — anything but "pending" already fails closed.
-                Status = (Prop(n, "status")?.GetValue<string>() ?? throw new HoldedPermanentException(
-                    "Holded bank movement is missing required field 'status' — refusing the page."))
-                    .ToLowerInvariant(),
+                Status = ReadRequiredString(Prop(n, "status"), "status").ToLowerInvariant(),
                 Origin = Prop(n, "origin")?.GetValue<string>(),
             })
             .Where(m => m.Date >= from && m.Date <= to)
@@ -1003,6 +999,15 @@ internal sealed class HoldedClient : IHoldedClient
     private static int ReadRequiredInt(JsonNode? node, string field) =>
         ReadInt(node) ?? throw new HoldedPermanentException(
             $"Holded item is missing required field '{field}' — refusing the page.");
+
+    /// <summary>Null, absent and blank/whitespace all mean the same thing here — Holded has been seen
+    /// sending <c>""</c> for a field it usually populates — and any of them must fail the page, not
+    /// pass a value nothing downstream can use.</summary>
+    private static string ReadRequiredString(JsonNode? node, string field) =>
+        node?.GetValue<string>() is { Length: > 0 } s && !string.IsNullOrWhiteSpace(s)
+            ? s
+            : throw new HoldedPermanentException(
+                $"Holded item is missing required field '{field}' — refusing the page.");
 
     /// <summary>An absent amount must fail the page, not read as 0.00 — replace semantics would
     /// overwrite the cached line's real amount and still report the sync as a success.</summary>

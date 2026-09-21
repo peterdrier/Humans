@@ -143,6 +143,25 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
+    public async Task ListBankMovementsAsync_LineWithBlankId_IsPermanent_NotBookedAgainst()
+    {
+        // A blank id would still pass a null check, persist as HoldedBankMovementId, and send the
+        // sweep's reconcile call to an invalid URL — same bug class as an absent status.
+        var json = """
+        {"items":[{"id":"","account":"tr-1","date":"2026-08-18","amount":"-10.00","status":"pending"}],
+         "cursor":null,"has_more":false}
+        """;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var act = async () => await client.ListBankMovementsAsync(
+            "tr-1", new LocalDate(2026, 8, 1), new LocalDate(2026, 8, 31),
+            Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<HoldedPermanentException>())
+            .WithMessage("*id*");
+    }
+
+    [HumansFact]
     public async Task ListBankMovementsAsync_MalformedSuccessBody_IsAHoldedException_NotRawJson()
     {
         // The paged walk parses the envelope before any caller's try block. Unnormalized, the

@@ -155,7 +155,8 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
                       orderby f.GeneratedAt
                       select new SepaPayoutExportRow(
                           f.GeneratedAt, f.FileName, t.SupplierAccountNum, t.HoldedContactId,
-                          t.CreditorName, t.IbanMasked, t.Amount, t.BookedAt))
+                          t.CreditorName, t.IbanMasked, t.Amount, t.BookedAt,
+                          t.HoldedBankMovementId, t.ReconciledAt))
             .ToListAsync(ct);
     }
 

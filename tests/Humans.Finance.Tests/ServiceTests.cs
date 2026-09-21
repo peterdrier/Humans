@@ -1670,7 +1670,7 @@ public class HoldedFinanceServiceTests
         _repo.GetSepaPayoutsForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<SepaPayoutExportRow>
             {
-                new(FixedNow, "nobodies-collective-2026-08-25-0309-4f1a9c02.xml", 40000004, "c1", "Ana Ruiz", "ES79****789", 12.34m, FixedNow),
+                new(FixedNow, "nobodies-collective-2026-08-25-0309-4f1a9c02.xml", 40000004, "c1", "Ana Ruiz", "ES79****789", 12.34m, FixedNow, "bm-1", FixedNow),
             });
 
         var slices = await MakeService().ContributeForUserAsync(
@@ -1680,7 +1680,7 @@ public class HoldedFinanceServiceTests
             .ContainSingle(s => s.SectionName == Service.SepaPayouts).Subject;
         var json = JsonSerializer.Serialize(slice.Data);
         json.Should().Contain("ES79****789").And.Contain("12.34").And.Contain("BookedAt")
-            .And.Contain("c1")
+            .And.Contain("c1").And.Contain("bm-1").And.Contain("ReconciledAt")
             .And.NotContain(AnaIban, "the export masks the IBAN even though the payout row keeps it raw");
     }
 

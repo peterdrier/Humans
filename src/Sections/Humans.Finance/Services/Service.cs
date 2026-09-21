@@ -1769,6 +1769,8 @@ internal sealed class Service(
                 Iban = p.IbanMasked,
                 p.Amount,
                 p.BookedAt,
+                p.HoldedBankMovementId,
+                p.ReconciledAt,
             })),
         ];
     }

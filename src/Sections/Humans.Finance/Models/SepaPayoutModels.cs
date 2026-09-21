@@ -142,4 +142,6 @@ internal sealed record SepaPayoutExportRow(
     string CreditorName,
     string IbanMasked,
     decimal Amount,
-    Instant? BookedAt);
+    Instant? BookedAt,
+    string? HoldedBankMovementId,
+    Instant? ReconciledAt);
