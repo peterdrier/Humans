@@ -9,7 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Settings.Controllers;
 
 /// <summary>
-/// The app-wide event settings POST endpoint (#1104). Lives at <c>/Settings/Admin</c>,
+/// The app-wide event settings POST endpoint (nobodies-collective/Humans#1104).
+/// Lives at <c>/Settings/Admin</c>,
 /// not <c>/Admin/Settings</c> — top-level <c>/Admin/*</c> is frozen
 /// (memory/architecture/no-admin-url-section.md).
 /// </summary>
