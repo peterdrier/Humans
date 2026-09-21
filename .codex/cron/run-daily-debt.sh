@@ -72,7 +72,7 @@ main() {
   # Pinned rather than left to inherit the interactive `codex` config, so
   # changing Peter's own day-to-day model/effort preference doesn't silently
   # change what the nightly job runs.
-  CODEX_MODEL="${CODEX_MODEL:-gpt-6-astra}"
+  CODEX_MODEL="${CODEX_MODEL:-gpt-5.6-terra}"
   CODEX_EFFORT="${CODEX_EFFORT:-medium}"
   LOG_DIR="${LOG_DIR:-$HOME/.humans-debt-runner/logs}"         # must be outside WORK_DIR (git clean would wipe it)
   BRANCH_PREFIX="${BRANCH_PREFIX:-codex/daily-debt}"           # branch = $BRANCH_PREFIX/YYYY-MM-DD

@@ -66,7 +66,7 @@ The clone at `~/.humans-debt-runner/clone` is disposable — the script hard
 resets it to `origin/main` and cleans untracked files on every run. If you
 ever need to nuke it, just delete the directory and redo step 1.
 
-`CODEX_MODEL`/`CODEX_EFFORT` are pinned explicitly (default `gpt-6-astra`
+`CODEX_MODEL`/`CODEX_EFFORT` are pinned explicitly (default `gpt-5.6-terra`
 / `medium`) rather than left to inherit whatever the interactive `codex`
 config on this machine happens to be set to — otherwise changing Peter's
 own day-to-day model preference would silently change what the nightly job
