@@ -13,6 +13,13 @@ itself") and .claude/skills/steward/round-worker.md, then do the whole round you
 Report file: <scratchpad>/steward/<N>-round-<k+1>.md.
 ```
 
+**A question from Peter is not a round.** The steward sends the same brief with
+`Trigger: Peter asks: <his words>` and the line `Answer only: no triage, no edit, no
+commit.` That worker reads whatever it needs, posts the answer as a reply on Peter's
+comment, and reports in one line — a question gets an answer, not a commit
+([peters-working-rules](../../../docs/architecture/peters-working-rules.md)). None of the
+steps below apply to it.
+
 ## What the worker does
 
 1. **Workspace.** In a cloud container the repo root is fine. Locally, `git worktree list`
@@ -21,13 +28,14 @@ Report file: <scratchpad>/steward/<N>-round-<k+1>.md.
    worktree, and only add `.claude/worktrees/steward-<N>` when no worktree holds the
    branch. Fetch fresh, work only there
    ([`always-use-worktree`](../../../memory/process/always-use-worktree.md)).
-2. **Count.** Recount spent rounds from the PR (command in SKILL.md). Where the count and
-   the brief disagree, the PR wins; say so in the report. At 5 or more the ceiling binds
-   this wake only if the trigger is itself a round — an automated review finding or a CI
-   failure: skip to step 7, which fetches the open threads itself (the trigger line is not
-   the list of open items). A merge conflict or something Peter asked for is not a round
-   and the ceiling never blocks it: do that work (steps 3 and 6, no trailer, no triage of
-   open findings) and report the ceiling as still standing.
+2. **Count, then branch on the trigger.** Recount spent rounds from the PR (command in
+   SKILL.md). Where the count and the brief disagree, the PR wins; say so in the report.
+   A merge conflict or something Peter asked for is not a round **at any count**: do that
+   work (steps 3 and 6, no trailer) and **skip step 5 entirely** — folding a bot finding
+   into an untrailered commit spends a round the count never sees — then report the
+   ceiling as still standing. Only a round trigger — an automated review finding or a CI
+   failure — meets the ceiling: at 5 or more spent, skip to step 7, which fetches the open
+   threads itself (the trigger line is not the list of open items).
 3. **Merge conflict first.** Merge main into the branch with a merge commit, resolve,
    regenerate generated files with the repo's tooling, never rewrite history. Not a round.
 4. **CI failure.** Read the failed job's log tail once. Rule out a failure that isn't this
@@ -36,7 +44,8 @@ Report file: <scratchpad>/steward/<N>-round-<k+1>.md.
    real failure in code the PR touches is a round: fix it — except at 4 spent, where the
    last commit belongs to the most serious open item: gather the unresolved threads
    (step 5) first, then choose between them and the failure.
-5. **Findings.** Run the [`/fix`](../fix/SKILL.md) gates on every unresolved thread, both
+5. **Findings** — round triggers only; a non-round wake skips this step (step 2).
+   Run the [`/fix`](../fix/SKILL.md) gates on every unresolved thread, both
    repos, and print its triage table into the report file. Fix only what survives and sits
    inside the ceiling table's bar for this round. `gh` where present; otherwise the github
    MCP tools (`pull_request_read get_review_comments`, `add_reply_to_pull_request_comment`,

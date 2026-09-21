@@ -68,19 +68,25 @@ On every wake:
    - a review comment or review from anyone but this session's own account
    - a `check_run` or `check_suite` that failed on the PR's current head
    - a merge-conflict or base-branch-recovered notice
-   - Peter, in a PR comment or here
+   - Peter, in a PR comment or here — classify which kind, they take different paths:
+     a **question** (answer-only) or a **change request** (a worker that edits)
    Not actionable, end the turn with no reply and no comment: edits to bot status
    comments (Codex summary, preview deploy, surface report), echoes of the steward's or
    the worker's own replies, successful check suites, a Codex review wrapper with no
    comments, an event on a head the worker has already superseded.
-3. Actionable: dispatch **one** round worker per the brief in
-   [`round-worker.md`](round-worker.md), `orch-opus-medium`, and end the turn. Never two
-   workers on one PR at once; if an actionable wake arrives while a worker runs, carry it
-   in your reply as a pending trigger — the queue is drained once, so an unrecorded event
-   is a lost finding.
+3. Actionable: dispatch **one** worker per the brief in
+   [`round-worker.md`](round-worker.md), `orch-opus-medium`, and end the turn. A review
+   finding, CI failure, merge conflict or change Peter asked for gets the round worker; a
+   **question** from Peter gets that brief marked `Answer only: no triage, no edit, no
+   commit` — it answers in a reply and touches nothing. Never two workers on one PR at
+   once; if an actionable wake arrives while a worker runs, carry it in your reply as a
+   pending trigger — the queue is drained once, so an unrecorded event is a lost finding.
 4. On the worker's report: keep one line of state in your reply (head sha, rounds spent,
    open items, pending triggers). If the report says the ceiling is reached, post its
-   ceiling comment on the PR, `unsubscribe_pr_activity`, and stop. Otherwise, if a pending
+   ceiling comment on the PR, `unsubscribe_pr_activity`, and stop. If it is
+   `STATUS: blocked`, post its `OPEN` items on the PR as a comment addressed to Peter and
+   stay subscribed — the builder is gone and nothing polls, so an unposted decision never
+   reaches him and his reply is what wakes you. Otherwise, if a pending
    trigger is still uncovered by the report, dispatch one fresh worker for it now (it
    recounts rounds itself, so the ceiling still holds) and end the turn; with none, just
    end the turn.
