@@ -1,14 +1,41 @@
 # Daily Codex tech-debt runner
 
-Unattended nightly `codex exec` pass against a **dedicated clone** of this
+Unattended nightly native Codex goal against a **dedicated clone** of this
 repo — never your working checkout. Gates on build + test before pushing,
-opens one PR per night if there's something real and green, and is a quiet
-no-op otherwise. Scheduler: systemd user timer (the only one shipped here).
+opens one PR per run containing all substantive fixes. Ledger-only runs
+fail without publishing. Scheduler: systemd user timer (the only one shipped here).
 
 Both nightly runs and manual trials exclude `Humans.Integration.Tests`, using
 the same `FullyQualifiedName!~Humans.Integration.Tests` filter as CI. The runner
 exports it as `VSTestTestCaseFilter` for Codex's test commands and passes it
 explicitly to its own test gate.
+
+## Work window and completion
+
+`TIME_BUDGET` (default `90m`) is the minimum active work window. The runner
+sets a native goal; the agent completes independently validated fixes and
+stops only after the deadline **and** finishing its current task. Time is
+the only target; there is no fix-count target. Ledger cleanup and
+documentation do not count as substantive fixes. Report the actual work after
+completion. One branch and one PR contain the whole run.
+
+The wrapper starts one `codex app-server --stdio` process, creates one thread
+and its native goal, and submits one initial turn. It stays attached while
+Codex's own goal scheduler continues across turns; there is no `exec resume`
+loop or repeated user prompting. Completion uses native goal and turn status,
+not an agent-written "done" flag. The process stays in dangerous mode
+(`approvalPolicy=never`, `sandbox=danger-full-access`) for the entire goal.
+
+The last completed turn supplies the cumulative Markdown PR body, followed
+by the wrapper's measured goal time, actual worker time, total elapsed time
+through validation, and gate result. No unfilled template is appended.
+Early goal completion, failed/blocked goals, missing reports, or disconnection
+fail without publishing. A clean tree and final build/test gates still apply.
+
+The deadline is not a kill timer. Finishing the active task and the wrapper's
+final build/test gates may extend past it. The systemd unit uses
+`TimeoutStartSec=infinity`; copy the updated unit and reload systemd when
+upgrading an existing installation. The lock still prevents overlapping runs.
 
 ## One-time setup
 
@@ -83,30 +110,30 @@ systemctl --user list-timers humans-debt.timer
 
 ## Testing a run manually
 
-Run the script directly with a short budget first, so a bad config fails in
-two minutes instead of at 2am:
+Run a shorter work window while keeping the same completion and publication
+rules (the active task and final gates may extend past 15 minutes):
 
 ```bash
-TIME_BUDGET=2m ~/.humans-debt-runner/clone/.codex/cron/run-daily-debt.sh
+TIME_BUDGET=15m ~/.humans-debt-runner/clone/.codex/cron/run-daily-debt.sh
 ```
 
-Or via systemd, to also exercise the unit file / PATH / journal wiring:
+Or run the scheduled configuration, which uses the full default window:
 
 ```bash
 systemctl --user start humans-debt.service
 journalctl --user -u humans-debt.service -f
 ```
 
-A short `TIME_BUDGET` (2-5 minutes) proves only the plumbing up to and
-including codex starting: preflight (codex on PATH with the version you
-expect, codex signed in, `gh auth status`), the clone refresh, and prompt
-substitution. It does **not** exercise the build/test gate, push, or PR
-creation — codex won't get far enough in that little time to commit
-anything, so those paths never run. To verify the whole pipeline, either
-give it a real budget (enough for codex to land at least one commit) or
-check the log for the preflight tool-version lines and the phases actually
-reached (`refreshing`, `working on branch`, `codex exited with status`,
-final `SUMMARY`).
+A successful end-to-end trial ends with `exit_reason=pushed`, `build=pass`,
+`test=pass`, and a PR URL in `SUMMARY`. Starting Codex, completing bookkeeping,
+or passing tests in a separate command is not a successful runner trial.
+
+Run the wrapper's isolated regression checks (fake Codex/GitHub/.NET, real
+throwaway Git repositories; no integration tests or remote publication):
+
+```bash
+python3 .codex/cron/test_daily_debt.py
+```
 
 ## Logs
 

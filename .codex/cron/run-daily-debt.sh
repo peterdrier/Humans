@@ -2,7 +2,7 @@
 #
 # Daily unattended Codex tech-debt runner.
 #
-# Runs `codex exec` headless against a DEDICATED clone of this repo (never a
+# Runs a native Codex goal against a DEDICATED clone of this repo (never a
 # human's working checkout), gates the result on build+test, and opens a PR
 # only when there is something real and green to review.
 #
@@ -68,7 +68,7 @@ main() {
 
   REPO_URL="${REPO_URL:-}"                                    # git remote to clone/push, e.g. git@github.com:peterdrier/Humans.git
   WORK_DIR="${WORK_DIR:-$HOME/.humans-debt-runner/clone}"      # DEDICATED clone. Never Peter's working checkout.
-  TIME_BUDGET="${TIME_BUDGET:-90m}"                            # wall-clock cap passed to `timeout`
+  TIME_BUDGET="${TIME_BUDGET:-90m}"                            # minimum active work window; finish the current task afterward
   # Pinned rather than left to inherit the interactive `codex` config, so
   # changing Peter's own day-to-day model/effort preference doesn't silently
   # change what the nightly job runs.
@@ -77,7 +77,7 @@ main() {
   LOG_DIR="${LOG_DIR:-$HOME/.humans-debt-runner/logs}"         # must be outside WORK_DIR (git clean would wipe it)
   BRANCH_PREFIX="${BRANCH_PREFIX:-codex/daily-debt}"           # branch = $BRANCH_PREFIX/YYYY-MM-DD
   GH_BASE_BRANCH="${GH_BASE_BRANCH:-main}"                     # base branch on origin
-  CODEX_DANGEROUS="${CODEX_DANGEROUS:-1}"                      # 1 = --dangerously-bypass-approvals-and-sandbox, 0 = --full-auto
+  CODEX_DANGEROUS="${CODEX_DANGEROUS:-1}"                      # 1 = dangerous mode on every turn, 0 = unattended workspace-write
   PUSH_RETRIES="${PUSH_RETRIES:-4}"                            # retries after the first push attempt, network failures only
   MAX_OPEN_AUTO_PRS="${MAX_OPEN_AUTO_PRS:-1}"                  # skip the night when this many of this runner's PRs are already open
   LOG_RETENTION_DAYS="${LOG_RETENTION_DAYS:-30}"
@@ -99,6 +99,8 @@ main() {
   # the frame, so the trap reports the real reason. Verified against a
   # failing `git fetch`.
   run_date="$(date -u +%F)"
+  local run_started
+  run_started="$(date -u +%s)"
   exit_reason="unknown"
   summary_written=0
   commits_made=0
@@ -115,6 +117,12 @@ main() {
   local run_report=""
 
   mkdir -p "$LOG_DIR"
+
+  local budget_seconds
+  if ! budget_seconds="$(parse_seconds "$TIME_BUDGET")"; then
+    exit_reason="invalid-time-budget"
+    die "TIME_BUDGET must be a positive integer with optional s/m/h/d suffix"
+  fi
 
   # ---- single-instance lock ----------------------------------------------
   local lock_file="$LOG_DIR/.run.lock"
@@ -263,24 +271,9 @@ main() {
     die "prompt file missing after refresh: $prompt_file"
   fi
 
-  # ---- build tonight's prompt: substitute the real time budget -----------
-  # daily-debt.md hardcoding "90 minutes" would tell the agent the wrong
-  # deadline whenever TIME_BUDGET is overridden. Substitute into a temp copy
-  # under LOG_DIR — never mutate the committed prompt file.
-  local budget_minutes
-  budget_minutes="$(parse_minutes "$TIME_BUDGET")"
-  local wind_down_minutes=$(( (budget_minutes + 8) / 9 )) # ~90m budget -> ~10m wind-down, same ratio at any size
-  if (( wind_down_minutes < 5 )); then
-    wind_down_minutes=5
-  fi
-  local rendered_prompt_file="$LOG_DIR/prompt-$run_date.md"
-  sed -e "s/__TIME_BUDGET__/$TIME_BUDGET/g" -e "s/__WIND_DOWN_MINUTES__/$wind_down_minutes/g" \
-    "$prompt_file" >"$rendered_prompt_file"
-  prompt_file="$rendered_prompt_file"
-
   # ---- branch: one per calendar day ---------------------------------------
   local branch="$BRANCH_PREFIX/$run_date"
-  # Codex writes its run report here via --output-last-message. It lives in
+  # The goal client saves Codex's final run report here. It lives in
   # LOG_DIR, outside WORK_DIR, so `git clean` never touches it and it
   # survives for the rest of the day — which is what lets the recovery path
   # below re-use the report from the run that pushed this branch.
@@ -357,38 +350,40 @@ main() {
   git checkout --quiet -B "$branch" "origin/$GH_BASE_BRANCH"
   log "working on branch $branch"
 
-  # ---- run codex, hard wall-clock cap -------------------------------------
+  # ---- run Codex with a persistent timed goal -------------------------------------
   local head_before
   head_before="$(git rev-parse HEAD)"
 
-  # Run report: codex's own final message, captured by codex itself via
-  # --output-last-message (the documented codex-exec mechanism for this) —
-  # never a file codex is asked to write inside the repo, which could be
-  # forgotten or left dirtying the tree. Written under LOG_DIR, outside
-  # WORK_DIR, so it can never make the checkout dirty.
+  # The goal client saves the final report outside the checkout, keeping
+  # runner evidence out of the tree being tested and pushed.
   rm -f "$last_message_file"
 
-  local -a codex_args=(exec --cd "$WORK_DIR" --color never --output-last-message "$last_message_file")
-  if [[ -n "$CODEX_MODEL" ]]; then
-    codex_args+=(--model "$CODEX_MODEL")
-  fi
-  if [[ -n "$CODEX_EFFORT" ]]; then
-    codex_args+=(-c "model_reasoning_effort=$CODEX_EFFORT")
-  fi
-  if [[ "$CODEX_DANGEROUS" == "1" ]]; then
-    codex_args+=(--dangerously-bypass-approvals-and-sandbox)
-  else
-    codex_args+=(--full-auto)
-  fi
+  local work_started work_deadline
+  work_started="$(date -u +%s)"
+  work_deadline=$(( work_started + budget_seconds ))
+  local rendered_prompt_file="$LOG_DIR/prompt-$run_date.md"
+  sed -e "s/__TIME_BUDGET__/$TIME_BUDGET/g" \
+    -e "s/__WORK_STARTED_UTC__/$(date -u -d "@$work_started" +%FT%TZ)/g" \
+    -e "s/__WORK_DEADLINE_UTC__/$(date -u -d "@$work_deadline" +%FT%TZ)/g" \
+    -e "s/__WORK_DEADLINE_EPOCH__/$work_deadline/g" \
+    "$prompt_file" >"$rendered_prompt_file"
+  prompt_file="$rendered_prompt_file"
 
-  log "starting codex, time budget $TIME_BUDGET: codex ${codex_args[*]}"
+  log "starting one Codex session, work deadline $work_deadline, dangerous mode $CODEX_DANGEROUS"
+  export WORK_DIR CODEX_MODEL CODEX_EFFORT CODEX_DANGEROUS
   local codex_exit=0
-  set +e
-  timeout --signal=INT --kill-after=120s "$TIME_BUDGET" \
-    codex "${codex_args[@]}" - <"$prompt_file" >>"$log_file" 2>&1
-  codex_exit=$?
-  set -e
-  log "codex exited with status $codex_exit"
+  python3 "$WORK_DIR/.codex/cron/run-goal.py" "$prompt_file" "$last_message_file" "$work_deadline" \
+    >>"$log_file" 2>&1 || codex_exit=$?
+  if (( codex_exit != 0 )); then
+    exit_reason="codex-failed"
+    die "Codex goal failed; preserving local work without publishing"
+  fi
+  if (( $(date -u +%s) < work_deadline )); then
+    exit_reason="goal-ended-early"
+    die "Goal returned before the work deadline"
+  fi
+  local work_elapsed=$(( $(date -u +%s) - work_started ))
+  log "timed goal completed after $work_elapsed seconds"
 
   # ---- refuse to gate or push from anywhere but the branch we hand over ----
   # The gate below tests whatever is checked out, but the push names
@@ -410,10 +405,10 @@ main() {
   head_after="$(git rev-parse HEAD)"
 
   # ---- refuse to test or push a tree that isn't what would be pushed --------
-  # `git push` only ever sends committed history. If codex was SIGINT'd mid-edit
-  # (timeout cap) it can leave uncommitted changes in the working tree; testing
+  # `git push` only ever sends committed history. An interrupted agent can
+  # leave uncommitted changes in the working tree; testing
   # that tree and then pushing head_after would advertise a green gate for code
-  # that was never actually tested. Check this before the no-op comparison below,
+  # that was never actually tested. Check this before the substantive-change check below,
   # since a dirty tree can coexist with head_before == head_after too.
   if [[ -n "$(git status --porcelain)" ]]; then
     exit_reason="dirty-tree-after-codex"
@@ -424,28 +419,14 @@ main() {
   fi
 
   # ---- capture codex's run report -----------------------------------------
-  # Written by codex itself via --output-last-message, outside WORK_DIR, so
-  # it was never part of the tree the dirty-tree check above validated.
-  if [[ -f "$last_message_file" ]]; then
-    run_report="$(cat "$last_message_file")"
-  fi
+  # Saved by the goal client outside WORK_DIR, not part of the tested tree.
+  run_report="$(cat "$last_message_file")"
 
-  if [[ "$head_before" == "$head_after" ]]; then
-    if [[ "$codex_exit" -ne 0 && "$codex_exit" -ne 124 ]]; then
-      exit_reason="codex-failed"
-      log "ERROR: codex exited $codex_exit with no commits — not the accepted timeout path. Treating as a failure, not a no-op."
-      write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
-      exit 1
-    fi
-    if [[ "$codex_exit" -eq 124 ]]; then
-      exit_reason="timed-out-no-commits"
-      log "timed out after $TIME_BUDGET with no commits — not the same as finding nothing to do"
-    else
-      exit_reason="no-op"
-      log "no-op: codex made no commits"
-    fi
-    write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
-    exit 0
+  # Bookkeeping is not a debt fix. Do not publish a ledger-only or docs-only
+  # run as successful work; executable tooling under docs/scripts counts.
+  if ! has_substantive_changes "$head_before" "$head_after"; then
+    exit_reason="no-substantive-fixes"
+    die "No substantive fixes; ledger/documentation changes alone cannot produce a debt PR"
   fi
 
   commits_made="$(git rev-list --count "$head_before..$head_after")"
@@ -474,6 +455,11 @@ main() {
     exit 1
   fi
   log "build and test both passed"
+  # Wrapper timestamps, not the agent's estimate. Save this with the report
+  # so a retry of PR creation preserves the original run's timing.
+  local timing="Goal time: $TIME_BUDGET; actual worker time: $(format_duration "$work_elapsed"); total run through validation: $(format_duration "$(( $(date -u +%s) - run_started ))")."
+  printf '\n\n%s\n' "$timing" >>"$last_message_file"
+  run_report="$(cat "$last_message_file")"
 
   # ---- assert HEAD hasn't moved between gate and push ---------------------
   # head_after was captured right after codex exited and validated by the
@@ -521,24 +507,15 @@ open_pr_for_branch() {
   local pr_title="Daily tech-debt sweep — $run_date"
   local pr_body_file
   pr_body_file="$(mktemp)"
-  if [[ -f ".github/pull_request_template.md" ]]; then
-    cat ".github/pull_request_template.md" >"$pr_body_file"
-    printf '\n' >>"$pr_body_file"
+  if [[ -z "$run_report" ]]; then
+    rm -f "$pr_body_file"
+    echo "Cannot publish a debt PR without its cumulative report" >&2
+    return 1
   fi
   {
-    echo "## Automated daily tech-debt run"
-    echo
-    echo "Unattended overnight run. Build and tests passed before this PR was opened."
-    echo
-    if [[ -n "$run_report" ]]; then
-      echo "$run_report"
-    else
-      echo "_codex's final message was empty — no run report for this session._"
-    fi
-    echo
-    echo "Commits:"
-    git log --pretty='- %s' "origin/$base_branch..$branch"
-  } >>"$pr_body_file"
+    printf '%s\n\n' "$run_report"
+    echo "Runner validation: build and tests passed; Humans.Integration.Tests excluded."
+  } >"$pr_body_file"
 
   local result
   if result="$(gh pr create --repo "$gh_repo" --base "$base_branch" --head "$branch" \
@@ -581,22 +558,34 @@ prune_old_logs() {
   find "$LOG_DIR" -maxdepth 1 -type f -name 'debt-*.log' -mtime "+$LOG_RETENTION_DAYS" -delete 2>/dev/null || true
 }
 
-# Parses a `timeout`-style duration (plain seconds, or NsNmNhNd) into whole
-# minutes, rounded up. Used only to size the wind-down reserve relative to
-# TIME_BUDGET.
-parse_minutes() {
-  local spec="$1"
-  if [[ "$spec" =~ ^([0-9]+)([smhd]?)$ ]]; then
-    local num="${BASH_REMATCH[1]}" unit="${BASH_REMATCH[2]:-s}"
-    case "$unit" in
-      s) echo $(( (num + 59) / 60 )) ;;
-      m) echo "$num" ;;
-      h) echo $(( num * 60 )) ;;
-      d) echo $(( num * 60 * 24 )) ;;
+# Whole-second work windows; reject typos rather than silently using 90m.
+parse_seconds() {
+  local spec="$1" num
+  [[ "$spec" =~ ^([0-9]+)([smhd]?)$ ]] || return 1
+  num=$(( 10#${BASH_REMATCH[1]} ))
+  case "${BASH_REMATCH[2]:-s}" in
+    m) num=$(( num * 60 )) ;;
+    h) num=$(( num * 3600 )) ;;
+    d) num=$(( num * 86400 )) ;;
+  esac
+  (( num > 0 )) || return 1
+  echo "$num"
+}
+
+format_duration() {
+  printf '%dm %ds' "$(( $1 / 60 ))" "$(( $1 % 60 ))"
+}
+
+has_substantive_changes() {
+  local path
+  while IFS= read -r -d '' path; do
+    case "$path" in
+      docs/scripts/*) return 0 ;;
+      docs/*|memory/*|*/Docs/*|*.md) ;;
+      *) return 0 ;;
     esac
-  else
-    echo 90 # unrecognized format — fall back to the documented default
-  fi
+  done < <(git diff --name-only -z "$1" "$2")
+  return 1
 }
 
 # Retries a push up to $4 additional times (2s/4s/8s/16s backoff), but only

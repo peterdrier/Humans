@@ -12,8 +12,8 @@ Type=oneshot
 # win over a stale system one on /usr/bin.
 Environment=PATH=%h/.npm-global/bin:%h/.local/bin:%h/.dotnet/tools:/usr/local/bin:/usr/bin:/bin
 ExecStart=%h/.humans-debt-runner/clone/.codex/cron/run-daily-debt.sh
-# Belt-and-suspenders on top of the script's own `timeout` cap.
-TimeoutStartSec=3h
+# TIME_BUDGET is the work window; let the current task and final gates finish.
+TimeoutStartSec=infinity
 # Yield to other scheduled work on this box (collections generation, hourly
 # Claude work) — this is a nightly best-effort sweep, not latency-sensitive.
 Nice=10

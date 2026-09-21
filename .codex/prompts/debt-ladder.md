@@ -1,11 +1,12 @@
 # Nightly Debt Ladder
 
-A standing, top-down list of **work types**, not a nightly checklist. Try rung 1;
-if it has no available work tonight, say so and try rung 2; and so on. As top
-rungs drain they stop producing work and lower rungs take over — nobody needs
-to re-tune this file as the corpus shrinks.
+A standing, top-down list of **work types**, not a nightly checklist. Make a
+brief rung-1 hygiene pass, then work substantive rungs top-down. After every
+fix, continue with another safe candidate until the work window elapses;
+then finish the current task. One run produces one PR containing all fixes.
+No item count or drained rung is a stopping condition before that deadline.
 
-Guardrails, working loop, and the SIGINT/commit protocol live in
+Guardrails, working loop, and the timed-goal/commit protocol live in
 `daily-debt.md`. This file is only the priority order and the per-rung
 mechanics: what it is, how to find tonight's candidates, how to tell the rung
 is drained, and the done-check.
@@ -35,6 +36,8 @@ fixed. Pure deletion/correction of ledger text — no `src/` change, so no build
 or test gate. **Recurring — never fully drains**, because new rows go stale
 over time too. Do this first every night, cheaply, before picking a "real"
 rung; it costs little and keeps every other rung's Finds command honest.
+**This is bookkeeping, not a substantive fix. Never stop or publish a PR
+after only this rung; continue to code, tooling, or meaningful test work.**
 
 **Finds:** for each candidate row, pull the code symbol(s)/file the `what:`
 text names and grep for them; if the cited method, file, or text no longer
