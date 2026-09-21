@@ -47,7 +47,7 @@ Surfaced on `/Debug/CacheStats`.
 ### MagicLinkService (Scoped)
 
 No repository. Uses ASP.NET `UserManager<User>` plus `IUserEmailService`,
-`IUserServiceRead`, `IEmailService`, `IEmailMessageFactory`,
+`IUserServiceRead`, `IEmailService`, the section's own `AuthEmails` builder,
 `IMagicLinkRateLimiter`, `IMagicLinkUrlBuilder`. No direct `IMemoryCache` —
 rate-limit/replay sentinels are owned by `IMagicLinkRateLimiter`
 (same section, `Services/`) which writes `magic_link_used:{tokenPrefix}` and
@@ -75,6 +75,18 @@ Coordinator question. Cycle-safe (does not pull `IAuthorizationService`). No
 cache (reads route through the inner repo; hot reads can migrate to the cached
 row set incrementally).
 
+### AuthEmails (Scoped, internal)
+
+No repository. Pure builder — reads `AuthResource` (via
+`IStringLocalizer<AuthResource>`), writes nothing. Returns `EmailMessage` values for `MagicLinkService` to pass to
+`IEmailService.SendAsync`. Both templates keep their
+`TimeSensitiveTemplates` names so the outbox still drains a sign-in link
+immediately. No DB access, no cache.
+
+### AuthEmailPreviews (Scoped)
+
+No repository. Read-only gallery contributor (`IEmailPreviewContributor`) —
+builds one sample per template via `AuthEmails` for `/Email/EmailPreview`.
+No DB access, no cache.
+
 ---
-
-

@@ -1,4 +1,5 @@
 using Humans.Auth.Services;
+using Humans.Auth.Tests.Infrastructure;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
@@ -22,7 +23,9 @@ public sealed class MagicLinkServiceTests : IDisposable
     private readonly IUserEmailService _userEmailService;
     private readonly IUserService _userService;
     private readonly IEmailService _emailService;
-    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    // AuthEmails is sealed with no interface, so the assertions below read the EmailMessage
+    // it built off IEmailService.SendAsync rather than mocking the builder.
+    private readonly AuthEmails _emailMessages = TestAuthEmails.Create();
     private readonly IMagicLinkUrlBuilder _urlBuilder;
     private readonly IMagicLinkRateLimiter _rateLimiter;
     private readonly MagicLinkService _service;
@@ -98,10 +101,13 @@ public sealed class MagicLinkServiceTests : IDisposable
 
         await _service.SendMagicLinkAsync("alice@work.com", "/dashboard", Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).MagicLinkLogin(
-            "alice@work.com",
-            "Alice",
-            Arg.Is<string>(url => url.Contains("/Account/MagicLinkConfirm", StringComparison.Ordinal)));
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m =>
+                m.TemplateName == TimeSensitiveTemplates.MagicLinkLogin
+                && m.RecipientEmail == "alice@work.com"
+                && m.RecipientName == "Alice"
+                && m.HtmlBody.Contains("/Account/MagicLinkConfirm", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
         _urlBuilder.Received(1).BuildLoginUrl(userId, "/dashboard");
     }
 
@@ -129,10 +135,12 @@ public sealed class MagicLinkServiceTests : IDisposable
 
         await _service.SendMagicLinkAsync("alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).MagicLinkLogin(
-            "alice@gmail.com",
-            "Alice",
-            Arg.Any<string>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m =>
+                m.TemplateName == TimeSensitiveTemplates.MagicLinkLogin
+                && m.RecipientEmail == "alice@gmail.com"
+                && m.RecipientName == "Alice"),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -142,9 +150,12 @@ public sealed class MagicLinkServiceTests : IDisposable
         // no setup needed; the service falls through to signup.
         await _service.SendMagicLinkAsync("newperson@example.com", "/welcome", Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).MagicLinkSignup(
-            "newperson@example.com",
-            Arg.Is<string>(url => url.Contains("/Account/MagicLinkSignup", StringComparison.Ordinal)));
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m =>
+                m.TemplateName == TimeSensitiveTemplates.MagicLinkSignup
+                && m.RecipientEmail == "newperson@example.com"
+                && m.HtmlBody.Contains("/Account/MagicLinkSignup", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     private static UserInfo CreateUserInfo(User user) =>
@@ -177,8 +188,9 @@ public sealed class MagicLinkServiceTests : IDisposable
 
         await _service.SendMagicLinkAsync("alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.DidNotReceive().MagicLinkLogin(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.MagicLinkLogin),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -186,15 +198,16 @@ public sealed class MagicLinkServiceTests : IDisposable
     {
         // First call succeeds
         await _service.SendMagicLinkAsync("newperson@example.com", null, Xunit.TestContext.Current.CancellationToken);
-        _emailMessages.ClearReceivedCalls();
+        _emailService.ClearReceivedCalls();
 
         // Subsequent TryReserveSignupSendAsync returns false
         _rateLimiter.TryReserveSignupSendAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(false);
 
         await _service.SendMagicLinkAsync("newperson@example.com", null, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.DidNotReceive().MagicLinkSignup(
-            Arg.Any<string>(), Arg.Any<string>());
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.MagicLinkSignup),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -278,8 +291,9 @@ public sealed class MagicLinkServiceTests : IDisposable
         // straight to the signup-link branch.
         await _service.SendMagicLinkAsync("alice@work.com", null, Xunit.TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).MagicLinkSignup(
-            Arg.Any<string>(), Arg.Any<string>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.MagicLinkSignup),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

@@ -42,8 +42,9 @@
       Users.Contracts — already required before that lane (IUserServiceRead for assignee/creator
                         display stitching); MagicLinkService adds UserManager<User> and
                         IUserEmailService on top.
-      Email.Contracts — IEmailService + IEmailMessageFactory, which MagicLinkService injects to
-                        send the login/signup mail. This reference is exactly what the old
+      Email.Contracts — IEmailService, which MagicLinkService injects to send the login/signup
+                        mail built by the section's own AuthEmails. This reference is exactly
+                        what the old
                         "a horizontal may not reference a vertical" reading forbade, and it is
                         why the orchestrator sat in Humans.Application until now. Peter's
                         Base-floor decision of 2026-08-14 supersedes that reading: leaves are

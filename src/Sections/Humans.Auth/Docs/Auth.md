@@ -143,6 +143,7 @@ The auth surface is mid-transition. Phase by phase:
 ## Cross-Section Dependencies
 
 - **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — display names for assignee/creator stitched in memory (design-rules §6b). `IUserEmailService.FindByAddressAsync` — verified email → owning user for magic-link login.
+- **Email:** Auth owns its two sign-in templates — `AuthEmails` (internal) builds each `EmailMessage` from Auth's own `Auth_Email_*` keys in `AuthResource`, rendered in the recipient's culture via `CultureScope`; `AuthEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists both at `/Email/EmailPreview`. Both keep their `TimeSensitiveTemplates` names (`magic_link_login`, `magic_link_signup`) so the outbox still drains a sign-in link immediately. Email supplies transport only — `IEmailService.SendAsync` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
 - **Teams:** `ISystemTeamSync.SyncBoardTeamAsync` — Board system team's membership mirrors current `Board` role assignments.
 - **Governance:** Tier applications and board voting flows are a separate concern. Governance concerns association-level affairs; Auth concerns who-has-what-role within the running system. `role_assignments` is owned by Auth, not Governance.
 - **Notifications:** `Humans.Notifications.Contracts.INotificationEmitter` (the narrow per-user dispatch surface — `INotificationService` extends it but Auth only needs the emitter) — best-effort in-app notifications on role changes.

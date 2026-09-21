@@ -23,7 +23,7 @@ internal sealed class MagicLinkService(
     IUserEmailService userEmailService,
     IUserServiceRead userService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    AuthEmails emailMessages,
     IMagicLinkUrlBuilder urlBuilder,
     IMagicLinkRateLimiter rateLimiter,
     IClock clock,

@@ -59,12 +59,6 @@ public interface IEmailMessageFactory
     /// <summary>Coordinator team-level "email all rotas" message to one signup (VolunteerUpdates); reply-to is the coordinator.</summary>
     EmailMessage CoordinatorTeamRotasMessage(CoordinatorTeamRotasMessageRequest request);
 
-    /// <summary>Magic-link login email (always-send, immediate drain).</summary>
-    EmailMessage MagicLinkLogin(string toEmail, string displayName, string magicLinkUrl, string? culture = null);
-
-    /// <summary>Magic-link signup email (always-send, immediate drain).</summary>
-    EmailMessage MagicLinkSignup(string toEmail, string magicLinkUrl, string? culture = null);
-
     /// <summary>Workspace credentials email (always-send, immediate drain).</summary>
     EmailMessage WorkspaceCredentials(string recoveryEmail, string userName, string workspaceEmail, string tempPassword, string? culture = null);
 

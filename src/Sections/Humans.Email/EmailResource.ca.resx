@@ -177,18 +177,6 @@
   <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve">
     <value>Aquest human ha decidit no compartir la seva informació de contacte.</value>
   </data>
-  <data name="Email_MagicLinkLogin_Subject" xml:space="preserve">
-    <value>El teu enllaç d’inici de sessió per a Nobodies</value>
-  </data>
-  <data name="Email_MagicLinkLogin_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Fes clic a l’enllaç següent per iniciar la sessió:&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Inicia la sessió a Nobodies&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Aquest enllaç expira en 15 minuts i només es pot fer servir una vegada.&lt;/p&gt;&lt;p&gt;Si no has sol·licitat això, pots ignorar aquest correu.&lt;/p&gt;</value>
-  </data>
-  <data name="Email_MagicLinkSignup_Subject" xml:space="preserve">
-    <value>Benvingut/da a Nobodies — confirma el teu correu electrònic</value>
-  </data>
-  <data name="Email_MagicLinkSignup_Body" xml:space="preserve">
-    <value>&lt;p&gt;Benvingut/da a Nobodies!&lt;/p&gt;&lt;p&gt;Fes clic a l’enllaç següent per crear el teu compte:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Crea el teu compte&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Aquest enllaç expira en 15 minuts i només es pot fer servir una vegada.&lt;/p&gt;&lt;p&gt;Si no has sol·licitat això, pots ignorar aquest correu.&lt;/p&gt;</value>
-  </data>
   <data name="Email_WorkspaceCredentials_Subject" xml:space="preserve">
     <value>El teu compte @nobodies.team està llest</value>
   </data>

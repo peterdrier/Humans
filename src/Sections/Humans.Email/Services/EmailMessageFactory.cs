@@ -109,20 +109,6 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
             "coordinator_team_rotas_message", MessageCategory.VolunteerUpdates, ReplyTo: request.SenderEmail);
     }
 
-    public EmailMessage MagicLinkLogin(string toEmail, string displayName, string magicLinkUrl, string? culture = null)
-    {
-        var content = renderer.RenderMagicLinkLogin(displayName, magicLinkUrl, culture);
-        return new EmailMessage(toEmail, displayName, content.Subject, content.HtmlBody,
-            TimeSensitiveTemplates.MagicLinkLogin);
-    }
-
-    public EmailMessage MagicLinkSignup(string toEmail, string magicLinkUrl, string? culture = null)
-    {
-        var content = renderer.RenderMagicLinkSignup(magicLinkUrl, culture);
-        return new EmailMessage(toEmail, toEmail, content.Subject, content.HtmlBody,
-            TimeSensitiveTemplates.MagicLinkSignup);
-    }
-
     public EmailMessage WorkspaceCredentials(string recoveryEmail, string userName, string workspaceEmail, string tempPassword, string? culture = null)
     {
         var content = renderer.RenderWorkspaceCredentials(userName, workspaceEmail, tempPassword, culture);

@@ -6,6 +6,7 @@ using Humans.Auth.Data;
 using Humans.Auth.Services;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Hosting;
+using Humans.Email.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,7 +29,7 @@ namespace Humans.Auth;
 /// The sign-in half is registered here too, as of nobodies-collective/Humans#866 G5 lane
 /// 4b-2i: <c>MagicLinkService</c> plus its two collaborators
 /// (<c>MagicLinkUrlBuilder</c>, <c>MagicLinkRateLimiter</c>). It used to live in Base
-/// because it injects <c>IEmailService</c> / <c>IEmailMessageFactory</c> from
+/// because it injects <c>IEmailService</c> from
 /// <c>Humans.Email.Contracts</c> — a *vertical* section's leaf, which the old reading of
 /// <c>peters-hard-rules.md</c> put out of a horizontal's reach. Peter's Base-floor decision
 /// of 2026-08-14 makes a leaf referenceable from anywhere, so that reason dissolved and
@@ -39,8 +40,8 @@ namespace Humans.Auth;
 /// <c>AccountController</c> and <c>Views/Account/*</c> did <em>not</em> follow it. They stay
 /// in Shell: every action they expose writes Users'/Profiles' tables through those sections'
 /// services, and their <c>Login_*</c>/<c>MagicLink*</c>/<c>GateLogin_*</c> resource keys
-/// stay in <c>SharedResource</c> with them, so the section still ships no
-/// <c>Resources/</c> folder.
+/// stay in <c>SharedResource</c> with them. The section's own <c>AuthResource</c> set at
+/// the project root holds only the magic-link email copy (peterdrier/Humans#1651).
 /// </para>
 /// </remarks>
 public sealed class Section : ISection
@@ -86,6 +87,11 @@ public sealed class Section : ISection
         services.AddScoped<IMagicLinkUrlBuilder, MagicLinkUrlBuilder>();
         services.AddScoped<IMagicLinkRateLimiter, MagicLinkRateLimiter>();
         services.AddScoped<IMagicLinkService, MagicLinkService>();
+
+        // Auth owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<AuthEmails>();
+        services.AddScoped<IEmailPreviewContributor, AuthEmailPreviews>();
 
         // Gauge-refresh loop split out of HumansMetricsService (nobodies-collective/Humans#1091).
         services.AddSingleton<AuthMetricsService>();

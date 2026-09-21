@@ -110,17 +110,6 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansFact]
-    public void MagicLinkSignup_UsesAddressAsName()
-    {
-        var msg = _factory.MagicLinkSignup("new@x.com", "https://link", "en");
-
-        msg.RecipientEmail.Should().Be("new@x.com");
-        msg.RecipientName.Should().Be("new@x.com");
-        msg.TemplateName.Should().Be("magic_link_signup");
-        msg.Category.Should().BeNull();
-    }
-
-    [HumansFact]
     public void TicketTransferTeamNotification_RoutesToTicketsInbox_System()
     {
         var msg = _factory.TicketTransferTeamNotification(

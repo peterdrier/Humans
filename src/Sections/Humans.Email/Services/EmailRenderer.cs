@@ -213,16 +213,6 @@ internal sealed class EmailRenderer(
                     senderLine));
         });
 
-    public EmailContent RenderMagicLinkLogin(string displayName, string magicLinkUrl, string? culture = null)
-        => RenderLocalized(culture, () => new EmailContent(
-            L("Email_MagicLinkLogin_Subject"),
-            Lf("Email_MagicLinkLogin_Body", HtmlEncode(displayName), magicLinkUrl)));
-
-    public EmailContent RenderMagicLinkSignup(string magicLinkUrl, string? culture = null)
-        => RenderLocalized(culture, () => new EmailContent(
-            L("Email_MagicLinkSignup_Subject"),
-            Lf("Email_MagicLinkSignup_Body", magicLinkUrl)));
-
     public EmailContent RenderWorkspaceCredentials(string userName, string workspaceEmail, string tempPassword, string? culture = null)
         => RenderLocalized(culture, () => new EmailContent(
             L("Email_WorkspaceCredentials_Subject"),
