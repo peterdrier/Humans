@@ -31,31 +31,6 @@ internal static class UserInfoStubHelpers
             [],
             []);
 
-    public static UserInfo MakeUserInfo(Guid userId, Profile? profile = null, string displayName = "User")
-    {
-        var resolvedProfile = profile ?? new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = displayName,
-            CreatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
-            UpdatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
-            IsApproved = true
-        };
-        return UserInfoFactory.Create(
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
-            new User { Id = userId, PreferredLanguage = "en", BurnerName = resolvedProfile.BurnerName },
-            [],
-            [],
-            [],
-            profile: resolvedProfile,
-            [],
-            [],
-            [],
-            []);
-    }
-
     /// <summary>
     /// Stubs GetUserInfosAsync to read from the provided DbContext options (new context per call,
     /// includes UserEmails + Profile slice).
