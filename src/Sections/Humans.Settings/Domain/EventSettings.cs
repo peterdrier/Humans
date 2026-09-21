@@ -20,7 +20,10 @@ internal sealed class EventSettings : IEventSettingsInfo
     /// <summary>Display name for this event (e.g., "Nowhere 2026").</summary>
     public string EventName { get; set; } = string.Empty;
 
-    /// <summary>The year of this event (e.g., 2026).</summary>
+    /// <summary>
+    /// The event's public year. Always <see cref="GateOpeningDate"/>'s year — derived on
+    /// save, never edited on its own; the form carries no Year field.
+    /// </summary>
     public int Year { get; set; }
 
     /// <summary>IANA timezone ID (e.g., "Europe/Madrid").</summary>
@@ -49,9 +52,11 @@ internal sealed class EventSettings : IEventSettingsInfo
     // Build-phase sub-period boundaries — the build period is split into
     // four named sub-periods so the shift dashboard can filter per phase.
     // Each offset is the inclusive start day of its sub-period; the end is
-    // the next sub-period's start (exclusive). All offsets are negative
-    // and ascending: BuildStartOffset ≤ FirstCrew ≤ SetupWeek ≤ PreEventWeek
-    // ≤ FinishingWeekend < 0.
+    // the next sub-period's start (exclusive). The four are strictly ascending
+    // and all negative, and the build window opens no later than the first-crew
+    // day: BuildStartOffset ≤ FirstCrew < SetupWeek < PreEventWeek <
+    // FinishingWeekend < 0. Enforced on the way in by EventSettingsViewModel —
+    // the ordering in Validate, the upper bound by [Range] on each of the four.
     // ------------------------------------------------------------------
 
     /// <summary>Inclusive start day of the "First crew" sub-period (default -25).</summary>
@@ -84,8 +89,10 @@ internal sealed class EventSettings : IEventSettingsInfo
     public Instant? EarlyEntryClose { get; set; }
 
     /// <summary>
-    /// Lifecycle of this cycle. Deleting sets <see cref="EventSettingsStatus.Deleted"/>;
-    /// the row is never removed, because other sections point at its <see cref="Id"/>.
+    /// Lifecycle of this cycle. No production path removes the row — other sections point at
+    /// its <see cref="Id"/> — so a cycle ends by going <see cref="EventSettingsStatus.Inactive"/>,
+    /// and nothing sets <see cref="EventSettingsStatus.Deleted"/> today. The one real row
+    /// removal is <c>IEventSettingsSeeding.DeleteEventAsync</c>, for fixture teardown.
     /// </summary>
     public EventSettingsStatus Status { get; set; } = EventSettingsStatus.Active;
 
