@@ -138,6 +138,10 @@ ledger, so paying one would post against a document that does not exist for acco
   account and amount permanently ambiguous, with no way to clear it. Such a row renders with
   "generated more than 90 days ago — … settle it in Holded by hand" in place of a button, and stays
   `Generated` in Humans for the record.
+- **`HoldedPaymentRefs` is retained unused.** The column that held the old payment refs stays on
+  `sepa_payout_transfers` with nothing reading or writing it; this change's migration only *adds*
+  `HoldedBankMovementId` and `ReconciledAt`. Dropping it is a follow-up PR of its own and needs
+  Peter's approval ([`no-drops-until-prod-verified`](../../../../../memory/architecture/no-drops-until-prod-verified.md)).
 - **Outgoing lines are assumed to be negative** on the bank feed, and a `dailyledger` reconcile
   target is unconfirmed (the ladder covers the second). If the first is ever wrong, no line matches
   and every row waits — visible as rows that never leave "waiting for the Sabadell line".
@@ -153,7 +157,9 @@ ledger, so paying one would post against a document that does not exist for acco
 | The run could post only part of the transfer (the account owes less than the gap) | refused and audited `SHORT`; the row stays unbooked |
 | The transfer's file is older than the 90-day feed window | the reason, in place of the button |
 | The live balance owes less than the transfer | refused; nothing posted |
-| The bank line is already reconciled, or already booked to another transfer | refused; nothing posted |
+| The bank line is already reconciled or partly reconciled in Holded, or already booked to another transfer | refused; nothing posted |
+| The bank line is dated before the file that asked for the transfer was generated (less two days' slack) | it does not match; the line renders in the "needs a human" panel |
+| Two unreconciled lines could each have paid one transfer | refused; both render in the "needs a human" panel |
 | Member has no `HoldedCreditorContact` binding | the reason, in place of the button |
 | The binding's `SupplierAccountNum` no longer matches the transfer's | the reason, in place of the button |
 | The binding's `HoldedContactId` no longer matches the transfer's (rebound to a sibling contact on the same account, nobodies-collective/Humans#1146) | the reason, in place of the button. Skipped for a transfer generated before this guard existed (`HoldedContactId` null) — account-only. |

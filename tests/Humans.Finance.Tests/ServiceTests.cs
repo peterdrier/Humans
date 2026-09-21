@@ -2287,7 +2287,10 @@ public class HoldedFinanceServiceTests
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(
             new List<SepaPayoutTransferRow>
             {
-                new(BookableTransferId, Guid.NewGuid(), "payout.xml", FixedNow, Guid.NewGuid(),
+                // Generated before the Sabadell line that pays it, as a real file is: a line dated
+                // before its own file cannot be the one that paid it (review round 1, #1185).
+                new(BookableTransferId, Guid.NewGuid(), "payout.xml", FixedNow - Duration.FromDays(5),
+                    Guid.NewGuid(),
                     userId, 40000004, holdedContactId, "Ana Ruiz", "ES79****789", 30m,
                     bookedAt, null, null, null, null, null),
             });
@@ -2829,7 +2832,10 @@ public class HoldedFinanceServiceTests
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(
             new List<SepaPayoutTransferRow>
             {
-                new(BookableTransferId, Guid.NewGuid(), "payout.xml", FixedNow, Guid.NewGuid(),
+                // Generated before the Sabadell line that pays it, as a real file is: a line dated
+                // before its own file cannot be the one that paid it (review round 1, #1185).
+                new(BookableTransferId, Guid.NewGuid(), "payout.xml", FixedNow - Duration.FromDays(5),
+                    Guid.NewGuid(),
                     userId, 40000004, holdedContactId, "Ana Ruiz", "ES79****789", 30m,
                     null, null, null, null, null, null),
             });

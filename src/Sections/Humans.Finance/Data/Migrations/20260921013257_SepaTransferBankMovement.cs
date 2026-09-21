@@ -11,10 +11,6 @@ namespace Humans.Finance.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "HoldedPaymentRefs",
-                table: "sepa_payout_transfers");
-
             migrationBuilder.AddColumn<string>(
                 name: "HoldedBankMovementId",
                 table: "sepa_payout_transfers",
@@ -39,13 +35,6 @@ namespace Humans.Finance.Data.Migrations
             migrationBuilder.DropColumn(
                 name: "ReconciledAt",
                 table: "sepa_payout_transfers");
-
-            migrationBuilder.AddColumn<string>(
-                name: "HoldedPaymentRefs",
-                table: "sepa_payout_transfers",
-                type: "character varying(512)",
-                maxLength: 512,
-                nullable: true);
         }
     }
 }

@@ -718,6 +718,96 @@ public class SepaBankBookingTests
             .Should().Contain("settle it in Holded by hand");
     }
 
+    // ─── Review round 1: a line only pairs with a transfer it could actually have paid ──
+
+    [HumansFact]
+    public async Task Booking_LineDatedBeforeTheFileWasGenerated_Refuses()
+    {
+        // An older unreconciled payment of the same amount on the same creditor account. The money
+        // it moved was not this transfer's — the file asking for this one did not exist yet.
+        SeedMovements(Movement(date: new LocalDate(2026, 4, 20)));
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("does not match this transfer");
+        await AssertNothingPosted();
+    }
+
+    [HumansFact]
+    public async Task Page_LineDatedBeforeTheFileWasGenerated_IsSurfacedForAHuman()
+    {
+        SeedContacts(_userId);
+        SeedMovements(Movement(date: new LocalDate(2026, 4, 20)));
+
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().BeNull();
+        unmatched.Should().ContainSingle().Which.Reason.Should().Contain("no unbooked transfer");
+    }
+
+    [HumansFact]
+    public async Task Booking_MovementPartlyReconciled_Refuses()
+    {
+        // Somebody has already settled part of that line against documents by hand.
+        SeedMovements(Movement(status: "partial"));
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("already partial");
+        await AssertNothingPosted();
+    }
+
+    [HumansFact]
+    public async Task Page_PartlyReconciledLine_IsNotOfferedAsACandidate()
+    {
+        SeedContacts(_userId);
+        SeedMovements(Movement(status: "partial"));
+
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Booking_TwoLinesCouldEachHavePaidTheTransfer_Refuses()
+    {
+        SeedMovements(Movement(), Movement(id: "mov-2"));
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("2 Sabadell lines could each have paid this transfer");
+        await AssertNothingPosted();
+    }
+
+    [HumansFact]
+    public async Task Page_TwoLinesMatchingOneTransfer_AreBothSurfaced_AndNeitherIsOffered()
+    {
+        SeedContacts(_userId);
+        SeedMovements(Movement(), Movement(id: "mov-2"));
+
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().BeNull();
+        unmatched.Should().HaveCount(2);
+        unmatched.Should().OnlyContain(m => m.Reason.Contains("matches that transfer too"));
+    }
+
+    [HumansFact]
+    public async Task Sweep_TwoLinesCouldEachHavePaidTheTransfer_BooksNeither()
+    {
+        SeedMovements(Movement(), Movement(id: "mov-2"));
+
+        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await AssertNothingPosted();
+    }
+
     // ─── Seeding ────────────────────────────────────────────────────────────────
 
     private async Task AssertNothingPosted()
@@ -818,12 +908,12 @@ public class SepaBankBookingTests
 
     private static HoldedBankMovementDto Movement(
         string id = MovementId, decimal amount = -30m, string? description = Remittance,
-        string status = "pending") =>
+        string status = "pending", LocalDate? date = null) =>
         new()
         {
             Id = id,
             AccountId = "treasury-1",
-            Date = LineDate,
+            Date = date ?? LineDate,
             Amount = amount,
             Description = description,
             Status = status,

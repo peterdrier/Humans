@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Finance.Data.Migrations
 {
     [DbContext(typeof(FinanceDbContext))]
-    [Migration("20260921001330_SepaTransferBankMovement")]
+    [Migration("20260921013257_SepaTransferBankMovement")]
     partial class SepaTransferBankMovement
     {
         /// <inheritdoc />
@@ -279,6 +279,10 @@ namespace Humans.Finance.Data.Migrations
                     b.Property<string>("HoldedContactId")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<string>("HoldedPaymentRefs")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
 
                     b.Property<string>("Iban")
                         .IsRequired()

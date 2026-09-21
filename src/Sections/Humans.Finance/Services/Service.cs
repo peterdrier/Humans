@@ -1012,6 +1012,12 @@ internal sealed class Service(
 
     private const string ReconciledStatus = "reconciled";
 
+    private const string PendingStatus = "pending";
+
+    /// <summary>How far before its file's generation day a bank line may be dated and still be
+    /// paying it — the bank can value-date a day early, and the feed's dates are Madrid days.</summary>
+    private const int GenerationSlackDays = 2;
+
     /// <summary>The remittance text the payout file writes — <c>&lt;account&gt; - NCA - &lt;name&gt;</c>.
     /// Matched anywhere in the line, not anchored: bank feeds prepend their own wording to the
     /// Ustrd.</summary>
@@ -1047,22 +1053,38 @@ internal sealed class Service(
         var bookable = withReasons.Where(r => r.NotBookableReason is null).ToList();
         var unmatched = new List<SepaBankMovementVm>();
         var candidateByTransfer = new Dictionary<Guid, HoldedBankMovementDto>();
-        foreach (var m in movements.Where(NeedsAMatch))
-        {
+        var considered = movements
+            .Where(NeedsAMatch)
             // A line this section already booked is nobody's problem — it renders on its own row.
-            if (withReasons.Any(r =>
-                    string.Equals(r.HoldedBankMovementId, m.Id, StringComparison.Ordinal)))
-                continue;
+            .Where(m => !withReasons.Any(
+                r => string.Equals(r.HoldedBankMovementId, m.Id, StringComparison.Ordinal)))
+            .Select(m =>
+            {
+                var account = RemittanceAccountNum(m.Description);
+                // Only rows that could actually be booked can claim a line; letting a not-bookable
+                // row claim one would hide the line from the "needs a human" panel as well as from
+                // the row.
+                return (Movement: m, Account: account, Matches: account is null
+                    ? []
+                    : UnbookedMatches(bookable, account.Value, Math.Abs(m.Amount), m.Date));
+            })
+            .ToList();
 
-            var account = RemittanceAccountNum(m.Description);
-            // Only rows that could actually be booked can claim a line; letting a not-bookable row
-            // claim one would hide the line from the "needs a human" panel as well as from the row.
-            var matches = account is null
-                ? []
-                : UnbookedMatches(bookable, account.Value, Math.Abs(m.Amount));
+        // A transfer two bank lines could each have paid is as ambiguous as a line two transfers
+        // could each have asked for: Humans cannot tell which line moved the money, so neither one
+        // books it and both go to the panel.
+        var claimants = considered
+            .Where(c => c.Matches.Count == 1)
+            .GroupBy(c => c.Matches[0].TransferId)
+            .ToDictionary(g => g.Key, g => g.Count());
 
-            if (matches.Count == 1 && candidateByTransfer.TryAdd(matches[0].TransferId, m))
+        foreach (var (m, account, matches) in considered)
+        {
+            if (matches.Count == 1 && claimants[matches[0].TransferId] == 1)
+            {
+                candidateByTransfer[matches[0].TransferId] = m;
                 continue;
+            }
 
             unmatched.Add(new SepaBankMovementVm(
                 m.Id, m.Date, m.Amount, m.Description, account, m.Status,
@@ -1072,7 +1094,7 @@ internal sealed class Service(
                         ? $"no unbooked transfer of {Euros(Math.Abs(m.Amount))} on account {account}"
                         : matches.Count > 1
                             ? $"{matches.Count} unbooked transfers match it — settle it in Holded by hand"
-                            : "another bank line already matches that transfer"));
+                            : "another bank line matches that transfer too — settle it in Holded by hand"));
         }
 
         return (
@@ -1128,7 +1150,7 @@ internal sealed class Service(
         var floor = Today().PlusDays(-FeedWindowDays);
         var from = unbooked.Select(r => r.GeneratedAt)
             .Concat(pending.Select(r => r.BookedAt!.Value))
-            .Select(i => i.InZone(MadridZone).Date.PlusDays(-2))
+            .Select(i => i.InZone(MadridZone).Date.PlusDays(-GenerationSlackDays))
             .DefaultIfEmpty(floor)
             .Min();
         if (from < floor) from = floor;
@@ -1171,7 +1193,7 @@ internal sealed class Service(
             var account = RemittanceAccountNum(m.Description);
             if (account is null) continue;
 
-            var matches = UnbookedMatches(unbooked, account.Value, Math.Abs(m.Amount));
+            var matches = UnbookedMatches(unbooked, account.Value, Math.Abs(m.Amount), m.Date);
             if (matches.Count != 1)
             {
                 // The page's "bank lines needing a human" panel is where this is surfaced; the sweep
@@ -1267,10 +1289,11 @@ internal sealed class Service(
 
         // ── Step 1: the bank line. It is the trigger, and its date is every posting's date.
         HoldedBankMovementDto? movement;
+        IReadOnlyList<HoldedBankMovementDto> feed;
         try
         {
-            var movements = await ReadBankFeedAsync(Today().PlusDays(-FeedWindowDays), ct);
-            movement = movements.FirstOrDefault(
+            feed = await ReadBankFeedAsync(Today().PlusDays(-FeedWindowDays), ct);
+            movement = feed.FirstOrDefault(
                 x => string.Equals(x.Id, bankMovementId, StringComparison.Ordinal));
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
@@ -1287,7 +1310,7 @@ internal sealed class Service(
 
         // ── Step 2: re-validate the pairing here. The posted movement id is never trusted.
         var allRows = await repo.GetSepaPayoutTransferRowsAsync(ct);
-        if (PairingRefusal(movement, allRows) is { } pairing)
+        if (PairingRefusal(movement, feed, allRows) is { } pairing)
             return new SepaBookingResult(false, pairing);
 
         // The file's EndToEndId, on every posting, so a Holded line traces back to one transfer —
@@ -1540,13 +1563,20 @@ internal sealed class Service(
             return new SepaBookingResult(false, $"Holded refused the {what} — nothing was posted.");
         }
 
-        string? PairingRefusal(HoldedBankMovementDto m, IReadOnlyList<SepaPayoutTransferRow> all)
+        string? PairingRefusal(
+            HoldedBankMovementDto m, IReadOnlyList<HoldedBankMovementDto> lines,
+            IReadOnlyList<SepaPayoutTransferRow> all)
         {
             if (m.Amount >= 0m || Math.Abs(m.Amount) != transfer.Amount)
                 return $"That Sabadell line is {Euros(m.Amount)}, not the {Euros(transfer.Amount)} this "
                        + "transfer pays — nothing was posted.";
             if (IsReconciled(m))
                 return "That Sabadell line is already reconciled in Holded — nothing was posted.";
+            // Part of that line is already settled against documents by hand; posting the whole
+            // transfer on top of it would pay some of them twice.
+            if (!IsUntouched(m))
+                return $"That Sabadell line is already {m.Status} in Holded — settle it there by hand. "
+                       + "Nothing was posted.";
 
             var account = RemittanceAccountNum(m.Description);
             if (account is null || account.Value != transfer.SupplierAccountNum)
@@ -1558,13 +1588,27 @@ internal sealed class Service(
                              && string.Equals(r.HoldedBankMovementId, m.Id, StringComparison.Ordinal)))
                 return "That Sabadell line already booked another transfer — nothing was posted.";
 
-            var matches = UnbookedMatches(all, account.Value, transfer.Amount);
+            var matches = UnbookedMatches(all, account.Value, transfer.Amount, m.Date);
             if (matches.Count > 1)
                 return $"{matches.Count} unbooked transfers match that Sabadell line — Humans cannot tell "
                        + "which it paid; settle it in Holded by hand. Nothing was posted.";
-            return matches.Count == 1 && matches[0].TransferId == transfer.Id
+            if (matches.Count != 1 || matches[0].TransferId != transfer.Id)
+                return "That Sabadell line does not match this transfer — nothing was posted.";
+
+            // The mirror: another unreconciled line of the same amount on the same account, dated
+            // no earlier than this file, could equally be the one that paid it.
+            var rivals = lines.Count(x =>
+                !string.Equals(x.Id, m.Id, StringComparison.Ordinal)
+                && NeedsAMatch(x)
+                && Math.Abs(x.Amount) == transfer.Amount
+                && RemittanceAccountNum(x.Description) == account.Value
+                && !all.Any(r => string.Equals(r.HoldedBankMovementId, x.Id, StringComparison.Ordinal))
+                && UnbookedMatches(all, account.Value, transfer.Amount, x.Date)
+                    .Any(r => r.TransferId == transfer.Id));
+            return rivals == 0
                 ? null
-                : "That Sabadell line does not match this transfer — nothing was posted.";
+                : $"{rivals + 1} Sabadell lines could each have paid this transfer — Humans cannot tell "
+                  + "which one did; settle it in Holded by hand. Nothing was posted.";
         }
     }
 
@@ -1613,9 +1657,16 @@ internal sealed class Service(
         LocalDate from, CancellationToken ct) =>
         client.ListBankMovementsAsync(sepa.Value.TreasuryAccountId, from, Today(), ct);
 
-    /// <summary>An outgoing line Holded has not already reconciled — the only kind that can still
-    /// be a SEPA payout waiting to be booked.</summary>
-    private static bool NeedsAMatch(HoldedBankMovementDto m) => m.Amount < 0m && !IsReconciled(m);
+    /// <summary>An outgoing line Holded has not started reconciling — the only kind that can still
+    /// be a SEPA payout waiting to be booked. <c>partial</c> counts as started: somebody has already
+    /// settled part of that line against documents by hand, so posting the whole transfer on top of
+    /// it would pay those documents twice.</summary>
+    private static bool NeedsAMatch(HoldedBankMovementDto m) => m.Amount < 0m && IsUntouched(m);
+
+    /// <summary>Holded reports <c>pending</c> | <c>partial</c> | <c>reconciled</c>; only the first
+    /// has nothing of ours or anyone else's already tied to it.</summary>
+    private static bool IsUntouched(HoldedBankMovementDto m) =>
+        string.Equals(m.Status, PendingStatus, StringComparison.Ordinal);
 
     private static bool IsReconciled(HoldedBankMovementDto m) =>
         string.Equals(m.Status, ReconciledStatus, StringComparison.Ordinal);
@@ -1631,16 +1682,23 @@ internal sealed class Service(
             : null;
     }
 
-    /// <summary>The unbooked transfers a bank line for <paramref name="account"/> and
-    /// <paramref name="amount"/> could be paying. More than one is ambiguous and waits for a human.
-    /// Only files generated inside the feed window count: a stale row from an old file would
-    /// otherwise make every later transfer of the same amount permanently ambiguous, and no live
-    /// bank line can be paying it anyway.</summary>
+    /// <summary>The unbooked transfers a bank line dated <paramref name="lineDate"/> for
+    /// <paramref name="account"/> and <paramref name="amount"/> could be paying. More than one is
+    /// ambiguous and waits for a human. Only files generated inside the feed window count: a stale
+    /// row from an old file would otherwise make every later transfer of the same amount permanently
+    /// ambiguous, and no live bank line can be paying it anyway. A line dated before the file that
+    /// asked for it cannot be paying it either — that one is some older payment of the same amount,
+    /// still unreconciled on the feed.</summary>
     private List<SepaPayoutTransferRow> UnbookedMatches(
-        IReadOnlyList<SepaPayoutTransferRow> rows, int account, decimal amount) =>
+        IReadOnlyList<SepaPayoutTransferRow> rows, int account, decimal amount, LocalDate lineDate) =>
         rows.Where(r => r.BookedAt is null && r.SupplierAccountNum == account && r.Amount == amount
-                        && !IsStale(r))
+                        && !IsStale(r) && lineDate >= FirstPayableDate(r))
             .ToList();
+
+    /// <summary>The earliest bank date that can belong to a transfer: its file's generation day,
+    /// less <see cref="GenerationSlackDays"/>.</summary>
+    private LocalDate FirstPayableDate(SepaPayoutTransferRow row) =>
+        row.GeneratedAt.InZone(MadridZone).Date.PlusDays(-GenerationSlackDays);
 
     /// <summary>A transfer whose file was generated before the bank feed's window — no line the feed
     /// still returns can book it, so it is a human's job in Holded.</summary>

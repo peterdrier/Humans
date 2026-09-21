@@ -139,6 +139,7 @@ Fields: `LastSyncAt`, `Status` (`Idle / Running / Error` string), `LastError`, `
 | BookedByUserId | Guid? | The finance admin who booked it, or null when the sweep booked it unattended. Bare FK, no nav (cross-section). |
 | HoldedBankMovementId | string(64)? | The Holded treasury bank-movement id (the Sabadell line) this transfer was booked against (nobodies-collective/Humans#1185). Null on a row booked before this shipped. |
 | ReconciledAt | Instant? | When the bank line was reconciled against the postings in Holded. Null while the reconcile is pending or was never attempted (a row booked before nobodies-collective/Humans#1185). |
+| HoldedPaymentRefs | string(512)? | **Retained unused.** Held the comma-joined Holded payment refs before nobodies-collective/Humans#1185 moved the record onto `HoldedBankMovementId`; nothing reads or writes it now. The column stays on the table — dropping it is its own PR and needs Peter's approval ([`no-drops-until-prod-verified`](../../../../memory/architecture/no-drops-until-prod-verified.md)). |
 
 **Cross-section FKs:** `UserId` and `BookedByUserId` → `User` (Users) — FK only, no navigation property.
 
