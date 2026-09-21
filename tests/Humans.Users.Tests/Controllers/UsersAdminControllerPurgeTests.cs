@@ -10,6 +10,7 @@ using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Controllers;
+using Humans.Users.Models;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -36,7 +37,10 @@ public class UsersAdminControllerPurgeTests
     private readonly IAccountDeletionService _deletion = Substitute.For<IAccountDeletionService>();
     private readonly IHumanLifecycleService _lifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly IOnboardingIntake _onboarding = Substitute.For<IOnboardingIntake>();
+    private readonly IRoleAssignmentService _roleAssignments = Substitute.For<IRoleAssignmentService>();
+    private readonly IUsersAudienceService _audience = Substitute.For<IUsersAudienceService>();
     private readonly IWebHostEnvironment _environment = Substitute.For<IWebHostEnvironment>();
+    private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly Guid _adminUserId = Guid.NewGuid();
 
@@ -60,17 +64,17 @@ public class UsersAdminControllerPurgeTests
             _userService,
             Substitute.For<IUserEmailService>(),
             Substitute.For<IEmailOutboxServiceRead>(),
-            Substitute.For<IRoleAssignmentService>(),
+            _roleAssignments,
             Substitute.For<IApplicationServiceRead>(),
             Substitute.For<IConsentServiceRead>(),
             Substitute.For<ICampaignServiceRead>(),
             _lifecycle,
             _onboarding,
             Substitute.For<IAuditLogService>(),
-            Substitute.For<IUsersAudienceService>(),
+            _audience,
             _deletion,
             _environment,
-            Substitute.For<IClock>(),
+            _clock,
             Substitute.For<IAuthorizationService>(),
             NullLogger<UsersAdminController>.Instance,
             _localizer);
@@ -160,5 +164,39 @@ public class UsersAdminControllerPurgeTests
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(UsersAdminController.AdminDetail));
         await _onboarding.Received(1).RejectSignupAsync(target, _adminUserId, "Duplicate signup", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Roles_ForwardsFilterAndBuildsTheSharedRolesView()
+    {
+        var now = Instant.FromUtc(2026, 9, 21, 6, 0);
+        _clock.GetCurrentInstant().Returns(now);
+        _roleAssignments.GetFilteredAsync("Board", activeOnly: false, page: 2, pageSize: 50, now, Arg.Any<CancellationToken>())
+            .Returns((Array.Empty<RoleAssignmentSummarySnapshot>(), 0));
+
+        var result = await BuildController().Roles("Board", showInactive: true, page: 2);
+
+        result.Should().BeOfType<ViewResult>()
+            .Which.ViewName.Should().Be("~/Views/Shared/Roles.cshtml");
+        await _roleAssignments.Received(1).GetFilteredAsync("Board", activeOnly: false, page: 2, pageSize: 50, now, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Audience_ProjectsSegmentationForTheSelectedYear()
+    {
+        var segmentation = new AudienceSegmentation(10, 6, 8, 5, 1, [2025, 2026], 2026);
+        _audience.GetAudienceSegmentationAsync(2026, Arg.Any<CancellationToken>()).Returns(segmentation);
+
+        var result = await BuildController().Audience(2026, CancellationToken.None);
+
+        var view = result.Should().BeOfType<ViewResult>().Subject;
+        var model = view.Model.Should().BeOfType<AudienceSegmentationViewModel>().Subject;
+        model.TotalAccounts.Should().Be(10);
+        model.WithTicket.Should().Be(6);
+        model.WithProfile.Should().Be(8);
+        model.WithBoth.Should().Be(5);
+        model.WithNeither.Should().Be(1);
+        model.AvailableYears.Should().Equal(2025, 2026);
+        model.SelectedYear.Should().Be(2026);
     }
 }
