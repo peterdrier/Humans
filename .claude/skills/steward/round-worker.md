@@ -15,8 +15,11 @@ Report file: <scratchpad>/steward/<N>-round-<k+1>.md.
 
 ## What the worker does
 
-1. **Worktree.** `git worktree add .claude/worktrees/steward-<N> <branch>` from a fresh
-   fetch; work only there. In a cloud container the repo root is fine
+1. **Workspace.** In a cloud container the repo root is fine. Locally, `git worktree list`
+   first: the branch is usually already checked out in the builder's worktree, and
+   `git worktree add` on a branch checked out elsewhere fails outright — reuse that
+   worktree, and only add `.claude/worktrees/steward-<N>` when no worktree holds the
+   branch. Fetch fresh, work only there
    ([`always-use-worktree`](../../../memory/process/always-use-worktree.md)).
 2. **Count.** Recount spent rounds from the PR (command in SKILL.md). Where the count and
    the brief disagree, the PR wins; say so in the report. At 5 or more: skip to step 7.

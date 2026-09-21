@@ -68,11 +68,15 @@ On every wake:
    comments, an event on a head the worker has already superseded.
 3. Actionable: dispatch **one** round worker per the brief in
    [`round-worker.md`](round-worker.md), `orch-opus-medium`, and end the turn. Never two
-   workers on one PR at once; if a wake arrives while a worker runs, note it and let the
-   worker's report decide.
+   workers on one PR at once; if an actionable wake arrives while a worker runs, carry it
+   in your reply as a pending trigger — the queue is drained once, so an unrecorded event
+   is a lost finding.
 4. On the worker's report: keep one line of state in your reply (head sha, rounds spent,
-   open items). If the report says the ceiling is reached, post its ceiling comment on the
-   PR, `unsubscribe_pr_activity`, and stop. Otherwise end the turn.
+   open items, pending triggers). If the report says the ceiling is reached, post its
+   ceiling comment on the PR, `unsubscribe_pr_activity`, and stop. Otherwise, if a pending
+   trigger is still uncovered by the report, dispatch one fresh worker for it now (it
+   recounts rounds itself, so the ceiling still holds) and end the turn; with none, just
+   end the turn.
 
 The steward **never**: runs Bash; reads threads, diffs, logs or files; edits code; drafts a
 fix; replies in a thread (the worker does); schedules a check-in; raises the ceiling;
