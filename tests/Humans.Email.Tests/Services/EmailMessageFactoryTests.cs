@@ -57,15 +57,6 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansFact]
-    public void SignupRejected_StampsSystem()
-    {
-        var msg = _factory.SignupRejected("a@x.com", "Alice", "nope", "en");
-
-        msg.TemplateName.Should().Be("signup_rejected");
-        msg.Category.Should().Be(MessageCategory.System);
-    }
-
-    [HumansFact]
     public void SurveyInvitation_forwards_custom_copy_and_preserves_policy()
     {
         var msg = _factory.SurveyInvitation(

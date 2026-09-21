@@ -115,7 +115,7 @@ After the nobodies-collective#584 narrowing, `OnboardingService` injects only wh
 - **Teams:** `ISystemTeamSync` — Volunteers / Colaboradors / Asociados de-provisioning on reject (`DeprovisionApprovalGatedSystemTeamsAsync`). Clear/flag no longer sync.
 - **Consent:** `IConsentServiceRead` — used by `GetNextUnsignedConsentAsync` to resolve the next unsigned document for the onboarding widget's consent step.
 - **Lifecycle:** `IHumanLifecycleService` — used by `GetNextUnsignedConsentAsync` to self-heal a consent-suspended user who is already compliant (nothing left to sign after the required set shrank).
-- **Notifications / Email:** `IEmailService.SendAsync` (with `IEmailMessageFactory.SignupRejected`), `INotificationEmitter` (`ProfileRejected`). The notification auto-resolve dependency moved out with `UnsuspendAsync` (now on `IHumanLifecycleService`).
+- **Notifications / Email:** Onboarding owns its one template — `OnboardingEmails` (internal) builds the `EmailMessage` from Onboarding's own `Onboarding_Email_*` keys in `OnboardingResource`, rendered in the recipient's culture via `CultureScope`, and `OnboardingEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview`; Email supplies transport only (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651). `IEmailService.SendAsync` (with `OnboardingEmails.SignupRejected`), `INotificationEmitter` (`ProfileRejected`). The notification auto-resolve dependency moved out with `UnsuspendAsync` (now on `IHumanLifecycleService`).
 - **Cross-cutting:** `IMembershipCalculatorRead` (consent-check eligibility + review-queue snapshots), `ILogger`.
 
 ## Architecture

@@ -44,9 +44,6 @@
     <value>Nova sol·licitud de membres: {0}</value>
     <comment>{0} = applicant name</comment>
   </data>
-  <data name="Email_SignupRejected_Subject" xml:space="preserve">
-    <value>Sobre el teu registre</value>
-  </data>
   <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve">
     <value>Acció requerida: {0} actualitzat</value>
     <comment>{0} = document name</comment>
@@ -94,15 +91,6 @@
 &lt;/ul&gt;
 &lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Revisa la sol·licitud&lt;/a&gt;&lt;/p&gt;</value>
     <comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment>
-  </data>
-  <data name="Email_SignupRejected_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Actualització del registre&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Gràcies pel teu interès a unir-te a nosaltres. Després d’una revisió acurada, lamentem informar-te que no podem aprovar el teu registre en aquest moment.&lt;/p&gt;
-{1}
-&lt;p&gt;Si tens alguna pregunta o vols comentar aquesta decisió, contacta’ns a &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Una salutació,&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment>
   </data>
   <data name="Email_ReConsentsRequired_Body" xml:space="preserve">
     <value>&lt;h2&gt;Actualització de documents legals&lt;/h2&gt;

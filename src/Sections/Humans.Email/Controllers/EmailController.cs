@@ -157,8 +157,6 @@ internal sealed class EmailController(
     [
         (r, c) => BuildPreviewItem("application-submitted", "Application Submitted (to Admin)", c.Settings.AdminAddress,
             r.RenderApplicationSubmitted(Guid.Empty, c.Name)),
-        (r, c) => BuildPreviewItem("signup-rejected", "Signup Rejected", c.Email,
-            r.RenderSignupRejected(c.Name, "Incomplete profile information", c.Culture)),
         (r, c) => BuildPreviewItem("reconsent-required", "Re-Consent Required (single doc)", c.Email,
             r.RenderReConsentsRequired(c.Name, [SampleDocs[0]], c.Culture)),
         (r, c) => BuildPreviewItem("reconsents-required", "Re-Consents Required (multiple docs)", c.Email,

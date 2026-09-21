@@ -30,17 +30,6 @@ internal sealed class EmailRenderer(
             Lf("Email_ApplicationSubmitted_Body", HtmlEncode(applicantName), applicationId, _settings.BaseUrl));
     }
 
-    public EmailContent RenderSignupRejected(string userName, string? reason, string? culture = null)
-        => RenderLocalized(culture, () =>
-        {
-            var reasonHtml = string.IsNullOrEmpty(reason)
-                ? ""
-                : Lf("Email_ReasonLine", HtmlEncode(reason));
-            return new EmailContent(
-                L("Email_SignupRejected_Subject"),
-                Lf("Email_SignupRejected_Body", HtmlEncode(userName), reasonHtml, _settings.AdminAddress));
-        });
-
     public EmailContent RenderReConsentsRequired(string userName, IReadOnlyList<string> documentNames, string? culture = null)
         => RenderLocalized(culture, () =>
         {

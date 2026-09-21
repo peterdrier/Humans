@@ -36,9 +36,6 @@ public interface IEmailMessageFactory
     /// <summary>Added-to-team notification (TeamUpdates).</summary>
     EmailMessage AddedToTeam(string userEmail, string userName, string teamName, string teamSlug, IEnumerable<(string Name, string? Url)> resources, string? culture = null);
 
-    /// <summary>Signup rejection notification (System).</summary>
-    EmailMessage SignupRejected(string userEmail, string userName, string? reason, string? culture = null);
-
     /// <summary>
     /// Survey invitation — operational (System category, always-send).
     /// <paramref name="answerToken"/> is the invite token; the URL is built by the renderer.

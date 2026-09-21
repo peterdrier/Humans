@@ -298,4 +298,20 @@
   <data name="Onboarding_ReviewReviewLink" xml:space="preserve"><value>Rivedi</value></data>
   <data name="Onboarding_ReviewSelectRowLabel" xml:space="preserve"><value>Seleziona {0}</value></data>
   <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>Vuoi davvero richiedere l'eliminazione dell'account? Puoi annullare prima della data di eliminazione.</value></data>
+  <data name="Onboarding_Email_SignupRejected_Subject" xml:space="preserve">
+    <value>Riguardo la Sua registrazione</value>
+  </data>
+  <data name="Onboarding_Email_SignupRejected_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Aggiornamento sulla registrazione&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;Grazie per il tuo interesse. Dopo un'attenta valutazione, ci dispiace informarti che non possiamo approvare la tua registrazione in questo momento.&lt;/p&gt;
+{1}
+&lt;p&gt;Se hai domande o desideri discutere questa decisione, contattaci a &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Cordiali saluti,&lt;br/&gt;Il team di Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment>
+  </data>
+  <data name="Onboarding_Email_ReasonLine" xml:space="preserve">
+    <value>&lt;p&gt;&lt;strong&gt;Motivo:&lt;/strong&gt; {0}&lt;/p&gt;</value>
+    <comment>{0} = reason text (HTML-encoded by caller)</comment>
+  </data>
 </root>

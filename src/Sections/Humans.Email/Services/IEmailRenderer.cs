@@ -22,11 +22,6 @@ internal interface IEmailRenderer
     EmailContent RenderApplicationSubmitted(Guid applicationId, string applicantName);
 
     /// <summary>
-    /// Signup rejected notification.
-    /// </summary>
-    EmailContent RenderSignupRejected(string userName, string? reason, string? culture = null);
-
-    /// <summary>
     /// Re-consent required notification (one or more documents).
     /// </summary>
     EmailContent RenderReConsentsRequired(string userName, IReadOnlyList<string> documentNames, string? culture = null);

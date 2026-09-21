@@ -66,13 +66,6 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
             "added_to_team", MessageCategory.TeamUpdates);
     }
 
-    public EmailMessage SignupRejected(string userEmail, string userName, string? reason, string? culture = null)
-    {
-        var content = renderer.RenderSignupRejected(userName, reason, culture);
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "signup_rejected", MessageCategory.System);
-    }
-
     public EmailMessage SurveyInvitation(
         string userEmail,
         string userName,

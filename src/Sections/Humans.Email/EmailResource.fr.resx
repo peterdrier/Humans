@@ -44,9 +44,6 @@
     <value>Nouvelle candidature d'adhésion : {0}</value>
     <comment>{0} = applicant name</comment>
   </data>
-  <data name="Email_SignupRejected_Subject" xml:space="preserve">
-    <value>Concernant votre inscription</value>
-  </data>
   <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve">
     <value>Action requise : {0} mis à jour</value>
     <comment>{0} = document name</comment>
@@ -94,15 +91,6 @@
 &lt;/ul&gt;
 &lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Examiner la demande&lt;/a&gt;&lt;/p&gt;</value>
     <comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment>
-  </data>
-  <data name="Email_SignupRejected_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Mise à jour de l'inscription&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Merci de votre intérêt. Après un examen attentif, nous avons le regret de vous informer que nous ne pouvons pas approuver votre inscription pour le moment.&lt;/p&gt;
-{1}
-&lt;p&gt;Si vous avez des questions ou souhaitez discuter de cette décision, contactez-nous à &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Cordialement,&lt;br/&gt;L'équipe Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment>
   </data>
   <data name="Email_ReConsentsRequired_Body" xml:space="preserve">
     <value>&lt;h2&gt;Mise à jour des documents légaux&lt;/h2&gt;

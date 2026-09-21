@@ -1,6 +1,7 @@
 using Humans.Base.Constants;
 using Humans.Issues.Contracts;
 using Humans.Base.Interfaces;
+using Humans.Email.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
 using Microsoft.Extensions.Configuration;
@@ -35,6 +36,11 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<OnboardingService>();
         services.AddScoped<IOnboardingService>(sp => sp.GetRequiredService<OnboardingService>());
         services.AddScoped<IOnboardingIntake>(sp => sp.GetRequiredService<OnboardingService>());
+
+        // Onboarding owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<OnboardingEmails>();
+        services.AddScoped<IEmailPreviewContributor, OnboardingEmailPreviews>();
 
         services.AddScoped<IOnboardingWidgetState, OnboardingWidgetState>();
         services.AddScoped<IOnboardingWidgetSessionState, HttpOnboardingWidgetSessionState>();

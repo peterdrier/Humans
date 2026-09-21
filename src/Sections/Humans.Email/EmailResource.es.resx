@@ -44,9 +44,6 @@
     <value>Nueva solicitud de membresía: {0}</value>
     <comment>{0} = applicant name</comment>
   </data>
-  <data name="Email_SignupRejected_Subject" xml:space="preserve">
-    <value>Acerca de su registro</value>
-  </data>
   <data name="Email_SurveyInvitation_Subject" xml:space="preserve">
     <value>Por favor, completa: {0}</value>
     <comment>{0} = survey title</comment>
@@ -102,15 +99,6 @@
 &lt;/ul&gt;
 &lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Revisar solicitud&lt;/a&gt;&lt;/p&gt;</value>
     <comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment>
-  </data>
-  <data name="Email_SignupRejected_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Actualización de registro&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Gracias por tu interés en unirte a nosotros. Tras una revisión cuidadosa, lamentamos informarte de que no podemos aprobar tu registro en este momento.&lt;/p&gt;
-{1}
-&lt;p&gt;Si tienes alguna pregunta o deseas comentar esta decisión, contáctanos en &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Un saludo,&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment>
   </data>
   <data name="Email_SurveyInvitation_Body" xml:space="preserve">
     <value>&lt;h2&gt;{1}&lt;/h2&gt;

@@ -44,9 +44,6 @@
     <value>Neuer Mitgliedschaftsantrag: {0}</value>
     <comment>{0} = applicant name</comment>
   </data>
-  <data name="Email_SignupRejected_Subject" xml:space="preserve">
-    <value>Bezüglich Ihrer Anmeldung</value>
-  </data>
   <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve">
     <value>Handlungsbedarf: Aktualisiertes Dokument {0}</value>
     <comment>{0} = document name</comment>
@@ -94,15 +91,6 @@
 &lt;/ul&gt;
 &lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Antrag prüfen&lt;/a&gt;&lt;/p&gt;</value>
     <comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment>
-  </data>
-  <data name="Email_SignupRejected_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Aktualisierung zur Anmeldung&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Vielen Dank für dein Interesse. Nach sorgfältiger Prüfung müssen wir dir leider mitteilen, dass wir deine Anmeldung derzeit nicht genehmigen können.&lt;/p&gt;
-{1}
-&lt;p&gt;Bei Fragen oder wenn du diese Entscheidung besprechen möchtest, kontaktiere uns unter &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Mit freundlichen Grüßen,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment>
   </data>
   <data name="Email_ReConsentsRequired_Body" xml:space="preserve">
     <value>&lt;h2&gt;Aktualisierung rechtlicher Dokumente&lt;/h2&gt;
