@@ -45,28 +45,6 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
             "account_deleted", DoNotPersist: true);
     }
 
-    public EmailMessage SurveyInvitation(
-        string userEmail,
-        string userName,
-        string surveyTitle,
-        string answerToken,
-        string? culture = null,
-        string? customSubject = null,
-        string? customMessage = null)
-    {
-        var content = renderer.RenderSurveyInvitation(
-            userName, surveyTitle, answerToken, culture, customSubject, customMessage);
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "survey_invitation", MessageCategory.System);
-    }
-
-    public EmailMessage SurveyReminder(string userEmail, string userName, string surveyTitle, string answerToken, string? culture = null)
-    {
-        var content = renderer.RenderSurveyReminder(userName, surveyTitle, answerToken, culture);
-        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "survey_reminder", MessageCategory.System);
-    }
-
     public EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null)
     {
         var content = renderer.RenderFacilitatedMessage(recipientName, senderName, messageText, includeContactInfo, senderEmail, culture);

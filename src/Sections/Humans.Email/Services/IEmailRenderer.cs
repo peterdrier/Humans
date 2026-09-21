@@ -47,21 +47,6 @@ internal interface IEmailRenderer
     EmailContent RenderAccountDeleted(string userName, string? culture = null);
 
     /// <summary>
-    /// Survey invitation — links to the tokenised answering wizard and optionally replaces the
-    /// standard localized subject/message with safely rendered author copy.
-    /// </summary>
-    EmailContent RenderSurveyInvitation(
-        string userName,
-        string surveyTitle,
-        string answerToken,
-        string? culture = null,
-        string? customSubject = null,
-        string? customMessage = null);
-
-    /// <summary>Survey reminder — single nudge for an unfinished invitation.</summary>
-    EmailContent RenderSurveyReminder(string userName, string surveyTitle, string answerToken, string? culture = null);
-
-    /// <summary>
     /// Facilitated message between volunteers.
     /// </summary>
     EmailContent RenderFacilitatedMessage(

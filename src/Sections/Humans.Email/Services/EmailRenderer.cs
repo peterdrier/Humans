@@ -58,40 +58,6 @@ internal sealed class EmailRenderer(
             L("Email_AccountDeleted_Subject"),
             Lf("Email_AccountDeleted_Body", HtmlEncode(userName))));
 
-    public EmailContent RenderSurveyInvitation(
-        string userName,
-        string surveyTitle,
-        string answerToken,
-        string? culture = null,
-        string? customSubject = null,
-        string? customMessage = null)
-        => RenderLocalized(culture, () =>
-        {
-            var subject = string.IsNullOrWhiteSpace(customSubject)
-                ? Lf("Email_SurveyInvitation_Subject", surveyTitle)
-                : customSubject.Trim();
-            var messageHtml = string.IsNullOrWhiteSpace(customMessage)
-                ? $"<p>{Lf("Email_SurveyInvitation_DefaultMessage", HtmlEncode(surveyTitle))}</p>"
-                : SanitizedMarkdownRenderer.Render(customMessage.Trim());
-
-            return new EmailContent(
-                subject,
-                Lf(
-                    "Email_SurveyInvitation_Body",
-                    HtmlEncode(userName),
-                    HtmlEncode(surveyTitle),
-                    BuildSurveyAnswerUrl(answerToken),
-                    messageHtml));
-        });
-
-    public EmailContent RenderSurveyReminder(string userName, string surveyTitle, string answerToken, string? culture = null)
-        => RenderLocalized(culture, () => new EmailContent(
-            Lf("Email_SurveyReminder_Subject", surveyTitle),
-            Lf("Email_SurveyReminder_Body", HtmlEncode(userName), HtmlEncode(surveyTitle), BuildSurveyAnswerUrl(answerToken))));
-
-    private string BuildSurveyAnswerUrl(string token)
-        => $"{_settings.BaseUrl.TrimEnd('/')}/Survey/Answer?t={Uri.EscapeDataString(token)}";
-
     public EmailContent RenderFacilitatedMessage(
         string recipientName,
         string senderName,

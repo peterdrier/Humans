@@ -27,23 +27,6 @@ public interface IEmailMessageFactory
     /// <summary>Account deleted confirmation (always-send).</summary>
     EmailMessage AccountDeleted(string userEmail, string userName, string? culture = null);
 
-    /// <summary>
-    /// Survey invitation — operational (System category, always-send).
-    /// <paramref name="answerToken"/> is the invite token; the URL is built by the renderer.
-    /// Blank custom copy retains the standard localized wording.
-    /// </summary>
-    EmailMessage SurveyInvitation(
-        string userEmail,
-        string userName,
-        string surveyTitle,
-        string answerToken,
-        string? culture = null,
-        string? customSubject = null,
-        string? customMessage = null);
-
-    /// <summary>Survey reminder — single nudge for an unfinished invitation (System category).</summary>
-    EmailMessage SurveyReminder(string userEmail, string userName, string surveyTitle, string answerToken, string? culture = null);
-
     /// <summary>Facilitated volunteer-to-volunteer message (FacilitatedMessages); reply-to is the sender when contact info is shared.</summary>
     EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null);
 

@@ -1,5 +1,6 @@
 using Humans.Users.Contracts;
 using Humans.Base.Interfaces;
+using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Hosting;
 using Humans.Surveys.Authorization;
@@ -42,6 +43,11 @@ public sealed class Section : ISection
         services.AddScoped<ISurveyPreviewEmailService, SurveyPreviewEmailService>();
 
         services.AddScoped<SendSurveyReminderJob>();
+
+        // Surveys owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<SurveysEmails>();
+        services.AddScoped<IEmailPreviewContributor, SurveysEmailPreviews>();
 
         services.AddSingleton<IAuthorizationHandler, SurveyAuthorizationHandler>();
     }

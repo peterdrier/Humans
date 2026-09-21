@@ -21,7 +21,7 @@ internal sealed class SurveyPreviewEmailService(
     IUserEmailService userEmailService,
     IUserServiceRead userService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    SurveysEmails emailMessages,
     IEmailPreviewServiceRead emailPreviews,
     SurveyPreviewTokenProvider previewTokens,
     ILogger<SurveyPreviewEmailService> logger) : ISurveyPreviewEmailService

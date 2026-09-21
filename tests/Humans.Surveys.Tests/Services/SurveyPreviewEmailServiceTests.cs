@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Services;
+using Humans.Surveys.Tests.Infrastructure;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -22,7 +23,7 @@ public sealed class SurveyPreviewEmailServiceTests
         var userEmails = Substitute.For<IUserEmailService>();
         var users = Substitute.For<IUserServiceRead>();
         var emailService = Substitute.For<IEmailService>();
-        var messages = Substitute.For<IEmailMessageFactory>();
+        var messages = TestSurveysEmails.Create();
         var emailPreviews = Substitute.For<IEmailPreviewServiceRead>();
         var previewTokens = new SurveyPreviewTokenProvider(
             DataProtectionProvider.Create("survey-preview-page-tests"));
@@ -41,17 +42,9 @@ public sealed class SurveyPreviewEmailServiceTests
                 userId, "Tester", false, "en", null, Instant.FromUnixTimeSeconds(0),
                 null, null, null, null, null, false, false, null, null, null,
                 null, null, null, [], [], [], null, []));
-        var rendered = new EmailMessage(
-            "tester@example.com", "Tester", "Choose our gathering dates",
-            "<h2>Volunteer survey</h2><p>Tell us which weekends work for you.</p>",
-            "survey_invitation", MessageCategory.System);
-        messages.SurveyInvitation(
-                "tester@example.com", "Tester", "Volunteer survey", Arg.Any<string>(), "en",
-                "Choose our gathering dates", "Tell us which weekends work for you.")
-            .Returns(rendered);
         var wrapped = new RenderedEmailPreview(
             "tester@example.com", "Choose our gathering dates", "<html>Branded preview</html>");
-        emailPreviews.RenderSystemMessage(rendered).Returns(wrapped);
+        emailPreviews.RenderSystemMessage(Arg.Any<EmailMessage>()).Returns(wrapped);
         var sut = new SurveyPreviewEmailService(
             surveys, userEmails, users, emailService, messages, emailPreviews, previewTokens,
             NullLogger<SurveyPreviewEmailService>.Instance);
@@ -60,7 +53,11 @@ public sealed class SurveyPreviewEmailServiceTests
             surveyId, userId, Xunit.TestContext.Current.CancellationToken);
 
         preview.Should().Be(wrapped);
-        emailPreviews.Received(1).RenderSystemMessage(rendered);
+        emailPreviews.Received(1).RenderSystemMessage(Arg.Is<EmailMessage>(m =>
+            m.TemplateName == "survey_invitation"
+            && m.RecipientEmail == "tester@example.com"
+            && m.Subject == "Choose our gathering dates"
+            && m.HtmlBody.Contains("Tell us which weekends work for you.", StringComparison.Ordinal)));
         await emailService.DidNotReceive().SendAsync(
             Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
@@ -74,7 +71,7 @@ public sealed class SurveyPreviewEmailServiceTests
         var userEmails = Substitute.For<IUserEmailService>();
         var users = Substitute.For<IUserServiceRead>();
         var emailService = Substitute.For<IEmailService>();
-        var messages = Substitute.For<IEmailMessageFactory>();
+        var messages = TestSurveysEmails.Create();
         var emailPreviews = Substitute.For<IEmailPreviewServiceRead>();
         var previewTokens = new SurveyPreviewTokenProvider(
             DataProtectionProvider.Create("survey-preview-email-tests"));
@@ -94,19 +91,6 @@ public sealed class SurveyPreviewEmailServiceTests
                 userId, "Tester", false, "fr", null, Instant.FromUnixTimeSeconds(0),
                 null, null, null, null, null, false, false, null, null, null,
                 null, null, null, [], [], [], null, []));
-        string? capturedToken = null;
-        var rendered = new EmailMessage(
-            "tester@example.com", string.Empty, "Survey", "<p>Body</p>",
-            "survey_invitation", MessageCategory.System);
-        messages.SurveyInvitation(
-                "tester@example.com",
-                "Tester",
-                "Volunteer survey",
-                Arg.Do<string>(token => capturedToken = token),
-                "fr",
-                "Choose our gathering dates",
-                "Tell us which weekends work for you.")
-            .Returns(rendered);
         var sut = new SurveyPreviewEmailService(
             surveys,
             userEmails,
@@ -121,9 +105,15 @@ public sealed class SurveyPreviewEmailServiceTests
             surveyId, userId, Xunit.TestContext.Current.CancellationToken);
 
         destination.Should().Be("tester@example.com");
-        capturedToken.Should().NotBeNull();
-        previewTokens.Resolve(capturedToken!).Should().Be(new SurveyPreviewLink(surveyId, "fr"));
-        await emailService.Received(1).SendAsync(rendered, Arg.Any<CancellationToken>());
+        // The token now travels inside the built body's answer link, so read it back from there.
+        var sent = emailService.ReceivedCalls()
+            .Single(c => string.Equals(c.GetMethodInfo().Name, nameof(IEmailService.SendAsync), StringComparison.Ordinal))
+            .GetArguments()[0] as EmailMessage;
+        sent!.TemplateName.Should().Be("survey_invitation");
+        sent.Subject.Should().Be("Choose our gathering dates");
+        var capturedToken = Uri.UnescapeDataString(AnswerToken(sent.HtmlBody));
+        capturedToken.Should().NotBeEmpty();
+        previewTokens.Resolve(capturedToken).Should().Be(new SurveyPreviewLink(surveyId, "fr"));
         await surveys.Received(1).GetForEditAsync(surveyId, Arg.Any<CancellationToken>());
         await surveys.DidNotReceive().SendInvitesAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -141,7 +131,7 @@ public sealed class SurveyPreviewEmailServiceTests
         var userEmails = Substitute.For<IUserEmailService>();
         var users = Substitute.For<IUserServiceRead>();
         var emailService = Substitute.For<IEmailService>();
-        var messages = Substitute.For<IEmailMessageFactory>();
+        var messages = TestSurveysEmails.Create();
         var emailPreviews = Substitute.For<IEmailPreviewServiceRead>();
         var previewTokens = new SurveyPreviewTokenProvider(
             DataProtectionProvider.Create("survey-preview-language-fallback-tests"));
@@ -169,16 +159,9 @@ public sealed class SurveyPreviewEmailServiceTests
                 userId, "Tester", false, "fr", null, Instant.FromUnixTimeSeconds(0),
                 null, null, null, null, null, false, false, null, null, null,
                 null, null, null, [], [], [], null, []));
-        var rendered = new EmailMessage(
-            "tester@example.com", "Tester", "Standard French subject", "<p>Standard French body</p>",
-            "survey_invitation", MessageCategory.System);
-        messages.SurveyInvitation(
-                "tester@example.com", "Tester", "Volunteer survey", Arg.Any<string>(), "fr",
-                string.Empty, string.Empty)
-            .Returns(rendered);
-        emailPreviews.RenderSystemMessage(rendered)
-            .Returns(new RenderedEmailPreview(
-                "tester@example.com", rendered.Subject, rendered.HtmlBody));
+        emailPreviews.RenderSystemMessage(Arg.Any<EmailMessage>())
+            .Returns(call => new RenderedEmailPreview(
+                "tester@example.com", call.Arg<EmailMessage>().Subject, call.Arg<EmailMessage>().HtmlBody));
         var sut = new SurveyPreviewEmailService(
             surveys, userEmails, users, emailService, messages, emailPreviews, previewTokens,
             NullLogger<SurveyPreviewEmailService>.Instance);
@@ -186,9 +169,19 @@ public sealed class SurveyPreviewEmailServiceTests
         await sut.PreviewForUserAsync(
             surveyId, userId, Xunit.TestContext.Current.CancellationToken);
 
-        messages.Received(1).SurveyInvitation(
-            "tester@example.com", "Tester", "Volunteer survey", Arg.Any<string>(), "fr",
-            string.Empty, string.Empty);
+        // The survey's copy exists only in es, so the fr preview falls back to the
+        // standard localized wording rather than borrowing the Spanish subject.
+        emailPreviews.Received(1).RenderSystemMessage(Arg.Is<EmailMessage>(m =>
+            m.Subject == "Please complete: Volunteer survey"));
+    }
+
+    /// <summary>The <c>t=</c> value out of the answer link the builder wrote into the body.</summary>
+    private static string AnswerToken(string htmlBody)
+    {
+        const string marker = "/Survey/Answer?t=";
+        var start = htmlBody.IndexOf(marker, StringComparison.Ordinal) + marker.Length;
+        var end = htmlBody.IndexOf('"', start);
+        return htmlBody[start..end];
     }
 
     private static LocalizedText Text(string en) =>

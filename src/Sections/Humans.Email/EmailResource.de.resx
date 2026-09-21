@@ -209,19 +209,6 @@
   <data name="Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
     <value>&lt;p&gt;Liebe/r {0},&lt;/p&gt;&lt;p&gt;Eine Nachricht vom Koordinator von &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Zur Info, deine Schichten in den kommenden Dienstpl&#xE4;nen dieses Teams:&lt;/p&gt;{4}&lt;p&gt;Danke,&lt;/p&gt;{5}</value>
   </data>
-  <data name="Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-{3}
-&lt;p&gt;&lt;a href="{2}"&gt;Umfrage öffnen&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Vielen Dank,&lt;br/&gt;Das Nobodies Collective&lt;/p&gt;</value></data>
-  <data name="Email_SurveyInvitation_Subject" xml:space="preserve"><value>Bitte ausfüllen: {0}</value></data>
-  <data name="Email_SurveyInvitation_DefaultMessage" xml:space="preserve"><value>du bist eingeladen, die Umfrage &lt;strong&gt;{0}&lt;/strong&gt; auszufüllen. Es dauert nur ein paar Minuten.</value></data>
-  <data name="Email_SurveyReminder_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;nur eine Erinnerung, dass die Umfrage &lt;strong&gt;{1}&lt;/strong&gt; noch auf deine Antwort wartet.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}"&gt;Umfrage öffnen&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Vielen Dank,&lt;br/&gt;Das Nobodies Collective&lt;/p&gt;</value></data>
-  <data name="Email_SurveyReminder_Subject" xml:space="preserve"><value>Erinnerung: {0}</value></data>
 
   <!-- ======================== -->
   <!-- Workgroup notice         -->

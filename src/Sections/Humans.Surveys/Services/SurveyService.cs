@@ -32,7 +32,7 @@ internal sealed class SurveyService(
     IShiftView shiftView,
     IUserEmailService userEmailService,
     IEmailService emailService,
-    IEmailMessageFactory emailMessages,
+    SurveysEmails emailMessages,
     ISurveyInviteTokenProvider tokenProvider,
     IGoogleTranslationService translation,
     IFileStorage fileStorage) : ISurveyService, ISurveyReminderSender, IUserDataContributor, IUserMerge

@@ -18,6 +18,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 using Humans.Surveys.Contracts;
+using Humans.Surveys.Tests.Infrastructure;
 
 namespace Humans.Surveys.Tests.Services;
 
@@ -37,7 +38,9 @@ public class SurveyServiceTests
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    // SurveysEmails is sealed with no interface, so the assertions below read the
+    // EmailMessage it built off IEmailService.SendAsync rather than mocking the builder.
+    private readonly SurveysEmails _emailMessages = TestSurveysEmails.Create();
     private readonly ISurveyInviteTokenProvider _tokenProvider = Substitute.For<ISurveyInviteTokenProvider>();
     private readonly IGoogleTranslationService _translation = Substitute.For<IGoogleTranslationService>();
     private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
@@ -1248,14 +1251,16 @@ public class SurveyServiceTests
         await CreateService().SendInvitesAsync(
             survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).SurveyInvitation(
-            "human@example.org",
-            "Étincelle",
-            "Disponibilités",
-            Arg.Any<string>(),
-            "fr",
-            "Choisissez une date",
-            "Dites-nous ce qui vous convient.");
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m =>
+                m.TemplateName == "survey_invitation"
+                && m.RecipientEmail == "human@example.org"
+                && m.RecipientName == "Étincelle"
+                // The survey's own French copy, not the standard localized wording.
+                && m.Subject == "Choisissez une date"
+                && m.HtmlBody.Contains("Dites-nous ce qui vous convient.", StringComparison.Ordinal)
+                && m.HtmlBody.Contains("Disponibilit", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1293,14 +1298,13 @@ public class SurveyServiceTests
         await CreateService().SendInvitesAsync(
             survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        _emailMessages.Received(1).SurveyInvitation(
-            "human@example.org",
-            "Étincelle",
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            "fr",
-            string.Empty,
-            string.Empty);
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m =>
+                m.TemplateName == "survey_invitation"
+                && m.RecipientEmail == "human@example.org"
+                // Blank custom copy for fr, so the standard localized wording stands.
+                && m.Subject.StartsWith("Please complete:", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1402,7 +1406,12 @@ public class SurveyServiceTests
 
         count.Should().Be(1);
         await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
-        _emailMessages.Received(1).SurveyReminder("u@example.org", "Sparkle", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m =>
+                m.TemplateName == "survey_reminder"
+                && m.RecipientEmail == "u@example.org"
+                && m.RecipientName == "Sparkle"),
+            Arg.Any<CancellationToken>());
         await _repo.Received(1).SetReminderSentAsync(inv.Id, now, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             AuditAction.SurveyReminderSent, "Survey", Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),

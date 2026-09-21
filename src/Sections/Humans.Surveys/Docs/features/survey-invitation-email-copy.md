@@ -43,12 +43,12 @@ The empty-object default is the backward-compatible representation for existing 
 
 ## Email contract and rendering
 
-The existing `IEmailMessageFactory.SurveyInvitation` method remains the typed cross-section seam. It
-accepts optional custom subject/message values after its existing arguments and forwards them to the
-existing `survey_invitation` renderer. No new email type, transport path, template key, category, or
+`SurveysEmails.SurveyInvitation` is the seam (it was `IEmailMessageFactory.SurveyInvitation` until
+Surveys took its own templates, peterdrier/Humans#1651). It accepts optional custom subject/message
+values after its existing arguments. No new email type, transport path, template key, category, or
 service is introduced.
 
-The renderer trims custom copy, passes the message through Base's canonical sanitized-Markdown renderer
+The builder trims custom copy, passes the message through Base's canonical sanitized-Markdown renderer
 with images disabled, and retains the existing generated survey URL. The same renderer supplies both
 preview and delivered emails. A blank custom value selects the standard localized resource text.
 

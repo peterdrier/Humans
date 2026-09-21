@@ -47,7 +47,7 @@ enumeration, display-name stitching in results / export), `ITicketServiceRead`
 `SurveyAudienceType.TicketHolders`), `IShiftView` (audience resolution —
 shift participants for `SurveyAudienceType.ShiftParticipants`),
 `IUserEmailService` (notification email per invitee), `IEmailService` (outbox
-enqueue), `IEmailMessageFactory` (invite and reminder templates),
+enqueue), the section's own `SurveysEmails` builder (invite and reminder templates),
 `ISurveyInviteTokenProvider` (section-local, data-protection invite tokens),
 `IGoogleTranslationService` (Cloud Translation pre-fill for admin translation
 helper), `IAuditLogService`, `IFileStorage` (Information-block images under
@@ -73,8 +73,8 @@ side-effect-free survey invitation preview to the requesting Board/Admin
 user, reusing the production invitation template/transport but creating no
 invitation, response, or funnel row. Calls `ISurveyService` (own section,
 for the survey content), `IUserEmailService` / `IUserServiceRead` (Users),
-`IEmailService` / `IEmailMessageFactory` / `IEmailPreviewServiceRead` (Email
-— all via public service interfaces), plus `SurveyPreviewTokenProvider`
+`IEmailService` / `IEmailPreviewServiceRead` (Email — both via public service
+interfaces) plus the section's own `SurveysEmails`, and `SurveyPreviewTokenProvider`
 (local, HMAC preview tokens).
 
 ### SurveyBranchingEvaluator / SurveyWizardFlow
@@ -84,6 +84,19 @@ validates and evaluates `ShowIf` branching conditions; `SurveyWizardFlow` drives
 the multi-page wizard navigation (visible-page resolution, required-answer
 validation).
 
+### SurveysEmails (Scoped, internal)
+
+No repository. Pure builder — reads `SurveysResource` (via
+`IStringLocalizer<SurveysResource>`) and `EmailSettings`, writes nothing.
+Returns `EmailMessage` values for `SurveyService` and
+`SurveyPreviewEmailService` to pass to `IEmailService.SendAsync`. It owns the
+absolute `/Survey/Answer?t=` link and the sanitized-Markdown pass over an
+author's custom invitation copy. No DB access, no cache.
+
+### SurveysEmailPreviews (Scoped)
+
+No repository. Read-only gallery contributor (`IEmailPreviewContributor`) —
+builds one sample per template via `SurveysEmails` for `/Email/EmailPreview`.
+No DB access, no cache.
+
 ---
-
-
