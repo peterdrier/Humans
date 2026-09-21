@@ -1,10 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Settings' cross-section surface as its own leaf project: consuming sections
-    (Humans.Email's outbox pause flag, Humans.Monitor's last-run stamp) reference
-    the leaf without referencing the section (design §15.5b). References
-    Humans.Base only — the bottom of the graph.
+    Settings' cross-section surface as its own leaf project: a consuming section
+    references the leaf without referencing the section (design §15.5b).
+    References Humans.Base only — the bottom of the graph.
   -->
 
   <ItemGroup>

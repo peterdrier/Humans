@@ -108,6 +108,25 @@ public sealed class SettingsAdminControllerTests
     }
 
     [HumansFact]
+    public async Task Index_Post_WithNoIdentifiableActor_ChallengesAndSavesNothing()
+    {
+        // Every save is audited by actor, so a principal carrying no usable id is
+        // challenged rather than saved anonymously.
+        var http = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) };
+        var sut = new SettingsAdminController(_settings, _users)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+        };
+
+        var result = await sut.Index(
+            MakeForm(Guid.NewGuid(), isActive: false), TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ChallengeResult>();
+        await _settings.DidNotReceiveWithAnyArgs().SaveEventSettingsAsync(default!, default, default);
+    }
+
+    [HumansFact]
     public async Task Index_Post_SavesWithTheAuthenticatedActor()
     {
         // The controller resolves the actor from the claims principal — no separate

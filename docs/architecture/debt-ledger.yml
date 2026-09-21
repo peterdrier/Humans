@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 63
+next_id: 65
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -318,6 +318,14 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
+  - added: 2026-09-21
+    id: CENTRAL-63
+    what: "docs/architecture/design-rules.md §8 still describes the pre-cutover Settings world: it says settings_event 'has no readers yet', that every section reads the app-wide values off the Shifts-owned event_settings row via IBurnSettingsService, and that the table is populated by an operator screen at /Settings/Admin/Carry. The cutover (nobodies-collective/Humans#1630, nobodies-collective/Humans#1631) repointed every reader at settings_event, deleted the carry screen and made /Settings/Admin POST-only. The same paragraph's key list also omits Workgroups:RootDriveFolderId, the third system_settings key. Central regulations, not a section file (/section-doctor on Settings 2026-09-21)."
+    review: light
+  - added: 2026-09-21
+    id: CENTRAL-64
+    what: "docs/architecture/service-data-access-map.md's table-ownership table carries the same stale Settings claim as CENTRAL-63: 'settings_event has no consumers yet — it is populated by /Settings/Admin/Carry and read by nothing until the sections are pointed at it'. Both halves are false since nobodies-collective/Humans#1630 and nobodies-collective/Humans#1631. The row above it, 'EventSettings | Shifts | ShiftRepository', is now the Shifts-local knobs row only and reads as if it were still the app-wide one. Central doc, not a section file (/section-doctor on Settings 2026-09-21)."
+    review: light
   - added: 2026-09-18
     id: CENTRAL-55
     what: "docs/guide/Glossary.md has no entry for assembly vote, the Governance lane that landed 2026-09-14 (peterdrier/Humans#1649), so the guide's own vocabulary page omits a term the Governance guide page now uses throughout. The file is shared guide input rather than section-owned (/section-doctor on Governance 2026-09-18)."
@@ -344,11 +352,6 @@ inbox:
   - added: 2026-08-28
     id: CENTRAL-32
     what: "docs/architecture/freshness-catalog.yml has no Settings entry — add one covering src/Sections/Humans.Settings/** and src/Sections/Humans.Settings.Contracts/** (finding 14, /section-doctor on Settings 2026-08-28). Merged 2026-09-20: a verbatim duplicate of this item (added 2026-09-06) was removed from this inbox."
-    review: light
-    root: CENTRAL-57
-  - added: 2026-08-28
-    id: CENTRAL-33
-    what: "docs/architecture/dependency-graph.md predates the Monitor carve-out — DriveMon is still styled :::google and there is no Monitor section (finding 20, /section-doctor on Settings 2026-08-28). Merged 2026-09-20: a verbatim duplicate of this item (added 2026-09-05) was removed from this inbox."
     review: light
     root: CENTRAL-57
   - added: 2026-08-27
@@ -540,10 +543,6 @@ inbox:
   - added: 2026-09-11
     id: CENTRAL-46
     what: "docs/scripts/freshness-checks/dependency-graph.sh uses awk's asorti, which mawk (the container's awk) does not define: the script dies at line 91 and then reports PASS with \"all 0 section/Web service classes appear as Mermaid nodes\" — a vacuous pass that hides every missing node. Found when a Codex finding cited the check's output on peterdrier/Humans#1649 and it could not be reproduced."
-    review: light
-  - added: 2026-09-14
-    id: CENTRAL-49
-    what: "Login_Hello in src/Humans.Base/Resources/SharedResource.resx and its five culture variants is named in no view, controller or tag helper — only in the six resx files. The five keys a scan flagged alongside it (CompleteSignup_AllFieldsRequired, GateLogin_Invalid, GateLogin_Throttled, Login_Login, Login_Logout) are live; do not remove those. Base's set, so Base's run (finding 33, /section-doctor on Auth 2026-09-01; swept in by /section-doctor on Issues 2026-09-14)."
     review: light
   - added: 2026-09-14
     id: CENTRAL-50

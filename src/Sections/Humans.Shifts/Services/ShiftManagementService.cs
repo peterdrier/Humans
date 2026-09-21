@@ -895,7 +895,6 @@ internal sealed class ShiftManagementService(
         var includeAdminOnly = query.Flags.HasFlag(ShiftBrowseQueryFlags.IncludeAdminOnly);
         var includeSignups = query.Flags.HasFlag(ShiftBrowseQueryFlags.IncludeSignups);
         var includeHidden = query.Flags.HasFlag(ShiftBrowseQueryFlags.IncludeHidden);
-        var priorityOnly = query.Flags.HasFlag(ShiftBrowseQueryFlags.PriorityOnly);
 
         var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(query.DepartmentId);
 
@@ -911,19 +910,6 @@ internal sealed class ShiftManagementService(
             fromOffset,
             toOffset,
             flags));
-
-        // priorityOnly: rota is Important/Essential OR any sibling shift is understaffed (rota-wide test).
-        if (priorityOnly)
-        {
-            var priorityRotaIds = shifts
-                .GroupBy(s => s.RotaId)
-                .Where(g =>
-                    g.First().Rota.Priority is ShiftPriority.Important or ShiftPriority.Essential ||
-                    g.Any(s => s.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed) < s.MinVolunteers))
-                .Select(g => g.Key)
-                .ToHashSet();
-            shifts = shifts.Where(s => priorityRotaIds.Contains(s.RotaId)).ToList();
-        }
 
         // Cross-domain lookups via services.
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();

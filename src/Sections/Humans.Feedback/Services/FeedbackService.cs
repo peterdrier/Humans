@@ -176,8 +176,6 @@ internal sealed class FeedbackService(
     private async Task SendAdminResponseEmailAsync(
         FeedbackReport report, string content, CancellationToken ct)
     {
-        var reportLink = $"/Feedback/{report.Id}";
-
         var reporter = await userService.GetUserInfoAsync(report.UserId, ct);
         var emails = await userEmailService.GetNotificationTargetEmailsAsync(
             [report.UserId], ct);
@@ -187,7 +185,7 @@ internal sealed class FeedbackService(
         {
             await emailService.SendAsync(emailMessages.FeedbackResponse(
                 recipientEmail, reporter.BurnerName,
-                report.Description, content, reportLink,
+                report.Description, content,
                 reporter.PreferredLanguage), ct);
         }
         else

@@ -18,7 +18,7 @@ internal static class TestFeedbackEmails
     private static readonly Dictionary<string, string> Formats = new(StringComparer.Ordinal)
     {
         ["Feedback_Email_FeedbackResponse_Body"] =
-            "<p>Hi {0},</p><blockquote>{1}</blockquote>{2}<p><a href=\"{3}\">Open the report</a></p>",
+            "<p>Hi {0},</p><blockquote>{1}</blockquote>{2}",
     };
 
     public static FeedbackEmails Create()

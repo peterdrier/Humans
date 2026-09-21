@@ -22,7 +22,7 @@ public sealed class FeedbackEmailsTests
     [HumansFact]
     public void FeedbackResponse_StampsSystem()
     {
-        var msg = Create().FeedbackResponse("a@x.com", "Alice", "It broke", "Fixed.", "/Feedback/12", "en");
+        var msg = Create().FeedbackResponse("a@x.com", "Alice", "It broke", "Fixed.", "en");
 
         msg.RecipientEmail.Should().Be("a@x.com");
         msg.RecipientName.Should().Be("Alice");
@@ -39,7 +39,6 @@ public sealed class FeedbackEmailsTests
             "Daniel <Admin>",
             "The <b>lights</b> were off",
             "**Fixed.**\r\n\r\n[Details](https://example.com)\r\n\r\n![Shot](https://example.com/shot.png)\r\n<script>alert('x')</script>",
-            "/Feedback/12",
             "en");
 
         msg.HtmlBody.Should().Contain("Daniel &lt;Admin&gt;");

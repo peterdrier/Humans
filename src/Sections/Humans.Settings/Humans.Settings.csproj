@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <!--
-    Sdk.Razor, not plain Sdk: the section owns /Settings/Admin — controllers and their
-    views — so it is an MVC application part. Section discovery still keys off
+    Sdk.Razor, not plain Sdk: the section owns the /Settings page, its view components
+    and their views — so it is an MVC application part. Section discovery still keys off
     Section.cs : ISection (design §15 step 1).
   -->
 

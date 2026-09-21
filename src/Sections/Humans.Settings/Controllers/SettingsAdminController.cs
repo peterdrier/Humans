@@ -9,7 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Settings.Controllers;
 
 /// <summary>
-/// The app-wide event settings screen (#1104). Lives at <c>/Settings/Admin</c>,
+/// The app-wide event settings POST endpoint (nobodies-collective/Humans#1104).
+/// Lives at <c>/Settings/Admin</c>,
 /// not <c>/Admin/Settings</c> — top-level <c>/Admin/*</c> is frozen
 /// (memory/architecture/no-admin-url-section.md).
 /// </summary>
@@ -53,7 +54,8 @@ internal sealed class SettingsAdminController(
         }
 
         SetSuccess("Event settings saved.");
-        // By id, not bare: deactivating the row takes it off the default GET.
+        // By id, not bare: the /Settings#event tab defaults to the active row, so a
+        // row just deactivated is only reachable by naming its id.
         return Redirect($"/Settings?event={parsed.Settings!.Id}#event");
     }
 

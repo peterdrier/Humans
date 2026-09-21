@@ -687,6 +687,61 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
+    public async Task UpdateGrantEmailStatusAsync_updates_only_the_target_grants_delivery_state()
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(["STATUS-CODE"]);
+        var grant = new CampaignGrant
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaign.Id,
+            CampaignCodeId = (await CampaignsDb.CampaignCodes.SingleAsync(Xunit.TestContext.Current.CancellationToken)).Id,
+            UserId = SeedUser(displayName: "Recipient").Id,
+            AssignedAt = Clock.GetCurrentInstant()
+        };
+        await CampaignsDb.CampaignGrants.AddAsync(grant, Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        Clock.AdvanceHours(1);
+
+        (await _service.UpdateGrantEmailStatusAsync(
+            grant.Id, EmailOutboxStatus.Sent, Clock.GetCurrentInstant(),
+            Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+
+        ClearAllTrackers();
+        var persisted = await CampaignsDb.CampaignGrants.SingleAsync(item => item.Id == grant.Id,
+            Xunit.TestContext.Current.CancellationToken);
+        persisted.LatestEmailStatus.Should().Be(EmailOutboxStatus.Sent);
+        persisted.LatestEmailAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    [HumansFact]
+    public async Task GetCodeTrackingAsync_combines_grant_status_with_recipient_display_data()
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(["TRACK-CODE"]);
+        var recipient = SeedUser(displayName: "Tracker");
+        var code = await CampaignsDb.CampaignCodes.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var redeemedAt = Clock.GetCurrentInstant();
+        await CampaignsDb.CampaignGrants.AddAsync(new CampaignGrant
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaign.Id,
+            CampaignCodeId = code.Id,
+            UserId = recipient.Id,
+            AssignedAt = redeemedAt,
+            RedeemedAt = redeemedAt,
+            LatestEmailStatus = EmailOutboxStatus.Sent
+        }, Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var tracking = await _service.GetCodeTrackingAsync(Xunit.TestContext.Current.CancellationToken);
+
+        tracking.Campaigns.Should().ContainSingle(summary =>
+            summary.CampaignId == campaign.Id && summary.TotalGrants == 1 && summary.Redeemed == 1);
+        tracking.Grants.Should().ContainSingle(grant =>
+            grant.CampaignId == campaign.Id && grant.RecipientName == "Tracker" &&
+            grant.Code == "TRACK-CODE" && grant.RedeemedAt == redeemedAt && grant.LatestEmailStatus == "Sent");
+    }
+
+    [HumansFact]
     public async Task EraseForUserAsync_DeletesOnlyThatUsersGrants()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["ERASE-1", "ERASE-2"]);

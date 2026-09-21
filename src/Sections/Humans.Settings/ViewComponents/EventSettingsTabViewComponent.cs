@@ -7,13 +7,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Settings.ViewComponents;
 
 /// <summary>
-/// The /Settings#event tab (peterdrier/Humans#1628): wraps the existing
-/// /Settings/Admin form. <see cref="SectionSettings"/> contributes the tab with no
-/// policy, so every authenticated member reaches it; this component decides
+/// The /Settings#event tab (peterdrier/Humans#1628): wraps the section's own
+/// <c>_EventSettingsForm</c> partial. <see cref="SectionSettings"/> contributes the tab
+/// with no policy, so every authenticated member reaches it; this component decides
 /// editable vs read-only per viewer against <see cref="PolicyNames.AdminOnly"/>.
-/// An admin viewer may also name a specific row via <c>?event={id}</c> — the
-/// redirect target for links that used to carry an id to <c>/Settings/Admin</c>
-/// (e.g. a save that deactivates a row).
+/// An admin viewer may also name a specific row via <c>?event={id}</c> — the save
+/// redirect carries the id so the row just saved stays the one displayed.
 /// A non-admin always gets the active row regardless of the query string.
 /// </summary>
 internal sealed class EventSettingsTabViewComponent(
@@ -44,7 +43,7 @@ internal sealed class EventSettingsTabViewComponent(
 
 /// <summary>
 /// What the tab's view needs: the active event's values (already mapped onto the
-/// same form model <c>/Settings/Admin</c> uses, so <c>_EventSettingsForm</c> renders
-/// unchanged), and whether this viewer may edit them.
+/// same form model <c>/Settings/Admin</c> binds on POST, so <c>_EventSettingsForm</c>
+/// renders unchanged), and whether this viewer may edit them.
 /// </summary>
 internal sealed record EventSettingsTabViewModel(EventSettingsViewModel? Settings, bool CanEdit);

@@ -220,13 +220,20 @@ public class GdprServiceTests
     public async Task ExportForUserAsync_PropagatesContributorFailure()
     {
         var boom = new InvalidOperationException("boom");
+        var logger = new CapturingLogger<GdprService>();
         var service = CreateService(
+            users: null,
+            logger,
             new FakeContributor("Profile", new { A = 1 }),
             new FakeContributor("Applications", boom));
 
         var act = async () => await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+        logger.Entries.Should().Contain(entry =>
+            entry.Level == LogLevel.Error &&
+            entry.Message.Contains("export contributor") &&
+            entry.Message.Contains("FakeContributor"));
     }
 
     [HumansFact]
@@ -358,13 +365,18 @@ public class GdprServiceTests
         // orchestrator's, and nothing here observes it.
         var boom = new RecordingContributor("Issues") { Throw = new InvalidOperationException("boom") };
         var account = new RecordingContributor("Account") { ErasesLast = true };
-        var service = CreateService(boom, account);
+        var logger = new CapturingLogger<GdprService>();
+        var service = CreateService(users: null, logger, boom, account);
 
         var act = async () => await service.EraseForUserAsync(
             Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
         account.ErasedIds.Should().BeEmpty();
+        logger.Entries.Should().Contain(entry =>
+            entry.Level == LogLevel.Error &&
+            entry.Message.Contains("erasure contributor") &&
+            entry.Message.Contains("RecordingContributor"));
     }
 
     private sealed class RecordingContributor(string section, List<string>? order = null) : IUserDataContributor

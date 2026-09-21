@@ -23,7 +23,7 @@ internal sealed class FeedbackEmailPreviews(FeedbackEmails emails) : IEmailPrevi
         return
         [
             new EmailPreviewSample("feedback-response", "Feedback Response",
-                emails.FeedbackResponse(email, name, SampleDescription, SampleResponse, "/Feedback/1", culture)),
+                emails.FeedbackResponse(email, name, SampleDescription, SampleResponse, culture)),
         ];
     }
 }

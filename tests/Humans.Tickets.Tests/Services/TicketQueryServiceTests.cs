@@ -73,6 +73,64 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
+    public async Task EraseForUserAsync_scrubs_ticket_and_transfer_data_then_drops_the_warmed_projection()
+    {
+        var userId = Guid.NewGuid();
+
+        await _service.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await _transferRepo.Received(1).ErasePiiForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        _cacheInvalidator.Received(1).InvalidateAll();
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_exports_only_the_users_matched_order_and_attendee_records()
+    {
+        var userId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        await TicketsDb.TicketOrders.AddAsync(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "export-order",
+            BuyerName = "Buyer",
+            BuyerEmail = "buyer@example.org",
+            TotalAmount = 123m,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            DiscountCode = "CODE",
+            VendorEventId = "event",
+            PurchasedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
+            SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
+            MatchedUserId = userId
+        }, Xunit.TestContext.Current.CancellationToken);
+        await TicketsDb.TicketAttendees.AddRangeAsync(
+            [
+                new TicketAttendee
+                {
+                    Id = Guid.NewGuid(), VendorTicketId = "matched", TicketOrderId = orderId,
+                    AttendeeName = "Holder", AttendeeEmail = "holder@example.org", TicketTypeName = "Full Week",
+                    Price = 100m, Status = TicketAttendeeStatus.Valid, VendorEventId = "event",
+                    SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0), MatchedUserId = userId
+                },
+                new TicketAttendee
+                {
+                    Id = Guid.NewGuid(), VendorTicketId = "other", TicketOrderId = orderId,
+                    AttendeeName = "Other", AttendeeEmail = "other@example.org", TicketTypeName = "Full Week",
+                    Price = 100m, Status = TicketAttendeeStatus.Valid, VendorEventId = "event",
+                    SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0), MatchedUserId = Guid.NewGuid()
+                }
+            ], Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var slices = await _service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        slices.Select(slice => slice.SectionName).Should().BeEquivalentTo(
+            TicketQueryService.TicketOrders, TicketQueryService.TicketAttendeeMatches);
+        var json = System.Text.Json.JsonSerializer.Serialize(slices);
+        json.Should().Contain("buyer@example.org").And.Contain("holder@example.org").And.NotContain("other@example.org");
+    }
+
+    [HumansFact]
     public async Task GetSalesAggregatesAsync_ExcludesVoidTicketsFromCountsAndVipDonations()
     {
         var orderId = Guid.NewGuid();

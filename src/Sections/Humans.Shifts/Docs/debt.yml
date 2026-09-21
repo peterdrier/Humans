@@ -15,7 +15,3 @@ inbox:
     id: SHIFTS-3
     what: "The GateOpeningDate.PlusDays(offset) window math is written out at ShiftManagementService, ShiftFilterResolver.cs:32-42, VolunteerTrackingController.cs:140-154, ShiftDashboardPageBuilder — where one helper on the event calendar would carry it (found by /section-doctor on Shifts, 2026-09-05, finding N12)."
     review: light
-  - added: 2026-09-05
-    id: SHIFTS-4
-    what: "ShiftBrowseQueryFlags: verify each flag (IncludeHidden, IncludeAdminOnly, PriorityOnly, IncludeSignups) has a caller that sets it; the Shape thread found setters only in ShiftBrowsePageBuilder and the Gate/Onboarding/Debug components and ran out of time. A flag nothing sets is a delete (found by /section-doctor on Shifts, 2026-09-05, Shape F17)."
-    review: light

@@ -7,9 +7,9 @@ using NodaTime.Text;
 namespace Humans.Settings.Models;
 
 /// <summary>
-/// The app-wide event settings form. Only the values Settings owns after #1104 —
-/// the Shifts knobs (browsing switch, volunteer cap, reminder lead time) stay on
-/// the Shifts screen.
+/// The app-wide event settings form. Only the values Settings owns after
+/// nobodies-collective/Humans#1104 — the Shifts knobs (browsing switch, volunteer
+/// cap, reminder lead time) stay on the Shifts screen.
 /// </summary>
 internal sealed class EventSettingsViewModel : IValidatableObject
 {

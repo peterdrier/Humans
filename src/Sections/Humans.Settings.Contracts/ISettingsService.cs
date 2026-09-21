@@ -8,11 +8,10 @@ namespace Humans.Settings.Contracts;
 /// </summary>
 /// <remarks>
 /// One interface, no <c>Read</c> suffix. The event settings are written only from
-/// inside the section — the <c>/Settings/Admin</c> screen and the carry screen —
+/// inside the section, by the section's own <c>/Settings/Admin</c> POST endpoint —
 /// so <c>SaveEventSettingsAsync</c> is deliberately absent here and lives on the
 /// section's own <c>Service</c>. The key/value <see cref="SetValueAsync"/> stays
-/// because Email's send-pause flag and Monitor's last-run stamp have always been
-/// written from outside; both move to their own sections' settings later.
+/// because some keys have always been written from outside the section.
 /// </remarks>
 public interface ISettingsService : IApplicationService
 {

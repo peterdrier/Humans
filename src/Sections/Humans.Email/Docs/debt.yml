@@ -3,11 +3,7 @@
 version: 1
 next_id: 3
 inbox:
-  - added: 2026-09-10
-    id: EMAIL-1
-    what: "reportLink is dead end-to-end in the feedback-reply email: Feedback_Email_FeedbackResponse_Body uses {0}–{2} in every culture and FeedbackEmails.FeedbackResponse passes the encoded link as an unused {3}. Drop the argument from FeedbackEmails.FeedbackResponse and the Feedback caller (finding 23, /section-doctor on Feedback 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10). The template moved out of Email with peterdrier/Humans#1651; the fix now lives entirely in Humans.Feedback."
-    review: light
   - added: 2026-09-11
     id: EMAIL-2
-    what: "These subject lines are still HTML-encoded by their section builders after peterdrier/Humans#1651 moved them out of EmailRenderer: Issues_Email_IssueComment_Subject (IssuesEmails), Shifts_Email_CoordinatorRotaMessage_Subject and Shifts_Email_CoordinatorTeamRotasMessage_Subject (ShiftsEmails), GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_Subject, GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_Subject and GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Subject (GoogleIntegrationEmails). A Subject header is plain text, so a title containing & or < reaches the recipient as R&amp;D. The assembly-vote subjects had the same bug and were fixed in peterdrier/Humans#1649; these are left alone as out of that PR's scope."
+    what: "src/Sections/Humans.Email/Services/EmailRenderer.cs HTML-encodes these subject lines: Email_IssueComment_Subject, Email_CoordinatorRotaMessage_Subject, Email_CoordinatorTeamRotasMessage_Subject, Email_GoogleGroupRemoval_LossOfAccess_Subject, Email_GoogleDriveRemoval_LossOfAccess_Subject, Email_GoogleAccessRemoval_SecondaryCleanup_Subject. A Subject header is plain text, so a title containing & or < reaches the recipient as R&amp;D. The assembly-vote subjects had the same bug and were fixed in peterdrier/Humans#1649; these are left alone as out of that PR's scope."
     review: light

@@ -246,8 +246,7 @@ public sealed class FeedbackServiceTests
             Arg.Is<EmailMessage>(m => m.TemplateName == "feedback_response"
                 && m.RecipientEmail == "reporter@test.com"
                 && m.RecipientName == "Reporter"
-                && m.HtmlBody.Contains("Looking into it")
-                && m.HtmlBody.Contains($"/Feedback/{report.Id}")),
+                && m.HtmlBody.Contains("Looking into it")),
             Arg.Any<CancellationToken>());
         await _notificationService.Received(1).SendAsync(
             NotificationSource.FeedbackResponse,

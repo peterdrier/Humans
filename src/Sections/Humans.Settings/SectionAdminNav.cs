@@ -4,7 +4,8 @@ using Humans.Base.Interfaces;
 namespace Humans.Settings;
 
 /// <summary>
-/// Settings' admin nav group — the app-wide event values (#1104).
+/// Settings' admin nav group — the app-wide event values
+/// (nobodies-collective/Humans#1104).
 /// </summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {

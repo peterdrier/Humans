@@ -11,7 +11,7 @@
 App-wide settings: the `system_settings` key/value store every section may read
 and write through `ISettingsService`, and `settings_event`, the home of the
 app-wide event calendar and "which cycle is active" (nobodies-collective/Humans#1104,
-#1630, #1631).
+nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
 
 ## Concepts
 
@@ -22,8 +22,9 @@ app-wide event calendar and "which cycle is active" (nobodies-collective/Humans#
   timezone, gate-opening date, build calendar, early-entry window and capacity.
   Crosses the boundary as `EventSettingsInfo`.
 - **EventSettingsStatus** is `Active` (at most one row), `Inactive`, `Deleted`.
-  Deleting is a status change, never a row removal — other sections store the id.
-  No screen sets `Deleted` today.
+  No production path removes a row — other sections store the id — so a cycle
+  ends by going `Inactive`, and nothing sets `Deleted` today. The one real row
+  removal is `IEventSettingsSeeding.DeleteEventAsync`, for fixture teardown.
 - **Settings mints event ids.** A brand-new cycle is created here, at
   `/Settings#event`, by leaving the form blank — no id, no existing row. Shifts
   no longer mints ids or a calendar of its own (nobodies-collective/Humans#1631);
@@ -98,7 +99,7 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
 | Any authenticated member | Views the active event's values, read-only, on the `/Settings#event` tab |
 | Admin | Edits event rows, or starts a new cycle by leaving the form blank, via the `/Settings#event` tab's form (posts to `SettingsAdminController`) |
 
-Both admin controllers are `PolicyNames.AdminOnly` (pinned in
+`SettingsAdminController` is `PolicyNames.AdminOnly`, class-level (pinned in
 `tests/Humans.Settings.Tests/SettingsArchitectureTests.cs`; per-route detail in
 [`authorization.md`](authorization.md)); `/Settings` itself is `[Authorize]` only.
 
@@ -155,10 +156,22 @@ that row again (no audit entry either way — seeding has no real actor).
 
 ## Cross-Section Dependencies
 
+Declared in `Humans.Settings.csproj`: `Humans.Base` and `Humans.AuditLog.Contracts`
+(`Humans.Settings.Contracts` is this section's own leaf). Everything else below is a
+section reaching *in* through this section's leaf, or a seam it implements.
+
+The **out** rows are complete — they are this section's own dependencies. Of the **in**
+rows, the key/value ones are complete too, because `SettingKeys` bounds them. The
+event-cycle readers are deliberately not listed: the set is most of the app, too wide to
+keep in step by hand. Derive it from the call sites, not from here.
+
 | Direction | Section | Through |
 |---|---|---|
-| in | Shifts | `Humans.Development`'s seeder only, via `IEventSettingsSeeding` |
-| out | Users | `IUserServiceRead` (platform base-controller dependency only) |
+| out | AuditLog | `IAuditLogService` — one entry per `SaveEventSettingsAsync` |
+| out | Users | `IUserServiceRead` (platform base-controller dependency, reached through Base) |
+| in | every section that renders a date, a phase or an early-entry window | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync`. Not enumerated — see above |
+| in | Development | `IEventSettingsSeeding`, from the dashboard seeder |
+| in | Workgroups | `ISettingsService` (`Workgroups:RootDriveFolderId`) |
 | out | every `IEventSettingsChangeListener` | fanned out after every successful event-settings mutation, the admin save and both `IEventSettingsSeeding` paths (seeded upsert, delete of a row that existed) alike — the gate date, the offsets and the active-event flip move derived dates for every member at once. The notification carries the event settings id. Subscribers today: EarlyEntry's cache (`InvalidateAll`, id ignored), Shifts' `CachingShiftViewService` (flushes every `ShiftUserView`, and evicts that event's coordinator-dashboard aggregates through `IShiftManagementService.InvalidateDashboardCaches`), and Events' `CachingEventService` (its `EventGuideSettingsView` carries the Settings-owned `TimeZoneId`). Settings names no consumer and references no consuming section |
 | in | Email | `ISettingsService` (`IsEmailSendingPaused`) |
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |

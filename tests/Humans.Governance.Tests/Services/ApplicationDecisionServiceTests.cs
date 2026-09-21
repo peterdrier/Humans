@@ -276,6 +276,24 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ApproveAsync_records_the_governance_audit_entry()
+    {
+        var application = await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Asociado);
+        var reviewerId = Guid.NewGuid();
+        await SeedBoardVoteAsync(application.Id);
+
+        await _service.ApproveAsync(application.Id, reviewerId, "Approved", null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.TierApplicationApproved,
+            AuditEntityTypes.Application,
+            application.Id,
+            "Asociado application approved",
+            reviewerId);
+    }
+
+    [HumansFact]
     public async Task ApproveAsync_UpdatesProfileTierViaUserService()
     {
         var userId = Guid.NewGuid();
@@ -548,6 +566,24 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task RejectAsync_records_the_governance_audit_entry()
+    {
+        var application = await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Colaborador);
+        var reviewerId = Guid.NewGuid();
+        await SeedBoardVoteAsync(application.Id);
+
+        await _service.RejectAsync(application.Id, reviewerId, "Not ready", null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.TierApplicationRejected,
+            AuditEntityTypes.Application,
+            application.Id,
+            "Colaborador application rejected",
+            reviewerId);
+    }
+
+    [HumansFact]
     public async Task RejectAsync_DeletesBoardVotes()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -605,6 +641,34 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotSubmitted");
+    }
+
+    [HumansFact]
+    public async Task CastBoardVoteAsync_replaces_a_members_existing_vote_without_creating_a_second_row()
+    {
+        var application = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        var boardMemberId = Guid.NewGuid();
+
+        (await _service.CastBoardVoteAsync(application.Id, boardMemberId, VoteChoice.Yay, "initial",
+            Xunit.TestContext.Current.CancellationToken)).Success.Should().BeTrue();
+        var firstVote = await GovernanceDb.BoardVotes.SingleAsync(
+            vote => vote.ApplicationId == application.Id && vote.BoardMemberUserId == boardMemberId,
+            Xunit.TestContext.Current.CancellationToken);
+        Clock.AdvanceHours(1);
+
+        (await _service.CastBoardVoteAsync(application.Id, boardMemberId, VoteChoice.No, "changed",
+            Xunit.TestContext.Current.CancellationToken)).Success.Should().BeTrue();
+
+        ClearAllTrackers();
+        var votes = await GovernanceDb.BoardVotes
+            .Where(vote => vote.ApplicationId == application.Id && vote.BoardMemberUserId == boardMemberId)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        votes.Should().ContainSingle();
+        votes[0].Id.Should().Be(firstVote.Id);
+        votes[0].Vote.Should().Be(VoteChoice.No);
+        votes[0].Note.Should().Be("changed");
+        votes[0].VotedAt.Should().Be(Instant.FromUtc(2026, 3, 1, 12, 0));
+        votes[0].UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     // --- GetUserApplicationsAsync ---

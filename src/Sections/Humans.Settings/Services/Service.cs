@@ -67,10 +67,9 @@ internal sealed class Service(
 
         // The gate date, the offsets and the active-event flip all move derived dates for
         // every member at once. These writes used to live in the consuming sections, which
-        // flushed their own caches inline (Camps' SetEeStartDateAsync, Shifts' UpdateAsync);
-        // the write moved lanes, so the notification moves with it — fanned out over the
-        // listener seam rather than one project reference per consumer
-        // (nobodies-collective/Humans#805, peterdrier/Humans#1627).
+        // flushed their own caches inline; the write moved lanes, so the notification moves
+        // with it — fanned out over the listener seam rather than one project reference per
+        // consumer (nobodies-collective/Humans#805, peterdrier/Humans#1627).
         NotifyChangeListeners(settings.Id);
     }
 
@@ -104,7 +103,7 @@ internal sealed class Service(
 
     /// <summary>
     /// Every write here replaces or removes the active event, which moves the derived dates
-    /// EarlyEntry and Shifts cache. The seeding seams go through it too: a seeded event that
+    /// the consuming sections cache. The seeding seams go through it too: a seeded event that
     /// nobody is told about leaves those caches holding the previous cycle's dates.
     /// </summary>
     private void NotifyChangeListeners(Guid eventSettingsId)

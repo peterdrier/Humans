@@ -16,9 +16,11 @@ which predates the convention and keeps its name.
 
 ### Service (Scoped)
 
-Repository: `ISettingsRepository`. Registered twice against one instance: as
-`ISettingsService` for everyone outside the section, and as the section-internal
-`ISettingsWriteService` for the section's own screens.
+Repository: `ISettingsRepository` (Singleton over
+`IDbContextFactory<SettingsDbContext>`). One instance, three ways in: as
+`ISettingsService` for everyone outside the section, as the section-internal
+`ISettingsWriteService` for the section's own screens, and as
+`IEventSettingsSeeding` for `Humans.Development`'s dashboard seeder.
 
 `SaveEventSettingsAsync` is deliberately **not** on `ISettingsService`. Nothing
 outside Settings writes the event values, so the write lives on
@@ -36,13 +38,17 @@ table, not a new table this section owns.
 | `system_settings` | R/W (`GetValueAsync` / `SetValueAsync`, by key) |
 | `settings_event` | R/W (`GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` on the cross-section interface; `SaveEventSettingsAsync` on `ISettingsWriteService`) |
 
-`SaveEventSettingsAsync` holds the table's one remaining invariant — it cannot
-be a DB constraint (`memory/architecture/no-db-check-constraints.md`):
+`SaveEventSettingsAsync` holds the table's two service-enforced invariants —
+neither can be a DB constraint (`memory/architecture/no-db-check-constraints.md`):
 
 - **At most one `Active` row.** `AnyOtherActiveEventSettingsAsync(excludingId)`
   is checked before a row is written `Active`; the row being saved is excluded,
   so re-saving the active row is an ordinary edit. Zero active rows is legal —
   deactivating is how a cycle ends.
+- **`EarlyEntryStartOffset`, when set, stays inside the build window.**
+  `BuildStartOffset ≤ value < 0`; null (not yet configured) passes. The form
+  checks it too, but the service is the backstop for the seeding seam and any
+  future caller.
 
 **Settings mints ids for new cycles** (nobodies-collective/Humans#1631) — a blank id on
 save is a brand-new row, with no existence check against anything else.
@@ -51,9 +57,9 @@ save is a brand-new row, with no existence check against anything else.
 on demand, the first time a rota or knob edit needs one.
 
 Otherwise thin over the repository — entity↔DTO mapping, no cache. Key/value
-consumers today:
-`EmailOutboxService` (`IsEmailSendingPaused`) and
-`DriveActivityMonitorService` (`DriveActivityMonitor:LastRunAt`);
+consumers today: `EmailOutboxService` (`IsEmailSendingPaused`),
+`DriveActivityMonitorService` (`DriveActivityMonitor:LastRunAt`) and
+`WorkgroupService` (`Workgroups:RootDriveFolderId`, read *and* written);
 well-known keys live in `SettingKeys` (`Humans.Settings.Contracts`).
 
 **Every section reads the calendar from `settings_event`.** Repointed off the
@@ -61,8 +67,10 @@ old Shifts-owned row in nobodies-collective/Humans#1629/#1630; Shifts now resolv
 through `EventCalendarResolver` wrapping this section's `ISettingsService`.
 
 `EventSettingsStatus` replaces the old `IsActive` flag: `Active` (at most one
-row), `Inactive`, `Deleted`. Deleting is a status change, never a row removal —
-other sections store the row's `Id`.
+row), `Inactive`, `Deleted`. No production path removes a row — other sections
+store the `Id` — so a cycle ends by going `Inactive`, and nothing sets `Deleted`
+today. The one real row removal is `IEventSettingsSeeding.DeleteEventAsync`,
+for fixture teardown.
 
 `/Settings/Admin` POST is the section's own write for the app-wide event
 values (no GET — the form lives on the `/Settings#event` tab); it redirects

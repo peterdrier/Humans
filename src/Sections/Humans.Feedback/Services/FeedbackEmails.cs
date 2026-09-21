@@ -20,12 +20,12 @@ internal sealed class FeedbackEmails(
     IStringLocalizer<FeedbackResource> localizer,
     ILogger<FeedbackEmails> logger)
 {
-    public EmailMessage FeedbackResponse(string userEmail, string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null)
+    public EmailMessage FeedbackResponse(string userEmail, string userName, string originalDescription, string responseMessage, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             userEmail, userName,
             L("Feedback_Email_FeedbackResponse_Subject"),
             Lf("Feedback_Email_FeedbackResponse_Body", Encode(userName), Encode(originalDescription),
-                SanitizedMarkdownRenderer.Render(responseMessage), Encode(reportLink)),
+                SanitizedMarkdownRenderer.Render(responseMessage)),
             "feedback_response", MessageCategory.System));
 
     private string L(string key) => localizer[key].Value;

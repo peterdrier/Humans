@@ -2,13 +2,21 @@
 
 Unattended nightly native Codex goal against a **dedicated clone** of this
 repo — never your working checkout. Gates on build + test before pushing,
-opens one PR per run containing all substantive fixes. Ledger-only runs
+opens one PR per run containing all substantive fixes. Ledger-only and test-only runs
 fail without publishing. Scheduler: systemd user timer (the only one shipped here).
 
 Both nightly runs and manual trials exclude `Humans.Integration.Tests`, using
 the same `FullyQualifiedName!~Humans.Integration.Tests` filter as CI. The runner
 exports it as `VSTestTestCaseFilter` for Codex's test commands and passes it
 explicitly to its own test gate.
+
+## Production-code priorities
+
+The worker fixes production code and executable tooling. Standalone coverage
+work and test cleanup are not sweep objectives. Add or update focused tests
+when a code fix warrants them; prefer existing coverage when sufficient.
+Scoped tests validate each change; the wrapper runs the full non-integration
+suite once at the end. Test-only changes do not qualify a run for publication.
 
 ## Work window and completion
 
@@ -21,16 +29,18 @@ completion. One branch and one PR contain the whole run.
 
 The wrapper starts one `codex app-server --stdio` process, creates one thread
 and its native goal, and submits one initial turn. It stays attached while
-Codex's own goal scheduler continues across turns; there is no `exec resume`
-loop or repeated user prompting. Completion uses native goal and turn status,
+Codex's own goal scheduler continues across normal turn boundaries. If Codex
+completes the goal early, the wrapper waits for that turn to finish, reactivates
+the same goal, and submits a continuation with the actual clock and original
+deadline. Repeated early completions are handled the same way; neither the
+work window nor the session is reset. Completion uses native goal and turn status,
 not an agent-written "done" flag. The process stays in dangerous mode
 (`approvalPolicy=never`, `sandbox=danger-full-access`) for the entire goal.
 
 The last completed turn supplies the cumulative Markdown PR body, followed
 by the wrapper's measured goal time, actual worker time, total elapsed time
 through validation, and gate result. No unfilled template is appended.
-Early goal completion, failed/blocked goals, missing reports, or disconnection
-fail without publishing. A clean tree and final build/test gates still apply.
+Failed/blocked goals, missing reports, or disconnection fail without publishing. A clean tree and final build/test gates still apply.
 
 The deadline is not a kill timer. Finishing the active task and the wrapper's
 final build/test gates may extend past it. The systemd unit uses
