@@ -45,7 +45,8 @@ act on the answer; don't hunt for a rule that names it.
   the PR's review history disagree, the history wins.
 - At 4 spent: last commit — read every open finding, spend it on the most serious.
 - At 5+: no triage, no patch. One comment (open items, what you'd do, what needs
-  deciding), unsubscribe from PR activity, drop any check-in schedule, stop.
+  deciding), unsubscribe from PR activity, drop any check-in schedule, stop. In the
+  steward shape the round worker drafts that comment and the steward posts it.
 - One round = one commit; batch the round's fixes.
 - Raising the ceiling, or pushing past it, needs Peter to say so in his own words.
 

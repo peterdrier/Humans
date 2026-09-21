@@ -43,6 +43,10 @@ recover from.
    runs the check and returns pass/fail plus failing names. Workers grading themselves echo what
    they expected to see.
 5. **Report** to the user one line per task. Don't relay worker reports.
+6. **Hand off.** When the deliverable is pushed and the PR is ready for review, spawn a steward
+   session per the [steward skill](../steward/SKILL.md)'s hand-off section, unsubscribe, and
+   stop. You never steward the PR yourself: every wake would re-read this whole context
+   ([`steward-thin-session`](../../../memory/process/steward-thin-session.md)).
 
 ## Briefs
 
