@@ -14,7 +14,8 @@ public interface IHoldedFinanceService : IApplicationService, IHoldedFinanceServ
 
     /// <summary>Ensures the member has a Holded creditor contact and binding, returning the contact id.
     /// Reuses the existing binding, else the seed from a prior report, else creates a new contact. A
-    /// Manual binding is never downgraded to Auto.</summary>
+    /// linked contact is never updated in Holded (its PUT is a full replacement that resets the
+    /// creditor account). A Manual binding is never downgraded to Auto.</summary>
     Task<string> EnsureCreditorContactAsync(
         Guid userId, string legalName, string? burnerName, string? iban,
         string? seedContactId, int? seedAccountNum, CancellationToken ct = default);

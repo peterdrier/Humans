@@ -747,26 +747,34 @@ internal sealed class Service(
             seedAccountNum = null;
         }
 
-        // Reuse the bound contact, else lazy-seed from the report's previously-cached contact id.
-        var existingContactId = !string.IsNullOrEmpty(binding?.HoldedContactId)
-            ? binding.HoldedContactId
-            : (string.IsNullOrEmpty(seedContactId) ? null : seedContactId);
-
-        // Burner goes in tradeName only — and only when it differs from the official legal name.
-        var tradeName = !string.IsNullOrWhiteSpace(burnerName)
-                        && !string.Equals(burnerName, legalName, StringComparison.Ordinal)
-            ? burnerName
-            : null;
-
-        var contactId = await client.UpsertContactAsync(new HoldedContactInput
+        // A linked contact is used as is: the bound contact, else the one lazy-seeded from the
+        // member's prior report. Never a PUT — Holded's v2 contact update is a full replacement, so
+        // every field the body omits resets, supplier_record included, and the next purchase doc
+        // then mints the member a second creditor account next to their first (2026-09-21). A
+        // legal-name or IBAN change after the first push does not reach Holded until the
+        // link-check sync exists (peterdrier/Humans#1777).
+        string contactId;
+        if (!string.IsNullOrEmpty(binding?.HoldedContactId))
+            contactId = binding.HoldedContactId;
+        else if (!string.IsNullOrEmpty(seedContactId))
+            contactId = seedContactId;
+        else
         {
-            Name = legalName,
-            TradeName = tradeName,
-            CustomId = userId.ToString(),
-            Type = "creditor",
-            Iban = string.IsNullOrWhiteSpace(iban) ? null : iban,
-            ExistingContactId = existingContactId,
-        }, ct);
+            // Burner goes in tradeName only — and only when it differs from the official legal name.
+            var tradeName = !string.IsNullOrWhiteSpace(burnerName)
+                            && !string.Equals(burnerName, legalName, StringComparison.Ordinal)
+                ? burnerName
+                : null;
+
+            contactId = await client.UpsertContactAsync(new HoldedContactInput
+            {
+                Name = legalName,
+                TradeName = tradeName,
+                CustomId = userId.ToString(),
+                Type = "creditor",
+                Iban = string.IsNullOrWhiteSpace(iban) ? null : iban,
+            }, ct);
+        }
 
         // A refused seed cannot collide, so anything left is a pre-existing overlap on the member's own
         // binding — not this push's doing, but not to be carried forward unreported either.
@@ -777,16 +785,17 @@ internal sealed class Service(
                 nameof(EnsureCreditorContactAsync), userId, contactId, accountNum, conflict);
 
         // A member who already holds this contact has nothing to write but UpdatedAt, which nothing
-        // reads — and this write sits on the far side of a multi-second Holded round-trip, holding a
-        // copy read before it. Skipping it is what makes Unbind hold against an in-flight push.
+        // reads — and the rest of the push is several Holded calls long, so a binding row written
+        // from this copy would land over whatever an admin did meanwhile. Skipping it is what makes
+        // Unbind hold against an in-flight push.
         if (binding is not null
             && string.Equals(binding.HoldedContactId, contactId, StringComparison.Ordinal)
             && accountNum == binding.SupplierAccountNum)
             return contactId;
 
         // A binding still missing its number writes real content, so it cannot be skipped — but it can
-        // still undo an admin's Bind or Unbind from the copy read before the round-trip. Re-reading
-        // here shrinks that window without a version column (nobodies-collective/Humans#995).
+        // still undo an admin's Bind or Unbind from the copy read before the create round-trip.
+        // Re-reading here shrinks that window without a version column (nobodies-collective/Humans#995).
         if (!await BindingUnchangedAsync(nameof(EnsureCreditorContactAsync), userId, binding, ct))
             return contactId;
 

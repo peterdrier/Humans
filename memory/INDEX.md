@@ -96,6 +96,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`hangfire-method-signature-stable`](code/hangfire-method-signature-stable.md) — Methods called via `backgroundJobs.Enqueue<I>()`/`.Schedule<I>()` need a frozen signature — pin the call site to a no-defaults overload; never add/reorder/change its params.
 - [`culture-and-language`](code/culture-and-language.md) — Use `CultureCatalog`/`CultureCodeExtensions` for culture lists, ordering, and display labels — no per-view language dictionaries.
 - [`datetime-display-formatting`](code/datetime-display-formatting.md) — Render dates via `DateFormattingExtensions` — `ToDate`/`ToWeekdayDayMonth` etc. for display, `ToInvariantDate`/`ToIso8601` for machine. Never inline format strings (HUM0030).
+- [`holded-contact-put-is-full-replacement`](code/holded-contact-put-is-full-replacement.md) — Never update a Holded contact with a partial body — v2 `PUT /contacts/{id}` resets every omitted field, supplier_record included, minting a new creditor account. A linked contact is used as is.
 - [`iban-mask-in-logs`](code/iban-mask-in-logs.md) — All IBAN output to logs/audit/errors must go through `IbanFormatter.Mask`.
 - [`icons-fa6-only`](code/icons-fa6-only.md) — Use `fa-solid fa-*` (or `fa-regular`/`fa-brands`). Never `bi bi-*` — Bootstrap Icons aren't loaded and render invisibly.
 - [`isgoogle-user-controlled`](code/isgoogle-user-controlled.md) — `UserEmail.IsGoogle` is user-set — never auto-set it in merges/syncs/dedup; the sanctioned auto-pick only runs when adding a brand-new row.

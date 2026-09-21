@@ -640,8 +640,11 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_ExistingBinding_ReusesContactIdAsUpdate()
+    public async Task EnsureCreditorContact_ExistingBinding_ReusesContactId_WithoutCallingHolded()
     {
+        // Holded's v2 contact PUT is a full replacement: every omitted field resets, supplier_record
+        // included, and the next purchase doc minted a second creditor account (2026-09-21). A linked
+        // contact is therefore used as is — no update call, not even to carry a name or IBAN.
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact
@@ -652,15 +655,13 @@ public class HoldedFinanceServiceTests
                 SupplierAccountNum = 40000004,
                 Source = CreditorContactSource.Auto,
             });
-        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("existing-c");
 
-        await MakeService().EnsureCreditorContactAsync(
-            userId, "Peter Drier", null, null, null, null,
+        var id = await MakeService().EnsureCreditorContactAsync(
+            userId, "Peter Drier", null, "ES9121000418450200051332", null, null,
             Xunit.TestContext.Current.CancellationToken);
 
-        // Existing binding -> PUT update (ExistingContactId set), never a duplicate create.
-        await _client.Received(1).UpsertContactAsync(
-            Arg.Is<HoldedContactInput>(i => i.ExistingContactId == "existing-c"), Arg.Any<CancellationToken>());
+        id.Should().Be("existing-c");
+        await _client.DidNotReceive().UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -668,17 +669,16 @@ public class HoldedFinanceServiceTests
     {
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
-        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("seed-c");
 
-        await MakeService().EnsureCreditorContactAsync(
+        var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Peter Drier", null, null, "seed-c", 40000004,
             Xunit.TestContext.Current.CancellationToken);
 
-        // Lazy-seed from a prior pushed report -> PUT update on the seeded contact, not a new create.
-        await _client.Received(1).UpsertContactAsync(
-            Arg.Is<HoldedContactInput>(i => i.ExistingContactId == "seed-c"), Arg.Any<CancellationToken>());
+        // Lazy-seed from a prior pushed report -> the seeded contact as is: no create, no update.
+        id.Should().Be("seed-c");
+        await _client.DidNotReceive().UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).UpsertCreditorContactAsync(
-            Arg.Is<HoldedCreditorContact>(c => c.SupplierAccountNum == 40000004),
+            Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "seed-c" && c.SupplierAccountNum == 40000004),
             FixedNow, Arg.Any<CancellationToken>());
     }
 
@@ -711,12 +711,11 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task EnsureCreditorContact_MemberAlreadyHoldsThisContact_WritesNothing()
     {
-        // The steady state: bound member, number already resolved. UpsertContactAsync PUTs to the id it
-        // was given and returns it, and Source/number come straight off the binding just read, so the
-        // row's only changing column would be UpdatedAt — which nothing reads. It is not a harmless
-        // write either: it lands after a multi-second Holded round-trip carrying a pre-round-trip copy
-        // of the binding, so an admin who unbinds during that window would have the binding they just
-        // cleared resurrected. No write, nothing to resurrect.
+        // The steady state: bound member, number already resolved. The contact id and Source/number
+        // come straight off the binding just read, so the row's only changing column would be
+        // UpdatedAt — which nothing reads. It is not a harmless write either: the push is several
+        // Holded calls long, so a row written from this copy would resurrect a binding an admin
+        // cleared meanwhile. No write, nothing to resurrect.
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact
@@ -727,15 +726,13 @@ public class HoldedFinanceServiceTests
                 SupplierAccountNum = 40000004,
                 Source = CreditorContactSource.Auto,
             });
-        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c1");
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Peter Drier", null, null, null, null,
             Xunit.TestContext.Current.CancellationToken);
 
-        // Holded is still updated — the member's legal name and IBAN have to reach the contact.
         id.Should().Be("c1");
-        await _client.Received(1).UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
+        await _client.DidNotReceive().UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
@@ -1295,16 +1292,15 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = userId, HoldedContactId = "c-mine", SupplierAccountNum = 40000012, Source = CreditorContactSource.Auto },
         });
-        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-mine");
 
-        await MakeService().EnsureCreditorContactAsync(
+        var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Ana Ruiz", null, null, seedContactId: "c-mine", seedAccountNum: 40000012,
             Xunit.TestContext.Current.CancellationToken);
 
-        await _client.Received(1).UpsertContactAsync(
-            Arg.Is<HoldedContactInput>(i => i.ExistingContactId == "c-mine"), Arg.Any<CancellationToken>());
+        id.Should().Be("c-mine");
+        await _client.DidNotReceive().UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).UpsertCreditorContactAsync(
-            Arg.Is<HoldedCreditorContact>(c => c.SupplierAccountNum == 40000012),
+            Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "c-mine" && c.SupplierAccountNum == 40000012),
             FixedNow, Arg.Any<CancellationToken>());
     }
 
