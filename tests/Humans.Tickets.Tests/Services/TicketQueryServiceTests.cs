@@ -73,6 +73,17 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
+    public async Task EraseForUserAsync_scrubs_ticket_and_transfer_data_then_drops_the_warmed_projection()
+    {
+        var userId = Guid.NewGuid();
+
+        await _service.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await _transferRepo.Received(1).ErasePiiForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        _cacheInvalidator.Received(1).InvalidateAll();
+    }
+
+    [HumansFact]
     public async Task GetSalesAggregatesAsync_ExcludesVoidTicketsFromCountsAndVipDonations()
     {
         var orderId = Guid.NewGuid();
