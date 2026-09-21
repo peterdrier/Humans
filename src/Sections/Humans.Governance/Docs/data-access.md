@@ -134,6 +134,20 @@ No repository. Read-only assembly of the governance index view over
 `IApplicationServiceRead`, `ILegalDocumentService`, `IUserServiceRead`.
 No DB access, no cache.
 
+### GovernanceEmails (Scoped, internal)
+
+No repository. Pure builder — reads `GovernanceResource` (via
+`IStringLocalizer<GovernanceResource>`) and `EmailSettings`, writes
+nothing. Returns `EmailMessage` values for `ApplicationDecisionService`
+and `AssemblyVoteService` to pass to `IEmailService.SendAsync`. No DB
+access, no cache.
+
+### GovernanceEmailPreviews (Scoped)
+
+No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
+`Section.cs:88`) — builds one sample per template via `GovernanceEmails`
+for `/Email/EmailPreview`. No DB access, no cache.
+
 ---
 
 

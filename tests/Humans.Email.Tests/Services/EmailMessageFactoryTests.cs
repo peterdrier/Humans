@@ -1,4 +1,4 @@
-﻿using Humans.Users.Contracts;
+using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Email.Services;
@@ -27,7 +27,6 @@ public sealed class EmailMessageFactoryTests
         _renderer.ReturnsForAll(new EmailContent("Subj", "<p>Body</p>"));
         _factory = new EmailMessageFactory(_renderer);
     }
-
 
     [HumansFact]
     public void ReConsentsRequired_IsAlwaysSend_NullCategory()

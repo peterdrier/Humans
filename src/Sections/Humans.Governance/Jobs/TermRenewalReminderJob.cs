@@ -1,4 +1,4 @@
-﻿using Hangfire;
+using Hangfire;
 using NodaTime;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;

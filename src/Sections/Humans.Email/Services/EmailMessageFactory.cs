@@ -1,4 +1,4 @@
-﻿using Humans.Users.Contracts;
+using Humans.Users.Contracts;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using NodaTime;

@@ -1,4 +1,4 @@
-﻿using Humans.Auth.Contracts;
+using Humans.Auth.Contracts;
 using Humans.Governance.Domain;
 using NodaTime.Testing;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -463,7 +463,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Arg.Is<EmailMessage>(m => m.TemplateName == "application_approved"
                 && m.RecipientEmail == "alice@test.com"
                 && m.RecipientName == "Alice"
-                && m.Subject == "Email_ApplicationApproved_Subject#en"),
+                && m.Subject == "Governance_Email_ApplicationApproved_Subject#en"),
             Arg.Any<CancellationToken>());
     }
 

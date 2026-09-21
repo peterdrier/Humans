@@ -1,4 +1,4 @@
-﻿using Humans.AuditLog.Contracts;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
 using Humans.Email.Contracts;
 using Humans.Auth.Contracts;

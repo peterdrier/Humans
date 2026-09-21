@@ -29,54 +29,54 @@ internal sealed class GovernanceEmails(
     public EmailMessage ApplicationApproved(string userEmail, string userName, MembershipTier tier, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             userEmail, userName,
-            L("Email_ApplicationApproved_Subject"),
-            Lf("Email_ApplicationApproved_Body", Encode(userName), tier, _settings.BaseUrl),
+            L("Governance_Email_ApplicationApproved_Subject"),
+            Lf("Governance_Email_ApplicationApproved_Body", Encode(userName), tier, _settings.BaseUrl),
             "application_approved", MessageCategory.Governance));
 
     public EmailMessage ApplicationRejected(string userEmail, string userName, MembershipTier tier, string reason, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             userEmail, userName,
-            L("Email_ApplicationRejected_Subject"),
-            Lf("Email_ApplicationRejected_Body", Encode(userName), tier, ReasonLine(reason), _settings.AdminAddress),
+            L("Governance_Email_ApplicationRejected_Subject"),
+            Lf("Governance_Email_ApplicationRejected_Body", Encode(userName), tier, ReasonLine(reason), _settings.AdminAddress),
             "application_rejected", MessageCategory.Governance));
 
     public EmailMessage TermRenewalReminder(string userEmail, string userName, string tierName, string expiresAt, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             userEmail, userName,
-            Lf("Email_TermRenewalReminder_Subject", tierName),
-            Lf("Email_TermRenewalReminder_Body", Encode(userName), Encode(tierName), Encode(expiresAt), _settings.BaseUrl),
+            Lf("Governance_Email_TermRenewalReminder_Subject", tierName),
+            Lf("Governance_Email_TermRenewalReminder_Body", Encode(userName), Encode(tierName), Encode(expiresAt), _settings.BaseUrl),
             "term_renewal_reminder", MessageCategory.Governance));
 
     public EmailMessage AssemblyVoteOpened(string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             toEmail, userName,
-            Lf("Email_AssemblyVoteOpened_Subject", voteTitle),
-            Lf("Email_AssemblyVoteOpened_Body", Encode(userName), Encode(voteTitle),
+            Lf("Governance_Email_AssemblyVoteOpened_Subject", voteTitle),
+            Lf("Governance_Email_AssemblyVoteOpened_Body", Encode(userName), Encode(voteTitle),
                 Encode(closesAt.ToDateTime()), AbsoluteUrl(voteUrl), IndicativeNote(isOfficial)),
             "assembly_vote_opened", MessageCategory.System));
 
     public EmailMessage AssemblyVoteReminder(string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             toEmail, userName,
-            Lf("Email_AssemblyVoteReminder_Subject", voteTitle),
-            Lf("Email_AssemblyVoteReminder_Body", Encode(userName), Encode(voteTitle),
+            Lf("Governance_Email_AssemblyVoteReminder_Subject", voteTitle),
+            Lf("Governance_Email_AssemblyVoteReminder_Body", Encode(userName), Encode(voteTitle),
                 Encode(closesAt.ToDateTime()), AbsoluteUrl(voteUrl), IndicativeNote(isOfficial)),
             "assembly_vote_reminder", MessageCategory.System));
 
     public EmailMessage AssemblyVoteCancelled(string toEmail, string userName, string voteTitle, string reason, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             toEmail, userName,
-            Lf("Email_AssemblyVoteCancelled_Subject", voteTitle),
-            Lf("Email_AssemblyVoteCancelled_Body", Encode(userName), Encode(voteTitle), Lf("Email_ReasonLine", Encode(reason))),
+            Lf("Governance_Email_AssemblyVoteCancelled_Subject", voteTitle),
+            Lf("Governance_Email_AssemblyVoteCancelled_Body", Encode(userName), Encode(voteTitle), Lf("Governance_Email_ReasonLine", Encode(reason))),
             "assembly_vote_cancelled", MessageCategory.System));
 
     /// <summary>Optional rejection reason — omitted entirely rather than rendered empty.</summary>
     private string ReasonLine(string? reason) =>
-        string.IsNullOrEmpty(reason) ? "" : Lf("Email_ReasonLine", Encode(reason));
+        string.IsNullOrEmpty(reason) ? "" : Lf("Governance_Email_ReasonLine", Encode(reason));
 
     /// <summary>The "your ballot is not counted" caveat carried only by indicative votes.</summary>
     private string IndicativeNote(bool isOfficial) =>
-        isOfficial ? "" : L("Email_AssemblyVote_IndicativeNote");
+        isOfficial ? "" : L("Governance_Email_AssemblyVote_IndicativeNote");
 
     /// <summary>
     /// Webmail has no Humans origin, so a root-relative path in an email resolves against

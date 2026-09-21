@@ -1,4 +1,4 @@
-﻿using Humans.Users.Contracts;
+using Humans.Users.Contracts;
 using System.Globalization;
 using Humans.Email.Contracts;
 using Humans.Base.Configuration;
