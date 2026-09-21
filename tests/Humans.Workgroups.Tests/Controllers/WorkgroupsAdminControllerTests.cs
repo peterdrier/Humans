@@ -19,10 +19,7 @@ namespace Humans.Workgroups.Tests.Controllers;
 
 public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
 {
-    // Builds a full WorkgroupService over the in-memory context, so on a cold runner it pays
-    // the EF model build inside a theory's default 5 s budget — same allowance as
-    // WorkgroupServiceRegistrationTests' theory in this project.
-    [HumansTheory(Timeout = 10000)]
+    [HumansTheory]
     [InlineData(nameof(WorkgroupsAdminController.Refuse))]
     [InlineData(nameof(WorkgroupsAdminController.Withdraw))]
     [InlineData(nameof(WorkgroupsAdminController.Close))]
