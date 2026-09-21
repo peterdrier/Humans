@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 63
+next_id: 65
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -318,6 +318,14 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
+  - added: 2026-09-21
+    id: CENTRAL-63
+    what: "docs/architecture/design-rules.md §8 still describes the pre-cutover Settings world: it says settings_event 'has no readers yet', that every section reads the app-wide values off the Shifts-owned event_settings row via IBurnSettingsService, and that the table is populated by an operator screen at /Settings/Admin/Carry. The cutover (nobodies-collective/Humans#1630, #1631) repointed every reader at settings_event, deleted the carry screen and made /Settings/Admin POST-only. The same paragraph's key list also omits Workgroups:RootDriveFolderId, the third system_settings key. Central regulations, not a section file (/section-doctor on Settings 2026-09-21)."
+    review: light
+  - added: 2026-09-21
+    id: CENTRAL-64
+    what: "docs/architecture/service-data-access-map.md's table-ownership table carries the same stale Settings claim as CENTRAL-63: 'settings_event has no consumers yet — it is populated by /Settings/Admin/Carry and read by nothing until the sections are pointed at it'. Both halves are false since nobodies-collective/Humans#1630/#1631. The row above it, 'EventSettings | Shifts | ShiftRepository', is now the Shifts-local knobs row only and reads as if it were still the app-wide one. Central doc, not a section file (/section-doctor on Settings 2026-09-21)."
+    review: light
   - added: 2026-09-20
     what: "Email still hosts every sending section's templates. The scaffold of peterdrier/Humans#1651 landed CultureScope, IEmailPreviewContributor and a public TimeSensitiveTemplates, but the 16 per-section migrations and the teardown are not done: IEmailRenderer / IEmailMessageFactory / EmailContent still exist, 71 Email_* keys x 6 cultures still live in EmailResource.*.resx, EmailController still holds the legacy static preview table, and Humans.Email(.Contracts) still reference Events, Tickets and Campaigns contracts. Governance moves first; ownership map, per-section PR shape and gates are in the issue. Governed by memory/architecture/email-templates-live-in-sender.md."
     review: panel
@@ -347,11 +355,6 @@ inbox:
   - added: 2026-08-28
     id: CENTRAL-32
     what: "docs/architecture/freshness-catalog.yml has no Settings entry — add one covering src/Sections/Humans.Settings/** and src/Sections/Humans.Settings.Contracts/** (finding 14, /section-doctor on Settings 2026-08-28). Merged 2026-09-20: a verbatim duplicate of this item (added 2026-09-06) was removed from this inbox."
-    review: light
-    root: CENTRAL-57
-  - added: 2026-08-28
-    id: CENTRAL-33
-    what: "docs/architecture/dependency-graph.md predates the Monitor carve-out — DriveMon is still styled :::google and there is no Monitor section (finding 20, /section-doctor on Settings 2026-08-28). Merged 2026-09-20: a verbatim duplicate of this item (added 2026-09-05) was removed from this inbox."
     review: light
     root: CENTRAL-57
   - added: 2026-08-27
