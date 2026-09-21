@@ -72,7 +72,10 @@ internal sealed record SepaPayoutTransferRow(
     string? HoldedBankMovementId,
     Instant? ReconciledAt,
     string? NotBookableReason,
-    string? CandidateBankMovementId)
+    string? CandidateBankMovementId,
+    LocalDate? CandidateBankMovementDate = null,
+    decimal? CandidateBankMovementAmount = null,
+    string? CandidateBankMovementDescription = null)
 {
     /// <summary>Booked is exactly "has a <see cref="BookedAt"/>" — there is no status column.</summary>
     public bool IsBooked => BookedAt is not null;
@@ -81,7 +84,9 @@ internal sealed record SepaPayoutTransferRow(
     public bool ReconcilePending =>
         IsBooked && HoldedBankMovementId is { Length: > 0 } && ReconciledAt is null;
 
-    /// <summary>A bank line was found for this transfer and everything else checks out.</summary>
+    /// <summary>A bank line was found for this transfer and everything else checks out. The three
+    /// <c>CandidateBankMovement*</c> fields describe that line, so the treasurer can recognise it
+    /// before clicking Book; they are filled together with the id and are null without it.</summary>
     public bool CanBook =>
         !IsBooked && NotBookableReason is null && CandidateBankMovementId is { Length: > 0 };
 }

@@ -144,7 +144,12 @@
                                     <i class="fa-solid fa-file-invoice-dollar me-1"></i>Book against this line
                                 </button>
                             </form>
-                            <div class="text-muted small font-monospace">@t.Row.CandidateBankMovementId</div>
+                            <div class="text-muted small">
+                                @(t.Row.CandidateBankMovementDate?.ToInvariantDate() ?? "—")
+                                · @(t.Row.CandidateBankMovementAmount?.ToEuro() ?? "—")
+                                <div class="font-monospace">@t.Row.CandidateBankMovementId</div>
+                                <div>@(t.Row.CandidateBankMovementDescription ?? "—")</div>
+                            </div>
                         }
                         else
                         {

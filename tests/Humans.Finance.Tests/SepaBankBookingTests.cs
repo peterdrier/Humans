@@ -491,6 +491,228 @@ public class SepaBankBookingTests
         await AssertNothingPosted();
     }
 
+    // ─── H1-H3: the ways a booking could still over-post or over-claim ──────────
+
+    [HumansFact]
+    public async Task Booking_WhileAnotherBookingOfTheSameTransferRuns_PostsNothingASecondTime()
+    {
+        // Two callers (a Book click while the sweep runs, or a double-submitted form) are inside the
+        // same transfer at once. The second must find the row booked, not an unbooked row and a
+        // ledger that does not yet show the first run's postings.
+        var booked = false;
+        _repo.GetSepaTransferAsync(TransferId, Arg.Any<CancellationToken>())
+            .Returns(_ => Transfer(30m, bookedAt: booked ? FixedNow : null));
+        _repo.When(r => r.SaveSepaTransferBookingAsync(
+                TransferId, Arg.Any<Instant>(), Arg.Any<Guid?>(), Arg.Any<string>(),
+                Arg.Any<Instant?>(), Arg.Any<CancellationToken>()))
+            .Do(_ => booked = true);
+        SeedOpenDocs(Doc("d1", 30m, 1));
+
+        var service = MakeService();
+        Task<SepaBookingResult>? second = null;
+        var accounts = OwedAccounts(30m);
+        _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            if (second is null)
+            {
+                // Mid-flight: the first booking has read "not booked" and has not stamped anything.
+                second = Task.Run(() => MakeService().BookSepaTransferAsync(
+                    TransferId, MovementId, Guid.NewGuid()));
+                second.Wait(TimeSpan.FromMilliseconds(250));
+                second.IsCompleted.Should().BeFalse("the second booking must wait for the first");
+            }
+
+            return accounts;
+        });
+
+        var first = await service.BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        first.Succeeded.Should().BeTrue();
+        (await second!).Succeeded.Should().BeFalse();
+        (await second!).Message.Should().Contain("already booked");
+        await _client.Received(1).PayPurchaseDocumentAsync(
+            "d1", 30m, "treasury-1", LineDate, Tag, Arg.Any<CancellationToken>());
+        await _repo.Received(1).SaveSepaTransferBookingAsync(
+            TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, Arg.Any<Instant?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Booking_ResumesFromAPostingDatedTheClick_NotTheBankLine()
+    {
+        // A pre-#1185 run dated its postings the day the treasurer clicked, which can be weeks off
+        // the bank line. Read a window that misses it and the whole amount goes in a second time.
+        var generatedOn = new LocalDate(2026, 3, 22);          // 40 days before "today"
+        var clickDate = new LocalDate(2026, 4, 10);            // 18 days before the bank line
+        SeedRows(Row(TransferId, _userId, generatedAt: generatedOn.AtMidnight().InUtc().ToInstant()));
+        SeedLedgerWindow((clickDate, 20m));
+        SeedOwed(10m);
+        SeedOpenDocs();
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        // Only the €10 gap — not the €30 the transfer pays.
+        await _client.Received(1).PostLedgerEntryAsync(
+            LineDate, Account, 57200001, 10m, Tag, Arg.Any<CancellationToken>());
+        await _client.DidNotReceive().PostLedgerEntryAsync(
+            Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), 30m, Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Booking_ResumeThatCannotCoverTheGap_DoesNotStampBooked_AndAuditsTheShortfall()
+    {
+        // €5 is already posted and the account now owes only €10 — someone hand-paid the documents
+        // in Holded. The run can post €10 of the outstanding €25, which is not a booking.
+        SeedTaggedLines(TaggedLine(5m));
+        SeedOwed(10m);
+        SeedOpenDocs();
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("Only 15.00 EUR of 30.00 EUR").And.Contain("NOT booked");
+        await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
+            default, default, default, default!, default, default);
+        await _audit.Received(1).LogAsync(
+            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            Arg.Is<string>(d => d.Contains("SHORT SEPA booking", StringComparison.Ordinal)
+                                && d.Contains("only 15.00 EUR is posted", StringComparison.Ordinal)),
+            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task Booking_TaggedCreditOnAnotherAccount_IsNotCountedAsAlreadyPosted()
+    {
+        // Our journal entry writes the same tag on both legs. If the account filter is ever not
+        // honoured the two net to zero, "posted" reads 0, and everything is posted again.
+        SeedTaggedLines(
+            TaggedLine(30m),
+            new HoldedLedgerLineDto
+            {
+                EntryNumber = 1, Line = 2, Date = FixedNow, AccountNum = 57200001,
+                Debit = 0m, Credit = 30m, Description = Tag,
+            });
+        SeedOwed(0m);
+        SeedOpenDocs();
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
+            default, default, default, default, default!, default);
+    }
+
+    [HumansFact]
+    public async Task Booking_RowSaveFails_AuditsThePostingsAndLeavesTheRowUnbooked()
+    {
+        // Real money has moved; the row does not say so. That must never be invisible.
+        SeedOpenDocs(Doc("d1", 30m, 1));
+        _repo.SaveSepaTransferBookingAsync(
+                TransferId, Arg.Any<Instant>(), Arg.Any<Guid?>(), Arg.Any<string>(),
+                Arg.Any<Instant?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("the database went away"));
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("could not be saved");
+        await _audit.Received(1).LogAsync(
+            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            Arg.Is<string>(d => d.Contains("PARTIAL", StringComparison.Ordinal)
+                                && d.Contains("pay-d1", StringComparison.Ordinal)
+                                && d.Contains("could not be saved", StringComparison.Ordinal)),
+            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string>());
+    }
+
+    // ─── AC 7, the page's half: what the treasurer is shown ─────────────────────
+
+    [HumansFact]
+    public async Task Page_MatchedLine_OffersItOnTheRow_WithItsDateAmountAndText()
+    {
+        SeedContacts(_userId);
+
+        var (rows, _, unmatched, error) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        error.Should().BeNull();
+        unmatched.Should().BeEmpty();
+        var row = rows.Should().ContainSingle().Subject;
+        row.CanBook.Should().BeTrue();
+        row.CandidateBankMovementId.Should().Be(MovementId);
+        row.CandidateBankMovementDate.Should().Be(LineDate);
+        row.CandidateBankMovementAmount.Should().Be(-30m);
+        row.CandidateBankMovementDescription.Should().Be(Remittance);
+    }
+
+    [HumansFact]
+    public async Task Page_LineMatchingANotBookableTransfer_IsSurfacedInsteadOfVanishing()
+    {
+        // The row cannot be booked (the member lost their binding), so the line it matches must
+        // still reach the "needs a human" panel rather than being swallowed by that row.
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<HoldedCreditorContact>());
+
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().BeNull();
+        unmatched.Should().ContainSingle().Which.Reason.Should().Contain("no unbooked transfer");
+    }
+
+    [HumansFact]
+    public async Task Page_LineNamingNoCreditorAccount_IsSurfacedForAHuman()
+    {
+        SeedContacts(_userId);
+        SeedMovements(Movement(description: "DOMICILIACION ENDESA"));
+
+        var (_, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        var line = unmatched.Should().ContainSingle().Subject;
+        line.ParsedAccountNum.Should().BeNull();
+        line.Reason.Should().Contain("names no creditor account");
+    }
+
+    [HumansFact]
+    public async Task Page_BankFeedUnreadable_StillListsTheRows_AndSaysSoOnce()
+    {
+        SeedContacts(_userId);
+        _client.ListBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HoldedTransientException("Holded 503"));
+
+        var (rows, unavailable, unmatched, error) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        unavailable.Should().BeNull();
+        error.Should().Contain("bank feed could not be read");
+        unmatched.Should().BeEmpty();
+        rows.Should().ContainSingle().Which.CanBook.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Page_StaleUnbookedTransfer_DoesNotBlockANewerOne_AndSaysWhyItself()
+    {
+        // Same account, same amount, from a file generated outside the feed window: it used to make
+        // every later transfer of that amount permanently ambiguous, with nothing to clear it.
+        var stale = Guid.Parse("33333333-3333-3333-3333-333333333333");
+        SeedRows(
+            Row(TransferId, _userId),
+            Row(stale, _userId, generatedAt: FixedNow - Duration.FromDays(200)));
+        SeedContacts(_userId);
+
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        unmatched.Should().BeEmpty();
+        rows.Single(r => r.TransferId == TransferId).CandidateBankMovementId.Should().Be(MovementId);
+        rows.Single(r => r.TransferId == stale).NotBookableReason
+            .Should().Contain("settle it in Holded by hand");
+    }
+
     // ─── Seeding ────────────────────────────────────────────────────────────────
 
     private async Task AssertNothingPosted()
@@ -502,6 +724,55 @@ public class SepaBankBookingTests
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
             default, default, default, default!, default, default);
     }
+
+    private void SeedContacts(params Guid[] userIds) =>
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            userIds.Select(u => new HoldedCreditorContact
+            {
+                UserId = u,
+                HoldedContactId = "c1",
+                SupplierAccountNum = Account,
+                Source = CreditorContactSource.Auto,
+            }).ToList());
+
+    /// <summary>Tagged lines the fake only returns when the window the service asked for contains
+    /// them — what makes the width of that window testable.</summary>
+    private void SeedLedgerWindow(params (LocalDate On, decimal Debit)[] lines) =>
+        _client.ListLedgerEntriesAsync(
+                Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var from = ci.ArgAt<LocalDate>(0);
+                var to = ci.ArgAt<LocalDate>(1);
+                return lines
+                    .Where(l => l.On >= from && l.On <= to)
+                    .Select(l => TaggedLine(l.Debit) with { Date = l.On.AtMidnight().InUtc().ToInstant() })
+                    .ToList();
+            });
+
+    private static List<HoldedAccountDto> OwedAccounts(decimal owed) =>
+    [
+        new()
+        {
+            Id = "acc", Number = Account, Name = "Creditor",
+            Debit = 0m, Credit = owed, Balance = -owed,
+        },
+    ];
+
+    private SepaPayoutTransfer Transfer(decimal amount, Instant? bookedAt = null) =>
+        new()
+        {
+            Id = TransferId,
+            FileId = Guid.NewGuid(),
+            UserId = _userId,
+            SupplierAccountNum = Account,
+            HoldedContactId = "c1",
+            CreditorName = "Ana Ruiz",
+            Iban = AnaIban,
+            IbanMasked = AnaIbanMasked,
+            Amount = amount,
+            BookedAt = bookedAt,
+        };
 
     private void SeedTransfer(
         decimal amount, Guid? id = null, Guid? userId = null, int account = Account) =>
@@ -534,8 +805,9 @@ public class SepaBankBookingTests
 
     private static SepaPayoutTransferRow Row(
         Guid id, Guid userId, int account = Account, decimal amount = 30m,
-        Instant? bookedAt = null, string? movementId = null, Instant? reconciledAt = null) =>
-        new(id, Guid.NewGuid(), "payout.xml", FixedNow - Duration.FromDays(3), Guid.NewGuid(),
+        Instant? bookedAt = null, string? movementId = null, Instant? reconciledAt = null,
+        Instant? generatedAt = null) =>
+        new(id, Guid.NewGuid(), "payout.xml", generatedAt ?? FixedNow - Duration.FromDays(3), Guid.NewGuid(),
             userId, account, "c1", "Ana Ruiz", AnaIbanMasked, amount, bookedAt, null, movementId,
             reconciledAt, null, null);
 

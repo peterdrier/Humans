@@ -92,26 +92,55 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
    unbooked transfer matches it; no other row already carries this movement id.
 3. **Live balance.** `client.ListAccountingAccountsAsync()`, the row for the creditor account,
    `owedNow = -Balance` — the account's live total, not a windowed reconstruction.
-4. **What is already posted**, from the ledger entries tagged with this transfer's `EndToEndId`
-   within ±7 days of the bank line's date — this is what makes a retry resume instead of double-pay.
-5. **The arithmetic**: `toPost = min(transfer.Amount - posted, owedNow)`. Fresh and not enough owed
-   → refuse, post nothing. Already fully posted → post nothing, skip to reconcile. Otherwise post
-   the gap.
+4. **What is already posted**, from the ledger entries on the creditor account tagged with this
+   transfer's `EndToEndId` — this is what makes a retry resume instead of double-pay. The window runs
+   from the day the file was generated (or the bank line, whichever is earlier) to today, with a
+   week of slack either end: postings this flow makes are dated the bank line, but a pre-#1185 run
+   dated them the **click**, which can be weeks off. The account number is filtered here as well as
+   in the query — both legs of our journal entry carry the same tag, so an unfiltered read would net
+   to zero and re-post everything.
+5. **The arithmetic**: `toPost = min(transfer.Amount - posted, owedNow)`, rounded to cents. Fresh
+   and not enough owed → refuse, post nothing. Already fully posted → post nothing, skip to
+   reconcile. Otherwise post the gap.
 6. **FIFO document payments**, oldest first, dated the **bank line's** date (not today) —
    `POST /api/v2/purchases/{id}/payments`, description `SEPA payout E<transfer id>`.
 7. **The remainder as one journal entry**, same date and tag, debit the creditor account, credit
    `Sepa:TreasuryLedgerAccount`.
+7b. **The gap has to be closed.** `owedNow` caps `toPost`, so a resume against an account that no
+   longer owes the outstanding part can only post some of it. Then nothing is stamped: the shortfall
+   is audited (`SHORT SEPA booking …`, naming what is posted and what the account owes), the admin is
+   told, and the row stays unbooked and retryable. `Booked` never means less than the transfer's
+   amount reached the ledger.
 8. **Persist first, then reconcile.** `BookedAt`, the acting admin (or null for the sweep) and the
    bank movement id land on the row before anything is reconciled — the local save is the cheap
    write, and losing it after Holded already took the money was the original bug
    (nobodies-collective/Humans#1185). The line is then reconciled in Holded against the paid
    documents and the journal entry; a refused `dailyledger` type retries with the documents alone.
    Reconcile success stamps `ReconciledAt`; failure leaves it null and the booking still stands.
+   If the save itself fails after Holded accepted the postings, the money that moved is audited
+   (`PARTIAL`) and the row stays unbooked — the next attempt posts only what is still missing.
 9. One `AuditAction.SepaPayoutTransferBooked` entry follows, naming every Holded id, whether the run
    resumed, and whether the reconcile landed.
 
 Open means **approved** (`draft: false`) and `payments_pending > 0`. A draft books nothing to the
 ledger, so paying one would post against a document that does not exist for accounting.
+
+### Known limits
+
+- **A resumed booking usually ends reconcile-pending.** The reconcile payload is built from the
+  documents *this run* paid; documents an earlier run already settled come back with nothing pending
+  and are skipped, and Holded's purchase list does not expose which payment settled them. So a
+  booking that resumed after a crash normally leaves `ReconciledAt` null, and the line is ticked
+  either by a human in the Holded GUI or by the sweep noticing Holded now reports it reconciled.
+  Nothing is posted twice; only the reconcile is deferred.
+- **A transfer older than the feed window can only be settled by hand.** Matching ignores rows
+  generated more than 90 days ago — otherwise one stale row makes every later transfer of the same
+  account and amount permanently ambiguous, with no way to clear it. Such a row renders with
+  "generated more than 90 days ago — … settle it in Holded by hand" in place of a button, and stays
+  `Generated` in Humans for the record.
+- **Outgoing lines are assumed to be negative** on the bank feed, and a `dailyledger` reconcile
+  target is unconfirmed (the ladder covers the second). If the first is ever wrong, no line matches
+  and every row waits — visible as rows that never leave "waiting for the Sabadell line".
 
 ### Refusals
 
@@ -120,7 +149,9 @@ ledger, so paying one would post against a document that does not exist for acco
 | `Sepa:*` identity, `Sepa:TreasuryAccountId` or `Sepa:TreasuryLedgerAccount` unset | one banner for the whole screen; no buttons |
 | Already booked | the row renders as `Booked`; a re-POST pays nothing and says so |
 | No bank line yet | no button; "waiting for the Sabadell line" |
-| Ambiguous match (two unbooked transfers fit one line) | the line renders in the "needs a human" panel |
+| Ambiguous match (two unbooked transfers generated inside the feed window fit one line) | the line renders in the "needs a human" panel; both are settled in Holded by hand |
+| The run could post only part of the transfer (the account owes less than the gap) | refused and audited `SHORT`; the row stays unbooked |
+| The transfer's file is older than the 90-day feed window | the reason, in place of the button |
 | The live balance owes less than the transfer | refused; nothing posted |
 | The bank line is already reconciled, or already booked to another transfer | refused; nothing posted |
 | Member has no `HoldedCreditorContact` binding | the reason, in place of the button |
@@ -231,7 +262,11 @@ slice — plus the booking guards that do not depend on the bank line (already b
 member, rebound member, unconfigured treasury and ledger account) and what `/Finance/Sepa` renders
 in each case. `SepaBankBookingTests.cs` covers the bank-line-driven flow: the matcher (amount,
 account, ambiguity, already-booked, already-reconciled), the resume arithmetic, FIFO allocation
-dated the bank line, the reconcile ladder and its fallback, and the sweep's own pass.
+dated the bank line, the reconcile ladder and its fallback, and the sweep's own pass — plus the
+ways a booking could over-post or over-claim: a second booking racing the first, a resume from a
+click-dated legacy posting, a resume that cannot close the gap, the tagged credit leg on the bank
+account, a failed row save, and what `/Finance/Sepa` shows (the candidate line, the "needs a human"
+reasons, the unreadable feed, and a stale row that no longer blocks a newer one).
 `FinanceControllerTests.cs` covers the posted-cap parsing: unparseable or non-positive refuses
 before the service is called, a valid cap is parsed invariantly and passed through — the SEPA
 screen's file grouping, the "needs a human" panel, and the bank-feed-unreadable banner.
