@@ -39,7 +39,10 @@ When the deliverable is pushed and the PR is ready for review:
    The brief overlap is deliberate: a duplicate wake costs one classification, while an
    event arriving in a gap where nobody is subscribed is lost for good — nothing polls.
 3. Only then `unsubscribe_pr_activity` for the PR. From here the steward alone is
-   subscribed. If the steward never confirms, do not unsubscribe: fall back below.
+   subscribed. If the steward never confirms, do not unsubscribe: fall back below. A
+   steward whose first subscribe failed and later succeeds on a retry owes the PR one
+   catch-up check before waiting (wake protocol, step 0): events from the gap were
+   never queued.
 4. Report to the user in one line (PR URL, steward session id) and end.
 
 Fallback, when `create_session` is not available (a local run without the remote tools):
@@ -55,13 +58,22 @@ turn short. Deliverable, one paragraph: <what the PR does>.
 Review rounds spent so far: 0 (verify against Review-round trailers via the worker).
 First action: subscribe_pr_activity for this PR, then end the turn with one line
 saying whether the subscription succeeded — the builder waits for that before
-dropping its own.
+dropping its own. If it failed, retry when the tool becomes available; after a
+retry succeeds, run the catch-up check (wake protocol, step 0) before waiting.
 ```
 
 ## The wake protocol (the steward's whole job)
 
 On every wake:
 
+0. **Catch-up, once, only after a late subscribe.** If `subscribe_pr_activity` did not
+   succeed at spawn and a later retry did, anything posted in between was never queued.
+   Right after that successful subscribe, make one read-only check of what is already on
+   the PR — counts only, no bodies: unresolved review threads and review comments, failed
+   checks on the current head, the head sha. Classify that like a drained queue (step 2)
+   and dispatch per step 3; `Trigger: catch-up after late subscribe: <what the check
+   found>`. A subscribe that succeeded on the first try skips this: nothing happened
+   before it existed.
 1. `ReadNotifications` until it reports 0 remaining. This is the one tool the steward
    must call itself: subagents cannot read the session's queue (tested 2026-09-21).
 2. Classify without any other tool call. Actionable:
