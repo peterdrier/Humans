@@ -179,7 +179,10 @@ internal sealed class ProfileEmailsController(
                 userId, result.Email);
 
             ViewData["Success"] = true;
-            ViewData["Message"] = $"Email verified. A merge request has been submitted for admin review. The email {result.Email} will be added to your account once approved.";
+            ViewData["Message"] = string.Format(
+                CultureInfo.CurrentCulture,
+                localizer["Profile_EmailVerifiedMergeRequested"].Value,
+                result.Email);
             return View("VerifyEmailResult");
         }
 

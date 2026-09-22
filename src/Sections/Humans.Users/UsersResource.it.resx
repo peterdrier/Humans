@@ -1157,4 +1157,5 @@
   <data name="Profile_MessageOptedOut" xml:space="preserve"><value>Questa persona ha scelto di non ricevere messaggi.</value></data>
   <data name="Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>Impossibile caricare le preferenze di comunicazione.</value></data>
   <data name="Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Questa email è collegata a un altro account. La verifica richiederà un'unione di account. Controlla la posta in arrivo per il link di verifica.</value></data>
+  <data name="Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Email verificata. È stata inviata una richiesta di unione per la revisione amministrativa. L'email {0} verrà aggiunta al tuo account una volta approvata.</value><comment>{0} = email address</comment></data>
 </root>

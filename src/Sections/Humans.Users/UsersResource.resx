@@ -552,4 +552,5 @@
   <data name="Profile_MessageOptedOut" xml:space="preserve"><value>This human has opted out of receiving messages.</value></data>
   <data name="Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>Failed to load communication preferences.</value></data>
   <data name="Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>This email is linked to another account. Verifying it will request an account merge. Check your inbox for the verification link.</value></data>
+  <data name="Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Email verified. A merge request has been submitted for admin review. The email {0} will be added to your account once approved.</value><comment>{0} = email address</comment></data>
 </root>
