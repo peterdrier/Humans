@@ -324,4 +324,5 @@
 &lt;p&gt;Petit rappel : le sondage &lt;strong&gt;{1}&lt;/strong&gt; attend toujours votre réponse.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{2}"&gt;Ouvrir le sondage&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Merci,&lt;br/&gt;Nobodies Collective&lt;/p&gt;</value></data>
+  <data name="Survey_Admin_Builder_InvitationRecipients" xml:space="preserve"><value>Toutes les personnes à qui ce sondage est envoyé (choisies à l'envoi)</value></data>
 </root>

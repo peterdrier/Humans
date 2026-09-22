@@ -1428,4 +1428,14 @@
   <data name="Settings_TabShifts" xml:space="preserve">
     <value>Torns</value>
   </data>
+  <data name="EmailComposer_To" xml:space="preserve"><value>Per a</value></data>
+  <data name="EmailComposer_RecipientCountOne" xml:space="preserve"><value>1 destinatari</value></data>
+  <data name="EmailComposer_RecipientCountMany" xml:space="preserve"><value>{0} destinataris</value></data>
+  <data name="EmailComposer_LargeSendWarning" xml:space="preserve"><value>Enviament gran: revisa-ho abans d'enviar.</value></data>
+  <data name="EmailComposer_ConfirmLargeSend" xml:space="preserve"><value>Vols enviar aquest correu a {0} destinataris?</value></data>
+  <data name="EmailComposer_SendToMe" xml:space="preserve"><value>Envia-m'ho</value></data>
+  <data name="EmailComposer_SendToMeSent" xml:space="preserve"><value>Correu de prova a la cua per a {0}.</value></data>
+  <data name="EmailComposer_SendToMeError" xml:space="preserve"><value>No s'ha pogut enviar el correu de prova. Torna-ho a provar.</value></data>
+  <data name="EmailComposer_SendToMeRateLimited" xml:space="preserve"><value>Massa correus de prova. Espera un minut i torna-ho a provar.</value></data>
+  <data name="EmailComposer_SendToMeNoAddress" xml:space="preserve"><value>El teu compte no té cap adreça de correu on enviar.</value></data>
 </root>

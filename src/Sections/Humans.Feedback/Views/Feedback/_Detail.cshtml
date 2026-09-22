@@ -145,6 +145,8 @@
         BodyRows = 2,
         BodyMaxLength = 5000,
         Category = nameof(Humans.Users.Contracts.MessageCategory.System),
+        RecipientCount = 1,
+        RecipientUserId = Model.ReporterUserId,
         // This partial is fetched over AJAX and injected via innerHTML, so its scripts never
         // run; Index.cshtml hosts the one working copy of the preview modal + assets instead.
         IncludePreviewModal = false,

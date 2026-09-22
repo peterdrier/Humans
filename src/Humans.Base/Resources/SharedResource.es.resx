@@ -1428,4 +1428,14 @@
   <data name="Settings_TabShifts" xml:space="preserve">
     <value>Turnos</value>
   </data>
+  <data name="EmailComposer_To" xml:space="preserve"><value>Para</value></data>
+  <data name="EmailComposer_RecipientCountOne" xml:space="preserve"><value>1 destinatario</value></data>
+  <data name="EmailComposer_RecipientCountMany" xml:space="preserve"><value>{0} destinatarios</value></data>
+  <data name="EmailComposer_LargeSendWarning" xml:space="preserve"><value>Envío grande: revísalo antes de enviar.</value></data>
+  <data name="EmailComposer_ConfirmLargeSend" xml:space="preserve"><value>¿Enviar este correo a {0} destinatarios?</value></data>
+  <data name="EmailComposer_SendToMe" xml:space="preserve"><value>Enviármelo</value></data>
+  <data name="EmailComposer_SendToMeSent" xml:space="preserve"><value>Correo de prueba en cola para {0}.</value></data>
+  <data name="EmailComposer_SendToMeError" xml:space="preserve"><value>No se pudo enviar el correo de prueba. Inténtalo de nuevo.</value></data>
+  <data name="EmailComposer_SendToMeRateLimited" xml:space="preserve"><value>Demasiados correos de prueba. Espera un minuto e inténtalo de nuevo.</value></data>
+  <data name="EmailComposer_SendToMeNoAddress" xml:space="preserve"><value>Tu cuenta no tiene ninguna dirección de correo a la que enviar.</value></data>
 </root>
