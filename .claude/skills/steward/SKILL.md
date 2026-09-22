@@ -75,7 +75,7 @@ On every wake:
    the worker's own replies, successful check suites, a Codex review wrapper with no
    comments, an event on a head the worker has already superseded.
 3. Actionable: dispatch **one** worker per the brief in
-   [`round-worker.md`](round-worker.md), `orch-opus-medium`, and end the turn. A review
+   [`round-worker.md`](round-worker.md), `pd:orch-opus-medium`, and end the turn. A review
    finding, CI failure, merge conflict or change Peter asked for gets the round worker; a
    **question** from Peter gets that brief marked `Answer only: no triage, no edit, no
    commit` — it answers in a reply and touches nothing. Never two workers on one PR at

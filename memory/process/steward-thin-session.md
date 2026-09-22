@@ -5,7 +5,7 @@ description: At ready-for-review, hand the PR to a fresh sonnet steward session 
 
 The session that built a PR does not tend it. At ready-for-review it spawns a steward
 session with a brief of a few hundred tokens, unsubscribes, and stops. The steward only
-reads notifications, classifies, and dispatches one `orch-opus-medium` round worker per
+reads notifications, classifies, and dispatches one `pd:orch-opus-medium` round worker per
 actionable wake; the worker does the whole round and reports in a dozen lines.
 
 **Why:** every PR wake re-reads the whole subscribed session before it can decide that
