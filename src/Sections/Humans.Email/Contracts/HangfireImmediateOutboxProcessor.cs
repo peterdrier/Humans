@@ -11,10 +11,9 @@ namespace Humans.Email.Contracts;
 /// immediately.
 /// </summary>
 /// <remarks>
-/// Followed <see cref="ProcessEmailOutboxJob"/> out of <c>Humans.Infrastructure</c> at
-/// G5 lane 5b-1 (nobodies-collective/Humans#866): it names the job's concrete type, and
-/// Base cannot reference <c>Humans.Email</c> without a cycle. Shell registers it, so it
-/// is public under <c>Contracts/</c>; the job it enqueues is public under <c>Jobs/</c>.
+/// It names <see cref="ProcessEmailOutboxJob"/>'s concrete type, and Base cannot reference
+/// <c>Humans.Email</c> without a cycle. Shell registers it, so it is public under
+/// <c>Contracts/</c>; the job it enqueues is public under <c>Jobs/</c>.
 /// </remarks>
 public sealed class HangfireImmediateOutboxProcessor(IBackgroundJobClient backgroundJobClient)
     : IImmediateOutboxProcessor

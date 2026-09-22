@@ -10,9 +10,8 @@ namespace Humans.Email.Jobs;
 /// <see cref="IEmailOutboxRetention"/>; this job is the scheduler shim around it.
 /// </summary>
 /// <remarks>
-/// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-1 — see
-/// <see cref="ProcessEmailOutboxJob"/> for why the assembly is not load-bearing and why
-/// the file sits under <c>Jobs/</c>.
+/// See <see cref="ProcessEmailOutboxJob"/> for why the assembly is not load-bearing and
+/// why the file sits under <c>Jobs/</c>.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class CleanupEmailOutboxJob(
