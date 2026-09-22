@@ -33,7 +33,7 @@ from `Humans.Testing` (linked into every test project via
 Why:
 - Default `Timeout = 30000` (30s) caps every test, sync or async, at
   xUnit v3's cooperative-cancellation level. Override per test with
-  `[HumansFact(Timeout = N)]` where `N > 0` — the setter rejects
+  `[HumansFact(Timeout = N)]` or `[HumansTheory(Timeout = N)]` where `N > 0` — the setter rejects
   `Timeout = 0` (infinite) and negative values with `ArgumentException` at
   attribute construction, so a hung test cannot be created by accident.
 - Process-level `--blame-hang-timeout 2m` in `.github/workflows/build.yml`
@@ -46,11 +46,8 @@ The HumansFact/HumansTheory declarations themselves use a file-scoped
 `#pragma warning disable RS0030` because they declare the project-approved
 replacement; that is the only legitimate site.
 
-To run a test that legitimately needs longer than 5s, set
-`[HumansFact(Timeout = N)]` with a higher `N`. Existing higher caps in the
-codebase are documented per-test (typical: `Timeout = 10000` for
-DB-context-setup-heavy tests, `Timeout = 30000` for tests with explicit
-delay/retry behaviour).
+To run a test that legitimately needs longer than 30s, set
+`[HumansFact(Timeout = N)]` or `[HumansTheory(Timeout = N)]` with a higher `N`.
 
 ## Humans.Analyzers (Build-time Architecture Rules)
 

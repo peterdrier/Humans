@@ -35,7 +35,7 @@ public class SectionResourceParityTests
             "SectionResourceTypes() must find every active section's <Section>Resource marker");
     }
 
-    [HumansTheory(Timeout = 30000)]
+    [HumansTheory]
     [MemberData(nameof(ResourceTypes))]
     public void EverySectionResourceSetHasEveryBaseKeyInEveryNonBaseCulture(Type resourceType)
     {

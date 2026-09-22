@@ -1,10 +1,6 @@
 version: 1
 next_id: 2
-inbox:
-  - added: 2026-09-20
-    id: WG-1
-    what: "Humans.Workgroups.Tests has no per-assembly warmup, so the first test to touch WorkgroupsDbContext pays the EF model build inside its own 5000ms [HumansFact] budget. Locally that test lands at ~2s (measured: the three slowest in the project are 2.08s/1.95s/1.83s and they are simply whichever ran first, not a consistent test); on a contended CI runner executing 49 projects it crosses 5s and fails whichever test drew the short straw — twice as Invalid_reasons_render_queue_with_original_text_and_error(action: \"Close\") on peterdrier/Humans#1760 — the first passed on a re-run, the second passed on the very next push, whose only change was a YAML doc file, so the identical code went green on a fresh runner with nothing fixed. Not a flake and not that test's fault: the timeout budget is measuring one-time assembly startup. Fix is an assembly fixture that builds the model once before any test runs; raising the global [HumansFact] timeout instead would mask it across every section."
-    review: panel
+inbox: []
 # Emptied 2026-09-14: the one entry here asked for grant revocation when
 # SettingKeys.WorkgroupsRootDriveFolderId is replaced. Peter, on
 # peterdrier/Humans#1650: "this is fine, I won't do that" — the root is set once
