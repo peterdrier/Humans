@@ -123,4 +123,7 @@
   <data name="Events_NotEditable" xml:space="preserve"><value>Aquest esdeveniment no es pot editar en el seu estat actual.</value></data>
   <data name="Events_NotWithdrawable" xml:space="preserve"><value>Aquest esdeveniment no es pot retirar en el seu estat actual.</value></data>
   <data name="Events_GuideSettingsUnavailable" xml:space="preserve"><value>Els ajustos de la guia no estan configurats.</value></data>
+  <data name="Events_SubmittedForReview" xml:space="preserve"><value>L'esdeveniment “{0}” s'ha enviat per revisar.</value><comment>{0} = event title</comment></data>
+  <data name="Events_ResubmittedForReview" xml:space="preserve"><value>L'esdeveniment “{0}” s'ha tornat a enviar per revisar.</value><comment>{0} = event title</comment></data>
+  <data name="Events_Withdrawn" xml:space="preserve"><value>L'esdeveniment “{0}” s'ha retirat.</value><comment>{0} = event title</comment></data>
 </root>

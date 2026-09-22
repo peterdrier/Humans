@@ -123,4 +123,7 @@
   <data name="Events_NotEditable" xml:space="preserve"><value>Diese Veranstaltung kann in ihrem aktuellen Status nicht bearbeitet werden.</value></data>
   <data name="Events_NotWithdrawable" xml:space="preserve"><value>Diese Veranstaltung kann in ihrem aktuellen Status nicht zurückgezogen werden.</value></data>
   <data name="Events_GuideSettingsUnavailable" xml:space="preserve"><value>Die Guide-Einstellungen sind nicht konfiguriert.</value></data>
+  <data name="Events_SubmittedForReview" xml:space="preserve"><value>Veranstaltung „{0}“ zur Prüfung eingereicht.</value><comment>{0} = event title</comment></data>
+  <data name="Events_ResubmittedForReview" xml:space="preserve"><value>Veranstaltung „{0}“ erneut zur Prüfung eingereicht.</value><comment>{0} = event title</comment></data>
+  <data name="Events_Withdrawn" xml:space="preserve"><value>Veranstaltung „{0}“ zurückgezogen.</value><comment>{0} = event title</comment></data>
 </root>

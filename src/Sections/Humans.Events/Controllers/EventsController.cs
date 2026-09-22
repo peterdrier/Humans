@@ -182,7 +182,7 @@ internal sealed class EventsController(
 
         logger.LogInformation("User {UserId} submitted individual event '{Title}'", user.Id, model.Title);
 
-        SetSuccess($"Event \"{model.Title}\" submitted for review.");
+        SetSuccess(FormatEventFeedback("Events_SubmittedForReview", model.Title));
         return RedirectToAction(nameof(MySubmissions));
     }
 
@@ -292,7 +292,7 @@ internal sealed class EventsController(
 
         logger.LogInformation("User {UserId} updated event '{Title}' ({EventId})", user.Id, model.Title, eventId);
 
-        SetSuccess($"Event \"{model.Title}\" resubmitted for review.");
+        SetSuccess(FormatEventFeedback("Events_ResubmittedForReview", model.Title));
         return RedirectToAction(nameof(MySubmissions));
     }
 
@@ -315,7 +315,7 @@ internal sealed class EventsController(
         await guide.WithdrawEventAsync(guideEvent);
 
         logger.LogInformation("User {UserId} withdrew event '{Title}' ({EventId})", user.Id, guideEvent.Title, eventId);
-        SetSuccess($"Event \"{guideEvent.Title}\" withdrawn.");
+        SetSuccess(FormatEventFeedback("Events_Withdrawn", guideEvent.Title));
         return RedirectToAction(nameof(MySubmissions));
     }
 
@@ -588,7 +588,7 @@ internal sealed class EventsController(
         await guide.SubmitEventAsync(guideEvent, viewUrl);
         logger.LogInformation("User {UserId} submitted barrio event '{Title}' for camp {CampId}", user.Id, model.Title, camp.Id);
 
-        SetSuccess($"Event \"{model.Title}\" submitted for review.");
+        SetSuccess(FormatEventFeedback("Events_SubmittedForReview", model.Title));
         return RedirectToAction(nameof(MySubmissions));
     }
 
@@ -686,7 +686,7 @@ internal sealed class EventsController(
 
         logger.LogInformation("User {UserId} updated barrio event '{Title}' ({EventId})", user.Id, model.Title, eventId);
 
-        SetSuccess($"Event \"{model.Title}\" resubmitted for review.");
+        SetSuccess(FormatEventFeedback("Events_ResubmittedForReview", model.Title));
         return RedirectToAction(nameof(MySubmissions));
     }
 
@@ -709,7 +709,7 @@ internal sealed class EventsController(
         await guide.WithdrawEventAsync(guideEvent);
         logger.LogInformation("User {UserId} withdrew barrio event '{Title}' ({EventId})", user.Id, guideEvent.Title, eventId);
 
-        SetSuccess($"Event \"{guideEvent.Title}\" withdrawn.");
+        SetSuccess(FormatEventFeedback("Events_Withdrawn", guideEvent.Title));
         return RedirectToAction(nameof(MySubmissions));
     }
 
@@ -791,6 +791,9 @@ internal sealed class EventsController(
 
     // camp is non-null at every call site; Slug is always set, so a name always resolves.
     private static string ResolveCampDisplayName(CampInfo camp) => ResolveCampName(camp)!;
+
+    private string FormatEventFeedback(string resourceKey, string title) =>
+        string.Format(localizer[resourceKey].Value, title);
 
     private async Task<CampEventFormViewModel> BuildBarrioFormAsync(string slug, CampInfo camp, EventSettingsInfo burn)
     {
