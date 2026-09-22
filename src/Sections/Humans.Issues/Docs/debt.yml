@@ -37,5 +37,5 @@ inbox:
     review: panel
   - added: 2026-09-22
     id: ISSUES-9
-    what: "src/Sections/Humans.Issues/Services/IssuesEmails.cs:31 HTML-encodes the subject line Issues_Email_IssueComment_Subject. A Subject header is plain text, so an issue title containing & or < reaches the recipient as R&amp;D. The body arguments on the same call are correctly encoded; only the subject argument is wrong. Inherited from Email's EMAIL-2, which named the pre-#1651 renderer; the template moved here with peterdrier/Humans#1651 and the bug came with it. Re-filed by /section-doctor on Email 2026-09-22."
+    what: "src/Sections/Humans.Issues/Services/IssuesEmails.cs HTML-encodes the subject line Issues_Email_IssueComment_Subject. A Subject header is plain text, so an issue title containing & or < reaches the recipient as R&amp;D. The body arguments on the same call are correctly encoded; only the subject argument is wrong. Inherited from Email's EMAIL-2, which named the pre-#1651 renderer; the template moved here with peterdrier/Humans#1651 and the bug came with it. Re-filed by /section-doctor on Email 2026-09-22."
     review: light

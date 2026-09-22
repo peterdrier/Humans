@@ -17,5 +17,5 @@ inbox:
     review: light
   - added: 2026-09-22
     id: SHIFTS-5
-    what: "src/Sections/Humans.Shifts/Services/ShiftsEmails.cs:36,76 HTML-encodes the subject lines Shifts_Email_CoordinatorRotaMessage_Subject and Shifts_Email_CoordinatorTeamRotasMessage_Subject. A Subject header is plain text, so a rota or team name containing & or < reaches the recipient as R&amp;D. The body arguments on the same calls are correctly encoded; only the subject arguments are wrong. Inherited from Email's EMAIL-2, which named the pre-#1651 renderer; the templates moved here with peterdrier/Humans#1651 and the bug came with them. Re-filed by /section-doctor on Email 2026-09-22."
+    what: "src/Sections/Humans.Shifts/Services/ShiftsEmails.cs HTML-encodes the subject lines Shifts_Email_CoordinatorRotaMessage_Subject and Shifts_Email_CoordinatorTeamRotasMessage_Subject. A Subject header is plain text, so a rota or team name containing & or < reaches the recipient as R&amp;D. The body arguments on the same calls are correctly encoded; only the subject arguments are wrong. Inherited from Email's EMAIL-2, which named the pre-#1651 renderer; the templates moved here with peterdrier/Humans#1651 and the bug came with them. Re-filed by /section-doctor on Email 2026-09-22."
     review: light

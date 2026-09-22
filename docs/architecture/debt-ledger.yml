@@ -320,7 +320,7 @@ themes:
 inbox:
   - added: 2026-09-22
     id: CENTRAL-65
-    what: "tests/Humans.Feedback.Tests/Architecture/FeedbackArchitectureTests.cs:63, tests/Humans.Notifications.Tests/NotificationsArchitectureTests.cs:56 and tests/Humans.Issues.Tests/Architecture/IssuesArchitectureTests.cs:70 each carry the comment 'IRepositoryImplementationsAreSealedRule, which sweeps Humans.Infrastructure only'. Both the rule and that assembly are gone — docs/architecture/roslyn-analysis.md:87-90 records the rule as retired and says not to repoint it, because HUM0034 plus MA0053 make sealing structural. Email's copy was corrected by /section-doctor on Email 2026-09-22; these three are the same false claim in sections that run did not touch."
+    what: "tests/Humans.Feedback.Tests/Architecture/FeedbackArchitectureTests.cs, tests/Humans.Notifications.Tests/NotificationsArchitectureTests.cs and tests/Humans.Issues.Tests/Architecture/IssuesArchitectureTests.cs each carry the comment 'IRepositoryImplementationsAreSealedRule, which sweeps Humans.Infrastructure only'. Both the rule and that assembly are gone — docs/architecture/roslyn-analysis.md records the rule as retired and says not to repoint it, because HUM0034 plus MA0053 make sealing structural. Email's copy was corrected by /section-doctor on Email 2026-09-22; these three are the same false claim in sections that run did not touch."
     review: light
   - added: 2026-09-21
     id: CENTRAL-63
