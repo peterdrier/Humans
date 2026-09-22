@@ -259,6 +259,38 @@ public class EmailOutboxProcessorTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ProcessQueuedAsync_GrantStatusUpdateFailureAfterADeliveryFailure_DoesNotAbortTheDrain()
+    {
+        // The failure-path grant mirror runs inside the per-message catch, so an
+        // uncaught throw there has nowhere left to land: it escapes the loop and
+        // ProcessQueuedAsync itself, skipping the error log and leaving the rest of
+        // the batch stamped PickedUp until the stale window releases it.
+        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
+        message.CampaignGrantId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _transport.SendAsync(
+            Arg.Any<string>(), Arg.Any<string?>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(),
+            Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("SMTP timeout"));
+
+        _campaignService.UpdateGrantEmailStatusAsync(
+            message.CampaignGrantId.Value, EmailOutboxStatus.Failed, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("grant update failed"));
+
+        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        updated.Status.Should().Be(EmailOutboxStatus.Failed);
+
+        var row = await FreshCountsQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        row.SentCount.Should().Be(0);
+        row.FailedCount.Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task ProcessQueuedAsync_IncrementsDailyFailedCountOnFailure()
     {
         await SeedMessageAsync(EmailOutboxStatus.Queued);
