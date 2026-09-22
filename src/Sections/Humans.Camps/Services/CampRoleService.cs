@@ -23,7 +23,7 @@ internal sealed class CampRoleService(
 
     public async Task<IReadOnlyList<CampRoleDefinitionInfo>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default)
     {
-        var definitions = await repo.ListDefinitionsAsync(includeDeactivated, ct);
+        var definitions = OrderDefinitions(await repo.ListDefinitionsAsync(includeDeactivated, ct));
         return definitions.Select(CreateCampRoleDefinitionInfo).ToList();
     }
 
@@ -222,7 +222,7 @@ internal sealed class CampRoleService(
 
     public async Task<CampRolesPanelData> BuildPanelAsync(Guid campSeasonId, CancellationToken ct = default)
     {
-        var definitions = await repo.ListDefinitionsAsync(includeDeactivated: false, ct);
+        var definitions = OrderDefinitions(await repo.ListDefinitionsAsync(includeDeactivated: false, ct));
         var assignments = await repo.GetAssignmentsForSeasonAsync(campSeasonId, ct);
 
         var memberUserIds = assignments.Select(a => a.CampMember.UserId).Distinct().ToList();
@@ -377,8 +377,8 @@ internal sealed class CampRoleService(
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
         GetDirectoryRoleSummariesAsync(int year, CancellationToken ct = default)
     {
-        var definitions = await repo.ListDefinitionsAsync(includeDeactivated: false, ct);
-        if (definitions.Count == 0)
+        var definitions = OrderDefinitions(await repo.ListDefinitionsAsync(includeDeactivated: false, ct));
+        if (!definitions.Any())
             return new Dictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>();
 
         // Same shape as GetComplianceReportAsync but over all active definitions,
@@ -656,6 +656,10 @@ internal sealed class CampRoleService(
         var definitions = await ListDefinitionsAsync(includeDeactivated, cancellationToken);
         return definitions.Select(d => new CampRoleDefinitionSeedInfo(d.Id, d.Slug, d.Name)).ToList();
     }
+
+    private static IOrderedEnumerable<CampRoleDefinition> OrderDefinitions(
+        IEnumerable<CampRoleDefinition> definitions) =>
+        definitions.OrderBy(d => d.SortOrder).ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase);
 
     /// <inheritdoc />
     async Task ICampRoleSeeding.CreateDefinitionForSeedAsync(
