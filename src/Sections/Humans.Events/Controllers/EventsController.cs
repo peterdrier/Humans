@@ -740,7 +740,7 @@ internal sealed class EventsController(
 
         if (file == null || file.Length == 0)
         {
-            SetError("Please select a CSV file to upload.");
+            SetError(localizer["Events_UploadSelectCsv"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -764,7 +764,7 @@ internal sealed class EventsController(
 
         if (rows.Count == 0)
         {
-            SetError("The CSV had no event rows. Add at least one row below the header and try again.");
+            SetError(localizer["Events_UploadNoRows"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 

@@ -126,4 +126,6 @@
   <data name="Events_SubmittedForReview" xml:space="preserve"><value>Veranstaltung „{0}“ zur Prüfung eingereicht.</value><comment>{0} = event title</comment></data>
   <data name="Events_ResubmittedForReview" xml:space="preserve"><value>Veranstaltung „{0}“ erneut zur Prüfung eingereicht.</value><comment>{0} = event title</comment></data>
   <data name="Events_Withdrawn" xml:space="preserve"><value>Veranstaltung „{0}“ zurückgezogen.</value><comment>{0} = event title</comment></data>
+  <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Bitte wähle eine CSV-Datei zum Hochladen aus.</value></data>
+  <data name="Events_UploadNoRows" xml:space="preserve"><value>Die CSV enthielt keine Veranstaltungszeilen. Füge mindestens eine Zeile unter der Kopfzeile hinzu und versuche es erneut.</value></data>
 </root>

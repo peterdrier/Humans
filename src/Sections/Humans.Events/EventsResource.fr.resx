@@ -126,4 +126,6 @@
   <data name="Events_SubmittedForReview" xml:space="preserve"><value>Événement « {0} » soumis à révision.</value><comment>{0} = event title</comment></data>
   <data name="Events_ResubmittedForReview" xml:space="preserve"><value>Événement « {0} » soumis à nouveau à révision.</value><comment>{0} = event title</comment></data>
   <data name="Events_Withdrawn" xml:space="preserve"><value>Événement « {0} » retiré.</value><comment>{0} = event title</comment></data>
+  <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Veuillez sélectionner un fichier CSV à téléverser.</value></data>
+  <data name="Events_UploadNoRows" xml:space="preserve"><value>Le CSV ne contenait aucune ligne d'événement. Ajoutez au moins une ligne sous l'en-tête et réessayez.</value></data>
 </root>

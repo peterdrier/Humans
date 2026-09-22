@@ -126,4 +126,6 @@
   <data name="Events_SubmittedForReview" xml:space="preserve"><value>L'esdeveniment “{0}” s'ha enviat per revisar.</value><comment>{0} = event title</comment></data>
   <data name="Events_ResubmittedForReview" xml:space="preserve"><value>L'esdeveniment “{0}” s'ha tornat a enviar per revisar.</value><comment>{0} = event title</comment></data>
   <data name="Events_Withdrawn" xml:space="preserve"><value>L'esdeveniment “{0}” s'ha retirat.</value><comment>{0} = event title</comment></data>
+  <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Selecciona un fitxer CSV per pujar.</value></data>
+  <data name="Events_UploadNoRows" xml:space="preserve"><value>El CSV no tenia cap fila d'esdeveniment. Afegeix almenys una fila sota la capçalera i torna-ho a provar.</value></data>
 </root>

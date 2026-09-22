@@ -121,4 +121,6 @@
   <data name="Events_SubmittedForReview" xml:space="preserve"><value>Event “{0}” submitted for review.</value><comment>{0} = event title</comment></data>
   <data name="Events_ResubmittedForReview" xml:space="preserve"><value>Event “{0}” resubmitted for review.</value><comment>{0} = event title</comment></data>
   <data name="Events_Withdrawn" xml:space="preserve"><value>Event “{0}” withdrawn.</value><comment>{0} = event title</comment></data>
+  <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Please select a CSV file to upload.</value></data>
+  <data name="Events_UploadNoRows" xml:space="preserve"><value>The CSV had no event rows. Add at least one row below the header and try again.</value></data>
 </root>
