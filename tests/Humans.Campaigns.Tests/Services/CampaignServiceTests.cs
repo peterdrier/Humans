@@ -742,6 +742,18 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
+    public async Task GetCodeTrackingAsync_ordersCampaignsNewestFirst()
+    {
+        var older = await SeedActiveCampaignWithCodesAsync(["OLDER"]);
+        Clock.AdvanceHours(1);
+        var newer = await SeedActiveCampaignWithCodesAsync(["NEWER"]);
+
+        var tracking = await _service.GetCodeTrackingAsync(Xunit.TestContext.Current.CancellationToken);
+
+        tracking.Campaigns.Select(c => c.CampaignId).Should().Equal(newer.Id, older.Id);
+    }
+
+    [HumansFact]
     public async Task EraseForUserAsync_DeletesOnlyThatUsersGrants()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["ERASE-1", "ERASE-2"]);

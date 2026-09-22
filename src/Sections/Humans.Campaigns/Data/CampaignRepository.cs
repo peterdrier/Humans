@@ -61,8 +61,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
         return await ctx.Campaigns
             .AsNoTracking()
             .Where(c => c.Status == CampaignStatus.Active || c.Status == CampaignStatus.Completed)
-            .OrderByDescending(c => c.CreatedAt)
-            .Select(c => new CampaignCodeTrackingSummaryRow(c.Id, c.Title))
+            .Select(c => new CampaignCodeTrackingSummaryRow(c.Id, c.Title, c.CreatedAt))
             .ToListAsync(ct);
     }
 
