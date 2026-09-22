@@ -93,4 +93,23 @@
   <data name="Events_UploadFailed" xml:space="preserve"><value>Upload fehlgeschlagen.</value></data>
   <data name="Events_UploadFailedDetail" xml:space="preserve"><value>Behebe die folgenden Fehler und versuche es erneut. Es wurden keine Veranstaltungen gespeichert.</value></data>
   <data name="Events_WithdrawConfirm" xml:space="preserve"><value>Diese Veranstaltung zurückziehen?</value></data>
+  <data name="EventSubmission_EditTitle" xml:space="preserve"><value>Veranstaltung bearbeiten</value></data>
+  <data name="EventSubmission_SubmitTitle" xml:space="preserve"><value>Veranstaltung einreichen</value></data>
+  <data name="EventSubmission_Edit" xml:space="preserve"><value>Bearbeiten</value></data>
+  <data name="EventSubmission_New" xml:space="preserve"><value>Neu</value></data>
+  <data name="EventSubmission_ReturnedForEdits" xml:space="preserve"><value>Diese Veranstaltung wurde zur Bearbeitung zurückgegeben. Aktualisiere die Angaben und reiche sie erneut ein.</value></data>
+  <data name="EventSubmission_CharactersRemaining" xml:space="preserve"><value>Zeichen verbleiben</value></data>
+  <data name="EventSubmission_MarkdownSupported" xml:space="preserve"><value>Markdown-Formatierung wird unterstützt</value></data>
+  <data name="EventSubmission_SelectCategory" xml:space="preserve"><value>— Kategorie auswählen —</value></data>
+  <data name="EventSubmission_SelectVenue" xml:space="preserve"><value>— Ort auswählen —</value></data>
+  <data name="EventSubmission_AllDay" xml:space="preserve"><value>Ganztägige Veranstaltung</value></data>
+  <data name="EventSubmission_SelectDay" xml:space="preserve"><value>— Tag auswählen —</value></data>
+  <data name="EventSubmission_Repeats" xml:space="preserve"><value>Diese Veranstaltung wiederholt sich an mehreren Tagen</value></data>
+  <data name="EventSubmission_RecurrenceDays" xml:space="preserve"><value>Wiederholungstage</value></data>
+  <data name="EventSubmission_LocationPlaceholder" xml:space="preserve"><value>z. B. nahe der Feuerstelle</value></data>
+  <data name="EventSubmission_HostPlaceholder" xml:space="preserve"><value>z. B. das Teekollektiv</value></data>
+  <data name="EventSubmission_HostHelp" xml:space="preserve"><value>Wird ausgefüllt im Guide statt deines Namens angezeigt.</value></data>
+  <data name="EventSubmission_Resubmit" xml:space="preserve"><value>Erneut einreichen</value></data>
+  <data name="EventSubmission_SubmitForReview" xml:space="preserve"><value>Zur Prüfung einreichen</value></data>
+  <data name="EventSubmission_Cancel" xml:space="preserve"><value>Abbrechen</value></data>
 </root>
