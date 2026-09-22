@@ -27,7 +27,7 @@ See `docs/superpowers/specs/2026-04-25-freshness-sweep-design.md` for full desig
 1. `git fetch upstream main`. Missing remote → error: `git remote add upstream https://github.com/nobodies-collective/Humans.git`.
 2. `--since <ref>`: `previous-anchor = git rev-parse <ref>`. Skip 3-5.
 3. `--full`: previous-anchor = `none`; new anchor = `upstream/main` HEAD → Phase 2.
-4. `git log upstream/main --grep='(upstream@' --extended-regexp --format=%H -n 1` → `git log -1 <hash> --format=%B` → extract `(upstream@<sha>)` token. Grep on the anchor token (not "freshness sweep") to avoid false positives from revert commits.
+4. `git log upstream/main --grep='\(upstream@' --extended-regexp --format=%H -n 1` → `git log -1 <hash> --format=%B` → extract `(upstream@<sha>)` token. Grep on the anchor token (not "freshness sweep") to avoid false positives from revert commits.
 5. No prior sweep: warn, previous-anchor = `none`, behave as `--full`.
 
 ## Phase 2: Create the workspace
@@ -182,13 +182,13 @@ Goal: every sweep shrinks the historical-doc pile by ~5% (soft target, ~7% soft 
 
 | Source tree | Action |
 |---|---|
-| `docs/plans/*.md` older than 30 days | Wheat-extract → migrate → retarget refs → delete |
-| `docs/superpowers/plans/*.md` older than 30 days | Same |
-| `docs/superpowers/specs/*.md` older than 60 days | Same |
+| `docs/plans/**` older than 30 days (files and dated subfolders) | Wheat-extract → migrate → retarget refs → delete |
+| `docs/superpowers/plans/**` older than 30 days | Same |
+| `docs/superpowers/specs/**` older than 60 days | Same |
 | `docs/architecture/tech-debt-*.md` where all items are `[DONE]` | Same (wheat may be `[DONE]` summaries worth keeping in maintenance-log) |
 | Orphan refs in living docs to already-deleted files | Edit out or retarget |
 
-**Age is measured by the `YYYY-MM-DD` prefix in the filename — NOT the last-commit date or mtime.** A husk's topic date is when its work happened; that's its true age. Last-commit date is the wrong signal: a doc sweep, a link retarget, or any minor edit touches a husk without making it less legacy, and gating on last-commit would let those incidental edits silently reset the clock and keep a husk alive forever. The section docs (`docs/sections/*.md`) are the canonical, living record — the repo; these plans/specs are **contextual legacy** that must age out on schedule regardless of how recently something brushed against them. So `docs/plans/2026-05-14-foo.md` is "older than 30 days" once the calendar is past 2026-06-13, full stop — even if its last commit was yesterday's freshness sweep. (Files lacking a date prefix: fall back to mtime, and flag them in the report as candidates to rename with a date prefix.)
+**Age is measured by the `YYYY-MM-DD` prefix in the filename — NOT the last-commit date or mtime.** A husk's topic date is when its work happened; that's its true age. Last-commit date is the wrong signal: a doc sweep, a link retarget, or any minor edit touches a husk without making it less legacy, and gating on last-commit would let those incidental edits silently reset the clock and keep a husk alive forever. The section docs (`docs/sections/*.md`) are the canonical, living record — the repo; these plans/specs are **contextual legacy** that must age out on schedule regardless of how recently something brushed against them. So `docs/plans/2026-05-14-foo.md` is "older than 30 days" once the calendar is past 2026-06-13, full stop — even if its last commit was yesterday's freshness sweep. A dated subfolder (`docs/plans/2026-08-03-g0-first-audit/`) ages as one unit by its own prefix and is pruned whole. (Files lacking a date prefix: fall back to mtime, and flag them in the report as candidates to rename with a date prefix.)
 
 ### Never touched by prune
 

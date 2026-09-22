@@ -156,23 +156,19 @@ None this sweep. See the deferral below.
   - a service-layer pre-check is weaker than an FK constraint → conventions.md.
 
   Once a code PR retargets that comment, the next sweep can mine and delete it.
-- Future candidates (budget): `docs/plans/2026-08-03-g0-first-audit/` (1802; a subdirectory, which
-  is outside the `docs/plans/*.md` allowlist), `docs/superpowers/plans/2026-08-12-burn-demo-pages.md`
+- Future candidates (budget): `docs/plans/2026-08-03-g0-first-audit/` (1802; dated subfolders are
+  in the allowlist from the next sweep), `docs/superpowers/plans/2026-08-12-burn-demo-pages.md`
   (894), `docs/superpowers/specs/2026-07-15-per-section-dbcontext-design.md` (666). The
   freshness-sweep and debt-sweep design specs stay: live skills cite them.
 
 ## Unmarked editorial (add `freshness:triggers`)
 
-- 24 new section help files, `src/Sections/*/Docs/help/*.{guide,glossary}.md` (Camps, CityPlanning,
-  Governance, Onboarding, Shifts, Teams, Tickets, Users). See Questions.
 - `Humans.Finance/Docs/features/sepa-payout.md`, `Humans.Notifications/Docs/features/notification-api.md`,
   and six Surveys feature docs: grid-questions, ranked-choice-voting, survey-information-blocks,
   survey-intro-markdown, survey-invitation-email-copy, survey-preview.
 
 ## Flagged for human review
 
-- `docs/architecture/conventions.md` §Versioning: the MinVer paragraph tells the history of its
-  removal.
 - `Humans.Settings/Docs/authorization.md` carries issue references (#1628, #1104/#1631), which may
   count as history (mechanical output; left as is).
 
@@ -182,23 +178,33 @@ None. All candidates were resolved this sweep.
 
 ## Questions
 
-Unattended run: these are pending Peter's answer (listed in the PR body).
+Answered by Peter; answers applied in this PR.
 
 1. AGENTS.md says every section has `Docs/features/` and `Docs/data-access.md`, but 12 sections lack
    `features/` and Debug/Development/Tour lack `data-access.md`. Change it to "where present"?
+   **Answer:** Yes — now "where present".
 2. design-rules §8 says `system_settings` keys "belong in their own sections eventually", yet
    `Workgroups:RootDriveFolderId` was just added there. Keep, soften or drop the sentence?
+   **Answer:** Keep; moving the key recorded as `WORKGROUPS-2`.
 3. design-rules §8b: mention `IIssueQueueOwner` (on `Humans.Issues.Contracts`) beside `ISectionSettings`?
+   **Answer:** Rewritten: `.Contracts` seams exist only to break an assembly dependency loop.
 4. design-rules §15i: list `CachingTicketVendorService` (a TTL cache, not TrackedCache)?
+   **Answer:** Yes; replacing it with `TrackedCache` recorded as `TICKETS-7`.
 5. seed-data.md: add `DevPersonaSeeder` to the seeder table?
+   **Answer:** Yes — added.
 6. conventions.md: cut the MinVer paragraph down to the reason?
+   **Answer:** Yes — cut to the reason.
 7. Users `profiles.md`: the deletion diagram shows the job anonymizing inline, but it now routes
    through `IGdprService.EraseForUserAsync`. Rewrite the diagram or leave it?
+   **Answer:** Rewritten around the Gdpr fan-out.
 8. `notification-board.md` (unimplemented design): assign the 5 new Workgroup sources to its
    migration tables now, or leave that to the implementer?
+   **Answer:** Leave it.
 9. Section help files (`Docs/help/*.guide.md`, `*.glossary.md`): add `freshness:triggers` to them,
    `ignore:` them in the catalog, or index them in docs/README?
+   **Answer:** `ignore:`d in the catalog.
 10. `Humans.Finance/Docs/expense-reimbursement-process.md`: give it a docs/README row?
+   **Answer:** Yes — added.
 
 ## Skipped (errors)
 

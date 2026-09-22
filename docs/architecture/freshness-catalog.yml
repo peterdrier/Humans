@@ -388,3 +388,6 @@ ignore:
   # list every single sweep, asking for freshness:triggers markers they must never
   # carry: they are regenerated wholesale from source, not reviewed as prose.
   - src/Sections/*/Docs/authorization.md
+  # Section help guides and glossaries: in-app help content rendered by the Guide/Agent
+  # help seam, not invariant or feature docs (Peter, 2026-09-22).
+  - src/Sections/*/Docs/help/**

@@ -41,6 +41,8 @@
 | `/dev/seed/dashboard` | `ShiftDashboardAccess` | `DevelopmentDashboardSeeder` | Teams, humans, shifts, and signups behind the shift dashboard |
 | `/dev/seed/dashboard/reset` | `AdminOnly` | `DevelopmentDashboardSeeder` | Deletes the dashboard demo rows, then reseeds |
 
+`DevPersonaSeeder` (Development) is the other runtime seeder: `GET /dev/login/{persona}` (behind the same `DevAuth:Enabled` + non-production gate) calls it to ensure the persona's User, Profile, emails, roles, and dev fixtures (system-team memberships, test department, barrio camp/lead, city-planning team) through the owning sections' services before signing in.
+
 The two dashboard endpoints are stricter than the rest: they additionally require `ASPNETCORE_ENVIRONMENT=Development`, so they never run on QA or preview. Their buttons are on `Views/ShiftDashboard/Index.cshtml`.
 
 The budget and camp-role endpoints are reached from the admin sidebar's **Dev** group (Development's `SectionAdminNav.cs`), whose two items carry `EnvironmentGate: env => !env.IsProduction()` — so they render on local and QA but never in production.

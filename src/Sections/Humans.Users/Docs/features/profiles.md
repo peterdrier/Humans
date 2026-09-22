@@ -252,38 +252,31 @@ User requests deletion (/Profile/Me/Privacy/RequestDeletion)
     ▼ Grace period expires
 ProcessAccountDeletionsJob (daily)
     │
-    ├── Anonymize user record
-    │   • DisplayName → "Deleted User"
-    │   • Email → "deleted-{id}@deleted.local"
-    │   • Phone, pronouns, DOB, profile picture → null
-    │   • Emergency contact fields → null
-    │
-    ├── Remove related data
-    │   • UserEmails (all removed)
-    │   • ContactFields (all removed)
-    │   • VolunteerHistoryEntries (all removed)
-    │
-    ├── End memberships (safety net, idempotent)
-    │   • TeamMemberships: LeftAt = now (only if still null)
-    │   • RoleAssignments: ValidTo = now (only if still null)
-    │
-    ├── Disable login
-    │   • LockoutEnd = DateTimeOffset.MaxValue
-    │   • SecurityStamp rotated
-    │
-    ├── Audit log: AccountAnonymized
-    ├── Confirmation email to original address
-    │
-    └── Preserved for audit trail:
-        • ConsentRecords (immutable, anonymized via user FK)
-        • Applications (anonymized via user FK)
+    └── IAccountDeletionService.AnonymizeExpiredAccountAsync (per due user)
+        │
+        ├── Capture summary (original email, burner name, language)
+        │
+        ├── Erase every section (Gdpr fan-out)
+        │   • Resolve the merge chain: merged-source ids first, survivor last
+        │   • IGdprService.EraseForUserAsync per id → each section's
+        │     IUserDataContributor erases or anonymizes its own data
+        │     (Users: profile + user record, UserEmails;
+        │      Teams: memberships revoked, join requests and
+        │      early-entry grants deleted; …)
+        │   • Deletion markers stay set until every contributor succeeds,
+        │     so a failure retries the whole fan-out the next day
+        │
+        ├── Invalidate shared caches (user info, teams, role claims, shifts)
+        │
+        ├── Audit log: AccountAnonymized
+        └── AccountDeleted confirmation email to the original address
 ```
 
 #### Google Workspace Deprovisioning
 
 Google permissions (Shared Drive access, Group memberships) are **not** revoked by the deletion job directly. Instead, deprovisioning happens through the normal membership lifecycle:
 
-1. The anonymization job ends all team memberships (`LeftAt = now`)
+1. The Teams erasure contributor revokes all team memberships during the fan-out
 2. The overnight sync job (`SystemTeamSyncJob` / `GoogleResourceReconciliationJob`) detects the ended memberships and removes the corresponding Google permissions
 
 This two-step approach ensures Google deprovisioning uses the same tested code path as any other team departure, rather than a separate deletion-specific implementation.
