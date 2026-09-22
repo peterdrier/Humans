@@ -245,13 +245,23 @@ public class ShiftAdminControllerTests
             UpcomingOnly = false,
             PreviewedAudience = TeamRotasAudienceFilter.Default.Key,
         };
+        var ctrl = BuildSut();
+        // Model binding stored the stale key it posted. The hidden field's tag helper
+        // prefers that over the model, so it has to be gone or the re-rendered form
+        // posts the stale key again and the turn-back below never ends.
+        ctrl.ModelState.SetModelValue(
+            nameof(EmailTeamRotasViewModel.PreviewedAudience),
+            TeamRotasAudienceFilter.Default.Key,
+            TeamRotasAudienceFilter.Default.Key);
 
-        var result = await BuildSut().EmailTeamRotas(Slug, posted);
+        var result = await ctrl.EmailTeamRotas(Slug, posted);
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(posted);
         posted.AudienceChanged.Should().BeTrue();
         posted.RecipientCount.Should().Be(3);
         posted.PreviewedAudience.Should().Be(posted.Filter.Key);
+        ctrl.ModelState.ContainsKey(nameof(EmailTeamRotasViewModel.PreviewedAudience))
+            .Should().BeFalse();
         await _rotaMessenger.DidNotReceiveWithAnyArgs().SendTeamRotasMessageAsync(
             default, default, null!, default, null!);
     }

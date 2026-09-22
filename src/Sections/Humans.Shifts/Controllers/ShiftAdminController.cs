@@ -462,6 +462,11 @@ internal sealed class ShiftAdminController(
             model.PreviewedAudience, model.Filter.Key, StringComparison.Ordinal);
         model.TeamSlug = slug;
         model.TeamName = team.Name;
+        // The recipient list above is the one about to be rendered, so the model's key
+        // is the authoritative one. Drop the posted entry first: the hidden field's tag
+        // helper prefers ModelState's attempted value, so leaving it would re-render the
+        // stale key and turn every later send back through the guard below forever.
+        ModelState.Remove(nameof(EmailTeamRotasViewModel.PreviewedAudience));
         model.PreviewedAudience = model.Filter.Key;
         model.RotaCount = preview.RotaCount;
         model.RecipientCount = preview.RecipientNames.Count;
