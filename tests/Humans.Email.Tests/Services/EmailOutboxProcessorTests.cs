@@ -302,9 +302,9 @@ public class EmailOutboxProcessorTests : IDisposable
                 Arg.Any<LocalDate>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("daily count write failed"));
 
-        var processor = new EmailOutboxProcessor(
+        var processor = WithoutThrottle(new EmailOutboxProcessor(
             repo, _outboxService, _campaignService, _transport, _metrics, _meters, _clock, _settings,
-            NullLogger<EmailOutboxProcessor>.Instance);
+            NullLogger<EmailOutboxProcessor>.Instance));
 
         await processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -325,9 +325,9 @@ public class EmailOutboxProcessorTests : IDisposable
             AutoAdvance = Duration.FromSeconds(40)
         };
         var outboxService = new EmailOutboxService(_repo, _settingsStore, _settings, clock);
-        var processor = new EmailOutboxProcessor(
+        var processor = WithoutThrottle(new EmailOutboxProcessor(
             _repo, outboxService, _campaignService, _transport, _metrics, _meters, clock, _settings,
-            NullLogger<EmailOutboxProcessor>.Instance);
+            NullLogger<EmailOutboxProcessor>.Instance));
 
         var message1 = new EmailOutboxMessage
         {
@@ -378,6 +378,33 @@ public class EmailOutboxProcessorTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ProcessQueuedAsync_CancellationAfterDelivery_DoesNotMarkMessageFailed()
+    {
+        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
+        using var cancellation = new CancellationTokenSource();
+        var processor = new EmailOutboxProcessor(
+            _repo, _outboxService, _campaignService, _transport, _metrics, _meters, _clock, _settings,
+            NullLogger<EmailOutboxProcessor>.Instance)
+        {
+            ThrottleDelayAsync = async (delay, cancellationToken) =>
+            {
+                delay.Should().Be(TimeSpan.FromSeconds(1));
+                await cancellation.CancelAsync();
+                await Task.FromCanceled(cancellationToken);
+            }
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => processor.ProcessQueuedAsync(cancellation.Token));
+
+        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        updated.Id.Should().Be(message.Id);
+        updated.Status.Should().Be(EmailOutboxStatus.Sent);
+        updated.RetryCount.Should().Be(0);
+        updated.SentAt.Should().Be(_clock.GetCurrentInstant());
+    }
+
+    [HumansFact]
     public async Task ProcessQueuedAsync_SkipsFutureRetry()
     {
         // Failed message with NextRetryAt in the future — should not be processed
@@ -412,9 +439,16 @@ public class EmailOutboxProcessorTests : IDisposable
         return ctx.EmailDailySendCounts.AsNoTracking();
     }
 
-    private EmailOutboxProcessor NewProcessor(IOptions<EmailSettings> settings) => new(
-        _repo, _outboxService, _campaignService, _transport, _metrics, _meters, _clock, settings,
-        NullLogger<EmailOutboxProcessor>.Instance);
+    private EmailOutboxProcessor NewProcessor(IOptions<EmailSettings> settings) =>
+        WithoutThrottle(new EmailOutboxProcessor(
+            _repo, _outboxService, _campaignService, _transport, _metrics, _meters, _clock, settings,
+            NullLogger<EmailOutboxProcessor>.Instance));
+
+    private static EmailOutboxProcessor WithoutThrottle(EmailOutboxProcessor processor)
+    {
+        processor.ThrottleDelayAsync = static (_, _) => Task.CompletedTask;
+        return processor;
+    }
 
     private async Task<EmailOutboxMessage> SeedMessageAsync(EmailOutboxStatus status)
     {

@@ -1,0 +1,220 @@
+{
+  "schema": 1,
+  "behaviors": [
+    {
+      "id": "users.search.field_matching",
+      "section": "Users",
+      "owner": "src/Sections/Humans.Users/Services/PersonSearchMatcher.cs",
+      "invariant": "Search matches eligible name, profile, and email fields with the right score and visibility.",
+      "impact": "medium",
+      "reason": "A wrong match or score makes people difficult to find or exposes an ineligible match.",
+      "tests": [
+        {
+          "key": "Humans.Users.Tests::Humans.Users.Tests.Services.Profiles.PersonSearchMatcherTests::Bio_fields_match_under_Bio_scope",
+          "decision": "keep",
+          "reason": "The matcher owns field eligibility; this theory tests distinct bio fields."
+        },
+        {
+          "key": "Humans.Users.Tests::Humans.Users.Tests.Services.Profiles.PersonSearchMatcherTests::Name_match_score_reflects_match_quality",
+          "decision": "keep",
+          "reason": "The matcher owns relevance scoring across exact and partial names."
+        },
+        {
+          "key": "Humans.Users.Tests::Humans.Users.Tests.Services.Profiles.PersonSearchMatcherTests::Publicly_exposed_email_matches_for_everyone_but_private_email_is_admin_only",
+          "decision": "keep",
+          "reason": "This pins the visibility boundary at the matching owner."
+        },
+        {
+          "key": "Humans.Users.Tests::Humans.Users.Tests.Services.Users.CachingUserServiceTests::SearchUsersAsync_PublicAll_MatchesByCity",
+          "decision": "consolidate",
+          "reason": "It rechecks matching semantics already owned by PersonSearchMatcher; the adapter's field projection can be checked alongside its name case."
+        },
+        {
+          "key": "Humans.Users.Tests::Humans.Users.Tests.Services.Users.CachingUserServiceTests::SearchUsersAsync_PublicAll_MatchesByBio",
+          "decision": "consolidate",
+          "reason": "It repeats the matcher's bio-field decision without a distinct cache or adapter assertion."
+        },
+        {
+          "key": "Humans.Users.Tests::Humans.Users.Tests.Services.Users.CachingUserServiceTests::SearchUsersAsync_PublicAll_MatchesByBurnerName",
+          "decision": "keep",
+          "reason": "One simple end-to-end adapter case proves that search results are produced from cached users."
+        },
+        {
+          "key": "Humans.Users.Tests::Humans.Users.Tests.Services.Users.CachingUserServiceTests::SearchUsersAsync_ScoresExactNameAboveSubstringMatch",
+          "decision": "keep",
+          "reason": "The service must preserve the matcher's score in HumanSearchResult."
+        },
+        {
+          "key": "Humans.Users.Tests::Humans.Users.Tests.Services.Users.CachingUserServiceTests::SearchUsersAsync_AdminBit_MatchesVerifiedEmail",
+          "decision": "keep",
+          "reason": "The adapter must carry the matched address and result metadata to callers."
+        }
+      ]
+    },
+    {
+      "id": "users.search.filtering",
+      "section": "Users",
+      "owner": "src/Sections/Humans.Users/Data/CachingUserService.cs",
+      "invariant": "Search filters cached people and resolves pasted IDs without returning rejected profiles or merge tombstones.",
+      "impact": "high",
+      "reason": "A result may identify the wrong account or return a person who must not appear in search.",
+      "tests": [
+        {
+          "key": "Humans.Users.Tests::Humans.Users.Tests.Services.Users.CachingUserServiceTests::SearchUsersAsync_PublicAll_ExcludesRejected",
+          "decision": "keep",
+          "reason": "The service filters ordinary search results before calling the matcher."
+        },
+        {
+          "key": "Humans.Users.Tests::Humans.Users.Tests.Services.Users.CachingUserServiceTests::SearchUsersAsync_PublicAll_GuidQuery_ExcludesRejected",
+          "decision": "keep",
+          "reason": "The ID fast path bypasses the ordinary matcher and needs its own negative case."
+        },
+        {
+          "key": "Humans.Users.Tests::Humans.Users.Tests.Services.Users.CachingUserServiceTests::SearchUsersAsync_OmitsMergeTombstones",
+          "decision": "keep",
+          "reason": "The cache must suppress archived IDs during ordinary matching."
+        },
+        {
+          "key": "Humans.Users.Tests::Humans.Users.Tests.Services.Users.CachingUserServiceTests::SearchUsersAsync_ByExactId_ResolvesAnArchivedIdToItsSurvivor",
+          "decision": "keep",
+          "reason": "A pasted archived ID must resolve to its live survivor."
+        },
+        {
+          "key": "Humans.Users.Tests::Humans.Users.Tests.Services.Users.CachingUserServiceTests::SearchUsersAsync_ExactName_GuidQuery_DoesNotShortCircuitById",
+          "decision": "keep",
+          "reason": "An ExactName query with GUID syntax must remain a name lookup."
+        }
+      ]
+    },
+    {
+      "id": "email.outbox.delivery_and_throttle",
+      "section": "Email",
+      "owner": "src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs",
+      "invariant": "A queued message is delivered once, marked sent, and sending is paced according to the throttle.",
+      "impact": "high",
+      "reason": "Incorrect order or cancellation handling can duplicate an accepted email; real-time waiting makes the suite slow.",
+      "tests": [
+        {
+          "key": "Humans.Email.Tests::Humans.Email.Tests.Services.EmailOutboxProcessorTests::ProcessQueuedAsync_ProcessesQueuedMessages",
+          "decision": "speed-up",
+          "reason": "Keep the delivery and sent-state assertions; avoid paying a real one-second post-send delay."
+        },
+        {
+          "key": "Humans.Email.Tests::Humans.Email.Tests.Services.EmailOutboxProcessorTests::ProcessQueuedAsync_RespectsBatchSize",
+          "decision": "speed-up",
+          "reason": "The batch boundary matters, but ten successful sends cost ten real seconds with the present throttle."
+        }
+      ]
+    },
+    {
+      "id": "email.outbox.cancel_after_send",
+      "section": "Email",
+      "owner": "src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs",
+      "invariant": "Cancellation after the transport accepts a message cannot make that message retryable.",
+      "impact": "high",
+      "reason": "Cancellation during the post-send delay must not flip a sent message to Failed and queue a duplicate.",
+      "tests": [
+        {
+          "key": "Humans.Email.Tests::Humans.Email.Tests.Services.EmailOutboxProcessorTests::ProcessQueuedAsync_CancellationAfterDelivery_DoesNotMarkMessageFailed",
+          "decision": "keep",
+          "reason": "Cancellation at the throttle boundary must propagate while the saved message remains Sent."
+        }
+      ]
+    },
+    {
+      "id": "email.outbox.retention",
+      "section": "Email",
+      "owner": "src/Sections/Humans.Email/Data/EmailOutboxRepository.cs",
+      "invariant": "Retention deletes only sent messages older than the configured cutoff while preserving daily counts.",
+      "impact": "medium",
+      "reason": "Deleting queued or failed mail loses delivery attempts; deleting counts corrupts reporting.",
+      "tests": [
+        {
+          "key": "Humans.Email.Tests::Humans.Email.Tests.Data.EmailOutboxRepositoryTests::DeleteSentOlderThanAsync_RemovesOnlyOldSentMessages",
+          "decision": "keep",
+          "reason": "The repository owns the age and status predicate."
+        },
+        {
+          "key": "Humans.Email.Tests::Humans.Email.Tests.Services.EmailOutboxRetentionTests::PurgeExpiredAsync_DeletesSentMessagesOlderThanRetentionPeriod",
+          "decision": "keep",
+          "reason": "The service owns the configured cutoff passed to the repository."
+        },
+        {
+          "key": "Humans.Email.Tests::Humans.Email.Tests.Services.EmailOutboxRetentionTests::PurgeExpiredAsync_LeavesDailySendCountsUntouched",
+          "decision": "keep",
+          "reason": "Daily counts must survive email retention."
+        },
+        {
+          "key": "Humans.Email.Tests::Humans.Email.Tests.Services.EmailOutboxRetentionTests::PurgeExpiredAsync_KeepsFailedMessagesRegardlessOfAge",
+          "decision": "consolidate",
+          "reason": "It repeats the repository's status predicate through a service with no additional branch for failed mail."
+        },
+        {
+          "key": "Humans.Email.Tests::Humans.Email.Tests.Services.EmailOutboxRetentionTests::PurgeExpiredAsync_KeepsQueuedMessagesRegardlessOfAge",
+          "decision": "consolidate",
+          "reason": "It repeats the repository's status predicate through a service with no additional branch for queued mail."
+        },
+        {
+          "key": "Humans.Email.Tests::Humans.Email.Tests.Services.EmailOutboxRetentionTests::PurgeExpiredAsync_KeepsSentMessagesWithinRetentionPeriod",
+          "decision": "consolidate",
+          "reason": "It repeats the repository's age predicate; the service cutoff case remains."
+        }
+      ]
+    },
+    {
+      "id": "email.outbox.reply_to",
+      "section": "Email",
+      "owner": "src/Sections/Humans.Email/Services/OutboxEmailService.cs",
+      "invariant": "An explicit Reply-To address is saved with the queued message.",
+      "impact": "low",
+      "reason": "A lost Reply-To prevents a recipient's response from reaching the sender.",
+      "tests": [
+        {
+          "key": "Humans.Email.Tests::Humans.Email.Tests.Services.OutboxEmailServiceTests::SendAsync_ExplicitUserId_UsedDirectlyWithoutAddressLookup",
+          "decision": "keep",
+          "reason": "This checks the saved Reply-To along with recipient identity and lookup behavior."
+        },
+        {
+          "key": "Humans.Email.Tests::Humans.Email.Tests.Services.OutboxEmailServiceTests::SendAsync_PersistsReplyTo",
+          "decision": "consolidate",
+          "reason": "The other test already checks the same persisted field on the same send path."
+        }
+      ]
+    },
+    {
+      "id": "workgroups.cache_reads",
+      "section": "Workgroups",
+      "owner": "src/Sections/Humans.Workgroups/Services/CachingWorkgroupService.cs",
+      "invariant": "Register reads share a cached snapshot and derive slug, ID, and membership results from it.",
+      "impact": "medium",
+      "reason": "The existing Workgroups tests construct the undecorated inner service; the decorator needs one focused cache-hit assertion.",
+      "tests": [
+        {
+          "key": "Humans.Workgroups.Tests::Humans.Workgroups.Tests.Services.CachingWorkgroupServiceTests::GetRegister_SecondRead_IsServedFromCache",
+          "decision": "keep",
+          "reason": "A repeated register read must avoid a second inner load."
+        }
+      ]
+    },
+    {
+      "id": "workgroups.cache_invalidation",
+      "section": "Workgroups",
+      "owner": "src/Sections/Humans.Workgroups/Services/CachingWorkgroupService.cs",
+      "invariant": "A write clears the cached register even if later inner work throws after persisting.",
+      "impact": "high",
+      "reason": "Without failure-path invalidation, a partial write can leave members or coordinators seeing stale state.",
+      "tests": [
+        {
+          "key": "Humans.Workgroups.Tests::Humans.Workgroups.Tests.Services.CachingWorkgroupServiceTests::Join_ClearsTheRegisterCache",
+          "decision": "keep",
+          "reason": "A successful write must forward the right IDs and clear the warmed snapshot."
+        },
+        {
+          "key": "Humans.Workgroups.Tests::Humans.Workgroups.Tests.Services.CachingWorkgroupServiceTests::Join_WhenInnerThrows_StillClearsTheRegisterCache",
+          "decision": "keep",
+          "reason": "A write that throws after changing data still requires cache invalidation."
+        }
+      ]
+    }
+  ]
+}

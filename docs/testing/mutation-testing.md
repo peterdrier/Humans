@@ -92,6 +92,10 @@ Pop-Location
 
 ## Test Utility Review
 
+For method-level behavior ownership and recorded review decisions, see
+[`test-utility-review.md`](test-utility-review.md). The script below remains a
+file-level heuristic for choosing what to inspect.
+
 Use the manual utility analysis script to find test files that are more likely
 to be maintenance debt than useful signal:
 
