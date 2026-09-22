@@ -22,7 +22,7 @@ is round 1.
 open):
 
 ```bash
-gh pr list --repo peterdrier/Humans --state open --json number,headRefName,createdAt   --jq '[.[] | select(.headRefName | startswith("codex/daily-debt/"))] | sort_by(.createdAt) | last'
+gh pr list --repo peterdrier/Humans --state open --limit 200 --json number,headRefName,createdAt   --jq '[.[] | select(.headRefName | startswith("codex/daily-debt/"))] | sort_by(.createdAt) | last'
 ```
 
 Stop with one line, touching nothing, when: no PR; it is not open; or it already has a
@@ -35,7 +35,7 @@ branch in the repo root; locally use a worktree under `.claude/worktrees/`. Push
 ## 2. Judge every commit
 
 List the PR's non-merge commits and pair each with its line in the PR body (the claimed
-intent). Fan out: one `orch-opus-medium` worker per ~6 commits, read-only, each given the
+intent). Fan out: one `pd:orch-opus-medium` worker per ~6 commits, read-only, each given the
 commit shas, their PR-body lines, and this brief:
 
 > For each commit: read `git show <sha>` and the code around it at the PR head (not just
@@ -105,9 +105,9 @@ One PR comment, starting `## Debt review`:
 ## 6. Steward it yourself
 
 No hand-off: this session is the steward (subscribed since §1). End the
-turn with the summary below, and on every wake follow the [`steward`](../steward/SKILL.md)
-wake protocol with `Ceiling: 3` (rounds spent: 1, or 0 if §4 pushed nothing). Round
-workers are `orch-opus-medium` via Task, per the round-worker brief. At the ceiling, or
+turn with the summary below, and on every wake follow the `pd:steward` skill's
+wake protocol, with the [`.claude/steward.md`](../../steward.md) overlay, with `Ceiling: 3` (rounds spent: 1, or 0 if §4 pushed nothing). Round
+workers are `pd:orch-opus-medium` via Task, per the round-worker brief with `Ceiling: 3`. At the ceiling, or
 when the PR is merged or closed, `unsubscribe_pr_activity` and stop.
 
 Summary: PR URL, verdict counts (good / repaired / reverted), findings
