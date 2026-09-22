@@ -51,6 +51,15 @@ public sealed class IssuesEmailsTests
     }
 
     [HumansFact]
+    public void IssueComment_keeps_html_encoding_out_of_the_plain_text_subject()
+    {
+        var msg = Create().IssueComment("a@x.com", "Alice", "Lights & sound", "Body", "/Issues/12", "en");
+
+        msg.Subject.Should().Be("New comment on Lights & sound");
+        msg.HtmlBody.Should().Contain("Lights &amp; sound");
+    }
+
+    [HumansFact]
     public void IssueComment_MakesARelativeIssueLinkAbsoluteAndLeavesAnAbsoluteOneAlone()
     {
         var relative = Create().IssueComment("a@x.com", "Alice", "Title", "Body", "/Issues/12", "en");

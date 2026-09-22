@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 3
-inbox:
-  - added: 2026-09-11
-    id: EMAIL-2
-    what: "src/Sections/Humans.Email/Services/EmailRenderer.cs HTML-encodes these subject lines: Email_IssueComment_Subject, Email_CoordinatorRotaMessage_Subject, Email_CoordinatorTeamRotasMessage_Subject, Email_GoogleGroupRemoval_LossOfAccess_Subject, Email_GoogleDriveRemoval_LossOfAccess_Subject, Email_GoogleAccessRemoval_SecondaryCleanup_Subject. A Subject header is plain text, so a title containing & or < reaches the recipient as R&amp;D. The assembly-vote subjects had the same bug and were fixed in peterdrier/Humans#1649; these are left alone as out of that PR's scope."
-    review: light
+inbox: []

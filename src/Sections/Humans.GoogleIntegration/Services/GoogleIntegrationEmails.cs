@@ -35,7 +35,7 @@ internal sealed class GoogleIntegrationEmails(
     public EmailMessage GoogleGroupRemovalLossOfAccess(string removedEmail, string userName, string groupName, string groupEmail, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             removedEmail, userName,
-            Lf("GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_Subject", Encode(groupEmail)),
+            Lf("GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_Subject", groupEmail),
             Lf("GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_Body",
                 Encode(userName), Encode(groupName), Encode(groupEmail)),
             "google_group_removal_loss_of_access", MessageCategory.System));
@@ -43,7 +43,7 @@ internal sealed class GoogleIntegrationEmails(
     public EmailMessage GoogleDriveRemovalLossOfAccess(string removedEmail, string userName, string folderName, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             removedEmail, userName,
-            Lf("GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_Subject", Encode(folderName)),
+            Lf("GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_Subject", folderName),
             Lf("GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_Body",
                 Encode(userName), Encode(folderName)),
             "google_drive_removal_loss_of_access", MessageCategory.System));
@@ -51,7 +51,7 @@ internal sealed class GoogleIntegrationEmails(
     public EmailMessage GoogleAccessRemovalSecondaryCleanup(string removedEmail, string userName, string currentGoogleEmail, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             removedEmail, userName,
-            Lf("GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Subject", Encode(removedEmail)),
+            Lf("GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Subject", removedEmail),
             Lf("GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Body",
                 Encode(userName), Encode(removedEmail), Encode(currentGoogleEmail)),
             "google_access_removal_secondary_cleanup", MessageCategory.System));
