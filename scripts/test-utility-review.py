@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a disposable test inventory and join it to reviewed behavior decisions."""
+"""Build a disposable non-integration test-method inventory from source and TRX."""
 
 import argparse
 import csv
@@ -25,8 +25,6 @@ CLASS = re.compile(
     r"class\s+(\w+)"
 )
 NAMESPACE = re.compile(r"\bnamespace\s+([\w.]+)\s*[;{]")
-VALID_DECISIONS = {"keep", "speed-up", "consolidate", "remove", "investigate"}
-VALID_IMPACTS = {"high", "medium", "low"}
 
 
 def duration_seconds(value):
@@ -120,40 +118,6 @@ def trx_methods(paths):
     return rows, run_count
 
 
-def load_review(path, methods, root):
-    document = json.loads(path.read_text(encoding="utf-8"))
-    if document.get("schema") != 1 or not isinstance(document.get("behaviors"), list):
-        raise ValueError("Review file must have schema 1 and a behaviors array")
-    behavior_ids = set()
-    links = []
-    decisions = {}
-    for behavior in document["behaviors"]:
-        behavior_id = behavior["id"]
-        if behavior_id in behavior_ids:
-            raise ValueError(f"Duplicate behavior: {behavior_id}")
-        behavior_ids.add(behavior_id)
-        if behavior["impact"] not in VALID_IMPACTS:
-            raise ValueError(f"Invalid impact for {behavior_id}")
-        if not (root / behavior["owner"]).is_file():
-            raise ValueError(f"Missing owner for {behavior_id}: {behavior['owner']}")
-        if not behavior.get("invariant") or not behavior.get("reason"):
-            raise ValueError(f"Behavior needs invariant and consequence: {behavior_id}")
-        for evidence in behavior.get("tests", []):
-            key = evidence["key"]
-            if key not in methods or methods[key]["source"] is None:
-                raise ValueError(f"Reviewed test no longer resolves to one source method: {key}")
-            if evidence["decision"] not in VALID_DECISIONS:
-                raise ValueError(f"Invalid decision for {key}")
-            if not evidence.get("reason"):
-                raise ValueError(f"Reviewed test needs a reason: {key}")
-            previous = decisions.get(key)
-            if previous and previous != evidence["decision"]:
-                raise ValueError(f"Conflicting decisions for {key}: {previous}, {evidence['decision']}")
-            decisions[key] = evidence["decision"]
-            links.append((behavior_id, key, evidence["decision"], evidence["reason"]))
-    return document["behaviors"], links, decisions
-
-
 def write_csv(path, fields, rows):
     with path.open("w", newline="", encoding="utf-8") as output:
         writer = csv.DictWriter(output, fieldnames=fields)
@@ -202,67 +166,35 @@ def build(args):
             "max_seconds": round(measurement.get("max_seconds", 0), 6),
             "outcomes": json.dumps(measurement.get("outcomes", {}), sort_keys=True),
         }
-    behaviors, links, decisions = load_review(args.review, methods, root)
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
-    db = sqlite3.connect(output / "review.sqlite")
+    db = sqlite3.connect(output / "inventory.sqlite")
     try:
         with db:
             db.executescript("""
-                DROP TABLE IF EXISTS evidence;
-                DROP TABLE IF EXISTS behaviors;
                 DROP TABLE IF EXISTS methods;
                 CREATE TABLE methods (
                     key TEXT PRIMARY KEY, project TEXT NOT NULL, class TEXT NOT NULL,
                     method TEXT NOT NULL, source TEXT, line INTEGER,
                     cases INTEGER NOT NULL, seconds REAL NOT NULL, max_seconds REAL NOT NULL,
-                    outcomes TEXT NOT NULL, decision TEXT NOT NULL
-                );
-                CREATE TABLE behaviors (
-                    id TEXT PRIMARY KEY, section TEXT NOT NULL, owner TEXT NOT NULL,
-                    invariant TEXT NOT NULL, impact TEXT NOT NULL, reason TEXT NOT NULL
-                );
-                CREATE TABLE evidence (
-                    behavior_id TEXT NOT NULL REFERENCES behaviors(id),
-                    method_key TEXT NOT NULL REFERENCES methods(key),
-                    decision TEXT NOT NULL, reason TEXT NOT NULL,
-                    PRIMARY KEY (behavior_id, method_key)
+                    outcomes TEXT NOT NULL
                 );
             """)
             db.executemany(
-                "INSERT INTO methods VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO methods VALUES (?,?,?,?,?,?,?,?,?,?)",
                 [(m["key"], m["project"], m["class"], m["method"], m["source"],
                   m["line"], m["cases"], m["seconds"], m["max_seconds"],
-                  m["outcomes"], decisions.get(m["key"], "unreviewed"))
+                  m["outcomes"])
                  for m in methods.values()],
             )
-            db.executemany(
-                "INSERT INTO behaviors VALUES (?,?,?,?,?,?)",
-                [(b["id"], b["section"], b["owner"], b["invariant"], b["impact"],
-                  b["reason"]) for b in behaviors],
-            )
-            db.executemany("INSERT INTO evidence VALUES (?,?,?,?)", links)
-        method_rows = sorted(
-            ({**m, "decision": decisions.get(m["key"], "unreviewed")}
-             for m in methods.values()), key=lambda m: m["key"]
-        )
+        method_rows = sorted(methods.values(), key=lambda m: m["key"])
         fields = ["key", "project", "class", "method", "source", "line", "cases",
-                  "seconds", "max_seconds", "outcomes", "decision"]
+                  "seconds", "max_seconds", "outcomes"]
         write_csv(output / "methods.csv", fields, method_rows)
-        write_csv(output / "evidence.csv",
-                  ["behavior_id", "method_key", "decision", "reason"],
-                  [dict(zip(("behavior_id", "method_key", "decision", "reason"), row))
-                   for row in sorted(links)])
-        write_csv(output / "behaviors.csv",
-                  ["id", "section", "owner", "invariant", "impact", "reason"],
-                  [{field: behavior[field] for field in
-                    ("id", "section", "owner", "invariant", "impact", "reason")}
-                   for behavior in behaviors])
         summary = {
             "source_methods": len(source), "observed_methods": len(observed),
             "methods": len(methods), "cases": sum(m["cases"] for m in methods.values()),
-            "results": run_count, "behaviors": len(behaviors),
-            "reviewed_methods": len(decisions),
+            "results": run_count,
             "unresolved_sources": sum(m["source"] is None for m in methods.values()),
             "results_revision": args.results_revision if results else None,
             "source_revision": subprocess.check_output(
@@ -282,8 +214,6 @@ def build(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=ROOT)
-    parser.add_argument("--review", type=Path,
-                        default=ROOT / "docs/testing/test-utility-review.json")
     parser.add_argument("--results", type=Path,
                         help="Directory containing one TRX per test project; optional")
     parser.add_argument("--results-revision", help="Commit SHA that produced the TRX snapshot")
