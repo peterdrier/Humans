@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Email/**
-  src/Sections/Humans.Users/Views/Profile/Emails.cshtml
-  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Views/ProfileEmails/Emails.cshtml
+  src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs
   src/Sections/Humans.GoogleIntegration/Services/EmailProvisioningService.cs
   src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceUserService.cs
   src/Sections/Humans.Users/Services/UserEmailService.cs

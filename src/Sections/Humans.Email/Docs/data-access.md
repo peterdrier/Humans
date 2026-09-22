@@ -51,9 +51,9 @@ Repository: `IEmailOutboxRepository`.
 
 Implements `IEmailService` — the single `SendAsync(EmailMessage)` send
 path (the interface collapsed to one method). Cross-section calls via
-`IUserEmailService`, `IEmailBodyComposer`, `IImmediateOutboxProcessor`,
-`IHumansMetrics`, `ICommunicationPreferenceService`, plus `IClock`. No
-`IMemoryCache`.
+`IUserEmailService`, `IImmediateOutboxProcessor`, `IHumansMetrics`,
+`ICommunicationPreferenceService`, plus `IClock`; `IEmailBodyComposer` is
+section-internal. No `IMemoryCache`.
 
 ### EmailMessageFactory (Scoped, internal)
 
@@ -70,7 +70,7 @@ No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
 `Section.cs:52`) — builds the two facilitated-message samples via
 `IEmailMessageFactory` for `/Email/EmailPreview`. No DB access, no cache.
 
-### EmailPreviewService (Scoped)
+### EmailPreviewService (Singleton)
 
 No repository — side-effect-free preview only, via the same
 `IEmailBodyComposer` the outbox uses to render the send body.

@@ -41,7 +41,7 @@ Route: `/Email/EmailOutbox` — requires Admin role.
 
 Features:
 - Stats: queued count, sent in last 24h, failed count
-- Global pause/resume toggle (stored in `system_settings` as `IsEmailSendingPaused`)
+- Link to the pause/resume toggle, which lives on `/Settings#email`
 - Message table: recent messages with status, recipient, subject, retry count, last error
 - Per-message retry button (resets a Failed message back to Queued)
 - Per-message discard button (deletes the row)
@@ -50,7 +50,7 @@ When paused, `ProcessEmailOutboxJob` skips processing without dequeuing messages
 
 ## Global Pause
 
-The `IsEmailSendingPaused` key in `system_settings` controls whether the outbox processor runs. Pause/Resume actions on the dashboard update this setting. Useful during maintenance windows or when diagnosing delivery issues.
+The `IsEmailSendingPaused` key in `system_settings` controls whether the outbox processor runs. The Pause/Resume actions on the `/Settings#email` tab update this setting (peterdrier/Humans#1634); the dashboard only links to them. Useful during maintenance windows or when diagnosing delivery issues.
 
 ## Daily Send Counts (nobodies-collective/Humans#1195)
 
