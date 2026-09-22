@@ -26,8 +26,9 @@ block() {
 
 # No model on the call: does the agent definition pin one? Candidates in priority order:
 # project, cwd, then user definitions (bare names only), then plugin agents -- the active
-# installPath from installed_plugins.json (project/local scope before user), then, when the
-# registry is empty or silent, the newest cached version and the marketplace checkout.
+# installPath from installed_plugins.json (local, then project, then user scope, as settings
+# precedence), then, when the registry is empty or silent, the newest cached version and the
+# marketplace checkout.
 # A "plugin:name" type looks only in that plugin. Plugin files may be absent (fresh machine,
 # cloud session); a missing registry or unmatched glob yields nothing.
 agent_defs() {
@@ -40,7 +41,7 @@ agent_defs() {
     [(.plugins // {}) | to_entries[] | select($p == "*" or (.key | split("@")[0]) == $p)
       | .value | if type == "array" then .[] else . end | objects
       | select(.scope == "user" or .scope == null or .projectPath == $proj)]
-    | sort_by(.scope == "user" or .scope == null) | .[] | .installPath // empty | "\(.)/agents/\($n).md"
+    | sort_by({local: 0, project: 1}[.scope // "user"] // 2) | .[] | .installPath // empty | "\(.)/agents/\($n).md"
   ' "$root/installed_plugins.json" 2>/dev/null || true
   shopt -s nullglob
   local cached=("$root"/cache/*/$plugin/*/agents/"$name".md) market=("$root"/marketplaces/*/plugins/$plugin/agents/"$name".md)
