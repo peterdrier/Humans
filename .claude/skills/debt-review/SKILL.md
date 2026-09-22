@@ -1,6 +1,6 @@
 ---
 name: debt-review
-description: "Review, repair and steward the nightly Codex debt-sweep PR (branch codex/daily-debt/<date>). Judges every commit GOOD / REPAIR / REVERT, triages the bot review findings through /fix, lands one round-1 commit, files follow-up issues, then hands the PR to a steward with a 3-round ceiling. Run by the 08:00 UTC cloud routine; also '/debt-review', '/debt-review 1789'."
+description: "Review, repair and steward the nightly Codex debt-sweep PR (branch codex/daily-debt/<date>). Judges every commit GOOD / REPAIR / REVERT, triages the bot review findings through /fix, lands one round-1 commit, files follow-up issues, then stewards the PR itself with a 3-round ceiling. Run by the 08:00 UTC cloud routine; also '/debt-review', '/debt-review 1789'."
 argument-hint: "(none — today's codex/daily-debt PR) | 1789"
 ---
 
@@ -99,13 +99,13 @@ One PR comment, starting `## Debt review`:
 - a one-line recommendation: **merge**, **merge after steward rounds**, or **close**
   (more than half the substantive commits reverted)
 
-## 6. Hand off to a steward
+## 6. Steward it yourself
 
-Follow [`steward`](../steward/SKILL.md) "Hand-off", with `Ceiling: 3` in the brief and
-`Review rounds spent so far: 1` (0 if §4 pushed nothing). Deliverable paragraph: "Nightly
-Codex debt sweep, reviewed by /debt-review; commits already judged, only new bot
-findings and CI remain." Without `create_session`, stay subscribed and follow the wake
-protocol yourself.
+No hand-off: this session is the steward. `subscribe_pr_activity` for the PR, end the
+turn with the summary below, and on every wake follow the [`steward`](../steward/SKILL.md)
+wake protocol with `Ceiling: 3` (rounds spent: 1, or 0 if §4 pushed nothing). Round
+workers are `orch-opus-medium` via Task, per the round-worker brief. At the ceiling, or
+when the PR is merged or closed, `unsubscribe_pr_activity` and stop.
 
-Final message: PR URL, verdict counts (good / repaired / reverted), findings
-fixed / declined / filed, issues filed, pushed sha, steward session id.
+Summary: PR URL, verdict counts (good / repaired / reverted), findings
+fixed / declined / filed, issues filed, pushed sha.
