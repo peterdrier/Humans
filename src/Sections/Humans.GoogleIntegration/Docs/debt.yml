@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.GoogleIntegration. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 3
+next_id: 4
 inbox:
   - added: 2026-09-10
     id: GOOGLE-1

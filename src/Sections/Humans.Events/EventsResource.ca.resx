@@ -93,4 +93,40 @@
   <data name="Events_UploadFailed" xml:space="preserve"><value>La pujada ha fallat.</value></data>
   <data name="Events_UploadFailedDetail" xml:space="preserve"><value>Corregeix els errors de sota i torna-ho a provar. No s'ha desat cap esdeveniment.</value></data>
   <data name="Events_WithdrawConfirm" xml:space="preserve"><value>Vols retirar aquest esdeveniment?</value></data>
+  <data name="Events_Submission_EditTitle" xml:space="preserve"><value>Edita l'esdeveniment</value></data>
+  <data name="Events_Submission_SubmitTitle" xml:space="preserve"><value>Envia un esdeveniment</value></data>
+  <data name="Events_Submission_Edit" xml:space="preserve"><value>Edita</value></data>
+  <data name="Events_Submission_New" xml:space="preserve"><value>Nou</value></data>
+  <data name="Events_Submission_ReturnedForEdits" xml:space="preserve"><value>Aquest esdeveniment s'ha retornat per editar-lo. Actualitza'n els detalls i torna'l a enviar.</value></data>
+  <data name="Events_Submission_CharactersRemaining" xml:space="preserve"><value>caràcters restants</value></data>
+  <data name="Events_Submission_MarkdownSupported" xml:space="preserve"><value>S'admet el format Markdown</value></data>
+  <data name="Events_Submission_SelectCategory" xml:space="preserve"><value>— Selecciona una categoria —</value></data>
+  <data name="Events_Submission_SelectVenue" xml:space="preserve"><value>— Selecciona un lloc —</value></data>
+  <data name="Events_Submission_AllDay" xml:space="preserve"><value>Esdeveniment de tot el dia</value></data>
+  <data name="Events_Submission_SelectDay" xml:space="preserve"><value>— Selecciona un dia —</value></data>
+  <data name="Events_Submission_Repeats" xml:space="preserve"><value>Aquest esdeveniment es repeteix diversos dies</value></data>
+  <data name="Events_Submission_RecurrenceDays" xml:space="preserve"><value>Dies de repetició</value></data>
+  <data name="Events_Submission_LocationPlaceholder" xml:space="preserve"><value>p. ex., prop de la foguera</value></data>
+  <data name="Events_Submission_HostPlaceholder" xml:space="preserve"><value>p. ex., El Col·lectiu del Te</value></data>
+  <data name="Events_Submission_HostHelp" xml:space="preserve"><value>Es mostra a la guia en lloc del teu nom quan s'omple.</value></data>
+  <data name="Events_Submission_Resubmit" xml:space="preserve"><value>Torna a enviar</value></data>
+  <data name="Events_Submission_SubmitForReview" xml:space="preserve"><value>Envia per revisar</value></data>
+  <data name="Events_Submission_Cancel" xml:space="preserve"><value>Cancel·la</value></data>
+  <data name="Events_Submission_BarrioEditTitle" xml:space="preserve"><value>Edita l'esdeveniment — {0}</value></data>
+  <data name="Events_Submission_BarrioSubmitTitle" xml:space="preserve"><value>Envia l'esdeveniment — {0}</value></data>
+  <data name="Events_Submission_SubmitNew" xml:space="preserve"><value>Envia un esdeveniment nou</value></data>
+  <data name="Events_Submission_BarrioHostPlaceholder" xml:space="preserve"><value>p. ex., Luna</value></data>
+  <data name="Events_Submission_BarrioHostHelp" xml:space="preserve"><value>Opcional: indica la persona que organitza aquest esdeveniment.</value></data>
+  <data name="Events_Submission_PriorityHelp" xml:space="preserve"><value>1 = prioritat més alta per a la selecció de la guia impresa.</value></data>
+  <data name="Events_CardTitle" xml:space="preserve"><value>Esdeveniments</value></data>
+  <data name="Events_RecurringEvent" xml:space="preserve"><value>Esdeveniment recurrent</value></data>
+  <data name="Events_NotEditable" xml:space="preserve"><value>Aquest esdeveniment no es pot editar en el seu estat actual.</value></data>
+  <data name="Events_NotWithdrawable" xml:space="preserve"><value>Aquest esdeveniment no es pot retirar en el seu estat actual.</value></data>
+  <data name="Events_GuideSettingsUnavailable" xml:space="preserve"><value>Els ajustos de la guia no estan configurats.</value></data>
+  <data name="Events_SubmittedForReview" xml:space="preserve"><value>L'esdeveniment “{0}” s'ha enviat per revisar.</value><comment>{0} = event title</comment></data>
+  <data name="Events_ResubmittedForReview" xml:space="preserve"><value>L'esdeveniment “{0}” s'ha tornat a enviar per revisar.</value><comment>{0} = event title</comment></data>
+  <data name="Events_Withdrawn" xml:space="preserve"><value>L'esdeveniment “{0}” s'ha retirat.</value><comment>{0} = event title</comment></data>
+  <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Selecciona un fitxer CSV per pujar.</value></data>
+  <data name="Events_UploadNoRows" xml:space="preserve"><value>El CSV no tenia cap fila d'esdeveniment. Afegeix almenys una fila sota la capçalera i torna-ho a provar.</value></data>
+  <data name="Events_UploadComplete" xml:space="preserve"><value>Càrrega massiva completada: {0} creats, {1} actualitzats.</value><comment>{0} = created count; {1} = updated count</comment></data>
 </root>

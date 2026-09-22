@@ -1154,4 +1154,12 @@
 &lt;p&gt;Cordialement,&lt;br/&gt;L'équipe Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
+  <data name="Users_Profile_MessageOptedOut" xml:space="preserve"><value>Cette personne a choisi de ne pas recevoir de messages.</value></data>
+  <data name="Users_Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>Impossible de charger les préférences de communication.</value></data>
+  <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Cette adresse e-mail est liée à un autre compte. Sa vérification demandera une fusion de comptes. Consultez votre boîte de réception pour le lien de vérification.</value></data>
+  <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Adresse e-mail vérifiée. Une demande de fusion a été soumise à l'examen administratif. L'adresse e-mail {0} sera ajoutée à votre compte après approbation.</value><comment>{0} = email address</comment></data>
+  <data name="Users_Guest_DeletionRequestFailed" xml:space="preserve"><value>Impossible de traiter la demande de suppression. Veuillez réessayer.</value></data>
+  <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Demande de suppression enregistrée. Votre compte sera définitivement supprimé le {0}.</value><comment>{0} = deletion date</comment></data>
+  <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Demande de suppression enregistrée. Comme vous avez des billets pour un prochain événement, votre compte sera supprimé après le {0}.</value><comment>{0} = deletion date</comment></data>
+  <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>Impossible d'annuler la demande de suppression. Veuillez réessayer.</value></data>
 </root>

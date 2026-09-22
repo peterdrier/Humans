@@ -28,7 +28,7 @@ internal sealed class IssuesEmails(
     public EmailMessage IssueComment(string to, string displayName, string issueTitle, string commentContent, string issueLink, string preferredLanguage)
         => Localized(preferredLanguage, () => new EmailMessage(
             to, displayName,
-            Lf("Issues_Email_IssueComment_Subject", Encode(issueTitle)),
+            Lf("Issues_Email_IssueComment_Subject", issueTitle),
             Lf("Issues_Email_IssueComment_Body", Encode(displayName), Encode(issueTitle),
                 SanitizedMarkdownRenderer.Render(commentContent), Encode(AbsoluteUrl(issueLink))),
             "issue_comment", MessageCategory.System));

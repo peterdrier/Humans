@@ -1154,4 +1154,12 @@
 &lt;p&gt;Una salutació,&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
+  <data name="Users_Profile_MessageOptedOut" xml:space="preserve"><value>Aquesta persona ha decidit no rebre missatges.</value></data>
+  <data name="Users_Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>No s'han pogut carregar les preferències de comunicació.</value></data>
+  <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Aquest correu està vinculat a un altre compte. En verificar-lo se sol·licitarà una fusió de comptes. Consulta la safata d'entrada per a l'enllaç de verificació.</value></data>
+  <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Correu verificat. S'ha enviat una sol·licitud de fusió per a la revisió administrativa. El correu {0} s'afegirà al teu compte quan s'aprovi.</value><comment>{0} = email address</comment></data>
+  <data name="Users_Guest_DeletionRequestFailed" xml:space="preserve"><value>No s'ha pogut processar la sol·licitud d'eliminació. Torna-ho a provar.</value></data>
+  <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Sol·licitud d'eliminació registrada. El teu compte s'eliminarà definitivament el {0}.</value><comment>{0} = deletion date</comment></data>
+  <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Sol·licitud d'eliminació registrada. Com que tens entrades per a un esdeveniment proper, el teu compte s'eliminarà després del {0}.</value><comment>{0} = deletion date</comment></data>
+  <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>No s'ha pogut cancel·lar la sol·licitud d'eliminació. Torna-ho a provar.</value></data>
 </root>

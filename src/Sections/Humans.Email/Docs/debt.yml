@@ -1,9 +1,25 @@
 # Section debt ledger for Humans.Email. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 3
+next_id: 8
 inbox:
-  - added: 2026-09-11
-    id: EMAIL-2
-    what: "src/Sections/Humans.Email/Services/EmailRenderer.cs HTML-encodes these subject lines: Email_IssueComment_Subject, Email_CoordinatorRotaMessage_Subject, Email_CoordinatorTeamRotasMessage_Subject, Email_GoogleGroupRemoval_LossOfAccess_Subject, Email_GoogleDriveRemoval_LossOfAccess_Subject, Email_GoogleAccessRemoval_SecondaryCleanup_Subject. A Subject header is plain text, so a title containing & or < reaches the recipient as R&amp;D. The assembly-vote subjects had the same bug and were fixed in peterdrier/Humans#1649; these are left alone as out of that PR's scope."
+  - added: 2026-09-22
+    id: EMAIL-3
+    what: "The local/ticket-stub test-address rule is written twice in the section: inline in the per-message loop of src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs and as a private IsTestAddress helper in src/Sections/Humans.Email/Services/EmailOutboxService.cs. One definition, two enforcement sites, and a third domain added to one of them would silently diverge. Neither class is the obvious owner, which is why the doctor run ledgered it rather than picking one. Found by /section-doctor on Email 2026-09-22."
+    review: panel
+  - added: 2026-09-22
+    id: EMAIL-4
+    what: "src/Sections/Humans.Email/Views/Email/EmailOutbox.cshtml renders a hardcoded 10/min under the label Throttle. The throttle in code is the one-second inter-send gap in EmailOutboxProcessor.ProcessQueuedAsync; 10/min is OutboxBatchSize times the one-minute schedule, so the tile shows one number under the name of another and stops being true the moment EmailSettings.OutboxBatchSize or the cron is changed. Correct under today's defaults — no override exists in any json, yml or env file. Found by /section-doctor on Email 2026-09-22."
+    review: panel
+  - added: 2026-09-22
+    id: EMAIL-5
+    what: "No test in tests/Humans.Email.Tests proves the sanitizing half of the no-raw-HTML invariant: EmailMessageFactoryTests and EmailPreviewServiceTests assert that Markdown renders, not that a script or event-handler payload is stripped, and nothing asserts that the recipient and sender names EmailMessageFactory interpolates are HTML-encoded. The renderer's own sanitizer tests live in Base and do not cover this section's call sites. Found by /section-doctor on Email 2026-09-22."
+    review: light
+  - added: 2026-09-22
+    id: EMAIL-6
+    what: "BrandedEmailTemplate has no direct test in tests/Humans.Email.Tests: the wrapper-applied-in-exactly-one-place invariant is covered only by the EmailInlineStyler leaf tests plus mock assertions on IEmailBodyComposer, so the concrete wrapper output nobody else produces is unpinned. Proof: grep for BrandedEmailTemplate under tests/Humans.Email.Tests returns nothing. Found by /section-doctor on Email 2026-09-22."
+    review: light
+  - added: 2026-09-22
+    id: EMAIL-7
+    what: "The and-nothing-else half of the pause invariant is unpinned: EmailOutboxProcessorTests.ProcessQueuedAsync_SkipsPaused shows the pause stops the drain, but no test shows it leaves the immediate and do-not-persist paths running, which is the half that would break a magic-link login if someone widened the flag's reach. Found by /section-doctor on Email 2026-09-22."
     review: light

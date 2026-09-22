@@ -412,4 +412,6 @@
   <data name="EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>The recipient list now matches the audience you selected. Check it, then press Send.</value></data>
   <data name="Shifts_Email_CoordinatorRotaMessage_ShiftsIntro" xml:space="preserve"><value>FYI, your shifts on this rota are:</value></data>
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>FYI, your shifts with this team are:</value></data>
+  <data name="Shifts_ShiftProfile_LoadFailed" xml:space="preserve"><value>Failed to load shift information.</value></data>
+  <data name="Shifts_ShiftProfile_SaveFailed" xml:space="preserve"><value>Failed to save shift information.</value></data>
 </root>

@@ -32,7 +32,7 @@ file's *Current state* instead of restarting discovery.
   `docs/sections/SECTION-TEMPLATE.md`, `docs/architecture/design-rules.md`, each
   section's `Docs/<Section>.md` + `Docs/data-access.md`. Divergence from the model is
   the debt.
-- Surface / coupling baseline: `dotnet build Humans.slnx -v quiet`, then
+- Surface / coupling baseline: `dotnet build Humans.slnx -v quiet -clp:ErrorsOnly`, then
   `reforge surface-score --all` (built solution only). Reduce it through
   architecturally-real deletions; the score is a detector, never the objective.
 
@@ -46,7 +46,7 @@ file's *Current state* instead of restarting discovery.
   `local/tech-debt-runs/<run-id>/` either way.
 - One coherent improvement per commit, each with a one-sentence architecture thesis
   that stands without score movement. Targeted section tests + build per change;
-  full `dotnet test Humans.slnx -v quiet` before any push. `-v quiet` always.
+  full `dotnet test Humans.slnx -v quiet -clp:ErrorsOnly` before any push. `-v quiet` always.
 - Honor every boundary in the queue file's *Boundaries* section — especially: debt
   only (never feature follow-ups, even fully-specced ones), no authorization/privacy
   shape changes, no reverting documented test-infrastructure decisions, and new public surface goes to *Needs Peter* instead of into the code.

@@ -10,7 +10,7 @@ using NodaTime;
 namespace Humans.Email.Services;
 
 /// <summary>
-/// Application-layer implementation of <see cref="IEmailService"/>: the single
+/// The implementation of <see cref="IEmailService"/>: the single
 /// transport path for outbound email. Given a fully-rendered
 /// <see cref="EmailMessage"/> (built by the sending section), it
 /// applies opt-out suppression and List-Unsubscribe headers for opt-outable

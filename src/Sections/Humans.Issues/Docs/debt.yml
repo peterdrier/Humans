@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Issues. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 9
+next_id: 10
 inbox:
   - added: 2026-08-25
     id: ISSUES-1

@@ -4,10 +4,9 @@ namespace Humans.Email.Services;
 /// Composes an outbound email body from a rendered HTML content fragment.
 /// Returns both the branded HTML wrapper (footer, base URL, environment
 /// banner, optional unsubscribe link) and a derived plain-text body. The
-/// implementation captures environment-derived values (base URL, env name)
-/// that belong in Infrastructure, so <c>OutboxEmailService</c> can stay
-/// Application-layer and free of <c>IHostEnvironment</c>/configuration
-/// dependencies.
+/// implementation captures the environment-derived values (base URL, env name)
+/// so <c>OutboxEmailService</c> stays free of <c>IHostEnvironment</c> and
+/// configuration dependencies.
 /// </summary>
 internal interface IEmailBodyComposer
 {

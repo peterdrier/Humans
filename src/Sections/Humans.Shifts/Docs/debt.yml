@@ -1,16 +1,8 @@
 # Section debt ledger for Humans.Shifts. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 5
+next_id: 6
 inbox:
-  - added: 2026-09-05
-    id: SHIFTS-1
-    what: "ShiftSignupService re-derives 'is privileged' as `flags.HasFlag(Privileged) || await shiftMgmt.CanApproveSignupsAsync(...)` at several sites (lines 61, 88, 165, 223, 544, 603, 848, 967 as of 2026-09-20). One private helper. Found by /section-doctor on Shifts 2026-09-05 (finding 18). (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
-    review: light
-  - added: 2026-09-05
-    id: SHIFTS-2
-    what: "ShiftSignupService formats the audit day label `es.GateOpeningDate.PlusDays(dayOffset).ToWeekdayDayMonth()` inline at several sites (lines 119, 306, 433, 757, 809 as of 2026-09-20). One private helper. Found by /section-doctor on Shifts 2026-09-05 (finding 18). (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
-    review: light
   - added: 2026-09-05
     id: SHIFTS-3
     what: "The GateOpeningDate.PlusDays(offset) window math is written out at ShiftManagementService, ShiftFilterResolver.cs:32-42, VolunteerTrackingController.cs:140-154, ShiftDashboardPageBuilder — where one helper on the event calendar would carry it (found by /section-doctor on Shifts, 2026-09-05, finding N12)."

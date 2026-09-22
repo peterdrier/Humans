@@ -22,7 +22,7 @@
                 {
                     <div class="alert alert-info">
                         <i class="fa-solid fa-circle-info me-1"></i>
-                        This is a system-managed team. You can edit the description and Google Group prefix.
+                        @Localizer["Teams_EditTeam_SystemManagedHelp"]
                     </div>
                 }
 
@@ -37,18 +37,18 @@
                         <label asp-for="Name" class="form-label">@Localizer["AdminTeams_TeamName"]</label>
                         <input asp-for="Name" class="form-control" readonly="@(Model.IsSystemTeam ? "readonly" : null)" />
                         <span asp-validation-for="Name" class="text-danger"></span>
-                        <div class="form-text">Auto-generated slug: <code>@Model.Slug</code> — updates automatically when name changes.</div>
+                        <div class="form-text">@Localizer["Teams_EditTeam_AutoSlug"] <code>@Model.Slug</code> — @Localizer["Teams_EditTeam_AutoSlugHelp"]</div>
                     </div>
 
                     @if (!Model.IsSystemTeam)
                     {
                         <div class="mb-3">
-                            <label asp-for="CustomSlug" class="form-label">Custom Slug</label>
-                            <input asp-for="CustomSlug" class="form-control" placeholder="e.g. comms" />
+                            <label asp-for="CustomSlug" class="form-label">@Localizer["Teams_EditTeam_CustomSlug"]</label>
+                            <input asp-for="CustomSlug" class="form-control" placeholder="@Localizer["Teams_EditTeam_CustomSlugPlaceholder"]" />
                             <span asp-validation-for="CustomSlug" class="text-danger"></span>
                             <div class="form-text">
-                                Optional. When set, this slug is used for the team's URL instead of the auto-generated one.
-                                Both slugs will resolve to this team. Lowercase letters, numbers, and hyphens only.
+                                @Localizer["Teams_EditTeam_CustomSlugHelp"]
+                                @Localizer["Teams_EditTeam_CustomSlugFormatHelp"]
                             </div>
                         </div>
                     }
@@ -64,8 +64,8 @@
                         </div>
                         <div class="mb-3 form-check">
                             <input asp-for="HasBudget" type="checkbox" class="form-check-input" />
-                            <label asp-for="HasBudget" class="form-check-label">Include in budget planning</label>
-                            <div class="form-text">When enabled, this team gets a budget category under the Departments group when a new budget year is created.</div>
+                            <label asp-for="HasBudget" class="form-check-label">@Localizer["Teams_EditTeam_IncludeInBudget"]</label>
+                            <div class="form-text">@Localizer["Teams_EditTeam_IncludeInBudgetHelp"]</div>
                         </div>
                     }
 
@@ -73,21 +73,21 @@
                     {
                         <div class="mb-3 form-check">
                             <input asp-for="IsPromotedToDirectory" type="checkbox" class="form-check-input" />
-                            <label asp-for="IsPromotedToDirectory" class="form-check-label">Show on Teams page</label>
-                            <div class="form-text">When enabled, this sub-team also appears on the main Teams directory page.</div>
+                            <label asp-for="IsPromotedToDirectory" class="form-check-label">@Localizer["Teams_EditTeam_ShowInDirectory"]</label>
+                            <div class="form-text">@Localizer["Teams_EditTeam_ShowInDirectoryHelp"]</div>
                         </div>
                     }
 
                     <div class="mb-3 form-check" authorize-policy="AdminOnly">
                         <input asp-for="IsSensitive" type="checkbox" class="form-check-input" />
-                        <label asp-for="IsSensitive" class="form-check-label">Sensitive team <i class="fa-solid fa-lock auth-lock-icon"></i></label>
-                        <div class="form-text">When enabled, adding or approving humans triggers a confirmation modal showing the audit record that will be created. This flag is not visible to non-admin users.</div>
+                        <label asp-for="IsSensitive" class="form-check-label">@Localizer["Teams_EditTeam_Sensitive"] <i class="fa-solid fa-lock auth-lock-icon"></i></label>
+                        <div class="form-text">@Localizer["Teams_EditTeam_SensitiveHelp"]</div>
                     </div>
 
                     <div class="mb-3 form-check">
                         <input asp-for="EarlyEntryEnabled" type="checkbox" class="form-check-input" />
-                        <label asp-for="EarlyEntryEnabled" class="form-check-label">Enable Early Entry</label>
-                        <div class="form-text">When enabled, coordinators of this team (and Early-Entry Team Admins) can grant early entry for this team's projects.</div>
+                        <label asp-for="EarlyEntryEnabled" class="form-check-label">@Localizer["Teams_EditTeam_EnableEarlyEntry"]</label>
+                        <div class="form-text">@Localizer["Teams_EditTeam_EnableEarlyEntryHelp"]</div>
                     </div>
 
                     <div class="d-flex gap-2">

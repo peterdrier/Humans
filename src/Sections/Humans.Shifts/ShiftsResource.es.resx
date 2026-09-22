@@ -1205,4 +1205,6 @@
   <data name="EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>La lista de destinatarios ya coincide con el p&#xFA;blico que has seleccionado. Rev&#xED;sala y pulsa Enviar.</value></data>
   <data name="Shifts_Email_CoordinatorRotaMessage_ShiftsIntro" xml:space="preserve"><value>Para tu informaci&#xF3;n, tus franjas en este turno son:</value></data>
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Para tu informaci&#xF3;n, tus franjas con este equipo son:</value></data>
+  <data name="Shifts_ShiftProfile_LoadFailed" xml:space="preserve"><value>No se pudo cargar la información de turnos.</value></data>
+  <data name="Shifts_ShiftProfile_SaveFailed" xml:space="preserve"><value>No se pudo guardar la información de turnos.</value></data>
 </root>

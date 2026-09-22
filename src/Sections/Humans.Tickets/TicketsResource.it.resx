@@ -65,4 +65,7 @@
   <data name="TicketTransfer_Step3" xml:space="preserve"><value>3. Conferma</value></data>
   <data name="TicketTransfer_Title" xml:space="preserve"><value>Trasferisci un biglietto</value></data>
   <data name="TicketTransfer_YourRequests" xml:space="preserve"><value>Le tue richieste di trasferimento</value></data>
+  <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>Impossibile preparare il trasferimento: scegli uno dei tuoi biglietti e una persona destinataria valida diversa da te.</value></data>
+  <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Trasferimento richiesto. Il nostro team biglietti lo elaborerà e ti farà sapere a breve.</value></data>
+  <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Trasferimento annullato.</value></data>
 </root>

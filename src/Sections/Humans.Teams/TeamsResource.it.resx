@@ -534,4 +534,19 @@
     <value>&lt;p&gt;Il tuo team ha le seguenti risorse:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value>
     <comment>{0} = resource list items HTML</comment>
   </data>
+  <data name="Teams_EditTeam_SystemManagedHelp" xml:space="preserve"><value>Questo è un team gestito dal sistema. Puoi modificare la descrizione e il prefisso del gruppo Google.</value></data>
+  <data name="Teams_EditTeam_AutoSlug" xml:space="preserve"><value>Slug generato automaticamente:</value></data>
+  <data name="Teams_EditTeam_AutoSlugHelp" xml:space="preserve"><value>si aggiorna automaticamente quando cambia il nome.</value></data>
+  <data name="Teams_EditTeam_CustomSlug" xml:space="preserve"><value>Slug personalizzato</value></data>
+  <data name="Teams_EditTeam_CustomSlugPlaceholder" xml:space="preserve"><value>ad es. comunicazione</value></data>
+  <data name="Teams_EditTeam_CustomSlugHelp" xml:space="preserve"><value>Facoltativo. Quando impostato, questo slug viene usato per l'URL del team al posto di quello generato automaticamente.</value></data>
+  <data name="Teams_EditTeam_CustomSlugFormatHelp" xml:space="preserve"><value>Entrambi gli slug risolveranno a questo team. Solo lettere minuscole, numeri e trattini.</value></data>
+  <data name="Teams_EditTeam_IncludeInBudget" xml:space="preserve"><value>Includi nella pianificazione del budget</value></data>
+  <data name="Teams_EditTeam_IncludeInBudgetHelp" xml:space="preserve"><value>Quando attivato, questo team ottiene una categoria di budget nel gruppo Dipartimenti alla creazione di un nuovo anno di bilancio.</value></data>
+  <data name="Teams_EditTeam_ShowInDirectory" xml:space="preserve"><value>Mostra nella pagina dei team</value></data>
+  <data name="Teams_EditTeam_ShowInDirectoryHelp" xml:space="preserve"><value>Quando attivato, questo sotto-team appare anche nella directory principale dei team.</value></data>
+  <data name="Teams_EditTeam_Sensitive" xml:space="preserve"><value>Team sensibile</value></data>
+  <data name="Teams_EditTeam_SensitiveHelp" xml:space="preserve"><value>Quando attivato, l'aggiunta o l'approvazione di persone mostra una conferma con il registro di controllo che verrà creato. Questa opzione non è visibile agli utenti non amministratori.</value></data>
+  <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Abilita l'ingresso anticipato</value></data>
+  <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>Quando attivato, i coordinatori di questo team e gli amministratori dell'ingresso anticipato possono concedere l'ingresso anticipato ai progetti di questo team.</value></data>
 </root>

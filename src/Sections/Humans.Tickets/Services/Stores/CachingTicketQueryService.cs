@@ -31,7 +31,9 @@ internal sealed class CachingTicketQueryService : ITicketService, ITicketCacheIn
         _orders = new OrdersCache(
             async ct => await WithInner(inner => inner.GetTicketOrdersAsync(ct)),
             logger);
-        _userHoldings = new UserHoldingsCache(scopeFactory, clock, UserHoldingsCacheTtl, logger);
+        _userHoldings = new UserHoldingsCache(
+            (userId, ct) => WithInner(inner => inner.GetUserTicketHoldingsAsync(userId, ct)),
+            clock, UserHoldingsCacheTtl, logger);
     }
 
     public ICacheStats OrdersCacheStats => _orders;
@@ -160,7 +162,7 @@ internal sealed class CachingTicketQueryService : ITicketService, ITicketCacheIn
     }
 
     private sealed class UserHoldingsCache(
-        IServiceScopeFactory scopeFactory,
+        Func<Guid, CancellationToken, Task<UserTicketHoldings>> loadHoldings,
         IClock clock,
         Duration ttl,
         ILogger logger)
@@ -183,15 +185,8 @@ internal sealed class CachingTicketQueryService : ITicketService, ITicketCacheIn
 
         protected override async ValueTask<CachedUserTicketHoldings?> LoadRowAsync(Guid userId, CancellationToken ct)
         {
-            var holdings = await WithInner(inner => inner.GetUserTicketHoldingsAsync(userId, ct));
+            var holdings = await loadHoldings(userId, ct);
             return new CachedUserTicketHoldings(holdings, clock.GetCurrentInstant() + ttl);
-        }
-
-        private async Task<TResult> WithInner<TResult>(Func<ITicketService, Task<TResult>> action)
-        {
-            await using var scope = scopeFactory.CreateAsyncScope();
-            var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketService>(InnerServiceKey);
-            return await action(inner);
         }
     }
 

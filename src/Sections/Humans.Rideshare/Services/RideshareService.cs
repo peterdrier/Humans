@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Resources;
 using System.Text.Json;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
@@ -33,8 +34,8 @@ internal sealed class RideshareService(
     internal const string RideshareInterests = "RideshareInterests";
 
     private const string MineUrl = "/Rideshare/Mine";
-    private const string MineLabel = "Open Rideshare";
     private const string FallbackName = "A human";
+    private static readonly ResourceManager NoticeResources = new(typeof(RideshareResource));
 
     // camelCase + case-insensitive: WaypointsJson is {label, latitude, longitude}.
     private static readonly JsonSerializerOptions WaypointJsonOptions = new(JsonSerializerDefaults.Web);
@@ -265,14 +266,17 @@ internal sealed class RideshareService(
 
         var name = await DisplayNameAsync(fromUserId, ct);
         var recipient = request?.UserId ?? trip.UserId;
-        var (title, place, date) = request is null
-            ? ($"{name} is interested in your ride", trip.MemberPlaceLabel, trip.DepartureDate)
-            : ($"{name} can take you", request.PickupPlaceLabel, request.DesiredDate);
-        var body = $"{place} · {date.ToWeekdayDayMonth()} · {SeatsText(seats)}";
-        if (interest.Message is not null)
-            body += $"\n\"{interest.Message}\"";
+        var (titleKey, place, date) = request is null
+            ? ("Rideshare_NoticeInterestRide", trip.MemberPlaceLabel, trip.DepartureDate)
+            : ("Rideshare_NoticeCanTakeYou", request.PickupPlaceLabel, request.DesiredDate);
 
-        await NotifyAsync(NotificationSource.RideshareInterestReceived, NotificationClass.Actionable, recipient, title, body, ct);
+        await NotifyAsync(NotificationSource.RideshareInterestReceived, NotificationClass.Actionable, recipient, culture =>
+        {
+            var body = Notice(culture, "Rideshare_NoticeTripDetails", place, date.ToWeekdayDayMonth(), SeatsText(seats, culture));
+            if (interest.Message is not null)
+                body += $"\n\"{interest.Message}\"";
+            return (Notice(culture, titleKey, name), body);
+        }, ct);
         return interest.Id;
     }
 
@@ -295,8 +299,9 @@ internal sealed class RideshareService(
         var name = await DisplayNameAsync(actorUserId, ct);
         await NotifyAsync(
             NotificationSource.RideshareInterestAccepted, NotificationClass.Informational, interest.FromUserId,
-            $"You're in: ride with {name}",
-            $"{interest.Trip.MemberPlaceLabel} · {interest.Trip.DepartureDate.ToWeekdayDayMonth()} · {SeatsText(interest.Seats)}",
+            culture => (Notice(culture, "Rideshare_NoticeAccepted", name),
+                Notice(culture, "Rideshare_NoticeTripDetails", interest.Trip.MemberPlaceLabel,
+                    interest.Trip.DepartureDate.ToWeekdayDayMonth(), SeatsText(interest.Seats, culture))),
             ct);
     }
 
@@ -313,13 +318,12 @@ internal sealed class RideshareService(
         // Declines are private: neutral wording, no reason captured or shown.
         // A rider declining a driver's answer to their pin reads differently from a driver declining a rider.
         var name = await DisplayNameAsync(actorUserId, ct);
-        var body = interest.RequestId is null
-            ? $"{name} wasn't able to offer a spot this time."
-            : $"{name} went with another ride this time.";
         await NotifyAsync(
             NotificationSource.RideshareInterestDeclined, NotificationClass.Informational, interest.FromUserId,
-            "Ride update",
-            body,
+            culture => (Notice(culture, "Rideshare_NoticeUpdate"),
+                Notice(culture, interest.RequestId is null
+                    ? "Rideshare_NoticeDeclinedOffer"
+                    : "Rideshare_NoticeDeclinedRider", name)),
             ct);
     }
 
@@ -614,7 +618,12 @@ internal sealed class RideshareService(
     private static string? Clean(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static string SeatsText(int seats) => seats == 1 ? "1 seat" : $"{seats} seats";
+    private static string SeatsText(int seats, CultureInfo culture) => seats == 1
+        ? Notice(culture, "Rideshare_NoticeSeat")
+        : Notice(culture, "Rideshare_NoticeSeats", seats);
+
+    private static string Notice(CultureInfo culture, string key, params object[] args) =>
+        string.Format(culture, NoticeResources.GetString(key, culture)!, args);
 
     private static IReadOnlyList<Waypoint> ParseWaypoints(string? json) =>
         string.IsNullOrWhiteSpace(json)
@@ -654,13 +663,24 @@ internal sealed class RideshareService(
     // Notifications are best-effort: a failed send never rolls back the interest write.
     private async Task NotifyAsync(
         NotificationSource source, NotificationClass notificationClass, Guid recipientUserId,
-        string title, string body, CancellationToken ct)
+        Func<CultureInfo, (string Title, string Body)> content, CancellationToken ct)
     {
         try
         {
+            var language = (await users.GetUserInfoAsync(recipientUserId, ct))?.PreferredLanguage ?? "en";
+            string title, body, actionLabel;
+            // CultureScope so ambient-culture formatting (ToWeekdayDayMonth) follows the recipient too.
+            using (new CultureScope(language, logger))
+            {
+                var culture = CultureInfo.CurrentUICulture;
+                (title, body) = content(culture);
+                actionLabel = Notice(culture, "Rideshare_NoticeOpen");
+            }
+
             await notifications.SendAsync(
                 source, notificationClass, NotificationPriority.Normal, title, [recipientUserId],
-                body: body, actionUrl: MineUrl, actionLabel: MineLabel, cancellationToken: ct);
+                body: body, actionUrl: MineUrl,
+                actionLabel: actionLabel, cancellationToken: ct);
         }
         catch (Exception ex)
         {

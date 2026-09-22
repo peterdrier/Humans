@@ -299,7 +299,7 @@ internal sealed class ProfileViewController(
 
         if (!await commPrefService.AcceptsFacilitatedMessagesAsync(id, ct))
         {
-            SetError("This human has opted out of receiving messages.");
+            SetError(localizer["Users_Profile_MessageOptedOut"].Value);
             return RedirectToAction(nameof(ViewProfile), new { id });
         }
 
@@ -344,7 +344,7 @@ internal sealed class ProfileViewController(
 
         if (!await commPrefService.AcceptsFacilitatedMessagesAsync(id, ct))
         {
-            SetError("This human has opted out of receiving messages.");
+            SetError(localizer["Users_Profile_MessageOptedOut"].Value);
             return RedirectToAction(nameof(ViewProfile), new { id });
         }
 

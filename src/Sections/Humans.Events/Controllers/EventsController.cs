@@ -9,6 +9,7 @@ using Humans.Events.Filters;
 using Humans.Events.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 using static Humans.Events.Helpers.EventsLookupHelpers;
 using static Humans.Events.Helpers.EventsTimeHelpers;
@@ -26,7 +27,8 @@ internal sealed class EventsController(
     ICampServiceRead camps,
     IAuthorizationService authorizationService,
     IClock clock,
-    ILogger<EventsController> logger) : HumansCampControllerBase(users, camps, authorizationService)
+    ILogger<EventsController> logger,
+    IStringLocalizer<EventsResource> localizer) : HumansCampControllerBase(users, camps, authorizationService)
 {
     [HttpGet("MySubmissions")]
     public async Task<IActionResult> MySubmissions()
@@ -120,7 +122,7 @@ internal sealed class EventsController(
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (!IsSubmissionOpen(guideSettings))
         {
-            SetError("The submission window is not currently open.");
+            SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -140,7 +142,7 @@ internal sealed class EventsController(
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (!IsSubmissionOpen(guideSettings))
         {
-            SetError("The submission window is not currently open.");
+            SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -180,7 +182,7 @@ internal sealed class EventsController(
 
         logger.LogInformation("User {UserId} submitted individual event '{Title}'", user.Id, model.Title);
 
-        SetSuccess($"Event \"{model.Title}\" submitted for review.");
+        SetSuccess(FormatEventFeedback("Events_SubmittedForReview", model.Title));
         return RedirectToAction(nameof(MySubmissions));
     }
 
@@ -197,14 +199,14 @@ internal sealed class EventsController(
 
         if (!guideEvent.CanBeEditedBySubmitter)
         {
-            SetError("This event cannot be edited in its current state.");
+            SetError(localizer["Events_NotEditable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (guideSettings == null)
         {
-            SetError("Guide settings not configured.");
+            SetError(localizer["Events_GuideSettingsUnavailable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -246,14 +248,14 @@ internal sealed class EventsController(
 
         if (!guideEvent.CanBeEditedBySubmitter)
         {
-            SetError("This event cannot be edited in its current state.");
+            SetError(localizer["Events_NotEditable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (guideSettings == null)
         {
-            SetError("Guide settings not configured.");
+            SetError(localizer["Events_GuideSettingsUnavailable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -290,7 +292,7 @@ internal sealed class EventsController(
 
         logger.LogInformation("User {UserId} updated event '{Title}' ({EventId})", user.Id, model.Title, eventId);
 
-        SetSuccess($"Event \"{model.Title}\" resubmitted for review.");
+        SetSuccess(FormatEventFeedback("Events_ResubmittedForReview", model.Title));
         return RedirectToAction(nameof(MySubmissions));
     }
 
@@ -306,14 +308,14 @@ internal sealed class EventsController(
 
         if (!guideEvent.CanBeWithdrawnBySubmitter)
         {
-            SetError("This event cannot be withdrawn in its current state.");
+            SetError(localizer["Events_NotWithdrawable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
         await guide.WithdrawEventAsync(guideEvent);
 
         logger.LogInformation("User {UserId} withdrew event '{Title}' ({EventId})", user.Id, guideEvent.Title, eventId);
-        SetSuccess($"Event \"{guideEvent.Title}\" withdrawn.");
+        SetSuccess(FormatEventFeedback("Events_Withdrawn", guideEvent.Title));
         return RedirectToAction(nameof(MySubmissions));
     }
 
@@ -527,7 +529,7 @@ internal sealed class EventsController(
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (!IsSubmissionOpen(guideSettings))
         {
-            SetError("The submission window is not currently open.");
+            SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -547,7 +549,7 @@ internal sealed class EventsController(
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (!IsSubmissionOpen(guideSettings))
         {
-            SetError("The submission window is not currently open.");
+            SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -586,7 +588,7 @@ internal sealed class EventsController(
         await guide.SubmitEventAsync(guideEvent, viewUrl);
         logger.LogInformation("User {UserId} submitted barrio event '{Title}' for camp {CampId}", user.Id, model.Title, camp.Id);
 
-        SetSuccess($"Event \"{model.Title}\" submitted for review.");
+        SetSuccess(FormatEventFeedback("Events_SubmittedForReview", model.Title));
         return RedirectToAction(nameof(MySubmissions));
     }
 
@@ -601,7 +603,7 @@ internal sealed class EventsController(
 
         if (!guideEvent.CanBeEditedBySubmitter)
         {
-            SetError("This event cannot be edited in its current state.");
+            SetError(localizer["Events_NotEditable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -642,7 +644,7 @@ internal sealed class EventsController(
 
         if (!guideEvent.CanBeEditedBySubmitter)
         {
-            SetError("This event cannot be edited in its current state.");
+            SetError(localizer["Events_NotEditable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -684,7 +686,7 @@ internal sealed class EventsController(
 
         logger.LogInformation("User {UserId} updated barrio event '{Title}' ({EventId})", user.Id, model.Title, eventId);
 
-        SetSuccess($"Event \"{model.Title}\" resubmitted for review.");
+        SetSuccess(FormatEventFeedback("Events_ResubmittedForReview", model.Title));
         return RedirectToAction(nameof(MySubmissions));
     }
 
@@ -700,14 +702,14 @@ internal sealed class EventsController(
 
         if (!guideEvent.CanBeWithdrawnBySubmitter)
         {
-            SetError("This event cannot be withdrawn in its current state.");
+            SetError(localizer["Events_NotWithdrawable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
         await guide.WithdrawEventAsync(guideEvent);
         logger.LogInformation("User {UserId} withdrew barrio event '{Title}' ({EventId})", user.Id, guideEvent.Title, eventId);
 
-        SetSuccess($"Event \"{guideEvent.Title}\" withdrawn.");
+        SetSuccess(FormatEventFeedback("Events_Withdrawn", guideEvent.Title));
         return RedirectToAction(nameof(MySubmissions));
     }
 
@@ -732,13 +734,13 @@ internal sealed class EventsController(
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (!IsSubmissionOpen(guideSettings))
         {
-            SetError("The submission window is not currently open.");
+            SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
         if (file == null || file.Length == 0)
         {
-            SetError("Please select a CSV file to upload.");
+            SetError(localizer["Events_UploadSelectCsv"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -762,7 +764,7 @@ internal sealed class EventsController(
 
         if (rows.Count == 0)
         {
-            SetError("The CSV had no event rows. Add at least one row below the header and try again.");
+            SetError(localizer["Events_UploadNoRows"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -782,13 +784,20 @@ internal sealed class EventsController(
         logger.LogInformation(
             "Bulk upload by user {UserId} for camp {CampId}: {Created} created, {Updated} updated.",
             user.Id, camp.Id, result.CreatedCount, result.UpdatedCount);
-        SetSuccess($"Bulk upload complete — {result.CreatedCount} created, {result.UpdatedCount} updated.");
+        SetSuccess(string.Format(
+            System.Globalization.CultureInfo.CurrentCulture,
+            localizer["Events_UploadComplete"].Value,
+            result.CreatedCount,
+            result.UpdatedCount));
         return RedirectToAction(nameof(MySubmissions));
     }
 
 
     // camp is non-null at every call site; Slug is always set, so a name always resolves.
     private static string ResolveCampDisplayName(CampInfo camp) => ResolveCampName(camp)!;
+
+    private string FormatEventFeedback(string resourceKey, string title) =>
+        string.Format(localizer[resourceKey].Value, title);
 
     private async Task<CampEventFormViewModel> BuildBarrioFormAsync(string slug, CampInfo camp, EventSettingsInfo burn)
     {

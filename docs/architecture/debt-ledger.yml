@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 65
+next_id: 66
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -318,6 +318,10 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
+  - added: 2026-09-22
+    id: CENTRAL-65
+    what: "tests/Humans.Feedback.Tests/Architecture/FeedbackArchitectureTests.cs, tests/Humans.Notifications.Tests/NotificationsArchitectureTests.cs and tests/Humans.Issues.Tests/Architecture/IssuesArchitectureTests.cs each carry the comment 'IRepositoryImplementationsAreSealedRule, which sweeps Humans.Infrastructure only'. Both the rule and that assembly are gone — docs/architecture/roslyn-analysis.md records the rule as retired and says not to repoint it, because HUM0034 plus MA0053 make sealing structural. Email's copy was corrected by /section-doctor on Email 2026-09-22; these three are the same false claim in sections that run did not touch."
+    review: light
   - added: 2026-09-21
     id: CENTRAL-63
     what: "docs/architecture/design-rules.md §8 still describes the pre-cutover Settings world: it says settings_event 'has no readers yet', that every section reads the app-wide values off the Shifts-owned event_settings row via IBurnSettingsService, and that the table is populated by an operator screen at /Settings/Admin/Carry. The cutover (nobodies-collective/Humans#1630, nobodies-collective/Humans#1631) repointed every reader at settings_event, deleted the carry screen and made /Settings/Admin POST-only. The same paragraph's key list also omits Workgroups:RootDriveFolderId, the third system_settings key. Central regulations, not a section file (/section-doctor on Settings 2026-09-21)."
@@ -395,10 +399,6 @@ inbox:
   # sweep scope entirely); PasswordGenerator CSPRNG (explicitly deferred by
   # Peter, 2026-04-24); BudgetRepository ResponsibleTeam .Include (covered by
   # grandfathered-hum0024-nav-strip).
-  - added: 2026-08-11
-    id: CENTRAL-14
-    what: "EventSettingsConfiguration.cs:44-47 declares HasDefaultValue(-25/-16/-9/-4) on four int offsets without HasSentinel — EF's int sentinel stays 0, so explicitly assigning 0 to any of these offsets is skipped and the DB default written instead (int-flavoured bool-sentinel trap). Pre-existing; surfaced by the EF migration review of the Shifts peel (peel 13, nobodies-collective/Humans#858)"
-    review: light
   - added: 2026-08-07
     id: CENTRAL-12
     what: "Shifts section's own Web layer (ShiftAdminController, ShiftsController, VolunteerTrackingController, ShiftViewModels.cs, ShiftAdminPageBuilder, ShiftBrowsePageBuilder, ShiftDashboardPageBuilder, ShiftBrowseMapper, ShiftFilterResolver, ShiftSignupBucketer, ShiftVolunteerSearchBuilder, DevelopmentDashboardSeeder, ShiftSignupsViewComponent) carries the EF EventSettings entity as a view-model/builder field on read-only display paths — should be BurnSettingsInfo per nobodies-collective/Humans#809's acceptance criteria. Distinct from the write/edit path (EventSettingsFormMapper), which legitimately keeps the entity. ~10 interconnected files forming one section's own display pipeline — warrants its own dedicated section-scoped PR rather than folding into #809's cross-section batch (found while working nobodies-collective/Humans#809)"
@@ -582,10 +582,6 @@ inbox:
   - added: 2026-09-20
     id: CENTRAL-59
     what: "src/Sections/Humans.Users.Contracts/IUserInfoInvalidator.cs:24 deliberately omits the IInvalidator marker (its own comment says so, debt nobodies-collective/Humans#805), so HUM0028 cannot see it and it needs no [Grandfathered] marker — one invalidator dodging the ratchet by being invisible to it. Marking it (or recording the exemption where the analyzer reads it) is small and separable from the big invalidator rework the HUM0028 theme is parked on. Found by the 2026-09-20 accepted-smell audit."
-    review: light
-  - added: 2026-09-20
-    id: CENTRAL-60
-    what: "The pre-existing Codex prompt/skill files run dotnet with `-v quiet`/`-v q` but without the `-clp:ErrorsOnly` that memory/process/dotnet-verbosity-quiet.md requires (.codex/tech-debt-prompt.md, .codex/bug-hunt-prompt.md, .codex/TECH_DEBT_QUEUE.md, .codex/skills/humans-{tech-debt,refactor,bug-hunt}/SKILL.md). Without it the obsolete-warning wall floods the context of every Codex run that follows them, which costs most on a time-budgeted unattended run. Mechanical fix, no judgement needed. Found 2026-09-20 while adding the flag to the nightly debt runner in peterdrier/Humans#1759, which deliberately did not widen to these files."
     review: light
   - added: 2026-09-20
     id: CENTRAL-61

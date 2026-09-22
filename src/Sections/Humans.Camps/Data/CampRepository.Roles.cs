@@ -135,7 +135,6 @@ internal sealed partial class CampRepository
             .Include(a => a.Definition)
             .Include(a => a.CampMember)
             .Where(a => a.CampSeasonId == campSeasonId)
-            .OrderBy(a => a.Definition.SortOrder).ThenBy(a => a.AssignedAt)
             .ToListAsync(ct);
     }
 

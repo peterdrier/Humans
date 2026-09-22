@@ -62,6 +62,31 @@ public sealed class GoogleIntegrationEmailsTests
     }
 
     [HumansFact]
+    public void RemovalNotices_keep_html_encoding_out_of_plain_text_subjects()
+    {
+        var emails = TestGoogleIntegrationEmails.Create(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_Subject"] = "Removed from {0}",
+            ["GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_Subject"] = "Access to {0} removed",
+            ["GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Subject"] = "{0} lost access",
+            ["GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_Body"] = "<p>{0}</p><p>{1}</p><p>{2}</p>",
+            ["GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_Body"] = "<p>{0}</p><p>{1}</p>",
+            ["GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Body"] = "<p>{0}</p><p>{1}</p><p>{2}</p>"
+        });
+
+        var group = emails.GoogleGroupRemovalLossOfAccess("a@x.com", "Alice", "Art", "art & design@nobodies.team", "en");
+        var drive = emails.GoogleDriveRemovalLossOfAccess("a@x.com", "Alice", "Lights & sound", "en");
+        var cleanup = emails.GoogleAccessRemovalSecondaryCleanup("old & new@x.com", "Alice", "new@x.com", "en");
+
+        group.Subject.Should().Be("Removed from art & design@nobodies.team");
+        group.HtmlBody.Should().Contain("art &amp; design@nobodies.team");
+        drive.Subject.Should().Be("Access to Lights & sound removed");
+        drive.HtmlBody.Should().Contain("Lights &amp; sound");
+        cleanup.Subject.Should().Be("old & new@x.com lost access");
+        cleanup.HtmlBody.Should().Contain("old &amp; new@x.com");
+    }
+
+    [HumansFact]
     public void EveryTemplateHasAPreviewSample()
     {
         var emails = Create();

@@ -1,26 +1,23 @@
-using Humans.Base.Extensions;
-
 using Humans.Users.Contracts;
+using NodaTime;
 
 namespace Humans.Users.Models;
 
-internal sealed record GuestDeletionRequestFlash(bool Success, string Message)
+internal sealed record GuestDeletionRequestFlash(bool Success, string ResourceKey, Instant? EffectiveDeletionDate)
 {
     public static GuestDeletionRequestFlash From(DeletionRequestResult result)
     {
         if (!result.Success)
-            return new(false, ErrorMessageFor(result.ErrorKey));
+            return new(false, ErrorResourceKeyFor(result.ErrorKey), null);
 
-        var effective = result.EffectiveDeletionDate.ToDate();
-        var message = result.IsHeldForTicket
-            ? $"Deletion request recorded. Because you have tickets for an upcoming event, your account will be deleted after {effective}."
-            : $"Deletion request recorded. Your account will be permanently deleted on {effective}.";
-
-        return new(true, message);
+        return new(
+            true,
+            result.IsHeldForTicket ? "Users_Guest_DeletionHeldForTicket" : "Users_Guest_DeletionRequested",
+            result.EffectiveDeletionDate);
     }
 
-    private static string ErrorMessageFor(string? errorKey) =>
+    private static string ErrorResourceKeyFor(string? errorKey) =>
         string.Equals(errorKey, "AlreadyPending", StringComparison.Ordinal)
-            ? "A deletion request is already pending."
-            : "Failed to process deletion request. Please try again.";
+            ? "Profile_DeletionAlreadyPending"
+            : "Users_Guest_DeletionRequestFailed";
 }

@@ -187,4 +187,14 @@
   <data name="Rideshare_Error_OfferSeatsMinimum" xml:space="preserve"><value>Propose au moins une place.</value></data>
   <data name="Rideshare_Error_PartyMinimum" xml:space="preserve"><value>Une demande concerne au moins une personne.</value></data>
   <data name="Rideshare_Error_RideNotOnRequestDate" xml:space="preserve"><value>Ce trajet ne va pas dans cette direction le jour où ils en ont besoin.</value></data>
+  <data name="Rideshare_NoticeInterestRide" xml:space="preserve"><value>{0} est intéressé par votre trajet</value></data>
+  <data name="Rideshare_NoticeCanTakeYou" xml:space="preserve"><value>{0} peut vous emmener</value></data>
+  <data name="Rideshare_NoticeTripDetails" xml:space="preserve"><value>{0} · {1} · {2}</value></data>
+  <data name="Rideshare_NoticeSeat" xml:space="preserve"><value>1 place</value></data>
+  <data name="Rideshare_NoticeSeats" xml:space="preserve"><value>{0} places</value></data>
+  <data name="Rideshare_NoticeAccepted" xml:space="preserve"><value>Vous êtes inscrit : trajet avec {0}</value></data>
+  <data name="Rideshare_NoticeUpdate" xml:space="preserve"><value>Mise à jour du trajet</value></data>
+  <data name="Rideshare_NoticeDeclinedOffer" xml:space="preserve"><value>{0} n'a pas pu proposer de place cette fois-ci.</value></data>
+  <data name="Rideshare_NoticeDeclinedRider" xml:space="preserve"><value>{0} a choisi un autre trajet cette fois-ci.</value></data>
+  <data name="Rideshare_NoticeOpen" xml:space="preserve"><value>Ouvrir le covoiturage</value></data>
 </root>

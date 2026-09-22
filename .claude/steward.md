@@ -9,6 +9,8 @@ the skill, this file wins.
   only he raises the review-round ceiling ([`review-round-budget`](../memory/process/review-round-budget.md)).
 - A question from Peter gets an answer, not a commit
   ([peters-working-rules](../docs/architecture/peters-working-rules.md)).
+- A builder skill may set a lower ceiling (`/debt-review`: 3); it goes in every worker
+  brief as `Ceiling: <c>`. Read the skill's ceiling table with 4 as `c-1` and 5+ as `c+`.
 - Never schedule check-ins ([`no-scheduled-pr-checkins`](../memory/process/no-scheduled-pr-checkins.md)).
 
 ## Triage

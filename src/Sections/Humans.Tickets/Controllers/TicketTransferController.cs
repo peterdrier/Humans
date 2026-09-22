@@ -4,6 +4,7 @@ using Humans.Base.Controllers;
 using Humans.Tickets.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using Humans.Tickets.Services.Dtos;
 using Humans.Users.Contracts;
 
@@ -15,7 +16,8 @@ internal sealed class TicketTransferController(
     ITicketTransferService service,
     IEarlyEntryService earlyEntryService,
     IUserServiceRead userService,
-    ILogger<TicketTransferController> logger) : HumansControllerBase(userService)
+    ILogger<TicketTransferController> logger,
+    IStringLocalizer<TicketsResource> localizer) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -52,7 +54,7 @@ internal sealed class TicketTransferController(
             HolderEarlyEntry = earlyEntry?.EarliestEntryDate,
             Confirm = confirm,
             Error = confirm is null
-                ? "Couldn't set up that transfer — choose one of your tickets and a valid recipient (not yourself)."
+                ? localizer["Tickets_TicketTransfer_InvalidSelection"].Value
                 : null,
         });
     }
@@ -68,7 +70,7 @@ internal sealed class TicketTransferController(
         {
             await service.CreateRequestAsync(
                 new TicketTransferRequestDto(attendeeId, receiverUserId, reason ?? string.Empty), user.Id, ct);
-            SetSuccess("Transfer requested. Our ticketing team will process it and let you know shortly.");
+            SetSuccess(localizer["Tickets_TicketTransfer_RequestSubmitted"].Value);
             return RedirectToAction("Index", "Home");
         }
         catch (InvalidOperationException ex)
@@ -101,7 +103,7 @@ internal sealed class TicketTransferController(
         try
         {
             await service.CancelAsync(id, user.Id, ct);
-            SetSuccess("Transfer cancelled.");
+            SetSuccess(localizer["Tickets_TicketTransfer_Cancelled"].Value);
         }
         catch (InvalidOperationException ex)
         {

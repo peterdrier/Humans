@@ -18,8 +18,7 @@
   </PropertyGroup>
 
   <!-- Ship the shared xunit.runner.json next to each test project's output.
-       Keeps longRunningTestSeconds = 1 consistent across Domain / Application /
-       Integration tests without per-project duplicates. -->
+       Keeps runner settings consistent across test projects without duplicates. -->
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)xunit.runner.json" Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

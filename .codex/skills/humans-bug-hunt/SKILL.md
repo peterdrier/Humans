@@ -27,8 +27,8 @@ Run recurring autonomous bug-hunt passes in this repository.
 2. Search for one high-confidence bug at a time, using repo patterns rather than a fixed checklist.
 3. Implement the smallest defensible fix.
 4. Add or extend tests when practical.
-5. Run targeted verification, plus `dotnet build Humans.slnx --disable-build-servers -v q`.
-6. Periodically run `dotnet test Humans.slnx --no-build --disable-build-servers -v q --filter "FullyQualifiedName~Application"`.
+5. Run targeted verification, plus `dotnet build Humans.slnx --disable-build-servers -v q -clp:ErrorsOnly`.
+6. Periodically run `dotnet test Humans.slnx --no-build --disable-build-servers -v q -clp:ErrorsOnly --filter "FullyQualifiedName~Application"`.
 7. Commit each fix separately and push the branch after verified progress.
 8. Continue until remaining ideas are speculative or require forbidden areas.
 

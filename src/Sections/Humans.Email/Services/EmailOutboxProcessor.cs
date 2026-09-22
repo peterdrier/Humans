@@ -128,14 +128,12 @@ internal sealed class EmailOutboxProcessor(
                 metrics.RecordEmailFailed(message.TemplateName);
                 await TryIncrementDailySendCountAsync(message, failedAt, succeeded: false, cancellationToken);
 
-                // Update campaign grant status if applicable — routed via ICampaignService.
+                // Same bookkeeping, same guard as the success path: a failure here is
+                // already inside the catch, so left uncaught it escapes the loop.
                 if (message.CampaignGrantId.HasValue)
                 {
-                    await campaignService.UpdateGrantEmailStatusAsync(
-                        message.CampaignGrantId.Value,
-                        EmailOutboxStatus.Failed,
-                        failedAt,
-                        cancellationToken);
+                    await TryUpdateGrantEmailStatusAsync(
+                        message.CampaignGrantId.Value, EmailOutboxStatus.Failed, failedAt, message.Id, cancellationToken);
                 }
 
                 logger.LogError(
@@ -153,10 +151,13 @@ internal sealed class EmailOutboxProcessor(
 
     /// <summary>
     /// The campaign grant mirror is bookkeeping, not delivery state: a write
-    /// failure here must never surface as a delivery failure. Left uncaught, it
-    /// would fall into the per-message catch above, flip an already-<c>Sent</c>
-    /// message to <c>Failed</c> and double-tally both the metric and the daily
-    /// send count for the one delivery attempt.
+    /// failure here must never surface as a delivery failure. Left uncaught on the
+    /// success path it would fall into the per-message catch above, flip an
+    /// already-<c>Sent</c> message to <c>Failed</c> and double-tally both the metric
+    /// and the daily send count for the one delivery attempt. Left uncaught on the
+    /// failure path it is already inside that catch, so it escapes the loop instead:
+    /// the message never gets its log line and the rest of the batch stays picked up
+    /// until the stale window releases it.
     /// </summary>
     private async Task TryUpdateGrantEmailStatusAsync(
         Guid campaignGrantId, EmailOutboxStatus status, Instant now, Guid messageId, CancellationToken cancellationToken)

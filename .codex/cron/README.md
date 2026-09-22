@@ -5,6 +5,10 @@ repo — never your working checkout. Gates on build + test before pushing,
 opens one PR per run containing all substantive fixes. Ledger-only and test-only runs
 fail without publishing. Scheduler: systemd user timer (the only one shipped here).
 
+The PR is then reviewed by a Claude cloud routine at 08:00 UTC running
+[`/debt-review`](../../.claude/skills/debt-review/SKILL.md): per-commit keep/repair/revert,
+bot findings, follow-up issues, then stewards the PR inline (3-round ceiling).
+
 Both nightly runs and manual trials exclude `Humans.Integration.Tests`, using
 the same `FullyQualifiedName!~Humans.Integration.Tests` filter as CI. The runner
 exports it as `VSTestTestCaseFilter` for Codex's test commands and passes it

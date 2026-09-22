@@ -17,8 +17,8 @@ namespace Humans.Email.Tests;
 /// in-memory entity dict. Admin dashboard reads are infrequent and small.
 /// </para>
 /// <para>
-/// Since the section's G5 move the SMTP transport, the renderer and the outbox drain are
-/// all section-internal. <c>ProcessEmailOutboxJob</c> / <c>CleanupEmailOutboxJob</c> — the
+/// Since the section's G5 move the SMTP transport and the outbox drain are both
+/// section-internal. <c>ProcessEmailOutboxJob</c> / <c>CleanupEmailOutboxJob</c> — the
 /// scheduler shims over <c>IEmailOutboxProcessor</c> / <c>IEmailOutboxRetention</c> — and
 /// <c>HangfireImmediateOutboxProcessor</c> joined them at G5 lane 5b-1, under
 /// <c>Contracts/</c> because Shell names each concrete type at registration.
@@ -31,8 +31,8 @@ public class EmailArchitectureTests
     // IMemoryCache check covered by ApplicationServicesTakeNoMemoryCacheRule.
     // TakesRepository check covered by pattern G (positive wiring noise).
     // Sealed-repository check covered by HUM0034 (section types are internal) plus
-    // MA0053 (an unsealed internal class is a build error) — not by
-    // IRepositoryImplementationsAreSealedRule, which sweeps Humans.Infrastructure only.
+    // MA0053 (an unsealed internal class is a build error), so sealing is a structural
+    // fact here rather than something a test asserts.
 
     // ── OutboxEmailService ───────────────────────────────────────────────────
 
@@ -55,9 +55,9 @@ public class EmailArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IEmailBodyComposer),
-            because: "branded email wrapping lives in Infrastructure (captures IHostEnvironment + EmailSettings); Application-layer service takes the abstraction so it stays config-free");
+            because: "branded email wrapping captures IHostEnvironment + EmailSettings; the service takes the abstraction so it stays config-free");
         paramTypes.Should().Contain(typeof(IImmediateOutboxProcessor),
-            because: "triggering an immediate outbox run uses Hangfire's IBackgroundJobClient — Application layer takes the abstraction rather than the Hangfire type");
+            because: "triggering an immediate outbox run uses Hangfire's IBackgroundJobClient — the service takes the abstraction rather than the Hangfire type");
     }
 
     // ── Connector abstractions ──────────────────────────────────────────────
