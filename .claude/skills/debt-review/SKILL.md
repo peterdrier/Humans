@@ -17,15 +17,18 @@ is round 1.
 
 ## 1. Find the PR — or stop
 
-`$ARGUMENTS` names a PR number; otherwise:
+`$ARGUMENTS` names a PR number; otherwise take the newest open `codex/daily-debt/*` PR
+(not just today's: a late runner can open it after 08:00, and it skips nights while one is
+open):
 
 ```bash
-gh pr list --repo peterdrier/Humans --state open --head "codex/daily-debt/$(date -u +%F)" --json number,headRefName,headRefOid
+gh pr list --repo peterdrier/Humans --state open --json number,headRefName,createdAt   --jq '[.[] | select(.headRefName | startswith("codex/daily-debt/"))] | sort_by(.createdAt) | last'
 ```
 
 Stop with one line, touching nothing, when: no PR; it is not open; or it already has a
 commit carrying a `Review-round:` trailer or a comment starting `## Debt review` (a
-previous run owns it). In a cloud run (`CLAUDE_CODE_REMOTE=true`) check out the head
+previous run owns it). Otherwise `subscribe_pr_activity` for it now, before any review
+work, so no bot event between here and §6 is lost. In a cloud run (`CLAUDE_CODE_REMOTE=true`) check out the head
 branch in the repo root; locally use a worktree under `.claude/worktrees/`. Push by URL
 ([`push-by-url-in-cloud`](../../../memory/process/push-by-url-in-cloud.md)).
 
@@ -101,7 +104,7 @@ One PR comment, starting `## Debt review`:
 
 ## 6. Steward it yourself
 
-No hand-off: this session is the steward. `subscribe_pr_activity` for the PR, end the
+No hand-off: this session is the steward (subscribed since §1). End the
 turn with the summary below, and on every wake follow the [`steward`](../steward/SKILL.md)
 wake protocol with `Ceiling: 3` (rounds spent: 1, or 0 if §4 pushed nothing). Round
 workers are `orch-opus-medium` via Task, per the round-worker brief. At the ceiling, or
