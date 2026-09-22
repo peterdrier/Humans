@@ -391,7 +391,8 @@ internal sealed class ShiftAdminController(
         if (!ModelState.IsValid)
             return View(model);
 
-        var result = await rotaMessenger.SendRotaMessageAsync(rota.Id, user.Id, model.Message);
+        var result = await rotaMessenger.SendRotaMessageAsync(
+            rota.Id, user.Id, model.Message, model.IncludeShifts);
         if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, result.Error ?? "Failed to queue rota emails.");
@@ -430,7 +431,8 @@ internal sealed class ShiftAdminController(
         var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
-        var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(team.Id);
+        var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(
+            team.Id, TeamRotasAudienceFilter.Default);
 
         var vm = new EmailTeamRotasViewModel
         {
@@ -447,14 +449,15 @@ internal sealed class ShiftAdminController(
 
     [HttpPost("Email")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> EmailTeamRotas(string slug, EmailTeamRotasViewModel model)
+    public async Task<IActionResult> EmailTeamRotas(string slug, EmailTeamRotasViewModel model, string? intent = null)
     {
         var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
         // Repopulate display fields before any return-with-error path so the
-        // re-rendered form still shows the recipient list and counts.
-        var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(team.Id);
+        // re-rendered form still shows the recipient list and counts — recomputed
+        // against the audience the coordinator has currently selected.
+        var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(team.Id, model.Filter);
         model.TeamSlug = slug;
         model.TeamName = team.Name;
         model.RotaCount = preview.RotaCount;
@@ -463,10 +466,19 @@ internal sealed class ShiftAdminController(
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        // The audience controls re-render the form so the recipient preview tracks
+        // the selection; the half-written message is not a validation failure yet.
+        if (string.Equals(intent, EmailTeamRotasViewModel.RefreshIntent, StringComparison.Ordinal))
+        {
+            ModelState.Clear();
+            return View(model);
+        }
+
         if (!ModelState.IsValid)
             return View(model);
 
-        var result = await rotaMessenger.SendTeamRotasMessageAsync(team.Id, user.Id, model.Message);
+        var result = await rotaMessenger.SendTeamRotasMessageAsync(
+            team.Id, user.Id, model.Message, model.IncludeShifts, model.Filter);
         if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, result.Error ?? "Failed to queue team rota emails.");

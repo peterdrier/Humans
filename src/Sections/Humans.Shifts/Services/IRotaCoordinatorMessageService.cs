@@ -25,6 +25,8 @@ internal interface IRotaCoordinatorMessageService : IApplicationService
     /// <param name="senderUserId">Coordinator sending the message. Used for
     /// audit attribution and the Reply-To header.</param>
     /// <param name="messageText">Free-text body composed by the coordinator.</param>
+    /// <param name="includeShifts">Whether each email carries the recipient's own
+    /// shift list. Cleared for messages where the schedule is noise (a thank-you).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Outcome with recipient count and rota name for the
     /// coordinator-facing success message; failure shape on misconfiguration
@@ -33,11 +35,12 @@ internal interface IRotaCoordinatorMessageService : IApplicationService
         Guid rotaId,
         Guid senderUserId,
         string messageText,
+        bool includeShifts,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Queues one personalised email per recipient across every current/upcoming
-    /// rota in the given team in the active event. Recipients = distinct users with
+    /// Queues one personalised email per recipient across the team's rotas in the
+    /// active event that <paramref name="filter"/> admits. Recipients = distinct users with
     /// a Pending or Confirmed signup on any shift in any included rota — deduped
     /// across rotas so each human receives one email. Body lists the recipient's
     /// own shifts grouped by rota, each rota in its own timezone.
@@ -46,14 +49,19 @@ internal interface IRotaCoordinatorMessageService : IApplicationService
     /// <param name="senderUserId">Coordinator sending the message. Used for
     /// audit attribution and the Reply-To header.</param>
     /// <param name="messageText">Free-text body composed by the coordinator.</param>
+    /// <param name="includeShifts">Whether each email carries the recipient's own
+    /// shift list. Cleared for messages where the schedule is noise (a thank-you).</param>
+    /// <param name="filter">Which of the team's rotas count as the audience.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Outcome with recipient + rota counts and team name for the
     /// coordinator-facing success message; failure shape on misconfiguration
-    /// (no active event, team has no upcoming rotas, etc.).</returns>
+    /// (no active event, no rota matches the filter, etc.).</returns>
     Task<TeamRotasMessageDispatchResult> SendTeamRotasMessageAsync(
         Guid teamId,
         Guid senderUserId,
         string messageText,
+        bool includeShifts,
+        TeamRotasAudienceFilter filter,
         CancellationToken ct = default);
 
     /// <summary>
@@ -63,6 +71,7 @@ internal interface IRotaCoordinatorMessageService : IApplicationService
     /// </summary>
     Task<TeamRotasRecipientPreview> GetTeamRotasRecipientPreviewAsync(
         Guid teamId,
+        TeamRotasAudienceFilter filter,
         CancellationToken ct = default);
 }
 

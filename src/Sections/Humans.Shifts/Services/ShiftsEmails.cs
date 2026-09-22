@@ -31,6 +31,8 @@ internal sealed class ShiftsEmails(
             var shiftListHtml = request.ShiftLines.Count == 0
                 ? NoShifts()
                 : "<ul>" + string.Concat(request.ShiftLines.Select(line => $"<li>{Encode(line)}</li>")) + "</ul>";
+            var shiftSectionHtml = ShiftSection(
+                request.IncludeShifts, "Shifts_Email_CoordinatorRotaMessage_ShiftsIntro", shiftListHtml);
 
             return new EmailMessage(request.RecipientEmail, request.RecipientName,
                 Lf("Shifts_Email_CoordinatorRotaMessage_Subject", Encode(request.RotaName)),
@@ -39,7 +41,7 @@ internal sealed class ShiftsEmails(
                     Encode(request.SenderName),
                     Encode(request.RotaName),
                     sanitizedMessage,
-                    shiftListHtml,
+                    shiftSectionHtml,
                     SenderLine(request.SenderName, request.SenderEmail)),
                 "coordinator_rota_message", MessageCategory.VolunteerUpdates,
                 ReplyTo: request.SenderEmail);
@@ -72,6 +74,9 @@ internal sealed class ShiftsEmails(
                 }));
             }
 
+            shiftGroupsHtml = ShiftSection(
+                request.IncludeShifts, "Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro", shiftGroupsHtml);
+
             return new EmailMessage(request.RecipientEmail, request.RecipientName,
                 Lf("Shifts_Email_CoordinatorTeamRotasMessage_Subject", Encode(request.TeamName)),
                 Lf("Shifts_Email_CoordinatorTeamRotasMessage_Body",
@@ -85,6 +90,14 @@ internal sealed class ShiftsEmails(
                 ReplyTo: request.SenderEmail);
         });
     }
+
+    /// <summary>
+    /// The body's shift block: its lead-in plus the pre-rendered list, or nothing at
+    /// all when the coordinator opted the shift list out — a bare lead-in over no list
+    /// would read worse than no section.
+    /// </summary>
+    private string ShiftSection(bool include, string introKey, string listHtml) =>
+        include ? $"<p>{Encode(L(introKey))}</p>{listHtml}" : string.Empty;
 
     private string NoShifts() =>
         $"<p><em>{Encode(L("Shifts_Email_CoordinatorRotaMessage_NoShifts"))}</em></p>";

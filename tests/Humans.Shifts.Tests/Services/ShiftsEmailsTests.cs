@@ -42,6 +42,38 @@ public sealed class ShiftsEmailsTests
     }
 
     [HumansFact]
+    public void CoordinatorRotaMessage_DropsShiftSection_WhenShiftsExcluded()
+    {
+        var withShifts = Create().CoordinatorRotaMessage(RotaRequest()).HtmlBody;
+        var without = Create().CoordinatorRotaMessage(RotaRequest() with { IncludeShifts = false }).HtmlBody;
+
+        // The test localizer echoes keys, so the lead-in shows up as its key name.
+        withShifts.Should().Contain("<li>Mon</li>").And.Contain("CoordinatorRotaMessage_ShiftsIntro");
+        without.Should().NotContain("<li>").And.NotContain("CoordinatorRotaMessage_ShiftsIntro",
+            "the lead-in goes with the list, never stranded above nothing");
+        without.Should().Contain("Hello", "the coordinator's own message still ships");
+    }
+
+    [HumansFact]
+    public void CoordinatorTeamRotasMessage_DropsShiftSection_WhenShiftsExcluded()
+    {
+        var request = new CoordinatorTeamRotasMessageRequest(
+            RecipientEmail: "rcpt@x.com",
+            RecipientName: "Rcpt",
+            SenderName: "Coord",
+            SenderEmail: "coord@x.com",
+            TeamName: "Bar Team",
+            MessageText: "Thank you",
+            ShiftGroups: [new CoordinatorRotaShiftGroup("Gate", ["Mon"])],
+            Culture: "en");
+
+        var without = Create().CoordinatorTeamRotasMessage(request with { IncludeShifts = false }).HtmlBody;
+
+        without.Should().NotContain("Gate").And.NotContain("CoordinatorTeamRotasMessage_ShiftsIntro");
+        without.Should().Contain("Thank you");
+    }
+
+    [HumansFact]
     public void CoordinatorTeamRotasMessage_RoutesRepliesToCoordinator_VolunteerUpdates()
     {
         var msg = Create().CoordinatorTeamRotasMessage(new CoordinatorTeamRotasMessageRequest(
@@ -132,7 +164,7 @@ public sealed class ShiftsEmailsTests
         if (type == typeof(CoordinatorTeamRotasMessageRequest))
             return new CoordinatorTeamRotasMessageRequest(
                 "rcpt@x.com", "Rcpt", "Coord", "coord@x.com", "Bar Team", "Hello",
-                [new CoordinatorRotaShiftGroup("Gate", ["Mon"])], "en");
+                [new CoordinatorRotaShiftGroup("Gate", ["Mon"])], Culture: "en");
         throw new NotSupportedException(
             $"ShiftsEmails.{parameter.Member.Name} takes a {type.Name}; teach this test how to sample one.");
     }
