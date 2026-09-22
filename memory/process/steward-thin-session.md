@@ -19,7 +19,7 @@ cannot be built repo-side; the cost has to come out of the wake itself.
 **How to apply:**
 
 - Hand-off, wake protocol, and the round worker's brief: `.claude/skills/steward/SKILL.md`
-  and `round-worker.md`. `/orch` does the hand-off as its last step.
+  and `round-worker.md`. `/pd:orch` does the hand-off as its last step.
 - The steward never runs Bash, never fetches threads, diffs or logs, never edits, never
   replies in a thread, never schedules a check-in.
 - A wake with nothing actionable ends the turn with no reply and no comment.

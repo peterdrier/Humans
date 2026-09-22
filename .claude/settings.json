@@ -1,5 +1,9 @@
 {
   "outputStyle": "Concise",
+  "extraKnownMarketplaces": {
+    "peterdrier": { "source": { "source": "github", "repo": "peterdrier/skills" } }
+  },
+  "enabledPlugins": { "pd@peterdrier": true },
   "env": {
     "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
   },

@@ -539,7 +539,7 @@ For each issue:
 **Group:** {if grouped, which issues and why}
 
 What should I do?
-  1. Promote to GitHub — create GH issue, link via `/github-issue`, set status → Open
+  1. Promote to GitHub — create GH issue, link via `/pd:create-issue`, set status → Open
   2. Promote + Respond — same, plus post a comment on the in-app issue ("Tracked in GH #N — will update here when shipped")
   3. Respond & Resolve — post a comment + status → Resolved (use when already fixed, user error, or trivial answer)
   4. Won't Fix — status → WontFix, optional comment
