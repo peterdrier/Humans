@@ -123,4 +123,5 @@
   <data name="Events_Withdrawn" xml:space="preserve"><value>Event “{0}” withdrawn.</value><comment>{0} = event title</comment></data>
   <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Please select a CSV file to upload.</value></data>
   <data name="Events_UploadNoRows" xml:space="preserve"><value>The CSV had no event rows. Add at least one row below the header and try again.</value></data>
+  <data name="Events_UploadComplete" xml:space="preserve"><value>Bulk upload complete — {0} created, {1} updated.</value><comment>{0} = created count; {1} = updated count</comment></data>
 </root>

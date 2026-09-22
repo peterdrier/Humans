@@ -784,7 +784,11 @@ internal sealed class EventsController(
         logger.LogInformation(
             "Bulk upload by user {UserId} for camp {CampId}: {Created} created, {Updated} updated.",
             user.Id, camp.Id, result.CreatedCount, result.UpdatedCount);
-        SetSuccess($"Bulk upload complete — {result.CreatedCount} created, {result.UpdatedCount} updated.");
+        SetSuccess(string.Format(
+            System.Globalization.CultureInfo.CurrentCulture,
+            localizer["Events_UploadComplete"].Value,
+            result.CreatedCount,
+            result.UpdatedCount));
         return RedirectToAction(nameof(MySubmissions));
     }
 

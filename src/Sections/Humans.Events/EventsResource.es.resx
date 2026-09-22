@@ -128,4 +128,5 @@
   <data name="Events_Withdrawn" xml:space="preserve"><value>Evento “{0}” retirado.</value><comment>{0} = event title</comment></data>
   <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Selecciona un archivo CSV para subir.</value></data>
   <data name="Events_UploadNoRows" xml:space="preserve"><value>El CSV no tenía filas de eventos. Añade al menos una fila debajo de la cabecera e inténtalo de nuevo.</value></data>
+  <data name="Events_UploadComplete" xml:space="preserve"><value>Carga masiva completada: {0} creados, {1} actualizados.</value><comment>{0} = created count; {1} = updated count</comment></data>
 </root>

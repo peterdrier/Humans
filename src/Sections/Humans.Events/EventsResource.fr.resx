@@ -128,4 +128,5 @@
   <data name="Events_Withdrawn" xml:space="preserve"><value>Événement « {0} » retiré.</value><comment>{0} = event title</comment></data>
   <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Veuillez sélectionner un fichier CSV à téléverser.</value></data>
   <data name="Events_UploadNoRows" xml:space="preserve"><value>Le CSV ne contenait aucune ligne d'événement. Ajoutez au moins une ligne sous l'en-tête et réessayez.</value></data>
+  <data name="Events_UploadComplete" xml:space="preserve"><value>Importation en masse terminée : {0} créés, {1} mis à jour.</value><comment>{0} = created count; {1} = updated count</comment></data>
 </root>
