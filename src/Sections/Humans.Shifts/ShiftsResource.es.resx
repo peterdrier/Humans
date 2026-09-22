@@ -1192,4 +1192,6 @@
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
     <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un mensaje del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Para tu informaci&#xF3;n, tus franjas en los pr&#xF3;ximos turnos del equipo:&lt;/p&gt;{4}&lt;p&gt;Gracias,&lt;/p&gt;{5}</value>
   </data>
+  <data name="ShiftProfile_LoadFailed" xml:space="preserve"><value>No se pudo cargar la información de turnos.</value></data>
+  <data name="ShiftProfile_SaveFailed" xml:space="preserve"><value>No se pudo guardar la información de turnos.</value></data>
 </root>

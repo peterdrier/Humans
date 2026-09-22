@@ -1194,4 +1194,6 @@
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
     <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un missatge del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Per a la teva informaci&#xF3;, les teves franges en els propers torns de l'equip:&lt;/p&gt;{4}&lt;p&gt;Gr&#xE0;cies,&lt;/p&gt;{5}</value>
   </data>
+  <data name="ShiftProfile_LoadFailed" xml:space="preserve"><value>No s'ha pogut carregar la informació dels torns.</value></data>
+  <data name="ShiftProfile_SaveFailed" xml:space="preserve"><value>No s'ha pogut desar la informació dels torns.</value></data>
 </root>

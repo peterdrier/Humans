@@ -1194,4 +1194,6 @@
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
     <value>&lt;p&gt;Liebe/r {0},&lt;/p&gt;&lt;p&gt;Eine Nachricht vom Koordinator von &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Zur Info, deine Schichten in den kommenden Dienstpl&#xE4;nen dieses Teams:&lt;/p&gt;{4}&lt;p&gt;Danke,&lt;/p&gt;{5}</value>
   </data>
+  <data name="ShiftProfile_LoadFailed" xml:space="preserve"><value>Schichtinformationen konnten nicht geladen werden.</value></data>
+  <data name="ShiftProfile_SaveFailed" xml:space="preserve"><value>Schichtinformationen konnten nicht gespeichert werden.</value></data>
 </root>
