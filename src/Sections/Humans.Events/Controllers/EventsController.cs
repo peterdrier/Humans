@@ -9,6 +9,7 @@ using Humans.Events.Filters;
 using Humans.Events.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 using static Humans.Events.Helpers.EventsLookupHelpers;
 using static Humans.Events.Helpers.EventsTimeHelpers;
@@ -26,7 +27,8 @@ internal sealed class EventsController(
     ICampServiceRead camps,
     IAuthorizationService authorizationService,
     IClock clock,
-    ILogger<EventsController> logger) : HumansCampControllerBase(users, camps, authorizationService)
+    ILogger<EventsController> logger,
+    IStringLocalizer<EventsResource> localizer) : HumansCampControllerBase(users, camps, authorizationService)
 {
     [HttpGet("MySubmissions")]
     public async Task<IActionResult> MySubmissions()
@@ -120,7 +122,7 @@ internal sealed class EventsController(
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (!IsSubmissionOpen(guideSettings))
         {
-            SetError("The submission window is not currently open.");
+            SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -140,7 +142,7 @@ internal sealed class EventsController(
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (!IsSubmissionOpen(guideSettings))
         {
-            SetError("The submission window is not currently open.");
+            SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -197,14 +199,14 @@ internal sealed class EventsController(
 
         if (!guideEvent.CanBeEditedBySubmitter)
         {
-            SetError("This event cannot be edited in its current state.");
+            SetError(localizer["Events_NotEditable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (guideSettings == null)
         {
-            SetError("Guide settings not configured.");
+            SetError(localizer["Events_GuideSettingsUnavailable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -246,14 +248,14 @@ internal sealed class EventsController(
 
         if (!guideEvent.CanBeEditedBySubmitter)
         {
-            SetError("This event cannot be edited in its current state.");
+            SetError(localizer["Events_NotEditable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (guideSettings == null)
         {
-            SetError("Guide settings not configured.");
+            SetError(localizer["Events_GuideSettingsUnavailable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -306,7 +308,7 @@ internal sealed class EventsController(
 
         if (!guideEvent.CanBeWithdrawnBySubmitter)
         {
-            SetError("This event cannot be withdrawn in its current state.");
+            SetError(localizer["Events_NotWithdrawable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -527,7 +529,7 @@ internal sealed class EventsController(
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (!IsSubmissionOpen(guideSettings))
         {
-            SetError("The submission window is not currently open.");
+            SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -547,7 +549,7 @@ internal sealed class EventsController(
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (!IsSubmissionOpen(guideSettings))
         {
-            SetError("The submission window is not currently open.");
+            SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -601,7 +603,7 @@ internal sealed class EventsController(
 
         if (!guideEvent.CanBeEditedBySubmitter)
         {
-            SetError("This event cannot be edited in its current state.");
+            SetError(localizer["Events_NotEditable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -642,7 +644,7 @@ internal sealed class EventsController(
 
         if (!guideEvent.CanBeEditedBySubmitter)
         {
-            SetError("This event cannot be edited in its current state.");
+            SetError(localizer["Events_NotEditable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -700,7 +702,7 @@ internal sealed class EventsController(
 
         if (!guideEvent.CanBeWithdrawnBySubmitter)
         {
-            SetError("This event cannot be withdrawn in its current state.");
+            SetError(localizer["Events_NotWithdrawable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
@@ -732,7 +734,7 @@ internal sealed class EventsController(
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (!IsSubmissionOpen(guideSettings))
         {
-            SetError("The submission window is not currently open.");
+            SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 

@@ -120,4 +120,7 @@
   <data name="EventSubmission_PriorityHelp" xml:space="preserve"><value>1 = priorità più alta per la selezione della guida stampata.</value></data>
   <data name="Events_CardTitle" xml:space="preserve"><value>Eventi</value></data>
   <data name="Events_RecurringEvent" xml:space="preserve"><value>Evento ricorrente</value></data>
+  <data name="Events_NotEditable" xml:space="preserve"><value>Questo evento non può essere modificato nel suo stato attuale.</value></data>
+  <data name="Events_NotWithdrawable" xml:space="preserve"><value>Questo evento non può essere ritirato nel suo stato attuale.</value></data>
+  <data name="Events_GuideSettingsUnavailable" xml:space="preserve"><value>Le impostazioni della guida non sono configurate.</value></data>
 </root>

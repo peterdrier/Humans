@@ -115,4 +115,7 @@
   <data name="EventSubmission_PriorityHelp" xml:space="preserve"><value>1 = highest priority for print guide selection.</value></data>
   <data name="Events_CardTitle" xml:space="preserve"><value>Events</value></data>
   <data name="Events_RecurringEvent" xml:space="preserve"><value>Recurring event</value></data>
+  <data name="Events_NotEditable" xml:space="preserve"><value>This event cannot be edited in its current state.</value></data>
+  <data name="Events_NotWithdrawable" xml:space="preserve"><value>This event cannot be withdrawn in its current state.</value></data>
+  <data name="Events_GuideSettingsUnavailable" xml:space="preserve"><value>Guide settings are not configured.</value></data>
 </root>

@@ -120,4 +120,7 @@
   <data name="EventSubmission_PriorityHelp" xml:space="preserve"><value>1 = höchste Priorität für die Auswahl im gedruckten Guide.</value></data>
   <data name="Events_CardTitle" xml:space="preserve"><value>Veranstaltungen</value></data>
   <data name="Events_RecurringEvent" xml:space="preserve"><value>Wiederkehrende Veranstaltung</value></data>
+  <data name="Events_NotEditable" xml:space="preserve"><value>Diese Veranstaltung kann in ihrem aktuellen Status nicht bearbeitet werden.</value></data>
+  <data name="Events_NotWithdrawable" xml:space="preserve"><value>Diese Veranstaltung kann in ihrem aktuellen Status nicht zurückgezogen werden.</value></data>
+  <data name="Events_GuideSettingsUnavailable" xml:space="preserve"><value>Die Guide-Einstellungen sind nicht konfiguriert.</value></data>
 </root>

@@ -120,4 +120,7 @@
   <data name="EventSubmission_PriorityHelp" xml:space="preserve"><value>1 = prioritat més alta per a la selecció de la guia impresa.</value></data>
   <data name="Events_CardTitle" xml:space="preserve"><value>Esdeveniments</value></data>
   <data name="Events_RecurringEvent" xml:space="preserve"><value>Esdeveniment recurrent</value></data>
+  <data name="Events_NotEditable" xml:space="preserve"><value>Aquest esdeveniment no es pot editar en el seu estat actual.</value></data>
+  <data name="Events_NotWithdrawable" xml:space="preserve"><value>Aquest esdeveniment no es pot retirar en el seu estat actual.</value></data>
+  <data name="Events_GuideSettingsUnavailable" xml:space="preserve"><value>Els ajustos de la guia no estan configurats.</value></data>
 </root>
