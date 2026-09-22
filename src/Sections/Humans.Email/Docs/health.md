@@ -220,4 +220,4 @@ Settled decisions and essential complexity — stop re-litigating these.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-09-04 | First doctoring: unsanitized markdown in the feedback-response and issue-comment bodies, dead resource keys retired, doc set corrected against deleted projects | peterdrier/Humans#1587 |
-| section-doctor | 2026-09-22 | Dashboard throttle figure corrected, dead backfill query arm cut, target and data-access doc realigned after the template move | peterdrier/Humans#pending |
+| section-doctor | 2026-09-22 | Failure-path grant mirror guarded, dead backfill query arm cut, stale comments and the four section docs realigned after the template move | peterdrier/Humans#pending |
