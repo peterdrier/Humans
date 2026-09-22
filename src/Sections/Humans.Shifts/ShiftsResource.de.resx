@@ -1204,6 +1204,7 @@
   <data name="EmailTeamRotas_PeriodEvent" xml:space="preserve"><value>Veranstaltung</value></data>
   <data name="EmailTeamRotas_PeriodStrike" xml:space="preserve"><value>Abbau</value></data>
   <data name="EmailTeamRotas_Refresh" xml:space="preserve"><value>Empf&#xE4;nger aktualisieren</value></data>
+  <data name="EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>Die Empf&#xE4;ngerliste entspricht jetzt der ausgew&#xE4;hlten Zielgruppe. Pr&#xFC;fe sie und klicke dann auf Senden.</value></data>
   <data name="Shifts_Email_CoordinatorRotaMessage_ShiftsIntro" xml:space="preserve"><value>Zur Info, deine Schichten in diesem Dienstplan sind:</value></data>
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Zur Info, deine Schichten bei diesem Team:</value></data>
 </root>

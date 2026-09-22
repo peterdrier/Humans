@@ -1204,6 +1204,7 @@
   <data name="EmailTeamRotas_PeriodEvent" xml:space="preserve"><value>Evento</value></data>
   <data name="EmailTeamRotas_PeriodStrike" xml:space="preserve"><value>Smontaggio</value></data>
   <data name="EmailTeamRotas_Refresh" xml:space="preserve"><value>Aggiorna destinatari</value></data>
+  <data name="EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>L&apos;elenco dei destinatari corrisponde ora al pubblico selezionato. Controllalo, poi premi Invia.</value></data>
   <data name="Shifts_Email_CoordinatorRotaMessage_ShiftsIntro" xml:space="preserve"><value>Per tua informazione, le tue fasce in questo turno sono:</value></data>
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Per tua informazione, le tue fasce con questo team sono:</value></data>
 </root>

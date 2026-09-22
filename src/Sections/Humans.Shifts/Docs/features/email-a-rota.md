@@ -69,6 +69,7 @@ Source: [nobodies-collective/Humans#732](https://github.com/nobodies-collective/
 - Choosing "all" reveals **Build / Event / Strike** checkboxes, all ticked by default, filtering on `Rota.Period`. A `RotaPeriod.All` rota is admitted by any ticked period.
 - The period checkboxes apply only under "all". Hidden under "upcoming", their values never narrow the audience — `TeamRotasAudienceFilter.Includes` short-circuits on `UpcomingOnly`.
 - Changing any audience control re-posts the form with `intent=refresh`, which re-previews recipients against the new selection and leaves the half-written message and its validation alone. The refresh button is the no-JS fallback.
+- A send only dispatches to an audience the coordinator has been shown. The form carries the `TeamRotasAudienceFilter.Key` its recipient list was built from; if the posted selection differs — no script, or the script failed — the send is turned back, the form re-renders against the new audience with a notice, and sending again dispatches it.
 - The recipient count on the Send button always reflects the previewed selection.
 
 ## Recipient Selection

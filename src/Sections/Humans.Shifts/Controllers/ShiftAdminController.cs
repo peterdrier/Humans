@@ -458,8 +458,11 @@ internal sealed class ShiftAdminController(
         // re-rendered form still shows the recipient list and counts — recomputed
         // against the audience the coordinator has currently selected.
         var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(team.Id, model.Filter);
+        var previewWasShown = string.Equals(
+            model.PreviewedAudience, model.Filter.Key, StringComparison.Ordinal);
         model.TeamSlug = slug;
         model.TeamName = team.Name;
+        model.PreviewedAudience = model.Filter.Key;
         model.RotaCount = preview.RotaCount;
         model.RecipientCount = preview.RecipientNames.Count;
         model.RecipientNames = preview.RecipientNames
@@ -471,6 +474,14 @@ internal sealed class ShiftAdminController(
         if (string.Equals(intent, EmailTeamRotasViewModel.RefreshIntent, StringComparison.Ordinal))
         {
             ModelState.Clear();
+            return View(model);
+        }
+
+        // Without the script the audience can move without a re-preview, so a send
+        // would mail a list the coordinator never saw. Show them this one instead.
+        if (!previewWasShown)
+        {
+            model.AudienceChanged = true;
             return View(model);
         }
 

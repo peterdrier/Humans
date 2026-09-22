@@ -232,6 +232,31 @@ public class ShiftAdminControllerTests
     }
 
     [HumansFact]
+    public async Task EmailTeamRotas_Send_RepreviewsInsteadOfSending_WhenAudienceWasNeverPreviewed()
+    {
+        _rotaMessenger.GetTeamRotasRecipientPreviewAsync(
+                TeamId, Arg.Any<TeamRotasAudienceFilter>(), Arg.Any<CancellationToken>())
+            .Returns(new TeamRotasRecipientPreview(3, ["Alice", "Bob", "Cara"]));
+        // No script: the coordinator widened the audience and pressed Send, so the
+        // posted selection no longer matches the list the form is showing.
+        var posted = new EmailTeamRotasViewModel
+        {
+            Message = "thank you",
+            UpcomingOnly = false,
+            PreviewedAudience = TeamRotasAudienceFilter.Default.Key,
+        };
+
+        var result = await BuildSut().EmailTeamRotas(Slug, posted);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(posted);
+        posted.AudienceChanged.Should().BeTrue();
+        posted.RecipientCount.Should().Be(3);
+        posted.PreviewedAudience.Should().Be(posted.Filter.Key);
+        await _rotaMessenger.DidNotReceiveWithAnyArgs().SendTeamRotasMessageAsync(
+            default, default, null!, default, null!);
+    }
+
+    [HumansFact]
     public async Task EmailTeamRotas_Send_PassesTheSelectedAudienceAndShiftChoice()
     {
         _rotaMessenger.GetTeamRotasRecipientPreviewAsync(
@@ -246,6 +271,8 @@ public class ShiftAdminControllerTests
             IncludeShifts = false,
             UpcomingOnly = false,
             IncludeEvent = false,
+            // The audience this form's recipient list was previewed against.
+            PreviewedAudience = new TeamRotasAudienceFilter(false, true, false, true).Key,
         };
 
         await BuildSut().EmailTeamRotas(Slug, posted);

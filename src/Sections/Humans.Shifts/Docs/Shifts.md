@@ -204,7 +204,7 @@ Selected routes:
 | `GET /Teams/{slug}/Shifts/Tags/Search` | Tag autocomplete |
 | `POST /Teams/{slug}/Shifts/Tags/Create` | Create new tag |
 | `GET /Teams/{slug}/Shifts/Email` | Compose a team-wide coordinator message to everyone with an active signup across the team's selected rotas |
-| `POST /Teams/{slug}/Shifts/Email` | Send the team-wide coordinator message, or (`intent=refresh`) re-preview the recipients for the posted audience selection |
+| `POST /Teams/{slug}/Shifts/Email` | Send the team-wide coordinator message, or (`intent=refresh`, or any send whose audience has not been previewed) re-preview the recipients for the posted audience selection |
 | `GET /Shifts/Dashboard` | Cross-department coordinator dashboard |
 | `GET /Shifts/Dashboard/PostEventStats` | Post-event stats: completion/no-show rates by department (`ShiftDashboardAccess`) |
 | `GET /Shifts/Dashboard/SearchVolunteers` | Dashboard volunteer search |

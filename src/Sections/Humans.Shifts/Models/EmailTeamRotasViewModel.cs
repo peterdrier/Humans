@@ -42,6 +42,20 @@ internal sealed class EmailTeamRotasViewModel
     public TeamRotasAudienceFilter Filter =>
         new(UpcomingOnly, IncludeBuild, IncludeEvent, IncludeStrike);
 
+    /// <summary>
+    /// <see cref="TeamRotasAudienceFilter.Key"/> of the audience the recipient list on
+    /// this form was computed from. Posted back with the send so a selection changed
+    /// since that preview — the script is off, or it failed — re-previews instead of
+    /// mailing an audience the coordinator was never shown.
+    /// </summary>
+    public string PreviewedAudience { get; set; } = TeamRotasAudienceFilter.Default.Key;
+
+    /// <summary>
+    /// Set when a send was turned back because the selected audience had not been
+    /// previewed; the form re-renders against the new audience and asks for the send again.
+    /// </summary>
+    public bool AudienceChanged { get; set; }
+
     [Required]
     [StringLength(4000, MinimumLength = 1)]
     public string Message { get; set; } = string.Empty;

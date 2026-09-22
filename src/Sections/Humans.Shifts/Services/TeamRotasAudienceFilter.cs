@@ -22,6 +22,14 @@ internal sealed record TeamRotasAudienceFilter(
     /// <summary>The compose form's defaults: upcoming rotas, every period.</summary>
     internal static TeamRotasAudienceFilter Default { get; } = new(true, true, true, true);
 
+    /// <summary>
+    /// A stable string naming this audience. The compose form posts back the key of the
+    /// audience its recipient preview was computed from, so a send whose selection has
+    /// moved on since that preview can be caught and re-previewed instead of dispatched.
+    /// </summary>
+    internal string Key =>
+        $"{(UpcomingOnly ? 1 : 0)}{(IncludeBuild ? 1 : 0)}{(IncludeEvent ? 1 : 0)}{(IncludeStrike ? 1 : 0)}";
+
     internal bool Includes(RotaPeriod period) => UpcomingOnly || period switch
     {
         RotaPeriod.Build => IncludeBuild,

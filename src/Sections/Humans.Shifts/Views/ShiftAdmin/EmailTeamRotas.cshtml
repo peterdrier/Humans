@@ -23,8 +23,14 @@
                         @Html.AntiForgeryToken()
                         <input type="hidden" asp-for="TeamSlug" />
                         <input type="hidden" asp-for="TeamName" />
+                        <input type="hidden" asp-for="PreviewedAudience" />
 
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                        @if (Model.AudienceChanged)
+                        {
+                            <div class="alert alert-warning" role="alert">@Localizer["EmailTeamRotas_AudienceChanged"]</div>
+                        }
 
                         @await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
                         {
