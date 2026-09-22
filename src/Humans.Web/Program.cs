@@ -720,9 +720,11 @@ app.UseRouting();
 
 app.UseCors();
 
-app.UseRateLimiter();
-
 app.UseAuthentication();
+
+// After Authentication so partition keys see the signed-in human's NameIdentifier;
+// before it, every per-human bucket collapses into one shared partition.
+app.UseRateLimiter();
 
 // Between Authentication and Authorization so the principal is populated AND denied-but-authenticated requests (403s short-circuited by UseAuthorization) still count toward humans.active_users.
 app.UseMiddleware<UserActivityTrackingMiddleware>();
