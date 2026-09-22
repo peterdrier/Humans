@@ -108,7 +108,7 @@ public sealed class ServiceImageTests
             NewImages: FakeImages(6)), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage(Service.TooManyImagesError);
+            .WithMessage("*at most 5 images*");
     }
 
     [HumansFact]
@@ -123,7 +123,7 @@ public sealed class ServiceImageTests
             NewImages: FakeImages(2)), actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage(Service.TooManyImagesError);
+            .WithMessage("*at most 5 images*");
     }
 
     [HumansFact]
@@ -138,7 +138,7 @@ public sealed class ServiceImageTests
             NewImages: FakeImages(1)), actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage(Service.TooManyImagesError);
+            .WithMessage("*at most 5 images*");
     }
 
     [HumansFact]
@@ -234,7 +234,7 @@ public sealed class ServiceImageTests
             Description: null), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage(Service.InvalidNameError);
+            .WithMessage("*must not contain*");
     }
 
     [HumansFact]

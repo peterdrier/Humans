@@ -88,31 +88,31 @@
   <data name="Events_UploadFailed" xml:space="preserve"><value>Upload failed.</value></data>
   <data name="Events_UploadFailedDetail" xml:space="preserve"><value>Fix the errors below and try again. No events were saved.</value></data>
   <data name="Events_WithdrawConfirm" xml:space="preserve"><value>Withdraw this event?</value></data>
-  <data name="EventSubmission_EditTitle" xml:space="preserve"><value>Edit Event</value></data>
-  <data name="EventSubmission_SubmitTitle" xml:space="preserve"><value>Submit an Event</value></data>
-  <data name="EventSubmission_Edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="EventSubmission_New" xml:space="preserve"><value>New</value></data>
-  <data name="EventSubmission_ReturnedForEdits" xml:space="preserve"><value>This event was returned for edits. Update the details and resubmit.</value></data>
-  <data name="EventSubmission_CharactersRemaining" xml:space="preserve"><value>characters remaining</value></data>
-  <data name="EventSubmission_MarkdownSupported" xml:space="preserve"><value>Markdown formatting is supported</value></data>
-  <data name="EventSubmission_SelectCategory" xml:space="preserve"><value>— Select category —</value></data>
-  <data name="EventSubmission_SelectVenue" xml:space="preserve"><value>— Select venue —</value></data>
-  <data name="EventSubmission_AllDay" xml:space="preserve"><value>All day event</value></data>
-  <data name="EventSubmission_SelectDay" xml:space="preserve"><value>— Select day —</value></data>
-  <data name="EventSubmission_Repeats" xml:space="preserve"><value>This event repeats on multiple days</value></data>
-  <data name="EventSubmission_RecurrenceDays" xml:space="preserve"><value>Recurrence days</value></data>
-  <data name="EventSubmission_LocationPlaceholder" xml:space="preserve"><value>e.g. near the fire pit</value></data>
-  <data name="EventSubmission_HostPlaceholder" xml:space="preserve"><value>e.g. The Tea Collective</value></data>
-  <data name="EventSubmission_HostHelp" xml:space="preserve"><value>Shown in the guide instead of your name when filled in.</value></data>
-  <data name="EventSubmission_Resubmit" xml:space="preserve"><value>Resubmit</value></data>
-  <data name="EventSubmission_SubmitForReview" xml:space="preserve"><value>Submit for Review</value></data>
-  <data name="EventSubmission_Cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="EventSubmission_BarrioEditTitle" xml:space="preserve"><value>Edit Event — {0}</value></data>
-  <data name="EventSubmission_BarrioSubmitTitle" xml:space="preserve"><value>Submit Event — {0}</value></data>
-  <data name="EventSubmission_SubmitNew" xml:space="preserve"><value>Submit New Event</value></data>
-  <data name="EventSubmission_BarrioHostPlaceholder" xml:space="preserve"><value>e.g. Luna</value></data>
-  <data name="EventSubmission_BarrioHostHelp" xml:space="preserve"><value>Optional — names the person running this event.</value></data>
-  <data name="EventSubmission_PriorityHelp" xml:space="preserve"><value>1 = highest priority for print guide selection.</value></data>
+  <data name="Events_Submission_EditTitle" xml:space="preserve"><value>Edit Event</value></data>
+  <data name="Events_Submission_SubmitTitle" xml:space="preserve"><value>Submit an Event</value></data>
+  <data name="Events_Submission_Edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="Events_Submission_New" xml:space="preserve"><value>New</value></data>
+  <data name="Events_Submission_ReturnedForEdits" xml:space="preserve"><value>This event was returned for edits. Update the details and resubmit.</value></data>
+  <data name="Events_Submission_CharactersRemaining" xml:space="preserve"><value>characters remaining</value></data>
+  <data name="Events_Submission_MarkdownSupported" xml:space="preserve"><value>Markdown formatting is supported</value></data>
+  <data name="Events_Submission_SelectCategory" xml:space="preserve"><value>— Select category —</value></data>
+  <data name="Events_Submission_SelectVenue" xml:space="preserve"><value>— Select venue —</value></data>
+  <data name="Events_Submission_AllDay" xml:space="preserve"><value>All day event</value></data>
+  <data name="Events_Submission_SelectDay" xml:space="preserve"><value>— Select day —</value></data>
+  <data name="Events_Submission_Repeats" xml:space="preserve"><value>This event repeats on multiple days</value></data>
+  <data name="Events_Submission_RecurrenceDays" xml:space="preserve"><value>Recurrence days</value></data>
+  <data name="Events_Submission_LocationPlaceholder" xml:space="preserve"><value>e.g. near the fire pit</value></data>
+  <data name="Events_Submission_HostPlaceholder" xml:space="preserve"><value>e.g. The Tea Collective</value></data>
+  <data name="Events_Submission_HostHelp" xml:space="preserve"><value>Shown in the guide instead of your name when filled in.</value></data>
+  <data name="Events_Submission_Resubmit" xml:space="preserve"><value>Resubmit</value></data>
+  <data name="Events_Submission_SubmitForReview" xml:space="preserve"><value>Submit for Review</value></data>
+  <data name="Events_Submission_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Events_Submission_BarrioEditTitle" xml:space="preserve"><value>Edit Event — {0}</value></data>
+  <data name="Events_Submission_BarrioSubmitTitle" xml:space="preserve"><value>Submit Event — {0}</value></data>
+  <data name="Events_Submission_SubmitNew" xml:space="preserve"><value>Submit New Event</value></data>
+  <data name="Events_Submission_BarrioHostPlaceholder" xml:space="preserve"><value>e.g. Luna</value></data>
+  <data name="Events_Submission_BarrioHostHelp" xml:space="preserve"><value>Optional — names the person running this event.</value></data>
+  <data name="Events_Submission_PriorityHelp" xml:space="preserve"><value>1 = highest priority for print guide selection.</value></data>
   <data name="Events_CardTitle" xml:space="preserve"><value>Events</value></data>
   <data name="Events_RecurringEvent" xml:space="preserve"><value>Recurring event</value></data>
   <data name="Events_NotEditable" xml:space="preserve"><value>This event cannot be edited in its current state.</value></data>

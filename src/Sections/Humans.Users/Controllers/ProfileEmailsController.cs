@@ -135,7 +135,7 @@ internal sealed class ProfileEmailsController(
     {
         if (isConflict)
         {
-            SetInfo(localizer["Profile_EmailLinkedToAnotherAccount"].Value);
+            SetInfo(localizer["Users_Profile_EmailLinkedToAnotherAccount"].Value);
             return;
         }
 
@@ -181,7 +181,7 @@ internal sealed class ProfileEmailsController(
             ViewData["Success"] = true;
             ViewData["Message"] = string.Format(
                 CultureInfo.CurrentCulture,
-                localizer["Profile_EmailVerifiedMergeRequested"].Value,
+                localizer["Users_Profile_EmailVerifiedMergeRequested"].Value,
                 result.Email);
             return View("VerifyEmailResult");
         }

@@ -12,12 +12,12 @@ internal sealed record GuestDeletionRequestFlash(bool Success, string ResourceKe
 
         return new(
             true,
-            result.IsHeldForTicket ? "Guest_DeletionHeldForTicket" : "Guest_DeletionRequested",
+            result.IsHeldForTicket ? "Users_Guest_DeletionHeldForTicket" : "Users_Guest_DeletionRequested",
             result.EffectiveDeletionDate);
     }
 
     private static string ErrorResourceKeyFor(string? errorKey) =>
         string.Equals(errorKey, "AlreadyPending", StringComparison.Ordinal)
             ? "Profile_DeletionAlreadyPending"
-            : "Guest_DeletionRequestFailed";
+            : "Users_Guest_DeletionRequestFailed";
 }

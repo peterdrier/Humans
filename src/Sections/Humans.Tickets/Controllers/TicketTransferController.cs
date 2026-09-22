@@ -54,7 +54,7 @@ internal sealed class TicketTransferController(
             HolderEarlyEntry = earlyEntry?.EarliestEntryDate,
             Confirm = confirm,
             Error = confirm is null
-                ? localizer["TicketTransfer_InvalidSelection"].Value
+                ? localizer["Tickets_TicketTransfer_InvalidSelection"].Value
                 : null,
         });
     }
@@ -70,7 +70,7 @@ internal sealed class TicketTransferController(
         {
             await service.CreateRequestAsync(
                 new TicketTransferRequestDto(attendeeId, receiverUserId, reason ?? string.Empty), user.Id, ct);
-            SetSuccess(localizer["TicketTransfer_RequestSubmitted"].Value);
+            SetSuccess(localizer["Tickets_TicketTransfer_RequestSubmitted"].Value);
             return RedirectToAction("Index", "Home");
         }
         catch (InvalidOperationException ex)
@@ -103,7 +103,7 @@ internal sealed class TicketTransferController(
         try
         {
             await service.CancelAsync(id, user.Id, ct);
-            SetSuccess(localizer["TicketTransfer_Cancelled"].Value);
+            SetSuccess(localizer["Tickets_TicketTransfer_Cancelled"].Value);
         }
         catch (InvalidOperationException ex)
         {

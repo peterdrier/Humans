@@ -49,7 +49,7 @@ internal sealed class GuestAccountController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load communication preferences");
-            SetError(localizer["Profile_CommunicationPreferencesLoadFailed"].Value);
+            SetError(localizer["Users_Profile_CommunicationPreferencesLoadFailed"].Value);
             return RedirectToAction("Index", "Guest");
         }
     }
@@ -115,7 +115,7 @@ internal sealed class GuestAccountController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to process deletion request for user {UserId}", user.Id);
-            SetError(localizer["Guest_DeletionRequestFailed"].Value);
+            SetError(localizer["Users_Guest_DeletionRequestFailed"].Value);
             return RedirectToAction("Index", "Guest");
         }
     }
@@ -133,7 +133,7 @@ internal sealed class GuestAccountController(
         {
             SetError(string.Equals(result.ErrorKey, "NoDeletionPending", StringComparison.Ordinal)
                 ? localizer["Profile_NoDeletionPending"].Value
-                : localizer["Guest_CancelDeletionFailed"].Value);
+                : localizer["Users_Guest_CancelDeletionFailed"].Value);
             return RedirectToAction("Index", "Guest");
         }
 

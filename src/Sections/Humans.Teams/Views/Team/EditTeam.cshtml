@@ -22,7 +22,7 @@
                 {
                     <div class="alert alert-info">
                         <i class="fa-solid fa-circle-info me-1"></i>
-                        @Localizer["AdminEditTeam_SystemManagedHelp"]
+                        @Localizer["Teams_EditTeam_SystemManagedHelp"]
                     </div>
                 }
 
@@ -37,18 +37,18 @@
                         <label asp-for="Name" class="form-label">@Localizer["AdminTeams_TeamName"]</label>
                         <input asp-for="Name" class="form-control" readonly="@(Model.IsSystemTeam ? "readonly" : null)" />
                         <span asp-validation-for="Name" class="text-danger"></span>
-                        <div class="form-text">@Localizer["AdminEditTeam_AutoSlug"] <code>@Model.Slug</code> — @Localizer["AdminEditTeam_AutoSlugHelp"]</div>
+                        <div class="form-text">@Localizer["Teams_EditTeam_AutoSlug"] <code>@Model.Slug</code> — @Localizer["Teams_EditTeam_AutoSlugHelp"]</div>
                     </div>
 
                     @if (!Model.IsSystemTeam)
                     {
                         <div class="mb-3">
-                            <label asp-for="CustomSlug" class="form-label">@Localizer["AdminEditTeam_CustomSlug"]</label>
-                            <input asp-for="CustomSlug" class="form-control" placeholder="@Localizer["AdminEditTeam_CustomSlugPlaceholder"]" />
+                            <label asp-for="CustomSlug" class="form-label">@Localizer["Teams_EditTeam_CustomSlug"]</label>
+                            <input asp-for="CustomSlug" class="form-control" placeholder="@Localizer["Teams_EditTeam_CustomSlugPlaceholder"]" />
                             <span asp-validation-for="CustomSlug" class="text-danger"></span>
                             <div class="form-text">
-                                @Localizer["AdminEditTeam_CustomSlugHelp"]
-                                @Localizer["AdminEditTeam_CustomSlugFormatHelp"]
+                                @Localizer["Teams_EditTeam_CustomSlugHelp"]
+                                @Localizer["Teams_EditTeam_CustomSlugFormatHelp"]
                             </div>
                         </div>
                     }
@@ -64,8 +64,8 @@
                         </div>
                         <div class="mb-3 form-check">
                             <input asp-for="HasBudget" type="checkbox" class="form-check-input" />
-                            <label asp-for="HasBudget" class="form-check-label">@Localizer["AdminEditTeam_IncludeInBudget"]</label>
-                            <div class="form-text">@Localizer["AdminEditTeam_IncludeInBudgetHelp"]</div>
+                            <label asp-for="HasBudget" class="form-check-label">@Localizer["Teams_EditTeam_IncludeInBudget"]</label>
+                            <div class="form-text">@Localizer["Teams_EditTeam_IncludeInBudgetHelp"]</div>
                         </div>
                     }
 
@@ -73,21 +73,21 @@
                     {
                         <div class="mb-3 form-check">
                             <input asp-for="IsPromotedToDirectory" type="checkbox" class="form-check-input" />
-                            <label asp-for="IsPromotedToDirectory" class="form-check-label">@Localizer["AdminEditTeam_ShowInDirectory"]</label>
-                            <div class="form-text">@Localizer["AdminEditTeam_ShowInDirectoryHelp"]</div>
+                            <label asp-for="IsPromotedToDirectory" class="form-check-label">@Localizer["Teams_EditTeam_ShowInDirectory"]</label>
+                            <div class="form-text">@Localizer["Teams_EditTeam_ShowInDirectoryHelp"]</div>
                         </div>
                     }
 
                     <div class="mb-3 form-check" authorize-policy="AdminOnly">
                         <input asp-for="IsSensitive" type="checkbox" class="form-check-input" />
-                        <label asp-for="IsSensitive" class="form-check-label">@Localizer["AdminEditTeam_Sensitive"] <i class="fa-solid fa-lock auth-lock-icon"></i></label>
-                        <div class="form-text">@Localizer["AdminEditTeam_SensitiveHelp"]</div>
+                        <label asp-for="IsSensitive" class="form-check-label">@Localizer["Teams_EditTeam_Sensitive"] <i class="fa-solid fa-lock auth-lock-icon"></i></label>
+                        <div class="form-text">@Localizer["Teams_EditTeam_SensitiveHelp"]</div>
                     </div>
 
                     <div class="mb-3 form-check">
                         <input asp-for="EarlyEntryEnabled" type="checkbox" class="form-check-input" />
-                        <label asp-for="EarlyEntryEnabled" class="form-check-label">@Localizer["AdminEditTeam_EnableEarlyEntry"]</label>
-                        <div class="form-text">@Localizer["AdminEditTeam_EnableEarlyEntryHelp"]</div>
+                        <label asp-for="EarlyEntryEnabled" class="form-check-label">@Localizer["Teams_EditTeam_EnableEarlyEntry"]</label>
+                        <div class="form-text">@Localizer["Teams_EditTeam_EnableEarlyEntryHelp"]</div>
                     </div>
 
                     <div class="d-flex gap-2">

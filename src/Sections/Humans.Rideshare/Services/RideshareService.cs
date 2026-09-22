@@ -34,7 +34,6 @@ internal sealed class RideshareService(
     internal const string RideshareInterests = "RideshareInterests";
 
     private const string MineUrl = "/Rideshare/Mine";
-    private const string MineLabel = "Open Rideshare";
     private const string FallbackName = "A human";
     private static readonly ResourceManager NoticeResources = new(typeof(RideshareResource));
 
@@ -669,12 +668,19 @@ internal sealed class RideshareService(
         try
         {
             var language = (await users.GetUserInfoAsync(recipientUserId, ct))?.PreferredLanguage ?? "en";
-            var culture = CultureInfo.GetCultureInfo(language);
-            var (title, body) = content(culture);
+            string title, body, actionLabel;
+            // CultureScope so ambient-culture formatting (ToWeekdayDayMonth) follows the recipient too.
+            using (new CultureScope(language, logger))
+            {
+                var culture = CultureInfo.CurrentUICulture;
+                (title, body) = content(culture);
+                actionLabel = Notice(culture, "Rideshare_NoticeOpen");
+            }
+
             await notifications.SendAsync(
                 source, notificationClass, NotificationPriority.Normal, title, [recipientUserId],
                 body: body, actionUrl: MineUrl,
-                actionLabel: Notice(culture, "Rideshare_NoticeOpen"), cancellationToken: ct);
+                actionLabel: actionLabel, cancellationToken: ct);
         }
         catch (Exception ex)
         {

@@ -25,8 +25,6 @@ internal sealed class Service(
         new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
     private const long MaxImageBytes = 10 * 1024 * 1024;
     private const int MaxImagesPerContainer = 5;
-    internal const string InvalidNameError = "Containers_Error_InvalidName";
-    internal const string TooManyImagesError = "Containers_Error_TooManyImages";
 
     public async Task<IReadOnlyList<ContainerDto>> GetByCampAsync(Guid campId, CancellationToken ct = default)
     {
@@ -286,7 +284,7 @@ internal sealed class Service(
     {
         if (name.IndexOfAny(InvalidNameChars) >= 0)
         {
-            throw new InvalidOperationException(InvalidNameError);
+            throw new InvalidOperationException("Container name must not contain <, > or $.");
         }
     }
 
@@ -294,7 +292,8 @@ internal sealed class Service(
     {
         if (total > MaxImagesPerContainer)
         {
-            throw new InvalidOperationException(TooManyImagesError);
+            throw new InvalidOperationException(
+                $"A container can have at most {MaxImagesPerContainer} images.");
         }
     }
 

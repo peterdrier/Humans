@@ -34,7 +34,7 @@ internal sealed partial class TeamResourceService(
     public async Task<IReadOnlyList<GoogleResourceSnapshot>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default)
     {
         var resources = await repository.GetActiveByTeamIdAsync(teamId, ct);
-        return resources.OrderBy(r => r.ProvisionedAt).Select(ToSnapshot).ToList();
+        return resources.Select(ToSnapshot).ToList();
     }
 
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>> GetResourcesByTeamIdsAsync(

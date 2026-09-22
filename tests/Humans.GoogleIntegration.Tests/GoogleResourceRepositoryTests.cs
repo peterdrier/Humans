@@ -46,7 +46,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetActiveByTeamIdAsync_ExcludesInactive()
+    public async Task GetActiveByTeamIdAsync_OrdersByProvisionedAt_ExcludesInactive()
     {
         var teamId = Guid.NewGuid();
         var older = Seed(teamId, "older", GoogleResourceType.DriveFolder, Instant.FromUtc(2026, 4, 20, 0, 0));
@@ -57,7 +57,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         var rows = await _repository.GetActiveByTeamIdAsync(teamId, Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().HaveCount(2);
-        rows.Select(r => r.Id).Should().BeEquivalentTo([older.Id, newer.Id]);
+        rows.Select(r => r.Id).Should().ContainInOrder(older.Id, newer.Id);
     }
 
     [HumansFact]

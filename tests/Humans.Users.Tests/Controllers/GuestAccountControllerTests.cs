@@ -39,7 +39,7 @@ public class GuestAccountControllerTests
             var value = key switch
             {
                 "Profile_DeletionAlreadyPending" => "A deletion request is already pending.",
-                "Guest_DeletionRequested" => "Deletion request recorded. Your account will be permanently deleted on {0}.",
+                "Users_Guest_DeletionRequested" => "Deletion request recorded. Your account will be permanently deleted on {0}.",
                 _ => key,
             };
             return new LocalizedString(key, value);

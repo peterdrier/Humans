@@ -42,7 +42,7 @@ internal sealed class ShiftProfileController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load shift info for user");
-            SetError(shiftsLocalizer["ShiftProfile_LoadFailed"].Value);
+            SetError(shiftsLocalizer["Shifts_ShiftProfile_LoadFailed"].Value);
             return RedirectToAction("Me", "Profile");
         }
     }
@@ -74,7 +74,7 @@ internal sealed class ShiftProfileController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to save shift info for user");
-            SetError(shiftsLocalizer["ShiftProfile_SaveFailed"].Value);
+            SetError(shiftsLocalizer["Shifts_ShiftProfile_SaveFailed"].Value);
             return View(model);
         }
     }
