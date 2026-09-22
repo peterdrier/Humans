@@ -112,4 +112,12 @@
   <data name="EventSubmission_Resubmit" xml:space="preserve"><value>Volver a enviar</value></data>
   <data name="EventSubmission_SubmitForReview" xml:space="preserve"><value>Enviar para revisión</value></data>
   <data name="EventSubmission_Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="EventSubmission_BarrioEditTitle" xml:space="preserve"><value>Editar evento — {0}</value></data>
+  <data name="EventSubmission_BarrioSubmitTitle" xml:space="preserve"><value>Enviar evento — {0}</value></data>
+  <data name="EventSubmission_SubmitNew" xml:space="preserve"><value>Enviar nuevo evento</value></data>
+  <data name="EventSubmission_BarrioHostPlaceholder" xml:space="preserve"><value>p. ej., Luna</value></data>
+  <data name="EventSubmission_BarrioHostHelp" xml:space="preserve"><value>Opcional; indica la persona que organiza este evento.</value></data>
+  <data name="EventSubmission_PriorityHelp" xml:space="preserve"><value>1 = prioridad máxima para la selección de la guía impresa.</value></data>
+  <data name="Events_CardTitle" xml:space="preserve"><value>Eventos</value></data>
+  <data name="Events_RecurringEvent" xml:space="preserve"><value>Evento recurrente</value></data>
 </root>

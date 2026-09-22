@@ -28,7 +28,3 @@ inbox:
     id: EVENTS-6
     what: "EventsApiController's day-offset path always runs with tz == null because the shared test ctor stubs guide settings to null (EventsApiControllerTests.cs:28-32), so the non-null branch is never executed. Found by /section-doctor on Events 2026-09-09. (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
     review: light
-  - added: 2026-09-09
-    id: EVENTS-7
-    what: "Member-facing views ship hardcoded English: Views/Events/IndividualEventForm.cshtml (no Localizer reference at all), Views/Events/BarrioEventForm.cshtml (a stray Localizer reference aside, its labels, hints and buttons are literals) and Views/Shared/Components/EventsCard/Default.cshtml ('Events' header, 'Recurring event' tooltip). Browse, Schedule and MySubmissions are fully localized; the submit forms never were. Fix is a resx backfill across every supported culture plus the view edits — its own PR, not a side effect. Found by /section-doctor on Events 2026-09-09."
-    review: light
