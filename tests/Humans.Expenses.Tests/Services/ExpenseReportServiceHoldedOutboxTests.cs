@@ -239,11 +239,13 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
-        // The report's Note stays in Humans; the doc's description is the line plus the report ref.
+        // The report's Note stays in Humans; the doc's description is "ER: " + the line, and the
+        // report ref moves to Notes so it doesn't clutter the Holded-rendered ledger description.
         await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
             Arg.Is<HoldedPurchaseDocumentInput>(i =>
                 string.Equals(i.ContactName, "Alice Smith", StringComparison.Ordinal) &&
-                string.Equals(i.Description, $"Wood — expense report {report.Id}", StringComparison.Ordinal)),
+                string.Equals(i.Description, "ER: Wood", StringComparison.Ordinal) &&
+                string.Equals(i.Notes, $"Expense report {report.Id}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
 
         await _repo.Received(1).SetLineHoldedDocIdAsync(

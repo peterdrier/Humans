@@ -1464,8 +1464,10 @@ internal sealed class ExpenseReportService(
                         ContactName = submitterName,
                         Date = report.SubmittedAt ?? report.CreatedAt,
                         // The report's Note stays in Humans — the doc's breadcrumb back to its
-                        // report is what the accountant needs, not member↔reviewer context.
-                        Description = $"{line.Description} — expense report {report.Id}",
+                        // report is what the accountant needs, not member↔reviewer context. It
+                        // goes in Notes so the ledger description (Holded-rendered) stays readable.
+                        Description = $"ER: {line.Description}",
+                        Notes = $"Expense report {report.Id}",
                         Lines = docLines,
                     }, ct);
                 await repo.SetLineHoldedDocIdAsync(line.Id, holdedDocId, now, ct);

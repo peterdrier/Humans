@@ -40,6 +40,7 @@ public class HoldedClientTests
             ContactId = "contact-1",
             ContactName = "Alice",
             Date = Instant.FromUtc(2026, 5, 10, 0, 0),
+            Notes = "Expense report abc-123",
             Lines = [new() { Description = "Train", Amount = 19.52m, AccountId = "acc-629001" }]
         }, Xunit.TestContext.Current.CancellationToken);
 
@@ -47,6 +48,7 @@ public class HoldedClientTests
         capturedBody.Should().Contain("\"contact_id\":\"contact-1\"");
         capturedBody.Should().Contain("\"date\":\"2026-05-10\"");
         capturedBody.Should().Contain("\"account\":\"acc-629001\"");
+        capturedBody.Should().Contain("\"notes\":\"Expense report abc-123\"");
         // Tags are dead on the write side (Peter, 2026-08-10) — the mapped account books the doc
         // to the right category from creation, so no tags are sent at all.
         capturedBody.Should().NotContain("tags");
