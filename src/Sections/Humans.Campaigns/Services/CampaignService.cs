@@ -574,7 +574,6 @@ internal sealed class CampaignService(
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var summaries = summaryRows
-            .OrderByDescending(s => s.CreatedAt)
             .Select(s =>
             {
                 grantsByCampaign.TryGetValue(s.CampaignId, out var grants);

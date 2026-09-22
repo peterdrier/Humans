@@ -183,8 +183,7 @@ internal sealed record GrantWithSendContext(
 /// </summary>
 internal sealed record CampaignCodeTrackingSummaryRow(
     Guid CampaignId,
-    string CampaignTitle,
-    Instant CreatedAt);
+    string CampaignTitle);
 
 /// <summary>
 /// One grant per row, used by <see cref="ICampaignRepository.GetCodeTrackingGrantRowsAsync"/>.
