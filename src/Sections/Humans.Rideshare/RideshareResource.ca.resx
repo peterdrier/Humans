@@ -187,4 +187,14 @@
   <data name="Rideshare_Error_OfferSeatsMinimum" xml:space="preserve"><value>Ofereix almenys una plaça.</value></data>
   <data name="Rideshare_Error_PartyMinimum" xml:space="preserve"><value>Una sol·licitud és per a almenys una persona.</value></data>
   <data name="Rideshare_Error_RideNotOnRequestDate" xml:space="preserve"><value>Aquest viatge no va en aquesta direcció el dia que ho necessiten.</value></data>
+  <data name="Rideshare_NoticeInterestRide" xml:space="preserve"><value>{0} està interessat en el teu viatge</value></data>
+  <data name="Rideshare_NoticeCanTakeYou" xml:space="preserve"><value>{0} et pot portar</value></data>
+  <data name="Rideshare_NoticeTripDetails" xml:space="preserve"><value>{0} · {1} · {2}</value></data>
+  <data name="Rideshare_NoticeSeat" xml:space="preserve"><value>1 plaça</value></data>
+  <data name="Rideshare_NoticeSeats" xml:space="preserve"><value>{0} places</value></data>
+  <data name="Rideshare_NoticeAccepted" xml:space="preserve"><value>Hi ets: viatges amb {0}</value></data>
+  <data name="Rideshare_NoticeUpdate" xml:space="preserve"><value>Actualització del viatge</value></data>
+  <data name="Rideshare_NoticeDeclinedOffer" xml:space="preserve"><value>{0} no ha pogut oferir una plaça aquesta vegada.</value></data>
+  <data name="Rideshare_NoticeDeclinedRider" xml:space="preserve"><value>{0} ha anat amb un altre viatge aquesta vegada.</value></data>
+  <data name="Rideshare_NoticeOpen" xml:space="preserve"><value>Obre viatges compartits</value></data>
 </root>
