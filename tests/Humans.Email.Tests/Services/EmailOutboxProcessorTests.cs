@@ -397,13 +397,22 @@ public class EmailOutboxProcessorTests : IDisposable
     [HumansTheory]
     [InlineData("skipped@localhost")]
     [InlineData("skipped@ticketstub.local")]
-    public async Task ProcessQueuedAsync_DoesNotCountTestAddresses(string testAddress)
+    public async Task ProcessQueuedAsync_MarksTestAddressesSentWithoutSendingOrCounting(string testAddress)
     {
+        // A test-domain row is marked Sent deliberately, without a transport call:
+        // sending to it bounces and costs sender reputation. It leaves the queue for
+        // good (never retried) and stays out of the tally, which counts real mail.
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
         message.RecipientEmail = testAddress;
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        updated.Status.Should().Be(EmailOutboxStatus.Sent);
+
+        await _transport.DidNotReceiveWithAnyArgs().SendAsync(
+            default!, default, default!, default!, default, default, default, default);
 
         var counts = await FreshCountsQuery().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         counts.Should().BeEmpty();
