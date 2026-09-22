@@ -12,10 +12,6 @@ inbox:
     what: "Services/TeamService.cs is the section's largest class (reforge largeClass), with UpdateTeamAsync its most complex method over a long parameter list, and Data/Configurations/TeamConfiguration.cs Configure is a single long method. The target shape blesses one inner service; recorded so the score is not mistaken for unexamined debt (finding 12, /section-doctor on Teams 2026-09-05)."
     review: panel
   - added: 2026-09-05
-    id: TEAMS-3
-    what: "Views/TeamAdmin/EditTeam.cshtml carries hardcoded English strings on a member-facing coordinator route (/Teams/{slug}/Edit is not in localization-admin-exempt's list); each needs a TeamsResource key in every supported culture (finding 12, /section-doctor on Teams 2026-09-05)."
-    review: light
-  - added: 2026-09-05
     id: TEAMS-4
     what: "Most TeamsResource keys lack the Teams_ prefix (TeamDetail_*, TeamAdmin_*, MyTeams_*, AdminEditTeam_*); pre-existing baseline, report only — a rename is a six-culture sweep plus every view binding (finding 12, /section-doctor on Teams 2026-09-05)."
     review: panel
