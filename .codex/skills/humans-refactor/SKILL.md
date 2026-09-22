@@ -161,7 +161,7 @@ Then repeat until stasis:
 3. Pick the highest-leverage cohesive improvement, not just the highest scoring rule.
 4. Write a candidate thesis in the run notes: what concept will be deleted, which responsibility moves to its rightful owner, or which duplicated/cross-section path disappears. If the thesis is just "the score drops", reject the candidate before editing.
 5. Make the change.
-6. Run targeted tests and `dotnet build Humans.slnx --disable-build-servers -v q`.
+6. Run targeted tests and `dotnet build Humans.slnx --disable-build-servers -v q -clp:ErrorsOnly`.
 7. Run Reforge after the change.
 8. Run the score-blind architecture-review gate.
 9. If accepted, commit and push. If rework/reject, improve or abandon before committing.

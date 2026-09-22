@@ -580,10 +580,6 @@ inbox:
     what: "src/Sections/Humans.Users.Contracts/IUserInfoInvalidator.cs:24 deliberately omits the IInvalidator marker (its own comment says so, debt nobodies-collective/Humans#805), so HUM0028 cannot see it and it needs no [Grandfathered] marker — one invalidator dodging the ratchet by being invisible to it. Marking it (or recording the exemption where the analyzer reads it) is small and separable from the big invalidator rework the HUM0028 theme is parked on. Found by the 2026-09-20 accepted-smell audit."
     review: light
   - added: 2026-09-20
-    id: CENTRAL-60
-    what: "The pre-existing Codex prompt/skill files run dotnet with `-v quiet`/`-v q` but without the `-clp:ErrorsOnly` that memory/process/dotnet-verbosity-quiet.md requires (.codex/tech-debt-prompt.md, .codex/bug-hunt-prompt.md, .codex/TECH_DEBT_QUEUE.md, .codex/skills/humans-{tech-debt,refactor,bug-hunt}/SKILL.md). Without it the obsolete-warning wall floods the context of every Codex run that follows them, which costs most on a time-budgeted unattended run. Mechanical fix, no judgement needed. Found 2026-09-20 while adding the flag to the nightly debt runner in peterdrier/Humans#1759, which deliberately did not widen to these files."
-    review: light
-  - added: 2026-09-20
     id: CENTRAL-61
     what: "Two pre-existing Codex runner scripts use `git -C <path>`, which memory/process/never-use-git-dash-c.md marks a HARD RULE with no exceptions: .codex/run-weekly-bug-hunt.sh and .codex/cleanup-merged-bug-hunt-worktrees.sh. Fix is mechanical — run each group in a `(cd \"$dir\" && git ...)` subshell, as .codex/cron/run-daily-debt.sh now does. Worth noting the atom's stated rationale (a wrong shell folder; defeating Bash allowlist prefixes) is about agent-issued commands, so Peter may want to say whether the rule binds committed scripts at all rather than have it re-found every audit. Found 2026-09-20 while fixing the same violation in the nightly debt runner in peterdrier/Humans#1759."
     review: panel
