@@ -5,7 +5,7 @@ angle brackets; paste nothing else. The worker starts with zero context and read
 needs from the repo and the PR.
 
 ```
-Review round on <owner>/<repo>#<N>, branch <branch>. Rounds spent before this one: <k>.
+Review round on <owner>/<repo>#<N>, branch <branch>. Rounds spent before this one: <k>. Ceiling: <c>.
 Trigger: <one line: "Codex review on <sha>, comment ids …" | "CI check <name> failed on <sha>" | "merge conflict with main" | "Peter: <his words>">.
 
 Read .claude/skills/steward/SKILL.md (sections "Rounds and the ceiling" and "The round
@@ -37,14 +37,14 @@ block is the only copy that reaches him. None of the steps below apply to either
    work (steps 3 and 6, no trailer) and **skip step 5 entirely** — folding a bot finding
    into an untrailered commit spends a round the count never sees — then report the
    ceiling as still standing. Only a round trigger — an automated review finding or a CI
-   failure — meets the ceiling: at 5 or more spent, skip to step 7, which fetches the open
+   failure — meets the ceiling: at the ceiling or more spent, skip to step 7, which fetches the open
    threads itself (the trigger line is not the list of open items).
 3. **Merge conflict first.** Merge main into the branch with a merge commit, resolve,
    regenerate generated files with the repo's tooling, never rewrite history. Not a round.
 4. **CI failure.** Read the failed job's log tail once. Rule out a failure that isn't this
    PR's: a test the diff doesn't touch that hit a timeout under runner load, or a check red
    on main too. That gets one re-run (or the next push serves as one) and no commit. A
-   real failure in code the PR touches is a round: fix it — except at 4 spent, where the
+   real failure in code the PR touches is a round: fix it — except at ceiling-1 spent, where the
    last commit belongs to the most serious open item: gather the unresolved threads
    (step 5) first, then choose between them and the failure.
 5. **Findings** — round triggers only; a non-round wake skips this step (step 2).
@@ -63,7 +63,7 @@ block is the only copy that reaches him. None of the steps below apply to either
    against a stale build. Push by URL ([`push-by-url-in-cloud`](../../../memory/process/push-by-url-in-cloud.md)).
    Then reply in every thread with its disposition and the sha, react, resolve; leave open
    only a thread genuinely waiting on Peter.
-7. **Ceiling.** At 5 spent, or when the table says stop: first fetch the unresolved
+7. **Ceiling.** At the ceiling, or when the table says stop: first fetch the unresolved
    threads on both repos, read-only — no triage, no patch, no commit — so the handoff
    lists the findings that are actually open. Then write the ceiling comment (what is
    open, what you'd do about each, what needs deciding, ending with the Claude Code

@@ -56,6 +56,7 @@ You are the steward for <owner>/<repo>#<N> (branch <branch>, base main).
 Read .claude/skills/steward/SKILL.md now and follow its wake protocol; keep every
 turn short. Deliverable, one paragraph: <what the PR does>.
 Review rounds spent so far: 0 (verify against Review-round trailers via the worker).
+Ceiling: 5 (lower only where the builder's skill sets it, e.g. /debt-review: 3).
 First action: subscribe_pr_activity for this PR, then end the turn with one line
 saying whether the subscription succeeded — the builder waits for that before
 dropping its own. If it failed, retry when the tool becomes available; after a
@@ -136,7 +137,9 @@ a plausible nonzero count can still be short, and a zero on a PR with bot review
 earlier red check is a missing record, not a fresh budget. Where the two disagree, count
 the round commits by hand and use that.
 
-The unattended ceiling is **five review-round commits per PR**:
+The unattended ceiling is **five review-round commits per PR**, or the lower `Ceiling:` in
+the steward brief (a skill may lower it, never raise it). The steward passes it to every
+worker; with a lower ceiling `c`, read the table's 4 as `c-1` and 5+ as `c+`:
 
 | Spent | What the round worker does |
 |---|---|
