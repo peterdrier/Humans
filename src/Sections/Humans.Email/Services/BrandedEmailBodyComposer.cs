@@ -6,10 +6,10 @@ using Microsoft.Extensions.Options;
 namespace Humans.Email.Services;
 
 /// <summary>
-/// Infrastructure-layer implementation of <see cref="IEmailBodyComposer"/>.
-/// Owns the <see cref="EmailSettings.BaseUrl"/> and
-/// <see cref="IHostEnvironment.EnvironmentName"/> inputs so the
-/// Application-layer <c>OutboxEmailService</c> does not have to take them.
+/// The implementation of <see cref="IEmailBodyComposer"/>. Owns the
+/// <see cref="EmailSettings.BaseUrl"/> and
+/// <see cref="IHostEnvironment.EnvironmentName"/> inputs so
+/// <c>OutboxEmailService</c> does not have to take them.
 /// Delegates the actual wrapping to
 /// <see cref="BrandedEmailTemplate"/> + <see cref="HtmlPlainTextConverter"/>.
 /// </summary>

@@ -13,7 +13,7 @@ using NodaTime;
 namespace Humans.Email.Services;
 
 /// <summary>
-/// Application-layer implementation of <see cref="IEmailOutboxService"/>:
+/// The implementation of <see cref="IEmailOutboxService"/>:
 /// admin-dashboard reads (stats, recent messages, per-user history) and admin
 /// writes (retry, discard, pause/resume) over <see cref="IEmailOutboxRepository"/>.
 /// Authoritative gateway for the <c>IsEmailSendingPaused</c> flag; the background

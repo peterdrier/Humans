@@ -16,7 +16,7 @@ using Xunit;
 namespace Humans.Email.Tests.Services;
 
 /// <summary>
-/// Transport-level tests for the Application-layer <see cref="OutboxEmailService"/>:
+/// Transport-level tests for <see cref="OutboxEmailService"/>:
 /// the single <see cref="IEmailService.SendAsync"/> path. Per-type policy stamping
 /// (template / category / reply-to) is covered by
 /// <see cref="EmailMessageFactoryTests"/>; these tests exercise the shared
@@ -27,9 +27,9 @@ namespace Humans.Email.Tests.Services;
 /// </summary>
 public sealed class OutboxEmailServiceTests : IDisposable
 {
-    // Two members of Humans.Application.Tests' ServiceTestHarness, owned here rather than
-    // inherited: the harness is built around an in-memory UsersDbContext and sharing it
-    // would grant a section test project InternalsVisibleTo on it (design §15 step 8).
+    // A clock and a DbContext-options factory, owned here rather than shared: a harness
+    // built around an in-memory UsersDbContext would grant this project
+    // InternalsVisibleTo on it (design §15 step 8).
     private readonly FakeClock Clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
 
     private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
