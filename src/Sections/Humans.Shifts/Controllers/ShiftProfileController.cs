@@ -25,6 +25,7 @@ internal sealed class ShiftProfileController(
     // SharedResource: the only string this controller resolves is Profile_Updated,
     // which belongs to Shell's profile vocabulary.
     IStringLocalizer<SharedResource> localizer,
+    IStringLocalizer<ShiftsResource> shiftsLocalizer,
     ILogger<ShiftProfileController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("Me/ShiftInfo")]
@@ -41,7 +42,7 @@ internal sealed class ShiftProfileController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load shift info for user");
-            SetError("Failed to load shift info.");
+            SetError(shiftsLocalizer["Shifts_ShiftProfile_LoadFailed"].Value);
             return RedirectToAction("Me", "Profile");
         }
     }
@@ -73,7 +74,7 @@ internal sealed class ShiftProfileController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to save shift info for user");
-            SetError("Failed to save shift info.");
+            SetError(shiftsLocalizer["Shifts_ShiftProfile_SaveFailed"].Value);
             return View(model);
         }
     }

@@ -21,14 +21,15 @@ internal static class TestShiftsEmails
         ["Shifts_Email_CoordinatorTeamRotasMessage_Body"] = "<p>Dear {0},</p><p>From {1} on {2}:</p>{3}{4}{5}",
     };
 
-    public static ShiftsEmails Create()
+    public static ShiftsEmails Create(IReadOnlyDictionary<string, string>? formats = null)
     {
+        formats ??= Formats;
         var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();
             return new LocalizedString(key,
-                Formats.GetValueOrDefault(key, $"{key}#{CultureInfo.CurrentUICulture.Name}"));
+                formats.GetValueOrDefault(key, $"{key}#{CultureInfo.CurrentUICulture.Name}"));
         });
 
         return new ShiftsEmails(localizer, NullLogger<ShiftsEmails>.Instance);

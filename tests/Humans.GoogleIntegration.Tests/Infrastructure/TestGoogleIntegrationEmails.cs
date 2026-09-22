@@ -23,14 +23,15 @@ internal static class TestGoogleIntegrationEmails
         ["GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Body"] = "<p>{0}</p><p>{1}</p><p>{2}</p>",
     };
 
-    public static GoogleIntegrationEmails Create()
+    public static GoogleIntegrationEmails Create(IReadOnlyDictionary<string, string>? formats = null)
     {
+        formats ??= Formats;
         var localizer = Substitute.For<IStringLocalizer<GoogleIntegrationResource>>();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();
             return new LocalizedString(key,
-                Formats.GetValueOrDefault(key, $"{key}#{CultureInfo.CurrentUICulture.Name}"));
+                formats.GetValueOrDefault(key, $"{key}#{CultureInfo.CurrentUICulture.Name}"));
         });
 
         return new GoogleIntegrationEmails(localizer, NullLogger<GoogleIntegrationEmails>.Instance);

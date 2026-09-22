@@ -1154,4 +1154,12 @@
 &lt;p&gt;Cordiali saluti,&lt;br/&gt;Il team di Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
+  <data name="Users_Profile_MessageOptedOut" xml:space="preserve"><value>Questa persona ha scelto di non ricevere messaggi.</value></data>
+  <data name="Users_Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>Impossibile caricare le preferenze di comunicazione.</value></data>
+  <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Questa email è collegata a un altro account. La verifica richiederà un'unione di account. Controlla la posta in arrivo per il link di verifica.</value></data>
+  <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Email verificata. È stata inviata una richiesta di unione per la revisione amministrativa. L'email {0} verrà aggiunta al tuo account una volta approvata.</value><comment>{0} = email address</comment></data>
+  <data name="Users_Guest_DeletionRequestFailed" xml:space="preserve"><value>Impossibile elaborare la richiesta di eliminazione. Riprova.</value></data>
+  <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Richiesta di eliminazione registrata. Il tuo account verrà eliminato definitivamente il {0}.</value><comment>{0} = deletion date</comment></data>
+  <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Richiesta di eliminazione registrata. Poiché hai biglietti per un prossimo evento, il tuo account verrà eliminato dopo il {0}.</value><comment>{0} = deletion date</comment></data>
+  <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>Impossibile annullare la richiesta di eliminazione. Riprova.</value></data>
 </root>

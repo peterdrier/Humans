@@ -1207,4 +1207,6 @@
   <data name="EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>La llista de destinataris ja coincideix amb el p&#xFA;blic que has seleccionat. Revisa-la i prem Envia.</value></data>
   <data name="Shifts_Email_CoordinatorRotaMessage_ShiftsIntro" xml:space="preserve"><value>Per a la teva informaci&#xF3;, les teves franges en aquest torn s&#xF3;n:</value></data>
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Per a la teva informaci&#xF3;, les teves franges amb aquest equip s&#xF3;n:</value></data>
+  <data name="Shifts_ShiftProfile_LoadFailed" xml:space="preserve"><value>No s'ha pogut carregar la informació dels torns.</value></data>
+  <data name="Shifts_ShiftProfile_SaveFailed" xml:space="preserve"><value>No s'ha pogut desar la informació dels torns.</value></data>
 </root>

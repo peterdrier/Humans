@@ -65,4 +65,7 @@
   <data name="TicketTransfer_Step3" xml:space="preserve"><value>3. Confirmar</value></data>
   <data name="TicketTransfer_Title" xml:space="preserve"><value>Transferir una entrada</value></data>
   <data name="TicketTransfer_YourRequests" xml:space="preserve"><value>Tus solicitudes de transferencia</value></data>
+  <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>No se pudo preparar la transferencia: elige una de tus entradas y una persona destinataria válida que no seas tú.</value></data>
+  <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Transferencia solicitada. Nuestro equipo de entradas la procesará y te avisará en breve.</value></data>
+  <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Transferencia cancelada.</value></data>
 </root>

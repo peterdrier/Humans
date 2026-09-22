@@ -12,7 +12,3 @@ inbox:
     what: "Docs/features/drive-activity-monitoring.md presents the 24h fallback as the mechanism rather than the fallback, omits the people/{client_id} service-account arm of identity resolution entirely, and attributes service-account email extraction to DriveActivityMonitorService when the connector does it. Its freshness trigger block names neither src/Sections/Humans.Monitor/Section.cs nor Controllers/MonitorController.cs (finding 27, /section-doctor on Monitor 2026-09-02; swept in by /section-doctor on Issues 2026-09-14)."
     review: light
     root: CENTRAL-57
-  - added: 2026-09-22
-    id: GOOGLE-3
-    what: "src/Sections/Humans.GoogleIntegration/Services/GoogleIntegrationEmails.cs HTML-encodes the subject lines GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_Subject, GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_Subject and GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Subject. A Subject header is plain text, so a group or folder name containing & or < reaches the recipient as R&amp;D. The body arguments on the same calls are correctly encoded; only the subject arguments are wrong. Inherited from Email's EMAIL-2, which named the pre-#1651 renderer; the templates moved here with peterdrier/Humans#1651 and the bug came with them. The assembly-vote subjects had the same bug and were fixed in peterdrier/Humans#1649. Re-filed by /section-doctor on Email 2026-09-22."
-    review: light

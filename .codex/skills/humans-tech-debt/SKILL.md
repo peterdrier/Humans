@@ -30,9 +30,9 @@ Run recurring autonomous tech-debt reduction passes in this repository.
 3. Before editing, write a one-sentence architecture thesis: what concept will be deleted, what responsibility will move to its rightful owner, or what duplication/coupling will disappear. If the thesis is "the score drops", abandon the candidate.
 4. Make the smallest coherent improvement that reduces divergence, duplication, misplaced responsibility, or durable public surface.
 5. Add or extend tests when practical.
-6. Run targeted verification, plus `dotnet build Humans.slnx --disable-build-servers -v q`.
+6. Run targeted verification, plus `dotnet build Humans.slnx --disable-build-servers -v q -clp:ErrorsOnly`.
 7. Run a score-blind second pass before commit. Review only the diff, the architecture thesis, and verification. Reject the change if it would not be worth keeping without metric movement.
-8. Run the full `dotnet test Humans.slnx --no-build --disable-build-servers -v quiet` gate before any push.
+8. Run the full `dotnet test Humans.slnx --no-build --disable-build-servers -v quiet -clp:ErrorsOnly` gate before any push.
 9. Commit each accepted improvement separately and push the branch after verified progress.
 10. Continue until remaining ideas are low-value, speculative, blocked by forbidden areas, or only reducible through metric-gaming changes.
 

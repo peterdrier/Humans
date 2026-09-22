@@ -122,6 +122,27 @@ public sealed class ShiftsEmailsTests
     }
 
     [HumansFact]
+    public void CoordinatorMessages_keep_html_encoding_out_of_plain_text_subjects()
+    {
+        var emails = TestShiftsEmails.Create(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Shifts_Email_CoordinatorRotaMessage_Subject"] = "Message about {0}",
+            ["Shifts_Email_CoordinatorTeamRotasMessage_Subject"] = "Message with {0}",
+            ["Shifts_Email_CoordinatorRotaMessage_Body"] = "<p>Dear {0},</p><p>From {1} on {2}:</p>{3}{4}{5}",
+            ["Shifts_Email_CoordinatorTeamRotasMessage_Body"] = "<p>Dear {0},</p><p>From {1} on {2}:</p>{3}{4}{5}"
+        });
+        var rota = emails.CoordinatorRotaMessage(RotaRequest() with { RotaName = "Lights & sound" });
+        var team = emails.CoordinatorTeamRotasMessage(new CoordinatorTeamRotasMessageRequest(
+            "rcpt@x.com", "Recipient", "Sender", "coord@x.com", "Bar & kitchen", "Hello",
+            [new CoordinatorRotaShiftGroup("Gate", ["Mon"])], Culture: "en"));
+
+        rota.Subject.Should().Be("Message about Lights & sound");
+        rota.HtmlBody.Should().Contain("Lights &amp; sound");
+        team.Subject.Should().Be("Message with Bar & kitchen");
+        team.HtmlBody.Should().Contain("Bar &amp; kitchen");
+    }
+
+    [HumansFact]
     public void EveryTemplateHasAPreviewSample()
     {
         var emails = Create();

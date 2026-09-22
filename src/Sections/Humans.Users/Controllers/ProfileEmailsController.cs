@@ -135,7 +135,7 @@ internal sealed class ProfileEmailsController(
     {
         if (isConflict)
         {
-            SetInfo("This email is linked to another account. Verifying it will request an account merge. Check your inbox for the verification link.");
+            SetInfo(localizer["Users_Profile_EmailLinkedToAnotherAccount"].Value);
             return;
         }
 
@@ -179,7 +179,10 @@ internal sealed class ProfileEmailsController(
                 userId, result.Email);
 
             ViewData["Success"] = true;
-            ViewData["Message"] = $"Email verified. A merge request has been submitted for admin review. The email {result.Email} will be added to your account once approved.";
+            ViewData["Message"] = string.Format(
+                CultureInfo.CurrentCulture,
+                localizer["Users_Profile_EmailVerifiedMergeRequested"].Value,
+                result.Email);
             return View("VerifyEmailResult");
         }
 

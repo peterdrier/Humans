@@ -35,7 +35,3 @@ inbox:
     id: ISSUES-8
     what: "UpdateSectionAsync's authorize-against-the-source-section rule is only ever exercised as Admin (tests lines 753-878); no test drives a section role-holder routing an issue out of their own queue, which is the case the rule exists for. Found by /section-doctor on Issues 2026-09-14. (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
     review: panel
-  - added: 2026-09-22
-    id: ISSUES-9
-    what: "src/Sections/Humans.Issues/Services/IssuesEmails.cs HTML-encodes the subject line Issues_Email_IssueComment_Subject. A Subject header is plain text, so an issue title containing & or < reaches the recipient as R&amp;D. The body arguments on the same call are correctly encoded; only the subject argument is wrong. Inherited from Email's EMAIL-2, which named the pre-#1651 renderer; the template moved here with peterdrier/Humans#1651 and the bug came with it. Re-filed by /section-doctor on Email 2026-09-22."
-    review: light

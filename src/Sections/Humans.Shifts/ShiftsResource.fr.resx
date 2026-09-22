@@ -1207,4 +1207,6 @@
   <data name="EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>La liste des destinataires correspond maintenant au public s&#xE9;lectionn&#xE9;. V&#xE9;rifie-la, puis clique sur Envoyer.</value></data>
   <data name="Shifts_Email_CoordinatorRotaMessage_ShiftsIntro" xml:space="preserve"><value>Pour information, vos cr&#xE9;neaux sur ce roulement sont :</value></data>
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Pour information, vos cr&#xE9;neaux avec cette &#xE9;quipe&#xA0;:</value></data>
+  <data name="Shifts_ShiftProfile_LoadFailed" xml:space="preserve"><value>Impossible de charger les informations de créneaux.</value></data>
+  <data name="Shifts_ShiftProfile_SaveFailed" xml:space="preserve"><value>Impossible d'enregistrer les informations de créneaux.</value></data>
 </root>

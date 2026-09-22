@@ -212,4 +212,19 @@
 &lt;p&gt;&lt;a href="{3}"&gt;View Team Page&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment></data>
   <data name="Teams_Email_ResourcesSection" xml:space="preserve"><value>&lt;p&gt;Your team has the following resources:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value><comment>{0} = resource list items HTML</comment></data>
+  <data name="Teams_EditTeam_SystemManagedHelp" xml:space="preserve"><value>This is a system-managed team. You can edit the description and Google Group prefix.</value></data>
+  <data name="Teams_EditTeam_AutoSlug" xml:space="preserve"><value>Auto-generated slug:</value></data>
+  <data name="Teams_EditTeam_AutoSlugHelp" xml:space="preserve"><value>updates automatically when name changes.</value></data>
+  <data name="Teams_EditTeam_CustomSlug" xml:space="preserve"><value>Custom Slug</value></data>
+  <data name="Teams_EditTeam_CustomSlugPlaceholder" xml:space="preserve"><value>e.g. comms</value></data>
+  <data name="Teams_EditTeam_CustomSlugHelp" xml:space="preserve"><value>Optional. When set, this slug is used for the team's URL instead of the auto-generated one.</value></data>
+  <data name="Teams_EditTeam_CustomSlugFormatHelp" xml:space="preserve"><value>Both slugs will resolve to this team. Lowercase letters, numbers, and hyphens only.</value></data>
+  <data name="Teams_EditTeam_IncludeInBudget" xml:space="preserve"><value>Include in budget planning</value></data>
+  <data name="Teams_EditTeam_IncludeInBudgetHelp" xml:space="preserve"><value>When enabled, this team gets a budget category under the Departments group when a new budget year is created.</value></data>
+  <data name="Teams_EditTeam_ShowInDirectory" xml:space="preserve"><value>Show on Teams page</value></data>
+  <data name="Teams_EditTeam_ShowInDirectoryHelp" xml:space="preserve"><value>When enabled, this sub-team also appears on the main Teams directory page.</value></data>
+  <data name="Teams_EditTeam_Sensitive" xml:space="preserve"><value>Sensitive team</value></data>
+  <data name="Teams_EditTeam_SensitiveHelp" xml:space="preserve"><value>When enabled, adding or approving humans triggers a confirmation modal showing the audit record that will be created. This flag is not visible to non-admin users.</value></data>
+  <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Enable Early Entry</value></data>
+  <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>When enabled, coordinators of this team (and Early-Entry Team Admins) can grant early entry for this team's projects.</value></data>
 </root>

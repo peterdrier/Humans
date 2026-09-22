@@ -93,4 +93,40 @@
   <data name="Events_UploadFailed" xml:space="preserve"><value>Caricamento fallito.</value></data>
   <data name="Events_UploadFailedDetail" xml:space="preserve"><value>Correggi gli errori qui sotto e riprova. Nessun evento è stato salvato.</value></data>
   <data name="Events_WithdrawConfirm" xml:space="preserve"><value>Ritirare questo evento?</value></data>
+  <data name="Events_Submission_EditTitle" xml:space="preserve"><value>Modifica evento</value></data>
+  <data name="Events_Submission_SubmitTitle" xml:space="preserve"><value>Invia un evento</value></data>
+  <data name="Events_Submission_Edit" xml:space="preserve"><value>Modifica</value></data>
+  <data name="Events_Submission_New" xml:space="preserve"><value>Nuovo</value></data>
+  <data name="Events_Submission_ReturnedForEdits" xml:space="preserve"><value>Questo evento è stato restituito per le modifiche. Aggiorna i dettagli e invialo di nuovo.</value></data>
+  <data name="Events_Submission_CharactersRemaining" xml:space="preserve"><value>caratteri rimanenti</value></data>
+  <data name="Events_Submission_MarkdownSupported" xml:space="preserve"><value>La formattazione Markdown è supportata</value></data>
+  <data name="Events_Submission_SelectCategory" xml:space="preserve"><value>— Seleziona una categoria —</value></data>
+  <data name="Events_Submission_SelectVenue" xml:space="preserve"><value>— Seleziona un luogo —</value></data>
+  <data name="Events_Submission_AllDay" xml:space="preserve"><value>Evento per tutto il giorno</value></data>
+  <data name="Events_Submission_SelectDay" xml:space="preserve"><value>— Seleziona un giorno —</value></data>
+  <data name="Events_Submission_Repeats" xml:space="preserve"><value>Questo evento si ripete in più giorni</value></data>
+  <data name="Events_Submission_RecurrenceDays" xml:space="preserve"><value>Giorni di ripetizione</value></data>
+  <data name="Events_Submission_LocationPlaceholder" xml:space="preserve"><value>ad es. vicino al falò</value></data>
+  <data name="Events_Submission_HostPlaceholder" xml:space="preserve"><value>ad es. il Collettivo del Tè</value></data>
+  <data name="Events_Submission_HostHelp" xml:space="preserve"><value>Viene mostrato nella guida al posto del tuo nome quando compilato.</value></data>
+  <data name="Events_Submission_Resubmit" xml:space="preserve"><value>Invia di nuovo</value></data>
+  <data name="Events_Submission_SubmitForReview" xml:space="preserve"><value>Invia per revisione</value></data>
+  <data name="Events_Submission_Cancel" xml:space="preserve"><value>Annulla</value></data>
+  <data name="Events_Submission_BarrioEditTitle" xml:space="preserve"><value>Modifica evento — {0}</value></data>
+  <data name="Events_Submission_BarrioSubmitTitle" xml:space="preserve"><value>Invia evento — {0}</value></data>
+  <data name="Events_Submission_SubmitNew" xml:space="preserve"><value>Invia nuovo evento</value></data>
+  <data name="Events_Submission_BarrioHostPlaceholder" xml:space="preserve"><value>ad es. Luna</value></data>
+  <data name="Events_Submission_BarrioHostHelp" xml:space="preserve"><value>Facoltativo: indica la persona che gestisce questo evento.</value></data>
+  <data name="Events_Submission_PriorityHelp" xml:space="preserve"><value>1 = priorità più alta per la selezione della guida stampata.</value></data>
+  <data name="Events_CardTitle" xml:space="preserve"><value>Eventi</value></data>
+  <data name="Events_RecurringEvent" xml:space="preserve"><value>Evento ricorrente</value></data>
+  <data name="Events_NotEditable" xml:space="preserve"><value>Questo evento non può essere modificato nel suo stato attuale.</value></data>
+  <data name="Events_NotWithdrawable" xml:space="preserve"><value>Questo evento non può essere ritirato nel suo stato attuale.</value></data>
+  <data name="Events_GuideSettingsUnavailable" xml:space="preserve"><value>Le impostazioni della guida non sono configurate.</value></data>
+  <data name="Events_SubmittedForReview" xml:space="preserve"><value>Evento “{0}” inviato per la revisione.</value><comment>{0} = event title</comment></data>
+  <data name="Events_ResubmittedForReview" xml:space="preserve"><value>Evento “{0}” inviato di nuovo per la revisione.</value><comment>{0} = event title</comment></data>
+  <data name="Events_Withdrawn" xml:space="preserve"><value>Evento “{0}” ritirato.</value><comment>{0} = event title</comment></data>
+  <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Seleziona un file CSV da caricare.</value></data>
+  <data name="Events_UploadNoRows" xml:space="preserve"><value>Il CSV non conteneva righe di eventi. Aggiungi almeno una riga sotto l'intestazione e riprova.</value></data>
+  <data name="Events_UploadComplete" xml:space="preserve"><value>Caricamento di massa completato: {0} creati, {1} aggiornati.</value><comment>{0} = created count; {1} = updated count</comment></data>
 </root>

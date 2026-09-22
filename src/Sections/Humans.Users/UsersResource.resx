@@ -549,4 +549,12 @@
 &lt;p&gt;As requested, your Humans account has been permanently deleted. All your personal data has been removed from our systems.&lt;/p&gt;
 &lt;p&gt;Thank you for being part of our community. If you ever wish to rejoin, you're welcome to create a new account.&lt;/p&gt;
 &lt;p&gt;Best wishes,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name</comment></data>
+  <data name="Users_Profile_MessageOptedOut" xml:space="preserve"><value>This human has opted out of receiving messages.</value></data>
+  <data name="Users_Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>Failed to load communication preferences.</value></data>
+  <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>This email is linked to another account. Verifying it will request an account merge. Check your inbox for the verification link.</value></data>
+  <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Email verified. A merge request has been submitted for admin review. The email {0} will be added to your account once approved.</value><comment>{0} = email address</comment></data>
+  <data name="Users_Guest_DeletionRequestFailed" xml:space="preserve"><value>Failed to process deletion request. Please try again.</value></data>
+  <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Deletion request recorded. Your account will be permanently deleted on {0}.</value><comment>{0} = deletion date</comment></data>
+  <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Deletion request recorded. Because you have tickets for an upcoming event, your account will be deleted after {0}.</value><comment>{0} = deletion date</comment></data>
+  <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>Failed to cancel deletion request. Please try again.</value></data>
 </root>

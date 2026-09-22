@@ -33,7 +33,7 @@ violation, never edit a baseline the code still triggers.
   `src/Sections/Humans.<Section>/Docs/<Section>.md` + `Docs/data-access.md`.
   Debt is whatever diverges from that model; find it by comparing a section against
   the model, not by consuming a frozen list.
-- **Surface / interconnectivity baseline:** `dotnet build Humans.slnx -v quiet`, then
+- **Surface / interconnectivity baseline:** `dotnet build Humans.slnx -v quiet -clp:ErrorsOnly`, then
   `reforge surface-score --all --top-symbols 200 --format Json` (score a **built**
   solution — unbuilt under-reports ~4%). Rank sections by the Section Refactor History
   table in `docs/architecture/maintenance-log.md`. The score is a detector, not an
@@ -71,8 +71,8 @@ violation, never edit a baseline the code still triggers.
    *Current state* below **by rewriting it**.
 2. Pick one item by the priority order. Write a one-sentence architecture thesis; if
    the thesis is "a number goes down", pick something else.
-3. Make the smallest real refactor. Targeted section tests + `dotnet build Humans.slnx -v quiet`
-   per change; full `dotnet test Humans.slnx -v quiet` before any push.
+3. Make the smallest real refactor. Targeted section tests + `dotnet build Humans.slnx -v quiet -clp:ErrorsOnly`
+   per change; full `dotnet test Humans.slnx -v quiet -clp:ErrorsOnly` before any push.
 4. One coherent improvement per commit; push the branch; open/refresh the PR
    (`memory/process/always-open-a-pr.md`).
 5. When stopping: rewrite *Current state* (including *Needs Peter*), leave the

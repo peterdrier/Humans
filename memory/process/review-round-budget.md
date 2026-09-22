@@ -1,11 +1,11 @@
 ---
 name: review-round-budget
-description: Unattended PRs get at most 5 review-round commits (bot-finding/CI-failure responses). Read `.claude/skills/steward/SKILL.md` and count before acting on any wake.
+description: Unattended PRs get at most 5 review-round commits (bot-finding/CI-failure responses). Load the `pd:steward` skill and count before acting on any wake.
 ---
 
 Unattended review rounds on a PR are capped at **five review-round commits**. Before acting on
-any CI failure or review finding on a PR you opened, read
-[`.claude/skills/steward/SKILL.md`](../../.claude/skills/steward/SKILL.md) and run its
+any CI failure or review finding on a PR you opened, load the
+`pd:steward` skill (plus the overlay [`.claude/steward.md`](../../.claude/steward.md)) and run its
 count first.
 
 **What a round is:** a commit pushed *in response to an automated review finding (Codex,

@@ -5,7 +5,9 @@ using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Models;
+using Microsoft.Extensions.Localization;
 using NodaTime;
+using System.Globalization;
 
 namespace Humans.Users.Controllers;
 
@@ -23,7 +25,8 @@ internal sealed class GuestAccountController(
     ITicketServiceRead ticketQueryService,
     IAccountDeletionService accountDeletionService,
     IClock clock,
-    ILogger<GuestAccountController> logger) : HumansControllerBase(userService)
+    ILogger<GuestAccountController> logger,
+    IStringLocalizer<UsersResource> localizer) : HumansControllerBase(userService)
 {
     // WARNING: [AllowAnonymous] — accepts unauthenticated requests with a valid unsubscribe
     // token (utoken). The token scopes access to THIS page only. Do not add links to other
@@ -46,7 +49,7 @@ internal sealed class GuestAccountController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load communication preferences");
-            SetError("Failed to load communication preferences.");
+            SetError(localizer["Users_Profile_CommunicationPreferencesLoadFailed"].Value);
             return RedirectToAction("Index", "Guest");
         }
     }
@@ -83,6 +86,9 @@ internal sealed class GuestAccountController(
 
     private static string GetPreferenceUpdateSource(bool fromToken) => fromToken ? "MagicLink" : "Guest";
 
+    private string FormatDeletionFlash(GuestDeletionRequestFlash flash) =>
+        string.Format(CultureInfo.CurrentCulture, localizer[flash.ResourceKey].Value, flash.EffectiveDeletionDate.ToDate());
+
     [HttpPost("Guest/RequestDeletion")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestDeletion()
@@ -98,18 +104,18 @@ internal sealed class GuestAccountController(
             var flash = GuestDeletionRequestFlash.From(result);
             if (!flash.Success)
             {
-                SetError(flash.Message);
+                SetError(FormatDeletionFlash(flash));
                 return RedirectToAction("Index", "Guest");
             }
 
-            SetSuccess(flash.Message);
+            SetSuccess(FormatDeletionFlash(flash));
 
             return RedirectToAction("Index", "Guest");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to process deletion request for user {UserId}", user.Id);
-            SetError("Failed to process deletion request. Please try again.");
+            SetError(localizer["Users_Guest_DeletionRequestFailed"].Value);
             return RedirectToAction("Index", "Guest");
         }
     }
@@ -126,12 +132,12 @@ internal sealed class GuestAccountController(
         if (!result.Success)
         {
             SetError(string.Equals(result.ErrorKey, "NoDeletionPending", StringComparison.Ordinal)
-                ? "No deletion request is pending."
-                : "Failed to cancel deletion request. Please try again.");
+                ? localizer["Profile_NoDeletionPending"].Value
+                : localizer["Users_Guest_CancelDeletionFailed"].Value);
             return RedirectToAction("Index", "Guest");
         }
 
-        SetSuccess("Deletion request cancelled.");
+        SetSuccess(localizer["Profile_DeletionCancelled"].Value);
         return RedirectToAction("Index", "Guest");
     }
 

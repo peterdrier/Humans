@@ -351,7 +351,6 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
             PropertyNameCaseInsensitive = true,
         };
-        o.Converters.Add(new MailerLiteDateConverter());
         o.Converters.Add(new MailerLiteSubscriberConverter());
         return o;
     }

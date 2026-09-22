@@ -43,7 +43,7 @@ This is the durable release ledger. All tracked items are addressed in the linke
 3. Fix at the source using existing section-owned surface. No architecture bypasses, runtime-state edits or speculative adjacent features.
 4. Verify applicable negative authorization, audit, GDPR, cultures, invariant docs, migrations and navigation. Explain non-applicable surfaces in the PR.
 5. Independently review the final diff, then publish a focused PR against fork main. Every lane branches from `origin/main`, with its own worktree; no stacked lane dependencies.
-6. Triage actual CI/review events under `.claude/skills/steward/SKILL.md`; preserve dispositions and the review-round ceiling. Peter merges.
+6. Triage actual CI/review events under the `pd:steward` skill and `.claude/steward.md`; preserve dispositions and the review-round ceiling. Peter merges.
 7. Record final combined verification and residual release decisions here before production promotion.
 
 Parallel ownership: GoogleIntegration permissions; Users/Web/Base/Camps/Calendar; Workgroups/Surveys; Scanner/Rideshare and release coordination. Compiler use is serialized across lanes.

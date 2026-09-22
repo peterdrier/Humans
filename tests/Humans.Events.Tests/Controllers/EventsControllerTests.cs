@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 using NSubstitute;
 
@@ -32,6 +33,7 @@ public class EventsControllerTests
     private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
     private readonly IAuthorizationService _authz = Substitute.For<IAuthorizationService>();
     private readonly IClock _clock = Substitute.For<IClock>();
+    private readonly IStringLocalizer<EventsResource> _localizer = Substitute.For<IStringLocalizer<EventsResource>>();
 
     [HumansFact]
     public async Task Edit_NonSubmitterNonAdmin_ReturnsForbid()
@@ -144,7 +146,7 @@ public class EventsControllerTests
         _users.GetUserInfoAsync(currentUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(currentUserId, "Current User")));
 
-        return new EventsController(_guide, _users, _camps, _authz, _clock, NullLogger<EventsController>.Instance)
+        return new EventsController(_guide, _users, _camps, _authz, _clock, NullLogger<EventsController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
             {

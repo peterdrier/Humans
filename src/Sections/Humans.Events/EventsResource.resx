@@ -88,4 +88,40 @@
   <data name="Events_UploadFailed" xml:space="preserve"><value>Upload failed.</value></data>
   <data name="Events_UploadFailedDetail" xml:space="preserve"><value>Fix the errors below and try again. No events were saved.</value></data>
   <data name="Events_WithdrawConfirm" xml:space="preserve"><value>Withdraw this event?</value></data>
+  <data name="Events_Submission_EditTitle" xml:space="preserve"><value>Edit Event</value></data>
+  <data name="Events_Submission_SubmitTitle" xml:space="preserve"><value>Submit an Event</value></data>
+  <data name="Events_Submission_Edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="Events_Submission_New" xml:space="preserve"><value>New</value></data>
+  <data name="Events_Submission_ReturnedForEdits" xml:space="preserve"><value>This event was returned for edits. Update the details and resubmit.</value></data>
+  <data name="Events_Submission_CharactersRemaining" xml:space="preserve"><value>characters remaining</value></data>
+  <data name="Events_Submission_MarkdownSupported" xml:space="preserve"><value>Markdown formatting is supported</value></data>
+  <data name="Events_Submission_SelectCategory" xml:space="preserve"><value>— Select category —</value></data>
+  <data name="Events_Submission_SelectVenue" xml:space="preserve"><value>— Select venue —</value></data>
+  <data name="Events_Submission_AllDay" xml:space="preserve"><value>All day event</value></data>
+  <data name="Events_Submission_SelectDay" xml:space="preserve"><value>— Select day —</value></data>
+  <data name="Events_Submission_Repeats" xml:space="preserve"><value>This event repeats on multiple days</value></data>
+  <data name="Events_Submission_RecurrenceDays" xml:space="preserve"><value>Recurrence days</value></data>
+  <data name="Events_Submission_LocationPlaceholder" xml:space="preserve"><value>e.g. near the fire pit</value></data>
+  <data name="Events_Submission_HostPlaceholder" xml:space="preserve"><value>e.g. The Tea Collective</value></data>
+  <data name="Events_Submission_HostHelp" xml:space="preserve"><value>Shown in the guide instead of your name when filled in.</value></data>
+  <data name="Events_Submission_Resubmit" xml:space="preserve"><value>Resubmit</value></data>
+  <data name="Events_Submission_SubmitForReview" xml:space="preserve"><value>Submit for Review</value></data>
+  <data name="Events_Submission_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Events_Submission_BarrioEditTitle" xml:space="preserve"><value>Edit Event — {0}</value></data>
+  <data name="Events_Submission_BarrioSubmitTitle" xml:space="preserve"><value>Submit Event — {0}</value></data>
+  <data name="Events_Submission_SubmitNew" xml:space="preserve"><value>Submit New Event</value></data>
+  <data name="Events_Submission_BarrioHostPlaceholder" xml:space="preserve"><value>e.g. Luna</value></data>
+  <data name="Events_Submission_BarrioHostHelp" xml:space="preserve"><value>Optional — names the person running this event.</value></data>
+  <data name="Events_Submission_PriorityHelp" xml:space="preserve"><value>1 = highest priority for print guide selection.</value></data>
+  <data name="Events_CardTitle" xml:space="preserve"><value>Events</value></data>
+  <data name="Events_RecurringEvent" xml:space="preserve"><value>Recurring event</value></data>
+  <data name="Events_NotEditable" xml:space="preserve"><value>This event cannot be edited in its current state.</value></data>
+  <data name="Events_NotWithdrawable" xml:space="preserve"><value>This event cannot be withdrawn in its current state.</value></data>
+  <data name="Events_GuideSettingsUnavailable" xml:space="preserve"><value>Guide settings are not configured.</value></data>
+  <data name="Events_SubmittedForReview" xml:space="preserve"><value>Event “{0}” submitted for review.</value><comment>{0} = event title</comment></data>
+  <data name="Events_ResubmittedForReview" xml:space="preserve"><value>Event “{0}” resubmitted for review.</value><comment>{0} = event title</comment></data>
+  <data name="Events_Withdrawn" xml:space="preserve"><value>Event “{0}” withdrawn.</value><comment>{0} = event title</comment></data>
+  <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Please select a CSV file to upload.</value></data>
+  <data name="Events_UploadNoRows" xml:space="preserve"><value>The CSV had no event rows. Add at least one row below the header and try again.</value></data>
+  <data name="Events_UploadComplete" xml:space="preserve"><value>Bulk upload complete — {0} created, {1} updated.</value><comment>{0} = created count; {1} = updated count</comment></data>
 </root>

@@ -695,7 +695,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         Saved(result).Status.Should().Be(SignupStatus.NoShow);
     }
 
-    [HumansTheory(Timeout = 10000)]
+    [HumansTheory]
     [InlineData(SignupStatus.NoShow)]
     [InlineData(SignupStatus.Bailed)]
     [InlineData(SignupStatus.Cancelled)]

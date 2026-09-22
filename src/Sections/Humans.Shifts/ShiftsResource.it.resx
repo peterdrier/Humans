@@ -1207,4 +1207,6 @@
   <data name="EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>L&apos;elenco dei destinatari corrisponde ora al pubblico selezionato. Controllalo, poi premi Invia.</value></data>
   <data name="Shifts_Email_CoordinatorRotaMessage_ShiftsIntro" xml:space="preserve"><value>Per tua informazione, le tue fasce in questo turno sono:</value></data>
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Per tua informazione, le tue fasce con questo team sono:</value></data>
+  <data name="Shifts_ShiftProfile_LoadFailed" xml:space="preserve"><value>Impossibile caricare le informazioni sui turni.</value></data>
+  <data name="Shifts_ShiftProfile_SaveFailed" xml:space="preserve"><value>Impossibile salvare le informazioni sui turni.</value></data>
 </root>

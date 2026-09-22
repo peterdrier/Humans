@@ -534,4 +534,19 @@
     <value>&lt;p&gt;Tu equipo tiene los siguientes recursos:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value>
     <comment>{0} = resource list items HTML</comment>
   </data>
+  <data name="Teams_EditTeam_SystemManagedHelp" xml:space="preserve"><value>Este es un equipo gestionado por el sistema. Puedes editar la descripción y el prefijo del grupo de Google.</value></data>
+  <data name="Teams_EditTeam_AutoSlug" xml:space="preserve"><value>Slug generado automáticamente:</value></data>
+  <data name="Teams_EditTeam_AutoSlugHelp" xml:space="preserve"><value>se actualiza automáticamente cuando cambia el nombre.</value></data>
+  <data name="Teams_EditTeam_CustomSlug" xml:space="preserve"><value>Slug personalizado</value></data>
+  <data name="Teams_EditTeam_CustomSlugPlaceholder" xml:space="preserve"><value>p. ej., comunicacion</value></data>
+  <data name="Teams_EditTeam_CustomSlugHelp" xml:space="preserve"><value>Opcional. Cuando se establece, este slug se usa para la URL del equipo en lugar del generado automáticamente.</value></data>
+  <data name="Teams_EditTeam_CustomSlugFormatHelp" xml:space="preserve"><value>Ambos slugs resolverán a este equipo. Solo letras minúsculas, números y guiones.</value></data>
+  <data name="Teams_EditTeam_IncludeInBudget" xml:space="preserve"><value>Incluir en la planificación presupuestaria</value></data>
+  <data name="Teams_EditTeam_IncludeInBudgetHelp" xml:space="preserve"><value>Al activarlo, este equipo obtiene una categoría presupuestaria bajo el grupo de Departamentos al crear un nuevo año presupuestario.</value></data>
+  <data name="Teams_EditTeam_ShowInDirectory" xml:space="preserve"><value>Mostrar en la página de equipos</value></data>
+  <data name="Teams_EditTeam_ShowInDirectoryHelp" xml:space="preserve"><value>Al activarlo, este subequipo también aparece en el directorio principal de equipos.</value></data>
+  <data name="Teams_EditTeam_Sensitive" xml:space="preserve"><value>Equipo sensible</value></data>
+  <data name="Teams_EditTeam_SensitiveHelp" xml:space="preserve"><value>Al activarlo, añadir o aprobar personas muestra un diálogo de confirmación con el registro de auditoría que se creará. Esta opción no es visible para usuarios que no sean administradores.</value></data>
+  <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Activar acceso anticipado</value></data>
+  <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>Al activarlo, los coordinadores de este equipo y los administradores de acceso anticipado pueden conceder acceso anticipado a los proyectos de este equipo.</value></data>
 </root>

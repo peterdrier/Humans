@@ -841,7 +841,7 @@ internal sealed class ProfileController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load communication preferences");
-            SetError("Failed to load communication preferences.");
+            SetError(localizer["Users_Profile_CommunicationPreferencesLoadFailed"].Value);
             return RedirectToAction(nameof(Me));
         }
     }

@@ -1,10 +1,12 @@
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
+using Humans.Base;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 
 namespace Humans.Gdpr.Controllers;
@@ -23,7 +25,8 @@ internal sealed class GuestDataController(
     IUserServiceRead userService,
     IGdprService gdprExportService,
     IClock clock,
-    ILogger<GuestDataController> logger) : HumansControllerBase(userService)
+    ILogger<GuestDataController> logger,
+    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
     private static readonly System.Text.Json.JsonSerializerOptions ExportJsonOptions = new()
     {
@@ -54,7 +57,7 @@ internal sealed class GuestDataController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to export data for user {UserId}", user.Id);
-            SetError("Failed to export data. Please try again.");
+            SetError(localizer["Error_TryAgainLater"].Value);
             return RedirectToAction("Index", "Guest");
         }
     }

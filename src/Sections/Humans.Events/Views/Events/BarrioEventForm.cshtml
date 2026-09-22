@@ -1,31 +1,33 @@
 @model Humans.Events.Models.CampEventFormViewModel
 @{
     var isEdit = Model.Id.HasValue;
-    ViewData["Title"] = isEdit ? $"Edit Event — {Model.CampName}" : $"Submit Event — {Model.CampName}";
+    ViewData["Title"] = isEdit
+        ? Localizer["Events_Submission_BarrioEditTitle", Model.CampName].Value
+        : Localizer["Events_Submission_BarrioSubmitTitle", Model.CampName].Value;
 }
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
         <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Details" asp-route-slug="@Model.CampSlug">@Model.CampName</a></li>
-        <li class="breadcrumb-item"><a asp-controller="Events" asp-action="MySubmissions">My Event Submissions</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@(isEdit ? "Edit" : "New")</li>
+        <li class="breadcrumb-item"><a asp-controller="Events" asp-action="MySubmissions">@Localizer["Events_MySubmissionsTitle"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@(isEdit ? Localizer["Events_Submission_Edit"] : Localizer["Events_Submission_New"])</li>
     </ol>
 </nav>
 
-<h2>@(isEdit ? "Edit Event" : "Submit New Event")</h2>
+<h2>@(isEdit ? Localizer["Events_Submission_EditTitle"] : Localizer["Events_Submission_SubmitNew"])</h2>
 
 @if (Model.IsResubmit)
 {
     <div class="alert alert-info">
-        <i class="fa-solid fa-info-circle me-1"></i>This event was returned for edits. Update the details and resubmit.
+        <i class="fa-solid fa-info-circle me-1"></i>@Localizer["Events_Submission_ReturnedForEdits"]
     </div>
 }
 
 @if (Model.TimeZoneId != null)
 {
     <p class="text-muted small">
-        <i class="fa-solid fa-clock me-1"></i>All times in <strong>@Model.TimeZoneId</strong>
+        <i class="fa-solid fa-clock me-1"></i>@Localizer["Events_AllTimesInShort", Model.TimeZoneId]
     </p>
 }
 
@@ -41,17 +43,17 @@
             <div class="mb-3">
                 <label asp-for="Title" class="form-label"></label>
                 <input asp-for="Title" class="form-control" maxlength="80" />
-                <div class="form-text">@(80 - (Model.Title?.Length ?? 0)) characters remaining</div>
+                <div class="form-text">@(80 - (Model.Title?.Length ?? 0)) @Localizer["Events_Submission_CharactersRemaining"]</div>
                 <span asp-validation-for="Title" class="text-danger"></span>
             </div>
 
             <div class="mb-3">
                 <label asp-for="Description" class="form-label"></label>
                 <textarea asp-for="Description" class="form-control" rows="3" maxlength="450"></textarea>
-                <div class="form-text">@(450 - (Model.Description?.Length ?? 0)) characters remaining</div>
+                <div class="form-text">@(450 - (Model.Description?.Length ?? 0)) @Localizer["Events_Submission_CharactersRemaining"]</div>
                 <div class="form-text">
                     <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
-                        <i class="fa-solid fa-circle-info me-1"></i>Markdown formatting is supported
+                        <i class="fa-solid fa-circle-info me-1"></i>@Localizer["Events_Submission_MarkdownSupported"]
                     </a>
                 </div>
                 <span asp-validation-for="Description" class="text-danger"></span>
@@ -60,7 +62,7 @@
             <div class="mb-3">
                 <label asp-for="CategoryId" class="form-label"></label>
                 <select asp-for="CategoryId" class="form-select">
-                    <option value="">— Select category —</option>
+                    <option value="">@Localizer["Events_Submission_SelectCategory"]</option>
                     @foreach (var cat in Model.Categories)
                     {
                         <option value="@cat.Id" selected="@(cat.Id == Model.CategoryId ? "selected" : null)">@cat.Name</option>
@@ -73,7 +75,7 @@
                 <div class="col-md-4 mb-3">
                     <label asp-for="StartDate" class="form-label"></label>
                     <select asp-for="StartDate" class="form-select">
-                        <option value="">— Select day —</option>
+                        <option value="">@Localizer["Events_Submission_SelectDay"]</option>
                         @foreach (var day in Model.EventDays)
                         {
                             <option value="@day.Date.ToInvariantDate()" selected="@(day.Date.Date == Model.StartDate.Date ? "selected" : null)">@day.Label</option>
@@ -105,11 +107,11 @@
 
             <div class="mb-3 form-check">
                 <input asp-for="IsRecurring" class="form-check-input" id="IsRecurring" />
-                <label asp-for="IsRecurring" class="form-check-label">This event repeats on multiple days</label>
+                <label asp-for="IsRecurring" class="form-check-label">@Localizer["Events_Submission_Repeats"]</label>
             </div>
 
             <div class="mb-3" id="recurrence-days-section" style="display: none;">
-                <label class="form-label">Recurrence days</label>
+                <label class="form-label">@Localizer["Events_Submission_RecurrenceDays"]</label>
                 <div class="d-flex flex-wrap gap-2">
                     @foreach (var day in Model.EventDays)
                     {
@@ -129,28 +131,28 @@
 
             <div class="mb-3">
                 <label asp-for="LocationNote" class="form-label"></label>
-                <input asp-for="LocationNote" class="form-control" maxlength="120" placeholder="e.g. near the fire pit" />
+                <input asp-for="LocationNote" class="form-control" maxlength="120" placeholder="@Localizer["Events_Submission_LocationPlaceholder"]" />
                 <span asp-validation-for="LocationNote" class="text-danger"></span>
             </div>
 
             <div class="mb-3">
                 <label asp-for="Host" class="form-label"></label>
-                <input asp-for="Host" class="form-control" maxlength="40" placeholder="e.g. Luna" />
-                <div class="form-text">Optional — names the person running this event.</div>
+                <input asp-for="Host" class="form-control" maxlength="40" placeholder="@Localizer["Events_Submission_BarrioHostPlaceholder"]" />
+                <div class="form-text">@Localizer["Events_Submission_BarrioHostHelp"]</div>
                 <span asp-validation-for="Host" class="text-danger"></span>
             </div>
 
             <div class="mb-3">
                 <label asp-for="PriorityRank" class="form-label"></label>
                 <input asp-for="PriorityRank" type="number" class="form-control" style="max-width: 120px;" min="1" max="100" />
-                <div class="form-text">1 = highest priority for print guide selection.</div>
+                <div class="form-text">@Localizer["Events_Submission_PriorityHelp"]</div>
                 <span asp-validation-for="PriorityRank" class="text-danger"></span>
             </div>
 
             <button type="submit" class="btn btn-primary">
-                <i class="fa-solid fa-paper-plane me-1"></i>@(isEdit ? "Resubmit" : "Submit for Review")
+                <i class="fa-solid fa-paper-plane me-1"></i>@(isEdit ? Localizer["Events_Submission_Resubmit"] : Localizer["Events_Submission_SubmitForReview"])
             </button>
-            <a asp-controller="Events" asp-action="MySubmissions" class="btn btn-outline-secondary ms-2">Cancel</a>
+            <a asp-controller="Events" asp-action="MySubmissions" class="btn btn-outline-secondary ms-2">@Localizer["Events_Submission_Cancel"]</a>
         </form>
     </div>
 </div>

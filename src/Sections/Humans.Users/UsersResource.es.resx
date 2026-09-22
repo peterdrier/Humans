@@ -1154,4 +1154,12 @@
 &lt;p&gt;Un saludo,&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
+  <data name="Users_Profile_MessageOptedOut" xml:space="preserve"><value>Esta persona ha decidido no recibir mensajes.</value></data>
+  <data name="Users_Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>No se pudieron cargar las preferencias de comunicación.</value></data>
+  <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Este correo está vinculado a otra cuenta. Al verificarlo se solicitará una fusión de cuentas. Consulta tu bandeja de entrada para ver el enlace de verificación.</value></data>
+  <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Correo verificado. Se ha enviado una solicitud de fusión para revisión administrativa. El correo {0} se añadirá a tu cuenta cuando se apruebe.</value><comment>{0} = email address</comment></data>
+  <data name="Users_Guest_DeletionRequestFailed" xml:space="preserve"><value>No se pudo procesar la solicitud de eliminación. Inténtalo de nuevo.</value></data>
+  <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Solicitud de eliminación registrada. Tu cuenta se eliminará permanentemente el {0}.</value><comment>{0} = deletion date</comment></data>
+  <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Solicitud de eliminación registrada. Como tienes entradas para un próximo evento, tu cuenta se eliminará después del {0}.</value><comment>{0} = deletion date</comment></data>
+  <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>No se pudo cancelar la solicitud de eliminación. Inténtalo de nuevo.</value></data>
 </root>

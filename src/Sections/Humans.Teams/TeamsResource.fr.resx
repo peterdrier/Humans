@@ -534,4 +534,19 @@
     <value>&lt;p&gt;Votre équipe dispose des ressources suivantes :&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value>
     <comment>{0} = resource list items HTML</comment>
   </data>
+  <data name="Teams_EditTeam_SystemManagedHelp" xml:space="preserve"><value>Cette équipe est gérée par le système. Vous pouvez modifier la description et le préfixe du groupe Google.</value></data>
+  <data name="Teams_EditTeam_AutoSlug" xml:space="preserve"><value>Slug généré automatiquement :</value></data>
+  <data name="Teams_EditTeam_AutoSlugHelp" xml:space="preserve"><value>se met à jour automatiquement lorsque le nom change.</value></data>
+  <data name="Teams_EditTeam_CustomSlug" xml:space="preserve"><value>Slug personnalisé</value></data>
+  <data name="Teams_EditTeam_CustomSlugPlaceholder" xml:space="preserve"><value>p. ex. communication</value></data>
+  <data name="Teams_EditTeam_CustomSlugHelp" xml:space="preserve"><value>Facultatif. Lorsqu'il est défini, ce slug est utilisé pour l'URL de l'équipe à la place de celui généré automatiquement.</value></data>
+  <data name="Teams_EditTeam_CustomSlugFormatHelp" xml:space="preserve"><value>Les deux slugs renverront vers cette équipe. Lettres minuscules, chiffres et traits d'union uniquement.</value></data>
+  <data name="Teams_EditTeam_IncludeInBudget" xml:space="preserve"><value>Inclure dans la planification budgétaire</value></data>
+  <data name="Teams_EditTeam_IncludeInBudgetHelp" xml:space="preserve"><value>Lorsqu'elle est activée, cette équipe obtient une catégorie budgétaire dans le groupe Départements lors de la création d'une nouvelle année budgétaire.</value></data>
+  <data name="Teams_EditTeam_ShowInDirectory" xml:space="preserve"><value>Afficher sur la page des équipes</value></data>
+  <data name="Teams_EditTeam_ShowInDirectoryHelp" xml:space="preserve"><value>Lorsqu'elle est activée, cette sous-équipe apparaît aussi dans l'annuaire principal des équipes.</value></data>
+  <data name="Teams_EditTeam_Sensitive" xml:space="preserve"><value>Équipe sensible</value></data>
+  <data name="Teams_EditTeam_SensitiveHelp" xml:space="preserve"><value>Lorsqu'elle est activée, l'ajout ou l'approbation de personnes affiche une confirmation avec l'enregistrement d'audit qui sera créé. Cette option n'est pas visible pour les non-administrateurs.</value></data>
+  <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Activer l'entrée anticipée</value></data>
+  <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>Lorsqu'elle est activée, les coordinateurs de cette équipe et les administrateurs d'entrée anticipée peuvent accorder une entrée anticipée aux projets de cette équipe.</value></data>
 </root>

@@ -534,4 +534,19 @@
     <value>&lt;p&gt;Dein Team hat folgende Ressourcen:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value>
     <comment>{0} = resource list items HTML</comment>
   </data>
+  <data name="Teams_EditTeam_SystemManagedHelp" xml:space="preserve"><value>Dies ist ein systemverwaltetes Team. Du kannst die Beschreibung und das Präfix der Google-Gruppe bearbeiten.</value></data>
+  <data name="Teams_EditTeam_AutoSlug" xml:space="preserve"><value>Automatisch erzeugter Slug:</value></data>
+  <data name="Teams_EditTeam_AutoSlugHelp" xml:space="preserve"><value>wird bei einer Namensänderung automatisch aktualisiert.</value></data>
+  <data name="Teams_EditTeam_CustomSlug" xml:space="preserve"><value>Benutzerdefinierter Slug</value></data>
+  <data name="Teams_EditTeam_CustomSlugPlaceholder" xml:space="preserve"><value>z. B. kommunikation</value></data>
+  <data name="Teams_EditTeam_CustomSlugHelp" xml:space="preserve"><value>Optional. Wenn gesetzt, wird dieser Slug statt des automatisch erzeugten für die Team-URL verwendet.</value></data>
+  <data name="Teams_EditTeam_CustomSlugFormatHelp" xml:space="preserve"><value>Beide Slugs führen zu diesem Team. Nur Kleinbuchstaben, Zahlen und Bindestriche.</value></data>
+  <data name="Teams_EditTeam_IncludeInBudget" xml:space="preserve"><value>In Budgetplanung einbeziehen</value></data>
+  <data name="Teams_EditTeam_IncludeInBudgetHelp" xml:space="preserve"><value>Wenn aktiviert, erhält dieses Team beim Erstellen eines neuen Haushaltsjahres eine Budgetkategorie unter der Gruppe Abteilungen.</value></data>
+  <data name="Teams_EditTeam_ShowInDirectory" xml:space="preserve"><value>Auf der Teamseite anzeigen</value></data>
+  <data name="Teams_EditTeam_ShowInDirectoryHelp" xml:space="preserve"><value>Wenn aktiviert, erscheint dieses Unterteam auch im Hauptverzeichnis der Teams.</value></data>
+  <data name="Teams_EditTeam_Sensitive" xml:space="preserve"><value>Sensibles Team</value></data>
+  <data name="Teams_EditTeam_SensitiveHelp" xml:space="preserve"><value>Wenn aktiviert, zeigt das Hinzufügen oder Genehmigen von Personen einen Bestätigungsdialog mit dem zu erstellenden Prüfprotokoll. Diese Einstellung ist für Nicht-Administratoren nicht sichtbar.</value></data>
+  <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Frühen Einlass aktivieren</value></data>
+  <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>Wenn aktiviert, können die Koordinatoren dieses Teams und die Administratoren für frühen Einlass den Projekten dieses Teams frühen Einlass gewähren.</value></data>
 </root>

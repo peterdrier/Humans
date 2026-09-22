@@ -4,18 +4,6 @@ version: 1
 next_id: 6
 inbox:
   - added: 2026-09-05
-    id: SHIFTS-1
-    what: "ShiftSignupService re-derives 'is privileged' as `flags.HasFlag(Privileged) || await shiftMgmt.CanApproveSignupsAsync(...)` at several sites (lines 61, 88, 165, 223, 544, 603, 848, 967 as of 2026-09-20). One private helper. Found by /section-doctor on Shifts 2026-09-05 (finding 18). (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
-    review: light
-  - added: 2026-09-05
-    id: SHIFTS-2
-    what: "ShiftSignupService formats the audit day label `es.GateOpeningDate.PlusDays(dayOffset).ToWeekdayDayMonth()` inline at several sites (lines 119, 306, 433, 757, 809 as of 2026-09-20). One private helper. Found by /section-doctor on Shifts 2026-09-05 (finding 18). (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
-    review: light
-  - added: 2026-09-05
     id: SHIFTS-3
     what: "The GateOpeningDate.PlusDays(offset) window math is written out at ShiftManagementService, ShiftFilterResolver.cs:32-42, VolunteerTrackingController.cs:140-154, ShiftDashboardPageBuilder — where one helper on the event calendar would carry it (found by /section-doctor on Shifts, 2026-09-05, finding N12)."
-    review: light
-  - added: 2026-09-22
-    id: SHIFTS-5
-    what: "src/Sections/Humans.Shifts/Services/ShiftsEmails.cs HTML-encodes the subject lines Shifts_Email_CoordinatorRotaMessage_Subject and Shifts_Email_CoordinatorTeamRotasMessage_Subject. A Subject header is plain text, so a rota or team name containing & or < reaches the recipient as R&amp;D. The body arguments on the same calls are correctly encoded; only the subject arguments are wrong. Inherited from Email's EMAIL-2, which named the pre-#1651 renderer; the templates moved here with peterdrier/Humans#1651 and the bug came with them. Re-filed by /section-doctor on Email 2026-09-22."
     review: light

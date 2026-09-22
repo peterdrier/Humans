@@ -67,7 +67,7 @@ internal sealed class ShiftSignupService(
         var calendar = await calendarResolver.GetAsync(shift.Rota.EventSettingsId);
         if (calendar is null) return SignupResult.Fail("Event calendar not configured.");
         var now = clock.GetCurrentInstant();
-        isPrivileged = isPrivileged || await shiftMgmt.CanApproveSignupsAsync(userId, shift.Rota.TeamId);
+        isPrivileged = await IsPrivilegedAsync(userId, shift.Rota.TeamId, isPrivileged);
 
         if (!localEs.IsShiftBrowsingOpen && !isPrivileged)
             return SignupResult.Fail("Shift browsing is not currently open.");
@@ -125,7 +125,7 @@ internal sealed class ShiftSignupService(
         if (autoConfirm && shift.IsEarlyEntry)
             earlyEntryInvalidator.InvalidateUser(userId);
 
-        var shiftDate = calendar.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth();
+        var shiftDate = FormatAuditDay(calendar, shift.DayOffset);
         var statusSuffix = autoConfirm ? "confirmed" : "pending";
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupCreated, nameof(ShiftSignup), signup.Id,
@@ -172,7 +172,7 @@ internal sealed class ShiftSignupService(
         var now = clock.GetCurrentInstant();
         if (signup.Shift.IsEarlyEntry && calendar.IsEarlyEntryClosed(now))
         {
-            var isPrivileged = await shiftMgmt.CanApproveSignupsAsync(reviewerUserId, signup.Shift.Rota.TeamId);
+            var isPrivileged = await IsPrivilegedAsync(reviewerUserId, signup.Shift.Rota.TeamId);
             if (!isPrivileged)
                 return SignupResult.Fail("Cannot approve build shift signups after early entry close.");
         }
@@ -231,7 +231,7 @@ internal sealed class ShiftSignupService(
         if (calendar is null) return SignupResult.Fail("Event calendar not configured.");
         var now = clock.GetCurrentInstant();
         var isOwner = signup.UserId == actorUserId;
-        var isPrivileged = await shiftMgmt.CanApproveSignupsAsync(actorUserId, signup.Shift.Rota.TeamId);
+        var isPrivileged = await IsPrivilegedAsync(actorUserId, signup.Shift.Rota.TeamId);
 
         // Auth: must be signup owner or privileged (dept coordinator/NoInfoAdmin/Admin)
         if (!isOwner && !isPrivileged)
@@ -315,7 +315,7 @@ internal sealed class ShiftSignupService(
 
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
-            $"shift '{shift.Rota.Name}' on {calendar.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth()}",
+            $"shift '{shift.Rota.Name}' on {FormatAuditDay(calendar, shift.DayOffset)}",
             enrollerUserId,
             userId, nameof(User));
 
@@ -443,7 +443,7 @@ internal sealed class ShiftSignupService(
         {
             await auditLogService.LogAsync(
                 AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), auditedSignup.Id,
-                $"'{rota.Name}' on {calendar.GateOpeningDate.PlusDays(dayOffset).ToWeekdayDayMonth()} (range)",
+                $"'{rota.Name}' on {FormatAuditDay(calendar, dayOffset)} (range)",
                 enrollerUserId,
                 userId, nameof(User));
         }
@@ -557,7 +557,7 @@ internal sealed class ShiftSignupService(
         var calendar = await calendarResolver.GetAsync(rota.EventSettingsId);
         if (calendar is null) return SignupResult.Fail("Event calendar not configured.");
         var now = clock.GetCurrentInstant();
-        isPrivileged = isPrivileged || await shiftMgmt.CanApproveSignupsAsync(userId, rota.TeamId);
+        isPrivileged = await IsPrivilegedAsync(userId, rota.TeamId, isPrivileged);
 
         if (!localEs.IsShiftBrowsingOpen && !isPrivileged)
             return SignupResult.Fail("Shift browsing is not currently open.");
@@ -771,8 +771,15 @@ internal sealed class ShiftSignupService(
         => warning is null ? nextWarning : $"{warning} {nextWarning}";
 
     private static string FormatRangeDayList(EventSettingsInfo eventSettings, IEnumerable<int> dayOffsets)
-        => string.Join(", ", dayOffsets.Select(offset =>
-            eventSettings.GateOpeningDate.PlusDays(offset).ToWeekdayDayMonth()));
+        => string.Join(", ", dayOffsets.Select(offset => FormatAuditDay(eventSettings, offset)));
+
+    private static string FormatAuditDay(EventSettingsInfo eventSettings, int dayOffset) =>
+        eventSettings.GateOpeningDate.PlusDays(dayOffset).ToWeekdayDayMonth();
+
+    private Task<bool> IsPrivilegedAsync(Guid userId, Guid teamId, bool alreadyPrivileged = false) =>
+        alreadyPrivileged
+            ? Task.FromResult(true)
+            : shiftMgmt.CanApproveSignupsAsync(userId, teamId);
 
     private RangeSignupCreation StageRangeSignups(
         Guid userId,
@@ -824,7 +831,7 @@ internal sealed class ShiftSignupService(
             await auditLogService.LogAsync(
                 AuditAction.ShiftSignupCreated,
                 nameof(ShiftSignup), auditedSignup.Id,
-                $"'{rota.Name}' on {eventSettings.GateOpeningDate.PlusDays(dayOffset).ToWeekdayDayMonth()} (range, {statusSuffix})",
+                $"'{rota.Name}' on {FormatAuditDay(eventSettings, dayOffset)} (range, {statusSuffix})",
                 userId,
                 userId, nameof(User));
         }
@@ -863,7 +870,7 @@ internal sealed class ShiftSignupService(
 
             if (signup.Shift.IsEarlyEntry && calendar.IsEarlyEntryClosed(now))
             {
-                var isPrivileged = await shiftMgmt.CanApproveSignupsAsync(reviewerUserId, signup.Shift.Rota.TeamId);
+                var isPrivileged = await IsPrivilegedAsync(reviewerUserId, signup.Shift.Rota.TeamId);
                 if (!isPrivileged)
                     return SignupResult.Fail("Cannot approve build shift signups after early entry close.");
             }
@@ -983,7 +990,7 @@ internal sealed class ShiftSignupService(
             ?? throw new InvalidOperationException("Event calendar not configured.");
         var now = clock.GetCurrentInstant();
         var isOwner = firstSignup.UserId == actorUserId;
-        var isPrivileged = await shiftMgmt.CanApproveSignupsAsync(actorUserId, firstSignup.Shift.Rota.TeamId);
+        var isPrivileged = await IsPrivilegedAsync(actorUserId, firstSignup.Shift.Rota.TeamId);
 
         if (!isOwner && !isPrivileged)
             throw new InvalidOperationException("Not authorized to bail this signup block.");
@@ -1185,8 +1192,7 @@ internal sealed class ShiftSignupService(
             // Calendar comes from Settings, not this row's own (dead) columns (nobodies-collective/Humans#1631).
             var calendar = await calendarResolver.GetAsync(rota.EventSettingsId);
             if (calendar is null) return;
-            var shiftDate = calendar.GateOpeningDate.PlusDays(shift.DayOffset);
-            var enrichedDescription = $"{changeDescription} ({rotaName}, {shiftDate.ToWeekdayDayMonth()})";
+            var enrichedDescription = $"{changeDescription} ({rotaName}, {FormatAuditDay(calendar, shift.DayOffset)})";
 
             var team = await TeamService.GetTeamAsync(teamId);
             var coordinatorIds = team?.Members

@@ -1154,4 +1154,12 @@
 &lt;p&gt;Alles Gute,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
+  <data name="Users_Profile_MessageOptedOut" xml:space="preserve"><value>Diese Person hat den Empfang von Nachrichten abgelehnt.</value></data>
+  <data name="Users_Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>Kommunikationseinstellungen konnten nicht geladen werden.</value></data>
+  <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Diese E-Mail ist mit einem anderen Konto verknüpft. Die Verifizierung fordert eine Kontozusammenführung an. Prüfe deinen Posteingang auf den Bestätigungslink.</value></data>
+  <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>E-Mail verifiziert. Eine Zusammenführungsanfrage wurde zur Prüfung durch die Administration eingereicht. Die E-Mail-Adresse {0} wird nach der Genehmigung deinem Konto hinzugefügt.</value><comment>{0} = email address</comment></data>
+  <data name="Users_Guest_DeletionRequestFailed" xml:space="preserve"><value>Der Löschantrag konnte nicht verarbeitet werden. Bitte versuche es erneut.</value></data>
+  <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Löschantrag erfasst. Dein Konto wird am {0} endgültig gelöscht.</value><comment>{0} = deletion date</comment></data>
+  <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Löschantrag erfasst. Da du Tickets für eine bevorstehende Veranstaltung hast, wird dein Konto nach dem {0} gelöscht.</value><comment>{0} = deletion date</comment></data>
+  <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>Der Löschantrag konnte nicht storniert werden. Bitte versuche es erneut.</value></data>
 </root>

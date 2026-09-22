@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -28,9 +29,22 @@ public class GuestAccountControllerTests
     private readonly ITicketServiceRead _ticketQueryService = Substitute.For<ITicketServiceRead>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
     private readonly IClock _clock = Substitute.For<IClock>();
+    private readonly IStringLocalizer<UsersResource> _localizer = Substitute.For<IStringLocalizer<UsersResource>>();
 
     private GuestAccountController BuildSut(User user)
     {
+        _localizer[Arg.Any<string>()].Returns(call =>
+        {
+            var key = call.ArgAt<string>(0);
+            var value = key switch
+            {
+                "Profile_DeletionAlreadyPending" => "A deletion request is already pending.",
+                "Users_Guest_DeletionRequested" => "Deletion request recorded. Your account will be permanently deleted on {0}.",
+                _ => key,
+            };
+            return new LocalizedString(key, value);
+        });
+
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFactory.Create(
                 user,
@@ -49,7 +63,8 @@ public class GuestAccountControllerTests
             _ticketQueryService,
             _accountDeletionService,
             _clock,
-            NullLogger<GuestAccountController>.Instance);
+            NullLogger<GuestAccountController>.Instance,
+            _localizer);
 
         var http = new DefaultHttpContext
         {

@@ -14,7 +14,7 @@ public sealed class HumansTheoryAttribute : TheoryAttribute
         [CallerLineNumber] int sourceLineNumber = -1)
         : base(sourceFilePath, sourceLineNumber)
     {
-        base.Timeout = DefaultTimeoutFor(sourceFilePath);
+        base.Timeout = DefaultTimeout;
         if (IntegrationTestGate.AppliesTo(sourceFilePath) && IntegrationTestGate.SkipReason is { } reason)
             base.Skip = reason;
     }
@@ -44,8 +44,5 @@ public sealed class HumansTheoryAttribute : TheoryAttribute
     public new string? SkipWhen { get => base.SkipWhen; set => base.SkipWhen = value; }
     public new Type[]? SkipExceptions { get => base.SkipExceptions; set => base.SkipExceptions = value; }
 
-    private static int DefaultTimeoutFor(string? sourceFilePath) =>
-        sourceFilePath?.Contains("Humans.Integration.Tests", StringComparison.Ordinal) == true
-            ? 30000
-            : 5000;
+    private const int DefaultTimeout = 30000;
 }

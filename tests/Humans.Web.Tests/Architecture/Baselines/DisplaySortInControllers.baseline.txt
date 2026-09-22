@@ -8,8 +8,6 @@
 
 src/Sections/Humans.Camps/Data/CampRepository.Roles.cs:OrderBy#1
 src/Sections/Humans.Camps/Data/CampRepository.Roles.cs:ThenBy#1
-src/Sections/Humans.Camps/Data/CampRepository.Roles.cs:OrderBy#2
-src/Sections/Humans.Camps/Data/CampRepository.Roles.cs:ThenBy#2
 src/Sections/Humans.GoogleIntegration/Data/GoogleResourceRepository.cs:OrderBy#1
 src/Sections/Humans.GoogleIntegration/Data/GoogleResourceRepository.cs:OrderBy#2
 src/Sections/Humans.Teams/Data/TeamRepository.cs:OrderBy#1

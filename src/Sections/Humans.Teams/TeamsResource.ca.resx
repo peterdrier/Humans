@@ -534,4 +534,19 @@
     <value>&lt;p&gt;El teu equip té els recursos següents:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value>
     <comment>{0} = resource list items HTML</comment>
   </data>
+  <data name="Teams_EditTeam_SystemManagedHelp" xml:space="preserve"><value>Aquest és un equip gestionat pel sistema. Pots editar la descripció i el prefix del grup de Google.</value></data>
+  <data name="Teams_EditTeam_AutoSlug" xml:space="preserve"><value>Slug generat automàticament:</value></data>
+  <data name="Teams_EditTeam_AutoSlugHelp" xml:space="preserve"><value>s'actualitza automàticament quan canvia el nom.</value></data>
+  <data name="Teams_EditTeam_CustomSlug" xml:space="preserve"><value>Slug personalitzat</value></data>
+  <data name="Teams_EditTeam_CustomSlugPlaceholder" xml:space="preserve"><value>p. ex., comunicacio</value></data>
+  <data name="Teams_EditTeam_CustomSlugHelp" xml:space="preserve"><value>Opcional. Quan s'estableix, aquest slug s'utilitza per a l'URL de l'equip en lloc del generat automàticament.</value></data>
+  <data name="Teams_EditTeam_CustomSlugFormatHelp" xml:space="preserve"><value>Tots dos slugs resoldran a aquest equip. Només lletres minúscules, números i guionets.</value></data>
+  <data name="Teams_EditTeam_IncludeInBudget" xml:space="preserve"><value>Inclou en la planificació pressupostària</value></data>
+  <data name="Teams_EditTeam_IncludeInBudgetHelp" xml:space="preserve"><value>En activar-ho, aquest equip obté una categoria pressupostària sota el grup de Departaments en crear un nou any pressupostari.</value></data>
+  <data name="Teams_EditTeam_ShowInDirectory" xml:space="preserve"><value>Mostra a la pàgina d'equips</value></data>
+  <data name="Teams_EditTeam_ShowInDirectoryHelp" xml:space="preserve"><value>En activar-ho, aquest subequip també apareix al directori principal d'equips.</value></data>
+  <data name="Teams_EditTeam_Sensitive" xml:space="preserve"><value>Equip sensible</value></data>
+  <data name="Teams_EditTeam_SensitiveHelp" xml:space="preserve"><value>En activar-ho, afegir o aprovar persones mostra un diàleg de confirmació amb el registre d'auditoria que es crearà. Aquesta opció no és visible per a usuaris que no són administradors.</value></data>
+  <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Activa l'entrada anticipada</value></data>
+  <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>En activar-ho, els coordinadors d'aquest equip i els administradors d'entrada anticipada poden concedir entrada anticipada als projectes d'aquest equip.</value></data>
 </root>

@@ -23,6 +23,13 @@ public class HumansFactSmokeTest
     public void Theory_sync_default_timeout_runs(int n) => Assert.True(n > 0);
 
     [HumansFact]
+    public void Default_timeouts_are_thirty_seconds()
+    {
+        Assert.Equal(30000, new HumansFactAttribute().Timeout);
+        Assert.Equal(30000, new HumansTheoryAttribute().Timeout);
+    }
+
+    [HumansFact]
     public void HumansFact_rejects_zero_timeout()
     {
         var ex = Assert.Throws<ArgumentException>(() => new HumansFactAttribute { Timeout = 0 });
