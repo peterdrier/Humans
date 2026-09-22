@@ -485,13 +485,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
-    // Timeout raised from the 5s HumansTheory default: this is the third of three
-    // sequential inline cases, each paying full CampsTestHarness + EF InMemory
-    // setup, and flaked under CI load with "Test execution timed out after 5000
-    // milliseconds" on the Withdrawn case (never Pending/Rejected) — 4 times in
-    // one week, twice confirmed passing on retry against the identical commit.
-    // 10s matches the codebase's standard bump for CI-load-sensitive tests.
-    [HumansTheory(Timeout = 10000)]
+    [HumansTheory]
     [InlineData(CampSeasonStatus.Pending)]
     [InlineData(CampSeasonStatus.Rejected)]
     [InlineData(CampSeasonStatus.Withdrawn)]
@@ -563,9 +557,9 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     /// <summary>
     /// Pins "every mutating path invalidates" over the whole write surface: after any
     /// write verb, a warm-year read must re-warm from the inner service instead of
-    /// serving the pre-write snapshot. Timeout matches the CI-load bump above.
+    /// serving the pre-write snapshot.
     /// </summary>
-    [HumansTheory(Timeout = 10000)]
+    [HumansTheory]
     [MemberData(nameof(SnapshotWriteVerbs))]
     public async Task WriteVerb_DropsTheCampSnapshot_SoTheNextReadRewarms(
         string verbName, Func<CachingCampServiceTests, Guid, Guid, CancellationToken, Task> invoke)
@@ -593,7 +587,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         { nameof(ICampService.SetNameLockDateAsync), (t, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), ct) },
     };
 
-    [HumansTheory(Timeout = 10000)]
+    [HumansTheory]
     [MemberData(nameof(SettingsWriteVerbs))]
     public async Task SettingsWriteVerb_ClearsTheSettingsSlot_SoTheNextReadRefetches(
         string verbName, Func<CachingCampServiceTests, CancellationToken, Task> invoke)

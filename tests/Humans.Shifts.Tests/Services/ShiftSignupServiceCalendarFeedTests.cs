@@ -196,7 +196,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
         items[0].Summary.Should().Be("Test Rota (pending)");
     }
 
-    [HumansTheory(Timeout = 10000)]
+    [HumansTheory]
     [InlineData(SignupStatus.Cancelled)]
     [InlineData(SignupStatus.Bailed)]
     [InlineData(SignupStatus.NoShow)]
