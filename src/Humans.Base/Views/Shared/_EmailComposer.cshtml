@@ -5,7 +5,9 @@
    and a "Preview" button that shows the exact branded, sanitized send. Every compose
    form (profile message, camp contact, rota messages, survey invitation, feedback
    reply, issue comment, campaign) renders through this one component instead of its
-   own subject/body/editor markup.
+   own subject/body/editor markup. It also shows a read-only "To:" line (warning styling
+   and a confirm-on-submit at or above WarnRecipientCount) and a "Send to me" button that
+   queues the same branded send to the signed-in human only.
 
    A page that injects this partial via innerHTML (Feedback/Issues detail panels) sets
    IncludePreviewModal = false and instead includes _EmailPreviewModal itself, once, at
@@ -15,6 +17,40 @@
 @{
     var modalId = Model.PreviewModalId ?? "emailPreviewModal";
     var bodyEditorId = $"{Model.BodyName}-editor";
+    var hasRecipientLine = Model.RecipientCount is not null || Model.RecipientSummary is not null || Model.RecipientUserId is not null;
+    var warnLargeSend = Model.RecipientCount is { } recipientCount && recipientCount >= Model.WarnRecipientCount;
+    var hasNamedRecipient = Model.RecipientUserId is not null || Model.RecipientSummary is not null;
+    string? recipientCountText = Model.RecipientCount switch
+    {
+        null => null,
+        1 when hasNamedRecipient => null,
+        1 => Localizer["EmailComposer_RecipientCountOne"].Value,
+        var n => string.Format(Localizer["EmailComposer_RecipientCountMany"].Value, n),
+    };
+}
+
+@if (hasRecipientLine)
+{
+    <div class="mb-3 email-composer-to @(warnLargeSend ? "alert alert-warning py-2" : "form-control bg-body-tertiary")"
+         data-warn="@(warnLargeSend ? "true" : "false")" data-recipient-count="@Model.RecipientCount">
+        <span class="fw-semibold me-1">@Localizer["EmailComposer_To"]:</span>
+        @if (Model.RecipientUserId is { } recipientUserId)
+        {
+            @await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new { userId = recipientUserId })
+        }
+        else if (Model.RecipientSummary is not null)
+        {
+            <span>@Model.RecipientSummary</span>
+        }
+        @if (recipientCountText is not null)
+        {
+            <span class="@(hasNamedRecipient ? "text-muted ms-1" : null)">@(hasNamedRecipient ? "· " : null)@recipientCountText</span>
+        }
+        @if (warnLargeSend)
+        {
+            <div class="small mt-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>@Localizer["EmailComposer_LargeSendWarning"]</div>
+        }
+    </div>
 }
 
 @if (Model.SubjectName is not null)
@@ -42,6 +78,11 @@
         data-category="@Model.Category" data-preview-modal="@modalId">
     <i class="fa-regular fa-eye me-1"></i>@Localizer["EmailComposer_Preview"]
 </button>
+<button type="button" class="btn btn-outline-secondary email-composer-self-btn mb-3 ms-1"
+        data-subject-name="@(Model.PreviewSubjectName ?? Model.SubjectName)" data-body-name="@Model.BodyName">
+    <i class="fa-regular fa-paper-plane me-1"></i>@Localizer["EmailComposer_SendToMe"]
+</button>
+<span class="email-composer-self-status small ms-2" role="status" aria-live="polite"></span>
 
 @if (Model.IncludePreviewModal)
 {

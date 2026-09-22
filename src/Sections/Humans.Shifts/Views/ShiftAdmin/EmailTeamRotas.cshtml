@@ -41,6 +41,8 @@
                             BodyMaxLength = 4000,
                             BodyHelpText = Localizer["EmailTeamRotas_MessageHelp"].Value,
                             Category = nameof(Humans.Users.Contracts.MessageCategory.VolunteerUpdates),
+                            RecipientCount = Model.RecipientCount,
+                            RecipientSummary = Model.TeamName,
                         })
 
                         <div class="form-check mb-3">

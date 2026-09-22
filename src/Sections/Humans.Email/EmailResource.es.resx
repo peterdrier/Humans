@@ -54,4 +54,6 @@
   <!-- Workgroup notice         -->
   <!-- ======================== -->
 
+  <data name="Email_ComposerSelfTest_Subject" xml:space="preserve"><value>[Prueba] {0}</value></data>
+  <data name="Email_ComposerSelfTest_DefaultSubject" xml:space="preserve"><value>[Prueba] Vista previa del correo</value></data>
 </root>

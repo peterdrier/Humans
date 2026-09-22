@@ -3,13 +3,41 @@ namespace Humans.Base.Models;
 /// <summary>
 /// Drives the shared <c>_EmailComposer</c> partial: an EasyMDE-backed Markdown body (via the
 /// <c>markdown-editor</c> tag helper), an optional subject field, and a "Preview" button that
-/// shows the exact branded, sanitized send through <c>/Email/PreviewMarkdown</c>.
+/// shows the exact branded, sanitized send through <c>/Email/PreviewMarkdown</c>, a read-only
+/// "To:" line naming who the send reaches, and a "Send to me" button that queues the same
+/// branded send to the signed-in human through <c>/Email/SendMarkdownToSelf</c>.
 /// Every human-composed send form (profile message, camp contact, rota messages, survey
 /// invitation, feedback reply, issue comment, campaign) renders through this one component
 /// instead of its own subject/body/editor markup.
 /// </summary>
 public class EmailComposerViewModel
 {
+    /// <summary>Default <see cref="WarnRecipientCount"/>: sends this large get a warning and a confirm.</summary>
+    public const int DefaultWarnRecipientCount = 25;
+
+    /// <summary>
+    /// How many humans the send reaches, shown on the "To:" line. Null only for a composer that
+    /// edits a template whose audience is chosen later (survey invitation, campaign): the line
+    /// then shows <see cref="RecipientSummary"/> alone.
+    /// </summary>
+    public int? RecipientCount { get; init; }
+
+    /// <summary>Plain-text description of the audience, e.g. a rota or camp name.</summary>
+    public string? RecipientSummary { get; init; }
+
+    /// <summary>
+    /// The single human the send reaches, rendered through <c>&lt;vc:human&gt;</c> on the "To:"
+    /// line (profile message, feedback reply, issue comment to the reporter).
+    /// </summary>
+    public Guid? RecipientUserId { get; init; }
+
+    /// <summary>
+    /// At or above this <see cref="RecipientCount"/> the "To:" line turns into a warning and
+    /// submitting the host form asks for confirmation naming the count. Submit buttons marked
+    /// <c>formnovalidate</c> (e.g. a "refresh recipients" button) skip the confirmation.
+    /// </summary>
+    public int WarnRecipientCount { get; init; } = DefaultWarnRecipientCount;
+
     /// <summary>Posted field name for the Markdown body (matches the receiving action's parameter/property).</summary>
     public required string BodyName { get; init; }
     public string? BodyValue { get; init; }

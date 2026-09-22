@@ -324,4 +324,5 @@
 &lt;p&gt;Només un recordatori que l'enquesta &lt;strong&gt;{1}&lt;/strong&gt; encara espera la teva resposta.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{2}"&gt;Obre l'enquesta&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Gràcies,&lt;br/&gt;El Nobodies Collective&lt;/p&gt;</value></data>
+  <data name="Survey_Admin_Builder_InvitationRecipients" xml:space="preserve"><value>Totes les persones a qui s'enviï aquesta enquesta (es trien en enviar-la)</value></data>
 </root>

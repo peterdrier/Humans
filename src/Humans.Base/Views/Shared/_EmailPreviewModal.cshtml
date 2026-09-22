@@ -7,7 +7,9 @@
    subject, body, category, modalId) and .wire(root), which POSTs to the Email section's
    "EmailPreviewMarkdown" named route (resolved server-side below, never a hardcoded Email URL —
    Base is the bottom of the dependency graph and must not know section routes) and shows the
-   exact branded, sanitized email in a sandboxed iframe — no outbox row is created. *@
+   exact branded, sanitized email in a sandboxed iframe — no outbox row is created. .wire(root)
+   also wires the "Send to me" button (POSTs to "EmailSendMarkdownToSelf", which queues one
+   email to the signed-in human only) and the large-send confirm on the host form's submit. *@
 @{
     var modalId = Model;
     var labelId = $"{modalId}Label";
@@ -45,6 +47,12 @@
     var loadingHtml = @Html.Raw(JsonSerializer.Serialize("<p class=\"text-muted p-3\">" + Localizer["EmailComposer_PreviewLoading"].Value + "</p>"));
     var errorText = @Html.Raw(JsonSerializer.Serialize(Localizer["EmailComposer_PreviewError"].Value));
     var previewUrl = @Html.Raw(JsonSerializer.Serialize(Url.RouteUrl("EmailPreviewMarkdown")));
+    var selfSendUrl = @Html.Raw(JsonSerializer.Serialize(Url.RouteUrl("EmailSendMarkdownToSelf")));
+    var selfSentText = @Html.Raw(JsonSerializer.Serialize(Localizer["EmailComposer_SendToMeSent"].Value));
+    var selfErrorText = @Html.Raw(JsonSerializer.Serialize(Localizer["EmailComposer_SendToMeError"].Value));
+    var selfRateLimitedText = @Html.Raw(JsonSerializer.Serialize(Localizer["EmailComposer_SendToMeRateLimited"].Value));
+    var selfNoAddressText = @Html.Raw(JsonSerializer.Serialize(Localizer["EmailComposer_SendToMeNoAddress"].Value));
+    var confirmLargeSendText = @Html.Raw(JsonSerializer.Serialize(Localizer["EmailComposer_ConfirmLargeSend"].Value));
 
     window.HumansEmailComposer = window.HumansEmailComposer || {};
 
@@ -112,6 +120,58 @@
                     bodyEl ? bodyEl.value : '',
                     category,
                     previewModalId);
+            });
+        });
+
+        (root || document).querySelectorAll('.email-composer-self-btn').forEach(function (btn) {
+            if (btn.dataset.composerWired === 'true') { return; }
+            btn.dataset.composerWired = 'true';
+            btn.addEventListener('click', function () {
+                var subjectName = btn.getAttribute('data-subject-name');
+                var bodyName = btn.getAttribute('data-body-name');
+                var subjectEl = subjectName ? document.querySelector('[name="' + subjectName + '"]') : null;
+                var bodyEl = document.querySelector('textarea[name="' + bodyName + '"]');
+                var status = btn.nextElementSibling;
+                var show = function (text, ok) {
+                    if (!status) { return; }
+                    status.textContent = text;
+                    status.className = 'email-composer-self-status small ms-2 ' + (ok ? 'text-success' : 'text-danger');
+                };
+
+                var form = new FormData();
+                form.append('subject', subjectEl ? subjectEl.value : '');
+                form.append('body', bodyEl ? bodyEl.value : '');
+                form.append('__RequestVerificationToken', getRequestVerificationToken());
+
+                btn.disabled = true;
+                fetch(selfSendUrl, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: form
+                })
+                    .then(function (resp) {
+                        if (resp.status === 429) { throw new Error(selfRateLimitedText); }
+                        if (resp.status === 422) { throw new Error(selfNoAddressText); }
+                        if (!resp.ok) { throw new Error(selfErrorText); }
+                        return resp.json();
+                    })
+                    .then(function (data) { show(selfSentText.replace('{0}', data.email), true); })
+                    .catch(function (err) { show(err && err.message ? err.message : selfErrorText, false); })
+                    .finally(function () { btn.disabled = false; });
+            });
+        });
+
+        // A large send asks for confirmation when its host form submits. Submit buttons marked
+        // formnovalidate (e.g. rota emails' "refresh recipients") are not sends and skip it.
+        (root || document).querySelectorAll('.email-composer-to[data-warn="true"]').forEach(function (line) {
+            if (line.dataset.composerWired === 'true') { return; }
+            line.dataset.composerWired = 'true';
+            var hostForm = line.closest('form');
+            if (!hostForm) { return; }
+            var message = confirmLargeSendText.replace('{0}', line.getAttribute('data-recipient-count'));
+            hostForm.addEventListener('submit', function (e) {
+                if (e.submitter && e.submitter.hasAttribute('formnovalidate')) { return; }
+                if (!window.confirm(message)) { e.preventDefault(); }
             });
         });
     };

@@ -319,4 +319,5 @@
 &lt;p&gt;Just a reminder that the survey &lt;strong&gt;{1}&lt;/strong&gt; is still waiting for your response.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{2}"&gt;Open the survey&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Thank you,&lt;br/&gt;The Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = survey title, {2} = answer URL</comment></data>
+  <data name="Survey_Admin_Builder_InvitationRecipients" xml:space="preserve"><value>Everyone this survey is sent to (chosen when you send it)</value></data>
 </root>

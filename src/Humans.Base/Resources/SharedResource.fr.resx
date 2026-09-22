@@ -1428,4 +1428,14 @@
   <data name="Settings_TabShifts" xml:space="preserve">
     <value>Quarts</value>
   </data>
+  <data name="EmailComposer_To" xml:space="preserve"><value>À</value></data>
+  <data name="EmailComposer_RecipientCountOne" xml:space="preserve"><value>1 destinataire</value></data>
+  <data name="EmailComposer_RecipientCountMany" xml:space="preserve"><value>{0} destinataires</value></data>
+  <data name="EmailComposer_LargeSendWarning" xml:space="preserve"><value>Envoi important : vérifiez avant d'envoyer.</value></data>
+  <data name="EmailComposer_ConfirmLargeSend" xml:space="preserve"><value>Envoyer cet e-mail à {0} destinataires ?</value></data>
+  <data name="EmailComposer_SendToMe" xml:space="preserve"><value>M'envoyer</value></data>
+  <data name="EmailComposer_SendToMeSent" xml:space="preserve"><value>E-mail de test mis en file pour {0}.</value></data>
+  <data name="EmailComposer_SendToMeError" xml:space="preserve"><value>Impossible d'envoyer l'e-mail de test. Veuillez réessayer.</value></data>
+  <data name="EmailComposer_SendToMeRateLimited" xml:space="preserve"><value>Trop d'e-mails de test. Attendez une minute et réessayez.</value></data>
+  <data name="EmailComposer_SendToMeNoAddress" xml:space="preserve"><value>Votre compte n'a aucune adresse e-mail où envoyer.</value></data>
 </root>
