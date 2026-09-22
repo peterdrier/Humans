@@ -11,6 +11,7 @@ public class CultureScopeTests
     public void Sets_both_cultures_inside_the_scope_and_restores_them_after()
     {
         var before = CultureInfo.CurrentCulture;
+        var beforeUi = CultureInfo.CurrentUICulture;
 
         using (new CultureScope("de"))
         {
@@ -19,7 +20,7 @@ public class CultureScopeTests
         }
 
         CultureInfo.CurrentCulture.Should().BeSameAs(before);
-        CultureInfo.CurrentUICulture.Should().BeSameAs(before);
+        CultureInfo.CurrentUICulture.Should().BeSameAs(beforeUi);
     }
 
     [HumansTheory]

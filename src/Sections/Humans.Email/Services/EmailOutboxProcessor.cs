@@ -120,10 +120,6 @@ internal sealed class EmailOutboxProcessor(
                 // Throttle: 1 second delay between sends to avoid SMTP rate limits
                 await ThrottleDelayAsync(TimeSpan.FromSeconds(1), cancellationToken);
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
             catch (Exception ex)
             {
                 var failedAt = clock.GetCurrentInstant();

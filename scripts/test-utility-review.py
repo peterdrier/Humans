@@ -25,6 +25,11 @@ CLASS = re.compile(
     r"class\s+(\w+)"
 )
 NAMESPACE = re.compile(r"\bnamespace\s+([\w.]+)\s*[;{]")
+NON_CODE = re.compile(
+    r'//[^\n]*|/\*.*?\*/|(?:\$@|@\$|@)"(?:[^"]|"")*"|'
+    r'\$*"{3,}.*?"{3,}|\$?"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'',
+    re.S,
+)
 
 
 def duration_seconds(value):
@@ -34,6 +39,32 @@ def duration_seconds(value):
 
 def test_key(project, test_class, method):
     return "::".join((project, test_class, method))
+
+
+def test_projects(root):
+    return {
+        path.name for path in (root / "tests").glob("*.Tests")
+        if path.name != "Humans.Integration.Tests"
+    }
+
+
+def class_scopes(source):
+    code = NON_CODE.sub(
+        lambda match: "".join("\n" if char == "\n" else " " for char in match.group()),
+        source,
+    )
+    scopes = []
+    for declaration in CLASS.finditer(code):
+        opening = code.find("{", declaration.end())
+        if opening < 0:
+            continue
+        depth = 1
+        for index in range(opening + 1, len(code)):
+            depth += (code[index] == "{") - (code[index] == "}")
+            if depth == 0:
+                scopes.append((declaration.start(), index, declaration.group(1)))
+                break
+    return code, scopes
 
 
 def source_methods(root):
@@ -49,24 +80,20 @@ def source_methods(root):
             namespace = NAMESPACE.search(source)
             if not namespace:
                 continue
-            classes = list(CLASS.finditer(source))
-            for attribute in ATTRIBUTE.finditer(source):
-                match = METHOD.search(source, attribute.end(), attribute.end() + 6000)
+            code, classes = class_scopes(source)
+            for attribute in ATTRIBUTE.finditer(code):
+                match = METHOD.search(code, attribute.end(), attribute.end() + 6000)
                 if not match:
                     continue
                 # An intervening method or declaration means this attribute does not
                 # belong to the candidate. Keep the row unresolved instead of guessing.
-                between = source[attribute.end():match.start()]
-                between_code = re.sub(r'"(?:\\.|[^"\\])*"', '""', between)
-                between_code = re.sub(r"//[^\n]*|/\*.*?\*/", "", between_code, flags=re.S)
-                if re.search(r"[;{}]", between_code) or re.search(r"\bclass\s+\w+", between_code):
+                between = code[attribute.end():match.start()]
+                if re.search(r"[;{}]", between) or re.search(r"\bclass\s+\w+", between):
                     continue
-                preceding = [item for item in classes if item.start() < match.start()]
-                if not preceding:
+                enclosing = [item for item in classes if item[0] < match.start() < item[1]]
+                if not enclosing:
                     continue
-                matching_file = [item for item in preceding if item.group(1) == path.stem]
-                declaration = matching_file[-1] if matching_file else preceding[-1]
-                test_class = namespace.group(1) + "." + declaration.group(1)
+                test_class = namespace.group(1) + "." + max(enclosing)[2]
                 key = test_key(project.name, test_class, match.group(1))
                 relative = path.relative_to(root).as_posix()
                 line = source.count("\n", 0, match.start()) + 1
@@ -108,6 +135,8 @@ def trx_methods(paths):
             row["seconds"] += seconds
             row["max_seconds"] = max(row["max_seconds"], seconds)
             row["outcomes"][result.get("outcome", "Unknown")] += 1
+        if not projects:
+            raise ValueError(f"TRX contains no non-integration test results: {path}")
         if len(projects) > 1:
             raise ValueError(f"TRX combines projects; cannot distinguish repeated runs: {path}")
         overlap = seen_projects & projects
@@ -115,7 +144,7 @@ def trx_methods(paths):
             raise ValueError(f"Multiple TRX runs for {', '.join(sorted(overlap))}; provide one snapshot")
         seen_projects.update(projects)
         run_count += 1
-    return rows, run_count
+    return rows, run_count, seen_projects
 
 
 def write_csv(path, fields, rows):
@@ -134,11 +163,22 @@ def build(args):
     source = source_methods(root)
     results = sorted(path for path in args.results.rglob("*.trx")
                      if "Humans.Integration.Tests" not in path.parts) if args.results else []
-    observed, run_count = trx_methods(results)
+    observed, run_count, observed_projects = trx_methods(results)
     if args.results and not results:
         raise ValueError(f"No non-integration TRX files found in {args.results}")
     if results and run_count != len(results):
         raise ValueError("Could not read every TRX")
+    if args.results:
+        expected_projects = test_projects(root)
+        missing = expected_projects - observed_projects
+        unexpected = observed_projects - expected_projects
+        if missing or unexpected:
+            details = []
+            if missing:
+                details.append(f"missing: {', '.join(sorted(missing))}")
+            if unexpected:
+                details.append(f"unexpected: {', '.join(sorted(unexpected))}")
+            raise ValueError(f"TRX project snapshot mismatch ({'; '.join(details)})")
     # A source file may hold two test classes, or embed C# class declarations in
     # analyzer snippets. Prefer the runner's exact class identity when its method
     # name identifies one observed method in that project.
