@@ -1154,4 +1154,7 @@
 &lt;p&gt;Un saludo,&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
+  <data name="Profile_MessageOptedOut" xml:space="preserve"><value>Esta persona ha decidido no recibir mensajes.</value></data>
+  <data name="Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>No se pudieron cargar las preferencias de comunicación.</value></data>
+  <data name="Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Este correo está vinculado a otra cuenta. Al verificarlo se solicitará una fusión de cuentas. Consulta tu bandeja de entrada para ver el enlace de verificación.</value></data>
 </root>

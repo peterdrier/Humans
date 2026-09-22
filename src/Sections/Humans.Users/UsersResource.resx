@@ -549,4 +549,7 @@
 &lt;p&gt;As requested, your Humans account has been permanently deleted. All your personal data has been removed from our systems.&lt;/p&gt;
 &lt;p&gt;Thank you for being part of our community. If you ever wish to rejoin, you're welcome to create a new account.&lt;/p&gt;
 &lt;p&gt;Best wishes,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name</comment></data>
+  <data name="Profile_MessageOptedOut" xml:space="preserve"><value>This human has opted out of receiving messages.</value></data>
+  <data name="Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>Failed to load communication preferences.</value></data>
+  <data name="Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>This email is linked to another account. Verifying it will request an account merge. Check your inbox for the verification link.</value></data>
 </root>

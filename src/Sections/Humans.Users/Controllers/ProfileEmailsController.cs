@@ -135,7 +135,7 @@ internal sealed class ProfileEmailsController(
     {
         if (isConflict)
         {
-            SetInfo("This email is linked to another account. Verifying it will request an account merge. Check your inbox for the verification link.");
+            SetInfo(localizer["Profile_EmailLinkedToAnotherAccount"].Value);
             return;
         }
 

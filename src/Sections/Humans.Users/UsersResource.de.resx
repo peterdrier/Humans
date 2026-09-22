@@ -1154,4 +1154,7 @@
 &lt;p&gt;Alles Gute,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
+  <data name="Profile_MessageOptedOut" xml:space="preserve"><value>Diese Person hat den Empfang von Nachrichten abgelehnt.</value></data>
+  <data name="Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>Kommunikationseinstellungen konnten nicht geladen werden.</value></data>
+  <data name="Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Diese E-Mail ist mit einem anderen Konto verknüpft. Die Verifizierung fordert eine Kontozusammenführung an. Prüfe deinen Posteingang auf den Bestätigungslink.</value></data>
 </root>
