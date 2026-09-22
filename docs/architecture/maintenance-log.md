@@ -10,7 +10,7 @@ what's overdue.
 | Process | Last Run | Next Due | Cadence | Est. Cost | Notes |
 |---------|----------|----------|---------|-----------|-------|
 | NuGet vulnerability check | 2026-07-30 | 2026-08-06 | Weekly | — | `dotnet list package --vulnerable`. 2026-07-30: 8 advisories fixed after a 4-week gap that turned CI red repo-wide. |
-| Freshness sweep (diff) | 2026-08-25 | 2026-08-26 | Daily | — | `/freshness-sweep` — report at `docs/freshness/last-report.md`; narrative lives in each sweep's PR body. 2026-08-25: 43 of 83 "dirty" editorial docs fired only on sibling `.md` changes under `src/Sections/Humans.X/**` — the previous sweep's own doc edits re-dirtying them; skipped as no-code-drift. Added `src/Sections/*/Docs/authorization.md` to the catalog `ignore:` list (mechanical output, same as `data-access.md`), cutting the "Unmarked editorial" flag list from 45 to 5. |
+| Freshness sweep (diff) | 2026-09-22 | 2026-09-23 | Daily | — | `/freshness-sweep` — report at `docs/freshness/last-report.md`; narrative lives in each sweep's PR body. 2026-09-22: 28-day window (166 commits); fixed the service-enumeration verifier, which passed vacuously under mawk (gawk-only `asorti`), and `generate-stats.sh`'s unbound `$USERNAME` under `set -u`. |
 | Section doctor | 2026-08-17 | — | 1–2×/day | — | `/section-doctor` — frozen row (nobodies-collective/Humans#1069); each run writes `docs/health/runs/<date>-<Section>.md`. |
 | Debt sweep | 2026-06-14 | 2026-06-15 | Daily | — | `/debt-sweep` — ledger `docs/architecture/debt-ledger.yml`, report `docs/debt/last-report.md`. Last: PR #1010. |
 | Freshness sweep (full) | — | — | Weekly | — | `/freshness-sweep --full` — full regeneration of every catalog entry. First run pending. |

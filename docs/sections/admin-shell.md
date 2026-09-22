@@ -35,12 +35,12 @@ Sidebar groups — operational zone: Tickets, Members, Shifts, Barrios, Cantina,
 | Actor | Capabilities |
 |-------|--------------|
 | Admin | Full access — every group and every item |
-| Board | Tickets (Tickets, Onsite roster, Scanner), Members (Humans, Roles, Review), Governance (Voting, Applications), Audit (Audit log), Messaging (Surveys), Google (Resource sync) |
+| Board | Tickets (Tickets, Onsite roster, Scanner), Members (Humans, Roles, Review), Governance (Voting, Applications, Assembly Votes), Audit (Audit log), Messaging (Surveys, Survey approvals), Google (Resource sync) |
 | HumanAdmin | Members (Humans, Roles) |
-| TicketAdmin | Tickets (Tickets, Transfer requests, Attendee contacts, Onsite roster, Scanner, Gate terminal, Gate settings) |
-| FinanceAdmin | Money (Expense review, Finance, Store catalog, Store summary, Store payments) |
-| StoreAdmin | Money (Store catalog, Store summary, Store payments) |
-| EventsAdmin | Event Guide (Dashboard, Moderation, Settings, Categories, Venues, Export) |
+| TicketAdmin | Tickets (Tickets, Transfer requests, Attendee contacts, Onsite roster, Scanner, Gate terminal, Gate staff PINs) |
+| FinanceAdmin | Money (Expense review, Finance, Store catalog, Store summary, Store payments, Store order years) |
+| StoreAdmin | Money (Store catalog, Store summary, Store payments, Store order years) |
+| EventsAdmin | Event Guide (Dashboard, Moderation, Categories, Venues, Export) |
 | CantinaAdmin | Cantina (Roster) |
 | RideshareAdmin | Rideshare (Settings & stats, Day roster) |
 | ConsentCoordinator | Members (Review) |
@@ -53,6 +53,7 @@ Sidebar groups — operational zone: Tickets, Members, Shifts, Barrios, Cantina,
 
 - The `Admin` top-nav link and the `/Admin` dashboard are gated by `PolicyNames.AnyAdminRole` (15 roles: Admin, Board, HumanAdmin, TeamsAdmin, CampAdmin, TicketAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, RideshareAdmin, NoInfoAdmin, VolunteerCoordinator, ConsentCoordinator). Concrete admin tools are gated on their section controllers.
 - `FeedbackAdmin` is in `AnyAdminRole` but owns no sidebar item since nobodies-collective/Humans#977 made every Feedback screen `AdminOnly`. A holder of only that role therefore reaches the shell and sees an empty sidebar. Dropping it from `AnyAdminRole` is a privilege reduction left undecided by #977.
+- Messaging's "Surveys" item is gated by `PolicyNames.AppAccess` (any Active human), not a Board/Admin policy — every admin-shaped role's holder sees it once they reach the shell, not only Board. Only "Survey approvals" (the authoring approval queue) is `BoardOrAdmin`.
 - Sidebar items are filtered per-item by `IAuthorizationService.AuthorizeAsync`; an item the current user cannot access does not appear in the rendered HTML.
 - Sidebar groups whose entire visible-item list is empty do not render.
 - The admin shell adds no new authorization policies; it reuses existing `PolicyNames.*` constants defined in the Auth section.

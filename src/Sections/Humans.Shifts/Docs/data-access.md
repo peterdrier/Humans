@@ -192,6 +192,13 @@ per-rota (`SendRotaMessageAsync`) and team-level
 by user across one or many rotas and enqueues one personalised email per
 recipient via the outbox. No cache.
 
+### ShiftsEmails / ShiftsEmailPreviews (Scoped, internal)
+
+No repository, no DB access, no cache. `ShiftsEmails` builds the section's
+coordinator rota / team-rotas messages; `ShiftsEmailPreviews` is the section's
+`IEmailPreviewContributor` for `/Email/EmailPreview`, one sample per template
+built through `ShiftsEmails`.
+
 ### WorkloadService (Scoped) — `Shifts/Workload/`
 
 Repository: `IShiftManagementRepository`.

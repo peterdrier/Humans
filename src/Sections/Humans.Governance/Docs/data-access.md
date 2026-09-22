@@ -56,10 +56,12 @@ Art. 14, GDPR Art. 17(3)(b)).
 
 ### AssemblyVoteService (Scoped)
 
-Repository: `IAssemblyVoteRepository`.
+Repositories: `IAssemblyVoteRepository`, plus the section's `IApplicationRepository`
+(read-only — active approved Asociado/Colaborador tier user ids for the electorate).
 
 | Table | R/W |
 |-------|-----|
+| Applications | R (via `IApplicationRepository.GetActiveApprovedTierUserIdsAsync`) |
 | AssemblyVotes | R/W |
 | AssemblyVoteOptions | R/W (draft only — content is immutable once Open) |
 | AssemblyVoteRosterEntries | R/W (written once at open; afterwards only the `NotifiedAt` / `ReminderSentAt` stamps — each written only while the vote still closes at the deadline the message announced, and `ReminderSentAt` cleared on extension — and the erasure tombstone) |

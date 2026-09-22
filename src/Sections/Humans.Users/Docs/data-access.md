@@ -118,6 +118,15 @@ external login, and `BackfillLegacyIdentityEmailsAsync` returns the
 `(UserId, Email)` pairs still missing a `UserEmail` row. Timestamps come from
 `IClock`.
 
+### TeamMessageOptionsProvider (Scoped, internal — `IOrchestrator`)
+
+No repository, no cache, no direct DB access. Section-internal
+`ITeamMessageOptionsProvider`: the teams a viewer may send a facilitated message
+for — active teams the viewer coordinates whose linked Google Group is synced.
+Cross-section reads via `ITeamServiceRead.GetTeamsAsync` and
+`ITeamResourceService.GetResourcesByTeamIdsAsync` (GoogleIntegration); it touches
+neither section's tables.
+
 ## Human Lifecycle
 
 Folder: `src/Sections/Humans.Users/Services/`. Orchestrator — owns no DB
@@ -257,14 +266,13 @@ for password / identity primitives. Cross-section calls via
 ### AccountDeletionService (Scoped)
 
 No repository. GDPR right-to-deletion orchestrator. Fans out over
-`IUserService`, `IUserEmailService`, `ITeamService`,
-`IRoleAssignmentService`, `IShiftSignupService`,
-`IShiftManagementService`, `ITicketServiceRead`, `IAuditLogService`,
-`IEmailService`. Invalidates
-`IRoleAssignmentClaimsCacheInvalidator`,
-`IShiftAuthorizationInvalidator`, `IShiftViewInvalidator`. Uses
-`IFileStorage` for blob cleanup. No cache, no direct DB access — all
-writes go through owning services.
+`IUserServiceInternal`, `IUserEmailService`, `ITeamService`,
+`IRoleAssignmentService`, `IGdprService` (runs every section's
+`IUserDataContributor` erasure), `ITicketServiceRead`, `IAuditLogService`,
+`IEmailService` (messages built by `UsersEmails`). Invalidates
+`IUserInfoInvalidator`, `IRoleAssignmentClaimsCacheInvalidator`,
+`IShiftAuthorizationInvalidator`, `IShiftViewInvalidator`. No cache, no
+direct DB access — all writes go through owning services.
 
 ### UnsubscribeService (Scoped)
 
@@ -283,8 +291,8 @@ No cache on the service itself.
 
 ### UserParticipationBackfillService (Scoped)
 
-No repository. Fan-out over `IUserService` and `IShiftManagementService`
-to backfill `EventParticipations`. No direct DB access, no cache.
+No repository. Fan-out over `IUserServiceInternal` and `ISettingsService`
+(active event settings) to backfill `EventParticipations`. No direct DB access, no cache.
 
 ### AccountMergeService (Scoped)
 

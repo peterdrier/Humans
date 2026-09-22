@@ -3,7 +3,7 @@
   src/Sections/Humans.Users.Contracts/IUserEmailService.cs
   src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs
   src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
-  src/Sections/Humans.Users/Views/Profile/Emails.cshtml
+  src/Sections/Humans.Users/Views/ProfileEmails/Emails.cshtml
   src/Sections/Humans.GoogleIntegration/Views/Google/EmailFlagViolations.cshtml
 -->
 <!-- freshness:flag-on-change

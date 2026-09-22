@@ -41,7 +41,7 @@ You fill in:
 
 `/Issues` shows every issue you reported, whatever its state, with a search box over titles and descriptions and filters for status and type. Open one and you get the whole history: your report, every reply, and every change a handler made to it.
 
-Write in the same thread to add anything. **You get an email whenever a handler replies** — in your language, with their message in it.
+Write in the same thread to add anything — the composer supports Markdown formatting. **You get an email whenever a handler replies** — in your language, with their message in it.
 
 ### If it gets closed and you're still stuck
 

@@ -121,6 +121,15 @@ All authenticated users can access their own notifications. No role-based restri
 | IssueStatusChanged | Informational | Issue participants | System | Issue status changed |
 | IssueAssigned | Actionable | The assignee | System | Issue assigned to a user |
 | IssueSubmitted | Actionable | Admins + section role-holders | System | New issue submitted |
+| RideshareInterestReceived | Actionable | The trip/request owner | System | Someone expresses interest in a ride |
+| RideshareInterestAccepted | Informational | The interested user | System | Owner accepts the interest |
+| RideshareInterestDeclined | Informational | The interested user | System | Owner declines the interest |
+| AssemblyVoteOpened | Actionable | The assembly roster | Governance | An assembly vote opens |
+| WorkgroupRegistrationPending | Actionable | Board role | Governance | A working group applies, or its application goes overdue |
+| WorkgroupRegistrationDecided | Informational | The group's coordinators | Governance | Registration decided (registered, refused, withdrawn, ended, reactivated) |
+| WorkgroupReportingDue | Informational | The group's coordinators | Governance | Thirty days without an update or meeting |
+| WorkgroupDocumentActivity | Informational (Actionable to Board when a document is delivered for disposition) | Group members, comment authors, or Board role | Governance | Document published, comment opened/answered, or delivered for disposition |
+| WorkgroupDispositionRecorded | Informational | The group's current members | Governance | Board records its written disposition on a delivered document |
 
 ## Related Features
 

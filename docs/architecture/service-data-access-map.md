@@ -9,8 +9,8 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > then mapping the `DbSet<>` (or bare `Set<T>()`) usage to the declaring
 > context in that same section's `Data/` folder. Every repository,
 > `DbContext`, and service lives under `src/Sections/`; the handful of true
-> cross-section orchestrators that own no table (Dashboard, the Agent
-> preload augmentor) live in `src/Humans.Web/Services/` instead. There is no
+> Web-layer platform services that own no application table
+> (`AdminDatabaseDiagnosticsService`) live in `src/Humans.Web/Services/` instead. There is no
 > shared `HumansDbContext` — every context below is internal-sealed with its
 > own `IDbContextFactory<T>`/direct-injection pattern, against the same
 > database/connection. Each context gets its own `__EFMigrationsHistory_<Section>`
@@ -27,17 +27,17 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `ShiftsDbContext` | `EventSettings`, `Rotas`, `Shifts`, `ShiftSignups`, `ShiftTags`, `RotaShiftTags` (`rota_shift_tags` — the implicit many-to-many mapped by `ShiftTagConfiguration` via `UsingEntity`), `VolunteerEventProfiles`, `GeneralAvailability`, `VolunteerBuildStatuses`, `VolunteerTagPreferences` (own project, `src/Sections/Humans.Shifts/`) |
 > | `TicketsDbContext` | `TicketOrders`, `TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests` — owned by `src/Sections/Humans.Tickets`, alongside a `src/Sections/Humans.Tickets.Contracts` leaf and the `src/Sections/Humans.TicketTailor` vendor adapter (see [Tickets](../../src/Sections/Humans.Tickets/Docs/data-access.md)) |
 > | `AuthDbContext` | `RoleAssignments` (own project, `src/Sections/Humans.Auth/`) |
-> | `GovernanceDbContext` | `Applications`, `ApplicationStateHistories`, `BoardVotes` (own project, `src/Sections/Humans.Governance/`) |
+> | `GovernanceDbContext` | `Applications`, `ApplicationStateHistories`, `BoardVotes`, `AssemblyVotes`, `AssemblyVoteOptions`, `AssemblyVoteRosterEntries`, `AssemblyBallots`, `AssemblyBallotHistories`, `AssemblyVotePeeks` (own project, `src/Sections/Humans.Governance/`) |
 > | `CampaignsDbContext` | `Campaigns`, `CampaignCodes`, `CampaignGrants` (own project, `src/Sections/Humans.Campaigns/`) |
-> | `GoogleIntegrationDbContext` | `GoogleResources`, `GoogleSyncOutboxEvents`, `SyncServiceSettings` (own project, `src/Sections/Humans.GoogleIntegration/`; owns no table beyond these — see [Monitor](../../src/Sections/Humans.Monitor/Docs/data-access.md) for the related horizontal section) |
+> | `GoogleIntegrationDbContext` | `GoogleResources`, `GoogleSyncOutboxEvents`, `SyncServiceSettings`, `GoogleSyncLog` (own project, `src/Sections/Humans.GoogleIntegration/`; owns no table beyond these — see [Monitor](../../src/Sections/Humans.Monitor/Docs/data-access.md) for the related horizontal section) |
 > | `FeedbackDbContext` | `FeedbackReports`, `FeedbackMessages` (own project, `src/Sections/Humans.Feedback/`) |
 > | `CityPlanningDbContext` | `CityPlanningSettings`, `CampPolygons`, `CampPolygonHistories` (own project, `src/Sections/Humans.CityPlanning/`) |
 > | `BudgetDbContext` | `BudgetYears`, `BudgetGroups`, `BudgetCategories`, `BudgetLineItems`, `BudgetAuditLogs`, `TicketingProjections` (own project, `src/Sections/Humans.Budget/`) |
 > | `CampsDbContext` | `Camps`, `CampSeasons`, `CampHistoricalNames`, `CampImages`, `CampSettings`, `CampMembers`, `CampRoleDefinitions`, `CampRoleAssignments` (own project, `src/Sections/Humans.Camps/`) |
 > | `GateDbContext` | `GateScanEvents`, `GateSettings`, `GateStaffPins` (own project, `src/Sections/Humans.Gate/`, table names `gate_scan_events` / `gate_settings` / `gate_staff_pins`) |
 > | `SystemDbContext` | `DataProtectionKeys` — ASP.NET Data Protection key ring storage, wired directly in `src/Humans.Web/Program.cs`; **no owning Application section, no repository, no service** |
-> | `EmailDbContext` | `EmailOutboxMessages` |
-> | `CalendarDbContext` | `CalendarEvents`, `CalendarEventExceptions` (own project, `src/Sections/Humans.Calendar/`) |
+> | `EmailDbContext` | `EmailOutboxMessages`, `EmailDailySendCounts` (`email_daily_send_counts`) (own project, `src/Sections/Humans.Email/`) |
+> | `CalendarDbContext` | `CalendarEvents`, `CalendarEventExceptions`, `CalendarFeedTokens` (`calendar_feed_tokens` — per-user iCal feed tokens) (own project, `src/Sections/Humans.Calendar/`) |
 > | `NotificationsDbContext` | `Notifications`, `NotificationRecipients` (own project, `src/Sections/Humans.Notifications/`) |
 > | `IssuesDbContext` | `Issues`, `IssueComments` (own project, `src/Sections/Humans.Issues/`) |
 > | `SurveysDbContext` | `Surveys`, `SurveyQuestions`, `SurveyQuestionOptions`, `SurveyInvitations`, `SurveyResponses`, `SurveyAnswers` (own project, `src/Sections/Humans.Surveys/`) |
@@ -45,12 +45,14 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `SettingsDbContext` | `Setting`, `EventSettings` — tables `system_settings` and `settings_event` (own project, `src/Sections/Humans.Settings/`) |
 > | `ContainersDbContext` | `Containers`, `ContainerPlacements`, `ContainerImages` (own project, `src/Sections/Humans.Containers/`) |
 > | `ExpensesDbContext` | `ExpenseReports`, `ExpenseLines`, `ExpenseAttachments`, `HoldedExpenseOutboxEvents` (own project, `src/Sections/Humans.Expenses/`) |
-> | `FinanceDbContext` | `HoldedExpenseDocs`, `HoldedCategoryMap`, `HoldedCreditorContacts`, `HoldedDocSyncStates` (own project, `src/Sections/Humans.Finance/`). The ledger mirror (`HoldedLedgerLines`, its sync state, the chart-of-accounts cache, and the API call log) lives in the separate `HoldedDbContext` below. |
+> | `FinanceDbContext` | `HoldedExpenseDocs`, `HoldedCategoryMap`, `HoldedCreditorContacts`, `HoldedDocSyncStates`, `SepaPayoutFiles`, `SepaPayoutTransfers` (own project, `src/Sections/Humans.Finance/`). The ledger mirror (`HoldedLedgerLines`, its sync state, the chart-of-accounts cache, and the API call log) lives in the separate `HoldedDbContext` below. |
 > | `HoldedDbContext` | `HoldedLedgerLines`, `HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls` (own project, `src/Sections/Humans.Holded/`). The daybook-journal ledger mirror, chart-of-accounts cache, and Holded API call-log/metering — split out of Finance so the two sections that both touch Holded data stay structurally isolated from each other. |
 > | `EventGuideDbContext` | `EventGuideSettings`, `EventCategories`, `EventVenues`, `Events`, `EventModerationActions`, `EventPreferences`, `EventFavourites` (own project, `src/Sections/Humans.Events/`; the Shifts-owned `EventSettings` / `EventParticipations` tables deliberately stay off this context, despite the name collision) |
 > | `StoreDbContext` | `StoreProducts`, `StoreOrders`, `StoreOrderLines`, `StorePayments`, `StoreInvoices`, `StoreTreasurySyncStates` (own project, `src/Sections/Humans.Store/`) |
 > | `BackdoorDbContext` | `backdoor_api_keys` (own project, `src/Sections/Humans.Backdoor/`) |
+> | `MailerLiteDbContext` | `MailerLiteSyncStates` (`mailerlite_sync_states`) (own project, `src/Sections/Humans.MailerLite/`) |
 > | `RideshareDbContext` | `RideshareTrips`, `RideshareRequests`, `RideshareInterests`, `RideshareSettings` (own project, `src/Sections/Humans.Rideshare/`, table names `rideshare_trips` / `rideshare_requests` / `rideshare_interests` / `rideshare_settings`) |
+> | `WorkgroupsDbContext` | `workgroups`, `workgroup_members`, `workgroup_meetings`, `workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments` (own project, `src/Sections/Humans.Workgroups/`) |
 >
 > Each context applies its `IEntityTypeConfiguration` classes explicitly (no
 > assembly scanning), so a section's model can never accrete another
@@ -61,10 +63,10 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > The marker-only project `src/Humans.Base/` holds the shared
 > `IApplicationService`, `IRepository`, `IOrchestrator`, `IFanout`, and
 > `IInvalidator` marker interfaces (no data-access behavior of its own), plus
-> the cache infrastructure: `CacheKeys.cs`, the invalidator extensions in
+> the cache infrastructure: `Caching/CacheKeys.cs`, the invalidator extensions in
 > `Extensions/MemoryCacheExtensions.cs`, `Caching/MemoryCacheInvalidators.cs`,
 > and the `TrackedCache<TKey, TValue>` base class
-> (`Interfaces/Caching/TrackedCache.cs`) that every section-owned Singleton
+> (`Caching/TrackedCache.cs`) that every section-owned Singleton
 > caching decorator below inherits. Cross-cutting invalidator interfaces
 > (`INavBadgeCacheInvalidator`,
 > `INotificationMeterCacheInvalidator`, `IVotingBadgeCacheInvalidator`,
@@ -92,7 +94,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 Each section's table/cache map lives in its own project at
 `src/Sections/Humans.<Section>/Docs/data-access.md` — regenerated per-section so a change
 inside one section only touches that section's file. This global file keeps only what is
-genuinely cross-section: the Dashboard orchestrator (no project of its own), the
+genuinely cross-section: the Web platform services (no section of their own), the
 cross-section analysis, the cache inventory, and the out-of-service access appendices.
 
 ---
@@ -103,28 +105,11 @@ cross-section analysis, the cache inventory, and the out-of-service access appen
 Repository: `IAdminDatabaseDiagnosticsRepository` (`src/Humans.Web/Repositories/`) —
 raw diagnostics over the database (migration-history status across every section's
 `__EFMigrationsHistory*` table, Hangfire lock clearing). No owning section, no owned
-application tables. Cross-section reads via `IUserServiceRead` and `ITicketServiceRead`
-(audience segmentation). No `IMemoryCache`.
+application tables. No cross-section service calls, no `IMemoryCache`.
 
-## Dashboard
-
-Folder: `src/Humans.Web/Services/Dashboard/` — has no owned tables and is
-not a section project, so it lives alongside the other Web-layer
-cross-section orchestrators instead of under `src/Sections/`. No owned DB
-tables.
-
-### DashboardService (Scoped)
-
-No repository. Read-only fan-out over `IMembershipCalculatorRead`,
-`IApplicationServiceRead`, `IShiftManagementService`, `IShiftView`,
-`ITicketServiceRead`, `IUserServiceRead`, `ITeamServiceRead`. Uses
-`TicketVendorSettings`. No DB access, no cache.
-
-### AdminDashboardService (Scoped)
-
-No repository. Fan-out over `IUserServiceRead`, `IMembershipCalculatorRead`,
-`IApplicationServiceRead`, `IShiftManagementService`, `IShiftView`.
-No DB access, no cache.
+The member and admin dashboards have no orchestrator service: `/` and `/Admin` are
+Shell frames whose cards are section-contributed (`SectionChrome` slots), each card
+reading through its own section's services.
 
 ---
 
@@ -153,9 +138,9 @@ Every table is owned by exactly one repository; there are no HUM0025
 | Table | Owning Section | Routed via |
 |-------|----------------|--------|
 | **GoogleSyncOutboxEvents** | Google Integration | `TeamService` appends via `IGoogleSyncOutboxService` inside a `TransactionScope`. |
-| **EventSettings** | Shifts | `ShiftRepository`. |
+| **EventSettings** (`event_settings`, the Shifts per-event knobs) | Shifts | `ShiftRepository`. |
 | **ShiftSignups** | Shifts | `ShiftRepository`. |
-| **Settings** (`system_settings`, `settings_event`) | Settings | Single owner `Repository`; consumers route through `ISettingsService`. `settings_event` has no consumers yet — it is populated by `/Settings/Admin/Carry` and read by nothing until the sections are pointed at it (nobodies-collective/Humans#1104). |
+| **Settings** (`system_settings`, `settings_event`) | Settings | Single owner `Repository`; consumers route through `ISettingsService`. `settings_event` is the app-wide event calendar every event-facing section reads (Shifts via `EventCalendarResolver`). |
 
 ### Notable Cross-Section Patterns
 
@@ -197,7 +182,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    Users+Profile section merge; the interface's `[SurfaceBudget]` is
    intentionally suspended during the merge.
    `ProfileEditorService` and `ContactFieldService` remain in
-   `Services/Profiles/` as section-internal collaborators; the only
+   `Humans.Users/Services/` as section-internal collaborators; the only
    Application-layer service named `ProfileService` is a thin
    `IProfilePictureService` implementation for picture-bytes IO.
 
@@ -240,9 +225,10 @@ Every table is owned by exactly one repository; there are no HUM0025
    |-----|-------------------|------------|
    | `IsEmailSendingPaused` | Email | `EmailOutboxService` → `ISettingsService` |
    | `DriveActivityMonitor:LastRunAt` | Monitor | `DriveActivityMonitorService` → `ISettingsService` |
+   | `Workgroups:RootDriveFolderId` | Workgroups | `WorkgroupService` → `ISettingsService` (read and written) |
 
    New keys should be added to `SettingKeys` and accessed through
-   `ISettingsService`. Both of those keys move to their own sections' settings
+   `ISettingsService`. The first two keys move to their own sections' settings
    later; the shared key/value store is not where new per-section state belongs.
 
 8. **Cached read-models cover almost all per-key `IMemoryCache`
@@ -303,8 +289,9 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 13. **ICalFeed is a pure fan-out orchestrator.** `ICalFeedService`
     owns no repository and touches no table directly. Token validation
-    routes through `IUserServiceRead.GetUserInfoAsync` (the
-    `CachingUserService` TrackedCache — no DB round-trip on cache hit).
+    routes through Calendar's own `ICalendarFeedTokenService`
+    (`CalendarFeedTokens`); `IUserServiceRead.GetUserInfoAsync` is only the
+    missing/merged-user guard.
     Shift and Event items are contributed by `ShiftSignupService` and
     `EventService` respectively, each reading their own owned tables through
     their own repositories — `ShiftsDbContext` for Shifts,
@@ -330,7 +317,7 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 15. **The per-section DbContext split is complete — "one
     table, one repository" is a compile/schema-enforced boundary for
-    every table-owning section, with no shared context left.** 30 contexts
+    every table-owning section, with no shared context left.** 33 contexts
     exist — see the full DbContext table in the intro Methodology block
     above — each mapping **only** its own section's tables via explicit
     `ApplyConfiguration` calls (no assembly scanning), so a section's
@@ -366,7 +353,7 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 ### All Cache Keys
 
-Sourced from `src/Humans.Base/CacheKeys.cs` and
+Sourced from `src/Humans.Base/Caching/CacheKeys.cs` and
 `src/Humans.Base/Extensions/MemoryCacheExtensions.cs`. TTL/type
 classification mirrors `CacheKeys.Metadata` (surfaced on the Admin
 `/Debug/CacheStats` page). Note: most section projections are
@@ -385,17 +372,18 @@ separately below the key table.
 | `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | Per-User | NotificationMeterProvider | `ICampLeadJoinRequestsBadgeCacheInvalidator` (CampService) |
 | `NavBadge:Issues:{userId}` | 2 min | Per-User | IssuesService | `IIssuesBadgeCacheInvalidator` (IssuesService) |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService (GitHub-source read-through) | LegalDocumentService |
-| `TicketEventSummary:{eventId}` | 15 min | Per-Entity | TicketTailorService (`Humans.TicketTailor`) / TicketSyncService | TicketSyncService, `ITicketCacheInvalidator.InvalidateVendorEventSummary` |
+| `TicketEventSummary:{eventId}` | 15 min | Per-Entity | _(unused — the vendor event summary is `CachingTicketVendorService`'s `Tickets.VendorEventSummary` tracked cache below; the key remains in `CacheKeys.Metadata`)_ | — |
 | `TicketDashboardStats` | 5 min | Static | TicketQueryService.GetDashboardStatsAsync (compute — no read-through cache; key reserved for future wrapper) | (reserved cache-stats key) |
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate Limit | CampContactService | CampContactService |
 | `magic_link_used:{tokenPrefix}` | 15 min | Rate Limit | MagicLinkRateLimiter (`Humans.Auth`) | MagicLinkRateLimiter |
 | `magic_link_signup:{normalizedEmail}` | 60 sec | Rate Limit | MagicLinkRateLimiter (`Humans.Auth`) | MagicLinkRateLimiter |
 | `GateLoginFailures:{sourceIp}` | 1 min window | Rate Limit | GateLoginThrottle (Web) | GateLoginThrottle (reset on success) |
-| `GatePinFailures:{key}` | 15 min lockout after 5 failures | Rate Limit | GatePinThrottle (Web) | GatePinThrottle (only a correct PIN clears it) |
-| `GateVendorMirrorSent:{vendorTicketId}` | 24 hr | Dedupe claim | GateVendorMirrorLedger (Web) | expiry only |
+| `GatePinFailures:{key}` | 15 min lockout after 5 failures | Rate Limit | GatePinThrottle (`Humans.Gate`) | GatePinThrottle (only a correct PIN clears it) |
+| `GateVendorMirrorSent:{vendorTicketId}` | 24 hr | Dedupe claim | GateVendorMirrorLedger (`Humans.Gate`) | expiry only |
 
-> The three `Gate*` keys are held by Web-layer helper singletons
-> (`src/Humans.Web/Services/`), not `CacheKeys.cs` /
+> The three `Gate*` keys are held by helper singletons (`GateLoginThrottle` in
+> `src/Humans.Web/Services/`, the other two in `src/Sections/Humans.Gate/Services/Stores/`),
+> not `CacheKeys.cs` /
 > `CacheKeys.Metadata` — they never appear on `/Debug/CacheStats`.
 
 ### Section Decorator Caches (`TrackedCache`, not `IMemoryCache`)
@@ -415,6 +403,8 @@ separately below the key table.
 | `TrackedCache<Guid, RoleAssignmentRow>` | Auth | `Auth.RoleAssignmentRow` | Per-Entity | CachingRoleAssignmentService warmup + lazy load | `IRoleAssignmentCacheInvalidator.InvalidateAll` (service-level) |
 | `TrackedCache<Guid, UserEarlyEntry?>` | Early Entry | `EarlyEntry.UserEarlyEntry` | Per-User (negative-result safe) | CachingEarlyEntryService lazy load | `IEarlyEntryInvalidator.InvalidateUser` / `InvalidateAll` (ShiftSignupService, CampService, TeamService) |
 | `TrackedCache<int, RideshareSnapshot>` | Rideshare | `Rideshare.Snapshot` | Per-Year | CachingRideshareService lazy load | full `Clear()` after every delegated write |
+| `TrackedCache<byte, IReadOnlyList<WorkgroupInfo>>` | Workgroups | `Workgroups.Register` | Single entry | CachingWorkgroupService lazy load | full `Clear()` after every delegated write |
+| `TrackedCache<string, CachedVendorEventSummary>` | Tickets | `Tickets.VendorEventSummary` | Per-Entity (15-min freshness in value) | CachingTicketVendorService lazy load | `ITicketVendorCacheInvalidator.InvalidateEventSummary` |
 
 ### Cache Issues / Notes
 

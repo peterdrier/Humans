@@ -31,7 +31,7 @@ Repository: `IRoleAssignmentRepository`.
 | `claims:{userId}` (`IRoleAssignmentClaimsCacheInvalidator`) | yes |
 
 Cross-section calls via `IUserServiceRead`, `ISystemTeamSync`,
-`IAuditLogService`. Implements `IUserDataContributor` for GDPR exports
+`IAuditLogService`, `INotificationEmitter`. Implements `IUserDataContributor` for GDPR exports
 and `IUserMerge` for account merges.
 
 ### CachingRoleAssignmentService (Singleton, `Humans.Auth.Services`)

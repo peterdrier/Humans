@@ -2,7 +2,7 @@
   src/Sections/Humans.Users/Services/ContactFieldService.cs
   src/Sections/Humans.Users/Services/UserEmailService.cs
   src/Sections/Humans.Users/Controllers/ProfileController.cs
-  src/Sections/Humans.Users/Views/Profile/Emails.cshtml
+  src/Sections/Humans.Users/Views/ProfileEmails/Emails.cshtml
   src/Sections/Humans.Users/Domain/ContactField.cs
   src/Sections/Humans.Users.Contracts/UserEmail.cs
   src/Sections/Humans.Users/Data/Configurations/**
@@ -253,7 +253,7 @@ Note: `IsOAuth` was dropped (nobodies-collective/Humans#507). Provider-linked (O
 - OAuth emails cannot be deleted
 
 ### Manage Emails Page (`/Profile/Me/Emails`)
-- Lists all emails: OAuth email first (non-deletable, always verified), then additional
+- Lists all emails, sorted alphabetically by address; OAuth-linked rows are removed via Unlink, not Delete
 - Each row: email address, verified badge, notification target control, visibility dropdown, delete button
 - "Add email" form sends verification, shows pending state
 - Verification uses `UserManager.GenerateUserTokenAsync` / `VerifyUserTokenAsync`

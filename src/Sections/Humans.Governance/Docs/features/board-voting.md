@@ -16,7 +16,7 @@
 
 When a human applies for Colaborador or Asociado tier, the Board votes on their application. This replaces the previous model where a single Board member could approve/reject an Asociado application. The new model requires a structured vote with individual Board member input, a meeting date, and a collective decision note. Voting happens through a dedicated dashboard that shows all pending applications and each Board member's vote.
 
-Board voting only applies to tier applications (Colaborador and Asociado). Volunteer access is handled automatically through the consent check gate — see [Onboarding Pipeline](../../../Humans.Onboarding/Docs/features/onboarding-pipeline.md).
+Board voting only applies to tier applications (Colaborador and Asociado). Volunteer access is handled automatically once required name fields and consents are complete — see [Onboarding Pipeline](../../../Humans.Onboarding/Docs/features/onboarding-pipeline.md).
 
 **GDPR data minimization:** Individual Board member votes are **deleted** when the application is finalized. Only the collective decision (approve/reject), meeting date, and decision note are retained as the audit record.
 
@@ -242,6 +242,6 @@ Admin finalizes decision
 
 - [Membership Tiers](membership-tiers.md) — Tier definitions and term lifecycle
 - [Onboarding Pipeline](../../../Humans.Onboarding/Docs/features/onboarding-pipeline.md) — Where Board voting fits in the pipeline
-- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent check gate (separate from Board voting)
+- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Coordinator review (audit annotation, separate from Board voting)
 - [Tier Applications](asociado-applications.md) — Application entity and state machine
 - [Administration](../../../../../docs/features/global/administration.md) — Admin role and access

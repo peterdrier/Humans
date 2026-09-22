@@ -53,8 +53,9 @@ Repository: `ICampRepository`.
 
 Cross-section calls via `IUserServiceRead`, `IAuditLogService`,
 `ISystemTeamSync`, `IFileStorage`, `INotificationEmitter`,
-`IEarlyEntryInvalidator`, plus `Lazy<ICampRoleService>` to break a DI
-cycle. Implements `ICampRoleCampAccess` (narrow intra-section surface
+`IEarlyEntryInvalidator`, `ISettingsService` (active event settings), plus
+`Lazy<ICampRoleService>` and `Lazy<ICityPlanningService>` (camp deletion removes
+the camp's polygon/history rows) to break DI cycles. Implements `ICampRoleCampAccess` (narrow intra-section surface
 consumed by `CampRoleService`), `ICampLeadDirectory`, `ICampSeeding`,
 `IUserDataContributor`, `IUserMerge`. All caching lives in the decorator
 — the inner service never touches `IMemoryCache`.

@@ -79,6 +79,10 @@ Go to `/Expenses/Review` to see every report waiting for Finance. Open one to ch
 
 Approved reports are booked into the org's accounting system (Holded) automatically. Payment is made outside the app by bank transfer. Once paid, the member's creditor balance in Holded updates, and their **My expenses** page reflects it in their account ledger.
 
+### File or fix a report for someone else
+
+From `/Expenses/New` you can pick another member to file for — the report is theirs from that moment, and everything about it (payout, dashboard, exports) follows them, not you. While a report is still Draft, Submitted, or Coordinator endorsed, you can correct its details or set the member's IBAN on their behalf without sending it back a step, and you can submit it from Draft. Withdrawing always stays the member's own call, and file/edit access closes once a report is approved.
+
 ## Related sections
 
 - [Budget](Budget.md) — reports are filed against budget categories, and the category decides whether a coordinator signs off.

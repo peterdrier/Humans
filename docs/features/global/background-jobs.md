@@ -23,6 +23,7 @@ Several system operations need to run automatically without user interaction: sy
 | SuspendNonCompliantMembersJob | Daily 4:30 AM | Enforce compliance deadlines |
 | ProcessAccountDeletionsJob | Daily | Process account deletion requests |
 | TermRenewalReminderJob | Weekly (Mon 5:00 AM) | Notify humans with approaching Colaborador/Asociado term expiry |
+| AssemblyVoteLapseJob | Hourly | Close assembly votes past their announced deadline and send the T-24h ballot reminder to unvoted roster members |
 | ProcessEmailOutboxJob | Frequent | Send emails queued in the outbox table |
 | CleanupEmailOutboxJob | Weekly (Sun 3:00 AM) | Delete old processed outbox entries |
 | ProcessGoogleSyncOutboxJob | Frequent | Process Google sync outbox (add/remove from Groups and Drive) |
@@ -40,6 +41,7 @@ Several system operations need to run automatically without user interaction: sy
 | GateVendorCheckInJob | On demand (enqueued) | Best-effort mirror of a gate admit to the ticket vendor (TicketTailor check-in); fire-and-forget from the gate controller, no retries (vendor check-ins aren't idempotent), gated by `Gate:VendorMirrorEnabled` (default off) |
 | AgentConversationRetentionJob | Daily 3:15 AM | Purge agent conversations past the retention window |
 | MailerLiteAudienceSyncJob | Opt-in; no default schedule | Sync all MailerLite audiences. Registered only when `MailerLite:AudienceSyncCron` is set to a cron expression — the setting ships empty, so by default this job does not run at all and syncing is on-demand via the `/MailerLite/Admin` "Push Now" button |
+| WorkgroupRhythmJob | Daily 6:00 AM | Workgroups' daily reporting-rhythm pass (design §13) |
 
 > **Note:** `SystemTeamSyncJob` and `GoogleResourceReconciliationJob` were historically disabled by default because they modify Google Shared Drive and Group permissions; both are now registered as normal scheduled jobs (`teams-system-sync` hourly, `google-resource-reconciliation` daily at 03:00) in `RecurringJobExtensions.UseHumansRecurringJobs`. `GoogleResourceReconciliationJob` still no-ops per service when that service's sync mode is `None` (configured at `/Google/SyncSettings`). The manual "Sync Now" button at `/Google/Sync` remains available for on-demand runs. `SendAdminDailyDigestJob` / `SendBoardDailyDigestJob` have been retired and their job types no longer exist; deleting a job needs no cleanup step, because startup removes every stored Hangfire schedule that is not in the roll-call.
 
@@ -152,21 +154,20 @@ Day 30: Suspension (handled by SuspendJob)
 **Process**:
 ```
 1. Find users where DeletionScheduledFor <= now
-2. For each user:
-   a. Anonymize user record (display name, email, phone, pronouns, DOB, profile picture, emergency contacts)
-   b. Remove related data (UserEmails, ContactFields, VolunteerHistoryEntries)
-   c. End all team memberships (LeftAt = now)
-   d. End active role assignments (ValidTo = now)
-   e. Disable login (LockoutEnd = MaxValue, rotate SecurityStamp)
-   f. Clear DeletionRequestedAt / DeletionScheduledFor
-   g. Audit log: AccountAnonymized
-   h. Send confirmation email to original address
-3. SaveChanges (single transaction for all users)
+2. For each user, oldest merge-chain id first and the survivor last:
+   a. Run the GDPR Article 17 erasure fan-out (IGdprService.EraseForUserAsync) —
+      every section with user-scoped data erases or anonymizes its own tables;
+      see GDPR Data Export for the contributor roster and per-section retention
+   b. Audit log: AccountAnonymized (subject is the user id only — the audit log
+      survives erasure, so the entry never names the human)
+   c. Send a confirmation email to the original address (DoNotPersist — no outbox row)
+3. A contributor failure aborts that user's cascade; the deletion markers stay set
+   so the whole cascade retries the next day. One user's failure does not stop the run.
 ```
 
-**Google deprovisioning**: Not handled by this job. Team membership endings (step 2c) are picked up by the normal sync jobs (`SystemTeamSyncJob` / `GoogleResourceReconciliationJob`), which remove the corresponding Google Group memberships and Shared Drive permissions. This keeps deprovisioning on the same code path as any other team departure.
+**Google deprovisioning**: Not handled by this job. Team membership endings (part of the fan-out) are picked up by the normal sync jobs (`SystemTeamSyncJob` / `GoogleResourceReconciliationJob`), which remove the corresponding Google Group memberships and Shared Drive permissions. This keeps deprovisioning on the same code path as any other team departure.
 
-**Preserved for audit trail**: ConsentRecords and Applications are kept (anonymized implicitly via the user record). ConsentRecords are immutable (DB triggers prevent UPDATE/DELETE).
+**Preserved for audit trail**: what each section keeps after erasure — and its lawful basis — is declared per contributor in [GDPR Data Export](gdpr-export.md#right-to-deletion-article-17), the single source of truth. Append-only entities (consent records, audit log, and similar) are never deleted; foreign keys are nulled or re-pointed at the anonymized user.
 
 See [Profiles — Account Deletion](../../../src/Sections/Humans.Users/Docs/features/profiles.md#account-deletion-right-to-erasure) for the full user-facing workflow.
 

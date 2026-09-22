@@ -17,7 +17,6 @@ Runs during `dotnet build`:
 - `MA0026` - Fix TODO comment
 - `MA0051` - Method is too long
 - `VSTHRD200` - Use "Async" suffix for async methods (not required for ASP.NET Core controller actions)
-- `HUM_USER_NORMALIZEDEMAIL` - Legacy reads of Identity's shadow-populated `User.NormalizedEmail` permitted (issue #635 §15i)
 - `HUM_USER_DISPLAYNAME` - Legacy `User.DisplayName` seeded in test fixtures (account creation/merge/deletion, cached `UserInfo` fallback) — not render-path violations (test projects only, via `tests/Directory.Build.props`)
 
 <!-- /freshness:auto -->

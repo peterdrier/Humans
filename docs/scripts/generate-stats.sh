@@ -107,8 +107,8 @@ if [ -n "${CLOC:-}" ] && [ -x "$CLOC" ]; then
   :
 elif command -v cloc >/dev/null 2>&1; then
   CLOC=cloc
-elif [ -x "/c/Users/$USERNAME/AppData/Local/Microsoft/WinGet/Packages/AlDanial.Cloc_Microsoft.Winget.Source_8wekyb3d8bbwe/cloc.exe" ]; then
-  CLOC="/c/Users/$USERNAME/AppData/Local/Microsoft/WinGet/Packages/AlDanial.Cloc_Microsoft.Winget.Source_8wekyb3d8bbwe/cloc.exe"
+elif [ -x "/c/Users/${USERNAME:-}/AppData/Local/Microsoft/WinGet/Packages/AlDanial.Cloc_Microsoft.Winget.Source_8wekyb3d8bbwe/cloc.exe" ]; then
+  CLOC="/c/Users/${USERNAME:-}/AppData/Local/Microsoft/WinGet/Packages/AlDanial.Cloc_Microsoft.Winget.Source_8wekyb3d8bbwe/cloc.exe"
 else
   echo "Error: cloc not found. Install with 'winget install AlDanial.Cloc' or set CLOC=/path/to/cloc." >&2
   exit 1

@@ -43,4 +43,4 @@
 
 ## G2 queue notes
 
-Development owns no tables — nothing to demolish or rename. `docs/plans/2026-08-03-demolition-inventory.md:604-607` names `Development`, `Gdpr` and `Search` as the genuinely unchecked G2 surfaces (its 2026-08-03 correction, which also clears `Gate` and `Settings` as already swept). **This scorecard is that check, and its answer is "nothing to demolish": Development owns zero tables**, so the inventory entry is satisfied rather than still open — no sweep is owed and none should be requeued from it.
+Development owns no tables — nothing to demolish or rename. the 2026-08-03 demolition inventory (historical, since deleted) — current invariants live in `src/Sections/*/Docs/` and `docs/architecture/design-rules.md` names `Development`, `Gdpr` and `Search` as the genuinely unchecked G2 surfaces (its 2026-08-03 correction, which also clears `Gate` and `Settings` as already swept). **This scorecard is that check, and its answer is "nothing to demolish": Development owns zero tables**, so the inventory entry is satisfied rather than still open — no sweep is owed and none should be requeued from it.

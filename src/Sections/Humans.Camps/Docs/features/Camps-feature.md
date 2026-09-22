@@ -111,14 +111,14 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 
 ### US-20.7: Manage Seasons
 **As a** CampAdmin or Admin
-**I want to** open/close registration seasons, set the public year, and configure name lock dates
+**I want to** open/close registration seasons and configure name lock dates
 **So that** the camp registration lifecycle is controlled
 
 **Acceptance Criteria:**
 - Open a season by year (adds to OpenSeasons list)
 - Close a season by year (removes from OpenSeasons list)
-- Set public year (controls which year is shown on the public page)
 - Set name lock date per year (prevents name changes after date)
+- The publicly-shown year is not set here — it resolves from Settings' active event
 
 ### US-20.8: Delete Camp
 **As an** Admin
@@ -441,7 +441,6 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | Upload/delete images | Camp Lead, CampAdmin, or Admin |
 | Approve/reject season | CampAdmin or Admin |
 | Open/close season | CampAdmin or Admin |
-| Set public year | CampAdmin or Admin |
 | Set name lock date | CampAdmin or Admin |
 | Delete camp | Admin only |
 | Manage role definitions (create/edit/deactivate/reactivate) | CampAdmin or Admin |

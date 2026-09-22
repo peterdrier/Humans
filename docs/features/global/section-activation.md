@@ -42,7 +42,7 @@ before anything composes from discovery:
   section `X`; the graph is those edges. Transitivity needs no extra pass — every active
   section is checked, so a chain breaks at whichever link is missing.
 - **A section Shell itself consumes is deactivated.** Shell always runs — `HomeController`
-  names `IUserService` — so its own references are validated as if it were an active
+  names `IUserServiceRead` — so its own references are validated as if it were an active
   section. It appears in error messages under its assembly name, `Web`.
 
 ### What the scan cannot see

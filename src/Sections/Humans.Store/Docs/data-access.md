@@ -7,9 +7,10 @@ Folder: `src/Sections/Humans.Store/Services/` (namespace
 `StoreProducts`, `StoreOrders`, `StoreOrderLines`, `StorePayments`,
 `StoreInvoices`, `StoreTreasurySyncStates`.
 
-### StoreService (Scoped)
+### StoreAccountingRead (Scoped)
 
-Repository: `IStoreRepository`.
+The section's `Service` class (`Services/Service.cs`); its only published contract is
+`IStoreAccountingRead`. Repository: `IStoreRepository`.
 
 | Table | R/W |
 |-------|-----|
@@ -29,7 +30,7 @@ webhook events including SEPA async-payment transitions), `IHoldedClient` (the
 and the chart-of-accounts read that resolves account numbers to Holded ids), plus
 `IClock`. No `IMemoryCache`.
 
-`StoreService` owns the full Stripe **payment flow**: synchronous card/wallet
+The service owns the full Stripe **payment flow**: synchronous card/wallet
 payments are recorded as `Paid` on `checkout.session.completed`; SEPA/delayed
 methods are recorded `Pending` (mandate captured, not yet cleared) and
 transitioned to `Paid` / `Failed` via `async_payment_succeeded` /
@@ -46,7 +47,7 @@ reconciliation reads live Stripe sessions via `IStripeService`.
 
 Legacy `StoreOrders.Year = 0` rows are reviewed and repaired through
 `/Store/Admin/OrderYears`. `IStoreRepository.GetOrdersWithMissingYearAsync` reads the
-Store-owned candidates; `StoreService` resolves each cross-section season through
+Store-owned candidates; the service resolves each cross-section season through
 `ICampServiceRead`, updates only resolvable rows, and audits every confirmed repair.
 
 `IssueInvoiceAsync` is the section's only outbound write: it reprices the order's line

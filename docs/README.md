@@ -27,6 +27,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Feature 21: Email Outbox](../src/Sections/Humans.Email/Docs/features/email-outbox.md) | Outbox pattern for reliable transactional email delivery with retry and crash recovery |
 | [`[ExpiresOn]` — Hard removal deadlines](features/global/expires-on-deadline.md) | Analyzer-enforced removal deadlines that escalate deprecation warnings to errors on a fixed date |
 | [Feedback System](../src/Sections/Humans.Feedback/Docs/features/feedback-system.md) | Retired (nobodies-collective/Humans#977) — closed to new reports and Admin-only; superseded by Issues |
+| [SEPA Payout of Creditor Balances](../src/Sections/Humans.Finance/Docs/features/sepa-payout.md) | `/Finance/Creditors` and `/Finance/Sepa`: generate a pain.001.001.09 SEPA Credit Transfer file for member creditor balances and book settled transfers back into Holded |
 | [Gate Admissions](../src/Sections/Humans.Gate/Docs/features/gate-admissions.md) | Gate QR scanning on rugged tablets deciding entry against ticket validity, photo-ID name check, and Early Entry grants — shipped design draft; `src/Sections/Humans.Gate/Docs/Gate.md` is the authoritative current-state doc |
 | [Administration](features/global/administration.md) | Admin dashboards and management screens for members, applications, teams, and organizational compliance |
 | [Background Jobs](features/global/background-jobs.md) | Hangfire-scheduled automated operations for syncing, reminders, compliance enforcement, and system team maintenance |
@@ -41,13 +42,17 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Board Voting](../src/Sections/Humans.Governance/Docs/features/board-voting.md) | Structured Board vote on Colaborador/Asociado tier applications with individual votes, meeting date, and collective decision |
 | [Membership Status Partition](../src/Sections/Humans.Governance/Docs/features/membership-status.md) | Six-bucket mutually exclusive status model computed by `PartitionUsersAsync` and used by the Admin dashboard — the Admin /Humans list and Volunteers team sync each compute their own status buckets independently now |
 | [Membership Tiers](../src/Sections/Humans.Governance/Docs/features/membership-tiers.md) | Four-tier membership model (Volunteer / Colaborador / Asociado / Board) with three tiers managed in-system |
+| [Assembly Votes](../src/Sections/Humans.Governance/Docs/features/assembly-votes.md) | Binding recorded votes of the Asociados on Assembly motions — frozen roster at open, embargoed tally, append-only ballot history, IRV counting |
 | [In-App Guide](../src/Sections/Humans.Guide/Docs/features/in-app-guide.md) | Embedded `/Guide` rendering of the `docs/guide/` markdown with role-aware filtering and in-app navigation |
 | [Issues System](../src/Sections/Humans.Issues/Docs/features/issues-system.md) | In-app issue tracker routing bugs/features/questions by section to the right role-holders, with reporter↔handler threads |
 | [Legal Documents & Consent Management](../src/Sections/Humans.Consent/Docs/features/legal-documents-consent.md) | GDPR-compliant document version tracking with immutable consent audit trail, team-scoped, multi-language, configurable through admin GUI |
 | [MailerLite Audience Debug Screen](../src/Sections/Humans.MailerLite/Docs/features/audience-debug-screen.md) | Per-audience debug screen previewing exactly what the next MailerLite `Sync` would apply, so admins can spot anomalies before pulling the trigger |
 | [Notification Inbox](../src/Sections/Humans.Notifications/Docs/features/notification-inbox.md) | Central "what needs my attention" view with shared resolution for group-targeted notifications |
+| [Notification Board](../src/Sections/Humans.Notifications/Docs/features/notification-board.md) | In-RAM, rebuilt-from-source notification board superseding the stored inbox — a notification is only something to do now, closed by resolving the underlying condition |
+| [Notifications Machine API](../src/Sections/Humans.Notifications/Docs/features/notification-api.md) | `GET /api/backdoor/notifications` — read-only key-authed access to a key owner's unread inbox and live meters |
 | [Onboarding Pipeline](../src/Sections/Humans.Onboarding/Docs/features/onboarding-pipeline.md) | End-to-end signup-to-active-membership journey with parallel legal-consent and Consent Coordinator review tracks |
 | [Volunteer Status](../src/Sections/Humans.Onboarding/Docs/features/volunteer-status.md) | App access is the stored `UserState` (set by entering a legal name); the system-managed Volunteers team is reconciled separately on name + consents, with the consent check an audit annotation, not an access gate |
+| [Rideshare Board](../src/Sections/Humans.Rideshare/Docs/features/rideshare-board.md) | Members-only map board of real road-route ride offers and requests to and from the burn — no booking, no payment, no auto-matching |
 | [Burner-Name Collision Warning](../src/Sections/Humans.Users/Docs/features/burner-name-collision-warning.md) | Live edit-profile warning telling a user how many other humans already use the burner name they are typing, so they can pick a more distinguishable one |
 | [Communication Preferences](../src/Sections/Humans.Users/Docs/features/communication-preferences.md) | GDPR/CAN-SPAM-compliant per-category email and in-app alert opt-in/opt-out controls |
 | [Feature 29: Contact Accounts](../src/Sections/Humans.Users/Docs/features/contact-accounts.md) | Pre-provisioned Identity users for external mailing-list, ticket-purchase, and admin-entered contacts |
@@ -75,6 +80,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Survey Intro Markdown](../src/Sections/Humans.Surveys/Docs/features/survey-intro-markdown.md) | Markdown-rendered respondent intro copy so authored paragraphs, emphasis, links, and lists survive instead of collapsing to a single HTML-encoded line |
 | [Custom Survey Invitation Email Copy](../src/Sections/Humans.Surveys/Docs/features/survey-invitation-email-copy.md) | Optional per-survey, per-language invitation email subject and Markdown message authored in the builder, layered inside the standard branded invitation frame |
 | [Survey Preview and Preview Email](../src/Sections/Humans.Surveys/Docs/features/survey-preview.md) | In-browser preview of the respondent experience and a preview invitation email, so authors can verify a survey before opening it or sending to a real audience |
+| [Ranked-Choice Voting](../src/Sections/Humans.Surveys/Docs/features/ranked-choice-voting.md) | Ranked-choice question type available in ordinary surveys and Asociado votes, with equal ranks, optional reject, and removable dates that don't rewrite ballots |
 | [Hidden Teams](../src/Sections/Humans.Teams/Docs/features/hidden-teams.md) | Privacy-sensitive teams invisible to non-admin users for campaign targeting (e.g., low-income ticket programs) |
 | [Teams & Working Groups](../src/Sections/Humans.Teams/Docs/features/Teams-feature.md) | Self-organizing working groups with optional department hierarchy and three system-managed teams tracking key organizational roles |
 | [Test System Reliability](testing/test-system-reliability.md) | Multi-phase rebuild of the test setup so CI catches what local sees, integration tests survive concurrent runs, and "pre-existing failures on main" stops being said |
@@ -125,6 +131,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Rideshare](../src/Sections/Humans.Rideshare/Docs/Rideshare.md) | Members-only map board for organizing rides to and from the burn — offers, requests, and a lightweight interest lifecycle, no booking or payment |
 | [Scanner](../src/Sections/Humans.Scanner/Docs/Scanner.md) | In-browser camera tools for barcode decode (`/Scanner/Barcode`) and read-only ticket lookup (`/Scanner/Tickets`); no owned tables |
 | [Search](../src/Sections/Humans.Search/Docs/Search.md) | Orchestrator behind the global `/Search` page — fans out to five sections' read surfaces, scores each independently, owns no tables |
+| [Settings](../src/Sections/Humans.Settings/Docs/Settings.md) | App-wide `system_settings` key/value store every section may read and write, plus `settings_event`, the app-wide event calendar and active-cycle record |
 | [Shifts](../src/Sections/Humans.Shifts/Docs/Shifts.md) | Event shifts, rotas, signups, range blocks, event settings, general availability, and per-event volunteer profiles |
 | [Store](../src/Sections/Humans.Store/Docs/Store.md) | Per-camp catalog ordering, multi-method payments, and consolidated Holded factura issuance for Camp Lead purchases |
 | [Stripe](../src/Sections/Humans.Stripe/Docs/Stripe.md) | The payments connector — Checkout Session creation, webhook signature verification, fee lookups, boot-time key probes; owns no tables and no UI |
@@ -134,6 +141,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Ticket Tailor](../src/Sections/Humans.TicketTailor/Docs/TicketTailor.md) | The Ticket Tailor adapter behind Tickets' vendor port: live client in Production, deterministic stub everywhere else; owns no tables and no UI |
 | [Tour](../src/Sections/Humans.Tour/Docs/Tour.md) | Public marketing page — what Humans is, in plain language, for visitors evaluating the platform |
 | [Users](../src/Sections/Humans.Users/Docs/Users.md) | Merges the old Users and Profiles docs: the User/Identity aggregate (provisioning, unsubscribe, event participation) plus per-human personal data (profile, contact fields, emails, communication preferences) |
+| [Workgroups](../src/Sections/Humans.Workgroups/Docs/Workgroups.md) | Register of association-level working groups the Board resolution obliges the Secretary to keep — administrative recognition, not a workflow engine |
 
 ## User Guide
 
@@ -153,6 +161,7 @@ The end-user guide for the Humans app, organized by role within each section.
 | [Feedback](guide/Feedback.md) | Retired predecessor to Issues — Admins triage the historical queue; report bugs and ideas via `/Issues` instead |
 | [Google Integration](guide/GoogleIntegration.md) | Wires teams up to Google Workspace: Group, Shared Drive, Workspace accounts, and Drive activity monitoring |
 | [Governance](guide/Governance.md) | Tier applications, Board votes, and coordinator/admin role assignments — not Volunteer onboarding |
+| [Issues](guide/Issues.md) | File a bug, feature request, or question and talk it through in one thread with whoever handles that part of the app |
 | [Consent](guide/LegalAndConsent.md) | Documents you sign, GDPR Article 15 export, and Article 17 deletion |
 | [Onboarding](guide/Onboarding.md) | The path from signing up to becoming an active Volunteer |
 | [Profiles](guide/Profiles.md) | Your profile: personal info, contact handles, emails, shift preferences, and communication settings |

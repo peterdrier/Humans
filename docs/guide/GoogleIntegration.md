@@ -27,9 +27,9 @@ All Drive resources are on **Shared Drives only** (no personal My Drive), and th
 
 ## Key pages at a glance
 
-- **Google dashboard** (`/Google`) — entry point; on-demand check buttons (Sync System Teams, Check Group Settings, Check Email Renames). Sub-pages (sync settings, accounts, domain groups, outbox, detection results) are reached from the Google section of the admin sidebar.
+- **Google dashboard** (`/Google`) — entry point; on-demand check buttons (Sync System Teams, Check Group Settings, Check Email Renames). Sub-pages (accounts, domain groups, outbox, detection results) are reached from the Google section of the admin sidebar.
 - **Sync status** (`/Google/Sync`) — tabbed Drive / Groups view of every active linked resource with drift and Sync Now.
-- **Sync settings** (`/Google/SyncSettings`) — per-service sync mode (None / AddOnly / AddAndRemove).
+- **Sync settings** (`/Settings#google-sync`) — per-service sync mode (None / AddOnly / AddAndRemove).
 - **All Groups** (`/Google/AllGroups`) — every Google Group in the domain, linked or not.
 - **Workspace accounts** (`/Google/Accounts`) — every `@nobodies.team` account, with link-to-human search.
 - **Sync audit** — per-human (`/Google/Human/{id}`) and per-resource (`/Google/Resource/{id}`).
@@ -77,7 +77,7 @@ Sync settings, group-settings drift remediation, and workspace account provision
 
 ### Configure sync modes
 
-At `/Google/SyncSettings` (Admin only), each service (Google Drive, Google Groups) gets a mode: **None** (jobs and manual sync skip the service — default on fresh installs), **AddOnly** (grants missing access, never revokes), or **AddAndRemove** (full bidirectional sync). Flipping a service to `None` is a fast kill switch with no redeploy.
+At `/Settings#google-sync` (Admin only), each service (Google Drive, Google Groups) gets a mode: **None** (jobs and manual sync skip the service — default on fresh installs), **AddOnly** (grants missing access, never revokes), or **AddAndRemove** (full bidirectional sync). Flipping a service to `None` is a fast kill switch with no redeploy.
 
 ### Review sync status and run reconciliation
 

@@ -36,7 +36,7 @@ As an **Admin** I want to **see all agent conversations and refusals** so that *
 **Acceptance:**
 - `/Agent/Conversations` adapts to the role: regular users see only their own (a fixed most-recent window, no paging); Admins see all conversations with a Human column, filters for refusals-only, handoffs-only, and per-user, and Older/Newer paging (zero-based `page` query param, preserving the active filters).
 - `/Agent/Conversations/{id}` shows additional Admin-only details (token counts, tool invocations, "Show what would be sent to Anthropic" link).
-- `/Agent/Admin/Settings` exposes `Enabled`, `Model`, caps, `PreloadConfig` (Tier1/Tier2).
+- `/Settings#agent` exposes `Enabled`, `Model`, caps, `PreloadConfig` (Tier1/Tier2), posting to `/Agent/Admin/Settings`.
 
 ### US-40.4 — Admin disables under abuse
 As an **Admin** I want to **disable the agent globally with one setting change** so that **I can react to abuse or provider outages immediately**.

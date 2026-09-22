@@ -197,6 +197,7 @@ Each active section implementing `ISectionAdminTiles` contributes `AdminTile`s (
 | `email.outbox` | Emails | Email | — | `IEmailOutboxServiceRead.GetOutboxStatsAsync` total |
 | `store.orders` | Store orders | Store | StoreCatalogAdmin | Store's own `Service.GetStoreSummaryAsync` for the active event year; blank with no active event |
 | `expenses.reports` | Expense reports | Expenses | FinanceAdminOrAdmin | `IExpenseReportServiceRead.GetAllAsync`, all statuses |
+| `workgroups.queue` | Workgroups | Workgroups | BoardOrAdmin | `IWorkgroupService.GetRegisterAsync` — pending applications/referrals plus items awaiting a disposition; hidden when nothing is waiting |
 
 ### Cards — `admin-dashboard` chrome slot
 
@@ -416,7 +417,7 @@ Sections contribute a tab to `/Settings` via `ISectionSettings`; the old standal
 
 | Tab key | Section | Policy | Old route (now removed) |
 |---|---|---|---|
-| `city-planning` | CityPlanning | `CampAdminOrAdmin` | Settings portion of `/CityPlanning/BarrioMap/Admin` (page stays for GeoJSON/containers/export) |
+| `city-planning` | CityPlanning | `CityPlanningMapAdmin` (CampAdmin/Admin or a city-planning team member — wider than the `CampAdminOrAdmin`-gated "Barrio map" nav item, since this tab is the only route to these controls) | Settings portion of `/CityPlanning/BarrioMap/Admin` (page stays for GeoJSON/containers/export) |
 | `gate` | Gate | `TicketAdminOrAdmin` | Settings portion of `/Gate/Admin` (page stays for staff PIN admin) |
 | `event-guide` | Events | `EventsAdminOrAdmin` | `/Events/Admin/Settings` (nav item removed) |
 | `barrios` | Camps | `CampAdminOrAdmin` | Settings portion of `/Camps/Admin` (page stays for the rest of camp/season admin) |
@@ -424,7 +425,7 @@ Sections contribute a tab to `/Settings` via `ISectionSettings`; the old standal
 | `agent` | Agent | `AdminOnly` | `/Agent/Admin/Settings` (nav item removed) |
 | `google-sync` | GoogleIntegration | `AdminOnly` | `/Google/SyncSettings` (nav item removed) |
 | `email` | Email | `AdminOnly` | Pause/resume moved from `EmailOutbox`'s own controls |
-| `event` | Settings | `AdminOnly` | `/Settings/Admin` GET (nav item removed) |
+| `event` | Settings | `AdminOnly` | `/Settings/Admin` GET (nav item retained, repointed at `/Settings#event`) |
 
 ## System Health
 

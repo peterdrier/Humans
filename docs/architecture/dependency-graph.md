@@ -56,13 +56,13 @@ graph LR
     classDef holded fill:#ca8a04,color:#fff
     classDef guide fill:#65a30d,color:#fff
     classDef rideshare fill:#f472b6,color:#000
+    classDef workgroups fill:#e11d48,color:#fff
     classDef crosscut fill:#334155,color:#fff
     classDef platform fill:#52525b,color:#fff
 
     %% ── Cross-cutting services (hub) ──
     Audit[AuditLogService]:::crosscut
-    AuditViewer[AuditViewerService]:::crosscut
-    Email[IEmailService]:::crosscut
+    Email[OutboxEmailService]:::crosscut
     Notif[NotificationService]:::crosscut
     Role[RoleAssignmentService]:::auth
     Metrics[HumansMetricsService]:::crosscut
@@ -70,16 +70,25 @@ graph LR
     %% ── Section services (only those with cross-section edges) ──
     Backdoor[BackdoorApiKeyService]:::crosscut
 
-    Prof[ProfileService]:::profiles
-    ProfEdit[ProfileEditorService]:::profiles
-    CF[ContactFieldService]:::profiles
-    UEmail[UserEmailService]:::profiles
-    CommPref[CommunicationPreferenceService]:::profiles
-    EmailProb[EmailProblemsService]:::profiles
+    User[UserService]:::users
+    UEmail[UserEmailService]:::users
+    CommPref[CommunicationPreferenceService]:::users
+    CF[ContactFieldService]:::users
+    AcctProv[AccountProvisioningService]:::users
+    AcctDel[AccountDeletionService]:::users
+    UserParticipationBackfill[UserParticipationBackfillService]:::users
+    Merge[AccountMergeService]:::users
+    DupAcct[DuplicateAccountService]:::users
+    ExtLogin[ExternalLoginService]:::users
+    UsersAudience[UsersAudienceService]:::users
+    HumanLifecycle[HumanLifecycleService]:::users
+    TeamMsgOpts[TeamMessageOptionsProvider]:::users
+
+    AdminAuth[AdminAuthorizationService]:::auth
+    MagicLink[MagicLinkService]:::auth
 
     Team[TeamService]:::teams
     TPage[TeamPageService]:::teams
-    TRes[TeamResourceService]:::teams
 
     Camp[CampService]:::camps
     CampContact[CampContactService]:::camps
@@ -93,7 +102,6 @@ graph LR
     ShiftSign[ShiftSignupService]:::shifts
     VolTrack[VolunteerTrackingService]:::shifts
     VolTrackExport[VolunteerTrackingExportService]:::shifts
-    BurnSettings[BurnSettingsService]:::shifts
     ShiftView[ShiftViewService]:::shifts
     RotaMsg[RotaCoordinatorMessageService]:::shifts
     Workload[WorkloadService]:::shifts
@@ -111,514 +119,525 @@ graph LR
 
     TicketQ[TicketQueryService]:::tickets
     TicketSync[TicketSyncService]:::tickets
-    TicketBudget[TicketingBudgetService]:::tickets
     TicketTransfer[TicketTransferService]:::tickets
     AttendeeImport[AttendeeContactImportService]:::tickets
     OnsiteRoster[OnsiteRosterService]:::tickets
     TicketVendor[TicketVendorGateway]:::tickets
+
+    TicketTailor[TicketVendorService]:::tickets
+
+    Stripe[StripeService]:::store
 
     Campaign[CampaignService]:::campaigns
 
     GSyncSvc[GoogleWorkspaceSyncService]:::google
     GGroupSync[GoogleGroupSyncService]:::google
     GAdmin[GoogleAdminService]:::google
+    GDriveAccess[GoogleDriveAccessSyncService]:::google
     EmailProv[EmailProvisioningService]:::google
-    DriveMon[DriveActivityMonitorService]:::monitor
     GRemoval[GoogleRemovalNotificationService]:::google
     GSyncOutbox[GoogleSyncOutboxService]:::google
     GSyncOutboxProc[GoogleSyncOutboxProcessor]:::google
     GTrans[GoogleTranslationService]:::google
     GSyncHistMig[GoogleSyncHistoryMigrationService]:::google
     GSyncLog[GoogleSyncLogService]:::google
+    TRes[TeamResourceService]:::google
+
+    DriveMon[DriveActivityMonitorService]:::monitor
 
     Onboard[OnboardingService]:::onboarding
     OnboardWidget[OnboardingWidgetState]:::onboarding
-    HumanLifecycle[HumanLifecycleService]:::onboarding
+
     Feedback[FeedbackService]:::feedback
+
     Budget[BudgetService]:::budget
-    Finance[Finance.Service]:::finance
+    TicketBudget[TicketingBudgetService]:::budget
+
+    Finance[FinanceService]:::finance
+
     Holded[HoldedService]:::holded
-
-    User[UserService]:::users
-    AcctProv[AccountProvisioningService]:::users
-    Unsub[UnsubscribeService]:::users
-    AcctDel[AccountDeletionService]:::users
-    UserParticipationBackfill[UserParticipationBackfillService]:::users
-    UEmailProvBackfill[UserEmailProviderBackfillService]:::users
-    Merge[AccountMergeService]:::users
-    DupAcct[DuplicateAccountService]:::users
-    ExtLogin[ExternalLoginService]:::users
-    UsersAudience[UsersAudienceService]:::users
-
-    AdminAuth[AdminAuthorizationService]:::auth
-    MagicLink[MagicLinkService]:::auth
 
     Cal[CalendarService]:::calendar
     ICalFeed[ICalFeedService]:::icalfeed
 
-    AdminDbDiag[AdminDatabaseDiagnosticsService]:::platform
-    Dash[DashboardService]:::dashboard
-    AdminDash[AdminDashboardService]:::dashboard
-
     EmailOutbox[EmailOutboxService]:::email
     EmailOutboxProc[EmailOutboxProcessor]:::email
+    ComposerSelfSend[ComposerSelfSendService]:::email
+    EmailPreview[EmailPreviewService]:::email
+
     NotifEmitter[NotificationEmitter]:::notifications
     NotifInbox[NotificationInboxService]:::notifications
     NotifMeter[NotificationMeterProvider]:::notifications
-    OutboxEmail[OutboxEmailService]:::notifications
+
+    Gdpr[GdprService]:::crosscut
 
     Search[SearchService]:::search
+
     Issues[IssuesService]:::issues
-    Store[StoreService]:::store
+
+    Store[StoreAccountingRead]:::store
+
     ExpenseReport[ExpenseReportService]:::expenses
+
     Container[ContainerService]:::containers
+
     MailerLiteSync[MailerLiteAudienceSyncService]:::mailerlite
     MailerLiteImport[MailerLiteImportService]:::mailerlite
+    MailerLiteGdpr[MailerLiteGdprContributor]:::mailerlite
 
     EventSvc[EventService]:::events
+
     EarlyEntry[EarlyEntryService]:::earlyentry
+
     Gate[GateService]:::gate
+
     Survey[SurveyService]:::surveys
     SurveyPrevEmail[SurveyPreviewEmailService]:::surveys
+
     SettingsSvc[SettingsWriteService]:::settings
+
     Guide[GuideRoleResolver]:::guide
+
     Rideshare[RideshareService]:::rideshare
+
+    Workgroup[WorkgroupService]:::workgroups
 
     %% ═══════════════════════════════════
     %% Ctor-injected dependencies (solid)
     %% ═══════════════════════════════════
 
-    %% AuditLog (crosscut read+render side)
+    %% AuditLog
     Audit --> User
-    AuditViewer --> User
-    AuditViewer --> Team
-    AuditViewer --> TRes
 
-    %% Backdoor (machine-API keys)
+    %% Backdoor
+    Backdoor --> Audit
     Backdoor --> Role
     Backdoor --> User
-    Backdoor --> Audit
 
-    %% Profiles
-    Prof --> User
-    ProfEdit --> User
-    CF --> User
-    CF --> Team
-    CF --> Role
-    UEmail --> User
+    %% Users
+    User --> AdminAuth
     UEmail --> Audit
-    CommPref --> User
     CommPref --> Audit
-    EmailProb --> User
+    CF --> Role
+    CF --> Team
+    AcctProv --> Audit
+    AcctDel --> Audit
+    AcctDel --> Email
+    AcctDel --> Role
+    AcctDel --> Team
+    AcctDel --> ShiftMgmt
+    AcctDel --> ShiftView
+    AcctDel --> TicketQ
+    AcctDel --> Gdpr
+    UserParticipationBackfill --> SettingsSvc
+    Merge --> Audit
+    Merge --> Notif
+    Merge --> Role
+    Merge --> Consent
+    DupAcct --> Audit
+    DupAcct --> Role
+    DupAcct --> Team
+    ExtLogin --> MagicLink
+    UsersAudience --> TicketQ
+    HumanLifecycle --> Audit
+    HumanLifecycle --> Metrics
+    HumanLifecycle --> NotifEmitter
+    HumanLifecycle --> NotifInbox
+    TeamMsgOpts --> Team
+    TeamMsgOpts --> TRes
+
+    %% Auth
+    Role --> Audit
+    Role --> User
+    Role --> NotifEmitter
+    MagicLink --> Email
+    MagicLink --> User
+    MagicLink --> UEmail
 
     %% Teams
-    Team --> ShiftMgmt
-    Team --> NotifEmitter
     Team --> Audit
     Team --> AdminAuth
-    TPage --> ShiftMgmt
-    TPage --> SettingsSvc
+    Team --> ShiftMgmt
+    Team --> NotifEmitter
+    Team --> EarlyEntry
     TPage --> User
-    TRes --> Audit
+    TPage --> ShiftMgmt
+    TPage --> TRes
+    TPage --> SettingsSvc
 
     %% Camps
+    Camp --> Audit
     Camp --> User
     Camp --> NotifEmitter
-    Camp --> Audit
+    Camp --> EarlyEntry
+    Camp --> SettingsSvc
+    CampContact --> Audit
     CampContact --> Email
     CampContact --> NotifEmitter
-    CampContact --> Audit
+    CampRole --> Audit
     CampRole --> User
     CampRole --> UEmail
     CampRole --> NotifEmitter
-    CampRole --> Audit
 
     %% Cantina
-    Cantina --> ShiftMgmt
     Cantina --> User
+    Cantina --> ShiftMgmt
     Cantina --> SettingsSvc
 
     %% CityPlanning
-    CityPlan --> Camp
-    CityPlan --> Team
-    CityPlan --> User
     CityPlan --> Audit
+    CityPlan --> User
+    CityPlan --> Team
+    CityPlan --> Camp
 
     %% Shifts
     ShiftMgmt --> Audit
     ShiftMgmt --> AdminAuth
-    ShiftSign --> NotifEmitter
     ShiftSign --> Audit
+    ShiftSign --> User
     ShiftSign --> AdminAuth
+    ShiftSign --> NotifEmitter
+    ShiftSign --> EarlyEntry
     VolTrack --> User
     VolTrackExport --> User
-    RotaMsg --> Team
-    RotaMsg --> User
-    RotaMsg --> Email
     RotaMsg --> Audit
-    Workload --> Team
+    RotaMsg --> Email
+    RotaMsg --> User
+    RotaMsg --> Team
     Workload --> User
+    Workload --> Team
 
     %% Governance
-    AppDec --> User
-    AppDec --> Role
-    AppDec --> UEmail
-    AppDec --> Email
-    AppDec --> NotifEmitter
-    AppDec --> Metrics
     AppDec --> Audit
+    AppDec --> Email
+    AppDec --> Role
+    AppDec --> Metrics
+    AppDec --> User
+    AppDec --> UEmail
+    AppDec --> NotifEmitter
     MembershipCalc --> User
     MembershipCalc --> LegalSync
-    MemQuery --> Team
     MemQuery --> Role
-    GovIndex --> LegalDoc
+    MemQuery --> Team
     GovIndex --> User
+    GovIndex --> LegalDoc
+    AssemblyVote --> Audit
+    AssemblyVote --> Email
     AssemblyVote --> Role
-    AssemblyVote --> Team
     AssemblyVote --> User
     AssemblyVote --> UEmail
-    AssemblyVote --> Email
+    AssemblyVote --> Team
+    AssemblyVote --> GTrans
     AssemblyVote --> NotifEmitter
     AssemblyVote --> NotifInbox
-    AssemblyVote --> Audit
-    AssemblyVote --> GTrans
 
-    %% Legal + Consent
+    %% Consent
     LegalSync --> User
     LegalSync --> Team
     LegalSync --> NotifEmitter
-    Consent --> LegalSync
-    Consent --> NotifInbox
-    Consent --> HumanLifecycle
-    Consent --> User
     Consent --> Metrics
+    Consent --> User
+    Consent --> HumanLifecycle
+    Consent --> NotifInbox
     LegalSyncRunner --> Email
-    LegalSyncRunner --> Team
     LegalSyncRunner --> User
+    LegalSyncRunner --> Team
 
     %% Tickets
-    TicketQ --> Budget
-    TicketQ --> Campaign
     TicketQ --> User
     TicketQ --> UEmail
     TicketQ --> Team
-    TicketQ --> ShiftMgmt
+    TicketQ --> Campaign
+    TicketQ --> Budget
     TicketQ --> SettingsSvc
     TicketSync --> User
+    TicketSync --> TicketTailor
+    TicketSync --> Stripe
     TicketSync --> Campaign
-    TicketSync --> ShiftMgmt
     TicketSync --> SettingsSvc
-    TicketBudget --> Budget
+    TicketTransfer --> Audit
+    TicketTransfer --> Email
     TicketTransfer --> User
     TicketTransfer --> UEmail
-    TicketTransfer --> Email
-    TicketTransfer --> Audit
-    AttendeeImport --> AcctProv
+    TicketTransfer --> TicketTailor
+    AttendeeImport --> Audit
     AttendeeImport --> User
     AttendeeImport --> UEmail
-    AttendeeImport --> ShiftMgmt
+    AttendeeImport --> AcctProv
     AttendeeImport --> SettingsSvc
-    AttendeeImport --> Audit
-    OnsiteRoster --> User
-    OnsiteRoster --> Camp
-    OnsiteRoster --> Team
     OnsiteRoster --> Role
+    OnsiteRoster --> User
+    OnsiteRoster --> Team
+    OnsiteRoster --> Camp
+    TicketVendor --> TicketTailor
 
     %% Campaigns
-    Campaign --> Team
+    Campaign --> Email
     Campaign --> User
     Campaign --> UEmail
-    Campaign --> CommPref
-    Campaign --> NotifEmitter
-    Campaign --> Email
+    Campaign --> Team
     Campaign --> TicketVendor
+    Campaign --> NotifEmitter
 
-    %% Google
-    GSyncSvc --> Team
+    %% GoogleIntegration
+    GSyncSvc --> Audit
     GSyncSvc --> User
     GSyncSvc --> UEmail
-    GSyncSvc --> Audit
-    GGroupSync --> Team
-    GGroupSync --> TRes
+    GSyncSvc --> Team
+    GGroupSync --> Audit
     GGroupSync --> User
     GGroupSync --> UEmail
-    GGroupSync --> Audit
-    GAdmin --> Team
-    GAdmin --> TRes
+    GGroupSync --> Team
+    GAdmin --> Audit
     GAdmin --> User
     GAdmin --> UEmail
-    GAdmin --> Audit
+    GAdmin --> Team
+    GDriveAccess --> Audit
+    GDriveAccess --> User
+    GDriveAccess --> UEmail
+    EmailProv --> Audit
+    EmailProv --> Email
     EmailProv --> User
     EmailProv --> UEmail
     EmailProv --> Team
-    EmailProv --> Email
     EmailProv --> NotifEmitter
-    EmailProv --> Audit
-    GRemoval --> UEmail
-    GRemoval --> User
     GRemoval --> Email
-    %% Monitor (DriveActivityMonitorService moved out of GoogleIntegration; edges kept here so linkStyle indices hold)
-    DriveMon --> TRes
-    DriveMon --> User
-    DriveMon --> SettingsSvc
-    DriveMon --> Audit
+    GRemoval --> User
+    GRemoval --> UEmail
+    GSyncOutboxProc --> Metrics
     GSyncOutboxProc --> User
     GSyncOutboxProc --> Team
-    GSyncOutboxProc --> Metrics
+    GSyncHistMig --> Audit
+    GSyncLog --> User
+    GSyncLog --> UEmail
+    TRes --> Audit
+    TRes --> Team
+
+    %% Monitor
+    DriveMon --> Audit
+    DriveMon --> User
+    DriveMon --> TRes
+    DriveMon --> SettingsSvc
 
     %% Onboarding
+    Onboard --> Audit
+    Onboard --> Email
     Onboard --> User
+    Onboard --> HumanLifecycle
     Onboard --> AppDec
     Onboard --> MembershipCalc
     Onboard --> Consent
-    Onboard --> Email
     Onboard --> NotifEmitter
-    Onboard --> Audit
     OnboardWidget --> User
     OnboardWidget --> ShiftView
     OnboardWidget --> MembershipCalc
-    OnboardWidget --> ShiftMgmt
-    OnboardWidget --> SettingsSvc
     OnboardWidget --> Consent
-    HumanLifecycle --> User
-    HumanLifecycle --> NotifEmitter
-    HumanLifecycle --> NotifInbox
-    HumanLifecycle --> Audit
-    HumanLifecycle --> Metrics
+    OnboardWidget --> SettingsSvc
 
     %% Feedback
+    Feedback --> Audit
+    Feedback --> Email
     Feedback --> User
     Feedback --> UEmail
     Feedback --> Team
-    Feedback --> Email
     Feedback --> NotifEmitter
-    Feedback --> Audit
 
-    %% Budget + Finance + Holded
-    Budget --> Team
+    %% Budget
     Budget --> User
+    Budget --> Team
+    TicketBudget --> TicketQ
+
+    %% Finance
+    Finance --> Audit
     Finance --> Budget
     Finance --> Holded
 
-    %% Users
-    User --> AdminAuth
-    AcctProv --> UEmail
-    AcctProv --> Audit
-    Unsub --> CommPref
-    UserParticipationBackfill --> ShiftMgmt
-    UserParticipationBackfill --> SettingsSvc
-    UEmailProvBackfill --> Audit
-    AcctDel --> UEmail
-    AcctDel --> Team
-    AcctDel --> Role
-    AcctDel --> ShiftMgmt
-    AcctDel --> ShiftSign
-    AcctDel --> TicketQ
-    AcctDel --> Audit
-    AcctDel --> Email
-    Merge --> Role
-    Merge --> Notif
-    Merge --> Audit
-    DupAcct --> Team
-    DupAcct --> Role
-    ExtLogin --> UEmail
-    ExtLogin --> MagicLink
-
-    %% Auth
-    Role --> User
-    Role --> NotifEmitter
-    Role --> Audit
-    MagicLink --> UEmail
-    MagicLink --> User
-    MagicLink --> Email
-
     %% Calendar
-    Cal --> Team
     Cal --> Audit
     ICalFeed --> User
 
-    %% Dashboard
-    Dash --> MembershipCalc
-    Dash --> AppDec
-    Dash --> ShiftMgmt
-    Dash --> BurnSettings
-    Dash --> ShiftView
-    Dash --> TicketQ
-    Dash --> User
-    Dash --> Team
-    AdminDash --> User
-    AdminDash --> MembershipCalc
-    AdminDash --> AppDec
-    AdminDash --> ShiftMgmt
-    AdminDash --> ShiftView
+    %% Email
+    Email --> Metrics
+    Email --> UEmail
+    Email --> CommPref
+    EmailOutbox --> SettingsSvc
+    EmailOutboxProc --> Metrics
+    EmailOutboxProc --> Campaign
+    ComposerSelfSend --> Audit
+    ComposerSelfSend --> User
+    ComposerSelfSend --> UEmail
 
     %% Notifications
+    Notif --> Role
     Notif --> CommPref
     NotifEmitter --> CommPref
     NotifInbox --> User
-    Notif --> Role
     NotifMeter --> User
-    NotifMeter --> GSyncSvc
     NotifMeter --> Team
-    NotifMeter --> TicketSync
-    NotifMeter --> AppDec
     NotifMeter --> Camp
-    OutboxEmail --> UEmail
-    OutboxEmail --> CommPref
-    OutboxEmail --> Metrics
+    NotifMeter --> AppDec
+    NotifMeter --> TicketSync
+    NotifMeter --> GSyncSvc
 
-    %% Search / Issues / Store
+    %% Gdpr
+    Gdpr --> User
+
+    %% Search
     Search --> User
     Search --> Team
     Search --> Camp
     Search --> ShiftMgmt
     Search --> EventSvc
+
+    %% Issues
+    Issues --> Audit
+    Issues --> Email
+    Issues --> Role
     Issues --> User
     Issues --> UEmail
-    Issues --> Role
-    Issues --> Email
     Issues --> NotifEmitter
     Issues --> NotifInbox
-    Issues --> Audit
-    Store --> Camp
-    Store --> Team
-    Store --> ShiftMgmt
-    Store --> SettingsSvc
-    Store --> Holded
-    Store --> Audit
 
-    %% Surveys
-    Survey --> Team
-    Survey --> User
-    Survey --> TicketQ
-    Survey --> ShiftView
-    Survey --> UEmail
-    Survey --> Email
-    Survey --> Audit
-    Survey --> GTrans
+    %% Store
+    Store --> Audit
+    Store --> Team
+    Store --> Camp
+    Store --> Stripe
+    Store --> SettingsSvc
+
+    %% Expenses
+    ExpenseReport --> Audit
+    ExpenseReport --> User
+    ExpenseReport --> Team
+    ExpenseReport --> Budget
+    ExpenseReport --> Finance
+
+    %% Containers
+    Container --> Audit
+    Container --> Camp
+
+    %% MailerLite
+    MailerLiteSync --> Audit
+    MailerLiteSync --> UEmail
+    MailerLiteImport --> Audit
+    MailerLiteImport --> User
+    MailerLiteImport --> UEmail
+    MailerLiteImport --> CommPref
+    MailerLiteImport --> AcctProv
+    MailerLiteGdpr --> UEmail
+
+    %% Events
+    EventSvc --> Email
+    EventSvc --> User
+    EventSvc --> SettingsSvc
 
     %% Gate
+    Gate --> Audit
+    Gate --> Role
+    Gate --> User
+    Gate --> ShiftMgmt
     Gate --> TicketQ
     Gate --> EarlyEntry
     Gate --> SettingsSvc
-    Gate --> ShiftMgmt
-    Gate --> Role
-    Gate --> User
-    Gate --> Audit
 
-    %% Expenses / Containers / MailerLite / Events
-    ExpenseReport --> Budget
-    ExpenseReport --> Team
-    ExpenseReport --> User
-    ExpenseReport --> Finance
-    ExpenseReport --> Audit
-    Container --> Camp
-    Container --> Audit
-    MailerLiteSync --> UEmail
-    MailerLiteSync --> Audit
-    MailerLiteImport --> UEmail
-    MailerLiteImport --> User
-    MailerLiteImport --> AcctProv
-    MailerLiteImport --> CommPref
-    MailerLiteImport --> Audit
-    EventSvc --> SettingsSvc
-    EventSvc --> User
-    EventSvc --> Email
+    %% Surveys
+    Survey --> Audit
+    Survey --> Email
+    Survey --> User
+    Survey --> UEmail
+    Survey --> Team
+    Survey --> ShiftView
+    Survey --> TicketQ
+    Survey --> GTrans
+    SurveyPrevEmail --> Email
+    SurveyPrevEmail --> User
+    SurveyPrevEmail --> UEmail
+    SurveyPrevEmail --> EmailPreview
 
-    %% Rideshare
-    Rideshare --> User
-    Rideshare --> SettingsSvc
-    Rideshare --> NotifEmitter
-    Rideshare --> Audit
-
-    %% Email (admin outbox — pause flag lives in Settings)
-    EmailOutbox --> SettingsSvc
-    EmailOutboxProc --> Campaign
-    EmailOutboxProc --> Metrics
-
-    %% Settings' carry screen reads the Shifts rows it copies from (#1104).
-    %% Temporary: retires with the carry screen.
-
-    %% Web platform (diagnostics — moved to Humans.Web/Services at #1369)
-    AdminDbDiag --> User
-    AdminDbDiag --> TicketQ
+    %% Settings
+    SettingsSvc --> Audit
 
     %% Guide
     Guide --> Team
+    Guide --> Camp
 
-    %% GoogleIntegration → AuditLog / Users
-    GSyncHistMig --> Audit
-    GSyncLog --> User
-    GSyncLog --> UEmail
+    %% Rideshare
+    Rideshare --> Audit
+    Rideshare --> User
+    Rideshare --> NotifEmitter
+    Rideshare --> SettingsSvc
 
-
-
-    %% Surveys → Users / Email
-    SurveyPrevEmail --> User
-    SurveyPrevEmail --> UEmail
-    SurveyPrevEmail --> Email
-
-    %% Users → Tickets
-    UsersAudience --> TicketQ
+    %% Workgroups
+    Workgroup --> Audit
+    Workgroup --> Email
+    Workgroup --> Notif
+    Workgroup --> Role
+    Workgroup --> User
+    Workgroup --> UEmail
+    Workgroup --> GSyncSvc
+    Workgroup --> Survey
+    Workgroup --> SettingsSvc
 
     %% ═══════════════════════════════════
     %% Lazy-resolved (IServiceProvider/Lazy<T>) — break DI cycles
     %% ═══════════════════════════════════
 
-    Team -. "lazy" .-> User
-    Team -. "lazy" .-> Role
-    Team -. "lazy" .-> Email
-    Team -. "lazy" .-> GSyncOutbox
-    Team -. "lazy" .-> GSyncSvc
-    TRes -. "lazy" .-> Role
-    Camp -. "lazy" .-> CityPlan
-    Consent -. "lazy" .-> MembershipCalc
-    MembershipCalc -. "lazy" .-> Consent
-    ShiftMgmt -. "lazy" .-> Team
-    ShiftMgmt -. "lazy" .-> Role
-    ShiftMgmt -. "lazy" .-> TicketQ
-    ShiftMgmt -. "lazy" .-> User
-    ShiftMgmt -. "lazy" .-> Camp
-    ShiftSign -. "lazy" .-> Team
-    UEmail -. "lazy" .-> Merge
+    Metrics -. "lazy" .-> User
     UEmail -. "lazy" .-> TicketQ
-    GSyncSvc -. "lazy" .-> TRes
+    Team -. "lazy" .-> Email
+    Team -. "lazy" .-> Role
+    Team -. "lazy" .-> User
+    Team -. "lazy" .-> GSyncSvc
+    Team -. "lazy" .-> GSyncOutbox
+    Team -. "lazy" .-> TRes
+    Camp -. "lazy" .-> CityPlan
+    ShiftMgmt -. "lazy" .-> Role
+    ShiftMgmt -. "lazy" .-> User
+    ShiftMgmt -. "lazy" .-> Team
+    ShiftMgmt -. "lazy" .-> Camp
+    ShiftMgmt -. "lazy" .-> TicketQ
+    ShiftSign -. "lazy" .-> Team
+    MembershipCalc -. "lazy" .-> Consent
+    Consent -. "lazy" .-> MembershipCalc
+    TRes -. "lazy" .-> Role
+    Cal -. "lazy" .-> Team
 
     %% ── Edge styling ──
-    %% Lazy edges colored + thickened. linkStyle indices are edge declaration order;
-    %% the lazy block is declared last. Recompute the indices whenever edges change.
-    linkStyle 289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306 stroke:#f97316,stroke-width:2.5px
+    %% 300 eager edges (indices 0..299) then 19 lazy edges; linkStyle indexes the lazy block by position.
+    %% Recompute the indices whenever edges change.
+    linkStyle 300,301,302,303,304,305,306,307,308,309,310,311,312,313,314,315,316,317,318 stroke:#f97316,stroke-width:2.5px
 ```
+
 
 ## Services with no cross-section edges
 
 Not drawn above — their collaborators are all section-internal (or fan-out contributor
 interfaces / infra connectors, which this graph doesn't chart):
 
-`AgentService`, `AgentAdminStatusService`, `AgentSettingsService`, `AgentAnthropicBalanceProvider`,
-`GdprService` (fans `IUserDataContributor`), `GoogleWorkspaceUserService`,
-`SyncSettingsService`, `GuideContentService`, `MailerLiteService`, `StripeService`,
-`TicketVendorService`, `EmailPreviewService` (only dep is Email's own `IEmailBodyComposer`),
-`UserNameSyncService` (only deps are Users' own `IUserRepository` and `IUserService`).
+`AdminDatabaseDiagnosticsService` (repository only), `AgentService`, `AgentAdminStatusService`,
+`AgentSettingsService`, `AgentAnthropicBalanceProvider`, `AuditViewerService` (fans
+`IEntityNameContributor`), `BurnSettingsService`, `CalendarFeedTokenService` (Calendar's own
+repository only), `EmailProblemsService`, `GoogleWorkspaceUserService`, `GuideContentService`,
+`MailerLiteService`, `NotificationInboxRead` (composes Notifications' own inbox + meter provider),
+`ProfileService`, `SyncSettingsService`, `UnsubscribeService`, `UserNameSyncService`.
 
 ## Cycles broken by lazy-resolution
 
 Each pair below would fail constructor injection if both sides eager-injected the other.
 
-1. **ShiftManagement ↔ Team** — ShiftManagementService lazy-resolves `ITeamService`; TeamService eagerly injects `IShiftManagementService`. (ShiftSignupService also lazy-resolves `ITeamServiceRead`; the reverse edge runs through ShiftManagementService.)
-2. **ShiftManagement ↔ Tickets** — ShiftManagementService lazy-resolves `ITicketServiceRead` (ticket-holder → shift-eligibility lookups); TicketQueryService eagerly injects `IShiftManagementService`.
-3. **Consent ↔ MembershipCalculator** — ConsentService lazy-resolves `IMembershipCalculatorRead` for status recomputes; MembershipCalculator lazy-resolves `IConsentServiceRead` for required-docs-given checks. Both lazy because the cycle is two-way hot.
-4. **GoogleWorkspaceSync ↔ TeamResource** — GoogleWorkspaceSyncService lazy-resolves `ITeamResourceService` inside `ReconcileNobodiesDriveAsync`; the reverse eager edge is gone but the call still needs the live scoped instance.
+1. **ShiftManagement ↔ Team** — ShiftManagementService lazy-resolves `ITeamServiceRead`; TeamService eagerly injects `IShiftAuthorizationInvalidator` (implemented by ShiftManagementService). (ShiftSignupService also lazy-resolves `ITeamServiceRead`.)
+2. **Consent ↔ MembershipCalculator** — ConsentService lazy-resolves `IMembershipCalculatorRead` for status recomputes; MembershipCalculator lazy-resolves `IConsentServiceRead` for required-docs-given checks. Both lazy because the cycle is two-way hot.
+3. **Team ↔ TeamResource** — TeamService lazy-resolves `ITeamResourceService`; TeamResourceService eagerly injects `ITeamServiceRead`.
+4. **Team ↔ GoogleWorkspaceSync** — TeamService lazy-resolves `IGoogleSyncService` for ad-hoc Drive/Group reconciliation; GoogleWorkspaceSyncService eagerly injects `ITeamServiceRead`.
 5. **Camp ↔ CityPlanning** — CampService holds `Lazy<ICityPlanningService>` to delete a camp's polygon/history rows inside the camp-deletion transaction; CityPlanningService eagerly injects `ICampServiceRead`.
 6. **UserEmail ↔ Tickets** — UserEmailService lazy-resolves `ITicketServiceRead` for the email delete-guard (nobodies-collective/Humans#758); TicketQueryService eagerly injects `IUserEmailService`.
 
 Other notable one-way lazy edges:
 
 - **Team → User** — user-slice stitching; User no longer reaches back into Team.
-- **UserEmail → AccountMerge** — merge-driven email reparenting; the reverse path runs through the `IEnumerable<IUserMerge>` fan-out, not an eager edge.
 - **Team → GoogleSyncOutbox** — enqueues transactional-outbox Google-sync events on membership/role changes; one-way.
-- **Team → GoogleWorkspaceSync** — ad-hoc Drive/Group reconciliation from team admin actions; lazy because the scoped instance must resolve at call time.
-- **ShiftManagement → Role / User / Camp**, **Team → Role / Email**, **TeamResource → Role** — one-way lazy where eager injection would still close a cycle through other paths (notably `ISystemTeamSync`, a job interface outside this graph).
+- **ShiftManagement → Role / User / Camp / Tickets**, **Team → Role / Email**, **TeamResource → Role** — one-way lazy where eager injection would still close a cycle through other paths (notably `ISystemTeamSync`, a job interface outside this graph).
+- **Calendar → Team**, **HumansMetrics → User** — Singleton hosts (the `CachingCalendarService` decorator, the polled metrics gauge) resolving a scoped read service per call, not cycle breaks.
 
 When adding a new cross-service call, default to ctor injection. Reach for the lazy pattern only when ctor injection produces a circular DI error, and document why at the call site.
 
@@ -630,10 +649,11 @@ The most depended-on cross-section surfaces (read the counts off the diagram):
 - **`AuditLogService`** — every write-path service logs audit events (in-service per design-rules §7a, not a decorator).
 - **`TeamService`** — second-largest section fan-in; read consumers go through `ITeamServiceRead`; batch methods exist to avoid N+1 at call sites.
 - **`UserEmailService`** — email-identity lookups across the system.
+- **`OutboxEmailService`** (`IEmailService`) / **`CommunicationPreferenceService`** — outbound mail and its consent/unsubscribe gating.
+- **`NotificationEmitter`** — the enqueue surface almost all notifiers inject; only `AccountMergeService` and `WorkgroupService` take the full `INotificationService`.
+- **`SettingsWriteService`** (`ISettingsService`) — event/app settings read by most event-facing sections.
 - **`ShiftManagementService`** — shift hub; itself lazy-resolves Team/Role/Tickets/User/Camp to break cycles.
-- **`NotificationEmitter`** — the enqueue surface almost all notifiers inject; only `AccountMergeService` takes the full `INotificationService`.
-- **`IEmailService`** / **`CommunicationPreferenceService`** — outbound mail and its consent/unsubscribe gating.
-- **`AdminAuthorizationService`**, **`BurnSettingsService`**, **`ShiftViewService`** — repo-only adapters with zero outbound service edges.
+- **`AdminAuthorizationService`**, **`ShiftViewService`** — repo-only adapters with zero outbound cross-section edges.
 
 ## Pending follow-ups
 

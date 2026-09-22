@@ -26,7 +26,7 @@ Three entities back this section: `CityPlanningSettings` (per-year singleton, co
 - **Overview map** (`/CityPlanning`) — authenticated humans view the live full-screen map, with layer toggles for containers and barrio zones and a measuring tool. Read-only.
 - **Barrio map** (`/CityPlanning/BarrioMap`) — where placements are actually drawn and edited. Linked from the overview map for camp leads while placement is open, and for map admins at any time.
 - **Container map** (`/CityPlanning/ContainerMap/{year}`) — where containers are placed. Containers have their **own** placement phase, separate from barrio placement: unless you are a map admin, you can only open this page while container placement is open and you lead a camp.
-- **Admin panel** (`/CityPlanning/BarrioMap/Admin`) — map admins (Camp Admin or City Planning team members) toggle barrio placement, set informational placement dates, upload overlays, export and import GeoJSON. Container admin lives under `/CityPlanning/BarrioMap/Admin/Containers/{year}`, and that is also where container placement is opened and closed.
+- **Admin panel** (`/CityPlanning/BarrioMap/Admin`) — map admins (Camp Admin or City Planning team members) upload overlays, export and import GeoJSON. Container admin lives under `/CityPlanning/BarrioMap/Admin/Containers/{year}`, and that is also where container placement is opened and closed. Toggling barrio placement, setting informational placement dates, and editing the barrio registration-page markdown live on `/Settings#city-planning`.
 
 Each map is its own full-screen view. On the barrio map, editing, polygon history and the placement-phase card are surfaced through panels inside it. The separate Admin panel is where overlay zones are uploaded and placement is toggled.
 
@@ -56,9 +56,9 @@ Map admin access is held by **Camp Admin**, **[Admin](Glossary.md#admin)**, and 
 - **Edit any camp's placement.** Draw, reshape, or move any placement regardless of who leads the camp and regardless of placement phase.
 - **Place on behalf of a camp.** The admin dropdown lists camp seasons without a placement; pick one to start drawing.
 - **Restore a prior version.** From a placement's history, choose a past version and restore. The current state writes to history first with the note "Restored from {timestamp}", then the placement is overwritten. History is append-only — nothing is ever lost.
-- **Toggle barrio placement.** From [/CityPlanning/BarrioMap/Admin](/CityPlanning/BarrioMap/Admin), open or close placement. Timestamps are recorded. Closing blocks camp leads from editing but not you.
+- **Toggle barrio placement.** From [/Settings#city-planning](/Settings), open or close placement. Timestamps are recorded. Closing blocks camp leads from editing but not you.
 - **Toggle container placement.** A separate phase with its own open/close buttons, on the container admin page (`/CityPlanning/BarrioMap/Admin/Containers/{year}`). While it is closed, camp leads can neither reach the container map nor place their containers; you can, either way.
-- **Set informational placement dates.** Scheduled open and close datetimes show in the help modal. They do not auto-open or auto-close the phase.
+- **Set informational placement dates.** Scheduled open and close datetimes show in the help modal, edited from `/Settings#city-planning`. They do not auto-open or auto-close the phase.
 - **Upload a limit zone.** A GeoJSON FeatureCollection defining the site boundary. Renders as a dashed outline coloured by each feature's `SoundZone` property (white dashes when the property is absent); placements drawn outside it are flagged. Download and delete are supported.
 - **Upload official zones.** A GeoJSON FeatureCollection of named read-only overlay zones (dark gray, labeled). Each Feature needs a `name` property. Download and delete supported.
 - **Export all placements.** Download every placement for a year as a single GeoJSON FeatureCollection for logistics, signage, and public materials.

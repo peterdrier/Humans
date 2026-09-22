@@ -76,9 +76,11 @@ No repository. Thin facade over `IWorkspaceUserDirectoryClient`
 
 ### EmailProvisioningService (Scoped)
 
-No repository. Wraps `IGoogleAdminService` + `IUserEmailService` +
-`IAuditLogService` to provision Google Workspace mailboxes. No direct DB
-access, no cache.
+No repository. Wraps the section's `IGoogleWorkspaceUserService` to provision
+Google Workspace mailboxes; cross-section calls via `IUserServiceRead`,
+`IUserEmailService`, `ITeamServiceRead`, `IEmailService` (messages built by
+`GoogleIntegrationEmails`), `INotificationEmitter`, `IAuditLogService`. No direct
+DB access, no cache.
 
 ### GoogleIntegrationEmails (Scoped, internal)
 
@@ -165,9 +167,9 @@ Sole owner of `google_resources`. All consumers call
 `DbSet<GoogleResource>`; ownership is enforced by the section's `internal`
 `GoogleIntegrationDbContext` and `IGoogleResourceRepository` plus
 HUM0008/HUM0009/HUM0025. Cross-section calls via
-`ITeamService`, `ITeamResourceGoogleClient`, `IGoogleDrivePermissionsClient`,
-`IAuditLogService`, plus `IServiceProvider` to break a DI cycle. No
-cache.
+`ITeamServiceRead`, `ITeamResourceGoogleClient`, `IGoogleDrivePermissionsClient`,
+`IAuditLogService`, plus `IServiceProvider` to lazy-resolve
+`IRoleAssignmentService` (breaks a DI cycle). No cache.
 
 ### GoogleSyncOutboxProcessor (Scoped, `internal`)
 

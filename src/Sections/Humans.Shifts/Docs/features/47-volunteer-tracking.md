@@ -40,7 +40,7 @@ Negative-space rules:
 - Only Volunteer Coordinators can mark/clear day-offs (no volunteer self-service).
 - A day-off cannot be marked on a cell that already has a Confirmed/Pending signup — the popover surfaces a "Bail this signup before marking a day off" muted message instead of the Mark button.
 - A day-off cannot overlap an active camp-setup span; setting/extending camp-setup auto-clears any day-offs that fall on or after the new setup-start date (one `VolunteerDayOffCleared` audit row per cleared offset).
-- Re-marking the same offset replaces the entry (no duplicates); clearing a non-existent entry is a silent no-op.
+- Re-marking the same offset replaces the entry (no duplicates); clearing a non-existent entry writes nothing and shows an informational "no day off was set" toast rather than the success message.
 
 Audit actions: `VolunteerDayOffMarked`, `VolunteerDayOffCleared`. Full design spec: [`src/Sections/Humans.Shifts/Docs/2026-05-09-day-off-redesign-design.md`](../2026-05-09-day-off-redesign-design.md).
 

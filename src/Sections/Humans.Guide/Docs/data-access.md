@@ -19,4 +19,10 @@ may see are filtered and then rendered via `IGuideRenderer` per request.
 cached or not; a stem whose fetch fails keeps the copy already cached. No DB
 access.
 
+### GuideRoleResolver (Scoped)
+
+No repository, no DB access, no cache. Resolves the viewer's guide role context
+from cross-section reads: `ITeamServiceRead` (team coordinator membership) and
+`ICampLeadDirectory` (Camps — camp-lead status).
+
 ---

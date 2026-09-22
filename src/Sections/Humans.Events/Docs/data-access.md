@@ -45,8 +45,8 @@ Repository: `IEventRepository`.
 | EventPreferences | R/W |
 | EventFavourites | R/W |
 
-Cross-section calls limited to `IClock` and `IEmailService` (plus
-owning-service lookups for active-event scoping), with the section's own
+Cross-section calls via `ISettingsService` (active event settings),
+`IUserServiceRead` and `IEmailService`, plus `IClock`, with the section's own
 `EventsEmails` builder supplying the message. The inner service has no
 `IMemoryCache`.
 

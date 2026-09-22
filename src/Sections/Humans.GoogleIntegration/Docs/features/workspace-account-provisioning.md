@@ -44,7 +44,7 @@ Nobodies Collective uses Google Workspace for organizational email (@nobodies.te
 - Email sent to the human's personal (recovery) email, NOT the new @nobodies.team address
 - Contains: username, temporary password, link to https://mail.google.com/
 - Mentions that 2FA setup is required on first login
-- Localized in all supported languages (en/es/de/fr/it)
+- Localized in all supported languages (en/es/de/fr/it/ca)
 - Sent via the email outbox with `triggerImmediate: true` for fast delivery
 
 ### US-32.3: Link Existing Workspace Account

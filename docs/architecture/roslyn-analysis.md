@@ -30,7 +30,7 @@ lives in).
 
 The ratchet rules under `tests/Humans.Web.Tests/Architecture/Rules/` (they
 moved there when `Humans.Application.Tests` was dissolved into per-section test
-projects) and the 4 boundary scans in `ServiceBoundaryArchitectureTests.cs` all
+projects) and the boundary scans in `ServiceBoundaryArchitectureTests.cs` all
 fall outside the analyzer envelope and stay as tests. Tier 3 below lists them so
 they aren't re-proposed.
 
@@ -62,7 +62,7 @@ project at least one fix commit.
   any `IRepository` implementation/interface. Cache misses and warm paths go
   through the keyed inner application service, never sideways into persistence.
   The match is on the name alone — no namespace or assembly gate — which is why
-  the rule followed all 11 decorators into their section projects without an edit.
+  the rule followed every decorator into its section project without an edit.
 - Source: generalized from the deleted `CachingTeamServiceBypassArchitectureTests`
   one-off and `TicketQueryArchitectureTests.CachingTicketQueryService_HasCurrentEventTicketAsync_DoesNotCallRepositoryOrFilter`.
 - Why analyzer, not one-off test: the important invariant is system-wide:
@@ -122,7 +122,7 @@ assertion families that are plausible analyzer candidates:
   nobodies-collective/Humans#992 cut all 54 cross-section relationships, leaving no
   `[Grandfathered("HUM0024", ...)]` markers. The residual the retirement note reserved —
   an EF configuration inside `Humans.Infrastructure` mapping another section's entity —
-  is moot: that project no longer exists, and all 29 contexts are section-owned. What is
+  is moot: that project no longer exists, and every application context is section-owned. What is
   left is the review-time check that a *section* context does not map a foreign entity;
   `DbContextEntityOwnershipTests` catches the zero-context and two-context cases of that.
   Do not re-propose this analyzer.
@@ -332,9 +332,9 @@ analyzer.
 - `NoDestructiveMigrationOpsRule` (`tests/.../Rules/NoDestructiveMigrationOpsRule.cs`) — operates on EF-generated migration files which legitimately contain destructive ops in other contexts. Filesystem-aware. Stay as ratchet.
 - `NoStartupGuardsRule` — retired alongside `NoLinqAtDbLayerRule` (Peter's call). Its scan root `src/Humans.Web` was still valid and its baseline genuinely zero, but it was a regex over one project out of 36+ and saw no section's `Section.Register`. The `no-startup-guards` rule itself still stands (`memory/architecture/no-startup-guards.md`).
 - `DisplaySortInControllersRule` (`tests/.../Rules/DisplaySortInControllersRule.cs`) — accumulated debt + inline `// arch:db-sort-ok` opt-out; baseline-ratcheted today, see Tier 2 for the analyzer prerequisite.
-- `ServiceBoundaryArchitectureTests` (`tests/Humans.Web.Tests/Architecture/ServiceBoundaryArchitectureTests.cs`) — four boundary scans (marker-attribute presence for services and for repositories, repository-ownership-map completeness, and the entity-read-return ratchet; the Users/Profiles single-section pin went with the merge, and the former repository-injection scans across Web and Application shipped as analyzers). All shaped as reflection/marker tests or baselined ratchets. Stay as tests.
+- `ServiceBoundaryArchitectureTests` (`tests/Humans.Web.Tests/Architecture/ServiceBoundaryArchitectureTests.cs`) — boundary scans (marker-attribute presence for services and for repositories, and the entity-read-return ratchet; the Users/Profiles single-section pin went with the merge, and the former repository-injection scans across Web and Application shipped as analyzers). All shaped as reflection/marker tests or baselined ratchets. Stay as tests.
 - `ApplicationServicesTakeNoDbContextRule` / `ApplicationServicesTakeNoMemoryCacheRule` (`tests/Humans.Web.Tests/Architecture/Rules/`) — generalized ctor sweeps over the section assemblies. Their scope comes from `ApplicationSweepScope.Assemblies()`, which resolves through `SectionDiscoveryExtensions.SectionAssemblies()` rather than a hardcoded assembly name — the fix for four silent anchor drifts the section split produced. Stay as tests.
-- The per-section `*ArchitectureTests.cs` files (in the section's own test project, under `Architecture/` or at its root; 39 of them today, across 33 test projects) — each pins namespace location, ctor shape, no-DbContext-injection, and "owned entities have no cross-domain navs" using reflection on the loaded assemblies. Marker/existence + reflection shape. Stay as tests.
+- The per-section `*ArchitectureTests.cs` files (in the section's own test project, under `Architecture/` or at its root) — each pins namespace location, ctor shape, no-DbContext-injection, and "owned entities have no cross-domain navs" using reflection on the loaded assemblies. Marker/existence + reflection shape. Stay as tests.
 
 Cited reference for the policy: `docs/architecture/code-analysis.md`
 §"When to write an analyzer vs. a test" (the decision table).

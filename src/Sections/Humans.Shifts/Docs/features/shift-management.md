@@ -30,15 +30,12 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 
 ### US-25.1: Admin Configures Event
 **As an** Admin
-**I want to** create and manage EventSettings (dates, timezone, EE capacity, browsing toggle)
+**I want to** configure the event calendar and the Shifts-specific knobs
 **So that** the shift system is configured for the current event cycle
 
 **Acceptance Criteria:**
-- Only one active EventSettings at a time
-- Configure gate opening date, build/event/strike offsets, timezone
-- Set early entry capacity step function and barrios allocation
-- Toggle shift browsing open/closed
-- Set early entry close instant
+- The calendar (gate opening date, build/event/strike/sub-period offsets, timezone, early entry capacity/barrios allocation/close instant) and "which cycle is active" are configured on the `/Settings#event` tab (Settings section) — only one active cycle at a time
+- Shifts' own knobs — shift browsing open/closed, global volunteer cap, reminder lead time — are configured on the `/Settings#shifts` tab, saved via `POST /Shifts/Settings`
 
 ### US-25.2: Coordinator Manages Rotas and Shifts
 **As a** department coordinator
@@ -146,7 +143,7 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 
 | Entity | Purpose |
 |--------|---------|
-| `EventSettings` | Singleton event config: dates, timezone, EE capacity, browsing toggle |
+| `EventSettings` | Shifts' own per-event knobs row: `IsShiftBrowsingOpen`, `GlobalVolunteerCap`, `ReminderLeadTimeHours`. The calendar (dates, timezone, EE capacity, sub-period offsets) and "active cycle" are Settings-owned; their columns on this entity are dead |
 | `Rota` | Shift container per department+event, with period (Build/Event/Strike), priority, signup policy, practical info, and visibility toggle (`IsVisibleToVolunteers`, default true) |
 | `Shift` | Single work slot: day offset, time, duration, volunteer min/max; IsAllDay flag for build/strike shifts |
 | `ShiftSignup` | User-to-shift link with state machine; SignupBlockId groups range signups |
@@ -195,7 +192,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 | `/Shifts/Mine` | View own signups (upcoming, pending, past) |
 | `/Shifts/Summary[/{teamSlug}[/{rotaGuid}]]` | Read-only Shift Summary by Camp — confirmed-hour/count totals per human and per camp, at global / team-set / single-rota scope (`ShiftDepartmentManager` policy) |
 | `/Shifts/Preferences/Tags` | POST: Save volunteer tag preferences |
-| `/Shifts/Settings` | Admin: manage EventSettings |
+| `/Shifts/Settings` | POST only: Admin saves Shifts' own knobs, posted from the `/Settings#shifts` tab |
 | `/Shifts/Dashboard/PostEventStats` | Post-event stats: completion/no-show rates by department and period (`ShiftDashboardAccess` policy) |
 | `/Teams/{slug}/Shifts` | Coordinator: manage rotas/shifts for a department |
 | `/` (Dashboard) | Shift signups ViewComponent + guided discovery when no signups |
@@ -217,7 +214,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 
 **Filter (Period vs Date Range — mutually exclusive):**
 
-- **Period buttons** — All / Set-up (Build) / Event / Strike. When Set-up is selected, a second segmented row appears underneath: **All set-up / First crew / Set-up week / Pre-event week / Finishing weekend**, defaulting to "All set-up". Sub-period boundaries are configurable per event via four offset fields on `EventSettings` (`FirstCrewStartOffset`, `SetupWeekStartOffset`, `PreEventWeekStartOffset`, `FinishingWeekendStartOffset` — default `-25 / -16 / -9 / -4`).
+- **Period buttons** — All / Set-up (Build) / Event / Strike. When Set-up is selected, a second segmented row appears underneath: **All set-up / First crew / Set-up week / Pre-event week / Finishing weekend**, defaulting to "All set-up". Sub-period boundaries are four offset fields on Settings' event calendar (`FirstCrewStartOffset`, `SetupWeekStartOffset`, `PreEventWeekStartOffset`, `FinishingWeekendStartOffset` — default `-25 / -16 / -9 / -4`), configured on the `/Settings#event` tab.
 - **Date range** — start + end inputs. End-date input enforces `min = startDate` so the user cannot pick an end before the start. Either input can be left blank (start-only = "from this date onwards", end-only = "up to this date"). Active range is reflected in a "Showing DD MMM – DD MMM YYYY" banner under the form.
 - **Mutex semantics:**
   - Picking a period or sub-period button **auto-populates the date inputs** with that range as a visual cue. The server still uses period+sub-period as the canonical filter; dates are display-only in this case.

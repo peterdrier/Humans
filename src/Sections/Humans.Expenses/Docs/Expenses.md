@@ -209,7 +209,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 
 ### Feature 2 — Holded contact enrichment and payment status
 
-When a report is pushed to Holded (`HoldedExpenseOutboxJob`), the submitter's Holded contact is upserted with: legal name as `Name`, trade name only for "burner" identities (legal name required first), `CustomId` = `UserId`, `type = creditor`, IBAN. The returned contact id and resolved `supplierRecord.num` are stored on `ExpenseReport.HoldedContactId` / `HoldedSupplierAccountNum` for subsequent creditor look-ups.
+When a report is pushed to Holded (`HoldedExpenseOutboxJob`), this section calls Finance's `IHoldedFinanceService.EnsureCreditorContactAsync`, which owns creditor identity: a member already linked (or lazy-seeded from a prior report) keeps their existing contact id as is — Holded's v2 contact PUT is a full replacement, so a linked contact is never updated — and only a member with no contact gets a new one created, with legal name as `Name`, trade name only for "burner" identities (legal name required first), `CustomId` = `UserId`, `type = creditor`, IBAN. The returned contact id and resolved `supplierRecord.num` are stored on `ExpenseReport.HoldedContactId` / `HoldedSupplierAccountNum` for subsequent creditor look-ups.
 
 The submitter's expense detail view (`/Expenses/{id}`) shows a **payment status timeline**: registered / owed / settled, derived from `GetCreditorStatusAsync`. Paid detection reads the nightly-cached creditor daybook (balance = Σdebit − Σcredit ≥ 0 = settled) — zero live Holded calls on page load.
 

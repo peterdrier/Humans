@@ -64,7 +64,7 @@ Conversation thread between reporter and handlers. Aggregate-local (same section
 | Id | Guid | PK |
 | IssueId | Guid | FK → Issue, Cascade on delete |
 | SenderUserId | Guid? | No FK, no nav property — bare column. Null on comments the author left on someone else's issue after their own account was purged. |
-| Content | string | Comment body (max 5000) |
+| Content | string | Comment body, authored as Markdown and rendered sanitized (max 5000) |
 | CreatedAt | Instant | When the comment was posted |
 
 There is no per-comment reporter/handler flag — reporter-vs-handler is derived by comparing `SenderUserId` to `Issue.ReporterUserId`. Ball-in-court is derived from the latest comment's sender.

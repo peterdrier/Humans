@@ -187,7 +187,7 @@ Client-side JavaScript with `fetch()` is appropriate for:
 - **Dynamic form field population** that responds to parent field changes (team Google resource dropdown)
 - **Progressive enhancement** for inline actions that avoid full page reloads (notification dismiss/mark-read, feedback detail panel loading)
 - **Utility behaviors** that are not page content (timezone detection, notification popup, profile popover on hover)
-- **Interactive maps** whose whole surface is a client-rendered canvas driven by a JSON API (the city-planning barrio, container and overview maps)
+- **Interactive maps** whose whole surface is a client-rendered canvas driven by a JSON API (the city-planning barrio, container and overview maps; the rideshare board)
 
 These patterns use `fetch()` to enhance an already server-rendered page, not to replace server rendering entirely.
 
@@ -198,6 +198,7 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 | File | Purpose | Exception type |
 |------|---------|----------------|
 | `Humans.Base/Views/Shared/Components/HumanSearch/Default.cshtml` (`<vc:human-search>`) | Person picker (inline autocomplete) — canonical inline pattern, see `memory/architecture/person-search.md` | Search input |
+| `Humans.Base/Views/Shared/_EmailPreviewModal.cshtml` | Shared email composer: preview and "Send to me" POSTs without leaving the form | Progressive enhancement |
 | `Humans.Base/Views/Shared/_VolunteerSearchScript.cshtml` | Volunteer search autocomplete (shift-volunteer, exempt from person-search consolidation) | Search input |
 | `Humans.Teams/Views/Shared/_TeamGoogleAndParentFields.cshtml` | Google resource dropdown on team change | Dynamic form field |
 | `Humans.Teams/Views/TeamAdmin/Roles.cshtml` | Role-grid save without reload | Progressive enhancement |
@@ -215,6 +216,7 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 | `Humans.Agent/Views/Shared/Components/HelpWidget/Default.cshtml` (`<vc:help-widget>`) | In-place feedback submit without leaving the page | Progressive enhancement |
 | `Humans.Agent/wwwroot/js/agent/widget.js` | Streamed answer from `/Agent/Ask` (SSE) | Progressive enhancement |
 | `Humans.CityPlanning/wwwroot/js/city-planning/**` | Barrio, container and overview maps read and write `/api/city-planning/*` | Interactive map |
+| `Humans.Rideshare/wwwroot/js/rideshare/board.js` (`Views/Rideshare/Index.cshtml`) | Rideshare board map reads its GeoJSON feed from `RideshareApi` | Interactive map |
 | `Humans.Web/wwwroot/js/site.js` | Timezone, notification popup, profile popover | Utility |
 
 Paths are relative to `src/` (`src/Sections/` for the section projects).

@@ -55,7 +55,7 @@ In-app notification fan-out (stored events + per-user inbox) and live meter coun
 
 ### NotificationSource
 
-The originating system for a notification, mapped to a `MessageCategory` for preference checks. Defined in `Humans.Notifications.Contracts.NotificationSource`. Current values: `TeamMemberAdded`, `ShiftCoverageGap`, `ShiftSignupChange`, `ConsentReviewNeeded`, `ApplicationSubmitted`, `SyncError`, `TermRenewalReminder`, `ApplicationApproved`, `ApplicationRejected`, `VolunteerApproved`, `ProfileRejected`, `AccessSuspended`, `ReConsentRequired`, `TeamJoinRequestSubmitted`, `TeamJoinRequestDecided`, `FeedbackResponse`, `WorkspaceCredentialsReady`, `RoleAssignmentChanged`, `CampaignReceived`, `TeamMemberRemoved`, `ShiftAssigned`, `GoogleDriftDetected`, `FacilitatedMessageReceived`, `LegalDocumentPublished`, `CampMembershipApproved`, `CampMembershipRejected`, `CampMembershipSeasonClosed`, `CampRoleAssigned`, `IssueComment`, `IssueStatusChanged`, `IssueAssigned`, `IssueSubmitted`, `RideshareInterestReceived`, `RideshareInterestAccepted`, `RideshareInterestDeclined`, `AssemblyVoteOpened`.
+The originating system for a notification, mapped to a `MessageCategory` for preference checks. Defined in `Humans.Notifications.Contracts.NotificationSource`. Current values: `TeamMemberAdded`, `ShiftCoverageGap`, `ShiftSignupChange`, `ConsentReviewNeeded`, `ApplicationSubmitted`, `SyncError`, `TermRenewalReminder`, `ApplicationApproved`, `ApplicationRejected`, `VolunteerApproved`, `ProfileRejected`, `AccessSuspended`, `ReConsentRequired`, `TeamJoinRequestSubmitted`, `TeamJoinRequestDecided`, `FeedbackResponse`, `WorkspaceCredentialsReady`, `RoleAssignmentChanged`, `CampaignReceived`, `TeamMemberRemoved`, `ShiftAssigned`, `GoogleDriftDetected`, `FacilitatedMessageReceived`, `LegalDocumentPublished`, `CampMembershipApproved`, `CampMembershipRejected`, `CampMembershipSeasonClosed`, `CampRoleAssigned`, `IssueComment`, `IssueStatusChanged`, `IssueAssigned`, `IssueSubmitted`, `RideshareInterestReceived`, `RideshareInterestAccepted`, `RideshareInterestDeclined`, `AssemblyVoteOpened`, `WorkgroupRegistrationPending`, `WorkgroupRegistrationDecided`, `WorkgroupReportingDue`, `WorkgroupDocumentActivity`, `WorkgroupDispositionRecorded`.
 
 ### NotificationClass
 
@@ -126,6 +126,9 @@ Inbound (other sections → Notifications):
 - **Users:** `AccountMergeService.AcceptAsync` fans out to `NotificationService` via `IUserMerge.ReassignAsync` (re-FKs `NotificationRecipient` rows) and calls `INotificationService.InvalidateBadgeCachesForUsers` directly after commit to evict both users' badge caches.
 - **Camps:** `CampService` and `CampRoleService` inject `INotificationEmitter` to emit `CampMembershipApproved`, `CampMembershipRejected`, `CampMembershipSeasonClosed`, and `CampRoleAssigned` notifications.
 - **Issues:** `IssuesService` injects `INotificationEmitter` to emit `IssueComment`, `IssueStatusChanged`, `IssueAssigned`, and `IssueSubmitted` notifications.
+- **Governance:** `AssemblyVoteService` injects `INotificationEmitter` to emit `AssemblyVoteOpened` when a vote opens.
+- **Workgroups:** `WorkgroupService` injects `INotificationService` to emit `WorkgroupRegistrationPending`, `WorkgroupRegistrationDecided`, `WorkgroupReportingDue`, `WorkgroupDocumentActivity`, and `WorkgroupDispositionRecorded` notifications.
+- **Rideshare:** `RideshareService` injects `INotificationEmitter` to emit `RideshareInterestReceived`, `RideshareInterestAccepted`, and `RideshareInterestDeclined` notifications.
 
 ## Design Rationale
 

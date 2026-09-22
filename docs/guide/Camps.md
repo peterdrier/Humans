@@ -96,7 +96,6 @@ If you are a **Camp Lead**, you can manage your specific camp. You cannot edit c
 - **Review season registrations.** Pending seasons are listed on the dashboard. **Approve** moves a season to Active; **Reject** requires notes explaining why and records your user id and timestamp. Withdrawn seasons are also surfaced on the dashboard for follow-up.
 - **Reactivate seasons** that were marked Full or Withdrawn. Full seasons go back to Active; Withdrawn seasons go back to Pending for re-approval.
 - **Open and close registration seasons** for any year. Opening a year adds it to the list accepting new registrations and opt-ins; closing removes it.
-- **Set the public year** that controls which year is shown on `/Camps` and on the JSON API.
 - **Set name lock dates** per year, after which camp name changes are no longer allowed for that year's season.
 - **Update the registration info** banner (markdown copy shown on the registration form).
 - **Edit any camp** (all the lead-level Edit actions above, on any camp).

@@ -46,7 +46,7 @@ The section also captures the data that makes scheduling work: your shift prefer
 | My shifts | `/Shifts/Mine` | See your upcoming, pending, and past signups; bail if needed |
 | Shift preferences wizard | `/Profile/Me/ShiftInfo` | Tell coordinators about your skills, work style, and languages |
 | Team shift admin | `/Teams/{slug}/Shifts` | Coordinators: manage rotas and shifts for a department |
-| Event settings | `/Shifts/Settings` | Admin: configure event dates, timezone, early-entry capacity, and the global browsing toggle |
+| Event settings | `/Settings#event` (calendar) and `/Settings#shifts` (browsing toggle, volunteer cap) | Admin: configure event dates, timezone, early-entry capacity, and shift-specific knobs |
 
 Your dashboard also surfaces shift info — upcoming signups, or a guided discovery card with urgent understaffed shifts if you have none.
 
@@ -100,13 +100,13 @@ Admins get the site-wide shift view and can approve, refuse, bail, or voluntell 
 
 Admin-only controls:
 
-- **Event settings** at `/Shifts/Settings` — gate opening date, build/event/strike offsets, timezone, early-entry capacity, barrios allocation, early-entry close instant, and the **shift browsing toggle** (when closed, regular humans only see shifts they already have signups for; privileged roles can always browse).
+- **Event settings** at `/Settings#event` — gate opening date, build/event/strike offsets, timezone, early-entry capacity, barrios allocation, and early-entry close instant. Shifts' own knobs — the **shift browsing toggle** (when closed, regular humans only see shifts they already have signups for; privileged roles can always browse), global volunteer cap, and reminder lead time — live on `/Settings#shifts`.
 - **Medical data** on volunteer event profiles is visible only to Admin and NoInfoAdmin. Coordinators and VolunteerCoordinator see skills and dietary info but not medical.
 - **Early-entry freeze** — after early-entry close, non-privileged humans can't sign up for or bail from Set-up shifts; admins can still adjust.
 
 Only one active Event Settings exists at a time. Changes ripple through every shift date on the site.
 
-![TODO: screenshot — `/Shifts/Settings` showing gate opening date, build/event/strike offsets, early-entry capacity, and the shift browsing toggle]
+![TODO: screenshot — `/Settings#event` showing gate opening date, build/event/strike offsets, and early-entry capacity]
 
 ## Related sections
 

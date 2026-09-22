@@ -76,7 +76,7 @@ service_classes() {
     # Flatten each file so multi-line primary constructors and base lists parse
     # as a single declaration, then emit its service-class records.
     function emit(text, file,   decl, name, mods, bases, nb, part, b, ifaces, ni,
-                  cand, names, primary, i, j, out, section, marked) {
+                  cand, names, sorted, primary, i, j, out, section, marked) {
       # `Humans.Store/Services/...` -> `Store`. Only needed for a class whose
       # sole service interface is a bare marker, where the interface name says
       # nothing about which section it belongs to.
@@ -147,8 +147,15 @@ service_classes() {
         # A marker-only class outside a Humans.<Section>/Services/ path has no
         # derivable key; enumerating it under the marker would be worse than not.
         if (primary == "") continue
+        # Portable sort of the key set — asorti is gawk-only, and under mawk
+        # (Debian/Ubuntu default awk) it aborted the pass, so both callers saw
+        # zero services and passed vacuously.
+        j = 0; delete sorted
+        for (cand in names) {
+          for (i = ++j; i > 1 && sorted[i - 1] > cand; i--) sorted[i] = sorted[i - 1]
+          sorted[i] = cand
+        }
         out = ""
-        j = asorti(names, sorted)
         for (i = 1; i <= j; i++) out = out (i > 1 ? "," : "") sorted[i]
         print primary "|" out "|" file
       }

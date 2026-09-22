@@ -16,7 +16,7 @@
 
 ## Business Context
 
-Nobodies Collective has four effective membership tiers, though only three are managed within this system. **All humans start as Volunteers** — the default tier with immediate access after consent check clearance. Humans who want deeper involvement can apply for **Colaborador** status (active contributor) or **Asociado** status (voting member per Spanish nonprofit statutes). **Board** membership is a fourth tier managed through an external process — the system only tracks their role assignments.
+Nobodies Collective has four effective membership tiers, though only three are managed within this system. **All humans start as Volunteers** — the default tier with immediate access once their name is complete and required consents are signed. Humans who want deeper involvement can apply for **Colaborador** status (active contributor) or **Asociado** status (voting member per Spanish nonprofit statutes). **Board** membership is a fourth tier managed through an external process — the system only tracks their role assignments.
 
 Tier is tracked on the `Profile` entity (`MembershipTier` field), not as a role. Tier applications use the existing `Application` entity (extended with a `MembershipTier` field). During initial signup, the application form is embedded inline alongside the profile setup for a streamlined one-shot experience. After initial onboarding, tier applications go through the dedicated Governance Applications route.
 
@@ -24,7 +24,7 @@ Tier is tracked on the `Profile` entity (`MembershipTier` field), not as a role.
 
 | Tier | Description | Application Required | Board Vote | Term |
 |------|-------------|---------------------|------------|------|
-| **Volunteer** | Default. Full app access, team participation. | No | No (consent check only) | Indefinite |
+| **Volunteer** | Default. Full app access, team participation. | No | No (name + consents only) | Indefinite |
 | **Colaborador** | Active contributor with project/event responsibilities. | Yes | Yes | 2-year cycle (Dec 31, odd years) |
 | **Asociado** | Voting member with governance rights (assemblies, elections). | Yes | Yes | 2-year cycle (Dec 31, odd years) |
 
@@ -166,7 +166,7 @@ Profile Setup → Tier selection → Colaborador/Asociado form inline → Submit
     │
     ▼
 Both proceed through their respective pipelines:
-  - Profile → Consents → Consent Check → Volunteer access
+  - Profile → Consents → Volunteer access (name + consents)
   - Application → Board Voting → Tier enrollment (parallel)
 ```
 
@@ -184,7 +184,7 @@ Application created → Board Voting → Approve/Reject
 ## Business Rules
 
 1. **Everyone starts as Volunteer** — tier selection is optional
-2. **Volunteer doesn't require an Application** — a legal name plus the required consents is sufficient. The Consent Coordinator check was a gate historically; it is now an audit annotation only and does not affect admission (`MembershipCalculator` never reads `ConsentCheckStatus`)
+2. **Volunteer doesn't require an Application** — a legal name plus the required consents is sufficient. The Consent Coordinator's clear/flag review is an independent audit annotation and does not gate admission (`MembershipCalculator` never reads `ConsentCheckStatus`)
 3. **Inline application is one-shot** — only during initial signup, never on subsequent profile edits
 4. **After onboarding, applications use the dedicated route** — profile edit is just profile data
 5. **Asociados are not in Colaboradors team** — separate system teams
@@ -199,5 +199,5 @@ Application created → Board Voting → Approve/Reject
 - [Onboarding Pipeline](../../../Humans.Onboarding/Docs/features/onboarding-pipeline.md) — How tier selection fits into the signup flow
 - [Tier Applications](asociado-applications.md) — Application entity and state machine
 - [Board Voting](board-voting.md) — How the Board decides on tier applications
-- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent check gate (Volunteer only)
+- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Coordinator review (audit annotation, Volunteer only)
 - [Teams](../../../Humans.Teams/Docs/features/Teams-feature.md) — Volunteers, Colaboradors, Asociados system teams

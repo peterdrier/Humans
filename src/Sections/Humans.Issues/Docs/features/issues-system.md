@@ -79,7 +79,7 @@ Issues is the only in-app reporting path. Feedback (`src/Sections/Humans.Feedbac
 **As** a reporter or handler, **I want** to have a conversation thread on an issue, **so that** we can discuss the problem back and forth without switching to email.
 
 **Acceptance Criteria:**
-- `IssueComment` entity tracks individual comments (content, sender, timestamp); aggregate-local to `Issue`
+- `IssueComment` entity tracks individual comments (content, sender, timestamp); aggregate-local to `Issue`; content is authored as Markdown and rendered sanitized
 - Both reporters and handlers can post comments via the detail view
 - Comments displayed chronologically in the detail panel, interleaved with audit events ("Status changed to InProgress", "Assigned to Jane") in a single thread view
 - Reporter posts a comment on a terminal issue → the issue auto-reopens to `Open` and an audit row records the implicit status change

@@ -93,7 +93,7 @@ Key fields: Id, UserId, Category (enum→string), Description, PageUrl, UserAgen
 
 **Table:** `feedback_messages`
 
-Key fields: Id, FeedbackReportId (FK), SenderUserId (nullable, bare cross-section Guid column — no FK constraint, no nav), Content, CreatedAt.
+Key fields: Id, FeedbackReportId (FK), SenderUserId (nullable, bare cross-section Guid column — no FK constraint, no nav), Content (authored as Markdown, rendered sanitized), CreatedAt.
 
 Relationship: `FeedbackReport` has many `FeedbackMessage` (cascade delete). `SenderUserId` is nullable to support system/API messages.
 

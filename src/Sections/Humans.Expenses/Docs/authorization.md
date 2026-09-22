@@ -3,7 +3,7 @@
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `ExpensesController` | Class | `[Authorize]` (authenticated) | — |
-| `ExpensesController.Review` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` |
+| `ExpensesController.Review` | In-method | Any authenticated human — the queue is viewer-scoped (`GetReviewQueueAsync(userId, isFinanceAdmin)`); `PolicyNames.FinanceAdminOrAdmin` via `AuthorizeAsync` widens it to the finance view and the failed-Holded-push count | Policy check |
 | `ExpensesController.Approve` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` |
 | `ExpensesController.Reject` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` |
 | `ExpensesController.HoldedRetry` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` (re-queues a stuck Holded push for an approved report; `ExpenseReportOperation.RequeueHoldedPush`) |
@@ -17,8 +17,6 @@
 |---|---|---|---|
 | `ExpenseReportAuthorizationHandler` | `ExpenseReportOperationRequirement` (`View`, `Edit`, `Submit`, `Withdraw` — granted but unused, no call site; the controller's own owner check is the live gate, `Endorse`, `CoordinatorReject`, `Approve`, `FinanceReject`, `RequeueHoldedPush`). `Edit` grants the submitter their own Draft, and a finance admin any report in Draft / Submitted / CoordinatorEndorsed; `Submit` grants either of them a Draft | `ExpenseReportDto` | `Authorization/ExpenseReportAuthorizationHandler.cs` (registered in `Section.cs`) |
 
-Raw-IBAN access has no resource handler. `IbanAccessHandler` / `IbanAccessRequirement` were deleted
-once it was clear nothing constructed the requirement: they duplicated `[Authorize(Policy = AdminOnly)]`
-on `/Users/Admin/{id}/RevealIban` — the only page that reveals a raw account number, and one that
-already audits every reveal — and their finance grant (any non-Draft, non-Withdrawn report) did not
-match `/Expenses/{id}/Iban`, which renders masked and gates *setting* the value on submitter-or-`Edit`.
+Raw-IBAN access has no resource handler. The only raw reveal is `/Users/Admin/{id}/RevealIban`
+(`[Authorize(Policy = AdminOnly)]`, audited per reveal, in `Humans.Users`); `/Expenses/{id}/Iban`
+renders masked and gates *setting* the value on submitter-or-`Edit`.

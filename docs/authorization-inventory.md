@@ -28,7 +28,6 @@ tables (Same-Rule-Different-Spelling, Enforcement Gaps, Canonical Policy Names),
 |---|---|---|---|
 | `AdminController` (`src/Humans.Web`) | Class | `[Route("Admin")]` only — no class-level `[Authorize]` | — |
 | `AdminController.Index` | Action | `Admin, Board, HumanAdmin, TeamsAdmin, CampAdmin, TicketAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, RideshareAdmin, NoInfoAdmin, VolunteerCoordinator, ConsentCoordinator` | `PolicyNames.AnyAdminRole` (the only action left on the gutted dashboard controller) |
-| `AdminController` runtime guards | In-method | `authorizationService.AuthorizeAsync(User, PolicyNames.StoreCatalogAdmin)` / `..FinanceAdminOrAdmin` | Drive `canSeeStoreTile` / `canSeeExpenseTile` dashboard-tile flags |
 
 `/Admin/*` is a nav holder, not a section — each admin surface's controller lives in the section it acts on (see Per-Section Inventories above). `WidgetGalleryController` moved to `Humans.Debug` — see that section's authorization doc.
 
@@ -39,8 +38,6 @@ tables (Same-Rule-Different-Spelling, Enforcement Gaps, Canonical Policy Names),
 | `AboutController` (`src/Humans.Web`) | Class | (no class-level `[Authorize]`) | — |
 | `AboutController.Staff` | Action | `[Authorize]` (authenticated) | — |
 | `HomeController` (`src/Humans.Web`) | Class | (no class-level `[Authorize]`) | — |
-| `HomeController.DeclareNotAttending` | Action | `[Authorize]` (authenticated) | — |
-| `HomeController.UndoNotAttending` | Action | `[Authorize]` (authenticated) | — |
 | `AccountController` (`src/Humans.Web`) | Class | (no class-level `[Authorize]`) | — |
 | `AccountController.GateLogin` (GET/POST) | Action | (no `[Authorize]`) | — (shared kiosk credential login at `/Account/GateLogin`; IP-throttled via `GateLoginThrottle`; never gated by role — the gate-terminal account holds no roles) |
 | `LanguageController` (`src/Humans.Web`) | Class | (no class-level `[Authorize]`) | — |
@@ -270,8 +267,8 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `UsersAdminController.AddRole/EndRole` | After `[Authorize(Policy)]` attribute | `authorizationService.AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)` enforces the role-list filter |
 | `ProfileEmailsController` email-edit endpoints | After class-level `[Authorize]` | `_authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (resource-based) |
 | `TicketController.Index` | After class-level policy | `RoleChecks.CanAccessFinance(User)` toggles finance-only metrics |
-| `MembershipRequiredFilter` | All authenticated requests | Gates the app purely on stored `UserState` (stamped on the principal by `RoleAssignmentClaimsTransformation`): only `Active` reaches the app; `DeletePending` → `/User/Deletion`, Suspended/AdminSuspended/Rejected/Deleted/Merged → `/User/Status`, Bare/unseeded → `/OnboardingWidget`. Roles do not bypass the gate. A Backdoor-API-key-authenticated request (`IsMachineRequest` — `AuthenticationType == BackdoorAuthentication.SchemeName`) passes through unconditionally: a machine principal never runs claims transformation, so the state claim is absent by construction. Exempt controllers (`Account`, `OnboardingWidget`, `Profile`, `Consent`, `User`, `Language`, `Guest`, `GovernanceApplications`, `Issues`, `Notifications`, `Survey`) and `[AllowAnonymous]` pass through. |
-| `NameRequiredFilter` | All requests | Global action filter (registered in `Program.cs` before `MembershipRequiredFilter`). Redirects any authenticated user with no real `BurnerName` to the name form; never blocks sign-in (only redirects). A Backdoor-API-key-authenticated request (`MembershipRequiredFilter.IsMachineRequest`) passes through unconditionally — a JSON client cannot fill in the name form. Exempt controllers (`Account`, `Language`), exempt actions (`OnboardingWidget/Names`, `Home/Error`, `Home/Privacy`), and `[AllowAnonymous]` pass through. |
+| `MembershipRequiredFilter` | All authenticated requests | Gates the app purely on stored `UserState` (stamped on the principal by `RoleAssignmentClaimsTransformation`): only `Active` reaches the app; `DeletePending` → `/User/Deletion`, Suspended/AdminSuspended/Rejected/Deleted/Merged → `/User/Status`, Bare/unseeded → `/OnboardingWidget`. Roles do not bypass the gate. A Backdoor-API-key-authenticated request (`IsMachineRequest` — `AuthenticationType == BackdoorAuthentication.SchemeName`) passes through unconditionally: a machine principal never runs claims transformation, so the state claim is absent by construction. `Deleted`/`Merged` accounts get no exemptions beyond `Account`, `Language` and `User/Status` — a lingering cookie never reaches a profile. For every other state, exempt controllers (`Account`, `OnboardingWidget`, `Consent`, `User`, `Language`, `Guest`, `GovernanceApplications`, `Issues`, `Notifications`, `Survey`), the own-profile maintenance actions on `Profile` (`Index`, `Me`, `Edit`, `DeclareNotAttending`, `UndoNotAttending`, `MyOutbox`, `Privacy`, `RequestDeletion`, `DietaryMedical`, `CommunicationPreferences`, `UpdatePreference`, `Notifications`, `DownloadData`) and `ProfileEmails` (own email/linked-account grid actions), and `[AllowAnonymous]` pass through; other humans' profiles, messaging, search and admin email actions require `Active`. |
+| `NameRequiredFilter` | All requests | Global action filter (registered in `Program.cs` before `MembershipRequiredFilter`). Redirects any authenticated user with no real `BurnerName` to the name form; never blocks sign-in (only redirects). A Backdoor-API-key-authenticated request (`MembershipRequiredFilter.IsMachineRequest`) passes through unconditionally — a JSON client cannot fill in the name form. `Deleted`/`Merged` accounts (names cleared by anonymization) pass through to `MembershipRequiredFilter`'s status wall. Exempt controllers (`Account`, `Language`), exempt actions (`OnboardingWidget/Names`, `Home/Error`, `Home/Privacy`), and `[AllowAnonymous]` pass through. |
 | `HangfireAuthorizationFilter` | Hangfire dashboard | `RoleChecks.IsAdmin(User)` |
 | `AgentController.Ask` | Per-request | `auth.AuthorizeAsync(User, user.Id, [new AgentRateLimitRequirement()])` (resource-based; requirement instantiated directly rather than via a named policy) |
 | `GateController.Decision` | Supervisor overrides (too-early / unconfirmed-EE admit, child-without-ID waiver) | Shared override PIN from `Gate:SupervisorPin` config, verified server-side (`SupervisorPinValid` — SHA-256 fixed-time compare) and brute-force-throttled via `GatePinThrottle` (one shared bucket for the terminal: 5 tries / 15 min); fail-closed when no PIN is configured. The PIN authorizes but cannot attribute — the event records the gate account. |
@@ -281,9 +278,24 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 
 ## 5. Canonical Policy Name Table
 
-**Registration is moving out of Shell (nobodies-collective/Humans#1073, lane #1076).** Target state: each section contributes its own policies through `ISectionPolicies`, implemented on its `Section` entry point or in a separate `internal sealed SectionPolicies` class ([`section-contribution-seams`](../memory/architecture/section-contribution-seams.md)), discovered by `SectionDiscoveryExtensions.DiscoverImplementations<ISectionPolicies>()` and applied in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies` through `services.Configure<AuthorizationOptions>` (additive), so a single-section policy is no longer named there directly. Policy *names* stay shared vocabulary in `PolicyNames` — nav items and cross-section checks cite other sections' policies by name — only the registration call moves. Genuinely cross-section policies (`AdminOnly`, `AnyAdminRole`, `BoardOnly`, `AppAccess`, `RoleAssignmentManage`, and composites spanning several sections' roles) stay registered centrally in Shell. The table below reflects **today's** registration, still fully centralized in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies` — it does not yet reflect the per-policy split; update it once lane #1076 lands.
+Policy *names* are shared vocabulary in `PolicyNames` — nav items and cross-section checks cite other sections' policies by name. Registration is split ([`section-contribution-seams`](../memory/architecture/section-contribution-seams.md)): the cross-section policies `AdminOnly`, `AnyAdminRole`, `BoardOnly`, `BoardOrAdmin`, `ScannerAccess`, `GateAdmit`, `ReviewQueueAccess`, `AppAccess` and `RoleAssignmentManage` are registered in Shell's `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`; every other policy is registered by its owning section's `SectionPolicies : ISectionPolicies`, discovered by `SectionDiscoveryExtensions.DiscoverImplementations<ISectionPolicies>()` and applied additively through `services.Configure<AuthorizationOptions>` in the same method.
 
-These are the named ASP.NET policies registered in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`. Each maps from the current authorization dialect(s) to a single canonical name. **Phase 1 complete:** every policy in this table is now registered.
+| Owning section | Policies registered in its `SectionPolicies.cs` |
+|---|---|
+| Camps | `CampAdminOrAdmin`, `CampComplianceAccess` |
+| Cantina | `CantinaAdminOrAdmin` |
+| CityPlanning | `CityPlanningMapAdmin` |
+| Consent | `ConsentCoordinatorBoardOrAdmin` |
+| Events | `EventsAdminOrAdmin` |
+| Finance | `FinanceAdminOrAdmin` |
+| Rideshare | `RideshareAdminOrAdmin` |
+| Shifts | `ShiftDashboardAccess`, `ShiftDepartmentManager`, `VolunteerTrackingWrite`, `PrivilegedSignupApprover`, `VolunteerManager`, `MedicalDataViewer` |
+| Store | `StoreCatalogAdmin` |
+| Teams | `TeamsAdminBoardOrAdmin`, `TeamsAdminOrAdmin` |
+| Tickets | `TicketAdminBoardOrAdmin`, `TicketAdminOrAdmin` |
+| Users | `HumanAdminBoardOrAdmin`, `HumanAdminOrAdmin`, `HumanAdminOnly` |
+
+Each policy maps from the current authorization dialect(s) to a single canonical name.
 
 | Canonical Policy Name | Roles | Current Sources |
 |---|---|---|
@@ -294,9 +306,10 @@ These are the named ASP.NET policies registered in `AuthorizationPolicyExtension
 | `HumanAdminBoardOrAdmin` | HumanAdmin, Board, Admin | `PolicyNames.HumanAdminBoardOrAdmin`, `RoleChecks.IsHumanAdminBoardOrAdmin` |
 | `HumanAdminOrAdmin` | HumanAdmin, Admin | `PolicyNames.HumanAdminOrAdmin` |
 | `TeamsAdminBoardOrAdmin` | TeamsAdmin, Board, Admin | `PolicyNames.TeamsAdminBoardOrAdmin`, `RoleChecks.IsTeamsAdminBoardOrAdmin` |
-| `TeamsAdminOrAdmin` | TeamsAdmin, Admin | `PolicyNames.TeamsAdminOrAdmin` (registered in `AuthorizationPolicyExtensions` but currently only referenced from `Team/Details.cshtml`'s "Open store" boolean — no controller attribute uses it yet) |
+| `TeamsAdminOrAdmin` | TeamsAdmin, Admin | `PolicyNames.TeamsAdminOrAdmin` (registered but currently only referenced from `Team/Details.cshtml`'s "Open store" boolean — no controller attribute uses it yet) |
 | `CampAdminOrAdmin` | CampAdmin, Admin | `PolicyNames.CampAdminOrAdmin`, `RoleChecks.IsCampAdmin` |
 | `CampComplianceAccess` | CampAdmin, Admin OR any team/sub-team coordinator | `PolicyNames.CampComplianceAccess` (composite — `CampComplianceAccessHandler`) |
+| `CityPlanningMapAdmin` | CampAdmin, Admin OR any city-planning team member | `PolicyNames.CityPlanningMapAdmin` (composite — `CityPlanningMapAdminHandler`; gates the `/Settings#city-planning` tab) |
 | `TicketAdminBoardOrAdmin` | TicketAdmin, Admin, Board | `PolicyNames.TicketAdminBoardOrAdmin`, `RoleChecks.CanAccessTickets` |
 | `TicketAdminOrAdmin` | TicketAdmin, Admin | `PolicyNames.TicketAdminOrAdmin`, `RoleChecks.CanManageTickets` |
 | `ScannerAccess` | TicketAdmin, Admin, Board OR `SystemUserIds.GateTerminal` (by NameIdentifier claim) | `PolicyNames.ScannerAccess` (composite assertion — gate-terminal account admitted by id, not by role) |
@@ -335,51 +348,54 @@ These are the named ASP.NET policies registered in `AuthorizationPolicyExtension
 
 Resource-based authorization handlers are subclasses of `AuthorizationHandler<TRequirement, TResource>` (or `AuthorizationHandler<TRequirement>` / `IAuthorizationHandler` directly when the same handler covers multiple resource shapes) that evaluate whether a user can perform an operation on a specific resource instance. They are invoked via `IAuthorizationService.AuthorizeAsync(User, resource, requirement)` from controllers (or controller base classes).
 
-Every resource-based handler owned by a section lives in that section's `authorization.md` (see Per-Section Inventories above). This file keeps only the composite (non-resource) handlers, which have no owning section.
+Every handler — resource-based and composite — lives in its owning section's `Authorization/` folder and is listed in that section's `authorization.md` (see Per-Section Inventories above). The composite (non-resource) handlers backing named policies:
 
-Composite (non-resource) handlers registered in `src/Humans.Web/Authorization/Requirements/`:
+| Handler | Requirement | Owning section | Backs policy |
+|---|---|---|---|
+| `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | Users | `HumanAdminOnly` |
+| `IsAnyTeamManagerOrCoordinatorHandler` | `IsAnyTeamManagerOrCoordinatorRequirement` | Shifts | `ShiftDepartmentManager` |
+| `CampComplianceAccessHandler` | `CampComplianceAccessRequirement` | Camps | `CampComplianceAccess` |
+| `CityPlanningMapAdminHandler` | `CityPlanningMapAdminRequirement` | CityPlanning | `CityPlanningMapAdmin` |
 
-| Handler | Requirement | Path |
-|---|---|---|
-| `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | `src/Humans.Web/Authorization/Requirements/HumanAdminOnlyHandler.cs` |
-| `IsAnyTeamManagerOrCoordinatorHandler` | `IsAnyTeamManagerOrCoordinatorRequirement` | `src/Humans.Web/Authorization/Requirements/IsAnyTeamManagerOrCoordinatorHandler.cs` |
-| `CampComplianceAccessHandler` | `CampComplianceAccessRequirement` | `src/Humans.Web/Authorization/Requirements/CampComplianceAccessHandler.cs` (short-circuits for CampAdmin/Admin; else admits any team/sub-team coordinator via `IShiftManagementService.GetCoordinatorTeamIdsAsync`) |
-
-These three composite handlers, `AuthorizationPolicyExtensions.cs`, `MembershipRequiredFilter.cs`, `NameRequiredFilter.cs`, `HangfireAuthorizationFilter.cs`, and the claims/identity plumbing (`HttpCurrentUserContext.cs`, `HumansUserClaimsPrincipalFactory.cs`, `RoleAssignmentClaimsTransformation.cs`) are the only authorization files left directly in `src/Humans.Web/` — every resource-based handler lives in its owning section (see Per-Section Inventories above), and the framework-facing plumbing (`PolicyNames`, `RoleNames`, `RoleGroups`, `RoleChecks`, `ShiftRoleChecks`, `HumansControllerBase`, `AuthorizeViewTagHelper`) lives in `src/Humans.Base/` under the namespaces `Humans.Base.Authorization` / `Humans.Base.Constants` / `Humans.Base.Controllers` / `Humans.Base.TagHelpers`.
+The only authorization files left in `src/Humans.Web/` are `Authorization/AuthorizationPolicyExtensions.cs`, `MembershipRequiredFilter.cs`, `NameRequiredFilter.cs`, the claims/identity plumbing (`HttpCurrentUserContext.cs`, `HumansUserClaimsPrincipalFactory.cs`, `RoleAssignmentClaimsTransformation.cs`) and `HangfireAuthorizationFilter.cs` at the project root. The framework-facing plumbing (`PolicyNames`, `RoleNames`, `RoleGroups`, `RoleChecks`, `ShiftRoleChecks`, `HumansControllerBase`, `AuthorizeViewTagHelper`) lives in `src/Humans.Base/` under the namespaces `Humans.Base.Authorization` / `Humans.Base.Constants` / `Humans.Base.Controllers` / `Humans.Base.TagHelpers`.
 
 ### `IAuthorizationService.AuthorizeAsync` Call Sites
 
 | File | Line | Call |
 |---|---|---|
-| `src/Sections/Humans.Teams/Contracts/HumansTeamControllerBase.cs` | 34 | `AuthorizeAsync(User, team, TeamOperationRequirement.ManageCoordinators)` (`ResolveTeamManagementAsync`) |
-| `src/Sections/Humans.Teams/Contracts/HumansTeamControllerBase.cs` | 47 | `AuthorizeAsync(User, team, TeamOperationRequirement.ManageEarlyEntry)` (`ResolveEarlyEntryManagementAsync`) |
-| `src/Sections/Humans.Teams/Controllers/TeamController.cs` | 163 | `AuthorizeAsync(User, teamInfo, TeamOperationRequirement.ManageEarlyEntry)` (drives `CanManageEarlyEntry` view-model flag on team details) |
-| `src/Sections/Humans.Teams/Controllers/TeamController.cs` | 682 | `AuthorizeAsync(User, PolicyNames.AdminOnly)` (EditTeam POST — `IsSensitive` leave-unchanged guard for non-Admin editors) |
-| `src/Sections/Humans.Camps/Contracts/HumansCampControllerBase.cs` | 22 | `AuthorizeAsync(User, campId, CampOperationRequirement.Manage)` |
-| `src/Sections/Humans.Camps/Contracts/HumansCampControllerBase.cs` | 56 | `AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` |
-| `src/Sections/Humans.Camps/Contracts/HumansCampControllerBase.cs` | 86 | `AuthorizeAsync(User, camp, CampOperationRequirement.SubmitEvent)` |
-| `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 29 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
+| `src/Sections/Humans.Teams/Contracts/HumansTeamControllerBase.cs` | 28 | `AuthorizeAsync(User, team, TeamOperationRequirement.ManageCoordinators)` (`ResolveTeamManagementAsync`) |
+| `src/Sections/Humans.Teams/Contracts/HumansTeamControllerBase.cs` | 41 | `AuthorizeAsync(User, team, TeamOperationRequirement.ManageEarlyEntry)` (`ResolveEarlyEntryManagementAsync`) |
+| `src/Sections/Humans.Teams/Controllers/TeamController.cs` | 162 | `AuthorizeAsync(User, teamInfo, TeamOperationRequirement.ManageEarlyEntry)` (drives `CanManageEarlyEntry` view-model flag on team details) |
+| `src/Sections/Humans.Teams/Controllers/TeamController.cs` | 681 | `AuthorizeAsync(User, PolicyNames.AdminOnly)` (EditTeam POST — `IsSensitive` leave-unchanged guard for non-Admin editors) |
+| `src/Sections/Humans.Camps/Contracts/HumansCampControllerBase.cs` | 25 | `AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` (non-public season visibility) |
+| `src/Sections/Humans.Camps/Contracts/HumansCampControllerBase.cs` | 53 | `AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` |
+| `src/Sections/Humans.Camps/Contracts/HumansCampControllerBase.cs` | 83 | `AuthorizeAsync(User, camp, CampOperationRequirement.SubmitEvent)` |
+| `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 29, 112 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
 | `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 92 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` (drives `IsCoordinator` flag alongside a coordinator-team-id lookup) |
-| `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 112 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
-| `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 118 | `AuthorizeAsync(User, detail.Category, BudgetOperationRequirement.Edit)` |
-| `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 229 | `AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
-| `src/Sections/Humans.Containers/Controllers/ContainerController.cs` | 23 | `AuthorizeAsync(User, target, requirement)` (private helper, called from every mutating action in the controller) |
-| `src/Sections/Humans.Expenses/Controllers/ExpensesController.cs` | 160, 502, 548, 574, 624, 652, 679 | `AuthorizeAsync(User, report, new ExpenseReportOperationRequirement(ExpenseReportOperation.X))` — `View` (Detail 160, Attachment 502), `Endorse` 548, `CoordinatorReject` 574, `Approve` 624, `FinanceReject` 652, `RequeueHoldedPush` 679 (backs `HoldedRetry`) |
-| `src/Sections/Humans.Expenses/Controllers/ExpensesController.cs` | 179 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` (drives the `isFinanceAdmin` flag on report Detail — Holded creditor-account binding UI for finance admins) |
-| `src/Sections/Humans.Store/Controllers/StoreController.cs` | 55, 77, 80, 81, 82, 139, 226, 256, 283, 308 | `AuthorizeAsync(User, order/resource, OrderOperationRequirement.X)` — line-deadline-aware `AddLine`/`RemoveLine` at 256/283 authorize against an `OrderLineContext` |
-| `src/Sections/Humans.Store/Controllers/StoreController.cs` | 104, 121 | `AuthorizeAsync(User, new OrderLineContext(...), OrderOperationRequirement.{AddLine, RemoveLine})` (private `FilterLineEditAffordancesAsync` helper — drives the per-product/per-line "can I still edit" affordances shown on the order page) |
-| `src/Sections/Humans.Store/Controllers/StoreController.cs` | 179, 197 | `AuthorizeAsync(User, new OrderCreateContext(...), OrderOperationRequirement.Create)` (camp order `Create` at 179, team order `CreateTeamOrder` at 197) |
-| `src/Sections/Humans.Issues/Controllers/IssuesController.cs` | 200, 271, 318, 346, 374, 406 | `AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` |
-| `src/Sections/Humans.CityPlanning/Controllers/CityPlanningApiController.cs` | 273, 298, 336 | `AuthorizeAsync(User, ...)` (resource-based — camp-polygon edit, camp-polygon history restore, container placement edit) |
-| `src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs` | 209, 242, 287, 329, 366, 403, 440, 460, 504, 583, 599, 625, 658, 684, 710, 885, 911, 955 | `AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (the email-edit endpoints) |
-| `src/Sections/Humans.Users/Controllers/ProfileViewController.cs` | 107 | `AuthorizeAsync(User, PolicyNames.TicketAdminBoardOrAdmin)` (onsite-chip visibility gate) |
-| `src/Sections/Humans.Users/Controllers/ProfileViewController.cs` | 202 | `AuthorizeAsync(User, PolicyNames.PrivilegedSignupApprover)` (drives `isPrivilegedApprover` — gates whether a non-own-profile viewer sees the "sent messages" panel on the profile page; admits coordinators or `PrivilegedSignupApprover` role) |
-| `src/Sections/Humans.Users/Controllers/UsersAdminController.cs` | 300 | `AuthorizeAsync(User, model.RoleName, PolicyNames.RoleAssignmentManage)` (AddRole — goes through the named policy rather than passing `RoleAssignmentOperationRequirement.Manage` directly; see §5) |
-| `src/Sections/Humans.Users/Controllers/UsersAdminController.cs` | 338 | `AuthorizeAsync(User, roleAssignment.RoleName, PolicyNames.RoleAssignmentManage)` (EndRole) |
-| `src/Sections/Humans.Agent/Controllers/AgentController.cs` | 51 | `AuthorizeAsync(User, user.Id, [new AgentRateLimitRequirement()])` (requirement instantiated directly, no `PolicyNames` constant) |
+| `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 118, 229 | `AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
+| `src/Sections/Humans.Containers/Controllers/ContainerController.cs` | 25 | `AuthorizeAsync(User, target, requirement)` (private helper, called from every mutating action in the controller) |
+| `src/Sections/Humans.Expenses/Controllers/ExpensesController.cs` | 172, 651, 682, 708, 769, 797, 824 | `AuthorizeAsync(User, report, new ExpenseReportOperationRequirement(ExpenseReportOperation.X))` — `View` (Detail 172, Attachment 651), `Endorse` 682, `CoordinatorReject` 708, `Approve` 769, `FinanceReject` 797, `RequeueHoldedPush` 824 (backs `HoldedRetry`) |
+| `src/Sections/Humans.Expenses/Controllers/ExpensesController.cs` | 878 | `AuthorizeAsync(User, report, new ExpenseReportOperationRequirement(operation))` (private `AllowsAsync` — drives the Detail page's action affordances) |
+| `src/Sections/Humans.Expenses/Controllers/ExpensesController.cs` | 191, 736, 886 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` (Detail finance flag, Review queue scope, `IsFinanceAdminAsync` for the New-report member picker) |
+| `src/Sections/Humans.Store/Controllers/StoreController.cs` | 55, 77, 80, 81, 82, 83, 144, 184, 267, 297, 324, 349 | `AuthorizeAsync(User, order/resource, OrderOperationRequirement.X)` — line-deadline-aware `AddLine`/`RemoveLine` at 297/324 authorize against an `OrderLineContext` |
+| `src/Sections/Humans.Store/Controllers/StoreController.cs` | 109, 126 | `AuthorizeAsync(User, new OrderLineContext(...), OrderOperationRequirement.{AddLine, RemoveLine})` (private `FilterLineEditAffordancesAsync` helper — drives the per-product/per-line "can I still edit" affordances shown on the order page) |
+| `src/Sections/Humans.Store/Controllers/StoreController.cs` | 220, 238 | `AuthorizeAsync(User, new OrderCreateContext(...), OrderOperationRequirement.Create)` (camp order `Create` at 220, team order `CreateTeamOrder` at 238) |
+| `src/Sections/Humans.Issues/Controllers/IssuesController.cs` | 199, 276, 323, 351, 379, 411 | `AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` |
+| `src/Sections/Humans.CityPlanning/Controllers/CityPlanningApiController.cs` | 272, 297, 335 | `AuthorizeAsync(User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place)` (container placement save, notes, clear) |
+| `src/Sections/Humans.Surveys/Controllers/SurveyAdminController.cs` | 123, 179, 185, 195, 220, 252, 281, 314, 359, 601, 639 | `AuthorizeAsync(User, detail, new SurveyOperationRequirement(SurveyOperation.X))` — `Submit` (123, 185, 639), `Edit` (179, 359), `Preview` (195, 220, 252, 281, 314), `ViewResults` (601) |
+| `src/Sections/Humans.Workgroups/Controllers/WorkgroupsController.cs` | 397, 400 | `AuthorizeAsync(User, workgroup, WorkgroupOperationRequirement.{Administer, Member})` (page permissions) |
+| `src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs` | 209, 242, 287, 329, 366, 403, 440, 460, 504, 583, 607, 633, 666, 692, 718, 893, 919, 963 | `AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (the email-edit endpoints) |
+| `src/Sections/Humans.Users/Controllers/ProfileViewController.cs` | 111 | `AuthorizeAsync(User, PolicyNames.TicketAdminBoardOrAdmin)` (onsite-chip visibility gate) |
+| `src/Sections/Humans.Users/Controllers/ProfileViewController.cs` | 213 | `AuthorizeAsync(User, PolicyNames.PrivilegedSignupApprover)` (drives `isPrivilegedApprover` — gates whether a non-own-profile viewer sees the "sent messages" panel on the profile page; admits coordinators or `PrivilegedSignupApprover` role) |
+| `src/Sections/Humans.Users/Controllers/UsersAdminController.cs` | 293 | `AuthorizeAsync(User, model.RoleName, PolicyNames.RoleAssignmentManage)` (AddRole — goes through the named policy rather than passing `RoleAssignmentOperationRequirement.Manage` directly; see §5) |
+| `src/Sections/Humans.Users/Controllers/UsersAdminController.cs` | 331 | `AuthorizeAsync(User, roleAssignment.RoleName, PolicyNames.RoleAssignmentManage)` (EndRole) |
+| `src/Sections/Humans.Agent/Controllers/AgentController.cs` | 60 | `AuthorizeAsync(User, user.Id, [new AgentRateLimitRequirement()])` (requirement instantiated directly, no `PolicyNames` constant) |
+| `src/Sections/Humans.Settings/ViewComponents/SettingsTabComposition.cs` | 30 | `AuthorizeAsync(user, null, tab.Policy)` (filters the `/Settings` tabs sections contribute) |
+| `src/Sections/Humans.Settings/ViewComponents/EventSettingsTabViewComponent.cs` | 24 | `AuthorizeAsync(UserClaimsPrincipal, null, PolicyNames.AdminOnly)` (Event tab editable vs read-only) |
 | `src/Humans.Base/TagHelpers/AuthorizeViewTagHelper.cs` | 54 | `AuthorizeAsync(user, Policy)` (driver of `<authorize-policy>` view tags) |
-| `src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs` | 28 | `AuthorizeAsync(HttpContext.User, null, item.Policy)` (filters admin sidebar) |
-| `src/Humans.Web/Controllers/AdminController.cs` | 77, 87 | `AuthorizeAsync(User, PolicyNames.{StoreCatalogAdmin, FinanceAdminOrAdmin})` (drive `canSeeStoreTile` / `canSeeExpenseTile` dashboard-tile flags) |
+| `src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs` | 31 | `AuthorizeAsync(HttpContext.User, null, item.Policy)` (filters admin sidebar) |
+| `src/Humans.Web/ViewComponents/AdminSummaryViewComponent.cs` | 34 | `AuthorizeAsync(HttpContext.User, null, tile.Policy)` (filters admin dashboard tiles) |
+| `src/Humans.Web/ViewComponents/SectionNavViewComponent.cs` | 64 | `AuthorizeAsync(HttpContext.User, null, item.Policy)` (filters section nav items) |
 
 ---
 
@@ -388,7 +404,7 @@ These three composite handlers, `AuthorizationPolicyExtensions.cs`, `MembershipR
 - **No `[Authorize(Roles = ...)]` attributes remain anywhere in `src/`** — every controller/action `[Authorize]` attribute now references a `PolicyNames` constant or is a bare authenticated/`[AllowAnonymous]` marker.
 - **`ScannerController` uses `PolicyNames.ScannerAccess`**, not `TicketAdminBoardOrAdmin` — the `ScannerAccess` policy is a composite assertion that additionally admits the shared gate-terminal account by its well-known `SystemUserIds.GateTerminal` NameIdentifier claim so the kiosk session can scan without holding any role.
 - **The Gate section (`/Gate`) splits read from write**: `GateController` reads under `ScannerAccess`, but every state-changing action (`Decision`, `Claim` POST, `ClaimPin`, `EndShift`) is gated by the separate `GateAdmit` policy. Scan attribution is session-based, stamped server-side after an active-member + personal-PIN check; supervisor overrides use the shared `Gate:SupervisorPin` config value (server-verified, throttled, fail-closed) — the PIN authorizes but never attributes. `GateController.Search` is a deliberately name-only, masked-email people search so the route-locked kiosk never exposes the broader `/api/profiles/search` surface.
-- **`SurveyController` is `[AllowAnonymous]`** — the entire public survey wizard is unauthenticated; identity flows from the invitation token, not the principal. `SurveyAdminController` (`BoardOrAdmin`) and, in the Backdoor section, `BackdoorSurveysController` (`BackdoorApiKeyAuthFilter`) are the gated surfaces.
+- **`SurveyController` is `[AllowAnonymous]`** — the entire public survey wizard is unauthenticated; identity flows from the invitation token, not the principal. `SurveyAdminController` (`AppAccess` plus per-survey `SurveyOperationRequirement`, `BoardOrAdmin` on the run/approval actions) and, in the Backdoor section, `BackdoorSurveysController` (`BackdoorApiKeyAuthFilter`) are the gated surfaces.
 - **`ICalFeedApiController` is `[AllowAnonymous]`** — the personal iCal feed uses a secret token in the URL for authentication; all failure modes return 404 to prevent oracle attacks.
 - The Events Guide controllers and `_Layout.cshtml` Events sub-dropdowns have all migrated to `PolicyNames.EventsAdminOrAdmin`.
 

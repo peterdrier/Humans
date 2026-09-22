@@ -22,7 +22,7 @@ After initial onboarding, existing volunteers apply for Colaborador or Asociado 
 
 Applications go through a review workflow: once submitted, the Application enters the Board's voting queue — this is not gated on the human's Volunteer consent-check status. The Board votes individually, then finalizes the decision. Approved applications set the human's tier and enroll them in the appropriate system team with a synchronized 2-year term.
 
-**Volunteer access does not require an Application.** Only Colaborador and Asociado tiers use the Application entity. The consent check is a separate Volunteer-level safety gate. See [Onboarding Pipeline](../../../Humans.Onboarding/Docs/features/onboarding-pipeline.md).
+**Volunteer access does not require an Application.** Only Colaborador and Asociado tiers use the Application entity. Volunteer access gates on name + required consents, separate from tier applications. See [Onboarding Pipeline](../../../Humans.Onboarding/Docs/features/onboarding-pipeline.md).
 
 The Application entity also serves **upgrades** (Volunteer→Colaborador, Volunteer→Asociado, Colaborador→Asociado) and **renewals** (same tier, new term). Each is a new Application record.
 
@@ -224,7 +224,7 @@ Profile Setup → Tier selection → Application form inline → Submit
     │
     ▼
 Both proceed through pipelines:
-  - Profile → Consents → Consent Check → Volunteer access
+  - Profile → Consents → Volunteer access (name + consents)
   - Application → Board Voting → Tier enrollment (parallel)
 ```
 
@@ -280,11 +280,12 @@ When an Application is approved:
 
 ## Volunteer Access vs Tier Application
 
-### Volunteer Access (Consent Check → Auto-Approve)
-- **Gate**: Consent Coordinator clears consent check → `IsApproved = true` → Volunteers team
+### Volunteer Access (Name + Consents → Team Sync)
+- **Gate**: Required name fields + all required consents → `SystemTeamSyncJob` adds to Volunteers team. `Profile.IsApproved` is not consulted for Volunteers.
 - **Applies to**: All new humans — the universal onboarding gate
 - **No Application needed**
-- **Independent of tier applications** — consent check does not evaluate tier suitability
+- **Independent of tier applications** — the gate does not evaluate tier suitability
+- The Consent Coordinator's clear/flag review is an independent audit annotation and does not gate Volunteer admission; reject and suspend are the kick-out levers
 
 ### Tier Application (Board Voting → Tier Enrollment)
 - **Gate**: Board votes on Application → Approve/Reject
@@ -296,6 +297,6 @@ When an Application is approved:
 - [Membership Tiers](membership-tiers.md) — Tier definitions and lifecycle
 - [Onboarding Pipeline](../../../Humans.Onboarding/Docs/features/onboarding-pipeline.md) — End-to-end onboarding flow
 - [Board Voting](board-voting.md) — Board voting process
-- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent check (Volunteer gate, separate from applications)
+- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Coordinator review (audit annotation, separate from applications)
 - [Profiles](../../../Humans.Users/Docs/features/profiles.md) — Profile data
 - [Administration](../../../../../docs/features/global/administration.md) — Application management

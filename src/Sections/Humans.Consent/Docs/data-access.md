@@ -119,7 +119,8 @@ Repository: `IConsentRepository`.
 
 Cross-section calls via `ILegalDocumentSyncService`,
 `INotificationAutoResolve`, `IHumanLifecycleService`, `IUserServiceRead`,
-`IHumansMetrics`, plus `IServiceProvider` for cycle-breaking. Implements
+`IHumansMetrics`, plus `IServiceProvider` to lazy-resolve `IMembershipCalculatorRead`
+(cycle-breaking). Implements
 `IUserDataContributor`. The inner service has no `IMemoryCache`; caching
 lives in the decorator.
 

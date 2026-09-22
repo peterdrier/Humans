@@ -222,6 +222,11 @@ public interface IGoogleSyncService
     Task<bool> RequeueOutboxEventAsync(Guid id, CancellationToken ct = default);
     Task<int> RequeueAllFailedOutboxEventsAsync(CancellationToken ct = default);
     Task<int> EnqueueUserSyncAsync(Guid userId, CancellationToken ct = default);
+
+    // Source-claimed Drive fan-out entry points (e.g. Workgroups) — independent
+    // of the Teams-keyed google_resources path above
+    Task<string> CreateSubfolderAsync(string parentFolderId, string name, CancellationToken ct = default);
+    Task RequestSyncAsync(string folderId, CancellationToken ct = default);
 }
 ```
 
@@ -355,7 +360,7 @@ Same diff logic as full sync, but read-only — no writes to Google APIs.
 
 ## Sync Mode Settings
 
-Per-service sync modes control what automated jobs and manual sync actions do. Stored in the `sync_service_settings` table and managed via the Admin Sync Settings page at `/Google/SyncSettings`.
+Per-service sync modes control what automated jobs and manual sync actions do. Stored in the `sync_service_settings` table and managed via the `/Settings#google-sync` tab (Admin-only).
 
 ### SyncServiceSettings Entity
 ```
@@ -381,7 +386,7 @@ AddOnly       = 1  // Only add missing members
 AddAndRemove  = 2  // Add missing + remove extra members
 ```
 
-All services default to `SyncMode.None` (seed data). An Admin must explicitly enable sync from the `/Google/SyncSettings` page before automated jobs or manual sync will modify Google resources.
+All services default to `SyncMode.None` (seed data). An Admin must explicitly enable sync from the `/Settings#google-sync` tab before automated jobs or manual sync will modify Google resources.
 
 ### ISyncSettingsService
 ```csharp
@@ -534,15 +539,14 @@ Accessible to TeamsAdmin, Board, and Admin. Shows drift across all active resour
 Per resource: Name, Team, Status badge, members to add/remove.
 Drifted resources shown first, then in-sync.
 
-### Sync Settings Page
+### Sync Settings Tab
 
-#### Route: `/Google/SyncSettings`
-Admin-only page for configuring per-service sync modes.
+#### `/Settings#google-sync`
+Admin-only tab for configuring per-service sync modes, contributed by `GoogleSyncSettingsTabViewComponent`.
 
 | Route | Method | Action |
 |-------|--------|--------|
-| `/Google/SyncSettings` | GET | View current sync mode per service |
-| `/Google/SyncSettings` | POST | Update sync mode for a service |
+| `/Google/SyncSettings` | POST | Update sync mode for a service; redirects back to `/Settings#google-sync` |
 
 ## Stub Implementations
 

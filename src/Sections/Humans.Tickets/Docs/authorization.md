@@ -13,6 +13,7 @@
 | `TicketController.ParticipationBackfill` (GET/POST) | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `TicketController.ExportAttendees` | Action | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketController.ExportOrders` | Action | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
+| `TicketController.ExportAccountantReport` | Action | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketTransferController` | Class | `[Authorize]` (authenticated) | — |
 | `TicketTransferAdminController` | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketsContactsAdminController` | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |

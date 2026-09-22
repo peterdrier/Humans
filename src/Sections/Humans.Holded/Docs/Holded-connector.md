@@ -44,6 +44,10 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   reconciliation where a short fetch would delete live rows.
 - `ledger-entries` dates arrive as `DD/MM/YYYY` (parsed via `HoldedLedgerDatePattern` in
   `DateFormattingExtensions`); purchases/contacts dates are ISO. Decimals arrive as strings.
+- The live `ledger-entries` API's `end_date` is **exclusive** — an entry dated `end_date` itself
+  is never returned. `ListLedgerEntriesAsync` requests `end_date = to + 1 day` so its own `to`
+  parameter stays inclusive for callers; without this, same-day entries never reach the ledger
+  mirror even though account balances already include them.
 - Currency is EUR-only. Multi-currency is out of scope.
 - Line taxes are Holded **tax keys**, scoped by direction: `s_iva_21` / `s_iva_0` on sales
   documents, `p_iva_21` on purchases. The decimal separator is dropped, not rounded —

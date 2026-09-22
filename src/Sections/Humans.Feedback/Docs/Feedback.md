@@ -70,7 +70,7 @@ Conversation thread between reporter and admins. Aggregate-local (same section a
 | Id | Guid | PK |
 | FeedbackReportId | Guid | FK → FeedbackReport, Cascade on delete |
 | SenderUserId | Guid? | Bare cross-section Guid column — **no FK constraint, no nav property**; null when posted via API key (no user session) |
-| Content | string | Message body (max 5000) |
+| Content | string | Message body, authored as Markdown and rendered sanitized (max 5000) |
 | CreatedAt | Instant | When the message was posted |
 
 There is no per-message admin/reporter flag — admin-vs-reporter is derived by comparing `SenderUserId` to `FeedbackReport.UserId`, and report-level "needs reply" is derived from `LastReporterMessageAt` vs `LastAdminMessageAt`.
@@ -146,7 +146,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - **Notifications:** `INotificationEmitter.SendAsync` — `NotificationSource.FeedbackResponse` in-app notification dispatched after an admin reply is persisted.
 - **Audit Log:** `IAuditLogService.LogAsync` — status, assignment and GitHub-link changes (`AuditAction.FeedbackStatusChanged`, `AuditAction.FeedbackAssignmentChanged`, `AuditAction.FeedbackGitHubLinked`).
 - **Caching:** the actionable badge count is cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL, Static) and invalidated via `INavBadgeCacheInvalidator` whenever the count could have changed.
-- **GDPR:** implements `IUserDataContributor` to export the reporter's feedback reports and message contents under `FeedbackService.FeedbackReports`.
+- **GDPR:** implements `IUserDataContributor` to export the reporter's feedback reports and message contents under `FeedbackService.FeedbackReports`, and to erase them on Article 17 request — reports the person filed are hard-deleted with their messages and screenshots, while a reply they left on someone else's report stays with authorship detached (`SenderUserId` nulled), per its `ErasureDeclaration`.
 - **Agent:** `AgentConversationId` is a plain FK column on `feedback_reports` (no EF FK constraint). Reports with `Source = AgentUnresolved` originate from the agent's retired `route_to_feedback` tool. Transcript resolution goes through the Agent section's services when needed. `IFeedbackServiceRead.GetOpenFeedbackIdsForUserAsync` still feeds `AgentUserSnapshotProvider`.
 
 ## Architecture

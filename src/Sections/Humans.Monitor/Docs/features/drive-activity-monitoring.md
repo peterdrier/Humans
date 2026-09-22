@@ -91,7 +91,7 @@ POST https://driveactivity.googleapis.com/v2/activity:query
 ### Detection Logic
 
 For each active Drive folder resource:
-1. Query Drive Activity API for activities in the last 24 hours
+1. Query Drive Activity API for activities since the last successful run (`SettingKeys.DriveActivityMonitorLastRunAt`), falling back to 24 hours ago if no marker is stored yet
 2. Filter to permission change activities (`PrimaryActionDetail.PermissionChange != null`)
 3. Check if any actor is the system's service account (by `KnownUser.PersonName` email match)
 4. If NOT initiated by the service account, log as anomalous
@@ -130,7 +130,7 @@ Job ID: monitor-drive-activity
 ```
 
 ### Lookback Window
-24 hours from current time. This provides overlap between hourly runs to avoid missing any activities due to API propagation delays.
+Time-window dedup: each run queries only activity since the last successful run's marker (`DriveActivityMonitor:LastRunAt`, via `ISettingsService`). The marker advances only when every resource was queried and the connector is configured; a partial or stubbed run leaves it unchanged so the next run re-covers the gap. With no marker yet, the window falls back to the 24 hours before now.
 
 ## Admin UI
 

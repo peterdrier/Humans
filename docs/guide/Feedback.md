@@ -44,7 +44,7 @@ Go to `/Feedback`. You see every report ever filed. The admin nav shows a badge 
 
 ### Reply to a reporter
 
-In the detail view, post a message in the conversation thread. Every message posted now is an admin reply: it stamps the report's last-admin-reply time, queues an email to the reporter, and sends them a notification. Reporters can no longer post follow-ups, so the thread is one-directional from here on — historical reporter messages are still shown.
+In the detail view, post a message in the conversation thread using the Markdown editor — formatting renders in the reporter's email and in the thread itself. Every message posted now is an admin reply: it stamps the report's last-admin-reply time, queues an email to the reporter, and sends them a notification. Reporters can no longer post follow-ups, so the thread is one-directional from here on — historical reporter messages are still shown.
 
 ### Assign a report
 

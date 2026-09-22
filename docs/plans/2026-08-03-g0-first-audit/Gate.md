@@ -2,7 +2,7 @@
 
 **Section:** Gate · **Kind:** vertical (new, admits/writes at the event door) · **Audited:** 2026-08-05 @ 94535e688
 
-**Scope note:** Gate is not yet in `reforge.surface-score.json` (confirmed: `python3 -c "... 'Gate' in data['sections']"` → `False`), so `reforge ownership-violations --owner Gate ...` silently no-ops (it returns `0 ownership-violations` even for a garbage table name passed as a sanity check — the owner isn't registered, so the tool has nothing to check against). This audit falls back to direct grep verification instead of citing that reforge output as evidence. Back-propagating Gate into the reforge config is frozen-inventory follow-up item #1 (`2026-08-03-proposed-frozen-section-inventory.md`).
+**Scope note:** Gate is not yet in `reforge.surface-score.json` (confirmed: `python3 -c "... 'Gate' in data['sections']"` → `False`), so `reforge ownership-violations --owner Gate ...` silently no-ops (it returns `0 ownership-violations` even for a garbage table name passed as a sanity check — the owner isn't registered, so the tool has nothing to check against). This audit falls back to direct grep verification instead of citing that reforge output as evidence. Back-propagating Gate into the reforge config is frozen-inventory follow-up item #1 (the frozen section inventory (historical, since deleted) — current invariants live in `src/Sections/*/Docs/` and `docs/architecture/design-rules.md`).
 
 ## G1 — Ownership
 
@@ -52,7 +52,7 @@ Config back-propagation (frozen-inventory follow-up #1) remains open but is trac
 
 ## G2 queue notes
 
-Gate **is** already covered by `docs/plans/2026-08-03-demolition-inventory.md` — it appears by name in that inventory's "Sections audited with no findings" list, so no fresh sweep is owed. (The inventory's later note that Gate "carries no audit result" refers to the G0 first-audit tracker this scorecard now fills, not to demolition coverage.)
+Gate **is** already covered by the 2026-08-03 demolition inventory (historical, since deleted) — current invariants live in `src/Sections/*/Docs/` and `docs/architecture/design-rules.md` — it appears by name in that inventory's "Sections audited with no findings" list, so no fresh sweep is owed. (The inventory's later note that Gate "carries no audit result" refers to the G0 first-audit tracker this scorecard now fills, not to demolition coverage.)
 
 **One item is queued, though — the inventory's "no findings" verdict is out of date.** `docs/sections/Gate.md:53` records personal staff PINs as *disabled since peterdrier#1075*, and L144-145 states the routes are "unreachable since peterdrier#1075 — nothing links to them. Deletion is planned: nobodies-collective/Humans#933." So the `gate_staff_pins` table, `IGateRepository`/`GateService`'s PIN methods, the admin actions and the claim views are all live-but-dead surface. That is a concrete G2 demolition item — the largest single one this five-section pass found — already ticketed as #933 and needing no new issue. It post-dates the demolition inventory's Gate sweep, which is why the two documents disagree; **this scorecard is the newer reading.**
 

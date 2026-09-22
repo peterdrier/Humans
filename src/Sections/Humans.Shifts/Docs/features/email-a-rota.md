@@ -35,8 +35,8 @@ Source: [nobodies-collective/Humans#732](https://github.com/nobodies-collective/
 **Acceptance Criteria:**
 
 - An "Email a rota" entry point is visible on the rota admin view for users who can manage the department's shifts.
-- Compose form accepts a free-text message body (1–4000 characters, required).
-- Compose form shows the recipient count and the list of recipient names (`BurnerName`, alphabetical) so the coordinator can verify scope before sending.
+- Compose form accepts a Markdown message body (1–4000 characters, required) through the shared `_EmailComposer` component (EasyMDE editor), with a Preview button and a "Send to me" button that queues the same branded send to the signed-in coordinator.
+- Compose form shows a "To:" line naming the rota and the recipient count and the list of recipient names (`BurnerName`, alphabetical) so the coordinator can verify scope before sending; at 25 or more recipients the line becomes a warning and sending asks for confirmation.
 - Compose form carries an **include-shifts** checkbox, ticked by default; clearing it drops the shift section (lead-in and list) from every email.
 - On submit, each distinct active signup user receives a **separate, personalised email** — not a single CC/BCC blast.
 - Each email body contains the coordinator's free-text message plus that recipient's own chronologically ordered shifts on this rota.
@@ -83,7 +83,7 @@ The recipient set is computed once per dispatch:
 
 ## Email Template (per recipient)
 
-Shape (template in `ShiftsEmails`):
+The coordinator's message is authored as Markdown and rendered through the shared sanitized-Markdown renderer (`SanitizedMarkdownRenderer`) before it lands in the body; everything else is HTML-encoded plain text. Shape (template in `ShiftsEmails`):
 
 ```
 Dear {BurnerName},
@@ -109,7 +109,7 @@ Thank you,
 - `RecipientEmail`, `RecipientName` — addressing + greeting.
 - `SenderName`, `SenderEmail` — signature + Reply-To attribution.
 - `RotaName` — subject + body context.
-- `MessageText` — coordinator's free-text body.
+- `MessageText` — coordinator's Markdown body, sanitized on render.
 - `ShiftLines` — pre-formatted, chronologically sorted, recipient-scoped shift labels.
 - `IncludeShifts` — false drops the whole shift section. Distinct from an empty `ShiftLines`, which still prints the "no shifts yet" note.
 - `Culture` — recipient's preferred language for template rendering.
@@ -167,7 +167,7 @@ Failure paths
 ## Architecture Status
 
 - **Section:** Shifts.
-- **Layering:** new orchestrator service `RotaCoordinatorMessageService` lives in Application; no EF types leak across the boundary; recipient set computed via existing repository abstractions; rendering + delivery delegated to the Email service surface; controller is thin and authorization-gated.
+- **Layering:** new orchestrator service `RotaCoordinatorMessageService` lives in Application; no EF types leak across the boundary; recipient set computed via existing repository abstractions; templates render in `ShiftsEmails` (Shifts' own), delivery delegated to the Email service surface; controller is thin and authorization-gated.
 - **Cross-section dependencies:** Users (`IUserService`), Email (`IEmailService`), AuditLog (`IAuditLogService`). All consumed through Application interfaces — no direct DbContext access.
 - **Caching:** none (one-shot dispatch path; per-recipient lookups bounded by signup count).
 

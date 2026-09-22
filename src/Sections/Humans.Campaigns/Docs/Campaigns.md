@@ -37,7 +37,7 @@ Bulk code-distribution campaigns: codes imported or generated, assigned to human
 | ReplyToAddress | string? | Optional Reply-To header for campaign emails |
 | Status | CampaignStatus | Draft / Active / Completed |
 | CreatedAt | Instant | When created |
-| CreatedByUserId | Guid | FK → User — **FK only**, no nav |
+| CreatedByUserId | Guid | Bare cross-section id (User) — no FK constraint, no nav |
 
 **Aggregate-local navs:** `Campaign.Codes`, `Campaign.Grants`.
 
@@ -68,7 +68,7 @@ Records the assignment of a specific code to a specific user.
 | Id | Guid | PK |
 | CampaignId | Guid | FK → Campaign |
 | CampaignCodeId | Guid | FK → CampaignCode (unique — one grant per code) |
-| UserId | Guid | FK → User — **FK only**, no nav |
+| UserId | Guid | Bare cross-section id (User) — no FK constraint, no nav |
 | AssignedAt | Instant | When assigned |
 | LatestEmailStatus | EmailOutboxStatus? | Status of most recent delivery attempt |
 | LatestEmailAt | Instant? | Timestamp of most recent delivery attempt |
@@ -118,16 +118,15 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - Legacy campaign-only unsubscribe tokens map to `MessageCategory.Marketing`, which is opt-outable; `ICommunicationPreferenceService.UpdatePreferenceAsync` flips that preference as normal. There is no live path to a `CampaignCodes` unsubscribe token — `OutboxEmailService` never generates one for an always-on category — and `UpdatePreferenceAsync`/`GuestAccountController.CanUpdatePreference` would refuse the change regardless. (The legacy `User.UnsubscribedFromCampaigns` boolean still exists on the entity for GDPR export but is not read by any active gate.)
 - When `TicketSyncService` detects a granted code redeemed in a ticket purchase, it calls `ICampaignService.MarkGrantsRedeemedAsync` to set `CampaignGrant.RedeemedAt`.
 - When an enqueue throws during `SendWaveAsync` or `RetryAllFailedAsync`, the single offending grant is flipped to `Failed` so the next pass of `RetryAllFailedAsync` can pick it up.
-- When an account merge accepts, `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant.UserId` from source to target (collapsing duplicates where target already holds a grant for the same campaign). Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
+- When an account merge accepts, `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant.UserId` from source to target (collapsing duplicates where target already holds a grant for the same campaign). Called only by `IAccountMergeService.AcceptAsync` (Users section).
 
 ## Cross-Section Dependencies
 
 - **Tickets:** `ITicketDiscountCodes` (`Humans.Tickets.Contracts`) — TicketAdmin can generate discount codes via the ticket vendor integration; Campaigns asks Tickets for codes through this leaf rather than reaching past it into the Base vendor port. Generation is invoked from the Campaign Detail page, not from the Tickets section.
 - **Email:** transport only. Campaigns owns its one template — `CampaignsEmails` (internal) builds the `EmailMessage` from the campaign's own subject and markdown body (Campaigns has no resx set), and `CampaignsEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651). `IEmailService.SendAsync` queues the message through the outbox.
-- **Profiles / Users:** `IUserEmailService.GetNotificationTargetEmailsAsync(IReadOnlyCollection<Guid>)` — resolves notification targets for grant emails; `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` — recipient `DisplayName` for the email payload and code-tracking display; `IUnsubscribeService` (Users section, `Humans.Users.Services.UnsubscribeService`) processes the public `/Unsubscribe/{token}` endpoint, validating legacy campaign-only tokens (mapped to `MessageCategory.Marketing`) before delegating opt-out to `ICommunicationPreferenceService.UpdatePreferenceAsync` — `CampaignService` itself does not call `ICommunicationPreferenceService`.
+- **Users:** `IUserEmailService.GetNotificationTargetEmailsAsync(IReadOnlyCollection<Guid>)` — resolves notification targets for grant emails; `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` — recipient `DisplayName` for the email payload and code-tracking display; `IUnsubscribeService` (Users section, `Humans.Users.Services.UnsubscribeService`) processes the public `/Unsubscribe/{token}` endpoint, validating legacy campaign-only tokens (mapped to `MessageCategory.Marketing`) before delegating opt-out to `ICommunicationPreferenceService.UpdatePreferenceAsync` — `CampaignService` itself does not call `ICommunicationPreferenceService`. Called by `IAccountMergeService` (Users section) — `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant` from source to target during account merge fold.
 - **Notifications:** `INotificationEmitter.SendAsync` — `CampaignReceived` in-app notifications for wave recipients.
 - **Teams:** `ITeamServiceRead.GetTeamsAsync` (Send Wave team picker) and `ITeamServiceRead.GetTeamAsync` (team-scoped wave targeting).
-- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant` from source to target during account merge fold.
 
 ## Architecture
 

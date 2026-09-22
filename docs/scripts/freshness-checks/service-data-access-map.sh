@@ -80,6 +80,13 @@ while IFS='|' read -r PRIMARY NAMES FILE; do
   fi
 done <<< "$(service_classes)"
 
+# Zero services means the enumeration itself broke (it once died on a gawk-only
+# builtin under mawk); a vacuous "all 0 appear" must never read as a pass.
+if [ "$TOTAL" -eq 0 ]; then
+  echo "FAIL [service-data-access-map]: service enumeration found no service classes"
+  exit 1
+fi
+
 if [ "$MISS_COUNT" -gt 0 ]; then
   echo "[service-data-access-map] missing $MISS_COUNT/$TOTAL service H3 headings:"
   echo "$MISSING" | sed 's/^/  - /' | grep -v '^  - $' || true

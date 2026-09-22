@@ -86,9 +86,11 @@ Repository: `ITeamRepository`.
 
 Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
 `IShiftManagementServiceRead`, `IAdminAuthorizationService`,
-`IEarlyEntryInvalidator`, `IGoogleSyncOutboxService` (lazy-resolved via
-`IServiceProvider`, for transactional outbox appends), plus
-`IServiceProvider` for cycle-breaking. Implements `ITeamManagementService`
+`IEarlyEntryInvalidator`, `IShiftAuthorizationInvalidator`,
+`INotificationMeterCacheInvalidator`; lazy-resolved via `IServiceProvider` for
+cycle-breaking: `IGoogleSyncOutboxService` (transactional outbox appends),
+`IGoogleSyncService`, `ITeamResourceService`, `IRoleAssignmentService`,
+`IEmailService`, `IUserServiceRead`, `ISystemTeamSync`. Implements `ITeamManagementService`
 (internal, `: ITeamService`), `ITeamSeeding`,
 `IGoogleGroupMembershipSource`, `IUserDataContributor`, `IUserMerge`,
 `IEarlyEntryProvider` (role-gated team early entry).

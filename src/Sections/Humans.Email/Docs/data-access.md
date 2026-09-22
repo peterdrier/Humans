@@ -96,7 +96,8 @@ No repository. Backs the `_EmailComposer` "Send to me" button
 `IUserEmailService.GetNotificationTargetEmailsAsync`, renders the typed Markdown
 through `SanitizedMarkdownRenderer`, and hands one `composer_self_test`
 `MessageCategory.System` message to `IEmailService.SendAsync` (the outbox
-row is `OutboxEmailService`'s write), then audits `EmailComposerSelfTestSent`.
+row is `OutboxEmailService`'s write), then audits `EmailComposerSelfTestSent`
+through `IAuditLogService`. `IUserServiceRead` supplies the caller's display name.
 Section-internal; its only consumer is `EmailPreviewController`. No cache.
 
 ---
