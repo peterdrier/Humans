@@ -9,7 +9,16 @@ public sealed record HoldedProvisioningRow(
 public sealed record HoldedProvisioningPlan(
     IReadOnlyList<HoldedProvisioningRow> Rows, int NextNumber);
 
-public sealed record HoldedActualRow(Guid BudgetCategoryId, decimal Actual);
+/// <summary>One budget category's Holded actual, plus the approved purchase docs it sums.
+/// <c>Docs</c> is what the figure is made of — the year page renders it under the category so a
+/// wrong total can be traced to the document that caused it.</summary>
+public sealed record HoldedActualRow(
+    Guid BudgetCategoryId, decimal Actual, IReadOnlyList<HoldedActualDoc> Docs);
+
+/// <summary>One approved Holded purchase doc behind a category's actual.</summary>
+public sealed record HoldedActualDoc(
+    string HoldedDocId, string DocNumber, string ContactName, LocalDate Date,
+    decimal Total, string HoldedUrl);
 
 public sealed record HoldedUnmatchedRow(
     string HoldedDocId, string DocNumber, string ContactName, decimal Total,

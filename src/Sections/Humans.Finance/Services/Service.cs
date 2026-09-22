@@ -290,7 +290,14 @@ internal sealed class Service(
         return docs
             .Where(d => d.IsApproved == true && d.BudgetCategoryId is not null)
             .GroupBy(d => d.BudgetCategoryId!.Value)
-            .Select(g => new HoldedActualRow(g.Key, g.Sum(d => d.Total)))
+            .Select(g => new HoldedActualRow(
+                g.Key,
+                g.Sum(d => d.Total),
+                g.OrderByDescending(d => d.Date)
+                    .ThenBy(d => d.DocNumber, StringComparer.Ordinal)
+                    .Select(d => new HoldedActualDoc(
+                        d.HoldedDocId, d.DocNumber, d.ContactName, d.Date, d.Total, HoldedDocUrl(d.HoldedDocId)))
+                    .ToList()))
             .Where(r => r.Actual != 0m)
             .ToList();
     }
@@ -307,9 +314,12 @@ internal sealed class Service(
                 d.ContactName,
                 d.Total,
                 ReasonFor(d),
-                $"https://app.holded.com/purchases/{d.HoldedDocId}"))
+                HoldedDocUrl(d.HoldedDocId)))
             .ToList();
     }
+
+    private static string HoldedDocUrl(string holdedDocId) =>
+        $"https://app.holded.com/purchases/{holdedDocId}";
 
     public async Task<string?> GetHoldedAccountIdForCategoryAsync(
         Guid budgetCategoryId, CancellationToken ct = default)

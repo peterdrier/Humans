@@ -589,12 +589,12 @@ internal sealed class BudgetAdminController(
             }
         }
 
-        IReadOnlyDictionary<Guid, decimal> holdedActuals = new Dictionary<Guid, decimal>();
+        IReadOnlyDictionary<Guid, HoldedActualRow> holdedActuals = new Dictionary<Guid, HoldedActualRow>();
         if (int.TryParse(year.Year, System.Globalization.NumberStyles.None,
                 System.Globalization.CultureInfo.InvariantCulture, out var calendarYear))
         {
             var actuals = await holdedFinance.GetActualsForYearAsync(calendarYear);
-            holdedActuals = actuals.ToDictionary(r => r.BudgetCategoryId, r => r.Actual);
+            holdedActuals = actuals.ToDictionary(r => r.BudgetCategoryId);
         }
 
         return new FinanceOverviewViewModel
