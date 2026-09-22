@@ -1,15 +1,8 @@
 @model Humans.Email.Models.BackfillDailyCountsViewModel
 @{
     ViewData["Title"] = "Backfill Daily Send Counts";
+    ViewData["AdminNavParent"] = "EmailOutbox";
 }
-
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
-        <li class="breadcrumb-item"><a asp-action="EmailOutbox">Email Outbox</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Backfill Daily Send Counts</li>
-    </ol>
-</nav>
 
 <h1>Backfill Daily Send Counts</h1>
 <p class="text-muted">

@@ -36,7 +36,7 @@ Admin is layered. **Board** and **HumanAdmin** can do human management — the l
 
 ## Key pages at a glance
 
-- `/Admin` — the admin dashboard: stat tiles contributed by each section (users, teams, shift coverage, open feedback, audit events, emails, store orders, expense reports, and more) plus live online-now/active-in-the-last-hour/24h counts, wrapped in the admin shell, with a left sidebar grouping every admin tool (Tickets, Members, Shifts, Barrios, Cantina, Money, Event Guide, Governance, Audit, Feedback, Messaging, and below a divider the system groups Google, Agent, Legal, Diagnostics, Dev, Design, Settings, Temp). Reachable by any admin-shaped role; each tile and sidebar item appears only if you're authorized for it.
+- `/Admin` — the admin dashboard: stat tiles contributed by each section (users, teams, shift coverage, open feedback, audit events, emails, store orders, expense reports, and more) plus live online-now/active-in-the-last-hour/24h counts, wrapped in the admin shell, with a left sidebar listing one row per section, A to Z (Audit, Barrios, Budget, Debug, Events, Google, Governance, Issues, Onboarding, Shifts, Store, Tickets, Users and more); each section's pages show as tabs under the breadcrumb, which reads *Section / Page / Subpage*. Reachable by any admin-shaped role; each tile and sidebar item appears only if you're authorized for it.
 - `/Users/Admin` — humans list; filter by `UserState` with values like `?filter=bare`, `?filter=active`, `?filter=suspended`, `?filter=rejected`, and `?filter=deleting`.
 - `/Users/Admin/{id}` — per-human detail, with suspend, unsuspend, reject, add role, and end role.
 - `/Users/Admin/{id}/Outbox` — per-human email outbox.
@@ -61,7 +61,7 @@ The Coordinator role does not include global admin access; the domain-specific a
 
 ### Work the dashboard
 
-Open `/Admin` for the dashboard. The stat tiles — users, teams, shift coverage, open feedback, audit events, and more, plus live online-now / active-1h / active-24h counts — give you a fast read on what's going on. Each tile is contributed by its own section and only shows if you're authorized for it: the open-feedback tile is **Admin only** — Board members and domain admins don't see it, since Feedback triage itself is Admin only. The left sidebar groups every admin tool you have access to. What you see is scoped to your roles: an Admin sees everything; a Board member sees the Members and Governance tools; a domain admin sees just their own area.
+Open `/Admin` for the dashboard. The stat tiles — users, teams, shift coverage, open feedback, audit events, and more, plus live online-now / active-1h / active-24h counts — give you a fast read on what's going on. Each tile is contributed by its own section and only shows if you're authorized for it: the open-feedback tile is **Admin only** — Board members and domain admins don't see it, since Feedback triage itself is Admin only. The left sidebar lists every section you have an admin tool in, alphabetically; pick one and its pages appear as tabs. What you see is scoped to your roles: an Admin sees everything; a Board member sees Users, Onboarding, Governance and a few more; a domain admin sees just their own area.
 
 ### Manage humans
 

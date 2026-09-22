@@ -28,10 +28,10 @@ public sealed class Section : ISection, ISectionAdminNav
 {
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Governance", [
+        new("Workgroups", [
             new("Workgroups", "WorkgroupsAdmin", "Index", null, null,
-                "fa-solid fa-people-group", PolicyNames.BoardOrAdmin, Weight: 40)
-        ], Weight: 70)
+                "fa-solid fa-people-group", PolicyNames.BoardOrAdmin)
+        ])
     ];
 
     public void Register(IServiceCollection services, IConfiguration configuration)

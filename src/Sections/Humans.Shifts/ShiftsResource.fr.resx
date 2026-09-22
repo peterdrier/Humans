@@ -684,18 +684,6 @@
     <value>Suivi des Volontaires</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Breadcrumb_Shifts" xml:space="preserve">
-    <value>Créneaux</value>
-    <comment>TODO: translate</comment>
-  </data>
-  <data name="VolTrack_Breadcrumb_ShiftDashboard" xml:space="preserve">
-    <value>Tableau de bord des créneaux</value>
-    <comment>TODO: translate</comment>
-  </data>
-  <data name="VolTrack_Breadcrumb_VolunteerTracking" xml:space="preserve">
-    <value>Suivi des bénévoles</value>
-    <comment>TODO: translate</comment>
-  </data>
   <data name="VolTrack_NoActiveEvent" xml:space="preserve">
     <value>Aucun événement actif.</value>
     <comment>TODO: translate</comment>

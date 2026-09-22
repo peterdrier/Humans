@@ -4,14 +4,13 @@ using Humans.Base.Interfaces;
 namespace Humans.GoogleIntegration;
 
 /// <summary>
-/// GoogleIntegration's admin sidebar contribution — the "Google" group
-/// (nobodies-collective/Humans#1077) and one "Temp" entry.
+/// GoogleIntegration's admin sidebar group, labelled "Google" (nobodies-collective/Humans#1077).
 /// </summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [
-        new("Google", System: true, Items: [
+        new("Google", [
             new("Overview",              "Google", "Index",        null, null, "fa-brands fa-google",           PolicyNames.AdminOnly),
             new("Resource sync",         "Google", "Sync",         null, null, "fa-solid fa-arrows-rotate",     PolicyNames.TeamsAdminBoardOrAdmin),
             new("All domain groups",     "Google", "AllGroups",    null, null, "fa-solid fa-globe",             PolicyNames.AdminOnly),
@@ -20,11 +19,9 @@ internal sealed class SectionAdminNav : ISectionAdminNav
             new("Sync results",          "Google", "SyncResults",  null, null, "fa-solid fa-list-check",        PolicyNames.AdminOnly),
             new("Group settings",        "Google", "GroupSettingsResults", null, null, "fa-solid fa-gears",     PolicyNames.AdminOnly),
             new("Email renames",         "Google", "EmailRenames", null, null, "fa-solid fa-right-left",        PolicyNames.AdminOnly),
-            new("Email flag violations", "Google", "EmailFlagViolations", null, null, "fa-solid fa-triangle-exclamation", PolicyNames.AdminOnly)
-        ], Weight: 110),
-        new("Temp", System: true, Items: [
+            new("Email flag violations", "Google", "EmailFlagViolations", null, null, "fa-solid fa-triangle-exclamation", PolicyNames.AdminOnly),
             new("Sync history migration", "GoogleSyncHistoryMigrationAdmin", "Index", null, null,
-                "fa-solid fa-arrow-right-arrow-left", PolicyNames.AdminOnly, Weight: 30)
-        ], Weight: 170)
+                "fa-solid fa-arrow-right-arrow-left", PolicyNames.AdminOnly)
+        ])
     ];
 }

@@ -5,15 +5,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Onboarding;
 
-/// <summary>Onboarding's contribution to the shared "Members" admin group (nobodies-collective/Humans#1077).</summary>
+/// <summary>Onboarding's admin sidebar group (nobodies-collective/Humans#1077).</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [
-        new("Members", [
-            new("Review", "OnboardingReview", "Index", null, null, "fa-solid fa-clipboard-check", PolicyNames.ReviewQueueAccess, Weight: 20,
+        new("Onboarding", [
+            new("Review", "OnboardingReview", "Index", null, null, "fa-solid fa-clipboard-check", PolicyNames.ReviewQueueAccess,
                  PillCount: PillCounts.ReviewQueue)
-        ], Weight: 10)
+        ])
     ];
 }
 

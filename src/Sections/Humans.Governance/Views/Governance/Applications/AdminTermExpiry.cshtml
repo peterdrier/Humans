@@ -4,14 +4,6 @@
     Layout = "_AdminLayout";
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
-        <li class="breadcrumb-item"><a asp-action="Admin">Applications</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Term expiry correction</li>
-    </ol>
-</nav>
-
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Term expiry correction <span class="badge bg-warning text-dark">temp</span></h1>
     <span class="text-muted">@Model.Count drifted</span>

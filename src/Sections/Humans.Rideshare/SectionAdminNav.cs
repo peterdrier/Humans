@@ -11,6 +11,6 @@ internal sealed class SectionAdminNav : ISectionAdminNav
         new("Rideshare", [
             new("Settings & stats", "RideshareAdmin", "Index", null, null, "fa-solid fa-car",          PolicyNames.RideshareAdminOrAdmin),
             new("Day roster",       "RideshareAdmin", "Day",   null, null, "fa-solid fa-calendar-day", PolicyNames.RideshareAdminOrAdmin)
-        ], Weight: 65)
+        ])
     ];
 }

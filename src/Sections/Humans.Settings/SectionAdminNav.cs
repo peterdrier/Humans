@@ -11,10 +11,10 @@ internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [
-        new("Settings", System: true, Items: [
+        new("Settings", [
             // Points at the /Settings#event tab, not the retired /Settings/Admin screen
             // (peterdrier/Humans#1628).
             new("Event settings", "Settings", "Index", null, null, "fa-solid fa-calendar-days", PolicyNames.AdminOnly, Weight: 0)
-        ], Weight: 100)
+        ])
     ];
 }

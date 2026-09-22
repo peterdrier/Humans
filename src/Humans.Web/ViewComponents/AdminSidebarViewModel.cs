@@ -2,11 +2,13 @@ namespace Humans.Web.ViewComponents;
 
 public sealed record AdminSidebarViewModel(IReadOnlyList<AdminSidebarGroupViewModel> Groups);
 
-public sealed record AdminSidebarGroupViewModel(string Label, IReadOnlyList<AdminSidebarItemViewModel> Items, bool System = false)
+/// <summary>One sidebar row: the group, linking to its first visible item.</summary>
+public sealed record AdminSidebarGroupViewModel(string Label, IReadOnlyList<AdminSidebarItemViewModel> Items, bool IsActive)
 {
-    public bool ContainsActive => Items.Any(i => i.IsActive);
+    /// <summary>Where the row links, and whose icon it shows.</summary>
+    public AdminSidebarItemViewModel First => Items[0];
 
-    /// <summary>Sum of item pill counts, surfaced on the group header/chip while the items are hidden.</summary>
+    /// <summary>Sum of the group's item pill counts; the per-item pills show on its tab strip.</summary>
     public int? PillSum
     {
         get
@@ -17,6 +19,7 @@ public sealed record AdminSidebarGroupViewModel(string Label, IReadOnlyList<Admi
     }
 }
 
+/// <summary>One item of a group, rendered as a tab on the group's pages.</summary>
 public sealed record AdminSidebarItemViewModel(
     string Label,
     string? Controller,

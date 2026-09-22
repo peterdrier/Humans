@@ -151,7 +151,7 @@ The feedback API enables a Claude Code workflow for processing feedback during d
 
 Since #977:
 
-- **Admin:** "Feedback queue" item in the admin sidebar with a pill showing the actionable count, contributed via `SectionAdminNav.PillCounts.FeedbackQueue` and rendered by `AdminSidebarViewComponent` (which composes every section's `ISectionAdminNav`), plus the `/Admin` dashboard tile via `SectionAdminTiles` — both `AdminOnly`
+- **Admin:** "Feedback queue" tab in the admin sidebar's Issues group with a pill showing the actionable count, contributed via `SectionAdminNav.PillCounts.FeedbackQueue` and rendered by `AdminSidebarViewComponent` (which composes every section's `ISectionAdminNav`), plus the `/Admin` dashboard tile via `SectionAdminTiles` — both `AdminOnly`
 - **Everyone else:** nothing — no dropdown link, no Help-widget entry; the widget's report action is "Create issue"
 
 ## Related Features

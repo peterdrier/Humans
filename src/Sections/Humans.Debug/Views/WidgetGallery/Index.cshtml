@@ -826,7 +826,7 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/AdminBreadcrumbViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Auto-resolves the admin breadcrumb from the sections' <code>ISectionAdminNav</code> contributions based on the current route. Falls back to the page title when no nav match.</div>
+                    <div class="wg-card-note">Resolves <em>Group / Page / Subpage</em> from the sections' <code>ISectionAdminNav</code> contributions and the current route; a subpage's own trail comes from the page's <code>Crumbs</code> section. Falls back to the page title when no nav match.</div>
                     @ParamsBlock()
                     <div class="wg-card-example">
                         @await Component.InvokeAsync("AdminBreadcrumb")
@@ -1335,7 +1335,7 @@
                 <h2>Skipped (with reason)</h2>
                 <p class="text-muted">A handful of widgets are intentionally not rendered standalone here:</p>
                 <ul>
-                    <li><strong>Admin shell chrome</strong> — <code>AdminSidebarViewComponent</code>, <code>AdminNavComposition</code>: this page is rendered inside the admin shell, so the sidebar is already on screen around you.</li>
+                    <li><strong>Admin shell chrome</strong> — <code>AdminSidebarViewComponent</code>, <code>AdminTabsViewComponent</code>, <code>AdminNavComposition</code>: this page is rendered inside the admin shell, so the sidebar is already on screen around you.</li>
                     <li><strong>Layout partials</strong> — <code>_Layout</code>, <code>_AdminLayout</code>, <code>_GuideLayout</code>, <code>_LoginPartial</code>, <code>_VersionInfo</code>: page chrome that doesn't render in isolation.</li>
                     <li><strong>Build/Strike sign-up form</strong> — <code>_BuildStrikeRotaTable</code>: a sign-up form (not a display widget) keyed to all-day shifts under one rota; submits to <code>/OnboardingWidget/SignUpRange</code> (onboarding-only). Rendering it standalone is misleading because it's an inert form here. See <a href="/Shifts">/Shifts</a>.</li>
                     <li><strong>Event rota row</strong> — <code>_EventRotaRow.cshtml</code>: context-bound rota row, rendered only inside <code>_EventRotaTable</code>. Needs the row's shift/signup state from the parent table; renders nothing standalone.</li>

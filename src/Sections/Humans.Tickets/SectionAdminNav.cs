@@ -6,8 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Tickets;
 
 /// <summary>
-/// Tickets' admin sidebar contribution — the "Tickets" group, shared with Campaigns, Scanner,
-/// Gate and EarlyEntry. Weights preserve the traffic-ordered tree exactly; do not re-sort.
+/// Tickets' admin sidebar group (nobodies-collective/Humans#1077).
 /// </summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
@@ -19,7 +18,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
                  PillCount: PillCounts.TransferQueue),
             new("Attendee contacts", "TicketsContactsAdmin", "Index", null, null, "fa-solid fa-address-book", PolicyNames.TicketAdminOrAdmin, Weight: 20),
             new("Onsite roster",     "TicketsOnsiteAdmin",   "Index", null, null, "fa-solid fa-clipboard-list", PolicyNames.ScannerAccess, Weight: 30)
-        ], Weight: 0)
+        ])
     ];
 }
 

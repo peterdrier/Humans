@@ -1,0 +1,30 @@
+@model IReadOnlyList<Humans.Web.ViewComponents.AdminSidebarItemViewModel>
+
+<div class="admin-tabs-wrap">
+    <nav class="admin-tabs" aria-label="Section pages">
+        @foreach (var tab in Model)
+        {
+            if (tab.RawHref is not null)
+            {
+                <a class="@(tab.IsActive ? "active" : null)" aria-current="@(tab.IsActive ? "page" : null)" href="@tab.RawHref">
+                    <span>@tab.Label</span>
+                    @if (tab.PillCount.HasValue)
+                    {
+                        <span class="pill">@tab.PillCount.Value</span>
+                    }
+                </a>
+            }
+            else
+            {
+                <a class="@(tab.IsActive ? "active" : null)" aria-current="@(tab.IsActive ? "page" : null)"
+                   asp-controller="@tab.Controller" asp-action="@tab.Action">
+                    <span>@tab.Label</span>
+                    @if (tab.PillCount.HasValue)
+                    {
+                        <span class="pill">@tab.PillCount.Value</span>
+                    }
+                </a>
+            }
+        }
+    </nav>
+</div>

@@ -684,18 +684,6 @@
     <value>Monitoraggio Volontari</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Breadcrumb_Shifts" xml:space="preserve">
-    <value>Turni</value>
-    <comment>TODO: translate</comment>
-  </data>
-  <data name="VolTrack_Breadcrumb_ShiftDashboard" xml:space="preserve">
-    <value>Dashboard turni</value>
-    <comment>TODO: translate</comment>
-  </data>
-  <data name="VolTrack_Breadcrumb_VolunteerTracking" xml:space="preserve">
-    <value>Tracciamento volontari</value>
-    <comment>TODO: translate</comment>
-  </data>
   <data name="VolTrack_NoActiveEvent" xml:space="preserve">
     <value>Nessun evento attivo.</value>
     <comment>TODO: translate</comment>

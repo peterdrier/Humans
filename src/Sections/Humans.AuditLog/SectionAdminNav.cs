@@ -14,6 +14,6 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     [
         new("Audit", [
             new("Audit log", "AuditLog", "Index", null, null, "fa-solid fa-book-open", PolicyNames.BoardOrAdmin)
-        ], Weight: 80)
+        ])
     ];
 }

@@ -8,9 +8,9 @@ internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [
-        new("Agent", System: true, Items: [
+        new("Agent", [
             new("Status",  "AdminAgent", "Status",        null, null, "fa-solid fa-gauge-high", PolicyNames.AdminOnly),
             new("History", "Agent",      "Conversations", null, null, "fa-solid fa-comments",   PolicyNames.AdminOnly)
-        ], Weight: 120)
+        ])
     ];
 }

@@ -63,9 +63,13 @@
             </aside>
 
             <main class="main">
+                @* Group / Page / Subpage. A subpage whose last crumb is not its title, or that sits more
+                   than one level down, supplies its crumbs after Page as a "Crumbs" section (links, then
+                   itself last); the tabs are the group's pages. *@
                 <div class="crumb">
-                    @await Component.InvokeAsync("AdminBreadcrumb")
+                    @await Component.InvokeAsync("AdminBreadcrumb", new { trail = await RenderSectionAsync("Crumbs", required: false) })
                 </div>
+                @await Component.InvokeAsync("AdminTabs")
 
                 <partial name="_AuthorizationPill" />
                 @if (ViewData["SuppressLayoutTempDataAlerts"] is not bool suppressLayoutTempDataAlerts || !suppressLayoutTempDataAlerts)

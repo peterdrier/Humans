@@ -5,15 +5,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Feedback;
 
-/// <summary>Feedback's contribution to the shared "Feedback" admin group (nobodies-collective/Humans#1077).</summary>
+/// <summary>Feedback's contribution to the "Issues" admin group, after Issues' own queue (nobodies-collective/Humans#1077).</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [
-        new("Feedback", [
-            new("Feedback queue", "Feedback", "Index", null, null, "fa-solid fa-comment-dots", PolicyNames.AdminOnly, Weight: 0,
+        new("Issues", [
+            new("Feedback queue", "Feedback", "Index", null, null, "fa-solid fa-comment-dots", PolicyNames.AdminOnly, Weight: 10,
                  PillCount: PillCounts.FeedbackQueue)
-        ], Weight: 90)
+        ])
     ];
 }
 

@@ -395,12 +395,12 @@ _logger.LogInformation(
 
 ## Quick Actions (Sidebar)
 
-Not on the `/Admin` dashboard itself (that renders only the tile strip and section cards above) — reached via the admin sidebar's Google and Diagnostics groups instead.
+Not on the `/Admin` dashboard itself (that renders only the tile strip and section cards above) — reached via the admin sidebar's Google and Debug groups instead.
 
 | Action | Link | Group |
 |--------|------|-------|
-| Configuration Status | `/Debug/Configuration` | Diagnostics |
-| Background Jobs | `/hangfire` | Diagnostics |
+| Configuration Status | `/Debug/Configuration` | Debug |
+| Background Jobs | `/hangfire` | Debug |
 | Check Group Settings | `/Google/CheckGroupSettings` | POST action on the Google "Overview" (`/Google`) page, not a sidebar link |
 
 ### Settings (admin sidebar)
@@ -430,7 +430,7 @@ Sections contribute a tab to `/Settings` via `ISectionSettings`; the old standal
 ## System Health
 
 ### Dashboard Indicators
-- **Health Check URL**: `/health/ready` (Diagnostics sidebar group, not a dashboard indicator)
+- **Health Check URL**: `/health/ready` (Debug sidebar group, not a dashboard indicator)
 - **Sync System Teams**: Button on the Google "Overview" page (`/Google`, `POST /Google/SyncSystemTeams`) to manually trigger `SystemTeamSyncJob`, which recalculates membership for Volunteers, Coordinators, and Board teams. Not on the `/Admin` dashboard itself. Useful for fixing users whose name or consent state changed before the scheduled sync ran.
 
 ### Prometheus Metrics

@@ -50,8 +50,8 @@ The shapes imply a section with no data layer at all:
   Base singletons' snapshots. No service layer: there is no rule to enforce, only projection.
 - **One static calculator** (`UserSetMembershipCalculator`) and its view component, because
   the dashboard card's mask math is the one piece of logic worth a unit test.
-- **Contribution seams at the root**: `SectionAdminNav` (the Diagnostics and Design
-  sidebar groups) and `SectionChrome` (the dashboard card). `Section.Register` is empty and
+- **Contribution seams at the root**: `SectionAdminNav` (the Debug
+  sidebar group) and `SectionChrome` (the dashboard card). `Section.Register` is empty and
   the class exists only so Shell discovers the assembly.
 - **Docs** — the invariant doc, the authorization table, and one feature spec per
   telemetry screen that has non-obvious capture rules (client stats, HTTP errors).
@@ -112,7 +112,7 @@ The shapes imply a section with no data layer at all:
 
 - **`ColorPaletteController` is `[AllowAnonymous]` and uses the public `_Layout`** on
   purpose: a static design reference, reachable without a session, linked from the admin
-  sidebar's Design group.
+  sidebar's Debug group.
 - **The widget gallery references the section assemblies whose public components it renders**
   (Camps, Users, Tickets, Shifts, Calendar, AuditLog, Teams, Events) plus contracts leaves. That
   fan-in is the page's job — it renders other sections' public view components as `<vc:>` tag

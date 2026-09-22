@@ -4,18 +4,12 @@
     Layout = "_AdminLayout";
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">@SharedLocalizer["Nav_Admin"]</a></li>
-        <li class="breadcrumb-item"><a asp-controller="UsersAdmin" asp-action="AdminList">@Localizer["AdminHumans_Title"]</a></li>
-        <li class="breadcrumb-item">
-            <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId">
-                <vc:human user-id="@Model.UserId" link="None" popover="false" />
-            </a>
-        </li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["AdminAddRole_Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId">
+        <vc:human user-id="@Model.UserId" link="None" popover="false" />
+    </a>
+    <span>@Localizer["AdminAddRole_Title"]</span>
+}
 
 <div class="row justify-content-center">
     <div class="col-md-6">

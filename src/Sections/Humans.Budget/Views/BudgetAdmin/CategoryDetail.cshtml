@@ -10,20 +10,17 @@
     var vatProjections = VatProjection.ForLineItems(Model.LineItems);
 }
 
-<nav aria-label="breadcrumb" class="mb-3">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">Finance</a></li>
-        @if (year is not null)
-        {
-            <li class="breadcrumb-item"><a asp-action="YearDetail" asp-route-id="@year.Id">@year.Name</a></li>
-        }
-        @if (group is not null)
-        {
-            <li class="breadcrumb-item">@group.Name</li>
-        }
-        <li class="breadcrumb-item active">@Model.Name</li>
-    </ol>
-</nav>
+@section Crumbs {
+    @if (year is not null)
+    {
+        <a asp-action="YearDetail" asp-route-id="@year.Id">@year.Name</a>
+    }
+    @if (group is not null)
+    {
+        <span>@group.Name</span>
+    }
+    <span>@Model.Name</span>
+}
 
 <h1 class="mb-4">@Model.Name</h1>
 

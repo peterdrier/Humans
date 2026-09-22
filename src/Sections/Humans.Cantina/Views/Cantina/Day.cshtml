@@ -50,17 +50,6 @@
 
 <div class="container py-4">
     @* === Breadcrumb back to weekly view ==================================== *@
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item">
-                <a asp-action="Roster" asp-route-weekStartOffset="@Model.WeekStartOffset">
-                    @Localizer["Cantina_Roster_PageTitle"]
-                </a>
-            </li>
-            <li class="breadcrumb-item active" aria-current="page">@FormatLong(Model.CalendarDate)</li>
-        </ol>
-    </nav>
-
     @* === Page header + CSV download ======================================== *@
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <h1 class="mb-0">

@@ -2,63 +2,73 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Web.ViewComponents;
 
+/// <summary>Where the current admin page sits in the nav: its group, and the item (tab) it is or belongs under.</summary>
+/// <param name="IsExact">The route is the item itself, not a subpage of it.</param>
+public sealed record AdminNavLocation(AdminNavGroup Group, AdminNavItem Item, bool IsExact);
+
 /// <summary>
 /// The admin nav as rendered: every section's <see cref="ISectionAdminNav"/> contribution,
-/// merged by group. No section link, policy gate or pill count is hard-coded in Shell
-/// (nobodies-collective/Humans#1077).
+/// merged by group label and sorted alphabetically. No section link, policy gate or pill count
+/// is hard-coded in Shell (nobodies-collective/Humans#1077).
 /// </summary>
 /// <remarks>
-/// Contributions merge into an existing group by <see cref="AdminNavGroup.GroupKey"/> — several
-/// sections share one group ("Tickets", "Money") — and otherwise land as a new group ordered by
-/// weight, above the System zone unless the group is itself <see cref="AdminNavGroup.System"/>.
-/// Sorting is stable, so items and groups that carry no weight keep the order they were
-/// declared in: today's tree encodes traffic-based editorial judgement and must not re-sort.
+/// Items within a group order by weight; the sort is stable, so items that carry no weight keep
+/// the order they were declared in.
 /// </remarks>
 public static class AdminNavComposition
 {
-    public static IReadOnlyList<AdminNavGroup> Compose(IEnumerable<ISectionAdminNav> contributors)
-    {
-        var contributed = contributors
+    /// <summary>
+    /// The <c>ViewData</c> key a subpage sets to name its parent item when that is not the first
+    /// item on its controller: <c>"Action"</c> on the current controller, or <c>"Controller/Action"</c>.
+    /// </summary>
+    public const string ParentKey = "AdminNavParent";
+
+    public static IReadOnlyList<AdminNavGroup> Compose(IEnumerable<ISectionAdminNav> contributors) =>
+        [.. contributors
             .SelectMany(c => c.Groups())
-            .OrderBy(g => g.Weight)
-            .ToList();
-
-        var merged = new List<AdminNavGroup>(contributed.Count);
-
-        foreach (var group in contributed)
-        {
-            var index = merged.FindIndex(g => string.Equals(g.GroupKey, group.GroupKey, StringComparison.Ordinal));
-            if (index < 0)
-            {
-                merged.Insert(InsertIndex(merged, group), group);
-                continue;
-            }
-
-            merged[index] = merged[index] with
-            {
-                Items = [.. merged[index].Items.Concat(group.Items).OrderBy(i => i.Weight)]
-            };
-        }
-
-        return merged;
-    }
+            .GroupBy(g => g.Label, StringComparer.Ordinal)
+            .Select(g => new AdminNavGroup(g.Key, [.. g.SelectMany(x => x.Items).OrderBy(i => i.Weight)]))
+            .OrderBy(g => g.Label, StringComparer.OrdinalIgnoreCase)];
 
     /// <summary>
-    /// Where a new group lands: before the first group that outweighs it, and never below the
-    /// System zone the sidebar renders as collapsed plumbing — unless the group is itself
-    /// System, which appends. The tree's groups all carry weight 0, so a contribution that
-    /// asks for none still lands last above that zone, keeping today's order.
+    /// Resolves the current route to its nav item: an exact controller+action match, else the
+    /// <paramref name="parent"/> the page names, else the first item on the same controller.
     /// </summary>
-    private static int InsertIndex(List<AdminNavGroup> merged, AdminNavGroup group)
+    public static AdminNavLocation? Locate(
+        IReadOnlyList<AdminNavGroup> groups, string? controller, string? action, string? parent)
     {
-        if (group.System)
-            return merged.Count;
+        if (string.IsNullOrEmpty(controller))
+            return null;
 
-        var heavier = merged.FindIndex(g => !g.System && g.Weight > group.Weight);
-        if (heavier >= 0)
-            return heavier;
+        var exact = Find(groups, controller, action);
+        if (exact is not null)
+            return exact with { IsExact = true };
 
-        var systemZone = merged.FindIndex(g => g.System);
-        return systemZone < 0 ? merged.Count : systemZone;
+        if (!string.IsNullOrEmpty(parent))
+        {
+            var slash = parent.IndexOf('/', StringComparison.Ordinal);
+            var named = slash < 0
+                ? Find(groups, controller, parent)
+                : Find(groups, parent[..slash], parent[(slash + 1)..]);
+            if (named is not null)
+                return named;
+        }
+
+        return Find(groups, controller, action: null);
+    }
+
+    private static AdminNavLocation? Find(IReadOnlyList<AdminNavGroup> groups, string controller, string? action)
+    {
+        foreach (var group in groups)
+        {
+            foreach (var item in group.Items)
+            {
+                if (string.Equals(item.Controller, controller, StringComparison.OrdinalIgnoreCase)
+                    && (action is null || string.Equals(item.Action, action, StringComparison.OrdinalIgnoreCase)))
+                    return new AdminNavLocation(group, item, IsExact: false);
+            }
+        }
+
+        return null;
     }
 }

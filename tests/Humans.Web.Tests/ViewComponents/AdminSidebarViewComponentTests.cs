@@ -18,10 +18,10 @@ public class AdminSidebarViewComponentTests
 {
     /// <summary>
     /// A minimal stand-in for the real, section-contributed nav (nobodies-collective/Humans#1077):
-    /// just enough groups/items for this file's assertions — a non-System group with two items
-    /// (for active-item and empty-group filtering), a System group sharing one item's controller
-    /// with a different action (for the controller+action match regression), and a System, prod-gated
-    /// group (for the Dev-hides-in-production case).
+    /// just enough groups/items for this file's assertions — a group with two items (for
+    /// active-item and empty-group filtering), a group whose items share a controller with
+    /// different actions (for the controller+action match regression), and a prod-gated group
+    /// (for the Development-hides-in-production case).
     /// </summary>
     private sealed class FakeNav : ISectionAdminNav
     {
@@ -31,11 +31,11 @@ public class AdminSidebarViewComponentTests
                 new("Tickets", "Ticket",   "Index", null, null, "icon", PolicyNames.TicketAdminBoardOrAdmin),
                 new("Scanner", "Scanner",  "Index", null, null, "icon", PolicyNames.ScannerAccess)
             ]),
-            new("Diagnostics", System: true, Items: [
+            new("Debug", [
                 new("Logs",     "Debug", "Logs",    null, null, "icon", PolicyNames.AdminOnly),
                 new("DB stats", "Debug", "DbStats", null, null, "icon", PolicyNames.AdminOnly)
             ]),
-            new("Dev", System: true, Items: [
+            new("Development", [
                 new("Seed budget", "DevSeed", "SeedBudget", null, null, "icon", PolicyNames.AdminOnly,
                      EnvironmentGate: env => !env.IsProduction())
             ])
@@ -104,24 +104,34 @@ public class AdminSidebarViewComponentTests
     }
 
     [HumansFact]
-    public async Task System_Flag_Flows_To_ViewModel()
+    public async Task Rows_Are_Alphabetical_And_Link_To_The_First_Visible_Item()
     {
         var sut = MakeSut(AlwaysAllow(), "Home", "Index");
         var result = await sut.InvokeAsync() as ViewViewComponentResult;
         var model = result!.ViewData!.Model as AdminSidebarViewModel;
-        model!.Groups.Single(g => string.Equals(g.Label, "Tickets", StringComparison.Ordinal)).System.Should().BeFalse();
-        model.Groups.Single(g => string.Equals(g.Label, "Diagnostics", StringComparison.Ordinal)).System.Should().BeTrue();
+        model!.Groups.Select(g => g.Label).Should().Equal("Debug", "Development", "Tickets");
+        model.Groups.Single(g => string.Equals(g.Label, "Debug", StringComparison.Ordinal)).First.Action.Should().Be("Logs");
     }
 
     [HumansFact]
-    public async Task Hides_Dev_Group_In_Production()
+    public async Task Subpage_Marks_Its_Group_Row_Active()
+    {
+        // /Scanner/Barcode is no nav item; it belongs under Scanner by controller.
+        var sut = MakeSut(AlwaysAllow(), "Scanner", "Barcode");
+        var result = await sut.InvokeAsync() as ViewViewComponentResult;
+        var model = result!.ViewData!.Model as AdminSidebarViewModel;
+        model!.Groups.Where(g => g.IsActive).Select(g => g.Label).Should().Equal("Tickets");
+    }
+
+    [HumansFact]
+    public async Task Hides_Development_Group_In_Production()
     {
         var env = Substitute.For<IWebHostEnvironment>();
         env.EnvironmentName.Returns("Production");
         var sut = MakeSut(AlwaysAllow(), "Home", "Index", env);
         var result = await sut.InvokeAsync() as ViewViewComponentResult;
         var model = result!.ViewData!.Model as AdminSidebarViewModel;
-        model!.Groups.Should().NotContain(g => g.Label == "Dev");
+        model!.Groups.Should().NotContain(g => g.Label == "Development");
     }
 
     private static IAuthorizationService AlwaysAllow()

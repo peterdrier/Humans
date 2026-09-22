@@ -433,37 +433,14 @@ function showToast(message, type) {
     }, true);
 })();
 
-// Admin sidebar — desktop accordion (collapse state in localStorage) and
-// mobile two-tier strip (group chips switch which item row is shown).
+// Admin sidebar (a horizontal strip of group rows on mobile) and group tabs.
 // Horizontal scroll affordances per row: data-scroll-start/end on the row
 // wrapper drives the edge fades in admin-shell.css, plus mouse drag-to-scroll.
 (function () {
     var sidebar = document.querySelector('body.admin-shell .sidebar');
     if (!sidebar) return;
 
-    // ── Desktop accordion ─────────────────────────────────────────────
-    var STORE_KEY = 'adminNavCollapsed';
-    var stored = {};
-    try { stored = JSON.parse(localStorage.getItem(STORE_KEY) || '{}') || {}; } catch (e) { /* corrupt state — fall back to defaults */ }
-
-    sidebar.querySelectorAll('.nav-group').forEach(function (section) {
-        var label = section.dataset.group;
-        var toggle = section.querySelector('.group-toggle');
-        if (!toggle) return;
-        // Apply the remembered state, but never hide the active page's group.
-        if (Object.prototype.hasOwnProperty.call(stored, label) && !section.querySelector('a.active')) {
-            section.classList.toggle('collapsed', !!stored[label]);
-        }
-        toggle.setAttribute('aria-expanded', section.classList.contains('collapsed') ? 'false' : 'true');
-        toggle.addEventListener('click', function () {
-            var collapsed = section.classList.toggle('collapsed');
-            toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-            stored[label] = collapsed;
-            try { localStorage.setItem(STORE_KEY, JSON.stringify(stored)); } catch (e) { /* private mode */ }
-        });
-    });
-
-    // ── Horizontal scroll affordances (mobile rows) ───────────────────
+    // ── Horizontal scroll affordances ─────────────────────────────────
     // Mouse drag-to-scroll: native overflow-x:auto handles touch panning on
     // real phones, but a mouse (or DevTools mobile emulation without touch
     // sim) can't drag-scroll without JS. Threshold is 5px so a tiny jitter
@@ -524,46 +501,24 @@ function showToast(message, type) {
         return update;
     }
 
-    var rowUpdates = {};
-    var chipsWrap = sidebar.querySelector('.group-chips-wrap');
-    var chipsRow = sidebar.querySelector('.group-chips');
-    if (chipsWrap && chipsRow) attachHScroll(chipsWrap, chipsRow);
-    sidebar.querySelectorAll('.nav-group').forEach(function (section) {
-        var items = section.querySelector('.group-items');
-        if (items) rowUpdates[section.dataset.group] = attachHScroll(section, items);
-    });
+    var rowsWrap = sidebar.querySelector('.sidebar-rows-wrap');
+    var rows = sidebar.querySelector('.sidebar-rows');
+    if (rowsWrap && rows) attachHScroll(rowsWrap, rows);
+    var tabsWrap = document.querySelector('body.admin-shell .admin-tabs-wrap');
+    var tabs = tabsWrap && tabsWrap.querySelector('.admin-tabs');
+    if (tabs) attachHScroll(tabsWrap, tabs);
 
-    // ── Mobile group chips ────────────────────────────────────────────
-    sidebar.querySelectorAll('.group-chip').forEach(function (chip) {
-        chip.addEventListener('click', function () {
-            sidebar.querySelectorAll('.group-chip').forEach(function (c) {
-                c.classList.toggle('m-active', c === chip);
-                c.setAttribute('aria-selected', c === chip ? 'true' : 'false');
-            });
-            sidebar.querySelectorAll('.nav-group').forEach(function (s) {
-                s.classList.toggle('m-active', s.dataset.group === chip.dataset.group);
-            });
-            // The newly shown row was display:none during initial measurement.
-            var refresh = rowUpdates[chip.dataset.group];
-            if (refresh) refresh();
-        });
-    });
-
-    // On mobile, bring the active chip and item into view if off-screen so
-    // users land on the right entry without manual scrolling.
+    // Bring the active row (mobile strip) and tab into view if off-screen.
     var horizontal = window.matchMedia('(max-width: 767.98px)');
-    if (horizontal.matches) {
-        [sidebar.querySelector('.group-chip.m-active'), sidebar.querySelector('.nav-group.m-active a.active')]
-            .forEach(function (el) {
-                if (!el) return;
-                var row = el.closest('.group-chips') || el.closest('.group-items');
-                if (!row) return;
-                var prev = row.style.scrollBehavior;
-                row.style.scrollBehavior = 'auto';
-                el.scrollIntoView({ inline: 'center', block: 'nearest' });
-                row.style.scrollBehavior = prev;
-            });
-    }
+    [horizontal.matches ? rows && rows.querySelector('a.active') : null, tabs && tabs.querySelector('a.active')]
+        .forEach(function (el) {
+            if (!el) return;
+            var row = el.parentElement;
+            var prev = row.style.scrollBehavior;
+            row.style.scrollBehavior = 'auto';
+            row.scrollLeft = el.offsetLeft - (row.clientWidth - el.offsetWidth) / 2;
+            row.style.scrollBehavior = prev;
+        });
 })();
 
 // Expand/collapse compressed date ranges in _BuildStrikeRotaTable.

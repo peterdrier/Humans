@@ -3,13 +3,13 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Consent;
 
-/// <summary>Consent's admin sidebar contribution — the "Legal" group.</summary>
+/// <summary>Consent's admin sidebar contribution — the "Consent" group.</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [
-        new("Legal", System: true, Items: [
+        new("Consent", [
             new("Legal documents", "AdminLegalDocuments", "LegalDocuments", null, null, "fa-solid fa-scale-balanced", PolicyNames.AdminOnly)
-        ], Weight: 130)
+        ])
     ];
 }

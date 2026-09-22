@@ -684,18 +684,6 @@
     <value>Freiwilligen-Tracking</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Breadcrumb_Shifts" xml:space="preserve">
-    <value>Schichten</value>
-    <comment>TODO: translate</comment>
-  </data>
-  <data name="VolTrack_Breadcrumb_ShiftDashboard" xml:space="preserve">
-    <value>Schicht-Dashboard</value>
-    <comment>TODO: translate</comment>
-  </data>
-  <data name="VolTrack_Breadcrumb_VolunteerTracking" xml:space="preserve">
-    <value>Freiwilligen-Tracking</value>
-    <comment>TODO: translate</comment>
-  </data>
   <data name="VolTrack_NoActiveEvent" xml:space="preserve">
     <value>Kein aktives Event.</value>
     <comment>TODO: translate</comment>

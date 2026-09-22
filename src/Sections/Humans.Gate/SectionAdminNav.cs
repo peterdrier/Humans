@@ -4,19 +4,16 @@ using Humans.Base.Interfaces;
 namespace Humans.Gate;
 
 /// <summary>
-/// Gate's contribution to the shared "Tickets" (gate ops) and "Temp" admin groups
-/// (nobodies-collective/Humans#1077).
+/// Gate's admin sidebar group: gate ops, then a temporary backfill (nobodies-collective/Humans#1077).
 /// </summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [
-        new("Tickets", [
-            new("Gate terminal", "TicketsGateAdmin", "Index", null, null, "fa-solid fa-key",     PolicyNames.TicketAdminOrAdmin, Weight: 60),
-            new("Gate staff PINs", "Gate",           "Admin", null, null, "fa-solid fa-sliders", PolicyNames.TicketAdminOrAdmin, Weight: 70)
-        ], Weight: 0),
-        new("Temp", System: true, Items: [
-            new("Vendor check-in backfill", "GateVendorBackfillAdmin", "Index", null, null, "fa-solid fa-cloud-arrow-up", PolicyNames.AdminOnly, Weight: 20)
-        ], Weight: 170)
+        new("Gate", [
+            new("Terminal",   "TicketsGateAdmin", "Index", null, null, "fa-solid fa-key",     PolicyNames.TicketAdminOrAdmin),
+            new("Staff PINs", "Gate",             "Admin", null, null, "fa-solid fa-sliders", PolicyNames.TicketAdminOrAdmin),
+            new("Vendor check-in backfill", "GateVendorBackfillAdmin", "Index", null, null, "fa-solid fa-cloud-arrow-up", PolicyNames.AdminOnly)
+        ])
     ];
 }

@@ -681,15 +681,6 @@
   <data name="VolTrack_Title" xml:space="preserve">
     <value>Seguimiento de Voluntarios</value>
   </data>
-  <data name="VolTrack_Breadcrumb_Shifts" xml:space="preserve">
-    <value>Turnos</value>
-  </data>
-  <data name="VolTrack_Breadcrumb_ShiftDashboard" xml:space="preserve">
-    <value>Panel de turnos</value>
-  </data>
-  <data name="VolTrack_Breadcrumb_VolunteerTracking" xml:space="preserve">
-    <value>Seguimiento de voluntarios</value>
-  </data>
   <data name="VolTrack_NoActiveEvent" xml:space="preserve">
     <value>No hay ningún evento activo.</value>
     <comment>TODO: translate</comment>

@@ -2,6 +2,7 @@
 @{
     var isEdit = Model.Id.HasValue;
     ViewData["Title"] = isEdit ? "Edit Venue" : "New Venue";
+    ViewData["AdminNavParent"] = "Venues";
 }
 
 <h2>@ViewData["Title"]</h2>

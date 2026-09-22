@@ -4,33 +4,19 @@ using Microsoft.AspNetCore.Hosting;
 namespace Humans.Base.Interfaces;
 
 /// <summary>
-/// One group in the admin sidebar. <paramref name="Key"/> is the merge identity — several
-/// sections contribute into one group ("Tickets" holds Tickets+Campaigns+Scanner+Gate+
-/// EarlyEntry; "Money" holds Expenses+Budget+Holded+Store) — and defaults to
-/// <paramref name="Label"/> when not given.
+/// One group in the admin sidebar: a single sidebar row whose <paramref name="Items"/> render as
+/// the tab strip on each of its pages. <paramref name="Label"/> is the owning section's name and
+/// the merge identity — a section that contributes into another's group ("Feedback" into
+/// "Issues") names the same label.
 /// </summary>
-/// <remarks>
-/// <paramref name="Weight"/> orders groups; <c>System: true</c> groups are AdminOnly plumbing
-/// rendered below a divider. Order is by daily traffic across the whole admin audience, NOT
-/// structural prominence — weights carry that editorial judgement, so do not re-sort.
-/// </remarks>
-public sealed record AdminNavGroup(
-    string Label,
-    IReadOnlyList<AdminNavItem> Items,
-    bool System = false,
-    string? Key = null,
-    int Weight = 0)
-{
-    /// <summary>Merge identity — <see cref="Key"/>, or <see cref="Label"/> when unset.</summary>
-    public string GroupKey => Key ?? Label;
-}
+/// <remarks>Groups render alphabetically by label; there is no group weight.</remarks>
+public sealed record AdminNavGroup(string Label, IReadOnlyList<AdminNavItem> Items);
 
-/// <summary>One item in an admin sidebar group.</summary>
+/// <summary>One item in an admin sidebar group: a tab on the group's pages.</summary>
 /// <remarks>
-/// <paramref name="Label"/> must stand alone in the sidebar, where the heading above it is the
-/// merge group ("Money"), not the owning section. The breadcrumb states the section, so a label
-/// that repeats it reads twice; <paramref name="BreadcrumbLabel"/> is the shorter form to use
-/// there. Leave it unset when the label is already section-free.
+/// <paramref name="Label"/> sits under the group's label in the breadcrumb and the tab strip, so
+/// it must not repeat it ("Catalog", not "Store catalog"). A single-item group whose item shares
+/// its label renders that label once.
 /// </remarks>
 public sealed record AdminNavItem(
     string Label,
@@ -43,12 +29,7 @@ public sealed record AdminNavItem(
     Func<ClaimsPrincipal, bool>? RoleCheck = null,
     Func<IServiceProvider, ValueTask<int?>>? PillCount = null,
     Func<IWebHostEnvironment, bool>? EnvironmentGate = null,
-    int Weight = 0,
-    string? BreadcrumbLabel = null)
-{
-    /// <summary>What the breadcrumb renders — <see cref="BreadcrumbLabel"/>, or <see cref="Label"/>.</summary>
-    public string CrumbLabel => BreadcrumbLabel ?? Label;
-}
+    int Weight = 0);
 
 /// <summary>The admin sidebar groups a section contributes.</summary>
 public interface ISectionAdminNav : ISectionContribution

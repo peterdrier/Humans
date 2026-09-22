@@ -3,16 +3,16 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Store;
 
-/// <summary>Store's contribution to the shared "Money" admin group (nobodies-collective/Humans#1077).</summary>
+/// <summary>Store's admin sidebar group (nobodies-collective/Humans#1077).</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [
-        new("Money", [
-            new("Store catalog",  "StoreAdmin", "Catalog",  null, null, "fa-solid fa-tags",         PolicyNames.StoreCatalogAdmin, Weight: 30),
-            new("Store summary",  "StoreAdmin", "Summary",  null, null, "fa-solid fa-chart-column", PolicyNames.StoreCatalogAdmin, Weight: 40),
-            new("Store payments", "StoreAdmin", "Payments", null, null, "fa-solid fa-credit-card",  PolicyNames.StoreCatalogAdmin, Weight: 50),
-            new("Store order years", "StoreAdmin", "OrderYears", null, null, "fa-solid fa-calendar-check", PolicyNames.StoreCatalogAdmin, Weight: 60)
-        ], Weight: 50)
+        new("Store", [
+            new("Catalog",     "StoreAdmin", "Catalog",    null, null, "fa-solid fa-tags",           PolicyNames.StoreCatalogAdmin),
+            new("Summary",     "StoreAdmin", "Summary",    null, null, "fa-solid fa-chart-column",   PolicyNames.StoreCatalogAdmin),
+            new("Payments",    "StoreAdmin", "Payments",   null, null, "fa-solid fa-credit-card",    PolicyNames.StoreCatalogAdmin),
+            new("Order years", "StoreAdmin", "OrderYears", null, null, "fa-solid fa-calendar-check", PolicyNames.StoreCatalogAdmin)
+        ])
     ];
 }

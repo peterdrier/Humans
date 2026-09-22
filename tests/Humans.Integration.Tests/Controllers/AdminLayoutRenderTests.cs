@@ -47,9 +47,13 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     [GeneratedRegex("<partial\\s+name=\"(?<name>[^\"]+)\"", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
     private static partial Regex PartialTag();
 
-    /// <summary>The sidebar's active-item marker — <c>class="active"</c> on the anchor itself.</summary>
-    [GeneratedRegex("<a class=\"active\"", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
+    /// <summary>The sidebar's active-row marker — <c>class="active"</c> on the group row's anchor.</summary>
+    [GeneratedRegex("<a class=\"active\" data-group=", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
     private static partial Regex ActiveSidebarLink();
+
+    /// <summary>The tab strip's active-tab marker.</summary>
+    [GeneratedRegex("<a class=\"active\" aria-current=\"page\"", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex ActiveTab();
 
     /// <summary>Body class set only by <c>_AdminLayout</c>; the member <c>_Layout</c> has no such class.</summary>
     private const string AdminShellMarker = "admin-shell";
@@ -127,8 +131,8 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     }
 
     /// <summary>
-    /// The sidebar shows a full Admin every group in the tree, and every item gated on
-    /// <c>AdminOnly</c>.
+    /// The sidebar shows a full Admin every group in the tree, and a group's tab strip every
+    /// item gated on <c>AdminOnly</c>.
     /// </summary>
     /// <remarks>
     /// This was the <c>admin</c> row of <c>tests/e2e/admin-shell.spec.ts</c>'s visibility
@@ -139,7 +143,9 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     /// <para>
     /// Derived from the composed admin nav (<see cref="AdminNavComposition"/>) rather than a
     /// pinned list, so a group or an <c>AdminOnly</c> item added later is covered without
-    /// touching this file. Only <c>AdminOnly</c> items are asserted individually: every other
+    /// touching this file. Items render as tabs on their group's pages, not in the sidebar, so
+    /// they are asserted on Debug's, the group with the most. Only <c>AdminOnly</c> items are
+    /// asserted individually: every other
     /// item carries a policy whose satisfaction this test would have to re-derive, and
     /// re-deriving the view component's own filter proves nothing.
     /// </para>
@@ -164,16 +170,17 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         }
 
         var adminOnlyItems = groups
-            .SelectMany(g => g.Items)
+            .Single(g => string.Equals(g.Label, "Debug", StringComparison.Ordinal)).Items
             .Where(i => string.Equals(i.Policy, PolicyNames.AdminOnly, StringComparison.Ordinal))
             .ToList();
 
         adminOnlyItems.Should().NotBeEmpty("the tree's AdminOnly items are what this test covers");
 
+        var tabsHtml = await Client.GetStringAsync("/Debug/Logs", ct);
         foreach (var item in adminOnlyItems)
         {
-            html.Should().Contain($"<span>{item.Label}</span>",
-                $"an Admin must see the AdminOnly item '{item.Label}' — the sidebar renders each "
+            tabsHtml.Should().Contain($"<span>{item.Label}</span>",
+                $"an Admin must see the AdminOnly item '{item.Label}' — the tab strip renders each "
                 + "item label in its own span");
         }
     }
@@ -208,7 +215,7 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     }
 
     /// <summary>
-    /// The breadcrumb names the group and the item, and exactly one sidebar link is active.
+    /// The breadcrumb names the group and the item, and exactly one sidebar row and one tab are active.
     /// </summary>
     /// <remarks>
     /// Regression guard for ddfdb6c1, where the active-item match was on controller alone:
@@ -224,8 +231,8 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
 
         foreach (var (url, group, item) in new[]
                  {
-                     ("/Debug/Logs", "Diagnostics", "Logs"),
-                     ("/Debug/DbStats", "Diagnostics", "DB stats"),
+                     ("/Debug/Logs", "Debug", "Logs"),
+                     ("/Debug/DbStats", "Debug", "DB stats"),
                  })
         {
             var response = await Client.GetAsync(url, ct);
@@ -236,8 +243,9 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
             html.Should().Contain($"<span class=\"here\">{item}</span>",
                 $"GET {url}'s breadcrumb must end on its own item");
 
-            ActiveSidebarLink().Matches(html).Count.Should().Be(1,
-                $"GET {url} lit more than one sidebar link — the ddfdb6c1 shape, where the active "
+            ActiveSidebarLink().Matches(html).Count.Should().Be(1, $"GET {url} must light exactly one sidebar row");
+            ActiveTab().Matches(html).Count.Should().Be(1,
+                $"GET {url} lit more than one tab — the ddfdb6c1 shape, where the active "
                 + "match was on controller alone and every item under it went active together");
         }
     }

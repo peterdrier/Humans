@@ -10,6 +10,6 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     [
         new("Cantina", [
             new("Roster", "Cantina", "Roster", null, null, "fa-solid fa-utensils", PolicyNames.CantinaAdminOrAdmin)
-        ], Weight: 40)
+        ])
     ];
 }

@@ -684,18 +684,6 @@
     <value>Seguiment de voluntaris</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Breadcrumb_Shifts" xml:space="preserve">
-    <value>Torns</value>
-    <comment>TODO: translate</comment>
-  </data>
-  <data name="VolTrack_Breadcrumb_ShiftDashboard" xml:space="preserve">
-    <value>Tauler de torns</value>
-    <comment>TODO: translate</comment>
-  </data>
-  <data name="VolTrack_Breadcrumb_VolunteerTracking" xml:space="preserve">
-    <value>Seguiment de voluntaris</value>
-    <comment>TODO: translate</comment>
-  </data>
   <data name="VolTrack_NoActiveEvent" xml:space="preserve">
     <value>Cap esdeveniment actiu.</value>
     <comment>TODO: translate</comment>

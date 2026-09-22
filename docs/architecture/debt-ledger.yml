@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 66
+next_id: 67
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -586,4 +586,8 @@ inbox:
   - added: 2026-09-20
     id: CENTRAL-61
     what: "Two pre-existing Codex runner scripts use `git -C <path>`, which memory/process/never-use-git-dash-c.md marks a HARD RULE with no exceptions: .codex/run-weekly-bug-hunt.sh and .codex/cleanup-merged-bug-hunt-worktrees.sh. Fix is mechanical — run each group in a `(cd \"$dir\" && git ...)` subshell, as .codex/cron/run-daily-debt.sh now does. Worth noting the atom's stated rationale (a wrong shell folder; defeating Bash allowlist prefixes) is about agent-issued commands, so Peter may want to say whether the rule binds committed scripts at all rather than have it re-found every audit. Found 2026-09-20 while fixing the same violation in the nightly debt runner in peterdrier/Humans#1759."
+    review: panel
+  - added: 2026-09-22
+    id: CENTRAL-66
+    what: "Admin sidebar destinations that render in the member _Layout, so they get no admin sidebar, tab strip or Group / Page / Subpage breadcrumb: Agent History, CampAdmin Index/Roles, CampCompliance, CityPlanning Admin, EventsDashboard/Moderation/Export, Feedback, Issues, SurveyAdmin Index/Queue, Settings, TicketsOnsiteAdmin (shared with the gate terminal). Each is also reached by non-admins or from member pages, so the fix needs a per-page admin-context signal (Expenses Review's IsAdminView is the existing pattern) rather than a blanket _ViewStart. Found auditing admin breadcrumbs for the sidebar rework."
     review: panel

@@ -11,13 +11,9 @@
     var stateBadgeClass = StatusBadgeExtensions.GetMembershipStatusBadgeClass(stateLabel);
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="AdminList">Humans</a></li>
-        <li class="breadcrumb-item"><vc:human user-id="@Model.UserId" layout="Text" link="Public" /></li>
-        <li class="breadcrumb-item active" aria-current="page">Admin</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <span><vc:human user-id="@Model.UserId" layout="Text" link="Public" /></span>
+}
 
 
 <vc:merged-accounts user-id="@Model.UserId" />
