@@ -63,6 +63,8 @@
   <data name="Containers_Added" xml:space="preserve"><value>Container added.</value></data>
   <data name="Containers_Updated" xml:space="preserve"><value>Container updated.</value></data>
   <data name="Containers_Deleted" xml:space="preserve"><value>Container deleted.</value></data>
+  <data name="Containers_Error_InvalidName" xml:space="preserve"><value>Container name must not contain &lt;, &gt;, or $.</value></data>
+  <data name="Containers_Error_TooManyImages" xml:space="preserve"><value>A container can have at most 5 images.</value></data>
   <data name="Containers_Carousel_Previous" xml:space="preserve"><value>Previous</value></data>
   <data name="Containers_Carousel_Next" xml:space="preserve"><value>Next</value></data>
 </root>

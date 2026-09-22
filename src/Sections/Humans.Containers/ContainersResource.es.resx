@@ -123,6 +123,12 @@
   <data name="Containers_Deleted" xml:space="preserve">
     <value>Contenedor eliminado.</value>
   </data>
+  <data name="Containers_Error_InvalidName" xml:space="preserve">
+    <value>El nombre del contenedor no puede contener &lt;, &gt; ni $.</value>
+  </data>
+  <data name="Containers_Error_TooManyImages" xml:space="preserve">
+    <value>Un contenedor puede tener como máximo 5 imágenes.</value>
+  </data>
   <data name="Containers_Carousel_Previous" xml:space="preserve">
     <value>Anterior</value>
   </data>
