@@ -476,7 +476,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetSentOrFailedSinceAsync_ExcludesQueuedAndBeforeCutoff()
+    public async Task GetSentSinceAsync_ExcludesFailedQueuedAndBeforeCutoff()
     {
         var now = _clock.GetCurrentInstant();
         var sent = BuildMessage(status: EmailOutboxStatus.Sent, sentAt: now, createdAt: now);
@@ -489,9 +489,9 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         await _repo.AddAsync(queued, Xunit.TestContext.Current.CancellationToken);
         await _repo.AddAsync(tooOld, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetSentOrFailedSinceAsync(now - Duration.FromDays(1), Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.GetSentSinceAsync(now - Duration.FromDays(1), Xunit.TestContext.Current.CancellationToken);
 
-        result.Select(m => m.Id).Should().BeEquivalentTo([sent.Id, failed.Id]);
+        result.Select(m => m.Id).Should().BeEquivalentTo([sent.Id]);
     }
 
     // ==========================================================================

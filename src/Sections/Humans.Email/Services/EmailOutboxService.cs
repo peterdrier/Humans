@@ -156,11 +156,11 @@ internal sealed class EmailOutboxService(
     {
         var since = clock.GetCurrentInstant() - Duration.FromDays(_settings.OutboxRetentionDays);
         var today = clock.GetCurrentInstant().InUtc().Date;
-        var messages = await repo.GetSentOrFailedSinceAsync(since, cancellationToken);
+        var messages = await repo.GetSentSinceAsync(since, cancellationToken);
         var existingKeys = await repo.GetDailySendCountKeysAsync(cancellationToken);
 
         return messages
-            .Where(m => m.Status == EmailOutboxStatus.Sent && !IsTestAddress(m.RecipientEmail))
+            .Where(m => !IsTestAddress(m.RecipientEmail))
             .GroupBy(m => (Date: m.SentAt!.Value.InUtc().Date, m.TemplateName))
             .Where(g => g.Key.Date != today && !existingKeys.Contains((g.Key.Date, g.Key.TemplateName)))
             .Select(g => new EmailDailySendCount
