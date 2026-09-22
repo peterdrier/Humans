@@ -1,6 +1,6 @@
 ---
 name: The session subscribed to a PR never does the work
-description: At ready-for-review, hand the PR to a fresh sonnet steward session (create_session) and stop; the steward only classifies wakes and dispatches one round worker per actionable event; it never builds, reads threads or logs, or fixes. See `.claude/skills/steward/SKILL.md`.
+description: At ready-for-review, hand the PR to a fresh sonnet steward session (create_session) and stop; the steward only classifies wakes and dispatches one round worker per actionable event; it never builds, reads threads or logs, or fixes. See the `pd:steward` skill.
 ---
 
 The session that built a PR does not tend it. At ready-for-review it spawns a steward
@@ -18,8 +18,8 @@ cannot be built repo-side; the cost has to come out of the wake itself.
 
 **How to apply:**
 
-- Hand-off, wake protocol, and the round worker's brief: `.claude/skills/steward/SKILL.md`
-  and `round-worker.md`. `/pd:orch` does the hand-off as its last step.
+- Hand-off, wake protocol, and the round worker's brief: the `pd:steward` skill (plugin
+  `peterdrier/skills`); this repo's gate and triage rules: [`.claude/steward.md`](../../.claude/steward.md). `/pd:orch` does the hand-off as its last step.
 - The steward never runs Bash, never fetches threads, diffs or logs, never edits, never
   replies in a thread, never schedules a check-in.
 - A wake with nothing actionable ends the turn with no reply and no comment.

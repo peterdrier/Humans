@@ -425,7 +425,7 @@ the Resume grep gate. Unattended runs skip this; unanswered items carry forward,
 
 Stop working; the worktree stays until the PR is merged or closed, and everything a later session
 needs is derivable from the branch name and the run file. Review rounds run under
-`.claude/skills/steward/SKILL.md` and `memory/process/review-round-budget.md`: a bot finding is a
+the `pd:steward` skill, `.claude/steward.md` and `memory/process/review-round-budget.md`: a bot finding is a
 sample of a class — grep the branch for its siblings before fixing the reported line; every push is
 `doctor.py push` followed by a check that the PR head advanced; a thread is resolved only after
 `doctor.py resolve-check <sha>` passes for the commit the reply cites and the named line reads as
