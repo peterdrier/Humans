@@ -278,4 +278,5 @@
 &lt;p&gt;— Das Humans-Team&lt;/p&gt;</value>
     <comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment>
   </data>
+  <data name="Issue_ComposerRecipientsHandlers" xml:space="preserve"><value>Die Bearbeiter dieses Anliegens (Benachrichtigung in der App)</value></data>
 </root>

@@ -29,6 +29,7 @@ internal sealed class RotaCoordinatorMessageService(
         Guid rotaId,
         Guid senderUserId,
         string messageText,
+        bool includeShifts,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(messageText))
@@ -65,11 +66,14 @@ internal sealed class RotaCoordinatorMessageService(
                 RotaName: rota.Name,
                 MessageText: messageText,
                 // Per-rota body keeps the flat shift-list shape; there is exactly
-                // one group in this path so the flatten is trivial.
-                ShiftLines: shiftGroups[0].ShiftLines,
+                // one group in this path so the flatten is trivial — and none at
+                // all when the coordinator left the shift list out.
+                ShiftLines: shiftGroups.Count == 0 ? [] : shiftGroups[0].ShiftLines,
+                IncludeShifts: includeShifts,
                 Culture: recipient.PreferredLanguage),
             enqueue: (req, token) => emailService.SendAsync(emailMessages.CoordinatorRotaMessage(req), token),
             logScope: ("rota", rota.Id.ToString()),
+            includeShifts,
             ct);
 
         var auditSuffix = string.Empty;
@@ -97,8 +101,11 @@ internal sealed class RotaCoordinatorMessageService(
         Guid teamId,
         Guid senderUserId,
         string messageText,
+        bool includeShifts,
+        TeamRotasAudienceFilter filter,
         CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(filter);
         if (string.IsNullOrWhiteSpace(messageText))
             return TeamRotasMessageDispatchResult.Failure("Message body is required.");
 
@@ -106,10 +113,10 @@ internal sealed class RotaCoordinatorMessageService(
         if (team is null)
             return TeamRotasMessageDispatchResult.Failure("Team not found.");
 
-        var groups = await BuildTeamRotaGroupsAsync(teamId, ct);
+        var groups = await BuildTeamRotaGroupsAsync(teamId, filter, ct);
         if (groups.Count == 0)
             return TeamRotasMessageDispatchResult.Failure(
-                "This team has no upcoming rotas with active signups to email.");
+                "No rota in this team matches that selection and has active signups to email.");
 
         var senderInfos = await userService.GetUserInfosAsync([senderUserId], ct);
         if (!senderInfos.TryGetValue(senderUserId, out var sender))
@@ -125,9 +132,11 @@ internal sealed class RotaCoordinatorMessageService(
                 TeamName: team.Name,
                 MessageText: messageText,
                 ShiftGroups: shiftGroups,
+                IncludeShifts: includeShifts,
                 Culture: recipient.PreferredLanguage),
             enqueue: (req, token) => emailService.SendAsync(emailMessages.CoordinatorTeamRotasMessage(req), token),
             logScope: ("team", teamId.ToString()),
+            includeShifts,
             ct);
 
         var auditSuffix = string.Empty;
@@ -152,9 +161,11 @@ internal sealed class RotaCoordinatorMessageService(
 
     public async Task<TeamRotasRecipientPreview> GetTeamRotasRecipientPreviewAsync(
         Guid teamId,
+        TeamRotasAudienceFilter filter,
         CancellationToken ct = default)
     {
-        var groups = await BuildTeamRotaGroupsAsync(teamId, ct);
+        ArgumentNullException.ThrowIfNull(filter);
+        var groups = await BuildTeamRotaGroupsAsync(teamId, filter, ct);
         if (groups.Count == 0)
             return new TeamRotasRecipientPreview(0, []);
 
@@ -178,14 +189,16 @@ internal sealed class RotaCoordinatorMessageService(
     }
 
     /// <summary>
-    /// Loads the team's current/upcoming rotas in the active event, paired with
-    /// their active (Pending/Confirmed) signups. A rota is included if any of
-    /// its shifts has not yet ended (so events mid-flight still count). Returns
-    /// an empty list if no active event, the team has no rotas in it, or no
-    /// rota in the team has any future shifts with active signups.
+    /// Loads the team's rotas in the active event that <paramref name="filter"/>
+    /// admits, paired with their active (Pending/Confirmed) signups. Under the
+    /// default upcoming filter a rota is included if any of its shifts has not yet
+    /// ended (so events mid-flight still count); otherwise the rota's period decides.
+    /// Returns an empty list if no active event, the team has no rotas in it, or no
+    /// admitted rota has active signups.
     /// </summary>
     private async Task<IReadOnlyList<RotaSignupGroup>> BuildTeamRotaGroupsAsync(
         Guid teamId,
+        TeamRotasAudienceFilter filter,
         CancellationToken ct)
     {
         // "Active" is Settings' notion (nobodies-collective/Humans#1631) — resolve the
@@ -207,8 +220,10 @@ internal sealed class RotaCoordinatorMessageService(
         var groups = new List<RotaSignupGroup>(rotas.Count);
         foreach (var rota in rotas)
         {
-            var hasFutureShift = rota.Shifts.Any(s => s.GetAbsoluteEnd(calendar) > now);
-            if (!hasFutureShift) continue;
+            if (!filter.Includes(rota.Period)) continue;
+
+            if (filter.UpcomingOnly && !rota.Shifts.Any(s => s.GetAbsoluteEnd(calendar) > now))
+                continue;
 
             var activeSignups = GetActiveSignups(rota);
 
@@ -244,6 +259,7 @@ internal sealed class RotaCoordinatorMessageService(
         Func<UserInfo, IReadOnlyList<CoordinatorRotaShiftGroup>, TRequest> buildRequest,
         Func<TRequest, CancellationToken, Task> enqueue,
         (string Type, string Id) logScope,
+        bool includeShifts,
         CancellationToken ct)
     {
         // userId -> list of (group, signup) so we can later partition per recipient per rota.
@@ -292,18 +308,23 @@ internal sealed class RotaCoordinatorMessageService(
                 continue;
             }
 
-            var shiftGroups = entries
-                .GroupBy(e => e.Group.RotaId)
-                .Select(g =>
-                {
-                    var group = g.First().Group;
-                    var lines = BuildShiftLines(
-                        g.Select(e => e.Signup).ToList(),
-                        group.EventSettings);
-                    return new CoordinatorRotaShiftGroup(group.RotaName, lines);
-                })
-                .OrderBy(g => g.RotaName, StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            // Nothing to format when the coordinator left the shift list out —
+            // the template drops the whole section rather than printing a lead-in
+            // over an empty list.
+            IReadOnlyList<CoordinatorRotaShiftGroup> shiftGroups = includeShifts
+                ? entries
+                    .GroupBy(e => e.Group.RotaId)
+                    .Select(g =>
+                    {
+                        var group = g.First().Group;
+                        var lines = BuildShiftLines(
+                            g.Select(e => e.Signup).ToList(),
+                            group.EventSettings);
+                        return new CoordinatorRotaShiftGroup(group.RotaName, lines);
+                    })
+                    .OrderBy(g => g.RotaName, StringComparer.OrdinalIgnoreCase)
+                    .ToList()
+                : [];
 
             var request = buildRequest(recipient, shiftGroups);
 

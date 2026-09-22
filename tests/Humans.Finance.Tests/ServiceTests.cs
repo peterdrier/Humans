@@ -75,7 +75,34 @@ public class HoldedFinanceServiceTests
 
         var rows = await MakeService().GetActualsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
-        rows.Should().ContainSingle().Which.Should().Be(new HoldedActualRow(cat, 181.50m));
+        var row = rows.Should().ContainSingle().Which;
+        row.BudgetCategoryId.Should().Be(cat);
+        row.Actual.Should().Be(181.50m);
+    }
+
+    [HumansFact]
+    public async Task GetActualsForYear_CarriesTheDocsBehindTheTotal_NewestFirst()
+    {
+        var cat = Guid.NewGuid();
+        _repo.GetMatchedForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(new List<HoldedExpenseDoc>
+        {
+            new() { HoldedDocId = "d1", DocNumber = "PUR-1", ContactName = "Acme",
+                    Date = new LocalDate(2026, 3, 1), Total = 121m, IsApproved = true },
+            new() { HoldedDocId = "d2", DocNumber = "PUR-2", ContactName = "Beta",
+                    Date = new LocalDate(2026, 5, 1), Total = 60.50m, IsApproved = true },
+            new() { HoldedDocId = "d3", DocNumber = "PUR-3", ContactName = "Draft Co",
+                    Date = new LocalDate(2026, 6, 1), Total = 999m, IsApproved = false },
+        }.Select(d => { d.BudgetCategoryId = cat; return d; }).ToList());
+
+        var row = (await MakeService().GetActualsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken))
+            .Should().ContainSingle().Which;
+
+        // Only what the total is made of — the draft is excluded from both.
+        row.Docs.Select(d => d.DocNumber).Should().Equal("PUR-2", "PUR-1");
+        row.Docs.Sum(d => d.Total).Should().Be(row.Actual);
+        row.Docs[0].HoldedUrl.Should().Be("https://app.holded.com/purchases/d2");
+        row.Docs[0].ContactName.Should().Be("Beta");
+        row.Docs[0].Date.Should().Be(new LocalDate(2026, 5, 1));
     }
 
     // ─── GetProvisioningPlan ──────────────────────────────────────────────────────

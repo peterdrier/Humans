@@ -1088,7 +1088,7 @@
     <value>E-Mail an Team</value>
   </data>
   <data name="EmailTeamRotas_Heading" xml:space="preserve">
-    <value>E-Mail an alle in den kommenden Dienstpl&#xE4;nen senden: {0}</value>
+    <value>E-Mail an alle mit einer Schicht in: {0}</value>
   </data>
   <data name="EmailTeamRotas_RecipientsHeading" xml:space="preserve">
     <value>Empf&#xE4;nger ({0})</value>
@@ -1097,13 +1097,13 @@
     <value>in {0} Dienstpl&#xE4;nen</value>
   </data>
   <data name="EmailTeamRotas_NoRecipients" xml:space="preserve">
-    <value>F&#xFC;r die kommenden Dienstpl&#xE4;ne dieses Teams hat sich noch niemand angemeldet.</value>
+    <value>Auf diese Auswahl passt noch niemand.</value>
   </data>
   <data name="EmailTeamRotas_MessageLabel" xml:space="preserve">
     <value>Deine Nachricht</value>
   </data>
   <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
-    <value>Jeder Empf&#xE4;nger sieht diesen Text zusammen mit seiner eigenen Schichtliste &#xFC;ber die kommenden Dienstpl&#xE4;ne des Teams hinweg.</value>
+    <value>Jeder Empf&#xE4;nger sieht diesen Text und, wenn das K&#xE4;stchen gesetzt ist, seine eigene Schichtliste &#xFC;ber die ausgew&#xE4;hlten Dienstpl&#xE4;ne hinweg.</value>
   </data>
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>An {0} Empf&#xE4;nger senden</value>
@@ -1183,7 +1183,7 @@
     <value>Eine Nachricht zu deinen Schichten in {0}</value>
   </data>
   <data name="Shifts_Email_CoordinatorRotaMessage_Body" xml:space="preserve">
-    <value>&lt;p&gt;Liebe/r {0},&lt;/p&gt;&lt;p&gt;Eine Nachricht vom Koordinator von &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Zur Info, deine Schichten in diesem Dienstplan sind:&lt;/p&gt;{4}&lt;p&gt;Danke,&lt;/p&gt;{5}</value>
+    <value>&lt;p&gt;Liebe/r {0},&lt;/p&gt;&lt;p&gt;Eine Nachricht vom Koordinator von &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;{4}&lt;p&gt;Danke,&lt;/p&gt;{5}</value>
   </data>
   <data name="Shifts_Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
     <value>(noch keine Schichten in diesem Dienstplan)</value>
@@ -1192,6 +1192,19 @@
     <value>Eine Nachricht zu deinen Schichten bei {0}</value>
   </data>
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
-    <value>&lt;p&gt;Liebe/r {0},&lt;/p&gt;&lt;p&gt;Eine Nachricht vom Koordinator von &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Zur Info, deine Schichten in den kommenden Dienstpl&#xE4;nen dieses Teams:&lt;/p&gt;{4}&lt;p&gt;Danke,&lt;/p&gt;{5}</value>
+    <value>&lt;p&gt;Liebe/r {0},&lt;/p&gt;&lt;p&gt;Eine Nachricht vom Koordinator von &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;{4}&lt;p&gt;Danke,&lt;/p&gt;{5}</value>
   </data>
+  <data name="EmailRota_IncludeShifts" xml:space="preserve"><value>Die eigenen Schichten jedes Empf&#xE4;ngers in die E-Mail aufnehmen</value></data>
+  <data name="EmailTeamRotas_IncludeShifts" xml:space="preserve"><value>Die eigenen Schichten jedes Empf&#xE4;ngers in die E-Mail aufnehmen</value></data>
+  <data name="EmailTeamRotas_ScopeLabel" xml:space="preserve"><value>Welche Dienstpl&#xE4;ne</value></data>
+  <data name="EmailTeamRotas_ScopeUpcoming" xml:space="preserve"><value>Nur kommende Dienstpl&#xE4;ne</value></data>
+  <data name="EmailTeamRotas_ScopeAll" xml:space="preserve"><value>Alle Dienstpl&#xE4;ne dieser Veranstaltung</value></data>
+  <data name="EmailTeamRotas_PeriodsLabel" xml:space="preserve"><value>Zeitr&#xE4;ume</value></data>
+  <data name="EmailTeamRotas_PeriodBuild" xml:space="preserve"><value>Aufbau</value></data>
+  <data name="EmailTeamRotas_PeriodEvent" xml:space="preserve"><value>Veranstaltung</value></data>
+  <data name="EmailTeamRotas_PeriodStrike" xml:space="preserve"><value>Abbau</value></data>
+  <data name="EmailTeamRotas_Refresh" xml:space="preserve"><value>Empf&#xE4;nger aktualisieren</value></data>
+  <data name="EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>Die Empf&#xE4;ngerliste entspricht jetzt der ausgew&#xE4;hlten Zielgruppe. Pr&#xFC;fe sie und klicke dann auf Senden.</value></data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_ShiftsIntro" xml:space="preserve"><value>Zur Info, deine Schichten in diesem Dienstplan sind:</value></data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Zur Info, deine Schichten bei diesem Team:</value></data>
 </root>

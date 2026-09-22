@@ -352,12 +352,12 @@
   <data name="EmailRota_NoActiveSignups" xml:space="preserve"><value>This rota has no active signups to email.</value></data>
   <data name="EmailTeamRotas_Title" xml:space="preserve"><value>Email team: {0}</value><comment>{0} = team name</comment></data>
   <data name="EmailTeamRotas_Breadcrumb" xml:space="preserve"><value>Email team</value></data>
-  <data name="EmailTeamRotas_Heading" xml:space="preserve"><value>Email everyone in upcoming rotas: {0}</value><comment>{0} = team name</comment></data>
+  <data name="EmailTeamRotas_Heading" xml:space="preserve"><value>Email everyone with a shift in: {0}</value><comment>{0} = team name</comment></data>
   <data name="EmailTeamRotas_RecipientsHeading" xml:space="preserve"><value>Recipients ({0})</value><comment>{0} = recipient count</comment></data>
   <data name="EmailTeamRotas_RotaCount" xml:space="preserve"><value>across {0} rota(s)</value><comment>{0} = rota count</comment></data>
-  <data name="EmailTeamRotas_NoRecipients" xml:space="preserve"><value>No one is signed up to this team's upcoming rotas yet.</value></data>
+  <data name="EmailTeamRotas_NoRecipients" xml:space="preserve"><value>No one matches that selection yet.</value></data>
   <data name="EmailTeamRotas_MessageLabel" xml:space="preserve"><value>Your message</value></data>
-  <data name="EmailTeamRotas_MessageHelp" xml:space="preserve"><value>Each recipient will see this body plus their own shift list across the team's upcoming rotas.</value></data>
+  <data name="EmailTeamRotas_MessageHelp" xml:space="preserve"><value>Each recipient will see this body, plus their own shift list across the selected rotas when that box is ticked.</value></data>
   <data name="EmailTeamRotas_Send" xml:space="preserve"><value>Send to {0} recipient(s)</value><comment>{0} = recipient count</comment></data>
   <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Tell us your food needs first.</value></data>
   <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Set-up closed</value></data>
@@ -395,8 +395,21 @@
   <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>No day off was set for that day.</value></data>
   <data name="Shifts_AccountCannotSignUp" xml:space="preserve"><value>Your account cannot sign up for shifts.</value></data>
   <data name="Shifts_Email_CoordinatorRotaMessage_Subject" xml:space="preserve"><value>A message about your shifts on {0}</value><comment>{0} = rota name (HTML-encoded)</comment></data>
-  <data name="Shifts_Email_CoordinatorRotaMessage_Body" xml:space="preserve"><value>&lt;p&gt;Dear {0},&lt;/p&gt;&lt;p&gt;A message from the coordinator of &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;FYI, your shifts on this rota are:&lt;/p&gt;{4}&lt;p&gt;Thank you,&lt;/p&gt;{5}</value><comment>{0}=recipient name, {1}=sender name, {2}=rota name, {3}=message body, {4}=shift list HTML, {5}=sender contact block HTML</comment></data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_Body" xml:space="preserve"><value>&lt;p&gt;Dear {0},&lt;/p&gt;&lt;p&gt;A message from the coordinator of &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;{4}&lt;p&gt;Thank you,&lt;/p&gt;{5}</value><comment>{0}=recipient name, {1}=sender name, {2}=rota name, {3}=message body, {4}=shift section HTML (lead-in + list, empty when opted out), {5}=sender contact block HTML</comment></data>
   <data name="Shifts_Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve"><value>(no shifts on this rota yet)</value></data>
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_Subject" xml:space="preserve"><value>A message about your shifts with {0}</value><comment>{0} = team name (HTML-encoded)</comment></data>
-  <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve"><value>&lt;p&gt;Dear {0},&lt;/p&gt;&lt;p&gt;A message from the coordinator of &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;FYI, your shifts across this team's upcoming rotas:&lt;/p&gt;{4}&lt;p&gt;Thank you,&lt;/p&gt;{5}</value><comment>{0}=recipient name, {1}=sender name, {2}=team name, {3}=message body, {4}=per-rota shift groups HTML, {5}=sender contact block HTML</comment></data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve"><value>&lt;p&gt;Dear {0},&lt;/p&gt;&lt;p&gt;A message from the coordinator of &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;{4}&lt;p&gt;Thank you,&lt;/p&gt;{5}</value><comment>{0}=recipient name, {1}=sender name, {2}=team name, {3}=message body, {4}=shift section HTML (lead-in + per-rota groups, empty when opted out), {5}=sender contact block HTML</comment></data>
+  <data name="EmailRota_IncludeShifts" xml:space="preserve"><value>Include each recipient's own shifts in the email</value></data>
+  <data name="EmailTeamRotas_IncludeShifts" xml:space="preserve"><value>Include each recipient's own shifts in the email</value></data>
+  <data name="EmailTeamRotas_ScopeLabel" xml:space="preserve"><value>Which rotas</value></data>
+  <data name="EmailTeamRotas_ScopeUpcoming" xml:space="preserve"><value>Upcoming rotas only</value></data>
+  <data name="EmailTeamRotas_ScopeAll" xml:space="preserve"><value>All rotas in this event</value></data>
+  <data name="EmailTeamRotas_PeriodsLabel" xml:space="preserve"><value>Periods</value></data>
+  <data name="EmailTeamRotas_PeriodBuild" xml:space="preserve"><value>Build</value></data>
+  <data name="EmailTeamRotas_PeriodEvent" xml:space="preserve"><value>Event</value></data>
+  <data name="EmailTeamRotas_PeriodStrike" xml:space="preserve"><value>Strike</value></data>
+  <data name="EmailTeamRotas_Refresh" xml:space="preserve"><value>Update recipients</value></data>
+  <data name="EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>The recipient list now matches the audience you selected. Check it, then press Send.</value></data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_ShiftsIntro" xml:space="preserve"><value>FYI, your shifts on this rota are:</value></data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>FYI, your shifts with this team are:</value></data>
 </root>

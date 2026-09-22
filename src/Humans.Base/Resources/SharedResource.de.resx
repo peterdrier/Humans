@@ -1428,4 +1428,14 @@
   <data name="Settings_TabShifts" xml:space="preserve">
     <value>Schichten</value>
   </data>
+  <data name="EmailComposer_To" xml:space="preserve"><value>An</value></data>
+  <data name="EmailComposer_RecipientCountOne" xml:space="preserve"><value>1 Empfänger</value></data>
+  <data name="EmailComposer_RecipientCountMany" xml:space="preserve"><value>{0} Empfänger</value></data>
+  <data name="EmailComposer_LargeSendWarning" xml:space="preserve"><value>Großer Versand – vor dem Senden bitte prüfen.</value></data>
+  <data name="EmailComposer_ConfirmLargeSend" xml:space="preserve"><value>Diese E-Mail an {0} Empfänger senden?</value></data>
+  <data name="EmailComposer_SendToMe" xml:space="preserve"><value>An mich senden</value></data>
+  <data name="EmailComposer_SendToMeSent" xml:space="preserve"><value>Test-E-Mail an {0} eingereiht.</value></data>
+  <data name="EmailComposer_SendToMeError" xml:space="preserve"><value>Die Test-E-Mail konnte nicht gesendet werden. Bitte erneut versuchen.</value></data>
+  <data name="EmailComposer_SendToMeRateLimited" xml:space="preserve"><value>Zu viele Test-E-Mails. Bitte eine Minute warten und erneut versuchen.</value></data>
+  <data name="EmailComposer_SendToMeNoAddress" xml:space="preserve"><value>Dein Konto hat keine E-Mail-Adresse, an die gesendet werden kann.</value></data>
 </root>

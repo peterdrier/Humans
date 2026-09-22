@@ -89,6 +89,16 @@ touching `EmailOutboxMessages` or any repository. `RenderMarkdown`
 `EmailPreviewController` (`[Authorize]`, any authenticated human).
 No `IMemoryCache`.
 
+### ComposerSelfSendService (Scoped)
+
+No repository. Backs the `_EmailComposer` "Send to me" button
+(peterdrier/Humans#1793): resolves the caller's own notification address via
+`IUserEmailService.GetNotificationTargetEmailsAsync`, renders the typed Markdown
+through `SanitizedMarkdownRenderer`, and hands one `composer_self_test`
+`MessageCategory.System` message to `IEmailService.SendAsync` (the outbox
+row is `OutboxEmailService`'s write), then audits `EmailComposerSelfTestSent`.
+Section-internal; its only consumer is `EmailPreviewController`. No cache.
+
 ---
 
 

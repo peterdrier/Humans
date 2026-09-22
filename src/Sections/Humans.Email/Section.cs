@@ -1,4 +1,8 @@
+using System.Security.Claims;
+using System.Threading.RateLimiting;
 using Humans.Base.Interfaces;
+using Humans.Email.Controllers;
+using Microsoft.AspNetCore.RateLimiting;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Email.Data;
@@ -51,6 +55,20 @@ public sealed class Section : ISection
         services.AddScoped<IEmailMessageFactory, EmailMessageFactory>();
         services.AddScoped<IEmailPreviewContributor, FacilitatedMessagePreviews>();
         services.AddScoped<IEmailService, OutboxEmailService>();
+        services.AddScoped<ComposerSelfSendService>();
+
+        // The composer's "Send to me" is an open, authenticated send: cap it per human on top
+        // of the Shell's global limiter (peterdrier/Humans#1793).
+        services.Configure<RateLimiterOptions>(options => options.AddPolicy(
+            EmailPreviewController.SelfSendRateLimitPolicy,
+            context => RateLimitPartition.GetFixedWindowLimiter(
+                context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = EmailPreviewController.SelfSendPermitsPerMinute,
+                    Window = TimeSpan.FromMinutes(1),
+                    AutoReplenishment = true,
+                })));
 
         services.AddScoped<EmailOutboxService>();
         services.AddScoped<IEmailOutboxService>(sp => sp.GetRequiredService<EmailOutboxService>());

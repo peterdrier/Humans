@@ -1,13 +1,13 @@
 ---
 name: Model tiering — dispatch subagents on cheaper models
-description: Which model/effort a subagent gets is in `.claude/skills/orch/routing.md`; this atom adds the Haiku context-vacuum-reader technique and dispatch timing/constraints.
+description: Which model/effort a subagent gets is in the pd plugin's orch skill (`/pd:orch`, routing.md); this atom adds the Haiku context-vacuum-reader technique and dispatch timing/constraints.
 ---
 
 The `Agent` tool accepts a `model` param: `"sonnet"`, `"opus"`, or `"haiku"`. The orchestrator (the Claude reading this) is usually Opus. It can dispatch subagents on cheaper models for the mechanical bulk of a session.
 
 **Why:** A long refactor session (e.g. #685 ProfileService decomposition, 2026-05-09) splits into ~30% judgment work and ~70% mechanical execution. Running the whole thing on Opus costs 5x what the same outcome costs with judicious Sonnet dispatch. Peter flagged the under-use during that session's debrief.
 
-**Which model/effort for a given subagent:** see [`.claude/skills/orch/routing.md`](../../.claude/skills/orch/routing.md) — the one home for that decision now.
+**Which model/effort for a given subagent:** see the orch skill's `routing.md` (pd plugin, `/pd:orch`) — the one home for that decision now.
 
 **How to apply (Humans-specific technique, beyond routing.md's tier table):**
 

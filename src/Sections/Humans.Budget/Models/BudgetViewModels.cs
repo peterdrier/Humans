@@ -1,5 +1,6 @@
 using Humans.Teams.Contracts;
 using Humans.Budget.Contracts;
+using Humans.Finance.Contracts;
 using Humans.Budget.Services;
 using NodaTime;
 
@@ -17,9 +18,10 @@ internal sealed class FinanceOverviewViewModel
     public required IReadOnlyList<BudgetSlice> IncomeSlices { get; init; }
     public required IReadOnlyList<BudgetSlice> ExpenseSlices { get; init; }
 
-    /// <summary>Holded actual spend per budget category (keyed by BudgetCategoryId).</summary>
-    public IReadOnlyDictionary<Guid, decimal> HoldedActualsByCategory { get; init; } =
-        new Dictionary<Guid, decimal>();
+    /// <summary>Holded actual spend per budget category (keyed by BudgetCategoryId), each row
+    /// carrying the approved purchase docs it sums so the category panel can show them.</summary>
+    public IReadOnlyDictionary<Guid, HoldedActualRow> HoldedActualsByCategory { get; init; } =
+        new Dictionary<Guid, HoldedActualRow>();
 }
 
 internal sealed class TicketingProjectionUpdateForm

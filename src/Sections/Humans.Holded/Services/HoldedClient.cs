@@ -70,6 +70,7 @@ internal sealed class HoldedClient : IHoldedClient
             contact_name = input.ContactName,
             date = LocalDatePattern.Iso.Format(input.Date.InZone(MadridZone).Date),
             description = input.Description,
+            notes = input.Notes,
             // Tags are dead on the write side (Peter, 2026-08-10): they were a v1 workaround from
             // before double-entry was understood. items[].account books the doc to the right
             // department directly, so no tag/retag round-trip is ever needed.

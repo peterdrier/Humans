@@ -1086,7 +1086,7 @@
     <value>Correo al equipo</value>
   </data>
   <data name="EmailTeamRotas_Heading" xml:space="preserve">
-    <value>Enviar correo a todos en los pr&#xF3;ximos turnos: {0}</value>
+    <value>Enviar correo a todos con una franja en: {0}</value>
   </data>
   <data name="EmailTeamRotas_RecipientsHeading" xml:space="preserve">
     <value>Destinatarios ({0})</value>
@@ -1095,13 +1095,13 @@
     <value>en {0} turno(s)</value>
   </data>
   <data name="EmailTeamRotas_NoRecipients" xml:space="preserve">
-    <value>Todav&#xED;a nadie se ha inscrito en los pr&#xF3;ximos turnos de este equipo.</value>
+    <value>Todav&#xED;a nadie coincide con esta selecci&#xF3;n.</value>
   </data>
   <data name="EmailTeamRotas_MessageLabel" xml:space="preserve">
     <value>Tu mensaje</value>
   </data>
   <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
-    <value>Cada destinatario ver&#xE1; este mensaje junto con su propia lista de franjas en los pr&#xF3;ximos turnos del equipo.</value>
+    <value>Cada destinatario ver&#xE1; este mensaje y, si marcas la casilla, su propia lista de franjas en los turnos seleccionados.</value>
   </data>
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>Enviar a {0} destinatario(s)</value>
@@ -1181,7 +1181,7 @@
     <value>Un mensaje sobre tus franjas en {0}</value>
   </data>
   <data name="Shifts_Email_CoordinatorRotaMessage_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un mensaje del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Para tu informaci&#xF3;n, tus franjas en este turno son:&lt;/p&gt;{4}&lt;p&gt;Gracias,&lt;/p&gt;{5}</value>
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un mensaje del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;{4}&lt;p&gt;Gracias,&lt;/p&gt;{5}</value>
   </data>
   <data name="Shifts_Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
     <value>(todav&#xED;a no hay franjas en este turno)</value>
@@ -1190,6 +1190,19 @@
     <value>Un mensaje sobre tus franjas con {0}</value>
   </data>
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un mensaje del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Para tu informaci&#xF3;n, tus franjas en los pr&#xF3;ximos turnos del equipo:&lt;/p&gt;{4}&lt;p&gt;Gracias,&lt;/p&gt;{5}</value>
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un mensaje del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;{4}&lt;p&gt;Gracias,&lt;/p&gt;{5}</value>
   </data>
+  <data name="EmailRota_IncludeShifts" xml:space="preserve"><value>Incluir en el correo las franjas de cada destinatario</value></data>
+  <data name="EmailTeamRotas_IncludeShifts" xml:space="preserve"><value>Incluir en el correo las franjas de cada destinatario</value></data>
+  <data name="EmailTeamRotas_ScopeLabel" xml:space="preserve"><value>Qu&#xE9; turnos</value></data>
+  <data name="EmailTeamRotas_ScopeUpcoming" xml:space="preserve"><value>Solo los pr&#xF3;ximos turnos</value></data>
+  <data name="EmailTeamRotas_ScopeAll" xml:space="preserve"><value>Todos los turnos de este evento</value></data>
+  <data name="EmailTeamRotas_PeriodsLabel" xml:space="preserve"><value>Periodos</value></data>
+  <data name="EmailTeamRotas_PeriodBuild" xml:space="preserve"><value>Montaje</value></data>
+  <data name="EmailTeamRotas_PeriodEvent" xml:space="preserve"><value>Evento</value></data>
+  <data name="EmailTeamRotas_PeriodStrike" xml:space="preserve"><value>Desmontaje</value></data>
+  <data name="EmailTeamRotas_Refresh" xml:space="preserve"><value>Actualizar destinatarios</value></data>
+  <data name="EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>La lista de destinatarios ya coincide con el p&#xFA;blico que has seleccionado. Rev&#xED;sala y pulsa Enviar.</value></data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_ShiftsIntro" xml:space="preserve"><value>Para tu informaci&#xF3;n, tus franjas en este turno son:</value></data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Para tu informaci&#xF3;n, tus franjas con este equipo son:</value></data>
 </root>

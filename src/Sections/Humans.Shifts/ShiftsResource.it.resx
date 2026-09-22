@@ -1088,7 +1088,7 @@
     <value>Email al team</value>
   </data>
   <data name="EmailTeamRotas_Heading" xml:space="preserve">
-    <value>Invia email a tutti nei prossimi turni: {0}</value>
+    <value>Invia email a tutti con una fascia in: {0}</value>
   </data>
   <data name="EmailTeamRotas_RecipientsHeading" xml:space="preserve">
     <value>Destinatari ({0})</value>
@@ -1097,13 +1097,13 @@
     <value>in {0} turno/i</value>
   </data>
   <data name="EmailTeamRotas_NoRecipients" xml:space="preserve">
-    <value>Nessuno si &#xE8; ancora iscritto ai prossimi turni di questo team.</value>
+    <value>Nessuno corrisponde ancora a questa selezione.</value>
   </data>
   <data name="EmailTeamRotas_MessageLabel" xml:space="preserve">
     <value>Il tuo messaggio</value>
   </data>
   <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
-    <value>Ogni destinatario vedr&#xE0; questo messaggio insieme al proprio elenco di fasce nei prossimi turni del team.</value>
+    <value>Ogni destinatario vedr&#xE0; questo messaggio e, se la casella &#xE8; selezionata, il proprio elenco di fasce nei turni selezionati.</value>
   </data>
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>Invia a {0} destinatario/i</value>
@@ -1183,7 +1183,7 @@
     <value>Un messaggio sulle tue fasce in {0}</value>
   </data>
   <data name="Shifts_Email_CoordinatorRotaMessage_Body" xml:space="preserve">
-    <value>&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Un messaggio dal coordinatore di &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Per tua informazione, le tue fasce in questo turno sono:&lt;/p&gt;{4}&lt;p&gt;Grazie,&lt;/p&gt;{5}</value>
+    <value>&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Un messaggio dal coordinatore di &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;{4}&lt;p&gt;Grazie,&lt;/p&gt;{5}</value>
   </data>
   <data name="Shifts_Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
     <value>(ancora nessuna fascia in questo turno)</value>
@@ -1192,6 +1192,19 @@
     <value>Un messaggio sulle tue fasce con {0}</value>
   </data>
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
-    <value>&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Un messaggio dal coordinatore di &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Per tua informazione, le tue fasce nei prossimi turni del team:&lt;/p&gt;{4}&lt;p&gt;Grazie,&lt;/p&gt;{5}</value>
+    <value>&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Un messaggio dal coordinatore di &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;{4}&lt;p&gt;Grazie,&lt;/p&gt;{5}</value>
   </data>
+  <data name="EmailRota_IncludeShifts" xml:space="preserve"><value>Includi nell'email le fasce di ogni destinatario</value></data>
+  <data name="EmailTeamRotas_IncludeShifts" xml:space="preserve"><value>Includi nell'email le fasce di ogni destinatario</value></data>
+  <data name="EmailTeamRotas_ScopeLabel" xml:space="preserve"><value>Quali turni</value></data>
+  <data name="EmailTeamRotas_ScopeUpcoming" xml:space="preserve"><value>Solo i prossimi turni</value></data>
+  <data name="EmailTeamRotas_ScopeAll" xml:space="preserve"><value>Tutti i turni di questo evento</value></data>
+  <data name="EmailTeamRotas_PeriodsLabel" xml:space="preserve"><value>Periodi</value></data>
+  <data name="EmailTeamRotas_PeriodBuild" xml:space="preserve"><value>Montaggio</value></data>
+  <data name="EmailTeamRotas_PeriodEvent" xml:space="preserve"><value>Evento</value></data>
+  <data name="EmailTeamRotas_PeriodStrike" xml:space="preserve"><value>Smontaggio</value></data>
+  <data name="EmailTeamRotas_Refresh" xml:space="preserve"><value>Aggiorna destinatari</value></data>
+  <data name="EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>L&apos;elenco dei destinatari corrisponde ora al pubblico selezionato. Controllalo, poi premi Invia.</value></data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_ShiftsIntro" xml:space="preserve"><value>Per tua informazione, le tue fasce in questo turno sono:</value></data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Per tua informazione, le tue fasce con questo team sono:</value></data>
 </root>

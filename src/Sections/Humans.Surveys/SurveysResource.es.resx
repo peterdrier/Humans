@@ -338,4 +338,5 @@
 &lt;p&gt;Gracias,&lt;br/&gt;Nobodies Collective&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = survey title, {2} = answer URL</comment>
   </data>
+  <data name="Survey_Admin_Builder_InvitationRecipients" xml:space="preserve"><value>Todas las personas a las que se envíe esta encuesta (se eligen al enviarla)</value></data>
 </root>

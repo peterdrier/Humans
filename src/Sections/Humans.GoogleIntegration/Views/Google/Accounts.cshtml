@@ -276,8 +276,9 @@
 @if (recoveryCreds is not null && !string.IsNullOrEmpty(recoveryCreds.TempPassword))
 {
     var hasBackupCode = !string.IsNullOrEmpty(recoveryCreds.BackupCode);
+    var twoStepGuideUrl = Url.Action("Document", "Guide", new { name = "TwoStepVerification" }, Context.Request.Scheme);
     var clipboardText = hasBackupCode
-        ? $"pw: {recoveryCreds.TempPassword}\n2fa: {recoveryCreds.BackupCode}"
+        ? $"pw: {recoveryCreds.TempPassword}\n2fa: {recoveryCreds.BackupCode}\n\nThe 2fa code is a one-time backup code: use it at the verification step, then set up two-step verification properly so you don't get locked out again. How-to: {twoStepGuideUrl}"
         : $"pw: {recoveryCreds.TempPassword}";
     <div class="modal fade" id="recovery-credentials-modal" tabindex="-1" aria-labelledby="recovery-credentials-modal-label" aria-hidden="true"
          data-bs-backdrop="static" data-bs-keyboard="false">
@@ -296,7 +297,7 @@
                         Hand these to <code>@recoveryCreds.Email</code> securely — they cannot be retrieved again after you close this dialog.
                     </div>
 
-                    <pre id="recovery-credentials-text" class="bg-light p-3 border rounded mb-3 small">@clipboardText</pre>
+                    <pre id="recovery-credentials-text" class="bg-light p-3 border rounded mb-3 small" style="white-space: pre-wrap;">@clipboardText</pre>
 
                     <button type="button" class="btn btn-outline-primary btn-sm" id="copy-recovery-credentials">
                         <i class="fa-solid fa-copy me-1"></i>Copy to clipboard

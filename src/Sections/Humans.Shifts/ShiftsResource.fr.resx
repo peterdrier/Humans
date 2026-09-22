@@ -1088,7 +1088,7 @@
     <value>E-mail &#xE0; l'&#xE9;quipe</value>
   </data>
   <data name="EmailTeamRotas_Heading" xml:space="preserve">
-    <value>Envoyer un e-mail &#xE0; tout le monde dans les prochains roulements&#xA0;: {0}</value>
+    <value>Envoyer un e-mail &#xE0; tout le monde ayant un cr&#xE9;neau dans : {0}</value>
   </data>
   <data name="EmailTeamRotas_RecipientsHeading" xml:space="preserve">
     <value>Destinataires ({0})</value>
@@ -1097,13 +1097,13 @@
     <value>sur {0} roulement(s)</value>
   </data>
   <data name="EmailTeamRotas_NoRecipients" xml:space="preserve">
-    <value>Personne n'est encore inscrit aux prochains roulements de cette &#xE9;quipe.</value>
+    <value>Personne ne correspond encore &#xE0; cette s&#xE9;lection.</value>
   </data>
   <data name="EmailTeamRotas_MessageLabel" xml:space="preserve">
     <value>Votre message</value>
   </data>
   <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
-    <value>Chaque destinataire verra ce message ainsi que sa propre liste de cr&#xE9;neaux dans les prochains roulements de l'&#xE9;quipe.</value>
+    <value>Chaque destinataire verra ce message et, si la case est coch&#xE9;e, sa propre liste de cr&#xE9;neaux dans les roulements s&#xE9;lectionn&#xE9;s.</value>
   </data>
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>Envoyer &#xE0; {0} destinataire(s)</value>
@@ -1183,7 +1183,7 @@
     <value>Un message concernant vos cr&#xE9;neaux sur {0}</value>
   </data>
   <data name="Shifts_Email_CoordinatorRotaMessage_Body" xml:space="preserve">
-    <value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Un message du coordinateur de &lt;strong&gt;{2}&lt;/strong&gt; :&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Pour information, vos cr&#xE9;neaux sur ce roulement sont :&lt;/p&gt;{4}&lt;p&gt;Merci,&lt;/p&gt;{5}</value>
+    <value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Un message du coordinateur de &lt;strong&gt;{2}&lt;/strong&gt; :&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;{4}&lt;p&gt;Merci,&lt;/p&gt;{5}</value>
   </data>
   <data name="Shifts_Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
     <value>(aucun cr&#xE9;neau sur ce roulement pour l'instant)</value>
@@ -1192,6 +1192,19 @@
     <value>Un message concernant vos cr&#xE9;neaux avec {0}</value>
   </data>
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
-    <value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Un message du coordinateur de &lt;strong&gt;{2}&lt;/strong&gt; :&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Pour information, vos cr&#xE9;neaux dans les prochains roulements de cette &#xE9;quipe :&lt;/p&gt;{4}&lt;p&gt;Merci,&lt;/p&gt;{5}</value>
+    <value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Un message du coordinateur de &lt;strong&gt;{2}&lt;/strong&gt; :&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;{4}&lt;p&gt;Merci,&lt;/p&gt;{5}</value>
   </data>
+  <data name="EmailRota_IncludeShifts" xml:space="preserve"><value>Inclure dans l'e-mail les cr&#xE9;neaux de chaque destinataire</value></data>
+  <data name="EmailTeamRotas_IncludeShifts" xml:space="preserve"><value>Inclure dans l'e-mail les cr&#xE9;neaux de chaque destinataire</value></data>
+  <data name="EmailTeamRotas_ScopeLabel" xml:space="preserve"><value>Quels roulements</value></data>
+  <data name="EmailTeamRotas_ScopeUpcoming" xml:space="preserve"><value>Uniquement les prochains roulements</value></data>
+  <data name="EmailTeamRotas_ScopeAll" xml:space="preserve"><value>Tous les roulements de cet &#xE9;v&#xE9;nement</value></data>
+  <data name="EmailTeamRotas_PeriodsLabel" xml:space="preserve"><value>P&#xE9;riodes</value></data>
+  <data name="EmailTeamRotas_PeriodBuild" xml:space="preserve"><value>Montage</value></data>
+  <data name="EmailTeamRotas_PeriodEvent" xml:space="preserve"><value>&#xC9;v&#xE9;nement</value></data>
+  <data name="EmailTeamRotas_PeriodStrike" xml:space="preserve"><value>D&#xE9;montage</value></data>
+  <data name="EmailTeamRotas_Refresh" xml:space="preserve"><value>Actualiser les destinataires</value></data>
+  <data name="EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>La liste des destinataires correspond maintenant au public s&#xE9;lectionn&#xE9;. V&#xE9;rifie-la, puis clique sur Envoyer.</value></data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_ShiftsIntro" xml:space="preserve"><value>Pour information, vos cr&#xE9;neaux sur ce roulement sont :</value></data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Pour information, vos cr&#xE9;neaux avec cette &#xE9;quipe&#xA0;:</value></data>
 </root>

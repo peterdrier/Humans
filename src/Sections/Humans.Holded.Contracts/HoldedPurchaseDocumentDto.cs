@@ -33,6 +33,8 @@ public sealed record HoldedPurchaseDocumentInput
     public required Instant Date { get; init; }
     public required IReadOnlyList<HoldedPurchaseDocumentLineInput> Lines { get; init; }
     public string? Description { get; init; }
+    /// <summary>Internal notes — visible to us, not printed on the document.</summary>
+    public string? Notes { get; init; }
 }
 
 public sealed record HoldedAttachmentInput

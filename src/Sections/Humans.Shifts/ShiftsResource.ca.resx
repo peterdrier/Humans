@@ -1088,7 +1088,7 @@
     <value>Correu a l'equip</value>
   </data>
   <data name="EmailTeamRotas_Heading" xml:space="preserve">
-    <value>Enviar correu a tothom dels propers torns: {0}</value>
+    <value>Enviar correu a tothom amb una franja a: {0}</value>
   </data>
   <data name="EmailTeamRotas_RecipientsHeading" xml:space="preserve">
     <value>Destinataris ({0})</value>
@@ -1097,13 +1097,13 @@
     <value>en {0} torn(s)</value>
   </data>
   <data name="EmailTeamRotas_NoRecipients" xml:space="preserve">
-    <value>Encara ning&#xFA; s'ha inscrit en els propers torns d'aquest equip.</value>
+    <value>Encara ning&#xFA; coincideix amb aquesta selecci&#xF3;.</value>
   </data>
   <data name="EmailTeamRotas_MessageLabel" xml:space="preserve">
     <value>El teu missatge</value>
   </data>
   <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
-    <value>Cada destinatari veur&#xE0; aquest missatge juntament amb la seva pr&#xF2;pia llista de franges en els propers torns de l'equip.</value>
+    <value>Cada destinatari veur&#xE0; aquest missatge i, si la casella est&#xE0; marcada, la seva pr&#xF2;pia llista de franges en els torns seleccionats.</value>
   </data>
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>Enviar a {0} destinatari(s)</value>
@@ -1183,7 +1183,7 @@
     <value>Un missatge sobre les teves franges a {0}</value>
   </data>
   <data name="Shifts_Email_CoordinatorRotaMessage_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un missatge del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Per a la teva informaci&#xF3;, les teves franges en aquest torn s&#xF3;n:&lt;/p&gt;{4}&lt;p&gt;Gr&#xE0;cies,&lt;/p&gt;{5}</value>
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un missatge del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;{4}&lt;p&gt;Gr&#xE0;cies,&lt;/p&gt;{5}</value>
   </data>
   <data name="Shifts_Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
     <value>(encara no hi ha franges en aquest torn)</value>
@@ -1192,6 +1192,19 @@
     <value>Un missatge sobre les teves franges amb {0}</value>
   </data>
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un missatge del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Per a la teva informaci&#xF3;, les teves franges en els propers torns de l'equip:&lt;/p&gt;{4}&lt;p&gt;Gr&#xE0;cies,&lt;/p&gt;{5}</value>
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un missatge del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;{4}&lt;p&gt;Gr&#xE0;cies,&lt;/p&gt;{5}</value>
   </data>
+  <data name="EmailRota_IncludeShifts" xml:space="preserve"><value>Incloure al correu les franges de cada destinatari</value></data>
+  <data name="EmailTeamRotas_IncludeShifts" xml:space="preserve"><value>Incloure al correu les franges de cada destinatari</value></data>
+  <data name="EmailTeamRotas_ScopeLabel" xml:space="preserve"><value>Quins torns</value></data>
+  <data name="EmailTeamRotas_ScopeUpcoming" xml:space="preserve"><value>Nom&#xE9;s els propers torns</value></data>
+  <data name="EmailTeamRotas_ScopeAll" xml:space="preserve"><value>Tots els torns d'aquest esdeveniment</value></data>
+  <data name="EmailTeamRotas_PeriodsLabel" xml:space="preserve"><value>Per&#xED;odes</value></data>
+  <data name="EmailTeamRotas_PeriodBuild" xml:space="preserve"><value>Muntatge</value></data>
+  <data name="EmailTeamRotas_PeriodEvent" xml:space="preserve"><value>Esdeveniment</value></data>
+  <data name="EmailTeamRotas_PeriodStrike" xml:space="preserve"><value>Desmuntatge</value></data>
+  <data name="EmailTeamRotas_Refresh" xml:space="preserve"><value>Actualitzar destinataris</value></data>
+  <data name="EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>La llista de destinataris ja coincideix amb el p&#xFA;blic que has seleccionat. Revisa-la i prem Envia.</value></data>
+  <data name="Shifts_Email_CoordinatorRotaMessage_ShiftsIntro" xml:space="preserve"><value>Per a la teva informaci&#xF3;, les teves franges en aquest torn s&#xF3;n:</value></data>
+  <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Per a la teva informaci&#xF3;, les teves franges amb aquest equip s&#xF3;n:</value></data>
 </root>

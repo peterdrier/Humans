@@ -4,7 +4,9 @@ namespace Humans.Shifts.Services;
 /// Payload for a coordinator "email a rota" message to a single signup.
 /// <see cref="ShiftLines"/> are pre-rendered, chronologically-ordered shift labels
 /// for the recipient on this rota (e.g. "Mon July 6 @ 19:30") — <see cref="ShiftsEmails"/>
-/// HTML-encodes them, it does not parse or sort them.
+/// HTML-encodes them, it does not parse or sort them. <see cref="IncludeShifts"/>
+/// false drops the shift section (lead-in included) from the body; it is distinct from
+/// an empty <see cref="ShiftLines"/>, which still prints the "no shifts yet" note.
 /// </summary>
 /// <remarks>
 /// Lived on <c>Humans.Email.Contracts</c> until Shifts took its own templates; only
@@ -18,12 +20,14 @@ internal sealed record CoordinatorRotaMessageRequest(
     string RotaName,
     string MessageText,
     IReadOnlyList<string> ShiftLines,
+    bool IncludeShifts = true,
     string? Culture = null);
 
 /// <summary>
 /// Payload for a coordinator team-level "email all rotas" message to a single signup.
 /// <see cref="ShiftGroups"/> are pre-rendered, per-rota lists of chronologically-ordered
 /// shift labels for the recipient (each rota's shifts in the rota's own timezone).
+/// <see cref="IncludeShifts"/> false drops the shift section from the body entirely.
 /// </summary>
 internal sealed record CoordinatorTeamRotasMessageRequest(
     string RecipientEmail,
@@ -33,6 +37,7 @@ internal sealed record CoordinatorTeamRotasMessageRequest(
     string TeamName,
     string MessageText,
     IReadOnlyList<CoordinatorRotaShiftGroup> ShiftGroups,
+    bool IncludeShifts = true,
     string? Culture = null);
 
 /// <summary>

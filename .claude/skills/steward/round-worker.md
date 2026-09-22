@@ -1,6 +1,6 @@
 # Round worker brief
 
-The steward dispatches one of these per actionable wake, as `orch-opus-medium`. Fill the
+The steward dispatches one of these per actionable wake, as `pd:orch-opus-medium`. Fill the
 angle brackets; paste nothing else. The worker starts with zero context and reads what it
 needs from the repo and the PR.
 

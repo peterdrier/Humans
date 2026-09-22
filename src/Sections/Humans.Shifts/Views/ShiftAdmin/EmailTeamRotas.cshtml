@@ -23,8 +23,14 @@
                         @Html.AntiForgeryToken()
                         <input type="hidden" asp-for="TeamSlug" />
                         <input type="hidden" asp-for="TeamName" />
+                        <input type="hidden" asp-for="PreviewedAudience" />
 
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                        @if (Model.AudienceChanged)
+                        {
+                            <div class="alert alert-warning" role="alert">@Localizer["EmailTeamRotas_AudienceChanged"]</div>
+                        }
 
                         @await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
                         {
@@ -35,11 +41,51 @@
                             BodyMaxLength = 4000,
                             BodyHelpText = Localizer["EmailTeamRotas_MessageHelp"].Value,
                             Category = nameof(Humans.Users.Contracts.MessageCategory.VolunteerUpdates),
+                            RecipientCount = Model.RecipientCount,
+                            RecipientSummary = Model.TeamName,
                         })
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" asp-for="IncludeShifts" id="include-shifts" />
+                            <label class="form-check-label" for="include-shifts">@Localizer["EmailTeamRotas_IncludeShifts"]</label>
+                        </div>
+
+                        <fieldset class="mb-3">
+                            <legend class="form-label fs-6">@Localizer["EmailTeamRotas_ScopeLabel"]</legend>
+                            <div class="form-check">
+                                <input class="form-check-input js-scope" type="radio" asp-for="UpcomingOnly" value="true" id="scope-upcoming" />
+                                <label class="form-check-label" for="scope-upcoming">@Localizer["EmailTeamRotas_ScopeUpcoming"]</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input js-scope" type="radio" asp-for="UpcomingOnly" value="false" id="scope-all" />
+                                <label class="form-check-label" for="scope-all">@Localizer["EmailTeamRotas_ScopeAll"]</label>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="mb-3 ms-4 @(Model.UpcomingOnly ? "d-none" : null)" id="period-filters">
+                            <legend class="form-label fs-6">@Localizer["EmailTeamRotas_PeriodsLabel"]</legend>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input js-audience" type="checkbox" asp-for="IncludeBuild" id="period-build" />
+                                <label class="form-check-label" for="period-build">@Localizer["EmailTeamRotas_PeriodBuild"]</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input js-audience" type="checkbox" asp-for="IncludeEvent" id="period-event" />
+                                <label class="form-check-label" for="period-event">@Localizer["EmailTeamRotas_PeriodEvent"]</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input js-audience" type="checkbox" asp-for="IncludeStrike" id="period-strike" />
+                                <label class="form-check-label" for="period-strike">@Localizer["EmailTeamRotas_PeriodStrike"]</label>
+                            </div>
+                        </fieldset>
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary" @(Model.RecipientCount == 0 ? "disabled" : null)>
                                 @string.Format(Localizer["EmailTeamRotas_Send"].Value, Model.RecipientCount)
+                            </button>
+                            <button type="submit" class="btn btn-outline-secondary" id="refresh-recipients"
+                                    name="intent" value="@Humans.Shifts.Models.EmailTeamRotasViewModel.RefreshIntent"
+                                    formnovalidate>
+                                @Localizer["EmailTeamRotas_Refresh"]
                             </button>
                             <a asp-action="Index" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
                         </div>
@@ -73,3 +119,23 @@
         </div>
     </div>
 </div>
+
+@* Audience controls drive the recipient preview, so each change re-posts the form
+   (message intact) through the refresh button — which is also the no-JS fallback. *@
+<script nonce="@Context.Items["CspNonce"]">
+    (function () {
+        var refresh = document.getElementById('refresh-recipients');
+        var periods = document.getElementById('period-filters');
+        if (!refresh || !periods) return;
+
+        document.querySelectorAll('.js-scope').forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                periods.classList.toggle('d-none', radio.value === 'true' && radio.checked);
+                refresh.click();
+            });
+        });
+        document.querySelectorAll('.js-audience').forEach(function (box) {
+            box.addEventListener('change', function () { refresh.click(); });
+        });
+    })();
+</script>

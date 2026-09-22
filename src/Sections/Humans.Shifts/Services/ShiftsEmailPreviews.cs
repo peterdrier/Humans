@@ -27,7 +27,7 @@ internal sealed class ShiftsEmailPreviews(ShiftsEmails emails) : IEmailPreviewCo
                 emails.CoordinatorRotaMessage(new CoordinatorRotaMessageRequest(
                     email, name, SampleSender, SampleSenderEmail,
                     "Saturday Bar", SampleMessage,
-                    ["Saturday 10:00-14:00", "Saturday 18:00-22:00"], culture))),
+                    ["Saturday 10:00-14:00", "Saturday 18:00-22:00"], Culture: culture))),
             new EmailPreviewSample("coordinator-team-rotas-message", "Coordinator Team Rotas Message",
                 emails.CoordinatorTeamRotasMessage(new CoordinatorTeamRotasMessageRequest(
                     email, name, SampleSender, SampleSenderEmail,
@@ -36,7 +36,7 @@ internal sealed class ShiftsEmailPreviews(ShiftsEmails emails) : IEmailPreviewCo
                         new CoordinatorRotaShiftGroup("Saturday Bar", ["Saturday 10:00-14:00"]),
                         new CoordinatorRotaShiftGroup("Sunday Bar", ["Sunday 12:00-16:00"]),
                     ],
-                    culture))),
+                    Culture: culture))),
         ];
     }
 }
