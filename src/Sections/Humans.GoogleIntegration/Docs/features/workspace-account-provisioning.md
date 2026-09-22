@@ -107,7 +107,10 @@ Nobodies Collective uses Google Workspace for organizational email (@nobodies.te
   ```
   pw: <temp password>
   2fa: <single backup code>
+
+  The 2fa code is a one-time backup code: use it at the verification step, then set up two-step verification properly so you don't get locked out again. How-to: <absolute URL of /Guide/TwoStepVerification>
   ```
+  so the admin can paste one message that carries the credentials and the enrollment how-to. The guide link is absolute (current request scheme + host). When backup-code generation failed (partial success, below) there is no code, and the clipboard falls back to the password-only `pw: <password>` line.
 - Modal text-content is cleared on close so browser back/refresh can't re-expose the secrets
 - Two audit entries recorded on the success path: `WorkspaceAccountPasswordReset` then `WorkspaceAccountBackupCodesGenerated`. The blocked-by-2SV path records `WorkspaceAccountResetBlockedFor2Sv` instead and performs no Workspace mutation.
 - Requires the `admin.directory.user.security` scope on the service account credential

@@ -129,4 +129,5 @@
 &lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{2}&lt;/blockquote&gt;
 &lt;p&gt;&lt;a href="{3}"&gt;Open issue&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;— The Humans team&lt;/p&gt;</value><comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment></data>
+  <data name="Issue_ComposerRecipientsHandlers" xml:space="preserve"><value>This issue's handlers (in-app notification)</value></data>
 </root>

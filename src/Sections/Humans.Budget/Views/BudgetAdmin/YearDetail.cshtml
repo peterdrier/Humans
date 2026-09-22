@@ -170,9 +170,15 @@
                             <span class="badge bg-warning text-dark ms-1">Ticketing</span>
                         }
                     </div>
-                    <div class="text-end text-nowrap">
-                        <span class="text-muted small">Budget:</span> <strong>@groupBudget.ToEuro()</strong>
-                        <span class="text-muted small ms-2">Actual:</span> <strong class="@(groupActual >= 0 ? "text-success" : "text-danger")">@groupActual.ToEuro()</strong>
+                    <div class="text-end text-nowrap budget-figures">
+                        <span class="budget-figure">
+                            <span class="budget-figure-label">Budget</span>
+                            <span class="budget-figure-value">@groupBudget.ToEuro()</span>
+                        </span>
+                        <span class="budget-figure">
+                            <span class="budget-figure-label">Actual</span>
+                            <span class="budget-figure-value @(groupActual >= 0 ? "text-success" : "text-danger")">@groupActual.ToEuro()</span>
+                        </span>
                     </div>
                 </div>
             </button>
@@ -369,6 +375,8 @@
                             : catActual - catBudget;
                         var remainingLabel = isExpenseBudget ? "Remaining" : (displayRemaining >= 0 ? "Over target" : "Under target");
                         var budgetLabel = isExpenseBudget ? "Planned spend" : "Income target";
+                        // Null when Holded booked nothing here: the row only exists for a non-zero actual.
+                        var holded = Model.HoldedActualsByCategory.GetValueOrDefault(cat.Id);
 
                         <div class="accordion-item border-0 border-bottom">
                             <h2 class="accordion-header">
@@ -378,19 +386,25 @@
                                             @cat.Name
                                             <span class="badge bg-@(cat.ExpenditureType == ExpenditureType.CapEx ? "primary" : "secondary") ms-1">@cat.ExpenditureType</span>
                                         </div>
-                                        <div class="text-end text-nowrap small">
-                                            <span class="text-muted">@budgetLabel:</span> @displayBudget.ToEuro()
-                                            <span class="mx-1">&middot;</span>
-                                            <span class="text-muted">Actual:</span> @displayActual.ToEuro()
-                                            <span class="mx-1">&middot;</span>
-                                            <span class="@(displayRemaining >= 0 ? "text-success" : "text-danger")">
-                                                @remainingLabel: @Math.Abs(displayRemaining).ToEuro()
+                                        <div class="text-end text-nowrap budget-figures">
+                                            <span class="budget-figure">
+                                                <span class="budget-figure-label">@budgetLabel</span>
+                                                <span class="budget-figure-value">@displayBudget.ToEuro()</span>
                                             </span>
-                                            @{ var holdedActual = Model.HoldedActualsByCategory.GetValueOrDefault(cat.Id); }
-                                            @if (holdedActual != 0)
+                                            <span class="budget-figure">
+                                                <span class="budget-figure-label">Actual</span>
+                                                <span class="budget-figure-value">@displayActual.ToEuro()</span>
+                                            </span>
+                                            <span class="budget-figure">
+                                                <span class="budget-figure-label">@remainingLabel</span>
+                                                <span class="budget-figure-value @(displayRemaining >= 0 ? "text-success" : "text-danger")">@Math.Abs(displayRemaining).ToEuro()</span>
+                                            </span>
+                                            @if (holded is not null)
                                             {
-                                                <span class="mx-1">&middot;</span>
-                                                <span class="text-muted">Holded:</span> <span class="text-info">@Math.Abs(holdedActual).ToEuro()</span>
+                                                <span class="budget-figure">
+                                                    <span class="budget-figure-label">Holded</span>
+                                                    <span class="budget-figure-value budget-figure-holded">@Math.Abs(holded.Actual).ToEuro()</span>
+                                                </span>
                                             }
                                         </div>
                                     </div>
@@ -401,7 +415,7 @@
                                     @if (cat.LineItems.Any())
                                     {
                                         <div class="table-responsive">
-                                            <table class="table table-sm table-hover mb-0">
+                                            <table class="table table-sm table-hover mb-0 budget-table">
                                                 <thead class="table-light">
                                                     <tr>
                                                         <th class="ps-4">Description</th>
@@ -450,6 +464,48 @@
                                     {
                                         <div class="text-center text-muted py-3 ps-4">
                                             No line items yet.
+                                        </div>
+                                    }
+                                    @if (holded is not null && holded.Docs.Count > 0)
+                                    {
+                                        <div class="border-top">
+                                            <div class="px-4 py-2 budget-subhead d-flex justify-content-between align-items-center">
+                                                <span>Holded documents (@holded.Docs.Count)</span>
+                                                <span class="budget-figures">
+                                                    <span class="budget-figure">
+                                                        <span class="budget-figure-label">Total</span>
+                                                        <span class="budget-figure-value budget-figure-holded">@Math.Abs(holded.Actual).ToEuro()</span>
+                                                    </span>
+                                                </span>
+                                            </div>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-hover mb-0 budget-table">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th class="ps-4">Document</th>
+                                                            <th>Supplier</th>
+                                                            <th>Date</th>
+                                                            <th class="text-end pe-4">Amount</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach (var doc in holded.Docs)
+                                                        {
+                                                            <tr>
+                                                                <td class="ps-4">
+                                                                    <a href="@doc.HoldedUrl" target="_blank" rel="noopener">
+                                                                        @(string.IsNullOrWhiteSpace(doc.DocNumber) ? doc.HoldedDocId : doc.DocNumber)
+                                                                        <i class="fa-solid fa-arrow-up-right-from-square ms-1 small"></i>
+                                                                    </a>
+                                                                </td>
+                                                                <td>@doc.ContactName</td>
+                                                                <td>@doc.Date.ToDate()</td>
+                                                                <td class="text-end pe-4">@doc.Total.ToEuro()</td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     }
                                     <div class="p-2 ps-4 border-top bg-light">

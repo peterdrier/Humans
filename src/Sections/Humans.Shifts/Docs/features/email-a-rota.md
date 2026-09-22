@@ -5,7 +5,10 @@
   src/Sections/Humans.Email.Contracts/**
   src/Sections/Humans.Shifts/Controllers/ShiftAdminController.cs
   src/Sections/Humans.Shifts/Models/EmailRotaViewModel.cs
+  src/Sections/Humans.Shifts/Models/EmailTeamRotasViewModel.cs
+  src/Sections/Humans.Shifts/Services/TeamRotasAudienceFilter.cs
   src/Sections/Humans.Shifts/Views/ShiftAdmin/EmailRota.cshtml
+  src/Sections/Humans.Shifts/Views/ShiftAdmin/EmailTeamRotas.cshtml
 -->
 <!-- freshness:flag-on-change
   Email template shape, recipient selection rules, and authorization scope — review when ShiftAdminController authorization, signup status filtering, or the coordinator-rota email body changes.
@@ -34,6 +37,7 @@ Source: [nobodies-collective/Humans#732](https://github.com/nobodies-collective/
 - An "Email a rota" entry point is visible on the rota admin view for users who can manage the department's shifts.
 - Compose form accepts a free-text message body (1–4000 characters, required).
 - Compose form shows the recipient count and the list of recipient names (`BurnerName`, alphabetical) so the coordinator can verify scope before sending.
+- Compose form carries an **include-shifts** checkbox, ticked by default; clearing it drops the shift section (lead-in and list) from every email.
 - On submit, each distinct active signup user receives a **separate, personalised email** — not a single CC/BCC blast.
 - Each email body contains the coordinator's free-text message plus that recipient's own chronologically ordered shifts on this rota.
 - Shift list uses the event's timezone (matches the rota detail page convention): `"ddd MMMM d"` for all-day shifts, `"ddd MMMM d @ HH:mm"` for time-slotted shifts.
@@ -49,9 +53,24 @@ Source: [nobodies-collective/Humans#732](https://github.com/nobodies-collective/
 
 **Acceptance Criteria:**
 
-- Email lists only the recipient's signups on the target rota where `SignupStatus is Pending or Confirmed`.
+- Email lists only the recipient's signups on the target rota where `SignupStatus is Pending or Confirmed` — and lists nothing at all when the coordinator cleared include-shifts.
 - Shifts are sorted chronologically by absolute start (event timezone).
 - Email rendering uses the recipient's `PreferredLanguage` culture.
+
+### US-732.3: Coordinator thanks everyone who worked the department
+
+**As a** department coordinator
+**I want to** message everyone who held a shift with my department this event, not just those with one still ahead
+**So that** I can thank the whole crew once the event is over
+
+**Acceptance Criteria:**
+
+- The team-wide compose form (`/Teams/{slug}/Shifts/Email`) offers **Upcoming rotas only** (default) and **All rotas in this event**.
+- Choosing "all" reveals **Build / Event / Strike** checkboxes, all ticked by default, filtering on `Rota.Period`. A `RotaPeriod.All` rota is admitted by any ticked period.
+- The period checkboxes apply only under "all". Hidden under "upcoming", their values never narrow the audience — `TeamRotasAudienceFilter.Includes` short-circuits on `UpcomingOnly`.
+- Changing any audience control re-posts the form with `intent=refresh`, which re-previews recipients against the new selection and leaves the half-written message and its validation alone. The refresh button is the no-JS fallback.
+- A send only dispatches to an audience the coordinator has been shown. The form carries the `TeamRotasAudienceFilter.Key` its recipient list was built from; if the posted selection differs — no script, or the script failed — the send is turned back, the form re-renders against the new audience with a notice, and sending again dispatches it.
+- The recipient count on the Send button always reflects the previewed selection.
 
 ## Recipient Selection
 
@@ -75,6 +94,7 @@ A message from the coordinator for your shift:
 
 —
 
+(shift section — omitted entirely when include-shifts is cleared)
 FYI, your shifts on this rota are:
 - Mon July 6 @ 19:30
 - Tue July 7 @ 12:30
@@ -91,6 +111,7 @@ Thank you,
 - `RotaName` — subject + body context.
 - `MessageText` — coordinator's free-text body.
 - `ShiftLines` — pre-formatted, chronologically sorted, recipient-scoped shift labels.
+- `IncludeShifts` — false drops the whole shift section. Distinct from an empty `ShiftLines`, which still prints the "no shifts yet" note.
 - `Culture` — recipient's preferred language for template rendering.
 
 ## Authorization
@@ -124,7 +145,7 @@ Coordinator submits (POST)
     → Re-resolve team + management permission
     → Repopulate display fields (recipient list)
     → Validate ModelState (Message required, ≤4000 chars)
-    → IRotaCoordinatorMessageService.SendRotaMessageAsync(rotaId, senderUserId, message)
+    → IRotaCoordinatorMessageService.SendRotaMessageAsync(rotaId, senderUserId, message, includeShifts)
         → Load rota + EventSettings
         → Load active signups → group by user
         → Load sender + recipient infos
@@ -138,6 +159,7 @@ Failure paths
   → Rota missing                → "Rota not found." (validation summary)
   → Empty/whitespace message    → ModelState error
   → No active signups           → "This rota has no active signups to email."
+  → Team-wide: nothing selected → "No rota in this team matches that selection and has active signups to email."
   → Sender not found            → "Sender not found."
   → Recipient skipped (no user / no email) → logged, counted, does not abort dispatch
 ```

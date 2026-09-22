@@ -1157,13 +1157,15 @@
                     </div>
                     <div class="wg-card-note">
                         Shared human-composed-email component: optional subject field, an EasyMDE Markdown body
-                        (<code>&lt;markdown-editor&gt;</code>), and a "Preview" button showing the exact branded,
-                        sanitized send via <code>/Email/PreviewMarkdown</code> (no outbox row is created). Every
+                        (<code>&lt;markdown-editor&gt;</code>), a read-only "To:" line (warning + confirm-on-submit at or
+                        above <code>WarnRecipientCount</code>, default 25), a "Preview" button showing the exact branded,
+                        sanitized send via <code>/Email/PreviewMarkdown</code> (no outbox row is created), and a "Send to me"
+                        button that queues that send to the signed-in human via <code>/Email/SendMarkdownToSelf</code>. Every
                         compose form — profile message, camp contact, rota messages, survey invitation, feedback
                         reply, issue comment, campaign — renders through this one component.
                     </div>
                     @ParamsBlock(
-                        ("@@model", "<code>EmailComposerViewModel</code> — BodyName/BodyValue/BodyLabel/BodyRows/BodyRequired/BodyMaxLength/BodyHelpText/BodyPlaceholder/BodyLabelVisuallyHidden, optional SubjectName/SubjectValue/SubjectLabel/SubjectRequired/SubjectMaxLength, Category (a <code>MessageCategory</code> name — drives the placeholder unsubscribe footer in the preview), and PreviewSubjectName/PreviewModalId/IncludePreviewModal for hosts with more than one instance on a page or that inject this partial via AJAX (Feedback/Issues)")
+                        ("@@model", "<code>EmailComposerViewModel</code> — RecipientCount/RecipientSummary/RecipientUserId/WarnRecipientCount for the To: line, BodyName/BodyValue/BodyLabel/BodyRows/BodyRequired/BodyMaxLength/BodyHelpText/BodyPlaceholder/BodyLabelVisuallyHidden, optional SubjectName/SubjectValue/SubjectLabel/SubjectRequired/SubjectMaxLength, Category (a <code>MessageCategory</code> name — drives the placeholder unsubscribe footer in the preview), and PreviewSubjectName/PreviewModalId/IncludePreviewModal for hosts with more than one instance on a page or that inject this partial via AJAX (Feedback/Issues)")
                     )
                     <div class="wg-card-example">
                         @await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
@@ -1175,6 +1177,8 @@
                             BodyValue = "**Hello** — this is a _preview_ of a human-composed email.",
                             BodyLabel = "Message",
                             Category = nameof(Humans.Users.Contracts.MessageCategory.FacilitatedMessages),
+                            RecipientCount = 42,
+                            RecipientSummary = "Kitchen team rota volunteers",
                         })
                     </div>
                 </div>

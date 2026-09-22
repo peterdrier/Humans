@@ -324,4 +324,5 @@
 &lt;p&gt;nur eine Erinnerung, dass die Umfrage &lt;strong&gt;{1}&lt;/strong&gt; noch auf deine Antwort wartet.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{2}"&gt;Umfrage öffnen&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Vielen Dank,&lt;br/&gt;Das Nobodies Collective&lt;/p&gt;</value></data>
+  <data name="Survey_Admin_Builder_InvitationRecipients" xml:space="preserve"><value>Alle, an die diese Umfrage gesendet wird (beim Versand festgelegt)</value></data>
 </root>

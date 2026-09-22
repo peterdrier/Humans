@@ -45,6 +45,9 @@ internal sealed class EmailOutboxProcessor(
 
     private readonly EmailSettings _settings = settings.Value;
 
+    internal Func<TimeSpan, CancellationToken, Task> ThrottleDelayAsync { get; set; } =
+        static (delay, cancellationToken) => Task.Delay(delay, cancellationToken);
+
     public async Task ProcessQueuedAsync(CancellationToken cancellationToken = default)
     {
         if (await emailOutboxService.IsEmailPausedAsync(cancellationToken))
@@ -115,7 +118,7 @@ internal sealed class EmailOutboxProcessor(
                 }
 
                 // Throttle: 1 second delay between sends to avoid SMTP rate limits
-                await Task.Delay(1000, cancellationToken);
+                await ThrottleDelayAsync(TimeSpan.FromSeconds(1), cancellationToken);
             }
             catch (Exception ex)
             {

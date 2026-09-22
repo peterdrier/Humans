@@ -824,4 +824,14 @@
   <data name="Settings_TabBarrios" xml:space="preserve"><value>Barrios</value></data>
   <data name="Settings_TabEventGuide" xml:space="preserve"><value>Event Guide</value></data>
   <data name="Settings_TabShifts" xml:space="preserve"><value>Shifts</value></data>
+  <data name="EmailComposer_To" xml:space="preserve"><value>To</value></data>
+  <data name="EmailComposer_RecipientCountOne" xml:space="preserve"><value>1 recipient</value></data>
+  <data name="EmailComposer_RecipientCountMany" xml:space="preserve"><value>{0} recipients</value></data>
+  <data name="EmailComposer_LargeSendWarning" xml:space="preserve"><value>Large send. Double-check before sending.</value></data>
+  <data name="EmailComposer_ConfirmLargeSend" xml:space="preserve"><value>Send this email to {0} recipients?</value></data>
+  <data name="EmailComposer_SendToMe" xml:space="preserve"><value>Send to me</value></data>
+  <data name="EmailComposer_SendToMeSent" xml:space="preserve"><value>Test email queued to {0}.</value></data>
+  <data name="EmailComposer_SendToMeError" xml:space="preserve"><value>Couldn't send the test email. Please try again.</value></data>
+  <data name="EmailComposer_SendToMeRateLimited" xml:space="preserve"><value>Too many test emails. Wait a minute and try again.</value></data>
+  <data name="EmailComposer_SendToMeNoAddress" xml:space="preserve"><value>Your account has no email address to send to.</value></data>
 </root>

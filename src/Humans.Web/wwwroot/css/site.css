@@ -2132,3 +2132,55 @@ body.city-map-fullscreen main {
         height: 220px;
     }
 }
+
+/* ── Budget/Finance figure strips (peterdrier/Humans, /Finance year page) ────
+   The accordion header lives inside an <h2>, so the display serif leaked into
+   the numbers and <small> shrank them to ~13px — unreadable for a money
+   figure. These keep the figures in the body face at full size, with the
+   label as a quiet caption above-the-line rather than another sentence. */
+.budget-figures {
+    font-family: var(--h-font-body);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.95rem;
+}
+
+.budget-figure + .budget-figure {
+    margin-left: 0.9rem;
+    padding-left: 0.9rem;
+    border-left: 1px solid var(--h-border-light);
+}
+
+.budget-figure-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--h-sepia);
+}
+
+.budget-figure-value {
+    font-weight: 600;
+    color: var(--h-aged-ink);
+}
+
+/* Holded actuals are a different kind of number from the budget's own — they
+   come from the books. Gold reads as "other source" on parchment; the old
+   Bootstrap text-info blue did not. */
+.budget-figure-holded {
+    color: var(--h-gold-dark);
+}
+
+.budget-subhead {
+    font-family: var(--h-font-body);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--h-sepia);
+    background: var(--h-vellum);
+}
+
+.budget-table {
+    font-family: var(--h-font-body);
+    font-variant-numeric: tabular-nums;
+}

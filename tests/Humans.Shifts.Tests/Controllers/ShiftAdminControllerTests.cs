@@ -44,6 +44,7 @@ public class ShiftAdminControllerTests
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly IVolunteerTrackingService _tracking = Substitute.For<IVolunteerTrackingService>();
+    private readonly IRotaCoordinatorMessageService _rotaMessenger = Substitute.For<IRotaCoordinatorMessageService>();
 
     private static readonly BurnSettingsInfo Event = new(
         Id: Guid.NewGuid(),
@@ -205,6 +206,93 @@ public class ShiftAdminControllerTests
         await _shiftMgmt.DidNotReceive().UpdateShiftAsync(Arg.Any<UpdateShiftInput>());
     }
 
+    [HumansFact]
+    public async Task EmailTeamRotas_RefreshIntent_RepreviewsSelection_WithoutSending()
+    {
+        _rotaMessenger.GetTeamRotasRecipientPreviewAsync(
+                TeamId, Arg.Any<TeamRotasAudienceFilter>(), Arg.Any<CancellationToken>())
+            .Returns(new TeamRotasRecipientPreview(2, ["Bob", "Alice"]));
+        var ctrl = BuildSut();
+        // Half-written message: refreshing the audience is not a send, so it must
+        // not trip the Message validator.
+        ctrl.ModelState.AddModelError(nameof(EmailTeamRotasViewModel.Message), "required");
+        var posted = new EmailTeamRotasViewModel { Message = "", UpcomingOnly = false, IncludeStrike = false };
+
+        var result = await ctrl.EmailTeamRotas(Slug, posted, EmailTeamRotasViewModel.RefreshIntent);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(posted);
+        posted.RecipientCount.Should().Be(2);
+        posted.RecipientNames.Should().Equal("Alice", "Bob");
+        await _rotaMessenger.Received(1).GetTeamRotasRecipientPreviewAsync(
+            TeamId,
+            Arg.Is<TeamRotasAudienceFilter>(f => !f.UpcomingOnly && !f.IncludeStrike && f.IncludeBuild && f.IncludeEvent),
+            Arg.Any<CancellationToken>());
+        await _rotaMessenger.DidNotReceiveWithAnyArgs().SendTeamRotasMessageAsync(
+            default, default, null!, default, null!);
+    }
+
+    [HumansFact]
+    public async Task EmailTeamRotas_Send_RepreviewsInsteadOfSending_WhenAudienceWasNeverPreviewed()
+    {
+        _rotaMessenger.GetTeamRotasRecipientPreviewAsync(
+                TeamId, Arg.Any<TeamRotasAudienceFilter>(), Arg.Any<CancellationToken>())
+            .Returns(new TeamRotasRecipientPreview(3, ["Alice", "Bob", "Cara"]));
+        // No script: the coordinator widened the audience and pressed Send, so the
+        // posted selection no longer matches the list the form is showing.
+        var posted = new EmailTeamRotasViewModel
+        {
+            Message = "thank you",
+            UpcomingOnly = false,
+            PreviewedAudience = TeamRotasAudienceFilter.Default.Key,
+        };
+        var ctrl = BuildSut();
+        // Model binding stored the stale key it posted. The hidden field's tag helper
+        // prefers that over the model, so it has to be gone or the re-rendered form
+        // posts the stale key again and the turn-back below never ends.
+        ctrl.ModelState.SetModelValue(
+            nameof(EmailTeamRotasViewModel.PreviewedAudience),
+            TeamRotasAudienceFilter.Default.Key,
+            TeamRotasAudienceFilter.Default.Key);
+
+        var result = await ctrl.EmailTeamRotas(Slug, posted);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(posted);
+        posted.AudienceChanged.Should().BeTrue();
+        posted.RecipientCount.Should().Be(3);
+        posted.PreviewedAudience.Should().Be(posted.Filter.Key);
+        ctrl.ModelState.ContainsKey(nameof(EmailTeamRotasViewModel.PreviewedAudience))
+            .Should().BeFalse();
+        await _rotaMessenger.DidNotReceiveWithAnyArgs().SendTeamRotasMessageAsync(
+            default, default, null!, default, null!);
+    }
+
+    [HumansFact]
+    public async Task EmailTeamRotas_Send_PassesTheSelectedAudienceAndShiftChoice()
+    {
+        _rotaMessenger.GetTeamRotasRecipientPreviewAsync(
+                TeamId, Arg.Any<TeamRotasAudienceFilter>(), Arg.Any<CancellationToken>())
+            .Returns(new TeamRotasRecipientPreview(1, ["Alice"]));
+        _rotaMessenger.SendTeamRotasMessageAsync(
+                TeamId, UserId, "thank you", false, Arg.Any<TeamRotasAudienceFilter>(), Arg.Any<CancellationToken>())
+            .Returns(TeamRotasMessageDispatchResult.Success(1, 1, "Gate"));
+        var posted = new EmailTeamRotasViewModel
+        {
+            Message = "thank you",
+            IncludeShifts = false,
+            UpcomingOnly = false,
+            IncludeEvent = false,
+            // The audience this form's recipient list was previewed against.
+            PreviewedAudience = new TeamRotasAudienceFilter(false, true, false, true).Key,
+        };
+
+        await BuildSut().EmailTeamRotas(Slug, posted);
+
+        await _rotaMessenger.Received(1).SendTeamRotasMessageAsync(
+            TeamId, UserId, "thank you", false,
+            Arg.Is<TeamRotasAudienceFilter>(f => !f.UpcomingOnly && !f.IncludeEvent && f.IncludeBuild && f.IncludeStrike),
+            Arg.Any<CancellationToken>());
+    }
+
     private ShiftAdminController BuildSut()
     {
         var ctrl = new ShiftAdminController(
@@ -218,7 +306,7 @@ public class ShiftAdminControllerTests
             Substitute.For<IClock>(),
             new ShiftAdminPageBuilder(_shiftMgmt, Substitute.For<IMembershipCalculatorRead>(), _userService, _teamService),
             new ShiftVolunteerSearchBuilder(_burnSettings, _userService, _shiftView, _signupService, _tracking),
-            Substitute.For<IRotaCoordinatorMessageService>(),
+            _rotaMessenger,
             NullLogger<ShiftAdminController>.Instance);
 
         var http = new DefaultHttpContext

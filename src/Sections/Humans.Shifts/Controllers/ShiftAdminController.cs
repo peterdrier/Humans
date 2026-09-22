@@ -391,7 +391,8 @@ internal sealed class ShiftAdminController(
         if (!ModelState.IsValid)
             return View(model);
 
-        var result = await rotaMessenger.SendRotaMessageAsync(rota.Id, user.Id, model.Message);
+        var result = await rotaMessenger.SendRotaMessageAsync(
+            rota.Id, user.Id, model.Message, model.IncludeShifts);
         if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, result.Error ?? "Failed to queue rota emails.");
@@ -430,7 +431,8 @@ internal sealed class ShiftAdminController(
         var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
-        var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(team.Id);
+        var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(
+            team.Id, TeamRotasAudienceFilter.Default);
 
         var vm = new EmailTeamRotasViewModel
         {
@@ -447,26 +449,52 @@ internal sealed class ShiftAdminController(
 
     [HttpPost("Email")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> EmailTeamRotas(string slug, EmailTeamRotasViewModel model)
+    public async Task<IActionResult> EmailTeamRotas(string slug, EmailTeamRotasViewModel model, string? intent = null)
     {
         var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
         // Repopulate display fields before any return-with-error path so the
-        // re-rendered form still shows the recipient list and counts.
-        var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(team.Id);
+        // re-rendered form still shows the recipient list and counts — recomputed
+        // against the audience the coordinator has currently selected.
+        var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(team.Id, model.Filter);
+        var previewWasShown = string.Equals(
+            model.PreviewedAudience, model.Filter.Key, StringComparison.Ordinal);
         model.TeamSlug = slug;
         model.TeamName = team.Name;
+        // The recipient list above is the one about to be rendered, so the model's key
+        // is the authoritative one. Drop the posted entry first: the hidden field's tag
+        // helper prefers ModelState's attempted value, so leaving it would re-render the
+        // stale key and turn every later send back through the guard below forever.
+        ModelState.Remove(nameof(EmailTeamRotasViewModel.PreviewedAudience));
+        model.PreviewedAudience = model.Filter.Key;
         model.RotaCount = preview.RotaCount;
         model.RecipientCount = preview.RecipientNames.Count;
         model.RecipientNames = preview.RecipientNames
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        // The audience controls re-render the form so the recipient preview tracks
+        // the selection; the half-written message is not a validation failure yet.
+        if (string.Equals(intent, EmailTeamRotasViewModel.RefreshIntent, StringComparison.Ordinal))
+        {
+            ModelState.Clear();
+            return View(model);
+        }
+
+        // Without the script the audience can move without a re-preview, so a send
+        // would mail a list the coordinator never saw. Show them this one instead.
+        if (!previewWasShown)
+        {
+            model.AudienceChanged = true;
+            return View(model);
+        }
+
         if (!ModelState.IsValid)
             return View(model);
 
-        var result = await rotaMessenger.SendTeamRotasMessageAsync(team.Id, user.Id, model.Message);
+        var result = await rotaMessenger.SendTeamRotasMessageAsync(
+            team.Id, user.Id, model.Message, model.IncludeShifts, model.Filter);
         if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, result.Error ?? "Failed to queue team rota emails.");

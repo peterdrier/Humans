@@ -13,6 +13,12 @@ internal sealed class EmailRotaViewModel
     public int RecipientCount { get; set; }
     public IReadOnlyList<string> RecipientNames { get; set; } = [];
 
+    /// <summary>
+    /// Whether each recipient's own shifts on this rota are listed in their email.
+    /// On by default; cleared for messages where the schedule is noise (a thank-you).
+    /// </summary>
+    public bool IncludeShifts { get; set; } = true;
+
     [Required]
     [StringLength(4000, MinimumLength = 1)]
     public string Message { get; set; } = string.Empty;
