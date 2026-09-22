@@ -892,6 +892,80 @@ public class SepaBankBookingTests
         await AssertNothingPosted();
     }
 
+    // ─── Review round 5: an unconfirmed entry, and the feed window's date slack ──
+
+    [HumansTheory]
+    [InlineData("partial", false)]
+    [InlineData("reconciled", true)]
+    public async Task Booking_JournalEntryUnconfirmed_StampsOnlyWhenHoldedThenReadsReconciled(
+        string statusAfter, bool stamped)
+    {
+        // The entry's ref is unconfirmed, so the reconcile carries the purchase documents alone —
+        // Holded accepting that can still leave the line `partial` with the remainder unmatched.
+        SeedOpenDocs(Doc("d1", 10m, 1));
+        _client.PostLedgerEntryAsync(
+                Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<decimal>(),
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("unconfirmed:e-1");
+        var reads = 0;
+        _client.ListBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+                [Movement(status: reads++ == 0 ? "pending" : statusAfter)]);
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        await _client.Received(1).ReconcileBankMovementAsync(
+            "treasury-1", MovementId,
+            Arg.Is<IReadOnlyList<HoldedReconcileDocumentRef>>(d =>
+                d.Count == 1 && string.Equals(d[0].DocumentId, "d1", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+        await _repo.Received(stamped ? 1 : 0).MarkSepaTransferReconciledAsync(
+            TransferId, FixedNow, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Page_TransferGeneratedAtTheWindowEdge_MatchesALineDatedInTheSlackBeforeIt()
+    {
+        // Generated exactly FeedWindowDays (90) ago, paid by a line GenerationSlackDays (2) earlier:
+        // matching accepts that line, so the feed read has to reach it.
+        SeedWindowEdgeTransfer();
+        SeedContacts(_userId);
+
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().Be(MovementId);
+    }
+
+    [HumansFact]
+    public async Task Sweep_TransferGeneratedAtTheWindowEdge_BooksALineDatedInTheSlackBeforeIt()
+    {
+        SeedWindowEdgeTransfer();
+
+        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).SaveSepaTransferBookingAsync(
+            TransferId, FixedNow, null, MovementId, Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
+    }
+
+    private void SeedWindowEdgeTransfer()
+    {
+        var generatedAt = FixedNow - Duration.FromDays(90);
+        var lineDate = new LocalDate(2026, 1, 29);
+        SeedRows(Row(TransferId, _userId, generatedAt: generatedAt));
+        // The stub honours the requested window, as the live feed does.
+        _client.ListBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>())
+            .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
+                ? (IReadOnlyList<HoldedBankMovementDto>)[Movement(date: lineDate)]
+                : []);
+    }
+
+
     // ─── Seeding ────────────────────────────────────────────────────────────────
 
     private async Task AssertNothingPosted()
