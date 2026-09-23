@@ -12,8 +12,15 @@ public static class UserPartSlots
     /// <summary>The shared own/other profile page (Users <c>Profile/Index</c>).</summary>
     public const string Profile = "user-profile";
 
+    /// <summary>The right sidebar of the shared own/other profile page, own-profile only
+    /// (Users <c>Profile/Index</c>).</summary>
+    public const string ProfileSidebar = "user-profile-sidebar";
+
     /// <summary>The admin human-detail page (Users <c>UsersAdmin/AdminDetail</c>).</summary>
     public const string AdminDetail = "user-admin-detail";
+
+    /// <summary>The right sidebar of the admin human-detail page (Users <c>UsersAdmin/AdminDetail</c>).</summary>
+    public const string AdminDetailSidebar = "user-admin-detail-sidebar";
 
     /// <summary>The applicant on a Board tier-application vote (Governance <c>BoardVoting/Detail</c>).</summary>
     public const string BoardVoteApplicant = "board-vote-applicant";
@@ -23,9 +30,6 @@ public static class UserPartSlots
 
     /// <summary>A sender or receiver on the ticket-transfer admin detail (Tickets <c>TicketTransferAdmin/Detail</c>).</summary>
     public const string TicketTransferParty = "ticket-transfer-party";
-
-    /// <summary>One member row of a team's admin member list (Teams <c>TeamAdmin/Members</c>).</summary>
-    public const string TeamMemberRow = "team-member-row";
 }
 
 /// <summary>The arguments an <see cref="IUserPart"/> component's Invoke/InvokeAsync accepts.</summary>

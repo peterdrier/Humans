@@ -1,15 +1,26 @@
+using Humans.Base.Enums;
 using Humans.EarlyEntry.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Tickets.ViewComponents;
 
+/// <summary>
+/// Contributed to <c>UserPartSlots.ProfileSidebar</c> / <c>AdminDetailSidebar</c> (own-profile
+/// and admin hosts only) — renders nothing for <see cref="ProfileCardViewMode.Public"/>, since
+/// it has no per-viewer visibility check of its own and would otherwise leak any member's
+/// ticket holdings to any authenticated viewer.
+/// </summary>
 public sealed class TicketHoldingsViewComponent(
     ITicketServiceRead queryService,
     IEarlyEntryService earlyEntryService) : ViewComponent
 {
-    public async Task<IViewComponentResult> InvokeAsync(Guid userId, bool showEmpty = false)
+    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
+        if (viewMode == ProfileCardViewMode.Public)
+            return Content(string.Empty);
+
+        var showEmpty = viewMode == ProfileCardViewMode.Admin;
         var holdings = await queryService.GetUserTicketHoldingsAsync(userId);
 
         if (!showEmpty && holdings.OrderCount == 0 && holdings.Tickets.Count == 0)

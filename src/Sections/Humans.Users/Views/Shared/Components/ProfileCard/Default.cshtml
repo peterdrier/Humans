@@ -30,7 +30,7 @@
                 {
                     <span class="@Model.PreferredLanguage.ToFlagClass()" title="@Model.PreferredLanguage.ToDisplayLanguageName()"></span>
                 }
-                @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.UserId, mode = "badge" })
+                <vc:nobodies-email-badge user-id="@Model.UserId" mode="badge" />
                 @if (Model.Teams.Count > 0)
                 {
                     <div class="d-flex flex-wrap gap-2 mt-2">

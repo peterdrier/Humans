@@ -114,6 +114,7 @@ internal sealed class ChildTeamMemberViewModel
 internal sealed class TeamMemberViewModel
 {
     public Guid UserId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public TeamMemberRole Role { get; set; }
     public DateTime JoinedAt { get; set; }

@@ -4,8 +4,6 @@
     string? email = ViewBag.Email;
     bool isPrimary = ViewBag.IsPrimary;
     string mode = ViewBag.Mode;
-    string? teamSlug = ViewBag.TeamSlug;
-    string? displayName = ViewBag.DisplayName;
 }
 
 @if (string.Equals(mode, "badge", StringComparison.Ordinal))
@@ -33,28 +31,6 @@ else if (string.Equals(mode, "email", StringComparison.Ordinal))
     if (email is not null)
     {
         <code class="small">@email</code>
-    }
-}
-else if (string.Equals(mode, "provision", StringComparison.Ordinal))
-{
-    if (email is not null)
-    {
-        <code class="small">@email</code>
-    }
-    else
-    {
-        <form asp-controller="TeamAdmin" asp-action="ProvisionEmail" asp-route-slug="@teamSlug" asp-route-userId="@userId" method="post" class="d-inline">
-            @Html.AntiForgeryToken()
-            <div class="input-group input-group-sm" style="min-width: 220px;">
-                <input type="text" name="emailPrefix" class="form-control form-control-sm"
-                       placeholder="username" required style="max-width: 120px;" />
-                <span class="input-group-text">@@nobodies.team</span>
-                <button type="submit" class="btn btn-sm btn-outline-primary"
-                        data-confirm="Provision a new @@nobodies.team account for @displayName?">
-                    <i class="fa-solid fa-plus"></i>
-                </button>
-            </div>
-        </form>
     }
 }
 else if (string.Equals(mode, "detail", StringComparison.Ordinal))

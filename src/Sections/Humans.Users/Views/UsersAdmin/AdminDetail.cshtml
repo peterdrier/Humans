@@ -208,10 +208,12 @@
         </div>
 
         <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
-        @await Component.InvokeAsync("UserCalendar", new { userId = Model.UserId })
+
+        @* Section-contributed parts (IUserPart) — UserCalendar (Calendar), each auto-hides when empty *@
+        <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.AdminDetail" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
 
         <h5 class="mt-4 mb-2">@Localizer["CommPrefs_Title"]</h5>
-        @await Component.InvokeAsync("CommunicationPreferencesPanel", new { userId = Model.UserId, readOnly = true })
+        <vc:communication-preferences-panel user-id="@Model.UserId" read-only="true" />
 
         <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["AdminHuman_AuditHistory"].Value" />
 
@@ -257,7 +259,8 @@
     </div>
 
     <div class="col-md-4">
-        @await Component.InvokeAsync("TicketHoldings", new { userId = Model.UserId, showEmpty = true })
+        @* Section-contributed parts (IUserPart) — TicketHoldings (Tickets), each auto-hides when empty *@
+        <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.AdminDetailSidebar" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
 
         <div class="card mb-4">
             <div class="card-header">@Localizer["AdminHuman_Statistics"]</div>
@@ -343,7 +346,7 @@
         <div class="card mb-4">
             <div class="card-header">@@nobodies.team Email</div>
             <div class="card-body">
-                @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.UserId, mode = "detail" })
+                <vc:nobodies-email-badge user-id="@Model.UserId" mode="detail" />
             </div>
         </div>
 
