@@ -11,9 +11,10 @@ namespace Humans.Gdpr.Contracts;
 public interface IGdprService : IOrchestrator
 {
     /// <summary>
-    /// Article 15 half. Takes only an id, and does not resolve a merge chain — a
-    /// contributor holding rows on a merged-away account resolves the chain itself
-    /// or the export omits them.
+    /// Article 15 half. The orchestrator resolves the account only to stamp the
+    /// envelope (surviving <c>UserId</c>, <c>MergedFromUserIds</c>); contributors
+    /// get the id asked with and each resolves the chain for itself or the export
+    /// omits those rows.
     /// </summary>
     Task<GdprExport> ExportForUserAsync(Guid userId, CancellationToken ct = default);
 
@@ -24,9 +25,8 @@ public interface IGdprService : IOrchestrator
     /// <see cref="IUserDataContributor.ErasesLast"/> is <c>true</c> last — so sections
     /// that still need the human's addresses to reach an external processor can
     /// resolve them before the identity collapses. Ordering is derived from each
-    /// contributor's own declaration, not a pinned type list. Takes only an id, so this
-    /// orchestrator keeps no dependency on the Users merge primitive or its caches.
-    /// Sequential and fail-loud: a contributor that throws aborts the run.
+    /// contributor's own declaration, not a pinned type list. Sequential and
+    /// fail-loud: a contributor that throws aborts the run.
     /// <para>
     /// The caller loops this over the whole merge chain (archived ids first, survivor
     /// last) and invalidates each id's caches as it completes, so a failure partway

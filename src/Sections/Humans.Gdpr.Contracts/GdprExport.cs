@@ -7,7 +7,6 @@ namespace Humans.Gdpr.Contracts;
 /// </summary>
 /// <param name="ExportedAt">
 /// Invariant ISO-8601 instant string (UTC) when the export was generated.
-/// Uses <c>Humans.Base.Extensions.DateFormattingExtensions.ToIso8601</c>.
 /// </param>
 /// <param name="UserId">
 /// The account the export belongs to. When the request came in under an id that has
