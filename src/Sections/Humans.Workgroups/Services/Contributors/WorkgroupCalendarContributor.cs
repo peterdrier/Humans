@@ -47,5 +47,5 @@ internal sealed class WorkgroupCalendarContributor(IWorkgroupService workgroups)
         m.StartUtc,
         m.EndUtc,
         m.Location,
-        $"{CalendarFeedItem.BaseUrl}/Workgroups/{w.Slug}");
+        $"/Workgroups/{w.Slug}");
 }

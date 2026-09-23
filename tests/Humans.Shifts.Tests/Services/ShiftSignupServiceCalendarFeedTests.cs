@@ -177,7 +177,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
         item.Start.Should().Be(Instant.FromUtc(2026, 7, 2, 8, 0));
         item.End.Should().Be(Instant.FromUtc(2026, 7, 2, 12, 0));
         item.Description.Should().Contain("Meet at the gate.");
-        item.Url.Should().Be("https://humans.nobodies.team/Shifts/Mine");
+        item.Url.Should().Be("/Shifts/Mine");
     }
 
     [HumansFact]

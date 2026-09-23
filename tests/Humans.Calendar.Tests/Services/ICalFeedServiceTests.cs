@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Base.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace Humans.Calendar.Tests.Services;
 
@@ -14,7 +16,9 @@ public class ICalFeedServiceTests
     private readonly ICalendarFeedTokenService _tokens = Substitute.For<ICalendarFeedTokenService>();
 
     private ICalFeedService CreateService(params ICalendarFeedContributor[] contributors) =>
-        new(_users, _tokens, contributors, NullLogger<ICalFeedService>.Instance);
+        new(_users, _tokens, contributors,
+            Options.Create(new EmailSettings { BaseUrl = "https://calendar.example" }),
+            NullLogger<ICalFeedService>.Instance);
 
     private static CalendarFeedItem MakeItem(string uid, string source, Instant start) =>
         new(
@@ -25,7 +29,7 @@ public class ICalFeedServiceTests
             Start: start,
             End: start.Plus(Duration.FromHours(2)),
             Location: null,
-            Url: $"{CalendarFeedItem.BaseUrl}/Shifts/Mine");
+            Url: "/Shifts/Mine");
 
     /// <summary>
     /// Stubs the read the way Users answers it (#1704): <paramref name="requestedId"/> is the id
@@ -169,7 +173,7 @@ public class ICalFeedServiceTests
         ics.Should().Contain("DTSTART:20260702T080000Z");
         ics.Should().Contain("DTEND:20260702T100000Z");
         ics.Should().Contain("CATEGORIES:Shifts");
-        ics.Should().Contain("URL:https://humans.nobodies.team/Shifts/Mine");
+        ics.Should().Contain("URL:https://calendar.example/Shifts/Mine");
         ics.Should().Contain("X-WR-CALNAME:Nobodies");
 
         // Round-trips through the same library calendar clients use.

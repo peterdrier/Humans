@@ -217,7 +217,7 @@ public sealed class CachingCalendarServiceTests
         Start: start,
         End: start.Plus(Duration.FromHours(1)),
         Location: null,
-        Url: $"{CalendarFeedItem.BaseUrl}/Workgroups/Mine");
+        Url: "/Workgroups/Mine");
 
     private sealed class FakeContributor : ICalendarFeedContributor
     {

@@ -16,7 +16,8 @@ namespace Humans.Calendar.Contracts;
 /// shown as a badge in the admin widget.
 /// </param>
 /// <param name="Url">
-/// Absolute deep link back into the app; emitted as ICS URL. Null when the
+/// App-relative deep link back into the app; Calendar resolves it against the
+/// configured public base URL before emitting it as an ICS URL. Null when the
 /// contributor has no sensible landing page for the item.
 /// </param>
 public sealed record CalendarFeedItem(
@@ -27,10 +28,4 @@ public sealed record CalendarFeedItem(
     Instant Start,
     Instant End,
     string? Location,
-    string? Url)
-{
-    /// <summary>
-    /// Hardcoded production base for feed deep links. TODO: move to configuration.
-    /// </summary>
-    public const string BaseUrl = "https://humans.nobodies.team";
-}
+    string? Url);
