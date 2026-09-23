@@ -515,10 +515,6 @@ inbox:
     review: light
     root: CENTRAL-57
   - added: 2026-09-11
-    id: CENTRAL-41
-    what: "Rideshare and Issues still send member notifications in English. Workgroups now groups recipients by PreferredLanguage and uses existing localized labels with INotificationService.SendAsync; no new notification API is required. Apply the same approach to the remaining callers. Found during review of peterdrier/Humans#1650."
-    review: light
-  - added: 2026-09-11
     id: CENTRAL-42
     what: "GenerateDocumentationFile is set in no project in this repo, so CS1574 never fires and a broken <see cref> target never fails a build; Calendar alone was carrying a batch of them. Repo-wide (finding 5, /section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Guide 2026-09-11)."
     review: light

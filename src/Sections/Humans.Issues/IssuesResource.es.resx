@@ -279,4 +279,10 @@
     <comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment>
   </data>
   <data name="Issue_ComposerRecipientsHandlers" xml:space="preserve"><value>Los responsables de esta incidencia (notificación en la app)</value></data>
+  <data name="Issue_Notice_CommentTitle" xml:space="preserve"><value>Nuevo comentario sobre el asunto: {0}</value></data>
+  <data name="Issue_Notice_StatusChangedTitle" xml:space="preserve"><value>El estado del asunto cambió: {0}</value></data>
+  <data name="Issue_Notice_StatusChangedBody" xml:space="preserve"><value>Estado: {0} → {1}</value></data>
+  <data name="Issue_Notice_SubmittedTitle" xml:space="preserve"><value>Se presentó un asunto nuevo: {0}</value></data>
+  <data name="Issue_Notice_AssignedTitle" xml:space="preserve"><value>Se te asignó un asunto: {0}</value></data>
+  <data name="Issue_Notice_Open" xml:space="preserve"><value>Ver asunto</value></data>
 </root>

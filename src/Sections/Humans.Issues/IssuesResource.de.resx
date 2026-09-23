@@ -279,4 +279,10 @@
     <comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment>
   </data>
   <data name="Issue_ComposerRecipientsHandlers" xml:space="preserve"><value>Die Bearbeiter dieses Anliegens (Benachrichtigung in der App)</value></data>
+  <data name="Issue_Notice_CommentTitle" xml:space="preserve"><value>Neuer Kommentar zum Vorgang: {0}</value></data>
+  <data name="Issue_Notice_StatusChangedTitle" xml:space="preserve"><value>Status des Vorgangs geändert: {0}</value></data>
+  <data name="Issue_Notice_StatusChangedBody" xml:space="preserve"><value>Status: {0} → {1}</value></data>
+  <data name="Issue_Notice_SubmittedTitle" xml:space="preserve"><value>Neuer Vorgang eingereicht: {0}</value></data>
+  <data name="Issue_Notice_AssignedTitle" xml:space="preserve"><value>Ihnen wurde ein Vorgang zugewiesen: {0}</value></data>
+  <data name="Issue_Notice_Open" xml:space="preserve"><value>Vorgang anzeigen</value></data>
 </root>

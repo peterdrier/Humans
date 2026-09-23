@@ -281,7 +281,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Shifts**: `ISettingsService.GetActiveEventSettingsAsync()` — the active year settings anchor to
   (`GetActiveYearAsync` falls back to the clock's UTC year when no active burn is set).
 - **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined
-  notifications, plain English (not localized), `actionUrl: "/Rideshare/Mine"`.
+  notifications, localized to each recipient's preferred language, `actionUrl: "/Rideshare/Mine"`.
 - **AuditLog**: `IAuditLogService.LogAsync` — settings updates.
 - **Gdpr**: `IUserDataContributor` — exports three slices (`RideshareTrips`,
   `RideshareRequests`, `RideshareInterests`); erasure deletes the user's interests, then their
