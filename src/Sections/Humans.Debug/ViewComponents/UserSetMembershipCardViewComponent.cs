@@ -11,7 +11,7 @@ namespace Humans.Debug.ViewComponents;
 /// admin dashboard's <c>admin-dashboard</c> chrome slot (<see cref="Humans.Debug.SectionChrome"/>).
 /// </summary>
 /// <remarks>
-/// Internal — invoked by name through <c>ChromeSlotViewComponent</c>'s
+/// Internal — invoked by Type through <c>ChromeSlotViewComponent</c>'s
 /// <c>Component.InvokeAsync</c>, not a <c>&lt;vc:&gt;</c> tag helper.
 /// </remarks>
 internal sealed class UserSetMembershipCardViewComponent(

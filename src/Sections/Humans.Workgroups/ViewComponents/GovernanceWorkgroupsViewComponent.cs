@@ -13,7 +13,7 @@ namespace Humans.Workgroups.ViewComponents;
 /// takes no space for a switched-off or empty Workgroups.
 /// </summary>
 /// <remarks>
-/// Internal — invoked by name through the Shell's slot renderer
+/// Internal — invoked by Type through the Shell's slot renderer
 /// (<c>Component.InvokeAsync</c>), never as a <c>&lt;vc:&gt;</c> tag helper, so Razor's
 /// public-only tag-helper discovery does not apply. Public would not compile: the
 /// constructor takes the section-internal <c>IWorkgroupService</c> (CS0051).

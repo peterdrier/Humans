@@ -19,7 +19,7 @@ fan-out), moved in from Base by G5 lane 4b-2c (nobodies-collective/Humans#866):
 | `ICalendarFeedContributor` | implemented by `Humans.Shifts` (`ShiftSignupService`), `Humans.Events` (`EventService`) and `Humans.Workgroups` (`WorkgroupCalendarContributor`) |
 | `CalendarFeedItem` | the item every contributor returns; `Humans.Scanner` renders it on the ticket card |
 | `IICalFeedService` | `Humans.Scanner`'s ticket card; the section's own `ICalFeedApiController` |
-| `UserCalendarViewComponent` / `UserCalendarViewModel` | `<vc:user-calendar>` in Debug's widget gallery; `Component.InvokeAsync("UserCalendar", …)` in Users' admin detail |
+| `UserCalendarViewComponent` / `UserCalendarViewModel` | `<vc:user-calendar>` in Debug's widget gallery; the `IUserPart` seam (`SectionUserParts`) in Users' admin detail |
 
 **Folder, not a `.Contracts` leaf.** A leaf exists only where a cycle forces one, and a
 contributor fan-out inverts the arrow: the implementers reference Calendar, Calendar

@@ -345,6 +345,7 @@ section and is not on the leaf.
 - **Users (account merge):** `ShiftManagementService`, `ShiftSignupService` and `VolunteerTrackingService` each register as `IUserMerge`; `AccountMergeService.AcceptAsync` fans out to them to re-FK Shifts-owned user-scoped rows from source to target (see Triggers).
 - **Settings:** `ISettingsService` (`Humans.Settings.Contracts`) — the calendar authority as of nobodies-collective/Humans#1630, and "active event" authority as of nobodies-collective/Humans#1631. Internal `EventCalendarResolver` wraps it (memoized per request) and resolves the calendar by `Rota.EventSettingsId` via `GetEventSettingsByIdAsync`, or `GetActiveEventSettingsAsync` for active-event paths. No fallback to this section's own `EventSettings` columns when the calendar can't be resolved — those columns are dead.
 - **Early Entry contributor:** `VolunteerTrackingExportService` implements `IEarlyEntryProvider` — derives EE grants (earliest confirmed build-shift day − 1, source = that shift's team) for the cross-source EE roster. `ShiftSignupService` evicts the per-user EE cache via `IEarlyEntryInvalidator` on every build-shift confirm/bail/remove/reassign path.
+- **Onboarding:** `SectionOnboarding` implements `IOnboardingShiftsStep` (`Humans.Onboarding.Contracts`), contributing `OnboardingShiftsListViewComponent` by Type — the shifts step's rota tables are Shifts' presentation, rendered on Onboarding's page (nobodies-collective/Humans#1815).
 
 ## Architecture
 

@@ -9,7 +9,7 @@ namespace Humans.AuditLog.ViewComponents;
 /// nobodies-collective/Humans#1091.
 /// </summary>
 /// <remarks>
-/// Internal — invoked by name through <c>ChromeSlotViewComponent</c>'s
+/// Internal — invoked by Type through <c>ChromeSlotViewComponent</c>'s
 /// <c>Component.InvokeAsync</c>, not a <c>&lt;vc:&gt;</c> tag helper. Its view renders
 /// <c>AuditLogViewComponent</c> itself via <c>Component.InvokeAsync</c> rather than the
 /// <c>&lt;vc:audit-log&gt;</c> tag, since this section's own <c>_ViewImports.cshtml</c> does

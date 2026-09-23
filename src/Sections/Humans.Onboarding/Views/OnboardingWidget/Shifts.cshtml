@@ -77,9 +77,11 @@
             {
                 @* Shifts' rota tables are that section's presentation, so the component lives in
                    Humans.Shifts. Invoked by Type through the IOnboardingShiftsStep seam
-                   (nobodies-collective/Humans#1815), so a dropped/renamed argument fails the
-                   universal ViewComponentSlotContractTests instead of silently 500ing (#1810).
-                   The event goes across by id; Shifts resolves its own settings DTO. *@
+                   (nobodies-collective/Humans#1815) — a single-contributor slot, so
+                   ViewComponentSlotContractTests requires every OnboardingShiftsStepArgs property
+                   to bind to a parameter and vice versa: a dropped or renamed argument fails the
+                   build instead of silently 500ing (#1810). The event goes across by id; Shifts
+                   resolves its own settings DTO. *@
                 @await Component.InvokeAsync(ShiftsStep.ShiftsList, new OnboardingShiftsStepArgs(
                     EventSettingsId: Model.EventSettings!.Id,
                     Shifts: Model.Shifts,

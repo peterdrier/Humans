@@ -98,8 +98,10 @@
             <partial name="_CampRosterCard" model="Model" />
 
             @* Camp parts (today: Events' hosted-events card, logged-in users only) render through
-               the ICampPart seam — invoked by Type, not by name, so a dropped argument fails the
-               universal ViewComponentSlotContractTests (nobodies-collective/Humans#1815). *@
+               the ICampPart seam — invoked by Type, not by name (nobodies-collective/Humans#1815).
+               ViewComponentSlotContractTests type-checks CampPartArgs.CampId against every
+               contributor's matching parameter, including an optional one; it is a fanout, so it
+               does not require every contributor to bind CampId. *@
             @if (User.Identity?.IsAuthenticated == true)
             {
                 <vc:camp-parts camp-id="@Model.Id" />

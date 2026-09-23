@@ -129,7 +129,8 @@ internal sealed class TeamAdminController(
                     Role = m.Role,
                     JoinedAt = m.JoinedAt.ToDateTimeUtc(),
                     IsCoordinator = m.Role == TeamMemberRole.Coordinator,
-                    NobodiesTeamEmail = nobodiesEmail
+                    NobodiesTeamEmail = nobodiesEmail,
+                    LiveUserId = info?.Id ?? m.UserId
                 };
             }).ToList();
 

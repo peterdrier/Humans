@@ -29,10 +29,12 @@ namespace Humans.Web.Tests.Architecture;
 /// </para>
 /// <para>
 /// The args contract check (<see cref="CheckComponentContract"/>) is a pure function of a
-/// component <see cref="Type"/> and a resolved <see cref="ViewComponentSlotAttribute"/>, so
-/// it is exercised twice: once over the real app roster, and once directly in
-/// <see cref="ACheckedComponent_MissingANonOptionalArgument_Fails"/> against a fake component
-/// — proof the checker actually bites, not just that today's roster happens to pass.
+/// component <see cref="Type"/>, a resolved <see cref="ViewComponentSlotAttribute"/>, and
+/// whether the site is a single-contributor property or a fanout element, so it is exercised
+/// against fake components directly — a missing non-optional argument, a type mismatch on an
+/// <em>optional</em> parameter (the #1810 shape), and a single-contributor args property that
+/// binds to no parameter (a dropped argument, tolerated only on a fanout) — as well as over
+/// the real app roster.
 /// </para>
 /// </remarks>
 public class ViewComponentSlotContractTests
@@ -66,7 +68,7 @@ public class ViewComponentSlotContractTests
                         continue;
                     }
 
-                    failures.AddRange(CheckComponentContract(site.Component, attribute, site.Location));
+                    failures.AddRange(CheckComponentContract(site.Component, attribute, site.Location, site.IsSingleContributor));
                 }
             }
         }
@@ -84,7 +86,8 @@ public class ViewComponentSlotContractTests
         var failures = CheckComponentContract(
             typeof(FakeMissingArgumentViewComponent),
             new ViewComponentSlotAttribute(typeof(FakeArgs)),
-            "unit test").ToList();
+            "unit test",
+            isSingleContributor: false).ToList();
 
         failures.Should().ContainSingle(because: "requiredButUnsupplied has no matching property on FakeArgs");
     }
@@ -95,12 +98,59 @@ public class ViewComponentSlotContractTests
         var failures = CheckComponentContract(
             typeof(FakeNoArgsViewComponent),
             new ViewComponentSlotAttribute(),
-            "unit test").ToList();
+            "unit test",
+            isSingleContributor: false).ToList();
+
+        failures.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void ACheckedComponent_OptionalParameterWithATypeMismatchedProperty_Fails()
+    {
+        // (b): the parameter is optional, so presence alone would pass — but a same-named
+        // property of the wrong type is exactly the #1810 drift (renamed/retyped argument).
+        var failures = CheckComponentContract(
+            typeof(FakeOptionalTypeMismatchViewComponent),
+            new ViewComponentSlotAttribute(typeof(FakeStringUserIdArgs)),
+            "unit test",
+            isSingleContributor: false).ToList();
+
+        failures.Should().ContainSingle(because: "userId is optional but FakeStringUserIdArgs.UserId is a string, not a Guid");
+    }
+
+    [HumansFact]
+    public void ASingleContributorSlot_WithAnArgsPropertyThatBindsToNoParameter_Fails()
+    {
+        // (c): on a single-contributor (property) seam, every args-record property must bind
+        // to some Invoke parameter — a property the component never reads is a dropped argument.
+        var failures = CheckComponentContract(
+            typeof(FakeSingleParameterViewComponent),
+            new ViewComponentSlotAttribute(typeof(FakeArgsWithExtraProperty)),
+            "unit test",
+            isSingleContributor: true).ToList();
+
+        failures.Should().ContainSingle(because: "FakeArgsWithExtraProperty.Extra binds to no parameter of the single contributor");
+    }
+
+    [HumansFact]
+    public void AFanoutSlot_WithAnArgsPropertyThatBindsToNoParameter_Passes()
+    {
+        // Same shape as the previous test, but on a multi-contributor fanout: MVC ignores
+        // args properties a given contributor's Invoke doesn't declare, so this must not fail.
+        var failures = CheckComponentContract(
+            typeof(FakeSingleParameterViewComponent),
+            new ViewComponentSlotAttribute(typeof(FakeArgsWithExtraProperty)),
+            "unit test",
+            isSingleContributor: false).ToList();
 
         failures.Should().BeEmpty();
     }
 
     private sealed record FakeArgs(Guid UserId);
+
+    private sealed record FakeStringUserIdArgs(string UserId);
+
+    private sealed record FakeArgsWithExtraProperty(Guid UserId, string Extra);
 
     private sealed class FakeMissingArgumentViewComponent : ViewComponent
     {
@@ -112,7 +162,22 @@ public class ViewComponentSlotContractTests
         public IViewComponentResult Invoke(Guid? optional = null) => Content(string.Empty);
     }
 
-    private sealed record SlotSite(Type Seam, PropertyInfo? OwnProperty, Type Component, string Location);
+    private sealed class FakeOptionalTypeMismatchViewComponent : ViewComponent
+    {
+        public IViewComponentResult Invoke(Guid? userId = null) => Content(string.Empty);
+    }
+
+    private sealed class FakeSingleParameterViewComponent : ViewComponent
+    {
+        public IViewComponentResult Invoke(Guid userId) => Content(string.Empty);
+    }
+
+    /// <param name="IsSingleContributor">True for a <c>Type</c> property declared directly on the
+    /// seam interface (one contributor per slot, e.g. <c>IOnboardingShiftsStep.ShiftsList</c>) —
+    /// where a dropped args property is drift. False for an element of a fanout's
+    /// <c>IEnumerable&lt;T&gt;</c> (many contributors share the args shape; MVC ignores properties
+    /// a given contributor's <c>Invoke</c> doesn't declare).</param>
+    private sealed record SlotSite(Type Seam, PropertyInfo? OwnProperty, Type Component, string Location, bool IsSingleContributor);
 
     /// <summary>The seam interfaces a contribution type implements — mirrors the private
     /// method of the same shape in <see cref="SectionDiscoveryExtensions"/>.</summary>
@@ -132,7 +197,7 @@ public class ViewComponentSlotContractTests
             if (property.PropertyType != typeof(Type)) continue;
 
             if (property.GetValue(contribution) is Type component)
-                yield return new SlotSite(seam, property, component, $"{contribution.GetType().FullName}.{seam.Name}.{property.Name}");
+                yield return new SlotSite(seam, property, component, $"{contribution.GetType().FullName}.{seam.Name}.{property.Name}", IsSingleContributor: true);
         }
 
         foreach (var method in seam.GetMethods(BindingFlags.Public | BindingFlags.Instance))
@@ -160,7 +225,8 @@ public class ViewComponentSlotContractTests
                         seam,
                         elementProperty,
                         component,
-                        $"{contribution.GetType().FullName}.{seam.Name}.{method.Name}()[{elementType.Name}].{elementProperty.Name}");
+                        $"{contribution.GetType().FullName}.{seam.Name}.{method.Name}()[{elementType.Name}].{elementProperty.Name}",
+                        IsSingleContributor: false);
                 }
             }
         }
@@ -176,7 +242,8 @@ public class ViewComponentSlotContractTests
     /// slot's args record: a pure function of a component type and its resolved attribute, so
     /// it can be exercised directly against a fake component as well as the real app roster.
     /// </summary>
-    private static IEnumerable<string> CheckComponentContract(Type component, ViewComponentSlotAttribute attribute, string location)
+    private static IEnumerable<string> CheckComponentContract(
+        Type component, ViewComponentSlotAttribute attribute, string location, bool isSingleContributor)
     {
         if (!IsViewComponentType(component))
         {
@@ -199,26 +266,49 @@ public class ViewComponentSlotContractTests
         var argsProperties = attribute.Args?.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             ?? [];
 
-        foreach (var parameter in invokeMethods[0].GetParameters())
-        {
-            if (parameter.IsOptional) continue;
+        var parameters = invokeMethods[0].GetParameters();
 
+        foreach (var parameter in parameters)
+        {
             var match = argsProperties.FirstOrDefault(p =>
                 string.Equals(p.Name, parameter.Name, StringComparison.OrdinalIgnoreCase));
 
             if (match is null)
             {
+                if (parameter.IsOptional) continue;
+
                 yield return $"{location}: {component.FullName}.{invokeMethods[0].Name} requires non-optional "
                     + $"parameter '{parameter.Name}', which no property on "
                     + $"{(attribute.Args?.FullName ?? "(no args record — [ViewComponentSlot] declared no arguments)")} supplies";
                 continue;
             }
 
+            // Checked whether or not the parameter is optional: a same-named property of the
+            // wrong type is the #1810 drift (renamed/retyped argument), and MVC's name-based
+            // binding does not care that the parameter has a default.
             if (!IsAssignable(parameter.ParameterType, match.PropertyType))
             {
                 yield return $"{location}: {component.FullName}.{invokeMethods[0].Name} parameter "
                     + $"'{parameter.Name}' ({parameter.ParameterType}) is not assignable from "
                     + $"{attribute.Args!.FullName}.{match.Name} ({match.PropertyType})";
+            }
+        }
+
+        // On a single-contributor (property) seam, an args property that binds to no parameter
+        // is a dropped argument — the component silently stopped reading it. Fanouts share one
+        // args shape across contributors, so an unbound property there is normal, not drift.
+        if (isSingleContributor)
+        {
+            foreach (var argsProperty in argsProperties)
+            {
+                var bound = parameters.Any(p =>
+                    string.Equals(p.Name, argsProperty.Name, StringComparison.OrdinalIgnoreCase));
+
+                if (!bound)
+                {
+                    yield return $"{location}: {attribute.Args!.FullName}.{argsProperty.Name} binds to no "
+                        + $"parameter of {component.FullName}.{invokeMethods[0].Name} (dropped argument)";
+                }
             }
         }
     }

@@ -13,7 +13,7 @@
 
    The review pages use two <vc:> elements, <vc:human> and <vc:access-matrix>, both in
    Humans.Base/ViewComponents/ and bound through the @addTagHelper below. Users' ProfileCard
-   is not one of them: it is invoked by name (design §15 step 6). OnboardingPageRenderTests
+   is not one of them: it is invoked by Type through the IUserPart seam. OnboardingPageRenderTests
    covers these, but it lives in Humans.Integration.Tests and self-skips in CI. *@
 @using Humans.Base.Extensions
 @using Humans.Consent

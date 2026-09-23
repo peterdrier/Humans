@@ -12,7 +12,7 @@ namespace Humans.Users.ViewComponents;
 /// nobodies-collective/Humans#1091.
 /// </summary>
 /// <remarks>
-/// Internal — invoked by name through <c>ChromeSlotViewComponent</c>'s
+/// Internal — invoked by Type through <c>ChromeSlotViewComponent</c>'s
 /// <c>Component.InvokeAsync</c>, not a <c>&lt;vc:&gt;</c> tag helper.
 /// </remarks>
 internal sealed class PreferredLanguageCardViewComponent(

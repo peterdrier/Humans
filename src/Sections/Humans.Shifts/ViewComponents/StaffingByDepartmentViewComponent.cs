@@ -9,7 +9,7 @@ namespace Humans.Shifts.ViewComponents;
 /// (<see cref="Humans.Shifts.SectionChrome"/>).
 /// </summary>
 /// <remarks>
-/// Internal — invoked by name through <c>ChromeSlotViewComponent</c>'s
+/// Internal — invoked by Type through <c>ChromeSlotViewComponent</c>'s
 /// <c>Component.InvokeAsync</c>, not a <c>&lt;vc:&gt;</c> tag helper, so it does not need to
 /// be public under <c>Contracts/</c>. The department breakdown has no source yet:
 /// <c>Departments</c> is always empty, so the card renders the "no data yet" copy and

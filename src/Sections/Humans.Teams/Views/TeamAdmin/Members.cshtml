@@ -230,7 +230,7 @@
                                     }
                                     else
                                     {
-                                        <form asp-controller="TeamAdmin" asp-action="ProvisionEmail" asp-route-slug="@Model.TeamSlug" asp-route-userId="@member.UserId" method="post" class="d-inline">
+                                        <form asp-controller="TeamAdmin" asp-action="ProvisionEmail" asp-route-slug="@Model.TeamSlug" asp-route-userId="@member.LiveUserId" method="post" class="d-inline">
                                             @Html.AntiForgeryToken()
                                             <div class="input-group input-group-sm" style="min-width: 220px;">
                                                 <input type="text" name="emailPrefix" class="form-control form-control-sm"

@@ -5,7 +5,7 @@ description: When adding or invoking a view component across sections, or a cont
 
 Invoke a view component by `Type`, never by name: `<vc:…>` (or `InvokeAsync<T>`) inside its own section; across sections, the owner contributes `typeof(XViewComponent)` to a slot the host declares with `[ViewComponentSlot(typeof(TArgs))]`, and the host calls `Component.InvokeAsync(part.Component, new TArgs(…))`.
 
-**Why:** A string name survives a rename, a deletion or a section move and fails only at render time (or renders a blank slot); a `Type` breaks the build at the contributor (peterdrier/Humans#1815). The args record is the one place the slot's contract is written, and `ViewComponentSlotContractTests` checks every contribution's `Invoke` parameters against it.
+**Why:** A string name survives a rename, a deletion or a section move and fails only at render time (or renders a blank slot); a `Type` breaks the build at the contributor (peterdrier/Humans#1815). The args record is the one place the slot's contract is written, and `ViewComponentSlotContractTests` checks it both ways: every non-optional `Invoke` parameter (and every optional one with a same-named args property) must be type-assignable, and on a single-contributor seam every args property must bind to a parameter (a dropped argument).
 
 **How to apply:**
 - Contribution records (`ChromeComponent`, `SettingsTab`, `UserPart`, …) carry `Type`, not `string`.
