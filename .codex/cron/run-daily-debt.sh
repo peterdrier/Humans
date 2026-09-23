@@ -513,9 +513,8 @@ main() {
     fi
     if [[ "$build_result" != "pass" ]]; then
       exit_reason="build-failed"
-      log "ERROR: build failed after bounded repair attempts — not pushing. See $log_file"
-      write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
-      exit 1
+      log "ERROR: build failed after bounded repair attempts — publishing a draft PR. See $log_file"
+      publish_failed_gate_draft "build" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$last_message_file" "$gh_repo" "$commits_made" "$build_result" "$test_result" "$work_elapsed"
     fi
   fi
 
@@ -540,9 +539,8 @@ main() {
     fi
     if [[ "$test_result" != "pass" ]]; then
       exit_reason="test-failed"
-      log "ERROR: tests failed after bounded repair attempts — not pushing. See $log_file"
-      write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
-      exit 1
+      log "ERROR: tests failed after bounded repair attempts — publishing a draft PR. See $log_file"
+      publish_failed_gate_draft "test" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$last_message_file" "$gh_repo" "$commits_made" "$build_result" "$test_result" "$work_elapsed"
     fi
   fi
   log "build and test both passed"
@@ -596,12 +594,52 @@ main() {
   write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
 }
 
+# Publishes a failed gate as a draft so the follow-up reviewer can repair it.
+# The caller has already confirmed the branch is clean and committed.
+publish_failed_gate_draft() {
+  local gate="$1" branch="$2" base_branch="$3" run_date="$4" log_file="$5"
+  local last_message_file="$6" gh_repo="$7" commits="$8" build="$9" test="${10}" work_elapsed="${11}"
+  local report warning
+
+  warning="## Automated gate warning
+
+This PR is a draft because the final $gate gate failed after the bounded repair passes. The follow-up debt reviewer should inspect and repair it before merge.
+
+- Build gate: $build
+- Test gate: $test
+
+Relevant failure output:
+
+$(tail -n 80 "$log_file")
+
+Goal time: $TIME_BUDGET; actual worker time: $(format_duration "$work_elapsed")."
+  printf '\n\n%s\n' "$warning" >>"$last_message_file"
+  report="$(cat "$last_message_file")"
+
+  if ! push_with_retry "$branch" "$log_file" "$PUSH_RETRIES"; then
+    exit_reason="draft-push-failed"
+    log "ERROR: failed to push broken branch for draft PR"
+    write_summary "$run_date" "$exit_reason" "$commits" "$build" "$test" "$pr_url"
+    exit 1
+  fi
+  if pr_url="$(open_pr_for_branch "$branch" "$base_branch" "$run_date" "$log_file" "$report" "$gh_repo" true)"; then
+    exit_reason="pushed-draft-$gate-failed"
+    log "opened draft PR for failed $gate gate: $pr_url"
+    write_summary "$run_date" "$exit_reason" "$commits" "$build" "$test" "$pr_url"
+    exit 1
+  fi
+  exit_reason="draft-pr-create-failed"
+  log "ERROR: pushed broken branch but could not open draft PR — see $log_file"
+  write_summary "$run_date" "$exit_reason" "$commits" "$build" "$test" "$pr_url"
+  exit 1
+}
+
 # Opens the daily-debt PR for an already-pushed branch. Prints the PR URL on
 # success. Shared by the normal push-then-PR flow and by the "branch already
 # exists on origin but has no open PR" recovery path, so a transient
 # `gh pr create` failure never leaves a pushed branch permanently invisible.
 open_pr_for_branch() {
-  local branch="$1" base_branch="$2" run_date="$3" log_file="$4" run_report="${5:-}" gh_repo="${6:-}"
+  local branch="$1" base_branch="$2" run_date="$3" log_file="$4" run_report="${5:-}" gh_repo="${6:-}" draft="${7:-false}"
   local pr_title="Daily tech-debt sweep — $run_date"
   local pr_body_file
   pr_body_file="$(mktemp)"
@@ -616,8 +654,12 @@ open_pr_for_branch() {
   } >"$pr_body_file"
 
   local result
+  local -a draft_args=()
+  if [[ "$draft" == "true" ]]; then
+    draft_args+=(--draft)
+  fi
   if result="$(gh pr create --repo "$gh_repo" --base "$base_branch" --head "$branch" \
-      --title "$pr_title" --body-file "$pr_body_file" 2>>"$log_file")"; then
+      --title "$pr_title" --body-file "$pr_body_file" "${draft_args[@]}" 2>>"$log_file")"; then
     rm -f "$pr_body_file"
     echo "$result"
     return 0
