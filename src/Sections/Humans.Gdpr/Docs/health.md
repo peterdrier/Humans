@@ -105,7 +105,7 @@ ledger, a fix that adds public surface either way.
   all.** The coverage tests enumerate implementers by reflection, so a new user-scoped
   section whose service never implements `IUserDataContributor` leaves nothing to
   enumerate. The only guardrail is prose in `docs/architecture/design-rules.md`. Tracked as
-  GDPR-4 in this section's `debt.yml`; nobodies-collective/Humans#1116, which described it,
+  CENTRAL-66 in `docs/architecture/debt-ledger.yml`; nobodies-collective/Humans#1116, which described it,
   is closed.
 
 ## 6. Deliberately not done

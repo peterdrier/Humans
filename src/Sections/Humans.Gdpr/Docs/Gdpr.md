@@ -172,4 +172,4 @@ sealed`) behind the public `IGdprService` on the leaf, exposing both
   user-scoped section whose owning service never implements
   `IUserDataContributor` at all leaves nothing to enumerate and the suite
   passes vacuously. The guardrail is prose in `design-rules.md` §8a. Tracked
-  as GDPR-4 in this section's debt.yml.
+  as CENTRAL-66 in docs/architecture/debt-ledger.yml.

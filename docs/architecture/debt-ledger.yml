@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 66
+next_id: 67
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -586,4 +586,8 @@ inbox:
   - added: 2026-09-20
     id: CENTRAL-61
     what: "Two pre-existing Codex runner scripts use `git -C <path>`, which memory/process/never-use-git-dash-c.md marks a HARD RULE with no exceptions: .codex/run-weekly-bug-hunt.sh and .codex/cleanup-merged-bug-hunt-worktrees.sh. Fix is mechanical — run each group in a `(cd \"$dir\" && git ...)` subshell, as .codex/cron/run-daily-debt.sh now does. Worth noting the atom's stated rationale (a wrong shell folder; defeating Bash allowlist prefixes) is about agent-issued commands, so Peter may want to say whether the rule binds committed scripts at all rather than have it re-found every audit. Found 2026-09-20 while fixing the same violation in the nightly debt runner in peterdrier/Humans#1759."
+    review: panel
+  - added: 2026-09-23
+    id: CENTRAL-66
+    what: "The erasure-coverage and DI-coverage tests find contributors by reflecting over IUserDataContributor implementers, so a new user-scoped section whose service never implements the contract leaves nothing to enumerate and both suites pass. The only guardrail is prose in docs/architecture/design-rules.md. nobodies-collective/Humans#1116 described exactly this and asked for an independent inventory (reflection over entities carrying a user foreign key), but it was closed when the section-name registry was removed, which fixed a different problem, and the gap is now tracked nowhere open. The fix is a cross-section test beside the existing coverage tests in tests/Humans.Web.Tests/Services/Gdpr/, plus a per-section export/erasure decision for whatever it surfaces (Calendar's CreatedByUserId is nobodies-collective/Humans#1199). Found by /section-doctor on Gdpr 2026-09-23."
     review: panel
