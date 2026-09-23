@@ -1,0 +1,6 @@
+@model Humans.Camps.Models.CampPartsViewModel
+
+@foreach (var part in Model.Parts)
+{
+    @await Component.InvokeAsync(part.Component, Model.Args)
+}
