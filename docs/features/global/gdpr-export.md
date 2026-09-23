@@ -130,7 +130,8 @@ ordinary change, not a breaking one.
 
 The top-level document is an object with `ExportedAt` (invariant ISO-8601 UTC
 instant string), `UserId`, `MergedFromUserIds`, plus one key per section
-contributed. Sections whose owning service has no data for this user are omitted.
+contributed. A single-object section whose entity does not exist for this user
+is omitted (a `null` slice); a collection section with no rows appears as `[]`.
 
 `UserId` is the account the export belongs to — the **surviving** account when
 the request came in under an id that has since been merged away — and
@@ -285,8 +286,9 @@ fan-out and nothing else at the User aggregate: identity collapse belongs to the
 `Account` contributor, so the orchestrator only drops the caches that key off
 identity afterwards.
 
-Every exported section having an erasure declaration is enforced at runtime by
-`GdprService.ExportForUserAsync` itself (per contributor, not a central list).
+Every exported section having an erasure declaration is checked at runtime by
+`GdprService.ExportForUserAsync` (per contributor, not a central list): a
+missing declaration logs an error and the slice is still exported.
 `tests/Humans.Web.Tests/Services/Gdpr/GdprErasureCoverageTests.cs` covers what
 that check can't: it discovers contributors by reflection over the same section
 assemblies the runtime composes itself from, and requires no category be
