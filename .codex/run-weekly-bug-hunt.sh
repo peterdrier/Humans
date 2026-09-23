@@ -354,12 +354,16 @@ record_pass() {
     "$pass_number" "$pass_kind" "$start_head" "$end_head" "$exit_code" >>"$pass_history_file"
 }
 
+run_checkout_git() {
+  (cd "$run_checkout" && git "$@")
+}
+
 push_branch_if_enabled() {
   if (( !auto_push )); then
     return 0
   fi
 
-  git -C "$run_checkout" push -u "$push_remote" "$run_branch"
+  run_checkout_git push -u "$push_remote" "$run_branch"
 }
 
 run_codex_pass() {
@@ -370,7 +374,7 @@ run_codex_pass() {
   local pass_exit
   local -a codex_args
 
-  pass_start_head="$(git -C "$run_checkout" rev-parse HEAD)"
+  pass_start_head="$(run_checkout_git rev-parse HEAD)"
   write_pass_log_marker "$pass_number" "$pass_kind"
 
   if [[ "$pass_kind" == "initial" ]]; then
@@ -418,7 +422,7 @@ run_codex_pass() {
   fi
 
   capture_session_id || true
-  pass_end_head="$(git -C "$run_checkout" rev-parse HEAD)"
+  pass_end_head="$(run_checkout_git rev-parse HEAD)"
   record_pass "$pass_number" "$pass_kind" "$pass_start_head" "$pass_end_head" "$pass_exit"
 
   if (( pass_exit == 0 )); then
@@ -441,7 +445,7 @@ else
   while (( pass_number < max_passes )); do
     capture_session_id || break
 
-    previous_head="$(git -C "$run_checkout" rev-parse HEAD)"
+    previous_head="$(run_checkout_git rev-parse HEAD)"
     pass_number=$((pass_number + 1))
     next_exit=0
     run_codex_pass "$pass_number" "resume" || next_exit=$?
@@ -451,8 +455,8 @@ else
       break
     fi
 
-    current_head="$(git -C "$run_checkout" rev-parse HEAD)"
-    if [[ "$current_head" == "$previous_head" ]] && [[ -z "$(git -C "$run_checkout" status --porcelain)" ]]; then
+    current_head="$(run_checkout_git rev-parse HEAD)"
+    if [[ "$current_head" == "$previous_head" ]] && [[ -z "$(run_checkout_git status --porcelain)" ]]; then
       break
     fi
   done
@@ -464,10 +468,10 @@ finished_at="$(date -u +%Y%m%dT%H%M%SZ)"
   echo "codex_exit=$last_exit"
   echo "passes_completed=$pass_number"
   echo "git_status_after_run<<EOF"
-  git -C "$run_checkout" status --short
+  run_checkout_git status --short
   echo "EOF"
   echo "recent_commits<<EOF"
-  git -C "$run_checkout" log --oneline -n 10
+  run_checkout_git log --oneline -n 10
   echo "EOF"
 } >>"$metadata_file"
 

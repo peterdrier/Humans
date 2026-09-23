@@ -265,10 +265,24 @@ public class FinanceControllerTests
             ]));
 
         var controller = MakeController();
-        await controller.CreditorStatement(40000002);
-        var lines = (IReadOnlyList<CreditorLedgerLine>)controller.ViewBag.Lines;
+        var result = await controller.CreditorStatement(40000002);
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<CreditorStatementVm>().Subject;
 
-        lines.Select(l => (l.EntryNumber, l.Line)).Should().Equal((9, 1), (9, 2), (7, 1), (5, 1));
+        model.OwedBalance.Should().Be(10m);
+        model.Lines.Select(l => (l.EntryNumber, l.Line)).Should().Equal((9, 1), (9, 2), (7, 1), (5, 1));
+    }
+
+    [HumansFact]
+    public async Task CreditorStatement_MemberOwingTheOrganisation_ShowsNegativeBalance()
+    {
+        _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorLedger(40000002, 25m, 0m, []));
+
+        var result = await MakeController().CreditorStatement(40000002);
+
+        result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<CreditorStatementVm>().Subject.OwedBalance.Should().Be(-25m);
     }
 
     // ─── Connector index ─────────────────────────────────────────────────────────

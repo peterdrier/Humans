@@ -100,6 +100,16 @@
   <data name="Events_Submission_ReturnedForEdits" xml:space="preserve"><value>Este evento se devolvió para editarlo. Actualiza los detalles y vuelve a enviarlo.</value></data>
   <data name="Events_Submission_CharactersRemaining" xml:space="preserve"><value>caracteres restantes</value></data>
   <data name="Events_Submission_MarkdownSupported" xml:space="preserve"><value>Se admite formato Markdown</value></data>
+  <data name="Events_Submission_FieldTitle" xml:space="preserve"><value>Título</value></data>
+  <data name="Events_Submission_FieldDescription" xml:space="preserve"><value>Descripción</value></data>
+  <data name="Events_Submission_FieldCategory" xml:space="preserve"><value>Categoría</value></data>
+  <data name="Events_Submission_FieldVenue" xml:space="preserve"><value>Lugar</value></data>
+  <data name="Events_Submission_FieldDate" xml:space="preserve"><value>Fecha</value></data>
+  <data name="Events_Submission_FieldStartTime" xml:space="preserve"><value>Hora de inicio</value></data>
+  <data name="Events_Submission_FieldDuration" xml:space="preserve"><value>Duración (minutos)</value></data>
+  <data name="Events_Submission_FieldLocationNote" xml:space="preserve"><value>Nota de ubicación</value></data>
+  <data name="Events_Submission_FieldHost" xml:space="preserve"><value>Anfitrión</value></data>
+  <data name="Events_Submission_FieldPriorityRank" xml:space="preserve"><value>Prioridad</value></data>
   <data name="Events_Submission_SelectCategory" xml:space="preserve"><value>— Selecciona una categoría —</value></data>
   <data name="Events_Submission_SelectVenue" xml:space="preserve"><value>— Selecciona un lugar —</value></data>
   <data name="Events_Submission_AllDay" xml:space="preserve"><value>Evento de todo el día</value></data>

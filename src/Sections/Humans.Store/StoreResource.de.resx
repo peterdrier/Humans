@@ -65,4 +65,16 @@
   <data name="Store_OpenOrder" xml:space="preserve"><value>Öffnen</value></data>
   <data name="Store_StartOrder" xml:space="preserve"><value>Bestellung starten</value></data>
   <data name="Store_Title" xml:space="preserve"><value>Store</value></data>
+  <data name="Store_CheckoutFailed" xml:space="preserve"><value>Stripe Checkout konnte nicht gestartet werden. Bitte versuche es erneut oder kontaktiere eine Administration.</value></data>
+  <data name="Store_InvoiceIssued" xml:space="preserve"><value>Rechnung in Holded ausgestellt. Die Bestellung ist jetzt gesperrt.</value></data>
+  <data name="Store_InvoiceFailed" xml:space="preserve"><value>Die Rechnung konnte in Holded nicht ausgestellt werden. Prüfe die Logs und versuche es erneut.</value></data>
+  <data name="Store_OrderCreated" xml:space="preserve"><value>Bestellung erstellt.</value></data>
+  <data name="Store_TeamOrderCreated" xml:space="preserve"><value>Teambestellung erstellt.</value></data>
+  <data name="Store_OrderDeleted" xml:space="preserve"><value>Bestellung gelöscht.</value></data>
+  <data name="Store_AddLineFailed" xml:space="preserve"><value>Position konnte nicht hinzugefügt werden.</value></data>
+  <data name="Store_LineAdded" xml:space="preserve"><value>Position hinzugefügt.</value></data>
+  <data name="Store_RemoveLineFailed" xml:space="preserve"><value>Position konnte nicht entfernt werden.</value></data>
+  <data name="Store_LineRemoved" xml:space="preserve"><value>Position entfernt.</value></data>
+  <data name="Store_UpdateCounterpartyFailed" xml:space="preserve"><value>Gegenpartei konnte nicht aktualisiert werden.</value></data>
+  <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Gegenpartei aktualisiert.</value></data>
 </root>

@@ -36,7 +36,7 @@ internal interface ICampaignRepository : IRepository
 
     /// <summary>
     /// Returns the summary header (id/title) for every
-    /// Active or Completed campaign, ordered CreatedAt desc. Used together
+    /// Active or Completed campaign. Used together
     /// with <see cref="GetCodeTrackingGrantRowsAsync"/> to build the Tickets
     /// admin code-tracking dashboard (so campaigns with zero grants still
     /// surface a row).
@@ -183,7 +183,8 @@ internal sealed record GrantWithSendContext(
 /// </summary>
 internal sealed record CampaignCodeTrackingSummaryRow(
     Guid CampaignId,
-    string CampaignTitle);
+    string CampaignTitle,
+    Instant CreatedAt);
 
 /// <summary>
 /// One grant per row, used by <see cref="ICampaignRepository.GetCodeTrackingGrantRowsAsync"/>.

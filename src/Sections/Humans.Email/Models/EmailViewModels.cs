@@ -13,6 +13,7 @@ internal sealed class EmailOutboxViewModel
     public int QueuedCount { get; set; }
     public int SentLast24HoursCount { get; set; }
     public int FailedCount { get; set; }
+    public int OutboxBatchSize { get; set; }
     public bool IsPaused { get; set; }
     public List<EmailOutboxMessageDto> Messages { get; set; } = [];
     public List<DailySendCountRow> DailyCounts { get; set; } = [];

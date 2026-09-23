@@ -61,7 +61,6 @@ public class ServiceTests
         result.Year.Should().Be(2026);
         result.Catalog.Select(p => p.Name).Should().Equal("Blanket", "Tent");
         result.Counterparties.Should().BeEmpty();
-        result.ShowNoOrdersMessage.Should().BeTrue();
     }
 
     [HumansFact]

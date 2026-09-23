@@ -882,14 +882,23 @@ internal sealed class ProfileController(
         if (user is null)
             return NotFound();
 
-        var export = await gdprExportService.ExportForUserAsync(user.Id, ct);
+        try
+        {
+            var export = await gdprExportService.ExportForUserAsync(user.Id, ct);
 
-        var payload = BuildExportPayload(export);
-        var json = System.Text.Json.JsonSerializer.Serialize(payload, ExportJsonOptions);
-        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-        var fileName = $"nobodies-profiles-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
+            var payload = BuildExportPayload(export);
+            var json = System.Text.Json.JsonSerializer.Serialize(payload, ExportJsonOptions);
+            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+            var fileName = $"nobodies-profiles-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
 
-        return File(bytes, "application/json", fileName);
+            return File(bytes, "application/json", fileName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to export data for user {UserId}", user.Id);
+            SetError(sharedLocalizer["Error_TryAgainLater"].Value);
+            return RedirectToAction(nameof(Privacy));
+        }
     }
 
     private static Dictionary<string, object?> BuildExportPayload(GdprExport export)

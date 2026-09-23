@@ -50,6 +50,58 @@ codex_auth_ok() {
   [[ -s "${CODEX_HOME:-$HOME/.codex}/auth.json" ]]
 }
 
+# Give Codex one bounded repair pass when the final gate catches a regression
+# left by the main sweep. The repair prompt is deliberately separate from the
+# debt prompt: it may only make the current branch build/test green, commit
+# that repair, and stop. Returning non-zero keeps the normal fail-closed path.
+run_gate_repair() {
+  local failure_kind="$1" work_dir="$2" log_dir="$3" log_file="$4" run_date="$5"
+  local branch="$6" codex_model="$7" codex_effort="$8" dangerous="$9" repair_seconds="${10}"
+  local repair_prompt="$log_dir/repair-prompt-$run_date.md"
+  local repair_message="$log_dir/repair-message-$run_date.md"
+  local repair_started repair_deadline repair_exit=0 current_branch
+
+  repair_started="$(date -u +%s)"
+  repair_deadline=$(( repair_started + repair_seconds ))
+  {
+    echo "# Final gate repair"
+    echo
+    echo "The scheduled Humans tech-debt sweep has already completed its work window."
+    echo "The $failure_kind gate failed afterward. Repair only this failure on the current branch."
+    echo "Do not start new debt work, switch branches, reset commits, or leave uncommitted changes."
+    echo "Inspect the failure excerpt below, make the smallest correct production/tooling fix,"
+    echo "run focused verification, commit the repair, and finish with a concise report."
+    echo
+    echo "Expected branch: $branch"
+    echo
+    echo "## Failure excerpt"
+    tail -n 160 "$log_file"
+  } >"$repair_prompt"
+  rm -f "$repair_message"
+  log "starting bounded Codex gate-repair pass for $failure_kind (deadline $repair_deadline)"
+  export WORK_DIR="$work_dir" CODEX_MODEL="$codex_model" CODEX_EFFORT="$codex_effort" CODEX_DANGEROUS="$dangerous"
+  python3 "$work_dir/.codex/cron/run-goal.py" "$repair_prompt" "$repair_message" "$repair_deadline" \
+    >>"$log_file" 2>&1 || repair_exit=$?
+  if (( repair_exit != 0 )); then
+    log "gate-repair Codex session failed (exit $repair_exit)"
+    return 1
+  fi
+  current_branch="$(git rev-parse --abbrev-ref HEAD)"
+  if [[ "$current_branch" != "$branch" ]]; then
+    log "gate-repair changed branches to '$current_branch' — refusing to continue"
+    return 1
+  fi
+  if [[ -n "$(git status --porcelain)" ]]; then
+    log "gate-repair left uncommitted changes — refusing to continue"
+    return 1
+  fi
+  if [[ ! -s "$repair_message" ]]; then
+    log "gate-repair produced no final report — refusing to continue"
+    return 1
+  fi
+  return 0
+}
+
 main() {
   # ============================================================
   # CONFIG — every machine-specific value, sourced from
@@ -81,6 +133,8 @@ main() {
   PUSH_RETRIES="${PUSH_RETRIES:-4}"                            # retries after the first push attempt, network failures only
   MAX_OPEN_AUTO_PRS="${MAX_OPEN_AUTO_PRS:-1}"                  # skip the night when this many of this runner's PRs are already open
   LOG_RETENTION_DAYS="${LOG_RETENTION_DAYS:-30}"
+  GATE_REPAIR_ATTEMPTS="${GATE_REPAIR_ATTEMPTS:-2}"            # bounded Codex repair passes after a final build/test failure
+  GATE_REPAIR_BUDGET="${GATE_REPAIR_BUDGET:-15m}"              # work window for each repair pass
   # Applies to the wrapper and dotnet test commands launched by Codex.
   # Integration tests are outside nightly runs and manual runner trials.
   export VSTestTestCaseFilter='FullyQualifiedName!~Humans.Integration.Tests'
@@ -122,6 +176,15 @@ main() {
   if ! budget_seconds="$(parse_seconds "$TIME_BUDGET")"; then
     exit_reason="invalid-time-budget"
     die "TIME_BUDGET must be a positive integer with optional s/m/h/d suffix"
+  fi
+  if [[ ! "$GATE_REPAIR_ATTEMPTS" =~ ^[0-9]+$ ]]; then
+    exit_reason="invalid-gate-repair-attempts"
+    die "GATE_REPAIR_ATTEMPTS must be a non-negative integer"
+  fi
+  local gate_repair_seconds
+  if ! gate_repair_seconds="$(parse_seconds "$GATE_REPAIR_BUDGET")"; then
+    exit_reason="invalid-gate-repair-budget"
+    die "GATE_REPAIR_BUDGET must be a positive integer with optional s/m/h/d suffix"
   fi
 
   # ---- single-instance lock ----------------------------------------------
@@ -298,11 +361,16 @@ main() {
     # Recover the earlier run's report so the PR this path opens carries the
     # rung, closed ledger ids and skip reasons that daily-debt.md requires —
     # a PR opened on retry is no less reviewable than one opened first time.
+    local retry_draft=false
     if [[ -f "$last_message_file" ]]; then
       run_report="$(cat "$last_message_file")"
       log "recovered run report from $last_message_file for the retried PR"
+      if grep -q '^## Automated gate warning$' "$last_message_file"; then
+        retry_draft=true
+        log "recovered report contains a gate warning — reopening as draft"
+      fi
     fi
-    if pr_url="$(open_pr_for_branch "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo")"; then
+    if pr_url="$(open_pr_for_branch "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo" "$retry_draft")"; then
       exit_reason="pushed"
       log "opened PR for pre-existing branch: $pr_url"
     else
@@ -433,15 +501,26 @@ main() {
   log "codex made $commits_made commit(s)"
 
   # ---- gate before pushing: build + test ----------------------------------
+  local gate_repair_count=0
   log "running dotnet build Humans.slnx -v quiet -clp:ErrorsOnly"
   if dotnet build Humans.slnx -v quiet -clp:ErrorsOnly >>"$log_file" 2>&1; then
     build_result="pass"
   else
     build_result="fail"
-    exit_reason="build-failed"
-    log "ERROR: build failed — not pushing. See $log_file"
-    write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
-    exit 1
+    if (( gate_repair_count < GATE_REPAIR_ATTEMPTS )) && run_gate_repair "build" "$WORK_DIR" "$LOG_DIR" "$log_file" "$run_date" "$branch" "$CODEX_MODEL" "$CODEX_EFFORT" "$CODEX_DANGEROUS" "$gate_repair_seconds"; then
+      gate_repair_count=$(( gate_repair_count + 1 ))
+      head_after="$(git rev-parse HEAD)"
+      commits_made="$(git rev-list --count "$head_before..$head_after")"
+      log "retrying build after gate repair ($gate_repair_count/$GATE_REPAIR_ATTEMPTS)"
+      if dotnet build Humans.slnx -v quiet -clp:ErrorsOnly >>"$log_file" 2>&1; then
+        build_result="pass"
+      fi
+    fi
+    if [[ "$build_result" != "pass" ]]; then
+      exit_reason="build-failed"
+      log "ERROR: build failed after bounded repair attempts — publishing a draft PR. See $log_file"
+      publish_failed_gate_draft "build" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$last_message_file" "$gh_repo" "$commits_made" "$build_result" "$test_result" "$work_elapsed"
+    fi
   fi
 
   log "running dotnet test Humans.slnx -v quiet -clp:ErrorsOnly --filter $VSTestTestCaseFilter"
@@ -449,12 +528,34 @@ main() {
     test_result="pass"
   else
     test_result="fail"
-    exit_reason="test-failed"
-    log "ERROR: tests failed — not pushing. See $log_file"
-    write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
-    exit 1
+    if (( gate_repair_count < GATE_REPAIR_ATTEMPTS )) && run_gate_repair "test" "$WORK_DIR" "$LOG_DIR" "$log_file" "$run_date" "$branch" "$CODEX_MODEL" "$CODEX_EFFORT" "$CODEX_DANGEROUS" "$gate_repair_seconds"; then
+      gate_repair_count=$(( gate_repair_count + 1 ))
+      head_after="$(git rev-parse HEAD)"
+      commits_made="$(git rev-list --count "$head_before..$head_after")"
+      log "rerunning build and tests after gate repair ($gate_repair_count/$GATE_REPAIR_ATTEMPTS)"
+      if dotnet build Humans.slnx -v quiet -clp:ErrorsOnly >>"$log_file" 2>&1; then
+        build_result="pass"
+        if dotnet test Humans.slnx -v quiet -clp:ErrorsOnly --filter "$VSTestTestCaseFilter" >>"$log_file" 2>&1; then
+          test_result="pass"
+        fi
+      else
+        build_result="fail"
+      fi
+    fi
+    if [[ "$test_result" != "pass" ]]; then
+      exit_reason="test-failed"
+      log "ERROR: tests failed after bounded repair attempts — publishing a draft PR. See $log_file"
+      publish_failed_gate_draft "test" "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$last_message_file" "$gh_repo" "$commits_made" "$build_result" "$test_result" "$work_elapsed"
+    fi
   fi
   log "build and test both passed"
+  if (( gate_repair_count > 0 )); then
+    {
+      printf '\n\n## Gate repair\n\n'
+      cat "$LOG_DIR/repair-message-$run_date.md"
+    } >>"$last_message_file"
+    run_report="$(cat "$last_message_file")"
+  fi
   # Wrapper timestamps, not the agent's estimate. Save this with the report
   # so a retry of PR creation preserves the original run's timing.
   local timing="Goal time: $TIME_BUDGET; actual worker time: $(format_duration "$work_elapsed"); total run through validation: $(format_duration "$(( $(date -u +%s) - run_started ))")."
@@ -498,12 +599,52 @@ main() {
   write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
 }
 
+# Publishes a failed gate as a draft so the follow-up reviewer can repair it.
+# The caller has already confirmed the branch is clean and committed.
+publish_failed_gate_draft() {
+  local gate="$1" branch="$2" base_branch="$3" run_date="$4" log_file="$5"
+  local last_message_file="$6" gh_repo="$7" commits="$8" build="$9" test="${10}" work_elapsed="${11}"
+  local report warning
+
+  warning="## Automated gate warning
+
+This PR is a draft because the final $gate gate failed after the bounded repair passes. The follow-up debt reviewer should inspect and repair it before merge.
+
+- Build gate: $build
+- Test gate: $test
+
+Relevant failure output:
+
+$(tail -n 80 "$log_file")
+
+Goal time: $TIME_BUDGET; actual worker time: $(format_duration "$work_elapsed")."
+  printf '\n\n%s\n' "$warning" >>"$last_message_file"
+  report="$(cat "$last_message_file")"
+
+  if ! push_with_retry "$branch" "$log_file" "$PUSH_RETRIES"; then
+    exit_reason="draft-push-failed"
+    log "ERROR: failed to push broken branch for draft PR"
+    write_summary "$run_date" "$exit_reason" "$commits" "$build" "$test" "$pr_url"
+    exit 1
+  fi
+  if pr_url="$(open_pr_for_branch "$branch" "$base_branch" "$run_date" "$log_file" "$report" "$gh_repo" true)"; then
+    exit_reason="pushed-draft-$gate-failed"
+    log "opened draft PR for failed $gate gate: $pr_url"
+    write_summary "$run_date" "$exit_reason" "$commits" "$build" "$test" "$pr_url"
+    exit 1
+  fi
+  exit_reason="draft-pr-create-failed"
+  log "ERROR: pushed broken branch but could not open draft PR — see $log_file"
+  write_summary "$run_date" "$exit_reason" "$commits" "$build" "$test" "$pr_url"
+  exit 1
+}
+
 # Opens the daily-debt PR for an already-pushed branch. Prints the PR URL on
 # success. Shared by the normal push-then-PR flow and by the "branch already
 # exists on origin but has no open PR" recovery path, so a transient
 # `gh pr create` failure never leaves a pushed branch permanently invisible.
 open_pr_for_branch() {
-  local branch="$1" base_branch="$2" run_date="$3" log_file="$4" run_report="${5:-}" gh_repo="${6:-}"
+  local branch="$1" base_branch="$2" run_date="$3" log_file="$4" run_report="${5:-}" gh_repo="${6:-}" draft="${7:-false}"
   local pr_title="Daily tech-debt sweep — $run_date"
   local pr_body_file
   pr_body_file="$(mktemp)"
@@ -518,8 +659,12 @@ open_pr_for_branch() {
   } >"$pr_body_file"
 
   local result
+  local -a draft_args=()
+  if [[ "$draft" == "true" ]]; then
+    draft_args+=(--draft)
+  fi
   if result="$(gh pr create --repo "$gh_repo" --base "$base_branch" --head "$branch" \
-      --title "$pr_title" --body-file "$pr_body_file" 2>>"$log_file")"; then
+      --title "$pr_title" --body-file "$pr_body_file" "${draft_args[@]}" 2>>"$log_file")"; then
     rm -f "$pr_body_file"
     echo "$result"
     return 0

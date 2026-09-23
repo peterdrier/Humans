@@ -318,10 +318,6 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
-  - added: 2026-09-22
-    id: CENTRAL-65
-    what: "tests/Humans.Feedback.Tests/Architecture/FeedbackArchitectureTests.cs, tests/Humans.Notifications.Tests/NotificationsArchitectureTests.cs and tests/Humans.Issues.Tests/Architecture/IssuesArchitectureTests.cs each carry the comment 'IRepositoryImplementationsAreSealedRule, which sweeps Humans.Infrastructure only'. Both the rule and that assembly are gone — docs/architecture/roslyn-analysis.md records the rule as retired and says not to repoint it, because HUM0034 plus MA0053 make sealing structural. Email's copy was corrected by /section-doctor on Email 2026-09-22; these three are the same false claim in sections that run did not touch."
-    review: light
   - added: 2026-09-21
     id: CENTRAL-63
     what: "docs/architecture/design-rules.md §8 still describes the pre-cutover Settings world: it says settings_event 'has no readers yet', that every section reads the app-wide values off the Shifts-owned event_settings row via IBurnSettingsService, and that the table is populated by an operator screen at /Settings/Admin/Carry. The cutover (nobodies-collective/Humans#1630, nobodies-collective/Humans#1631) repointed every reader at settings_event, deleted the carry screen and made /Settings/Admin POST-only. The same paragraph's key list also omits Workgroups:RootDriveFolderId, the third system_settings key. Central regulations, not a section file (/section-doctor on Settings 2026-09-21)."
@@ -376,11 +372,6 @@ inbox:
     id: CENTRAL-21
     what: "Nothing builds the real service provider and resolves the sections' registered services, so a DI misregistration ships green. Found in nobodies-collective/Humans#1104: a commit registered Service only as ISettingsWriteService while two consumers still asked for the concrete Service — the build passed and all ~4,900 unit tests passed, but /Settings/Admin and /Settings/Admin/Carry would both have thrown on activation and IEventSettingsCarryService could not have been constructed. Nothing in the suite would have caught it at any point. A composition-root smoke check that builds the container from the same ISection registration path the app uses and resolves every registered service would close it. Needs Peter's approval before anything is added (memory/process rule: no new CI checks without permission)."
     review: panel
-  - added: 2026-08-18
-    id: CENTRAL-19
-    what: "DevelopmentDashboardSeeder seeds BuildStartOffset: -14 (line 102) while EventSettingsConfiguration.cs:44 defaults FirstCrewStartOffset to -25, violating the BuildStart <= FirstCrew invariant on a fresh Development database. The other half of this row (Signup.Refuse() called after Confirmed) was fixed since filing: the seeder now routes Voluntell->Confirmed through BailAsync and SignUp->Pending through RefuseAsync (lines 407-424), verified 2026-09-20."
-    review: panel
-    status: partial
   - added: 2026-08-16
     id: CENTRAL-17
     what: "21 classes carry [CrossSectionWrite(\"reason\")] (grep src/ --include=*.cs) — each is a cross-section write through another section's full I*Service, which HUM0032 accepts only because the marker is there. The preferred shape is the other way round: the section that owns the data ships a view component and writes its own rows, so the consumer never holds the write interface. Introduced with the marker in nobodies-collective/Humans#1064; every one is a pre-existing call newly made visible, not new coupling. Work them down per owning section, not as one sweep — several (GoogleIntegration's four sync services, Development's two dev seeders) are provisioning paths where a view component is the wrong answer and the marker is the final state."
@@ -520,10 +511,6 @@ inbox:
     review: light
     root: CENTRAL-57
   - added: 2026-09-11
-    id: CENTRAL-41
-    what: "Rideshare and Issues still send member notifications in English. Workgroups now groups recipients by PreferredLanguage and uses existing localized labels with INotificationService.SendAsync; no new notification API is required. Apply the same approach to the remaining callers. Found during review of peterdrier/Humans#1650."
-    review: light
-  - added: 2026-09-11
     id: CENTRAL-42
     what: "GenerateDocumentationFile is set in no project in this repo, so CS1574 never fires and a broken <see cref> target never fails a build; Calendar alone was carrying a batch of them. Repo-wide (finding 5, /section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Guide 2026-09-11)."
     review: light
@@ -540,10 +527,6 @@ inbox:
     id: CENTRAL-45
     what: "INotificationAutoResolve has ResolveBySourceAsync (user + source, every key) and ResolveBySourceKeyAsync (source + key, every user) but nothing per user AND key, so Governance cannot retract one voter's AssemblyVoteOpened entry when they cast their ballot — the actionable row stands until the vote closes, and clearing it with ResolveBySourceAsync would wipe the member's prompts for every other open vote of the same assembly. Needs a new method on the Notifications contracts leaf, so Peter's call on the surface addition (Codex on peterdrier/Humans#1649)."
     review: panel
-  - added: 2026-09-11
-    id: CENTRAL-46
-    what: "docs/scripts/freshness-checks/dependency-graph.sh uses awk's asorti, which mawk (the container's awk) does not define: the script dies at line 91 and then reports PASS with \"all 0 section/Web service classes appear as Mermaid nodes\" — a vacuous pass that hides every missing node. Found when a Codex finding cited the check's output on peterdrier/Humans#1649 and it could not be reproduced."
-    review: light
   - added: 2026-09-14
     id: CENTRAL-50
     what: "src/Sections/Humans.EarlyEntry has no .Contracts leaf, so every consumer — Gate among them — takes a ProjectReference on the whole section and sees all of it rather than a contracts surface. Cross-cutting: it wants one carve-out decision, not a fix per consumer (finding 14, /section-doctor on Gate 2026-08-31; swept in by /section-doctor on Issues 2026-09-14)."
@@ -583,10 +566,6 @@ inbox:
     id: CENTRAL-59
     what: "src/Sections/Humans.Users.Contracts/IUserInfoInvalidator.cs:24 deliberately omits the IInvalidator marker (its own comment says so, debt nobodies-collective/Humans#805), so HUM0028 cannot see it and it needs no [Grandfathered] marker — one invalidator dodging the ratchet by being invisible to it. Marking it (or recording the exemption where the analyzer reads it) is small and separable from the big invalidator rework the HUM0028 theme is parked on. Found by the 2026-09-20 accepted-smell audit."
     review: light
-  - added: 2026-09-20
-    id: CENTRAL-61
-    what: "Two pre-existing Codex runner scripts use `git -C <path>`, which memory/process/never-use-git-dash-c.md marks a HARD RULE with no exceptions: .codex/run-weekly-bug-hunt.sh and .codex/cleanup-merged-bug-hunt-worktrees.sh. Fix is mechanical — run each group in a `(cd \"$dir\" && git ...)` subshell, as .codex/cron/run-daily-debt.sh now does. Worth noting the atom's stated rationale (a wrong shell folder; defeating Bash allowlist prefixes) is about agent-issued commands, so Peter may want to say whether the rule binds committed scripts at all rather than have it re-found every audit. Found 2026-09-20 while fixing the same violation in the nightly debt runner in peterdrier/Humans#1759."
-    review: panel
   - added: 2026-09-23
     id: CENTRAL-66
     what: "The erasure-coverage and DI-coverage tests find contributors by reflecting over IUserDataContributor implementers, so a new user-scoped section whose service never implements the contract leaves nothing to enumerate and both suites pass. The only guardrail is prose in docs/architecture/design-rules.md. nobodies-collective/Humans#1116 described exactly this and asked for an independent inventory (reflection over entities carrying a user foreign key), but it was closed when the section-name registry was removed, which fixed a different problem, and the gap is now tracked nowhere open. The fix is a cross-section test beside the existing coverage tests in tests/Humans.Web.Tests/Services/Gdpr/, plus a per-section export/erasure decision for whatever it surfaces (Calendar's CreatedByUserId is nobodies-collective/Humans#1199). Found by /section-doctor on Gdpr 2026-09-23."

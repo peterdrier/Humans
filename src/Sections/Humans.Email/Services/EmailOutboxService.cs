@@ -160,7 +160,7 @@ internal sealed class EmailOutboxService(
         var existingKeys = await repo.GetDailySendCountKeysAsync(cancellationToken);
 
         return messages
-            .Where(m => !IsTestAddress(m.RecipientEmail))
+            .Where(m => !EmailTestAddress.IsTestAddress(m.RecipientEmail))
             .GroupBy(m => (Date: m.SentAt!.Value.InUtc().Date, m.TemplateName))
             .Where(g => g.Key.Date != today && !existingKeys.Contains((g.Key.Date, g.Key.TemplateName)))
             .Select(g => new EmailDailySendCount
@@ -173,10 +173,6 @@ internal sealed class EmailOutboxService(
             .OrderBy(r => r.Date).ThenBy(r => r.TemplateName, StringComparer.Ordinal)
             .ToList();
     }
-
-    private static bool IsTestAddress(string email) =>
-        email.EndsWith("@localhost", StringComparison.OrdinalIgnoreCase) ||
-        email.EndsWith("@ticketstub.local", StringComparison.OrdinalIgnoreCase);
 
     // --- IUserDataContributor ---
 

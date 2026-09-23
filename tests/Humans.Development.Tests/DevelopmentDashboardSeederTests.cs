@@ -78,8 +78,9 @@ public class DevelopmentDashboardSeederTests
         signups.RefuseAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>())
             .Returns(_ => SignupResult.Ok(Guid.NewGuid()));
 
+        var eventSettingsSeeding = Substitute.For<IEventSettingsSeeding>();
         var sut = new DevelopmentDashboardSeeder(
-            shifts, Substitute.For<ISettingsService>(), Substitute.For<IEventSettingsSeeding>(), signups,
+            shifts, Substitute.For<ISettingsService>(), eventSettingsSeeding, signups,
             Substitute.For<ITeamService>(), teams, Substitute.For<IUserEmailService>(),
             Substitute.For<IUserService>(), profileEditor, userManager, new FakeClock(now),
             NullLogger<DevelopmentDashboardSeeder>.Instance);
@@ -96,6 +97,10 @@ public class DevelopmentDashboardSeederTests
             profile.FirstName.Should().NotBeNullOrWhiteSpace();
             profile.LastName.Should().NotBeNullOrWhiteSpace();
         });
+        await eventSettingsSeeding.Received().CreateActiveEventAsync(
+            Arg.Is<EventSettingsInfo>(settings =>
+                settings.BuildStartOffset <= settings.FirstCrewStartOffset),
+            Arg.Any<CancellationToken>());
     }
 
     /// <summary>

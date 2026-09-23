@@ -79,6 +79,17 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
+    public async Task Index_does_not_load_teams_for_an_unused_month_model_field()
+    {
+        StubViewer();
+        _feedTokens.EnsureAsync(_viewer, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
+
+        await IndexModelAsync();
+
+        await _teams.DidNotReceive().GetTeamsAsync(Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task RegenerateIcal_rotates_the_viewers_own_token_and_returns_to_the_grid()
     {
         StubViewer();

@@ -19,6 +19,7 @@ using Humans.Teams.Contracts;
 
 using Humans.Users.Tests.Infrastructure;
 using Humans.Base;
+using Humans.Base.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -49,6 +50,7 @@ public class ProfileControllerEditTests
         Substitute.For<IApplicationDecisionService>();
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
+    private readonly IGdprService _gdprService = Substitute.For<IGdprService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly IShiftVolunteerProfiles _shiftMgmt = Substitute.For<IShiftVolunteerProfiles>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
@@ -87,7 +89,7 @@ public class ProfileControllerEditTests
             Substitute.For<ISettingsService>(),
             _shiftMgmt,
             _shiftView,
-            Substitute.For<IGdprService>(),
+            _gdprService,
             _configuration,
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,
@@ -151,6 +153,18 @@ public class ProfileControllerEditTests
         // The happy path now also writes meal-pref + allergies onto the shift
         // profile. Return a fresh profile by default so existing tests don't NRE
         // when the controller sets fields on it.
+    }
+
+    [HumansFact]
+    public async Task DownloadData_ExportFailure_ShowsErrorAndReturnsToPrivacy()
+    {
+        _gdprService.ExportForUserAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<GdprExport>(new InvalidOperationException("contributor failed")));
+
+        var result = await _controller.DownloadData(TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Privacy");
+        _controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Error_TryAgainLater");
     }
 
     [HumansFact]

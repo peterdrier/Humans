@@ -348,10 +348,8 @@ internal sealed class CachingUserService(
     /// Rebuilds the cache entry for <paramref name="userId"/> directly from
     /// repositories. If the user no longer exists, the entry is removed.
     /// </summary>
-    private async Task RefreshEntryAsync(Guid userId, CancellationToken ct)
-    {
-        await ReplaceAsync(userId, ct).ConfigureAwait(false);
-    }
+    private Task RefreshEntryAsync(Guid userId) =>
+        ReplaceAsync(userId, CancellationToken.None);
 
     /// <summary>
     /// Populates the inherited cache with a <see cref="UserInfo"/> for every
@@ -621,20 +619,20 @@ internal sealed class CachingUserService(
     {
         var result = await WithInnerAsync(inner =>
             inner.TrySetGoogleEmailStatusFromSyncAsync(userId, status, ct));
-        if (result) await RefreshEntryAsync(userId, ct);
+        if (result) await RefreshEntryAsync(userId);
         return result;
     }
 
     public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
     {
         await WithInnerAsync(inner => inner.SetPreferredLanguageAsync(userId, preferredLanguage, ct));
-        await RefreshEntryAsync(userId, ct);
+        await RefreshEntryAsync(userId);
     }
 
     public async Task RecordLoginAsync(Guid userId, CancellationToken ct = default)
     {
         await WithInnerAsync(inner => inner.RecordLoginAsync(userId, ct));
-        await RefreshEntryAsync(userId, ct);
+        await RefreshEntryAsync(userId);
     }
 
     public async Task<bool> SetDeletionPendingAsync(
@@ -643,14 +641,14 @@ internal sealed class CachingUserService(
     {
         var updated = await WithInnerAsync(inner =>
             inner.SetDeletionPendingAsync(userId, requestedAt, scheduledFor, eligibleAfter, ct));
-        if (updated) await RefreshEntryAsync(userId, ct);
+        if (updated) await RefreshEntryAsync(userId);
         return updated;
     }
 
     public async Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default)
     {
         var updated = await WithInnerAsync(inner => inner.ClearDeletionAsync(userId, ct));
-        if (updated) await RefreshEntryAsync(userId, ct);
+        if (updated) await RefreshEntryAsync(userId);
         return updated;
     }
 
@@ -663,7 +661,7 @@ internal sealed class CachingUserService(
     {
         var created = await WithInnerAsync(inner =>
             inner.EnsureStubProfileAsync(userId, burnerName, firstName, lastName, ct));
-        if (created) await RefreshEntryAsync(userId, ct);
+        if (created) await RefreshEntryAsync(userId);
         return created;
     }
 
@@ -673,7 +671,7 @@ internal sealed class CachingUserService(
         CancellationToken ct = default)
     {
         var updated = await WithInnerAsync(inner => inner.SetMembershipTierAsync(userId, tier, ct));
-        if (updated) await RefreshEntryAsync(userId, ct);
+        if (updated) await RefreshEntryAsync(userId);
         return updated;
     }
 
@@ -684,7 +682,7 @@ internal sealed class CachingUserService(
     {
         var result = await WithInnerAsync(inner =>
             inner.ApplyProfileOnboardingMutationAsync(userId, command, ct));
-        if (result.Success) await RefreshEntryAsync(userId, ct);
+        if (result.Success) await RefreshEntryAsync(userId);
         return result;
     }
 
@@ -695,7 +693,7 @@ internal sealed class CachingUserService(
     {
         var result = await WithInnerAsync(inner =>
             inner.SaveProfileAsync(userId, command, ct));
-        await RefreshEntryAsync(userId, ct);
+        await RefreshEntryAsync(userId);
         return result;
     }
 
@@ -709,7 +707,7 @@ internal sealed class CachingUserService(
             await inner.SaveDietaryMedicalAsync(userId, command, ct);
             return true;
         });
-        await RefreshEntryAsync(userId, ct);
+        await RefreshEntryAsync(userId);
     }
 
     public async Task<UserProfilePictureContentTypeResult> SetProfilePictureContentTypeAsync(
@@ -719,7 +717,7 @@ internal sealed class CachingUserService(
     {
         var result = await WithInnerAsync(inner =>
             inner.SetProfilePictureContentTypeAsync(userId, contentType, ct));
-        if (result.Saved) await RefreshEntryAsync(userId, ct);
+        if (result.Saved) await RefreshEntryAsync(userId);
         return result;
     }
 
@@ -729,7 +727,7 @@ internal sealed class CachingUserService(
     {
         var result = await WithInnerAsync(inner =>
             inner.AnonymizeProfileForDeletionAsync(userId, ct));
-        if (result.Anonymized) await RefreshEntryAsync(userId, ct);
+        if (result.Anonymized) await RefreshEntryAsync(userId);
         return result;
     }
 
@@ -740,7 +738,7 @@ internal sealed class CachingUserService(
     {
         var saved = await WithInnerAsync(inner =>
             inner.SaveProfileVolunteerHistoryAsync(userId, entries, ct));
-        if (saved) await RefreshEntryAsync(userId, ct);
+        if (saved) await RefreshEntryAsync(userId);
         return saved;
     }
 
@@ -752,14 +750,14 @@ internal sealed class CachingUserService(
         var result = await WithInnerAsync(inner =>
             inner.SaveProfileLanguagesAsync(profileId, languages, ct));
         if (result.UserId is { } userId)
-            await RefreshEntryAsync(userId, ct);
+            await RefreshEntryAsync(userId);
         return result;
     }
 
     public async Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
     {
         var updated = await WithInnerAsync(inner => inner.SetProfileIbanAsync(userId, iban, ct));
-        if (updated) await RefreshEntryAsync(userId, ct);
+        if (updated) await RefreshEntryAsync(userId);
         return updated;
     }
 
@@ -770,7 +768,7 @@ internal sealed class CachingUserService(
         var mutated = await WithInnerAsync(inner =>
             inner.SuspendProfilesForMissingConsentAsync(userIds, ct));
         foreach (var userId in mutated)
-            await RefreshEntryAsync(userId, ct);
+            await RefreshEntryAsync(userId);
         return mutated;
     }
 
@@ -786,7 +784,7 @@ internal sealed class CachingUserService(
             inner.DowngradeMembershipTierForExpiredAsync(
                 currentTier, userIdsToKeep, fallbackTierByUser, now, ct));
         foreach (var (userId, _) in downgrades)
-            await RefreshEntryAsync(userId, ct);
+            await RefreshEntryAsync(userId);
         return downgrades;
     }
 
@@ -838,20 +836,20 @@ internal sealed class CachingUserService(
         WithInnerAsync(async inner =>
         {
             await inner.SetLastConsentReminderSentAsync(userId, sentAt, ct);
-            await RefreshEntryAsync(userId, ct);
+            await RefreshEntryAsync(userId);
         });
 
     public async Task DeclareNotAttendingAsync(
         Guid userId, int year, CancellationToken ct = default)
     {
         await WithInnerAsync(inner => inner.DeclareNotAttendingAsync(userId, year, ct));
-        await RefreshEntryAsync(userId, ct);
+        await RefreshEntryAsync(userId);
     }
 
     public async Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
     {
         var result = await WithInnerAsync(inner => inner.UndoNotAttendingAsync(userId, year, ct));
-        if (result) await RefreshEntryAsync(userId, ct);
+        if (result) await RefreshEntryAsync(userId);
         return result;
     }
 
@@ -884,7 +882,7 @@ internal sealed class CachingUserService(
         Guid userId, CancellationToken ct = default)
     {
         var result = await WithInnerAsync(inner => inner.ApplyExpiredDeletionAnonymizationAsync(userId, ct));
-        if (result is not null) await RefreshEntryAsync(userId, ct);
+        if (result is not null) await RefreshEntryAsync(userId);
         return result;
     }
 
@@ -896,8 +894,8 @@ internal sealed class CachingUserService(
             inner.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct));
         if (result)
         {
-            await RefreshEntryAsync(sourceUserId, ct);
-            await RefreshEntryAsync(targetUserId, ct);
+            await RefreshEntryAsync(sourceUserId);
+            await RefreshEntryAsync(targetUserId);
         }
         return result;
     }
@@ -923,8 +921,8 @@ internal sealed class CachingUserService(
     {
         await WithInnerAsync(inner =>
             inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
-        await RefreshEntryAsync(mergedFromUserId, ct);
-        await RefreshEntryAsync(mergedToUserId, ct);
+        await RefreshEntryAsync(mergedFromUserId);
+        await RefreshEntryAsync(mergedToUserId);
     }
 
 }

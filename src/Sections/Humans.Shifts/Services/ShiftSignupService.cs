@@ -1384,7 +1384,7 @@ internal sealed class ShiftSignupService(
                     Start: ss.Shift.GetAbsoluteStart(es),
                     End: ss.Shift.GetAbsoluteEnd(es),
                     Location: null,
-                    Url: $"{CalendarFeedItem.BaseUrl}/Shifts/Mine");
+                    Url: "/Shifts/Mine");
             }).ToList();
     }
 

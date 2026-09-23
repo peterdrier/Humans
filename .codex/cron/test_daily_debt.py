@@ -172,7 +172,8 @@ for line in sys.stdin:
         self.env = dict(os.environ, PATH=f"{binary}:{os.environ['PATH']}",
                         FIXTURE=str(self.root), REPO_URL=str(self.remote),
                         WORK_DIR=str(self.clone), LOG_DIR=str(self.root / "logs"),
-                        TIME_BUDGET="90s", CODEX_DANGEROUS="1")
+                        TIME_BUDGET="90s", CODEX_DANGEROUS="1",
+                        GATE_REPAIR_ATTEMPTS="0")
 
     @staticmethod
     def git(cwd, *args):
@@ -240,7 +241,11 @@ for line in sys.stdin:
                     self.setUp()
                 result, _, published = self.run_scenario(scenario)
                 self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
-                self.assertEqual(published, [])
+                if scenario in ("build-failure", "test-failure"):
+                    self.assertEqual(len(published), 1)
+                    self.assertIn("--draft", published[0])
+                else:
+                    self.assertEqual(published, [])
 
 
 if __name__ == "__main__":

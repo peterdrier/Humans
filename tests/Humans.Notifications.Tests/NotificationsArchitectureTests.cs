@@ -52,6 +52,5 @@ public class NotificationsArchitectureTests
     // ── INotificationRepository ──────────────────────────────────────────────
 
     // Sealed-repository check covered by HUM0034 (section types are internal) plus
-    // MA0053 (an unsealed internal class is a build error) — not by
-    // IRepositoryImplementationsAreSealedRule, which sweeps Humans.Infrastructure only.
+    // MA0053 (an unsealed internal class is a build error).
 }

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Configuration;
 using Humans.Email.Controllers;
 using Humans.Email.Services;
 using Humans.Users.Contracts;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Humans.Email.Tests;
@@ -24,7 +26,7 @@ public sealed class EmailControllerPauseSettingsRedirectTests
     {
         var controller = new EmailController(
             Substitute.For<IUserServiceRead>(), _outbox, Substitute.For<IAuditLogService>(),
-            NullLogger<EmailController>.Instance);
+            NullLogger<EmailController>.Instance, Options.Create(new EmailSettings()));
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

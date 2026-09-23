@@ -131,5 +131,6 @@ None. No other section consumes Backdoor; its whole surface is HTTP, and its ser
 | — | — | Not cross-section-consumed |
 
 - `BackdoorApiKeyService` never imports `Microsoft.EntityFrameworkCore`; `IBackdoorApiKeyRepository` (Singleton + `IDbContextFactory`, §15b) is the only path to the table.
+- Rotation changes the old row's revocation fields and inserts its replacement in one repository `SaveChangesAsync` call. A concurrent or already-revoked old key writes neither row, so a failed rotation never strands its owner without a credential.
 - **Decorator decision** — no caching decorator. Key lookups are one indexed hash probe per API request at a handful of requests per minute, and a cache would have to be invalidated on every revoke to stay correct about the thing that matters most.
 - **Display stitching** — `IUserServiceRead.GetUserInfosAsync`.

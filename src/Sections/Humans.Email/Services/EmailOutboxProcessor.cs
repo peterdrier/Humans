@@ -75,8 +75,7 @@ internal sealed class EmailOutboxProcessor(
             try
             {
                 // Skip invalid test addresses — sending to these bounces and damages sender reputation
-                if (message.RecipientEmail.EndsWith("@localhost", StringComparison.OrdinalIgnoreCase) ||
-                    message.RecipientEmail.EndsWith("@ticketstub.local", StringComparison.OrdinalIgnoreCase))
+                if (EmailTestAddress.IsTestAddress(message.RecipientEmail))
                 {
                     await outboxRepo.MarkSentAsync(message.Id, now, cancellationToken);
                     logger.LogInformation(

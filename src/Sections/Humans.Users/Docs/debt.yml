@@ -7,10 +7,6 @@ inbox:
     id: USERS-1
     what: "Admin_SortBy in Views/UsersAdmin/AdminList.cshtml:78 has no shared resource and renders raw. The call is correctly through SharedLocalizer, but adding a new Admin_* resource key conflicts with memory/code/localization-admin-exempt.md, which forbids new localization keys for admin pages. Peter must decide whether this existing admin localizer call should gain a resource or become an unlocalized literal."
     review: panel
-  - added: 2026-08-27
-    id: USERS-2
-    what: "ProfileController.DownloadData has no catch, so a GDPR export contributor failure is an unhandled 500 there, where the same failure on /Guest/DownloadData sets an error toast and redirects (finding 16, /section-doctor on Gdpr 2026-08-27)."
-    review: panel
   - added: 2026-09-06
     id: USERS-3
     what: "The /Profile controllers set member-facing flash/error strings as hardcoded English instead of UsersResource keys — ProfileController (DeclareNotAttending, UndoNotAttending, GetActiveEventYearOrSetErrorAsync, SetUndoNotAttendingResult, ReplayShiftSignupAfterDietaryMedicalSaveAsync, UpdatePreference), ProfileEmailsController (SetAddedEmailFlash, VerifyEmailSuccess, ReportVerifiedEmailAddAsync) and ProfileViewController (SendMessage POST); each needs a key in every culture (/section-doctor on Users 2026-09-06)."
@@ -22,7 +18,3 @@ inbox:
   - added: 2026-09-06
     id: USERS-6
     what: "Data/Configurations/UserEmailConfiguration.cs:68-71 declares a partial unique index on user_emails.Email (IsVerified = true) — a unique index on a user-editable string, forbidden by memory/architecture/unique-constraints-ids-only.md. The cross-account check is already service-enforced (VerifyEmailAsync and AdminMarkVerifiedAsync open a merge request; the OAuth reconcile blocks or displaces), so the index is a backstop only. Dropping it is a Users migration (Codex finding on peterdrier/Humans#1603)."
-  - added: 2026-09-20
-    id: USERS-8
-    what: "Every CachingUserService mutator passes the caller's request CancellationToken to RefreshEntryAsync after the inner write has committed (SetPreferredLanguageAsync, RecordLoginAsync, ...). A client disconnect between commit and refresh cancels the refresh, so the singleton UserInfo snapshot serves the pre-write values until some later refresh happens to rebuild it. The post-commit refresh should not ride the request token (Codex P2 on peterdrier/Humans#1760, pre-existing and unrelated to that PR's change)."
-    review: panel

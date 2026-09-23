@@ -178,7 +178,7 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 | `GET /Finance/HoldedAccounts` | Account provisioning UI (reconcile + apply) |
 | `GET /Finance/HoldedUnmatched` | Unmatched-doc worklist with deep links and "Sync now" |
 | `GET /Finance/Creditors` | Admin overview of all cached 400000xx creditor accounts with member bindings |
-| `GET /Finance/Creditors/{accountNum:int}` | Per-account creditor statement (balance + itemized journal lines) |
+| `GET /Finance/Creditors/{accountNum:int}` | Per-account creditor statement (Holded's balance sign-flipped so positive means the organisation owes the member and negative means the member owes it; plus itemized journal lines) |
 | `GET /Finance/Sepa` | Generated payout files and their transfers, with each transfer's booking state and the reason it cannot be booked. Makes one live `ListBankMovementsAsync` call to match transfers to Sabadell lines (nobodies-collective/Humans#1185); a failure banners and every row falls back to "waiting for the Sabadell line" |
 | `POST /Finance/HoldedAccounts/Provision` | Add one or all pending Holded accounts + map rows |
 | `POST /Finance/HoldedSync/Run` | Manual sync trigger |

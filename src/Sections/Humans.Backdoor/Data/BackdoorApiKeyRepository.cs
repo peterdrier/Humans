@@ -48,6 +48,20 @@ internal sealed class BackdoorApiKeyRepository(IDbContextFactory<BackdoorDbConte
         return true;
     }
 
+    public async Task<bool> RotateAsync(
+        Guid id, Guid revokedByUserId, Instant at, BackdoorApiKey replacement, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var key = await ctx.ApiKeys.FirstOrDefaultAsync(k => k.Id == id && k.RevokedAt == null, ct);
+        if (key is null) return false;
+
+        key.RevokedAt = at;
+        key.RevokedByUserId = revokedByUserId;
+        ctx.ApiKeys.Add(replacement);
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task TouchAsync(Guid id, Instant at, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

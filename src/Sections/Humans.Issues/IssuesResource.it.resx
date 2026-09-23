@@ -279,4 +279,10 @@
     <comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment>
   </data>
   <data name="Issue_ComposerRecipientsHandlers" xml:space="preserve"><value>I gestori di questa segnalazione (notifica nell'app)</value></data>
+  <data name="Issue_Notice_CommentTitle" xml:space="preserve"><value>Nuovo commento sulla segnalazione: {0}</value></data>
+  <data name="Issue_Notice_StatusChangedTitle" xml:space="preserve"><value>Stato della segnalazione modificato: {0}</value></data>
+  <data name="Issue_Notice_StatusChangedBody" xml:space="preserve"><value>Stato: {0} → {1}</value></data>
+  <data name="Issue_Notice_SubmittedTitle" xml:space="preserve"><value>Nuova segnalazione inviata: {0}</value></data>
+  <data name="Issue_Notice_AssignedTitle" xml:space="preserve"><value>Ti è stata assegnata una segnalazione: {0}</value></data>
+  <data name="Issue_Notice_Open" xml:space="preserve"><value>Apri segnalazione</value></data>
 </root>
