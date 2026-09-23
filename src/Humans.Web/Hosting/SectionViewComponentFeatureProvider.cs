@@ -11,8 +11,8 @@ namespace Humans.Web.Hosting;
 /// (nobodies-collective/Humans#866) — the exact counterpart of
 /// <see cref="SectionControllerFeatureProvider"/>, and needed for the same reason:
 /// MVC's <c>ViewComponentConventions.IsComponent</c> requires <c>IsPublic</c>, so an
-/// internal view component is never discovered and
-/// <c>Component.InvokeAsync("Name")</c> throws at request time.
+/// internal view component is never discovered and invoking it by <c>Type</c>
+/// (a slot contribution or <c>InvokeAsync&lt;T&gt;</c>) throws at request time.
 /// </summary>
 /// <remarks>
 /// <para>
