@@ -378,7 +378,7 @@ internal sealed class CampRoleService(
         GetDirectoryRoleSummariesAsync(int year, CancellationToken ct = default)
     {
         var definitions = OrderDefinitions(await repo.ListDefinitionsAsync(includeDeactivated: false, ct));
-        if (definitions.Count == 0)
+        if (!definitions.Any())
             return new Dictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>();
 
         // Same shape as GetComplianceReportAsync but over all active definitions,
