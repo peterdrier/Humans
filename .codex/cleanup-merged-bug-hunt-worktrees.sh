@@ -115,7 +115,7 @@ for candidate in "${candidates[@]}"; do
   worktree_path="${candidate%%|*}"
   branch_name="${candidate#*|}"
 
-  if [[ -n "$(git -C "$worktree_path" status --porcelain)" ]]; then
+  if [[ -n "$(cd "$worktree_path" && git status --porcelain)" ]]; then
     echo "SKIP dirty    $branch_name    $worktree_path"
     skipped_count=$((skipped_count + 1))
     continue
