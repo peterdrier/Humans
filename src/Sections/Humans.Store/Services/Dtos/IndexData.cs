@@ -5,8 +5,7 @@ namespace Humans.Store.Services.Dtos;
 internal sealed record IndexData(
     int Year,
     IReadOnlyList<ProductDto> Catalog,
-    IReadOnlyList<CounterpartyOrders> Counterparties,
-    bool ShowNoOrdersMessage);
+    IReadOnlyList<CounterpartyOrders> Counterparties);
 
 internal sealed record CounterpartyOrders(
     OrderCounterpartyType CounterpartyType,

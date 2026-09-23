@@ -228,7 +228,6 @@ public class ServiceTeamOrdersTests
         data.Counterparties[0].CounterpartyType.Should().Be(OrderCounterpartyType.Team);
         data.Counterparties[0].CounterpartyId.Should().Be(deptId);
         data.Counterparties[0].Orders.Should().BeEmpty();
-        data.ShowNoOrdersMessage.Should().BeFalse();
     }
 
     [HumansFact]
@@ -247,7 +246,6 @@ public class ServiceTeamOrdersTests
         var data = await _service.GetIndexDataAsync(userId, ct: TestContext.Current.CancellationToken);
 
         data.Counterparties.Should().BeEmpty();
-        data.ShowNoOrdersMessage.Should().BeTrue();
     }
 
     [HumansFact]
