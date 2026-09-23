@@ -29,6 +29,14 @@ internal interface IBackdoorApiKeyRepository : IRepository
     /// </summary>
     Task<bool> RevokeAsync(Guid id, Guid revokedByUserId, Instant at, CancellationToken ct = default);
 
+    /// <summary>
+    /// Replaces an active key in one save: revokes <paramref name="id"/> and persists
+    /// <paramref name="replacement"/>, or returns false without persisting either when the
+    /// existing key is missing or already revoked.
+    /// </summary>
+    Task<bool> RotateAsync(
+        Guid id, Guid revokedByUserId, Instant at, BackdoorApiKey replacement, CancellationToken ct = default);
+
     /// <summary>Stamps <c>LastUsedAt</c>, once a presented key has resolved to an eligible owner.</summary>
     Task TouchAsync(Guid id, Instant at, CancellationToken ct = default);
 

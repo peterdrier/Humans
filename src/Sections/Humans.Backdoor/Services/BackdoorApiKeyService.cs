@@ -88,12 +88,13 @@ internal sealed class BackdoorApiKeyService(
             return BackdoorKeyIssueResult.Failed(
                 "The key's owner is no longer a full Admin or a Board member with an active account.");
 
-        if (!await repository.RevokeAsync(keyId, actorUserId, clock.GetCurrentInstant(), ct))
+        var plaintext = KeyPrefix + Base64UrlEncode(RandomNumberGenerator.GetBytes(KeyEntropyBytes));
+        var replacement = NewKey(key.UserId, key.Label, actorUserId, plaintext);
+        if (!await repository.RotateAsync(keyId, actorUserId, clock.GetCurrentInstant(), replacement, ct))
             return BackdoorKeyIssueResult.Failed("That key no longer exists or is already revoked.");
 
         await AuditAsync(AuditAction.BackdoorApiKeyRevoked, key, actorUserId, "rotated out");
-
-        var plaintext = await PersistNewKeyAsync(key.UserId, key.Label, actorUserId, ct);
+        await AuditAsync(AuditAction.BackdoorApiKeyIssued, replacement, actorUserId, "issued");
         return BackdoorKeyIssueResult.Success(plaintext);
     }
 
@@ -150,21 +151,23 @@ internal sealed class BackdoorApiKeyService(
         Guid ownerUserId, string label, Guid actorUserId, CancellationToken ct)
     {
         var plaintext = KeyPrefix + Base64UrlEncode(RandomNumberGenerator.GetBytes(KeyEntropyBytes));
-        var key = new BackdoorApiKey
-        {
-            Id = Guid.NewGuid(),
-            UserId = ownerUserId,
-            KeyHash = Hash(plaintext),
-            DisplayPrefix = plaintext[..DisplayPrefixLength],
-            Label = label,
-            CreatedAt = clock.GetCurrentInstant(),
-            CreatedByUserId = actorUserId,
-        };
+        var key = NewKey(ownerUserId, label, actorUserId, plaintext);
 
         await repository.AddAsync(key, ct);
         await AuditAsync(AuditAction.BackdoorApiKeyIssued, key, actorUserId, "issued");
         return plaintext;
     }
+
+    private BackdoorApiKey NewKey(Guid ownerUserId, string label, Guid actorUserId, string plaintext) => new()
+    {
+        Id = Guid.NewGuid(),
+        UserId = ownerUserId,
+        KeyHash = Hash(plaintext),
+        DisplayPrefix = plaintext[..DisplayPrefixLength],
+        Label = label,
+        CreatedAt = clock.GetCurrentInstant(),
+        CreatedByUserId = actorUserId,
+    };
 
     private Task AuditAsync(AuditAction action, BackdoorApiKey key, Guid actorUserId, string verb) =>
         audit.LogAsync(
