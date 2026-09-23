@@ -361,11 +361,16 @@ main() {
     # Recover the earlier run's report so the PR this path opens carries the
     # rung, closed ledger ids and skip reasons that daily-debt.md requires —
     # a PR opened on retry is no less reviewable than one opened first time.
+    local retry_draft=false
     if [[ -f "$last_message_file" ]]; then
       run_report="$(cat "$last_message_file")"
       log "recovered run report from $last_message_file for the retried PR"
+      if grep -q '^## Automated gate warning$' "$last_message_file"; then
+        retry_draft=true
+        log "recovered report contains a gate warning — reopening as draft"
+      fi
     fi
-    if pr_url="$(open_pr_for_branch "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo")"; then
+    if pr_url="$(open_pr_for_branch "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo" "$retry_draft")"; then
       exit_reason="pushed"
       log "opened PR for pre-existing branch: $pr_url"
     else
