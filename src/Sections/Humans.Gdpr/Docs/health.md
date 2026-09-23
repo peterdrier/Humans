@@ -62,30 +62,30 @@ ledger, a fix that adds public surface either way.
 ## 4. Invariants
 
 - **Complete or fail.** A contributor that throws is logged and re-thrown, in both halves:
-  `src/Sections/Humans.Gdpr/Services/GdprService.cs:49` (export) and
-  `src/Sections/Humans.Gdpr/Services/GdprService.cs:114` (erasure).
+  `src/Sections/Humans.Gdpr/Services/GdprService.cs:46` (export) and
+  `src/Sections/Humans.Gdpr/Services/GdprService.cs:109` (erasure).
 - **Portion names are unique in one document.** A duplicate throws, naming the portion —
-  never last-writer-wins: `src/Sections/Humans.Gdpr/Services/GdprService.cs:73`. The
+  never last-writer-wins: `src/Sections/Humans.Gdpr/Services/GdprService.cs:70`. The
   declaration-level counterpart, across every registered contributor, is
   `tests/Humans.Web.Tests/Services/Gdpr/GdprErasureCoverageTests.cs:64`.
 - **An exported portion with no erasure declaration is logged, not dropped.** The
   export still carries it — it is still the person's data — and an error names the portion
-  and the contributor: `src/Sections/Humans.Gdpr/Services/GdprService.cs:54`.
+  and the contributor: `src/Sections/Humans.Gdpr/Services/GdprService.cs:51`.
 - **A `null` portion is dropped; an empty collection is not:**
-  `src/Sections/Humans.Gdpr/Services/GdprService.cs:62`.
+  `src/Sections/Humans.Gdpr/Services/GdprService.cs:59`.
 - **The envelope names the surviving account.** A download asked under a merged-away id
   is stamped with the survivor's id and the archived ids; an unknown id falls back to the
-  id asked with: `src/Sections/Humans.Gdpr/Services/GdprService.cs:88`.
+  id asked with: `src/Sections/Humans.Gdpr/Services/GdprService.cs:85`.
 - **Erasure runs the identity holder last, and the order comes from the declarations**,
-  never a pinned type list: `src/Sections/Humans.Gdpr/Services/GdprService.cs:100`. Exactly
+  never a pinned type list: `src/Sections/Humans.Gdpr/Services/GdprService.cs:95`. Exactly
   one contributor claims it: `tests/Humans.Web.Tests/Services/Gdpr/GdprErasureCoverageTests.cs:89`.
 - **The fan-out is sequential.** A simplicity choice, not a correctness one; one
   contributor at a time keeps failure attribution and log order plain:
-  `src/Sections/Humans.Gdpr/Services/GdprService.cs:39`.
+  `src/Sections/Humans.Gdpr/Services/GdprService.cs:36`.
 - **`ExportedAt` is an invariant ISO-8601 UTC instant off the injected clock**:
-  `src/Sections/Humans.Gdpr/Services/GdprService.cs:87`.
+  `src/Sections/Humans.Gdpr/Services/GdprService.cs:84`.
 - **No route exports another person's data.** Neither download action accepts a user id;
-  both resolve the caller's own: `src/Sections/Humans.Gdpr/Controllers/GuestDataController.cs:42`
+  both resolve the caller's own: `src/Sections/Humans.Gdpr/Controllers/GuestDataController.cs:38`
   and `src/Sections/Humans.Users/Controllers/ProfileController.cs:881`.
 - **Every declared category is either erased in full or states a lawful basis** of real
   length: `tests/Humans.Web.Tests/Services/Gdpr/GdprErasureCoverageTests.cs:103`, over
@@ -151,3 +151,4 @@ ledger, a fix that adds public surface either way.
 |---|---|---|---|
 | 1 | 2026-08-27 | Prose across the section describes a layout two moves stale — a deleted project, a deleted `DbContext`, a controller the section has | peterdrier/Humans#1540 |
 | 2 | 2026-09-17 | The section's own rationale for its shape was false, and the target shape had not caught up with erasure moving in | peterdrier/Humans#1723 |
+| 3 | 2026-09-23 | The envelope learned whose account it is and the prose did not; a "logged" check was documented as "enforced" | pending |
