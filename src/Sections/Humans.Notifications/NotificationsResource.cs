@@ -12,7 +12,7 @@ namespace Humans.Notifications;
 /// via <c>GetExportedTypes()</c>; an internal marker is skipped in silence. The set
 /// includes the keys the notification bell renders — the bell view component and its
 /// <c>Default.cshtml</c> live in this section so the whole <c>Notification_*</c> set
-/// stays in one resource set. Shell renders the bell by name, through
-/// <c>Component.InvokeAsync("NotificationBell")</c>.
+/// stays in one resource set. The section contributes the bell by <c>Type</c> to
+/// <c>ChromeSlots.HeaderRight</c> (<c>SectionChrome</c>), which the layout renders.
 /// </remarks>
 public class NotificationsResource;

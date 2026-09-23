@@ -38,7 +38,7 @@ ViewData["ShiftCards"] = new ShiftCardsViewModel { NextShifts = shifts, UrgentSh
 **Example — right:**
 ```csharp
 // View Component fetches its own data — controller doesn't know about shifts
-// In the view: @await Component.InvokeAsync("ShiftCards")
+// In its own section's view: <vc:shift-cards />  (another section: a Type in a [ViewComponentSlot] seam — never InvokeAsync("ShiftCards"), HUM0036)
 public class ShiftCardsViewComponent : ViewComponent {
     public async Task<IViewComponentResult> InvokeAsync() {
         var userId = /* resolve from UserClaimsPrincipal */;
