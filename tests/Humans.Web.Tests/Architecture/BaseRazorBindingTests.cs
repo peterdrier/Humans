@@ -18,8 +18,8 @@ namespace Humans.Web.Tests.Architecture;
 /// <para>
 /// The render proofs in <c>MovedSharedPartialsRenderTests</c> cover the call sites reachable
 /// without fixtures. This covers the rest structurally, and covers whatever call site is added
-/// next. It is a test rather than an analyzer because Roslyn does not see <c>.cshtml</c>
-/// (peters-hard-rules.md prefers analyzers wherever they can reach), and it lives here rather
+/// next. It is a test rather than an analyzer because inert <c>&lt;vc:&gt;</c> markup never
+/// reaches Roslyn (an analyzer only sees compiled Razor output, as HUM0036 does), and it lives here rather
 /// than in an integration project because it boots nothing and touches no database.
 /// </para>
 /// <para>
