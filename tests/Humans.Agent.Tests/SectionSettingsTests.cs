@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Agent.ViewComponents;
 using Humans.Base.Authorization;
 
 namespace Humans.Agent.Tests;
@@ -18,7 +19,7 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("agent");
         tab.Label.Should().Be("Settings_TabAgent");
-        tab.ComponentName.Should().Be("AgentSettingsTab");
+        tab.Component.Should().Be(typeof(AgentSettingsTabViewComponent));
         tab.Policy.Should().Be(PolicyNames.AdminOnly);
     }
 }

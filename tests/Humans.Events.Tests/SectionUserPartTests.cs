@@ -1,23 +1,18 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using NSubstitute;
-using Xunit;
+using Humans.Events.ViewComponents;
 
 namespace Humans.Events.Tests;
 
 public sealed class SectionUserPartTests
 {
     [HumansFact]
-    public async Task PartsAsync_ContributesEventsCardForProfileTarget()
+    public void Parts_ContributesEventsCardForProfileTarget()
     {
         IUserPart contribution = new Section();
-        var targetUserId = Guid.NewGuid();
 
-        var parts = await contribution.PartsAsync(
-            Substitute.For<IServiceProvider>(),
-            new System.Security.Claims.ClaimsPrincipal(),
-            targetUserId);
+        var parts = contribution.Parts();
 
-        parts.Should().ContainSingle().Which.Should().Be(new UserPart("EventsCard"));
+        parts.Should().ContainSingle().Which.Should().Be(new UserPart(typeof(EventsCardViewComponent)));
     }
 }

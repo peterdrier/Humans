@@ -1,5 +1,6 @@
 using Humans.Base.Authorization;
 using Humans.Settings.Contracts;
+using Humans.CityPlanning.ViewComponents;
 
 namespace Humans.CityPlanning;
 
@@ -21,6 +22,6 @@ internal sealed class SectionSettings : ISectionSettings
 {
     public IEnumerable<SettingsTab> Tabs() =>
     [
-        new SettingsTab("city-planning", "Settings_TabCityPlanning", "CityPlanningSettingsTab", PolicyNames.CityPlanningMapAdmin)
+        new SettingsTab("city-planning", "Settings_TabCityPlanning", typeof(CityPlanningSettingsTabViewComponent), PolicyNames.CityPlanningMapAdmin)
     ];
 }

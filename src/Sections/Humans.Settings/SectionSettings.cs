@@ -1,4 +1,5 @@
 using Humans.Settings.Contracts;
+using Humans.Settings.ViewComponents;
 
 namespace Humans.Settings;
 
@@ -18,6 +19,6 @@ internal sealed class SectionSettings : ISectionSettings
 {
     public IEnumerable<SettingsTab> Tabs() =>
     [
-        new SettingsTab("event", "Settings_TabEvent", "EventSettingsTab")
+        new SettingsTab("event", "Settings_TabEvent", typeof(EventSettingsTabViewComponent))
     ];
 }

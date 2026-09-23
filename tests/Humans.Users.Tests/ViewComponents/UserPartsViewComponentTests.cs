@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Users.Models;
@@ -14,68 +13,70 @@ namespace Humans.Users.Tests.ViewComponents;
 public class UserPartsViewComponentTests
 {
     [HumansFact]
-    public async Task NoContributions_RendersNothing()
+    public void NoContributions_RendersNothing()
     {
-        var result = await Sut(Contributor()).InvokeAsync(Guid.NewGuid());
+        var result = Sut(Contributor()).Invoke(Guid.NewGuid());
 
         result.Should().BeOfType<ContentViewComponentResult>();
     }
 
     [HumansFact]
-    public async Task OrdersPartsByWeight_AcrossContributors()
+    public void OrdersPartsByWeight_AcrossContributors()
     {
-        var model = await ModelFrom(
-            Contributor(new UserPart("Late", 10), new UserPart("Middle", 5)),
-            Contributor(new UserPart("Early", 0)));
+        var model = ModelFrom(
+            Contributor(new UserPart(typeof(LatePart), 10), new UserPart(typeof(MiddlePart), 5)),
+            Contributor(new UserPart(typeof(EarlyPart), 0)));
 
-        model.Parts.Select(p => p.ComponentName).Should().Equal(["Early", "Middle", "Late"]);
+        model.Parts.Select(p => p.Component).Should().Equal(typeof(EarlyPart), typeof(MiddlePart), typeof(LatePart));
     }
 
     [HumansFact]
-    public async Task PassesTheTargetUser_NotTheViewer()
+    public void PassesTheTargetUser_ToTheViewModel()
     {
         var target = Guid.NewGuid();
-        var contributor = Contributor(new UserPart("EventsCard"));
+        var contributor = Contributor(new UserPart(typeof(EarlyPart)));
 
-        var model = await ModelFrom(target, contributor);
+        var model = ModelFrom(target, contributor);
 
         model.UserId.Should().Be(target);
-        await contributor.Received(1).PartsAsync(Arg.Any<IServiceProvider>(), Arg.Any<ClaimsPrincipal>(), target);
+        contributor.Received(1).Parts();
     }
 
     [HumansFact]
-    public async Task ContributorThatThrows_IsSkipped_OthersStillRender()
+    public void ContributorThatThrows_IsSkipped_OthersStillRender()
     {
         var broken = Substitute.For<IUserPart>();
-        broken.PartsAsync(Arg.Any<IServiceProvider>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<Guid>())
-            .Returns<IEnumerable<UserPart>>(_ => throw new InvalidOperationException("section down"));
+        broken.Parts().Returns(_ => throw new InvalidOperationException("section down"));
 
-        var model = await ModelFrom(Guid.NewGuid(), broken, Contributor(new UserPart("EventsCard")));
+        var model = ModelFrom(Guid.NewGuid(), broken, Contributor(new UserPart(typeof(EarlyPart))));
 
-        model.Parts.Should().ContainSingle().Which.ComponentName.Should().Be("EventsCard");
+        model.Parts.Should().ContainSingle().Which.Component.Should().Be(typeof(EarlyPart));
     }
+
+    private sealed class EarlyPart;
+    private sealed class MiddlePart;
+    private sealed class LatePart;
 
     private static IUserPart Contributor(params UserPart[] parts)
     {
         var contributor = Substitute.For<IUserPart>();
-        contributor.PartsAsync(Arg.Any<IServiceProvider>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<Guid>())
-            .Returns(ValueTask.FromResult<IEnumerable<UserPart>>(parts));
+        contributor.Parts().Returns(parts);
         return contributor;
     }
 
-    private static Task<UserPartsViewModel> ModelFrom(params IUserPart[] contributors) =>
+    private static UserPartsViewModel ModelFrom(params IUserPart[] contributors) =>
         ModelFrom(Guid.NewGuid(), contributors);
 
-    private static async Task<UserPartsViewModel> ModelFrom(Guid userId, params IUserPart[] contributors)
+    private static UserPartsViewModel ModelFrom(Guid userId, params IUserPart[] contributors)
     {
-        var result = await Sut(contributors).InvokeAsync(userId);
+        var result = Sut(contributors).Invoke(userId);
 
         return result.Should().BeOfType<ViewViewComponentResult>().Subject.ViewData!.Model
             .Should().BeOfType<UserPartsViewModel>().Subject;
     }
 
     private static UserPartsViewComponent Sut(params IUserPart[] contributors) =>
-        new(contributors, Substitute.For<IServiceProvider>(), NullLogger<UserPartsViewComponent>.Instance)
+        new(contributors, NullLogger<UserPartsViewComponent>.Instance)
         {
             ViewComponentContext = new ViewComponentContext
             {

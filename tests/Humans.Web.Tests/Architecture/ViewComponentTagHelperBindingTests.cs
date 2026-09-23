@@ -27,8 +27,11 @@ namespace Humans.Web.Tests.Architecture;
 /// nobodies-collective/Humans#866, PR peterdrier/Humans#1297).
 /// </para>
 /// <para>
-/// This is a test rather than an analyzer because Roslyn does not see <c>.cshtml</c>
-/// (peters-hard-rules.md prefers analyzers wherever they can reach). It boots nothing and
+/// This is a test rather than an analyzer because an unresolved or non-public <c>&lt;vc:...&gt;</c>
+/// never generates any C# for an analyzer to see — it ships as inert markup with no compiled
+/// call site at all, not a diagnosable one (peters-hard-rules.md prefers analyzers wherever
+/// they can reach; Roslyn does see <c>.cshtml</c> for a hand-written, resolved call —
+/// nobodies-collective/Humans#1815's spike). It boots nothing and
 /// touches no database, and it covers every page deterministically without rendering any of
 /// them — including pages no browser has ever hit, which
 /// <see cref="ViewComponentTagSurvivalMiddleware"/> (the Dev/QA response-scanning middleware

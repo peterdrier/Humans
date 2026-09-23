@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Email.ViewComponents;
 using Humans.Base.Authorization;
 
 namespace Humans.Email.Tests;
@@ -18,7 +19,7 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("email");
         tab.Label.Should().Be("Settings_TabEmail");
-        tab.ComponentName.Should().Be("EmailPauseSettingsTab");
+        tab.Component.Should().Be(typeof(EmailPauseSettingsTabViewComponent));
         tab.Policy.Should().Be(PolicyNames.AdminOnly);
     }
 }

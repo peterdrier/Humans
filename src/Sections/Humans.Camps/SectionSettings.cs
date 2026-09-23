@@ -1,5 +1,6 @@
 using Humans.Base.Authorization;
 using Humans.Settings.Contracts;
+using Humans.Camps.ViewComponents;
 
 namespace Humans.Camps;
 
@@ -12,6 +13,6 @@ internal sealed class SectionSettings : ISectionSettings
 {
     public IEnumerable<SettingsTab> Tabs() =>
     [
-        new SettingsTab("barrios", "Settings_TabBarrios", "CampBarriosSettingsTab", PolicyNames.CampAdminOrAdmin)
+        new SettingsTab("barrios", "Settings_TabBarrios", typeof(CampBarriosSettingsTabViewComponent), PolicyNames.CampAdminOrAdmin)
     ];
 }

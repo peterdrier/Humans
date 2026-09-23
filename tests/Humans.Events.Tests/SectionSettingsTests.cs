@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Events.ViewComponents;
 using Humans.Base.Authorization;
 
 namespace Humans.Events.Tests;
@@ -19,7 +20,7 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("event-guide");
         tab.Label.Should().Be("Settings_TabEventGuide");
-        tab.ComponentName.Should().Be("EventGuideSettingsTab");
+        tab.Component.Should().Be(typeof(EventGuideSettingsTabViewComponent));
         tab.Policy.Should().Be(PolicyNames.EventsAdminOrAdmin);
     }
 }

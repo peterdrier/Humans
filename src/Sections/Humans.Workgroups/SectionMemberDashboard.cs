@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces;
+using Humans.Workgroups.ViewComponents;
 
 namespace Humans.Workgroups;
 
@@ -6,5 +7,5 @@ namespace Humans.Workgroups;
 internal sealed class SectionMemberDashboard : ISectionMemberDashboard
 {
     public IEnumerable<ChromeComponent> Components() =>
-        [new ChromeComponent(ChromeSlots.MemberDashboard, "MyWorkgroups", Weight: 35)];
+        [new ChromeComponent(ChromeSlots.MemberDashboard, typeof(MyWorkgroupsViewComponent), Weight: 35)];
 }

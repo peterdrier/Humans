@@ -7,6 +7,7 @@ using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Filters;
 using Humans.Events.Services;
+using Humans.Events.ViewComponents;
 using Humans.Settings.Contracts;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -20,11 +21,7 @@ namespace Humans.Events;
 /// </summary>
 public sealed class Section : ISection, IUserPart
 {
-    ValueTask<IEnumerable<UserPart>> IUserPart.PartsAsync(
-        IServiceProvider services,
-        System.Security.Claims.ClaimsPrincipal viewer,
-        Guid userId) =>
-        ValueTask.FromResult<IEnumerable<UserPart>>([new("EventsCard")]);
+    IEnumerable<UserPart> IUserPart.Parts() => [new(typeof(EventsCardViewComponent))];
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {

@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 
 namespace Humans.Settings.Contracts;
@@ -13,7 +14,7 @@ namespace Humans.Settings.Contracts;
 /// carries localized strings today, and the parity-test discovery that guards every culture
 /// (<c>SectionResourceTypes</c>) only walks assemblies with a <c>Section : ISection</c> entry
 /// point, which a Contracts leaf never has. A key with no entry renders as itself.
-/// <paramref name="ComponentName"/> names a view component the owning section ships; it
+/// <paramref name="Component"/> is a view component type the owning section ships; it
 /// renders the tab's panel body. <paramref name="Policy"/> null means every authenticated
 /// user sees the tab — the tab decides for itself whether that user gets a read-only or
 /// editable view. <paramref name="Weight"/> orders tabs; sorting is stable, so equal weights
@@ -22,11 +23,12 @@ namespace Humans.Settings.Contracts;
 public sealed record SettingsTab(
     string Key,
     string Label,
-    string ComponentName,
+    Type Component,
     string? Policy = null,
     int Weight = 0);
 
 /// <summary>The /Settings tabs a section contributes.</summary>
+[ViewComponentSlot]
 public interface ISectionSettings : ISectionContribution
 {
     IEnumerable<SettingsTab> Tabs();

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Settings.ViewComponents;
 
 namespace Humans.Settings.Tests;
 
@@ -17,7 +18,7 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("event");
         tab.Label.Should().Be("Settings_TabEvent");
-        tab.ComponentName.Should().Be("EventSettingsTab");
+        tab.Component.Should().Be(typeof(EventSettingsTabViewComponent));
         tab.Policy.Should().BeNull();
     }
 }

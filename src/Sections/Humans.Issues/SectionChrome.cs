@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces;
+using Humans.Issues.ViewComponents;
 
 namespace Humans.Issues;
 
@@ -6,5 +7,5 @@ namespace Humans.Issues;
 internal sealed class SectionChrome : ISectionChrome
 {
     public IEnumerable<ChromeComponent> Components() =>
-        [new(ChromeSlots.UserMenu, "IssuesUserMenu")];
+        [new(ChromeSlots.UserMenu, typeof(IssuesUserMenuViewComponent))];
 }
