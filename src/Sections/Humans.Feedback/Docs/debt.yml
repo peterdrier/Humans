@@ -5,5 +5,5 @@ next_id: 2
 inbox:
   - added: 2026-08-31
     id: FEEDBACK-1
-    what: "Views/Feedback/Index.cshtml:139 renders the list row's ReporterName string while FeedbackListItemViewModel also carries ReporterUserId — the pair memory/architecture/burnername-is-the-display-name.md forbids; the compliant fix is <vc:human user-id=...> as the detail partial already does (the reporter filter dropdown's ReporterDropdownItem carries the same UserId+DisplayName pair). Deleting the unused ReporterUserId instead was proposed and rejected by the strike reviewer as cementing the anti-pattern (finding 27, /section-doctor on Feedback 2026-08-31)."
+    what: "The reporter filter dropdown on Views/Feedback/Index.cshtml binds ReporterDropdownItem (UserId + DisplayName string) — the pair memory/architecture/burnername-is-the-display-name.md forbids. The list row itself now renders <vc:human user-id=...> (debt sweep 2026-09-23, PR 1812); the dropdown's <option> text can't host the view component, so it needs its own compliant shape (finding 27, /section-doctor on Feedback 2026-08-31)."
     review: panel

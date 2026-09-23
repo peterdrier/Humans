@@ -27,7 +27,7 @@
     <div class="col-md-4">
         <div class="card text-center"><div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">Balance</h6>
-            <span class="fs-4 @(Model.OwedBalance > 0 ? "finance-positive" : "")">@Model.OwedBalance.ToEuro()</span>
+            <span class="fs-4 @(Model.OwedBalance > 0 ? "finance-positive" : Model.OwedBalance < 0 ? "finance-negative" : "")">@Model.OwedBalance.ToEuro()</span>
             <div class="text-muted small mt-1">positive = owed to the member</div>
         </div></div>
     </div>
