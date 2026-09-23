@@ -215,13 +215,13 @@ internal sealed class FinanceController(
         var ledger = await holdedFinance.GetCreditorLedgerAsync(accountNum);
         if (ledger is null) return NotFound();
 
-        // Controllers sort for display: newest activity first.
-        ViewBag.Lines = ledger.Lines
+        // Controllers assemble and sort the presentation model: newest activity first.
+        var lines = ledger.Lines
             .OrderByDescending(l => l.Date)
             .ThenByDescending(l => l.EntryNumber)
             .ThenBy(l => l.Line)
             .ToList();
-        return View(ledger);
+        return View(new CreditorStatementVm(ledger, lines));
     }
 
     [HttpPost("Creditors/Bind")]
