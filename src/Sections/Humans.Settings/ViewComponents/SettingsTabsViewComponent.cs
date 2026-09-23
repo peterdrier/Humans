@@ -9,7 +9,7 @@ namespace Humans.Settings.ViewComponents;
 /// contribution, merged by <see cref="SettingsTabComposition"/>. An empty result renders a
 /// plain empty state rather than an error, so /Settings never 404s.
 /// </summary>
-internal sealed class SettingsTabsViewComponent(
+public sealed class SettingsTabsViewComponent(
     IEnumerable<ISectionSettings> contributors,
     IAuthorizationService authorization) : ViewComponent
 {

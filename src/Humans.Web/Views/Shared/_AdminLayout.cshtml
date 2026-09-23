@@ -59,12 +59,12 @@
 
         <div class="app-shell">
             <aside class="sidebar">
-                @await Component.InvokeAsync("AdminSidebar")
+                <vc:admin-sidebar />
             </aside>
 
             <main class="main">
                 <div class="crumb">
-                    @await Component.InvokeAsync("AdminBreadcrumb")
+                    <vc:admin-breadcrumb />
                 </div>
 
                 <partial name="_AuthorizationPill" />

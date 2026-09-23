@@ -24,6 +24,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <!-- Event.cshtml renders <vc:audit-log>. AuditLog reaches back only to
+         Humans.Users.Contracts, never to this project — no cycle. -->
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <!-- CalendarFeedTokenService joins the GDPR export/erasure fan-out for calendar_feed_tokens. -->
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />

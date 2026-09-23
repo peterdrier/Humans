@@ -10,7 +10,7 @@ namespace Humans.Shifts.ViewComponents;
 /// gate lives inside the component so callers can invoke it unconditionally.
 /// Spec: src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md (US-35.6)
 /// </summary>
-internal sealed class DietaryMissingBannerViewComponent : ViewComponent
+public sealed class DietaryMissingBannerViewComponent : ViewComponent
 {
     private readonly IShiftManagementServiceRead _shiftMgmt;
     private readonly IUserServiceRead _userRead;
