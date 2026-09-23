@@ -1,21 +1,48 @@
 using Humans.Base.Attributes;
+using Humans.Base.Enums;
 
 namespace Humans.Base.Interfaces;
 
-/// <summary>The argument a <see cref="IUserPart"/> component's Invoke/InvokeAsync accepts.</summary>
-public sealed record UserPartArgs(Guid UserId);
+/// <summary>
+/// Well-known user-part slot names, each named by the page that hosts it. A slot with nothing
+/// in it renders nothing.
+/// </summary>
+public static class UserPartSlots
+{
+    /// <summary>The shared own/other profile page (Users <c>Profile/Index</c>).</summary>
+    public const string Profile = "user-profile";
 
-/// <summary>A section-owned view component rendered on a user's profile page.</summary>
+    /// <summary>The admin human-detail page (Users <c>UsersAdmin/AdminDetail</c>).</summary>
+    public const string AdminDetail = "user-admin-detail";
+
+    /// <summary>The applicant on a Board tier-application vote (Governance <c>BoardVoting/Detail</c>).</summary>
+    public const string BoardVoteApplicant = "board-vote-applicant";
+
+    /// <summary>The applicant on the onboarding review detail page (Onboarding <c>OnboardingReview/Detail</c>).</summary>
+    public const string OnboardingReviewApplicant = "onboarding-review-applicant";
+
+    /// <summary>A sender or receiver on the ticket-transfer admin detail (Tickets <c>TicketTransferAdmin/Detail</c>).</summary>
+    public const string TicketTransferParty = "ticket-transfer-party";
+
+    /// <summary>One member row of a team's admin member list (Teams <c>TeamAdmin/Members</c>).</summary>
+    public const string TeamMemberRow = "team-member-row";
+}
+
+/// <summary>The arguments an <see cref="IUserPart"/> component's Invoke/InvokeAsync accepts.</summary>
+public sealed record UserPartArgs(Guid UserId, ProfileCardViewMode ViewMode);
+
+/// <summary>A section-owned view component rendered into a named user-part slot.</summary>
 /// <remarks>
-/// The component's Invoke parameters are bound from <see cref="UserPartArgs"/> (<c>Guid userId</c>).
-/// It owns authorization for any data beyond the profile's ordinary authenticated-user visibility
-/// and returns empty content when it has nothing to show. Users supplies the target profile id;
-/// contributors never infer it from the viewer.
+/// The component's Invoke parameters are bound from <see cref="UserPartArgs"/> (<c>Guid userId</c>,
+/// <c>ProfileCardViewMode viewMode</c>; either may be omitted). It owns authorization for any data
+/// beyond the host page's own visibility and returns empty content when it has nothing to show.
+/// The host supplies the target user and audience; contributors never infer them from the viewer.
 /// </remarks>
-public sealed record UserPart(Type Component, int Weight = 0);
+public sealed record UserPart(string Slot, Type Component, int Weight = 0);
 
 /// <summary>
-/// Profile parts a section contributes for a target user. Returning nothing is the normal case.
+/// User parts a section contributes to the slots in <see cref="UserPartSlots"/>. Returning
+/// nothing is the normal case.
 /// </summary>
 [ViewComponentSlot(typeof(UserPartArgs))]
 public interface IUserPart : ISectionContribution

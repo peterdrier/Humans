@@ -1,12 +1,12 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.Web.ViewComponents;
+using Humans.Base.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 
-namespace Humans.Web.Tests.ViewComponents;
+namespace Humans.Base.Tests.ViewComponents;
 
 public class AdminBreadcrumbViewComponentTests
 {
@@ -37,7 +37,7 @@ public class AdminBreadcrumbViewComponentTests
     /// test assembly, since <see cref="FakeNav"/> lives in it. In the app that is "Expenses",
     /// "Budget", and so on, with no Shell-side table to keep in step.
     /// </summary>
-    private const string FakeNavSection = "Web.Tests";
+    private const string FakeNavSection = "Base.Tests";
 
     [HumansFact]
     public void Resolves_Section_And_Item_For_Known_Controller()

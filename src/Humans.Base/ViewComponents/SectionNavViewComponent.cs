@@ -3,7 +3,7 @@ using Humans.Base.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Base.ViewComponents;
 
 /// <summary>
 /// Renders the member top-nav links sections contributed through <see cref="ISectionNav"/>,
@@ -11,7 +11,7 @@ namespace Humans.Web.ViewComponents;
 /// </summary>
 /// <remarks>
 /// Items and children sort by weight alone and the sort is stable, so equal weights keep
-/// discovery order — no tie-break, matching <see cref="AdminNavComposition"/>.
+/// discovery order — no tie-break, matching <c>AdminNavComposition</c> (Shell).
 /// </remarks>
 public sealed class SectionNavViewComponent(
     IEnumerable<ISectionNav> contributors,

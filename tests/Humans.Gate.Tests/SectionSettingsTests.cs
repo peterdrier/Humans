@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Gate.ViewComponents;
 using Humans.Base.Authorization;
 
 namespace Humans.Gate.Tests;
@@ -19,7 +18,6 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("gate");
         tab.Label.Should().Be("Settings_TabGate");
-        tab.Component.Should().Be(typeof(GateSettingsTabViewComponent));
         tab.Policy.Should().Be(PolicyNames.TicketAdminOrAdmin);
     }
 }

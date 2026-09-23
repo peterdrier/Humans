@@ -1,8 +1,8 @@
 using Humans.Base.Interfaces;
-using Humans.Web.Models;
+using Humans.Base.Models;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Base.ViewComponents;
 
 /// <summary>
 /// Renders the merged things-to-do list for the signed-in member. Every entry comes from a

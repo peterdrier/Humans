@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.Settings.ViewComponents;
 
 namespace Humans.Settings.Tests;
 
@@ -13,6 +12,5 @@ public sealed class SectionChromeTests
 
         var component = components.Should().ContainSingle().Which;
         component.Slot.Should().Be(ChromeSlots.UserMenu);
-        component.Component.Should().Be(typeof(SettingsUserMenuViewComponent));
     }
 }

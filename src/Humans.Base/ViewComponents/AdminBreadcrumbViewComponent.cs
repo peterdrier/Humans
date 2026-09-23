@@ -1,7 +1,7 @@
 using Humans.Base.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Base.ViewComponents;
 
 public sealed record AdminBreadcrumbViewModel(string? SectionLabel, string? ItemLabel, string? FallbackTitle);
 
@@ -14,7 +14,7 @@ public sealed record AdminBreadcrumbViewModel(string? SectionLabel, string? Item
 /// "where am I". The section is derived from the contributing <see cref="ISectionAdminNav"/>'s
 /// assembly rather than declared, so a new section gets a correct crumb with no Shell edit —
 /// which is also why this walks the contributors itself instead of
-/// <see cref="AdminNavComposition.Compose"/>, whose whole job is to merge that attribution away.
+/// <c>AdminNavComposition.Compose</c> (Shell), whose whole job is to merge that attribution away.
 /// </remarks>
 public sealed class AdminBreadcrumbViewComponent(
     IEnumerable<ISectionAdminNav> navContributors) : ViewComponent

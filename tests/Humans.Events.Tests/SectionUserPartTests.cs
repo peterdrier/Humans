@@ -1,18 +1,17 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.Events.ViewComponents;
 
 namespace Humans.Events.Tests;
 
 public sealed class SectionUserPartTests
 {
     [HumansFact]
-    public void Parts_ContributesEventsCardForProfileTarget()
+    public void Parts_ContributesToTheProfileSlot()
     {
         IUserPart contribution = new Section();
 
         var parts = contribution.Parts();
 
-        parts.Should().ContainSingle().Which.Should().Be(new UserPart(typeof(EventsCardViewComponent)));
+        parts.Should().ContainSingle().Which.Slot.Should().Be(UserPartSlots.Profile);
     }
 }

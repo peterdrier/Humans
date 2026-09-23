@@ -1,7 +1,0 @@
-@using Humans.Base.Interfaces
-@model Humans.Users.Models.UserPartsViewModel
-
-@foreach (var part in Model.Parts)
-{
-    @await Component.InvokeAsync(part.Component, new UserPartArgs(Model.UserId))
-}

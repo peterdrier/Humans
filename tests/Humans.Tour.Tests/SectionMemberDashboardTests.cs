@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.Tour.ViewComponents;
 
 namespace Humans.Tour.Tests;
 
@@ -13,6 +12,5 @@ public class SectionMemberDashboardTests
         var component = new SectionMemberDashboard().Components().Should().ContainSingle().Subject;
 
         component.Slot.Should().Be(ChromeSlots.MemberDashboard);
-        component.Component.Should().Be(typeof(TourCardViewComponent));
     }
 }

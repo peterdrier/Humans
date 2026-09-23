@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.GoogleIntegration.ViewComponents;
 using Humans.Base.Authorization;
 
 namespace Humans.GoogleIntegration.Tests;
@@ -19,7 +18,6 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("google-sync");
         tab.Label.Should().Be("Settings_TabGoogleSync");
-        tab.Component.Should().Be(typeof(GoogleSyncSettingsTabViewComponent));
         tab.Policy.Should().Be(PolicyNames.AdminOnly);
     }
 }

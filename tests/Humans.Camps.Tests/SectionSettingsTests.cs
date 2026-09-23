@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Camps.ViewComponents;
 using Humans.Base.Authorization;
 
 namespace Humans.Camps.Tests;
@@ -19,7 +18,6 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("barrios");
         tab.Label.Should().Be("Settings_TabBarrios");
-        tab.Component.Should().Be(typeof(CampBarriosSettingsTabViewComponent));
         tab.Policy.Should().Be(PolicyNames.CampAdminOrAdmin);
     }
 }

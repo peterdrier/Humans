@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Users.ViewComponents;
 
 /// <summary>
 /// Renders a nobodies.team email badge or status indicator for a user.
@@ -16,7 +16,7 @@ namespace Humans.Web.ViewComponents;
 ///   "provision" — show email or provisioning form (TeamAdmin/Members)
 ///   "detail"    — show email + linked badge, or provisioning form (AdminDetail)
 /// </summary>
-public class NobodiesEmailBadgeViewComponent(IUserServiceRead userService) : ViewComponent
+internal sealed class NobodiesEmailBadgeViewComponent(IUserServiceRead userService) : ViewComponent
 {
     /// <summary>
     /// Renders a nobodies.team email badge for the given user.

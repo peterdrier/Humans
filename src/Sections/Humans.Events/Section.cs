@@ -21,7 +21,7 @@ namespace Humans.Events;
 /// </summary>
 public sealed class Section : ISection, IUserPart
 {
-    IEnumerable<UserPart> IUserPart.Parts() => [new(typeof(EventsCardViewComponent))];
+    IEnumerable<UserPart> IUserPart.Parts() => [new(UserPartSlots.Profile, typeof(EventsCardViewComponent))];
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {

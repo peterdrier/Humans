@@ -1,7 +1,7 @@
 using Humans.Base.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Base.ViewComponents;
 
 /// <summary>
 /// Renders whatever the active sections contributed into a named chrome slot, so Shell no
@@ -11,7 +11,7 @@ namespace Humans.Web.ViewComponents;
 /// Both <see cref="ISectionChrome"/> (layout chrome) and <see cref="ISectionMemberDashboard"/>
 /// (dashboard content) feed the same slots. An empty slot renders nothing at all.
 /// Ordering is by weight and stable, so equal weights keep discovery order — no tie-break,
-/// matching <see cref="AdminNavComposition"/> and <see cref="SectionNavViewComponent"/>.
+/// matching <c>AdminNavComposition</c> (Shell) and <see cref="SectionNavViewComponent"/>.
 /// </remarks>
 public sealed class ChromeSlotViewComponent(
     IEnumerable<ISectionChrome> chrome,

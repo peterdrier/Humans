@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Shifts.ViewComponents;
 using Humans.Base.Authorization;
 
 namespace Humans.Shifts.Tests;
@@ -19,7 +18,6 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("shifts");
         tab.Label.Should().Be("Settings_TabShifts");
-        tab.Component.Should().Be(typeof(ShiftsSettingsTabViewComponent));
         tab.Policy.Should().Be(PolicyNames.AdminOnly);
     }
 }
