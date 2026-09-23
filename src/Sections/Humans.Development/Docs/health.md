@@ -25,12 +25,13 @@ The section groups by "gate shape" and "what happens next":
 |---|---|---|---|
 | Dev-login sign-in | `SignIn(persona)`, `SignInAsUser(id)` | dev-auth on, host non-Production; Admin persona/impersonation also needs `AdminSignInAllowed` | Seeder writes idempotently, then `SignInManager.SignInAsync` |
 | Dev-login chooser | `Users()` | dev-auth on, host non-Production | Read via `DevPersonaSeeder.GetUsersForChooserAsync` (users list) |
+| Dev-seed page | `Index()` | `AdminOnly` + dev-auth on, host non-Production | Renders the budget and camp-role seed buttons |
 | Dev-seed request (default) | `SeedBudget`, `SeedCampRoles` | `[Authorize(policy)]` + dev-auth on, host non-Production | Seeder call, redirect to `/Admin` |
 | Dev-seed strict | `SeedDashboard`, `ResetDashboard` | `[Authorize(policy)]` + dev-auth on, host `IsDevelopment()` only | Seeder call, redirect to `/Shifts/Dashboard` |
 | Section boot | `Section.Register` | Non-Production env name only | Registers 3 seeders (fail-closed on unknown env) |
-| Nav contribution | `SectionAdminNav.Groups` | Environment gate: `!env.IsProduction()` | Renders "Dev" admin group |
+| Nav contribution | `SectionAdminNav.Groups` | Environment gate: `!env.IsProduction()` | Renders the "Development" admin group (one item, `/dev/seed`) |
 
-Everything else in the section is helpers reachable from one of the six shapes.
+Everything else in the section is helpers reachable from one of the seven shapes.
 
 ### 3. Structure
 

@@ -1,0 +1,21 @@
+@{
+    ViewData["Title"] = "Seed data";
+}
+
+<h1>Seed data</h1>
+<p class="text-muted">Demo fixtures for dev and preview hosts. Each seed is idempotent.</p>
+
+<div class="d-flex flex-wrap gap-2">
+    <form method="post" action="/dev/seed/budget" class="m-0">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-outline-primary">
+            <i class="fa-solid fa-coins me-1"></i>Seed budget
+        </button>
+    </form>
+    <form method="post" action="/dev/seed/camp-roles" class="m-0">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-outline-primary">
+            <i class="fa-solid fa-user-tag me-1"></i>Seed camp roles
+        </button>
+    </form>
+</div>

@@ -5,6 +5,7 @@ using Humans.Development.Controllers;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -67,6 +68,29 @@ public class DevSeedControllerTests
         // Assert
         result.Should().BeOfType<NotFoundResult>();
         _serviceProvider.DidNotReceive().GetService(Arg.Any<Type>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Production", true)]
+    [Xunit.InlineData("Staging", false)]
+    public void Index_DevSeedGateClosed_ReturnsNotFound(string environment, bool devAuthEnabled)
+    {
+        _environment.EnvironmentName.Returns(environment);
+        SetDevAuthEnabled(devAuthEnabled);
+
+        BuildSut().Index().Should().BeOfType<NotFoundResult>();
+    }
+
+    [HumansFact]
+    public void Index_DevSeedGateOpen_RendersSeedPage()
+    {
+        // Staging with DevAuth on is QA / a preview: the nav's "Development" link must land here.
+        _environment.EnvironmentName.Returns("Staging");
+        SetDevAuthEnabled(true);
+        var ctrl = BuildSut();
+        ctrl.TempData = Substitute.For<ITempDataDictionary>();
+
+        ctrl.Index().Should().BeOfType<ViewResult>();
     }
 
     private void SetDevAuthEnabled(bool enabled)

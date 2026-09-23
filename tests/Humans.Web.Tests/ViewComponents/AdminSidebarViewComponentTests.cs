@@ -36,7 +36,7 @@ public class AdminSidebarViewComponentTests
                 new("DB stats", "Debug", "DbStats", null, null, "icon", PolicyNames.AdminOnly)
             ]),
             new("Development", [
-                new("Seed budget", "DevSeed", "SeedBudget", null, null, "icon", PolicyNames.AdminOnly,
+                new("Seed data", "DevSeed", "Index", null, null, "icon", PolicyNames.AdminOnly,
                      EnvironmentGate: env => !env.IsProduction())
             ])
         ];

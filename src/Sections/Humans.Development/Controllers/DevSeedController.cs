@@ -23,6 +23,19 @@ internal sealed class DevSeedController(
     IUserServiceRead userService,
     ILogger<DevSeedController> logger) : HumansControllerBase(userService)
 {
+    // The admin nav's landing page for the seed buttons below: the seeds are POST-only.
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [HttpGet("")]
+    public IActionResult Index()
+    {
+        if (!IsDevSeedEnabled())
+        {
+            return NotFound();
+        }
+
+        return View();
+    }
+
     [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
     [HttpPost("budget")]
     [ValidateAntiForgeryToken]

@@ -10,9 +10,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     public IEnumerable<AdminNavGroup> Groups() =>
     [
         new("Development", [
-            new("Seed budget",     "DevSeed", "SeedBudget",    null, null, "fa-solid fa-coins",    PolicyNames.AdminOnly,
-                 EnvironmentGate: env => !env.IsProduction()),
-            new("Seed camp roles", "DevSeed", "SeedCampRoles", null, null, "fa-solid fa-user-tag", PolicyNames.AdminOnly,
+            new("Seed data", "DevSeed", "Index", null, null, "fa-solid fa-seedling", PolicyNames.AdminOnly,
                  EnvironmentGate: env => !env.IsProduction())
         ])
     ];
