@@ -95,6 +95,16 @@
   <data name="Events_Submission_ReturnedForEdits" xml:space="preserve"><value>This event was returned for edits. Update the details and resubmit.</value></data>
   <data name="Events_Submission_CharactersRemaining" xml:space="preserve"><value>characters remaining</value></data>
   <data name="Events_Submission_MarkdownSupported" xml:space="preserve"><value>Markdown formatting is supported</value></data>
+  <data name="Events_Submission_FieldTitle" xml:space="preserve"><value>Title</value></data>
+  <data name="Events_Submission_FieldDescription" xml:space="preserve"><value>Description</value></data>
+  <data name="Events_Submission_FieldCategory" xml:space="preserve"><value>Category</value></data>
+  <data name="Events_Submission_FieldVenue" xml:space="preserve"><value>Venue</value></data>
+  <data name="Events_Submission_FieldDate" xml:space="preserve"><value>Date</value></data>
+  <data name="Events_Submission_FieldStartTime" xml:space="preserve"><value>Start time</value></data>
+  <data name="Events_Submission_FieldDuration" xml:space="preserve"><value>Duration (minutes)</value></data>
+  <data name="Events_Submission_FieldLocationNote" xml:space="preserve"><value>Location note</value></data>
+  <data name="Events_Submission_FieldHost" xml:space="preserve"><value>Host</value></data>
+  <data name="Events_Submission_FieldPriorityRank" xml:space="preserve"><value>Priority rank</value></data>
   <data name="Events_Submission_SelectCategory" xml:space="preserve"><value>— Select category —</value></data>
   <data name="Events_Submission_SelectVenue" xml:space="preserve"><value>— Select venue —</value></data>
   <data name="Events_Submission_AllDay" xml:space="preserve"><value>All day event</value></data>

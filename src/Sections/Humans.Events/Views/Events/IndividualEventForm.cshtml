@@ -36,14 +36,14 @@
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
             <div class="mb-3">
-                <label asp-for="Title" class="form-label"></label>
+                <label asp-for="Title" class="form-label">@Localizer["Events_Submission_FieldTitle"]</label>
                 <input asp-for="Title" class="form-control" maxlength="80" id="titleInput" />
                 <div class="form-text"><span id="titleCounter">@(80 - (Model.Title?.Length ?? 0))</span> @Localizer["Events_Submission_CharactersRemaining"]</div>
                 <span asp-validation-for="Title" class="text-danger"></span>
             </div>
 
             <div class="mb-3">
-                <label asp-for="Description" class="form-label"></label>
+                <label asp-for="Description" class="form-label">@Localizer["Events_Submission_FieldDescription"]</label>
                 <textarea asp-for="Description" class="form-control" rows="3" maxlength="450" id="descriptionInput"></textarea>
                 <div class="form-text"><span id="descriptionCounter">@(450 - (Model.Description?.Length ?? 0))</span> @Localizer["Events_Submission_CharactersRemaining"]</div>
                 <div class="form-text">
@@ -55,7 +55,7 @@
             </div>
 
             <div class="mb-3">
-                <label asp-for="CategoryId" class="form-label"></label>
+                <label asp-for="CategoryId" class="form-label">@Localizer["Events_Submission_FieldCategory"]</label>
                 <select asp-for="CategoryId" class="form-select">
                     <option value="">@Localizer["Events_Submission_SelectCategory"]</option>
                     @foreach (var cat in Model.Categories)
@@ -67,7 +67,7 @@
             </div>
 
             <div class="mb-3">
-                <label asp-for="VenueId" class="form-label"></label>
+                <label asp-for="VenueId" class="form-label">@Localizer["Events_Submission_FieldVenue"]</label>
                 <select asp-for="VenueId" class="form-select">
                     <option value="">@Localizer["Events_Submission_SelectVenue"]</option>
                     @foreach (var venue in Model.Venues)
@@ -85,7 +85,7 @@
 
             <div class="row" id="timeFields">
                 <div class="col-md-4 mb-3">
-                    <label asp-for="StartDate" class="form-label"></label>
+                    <label asp-for="StartDate" class="form-label">@Localizer["Events_Submission_FieldDate"]</label>
                     <select asp-for="StartDate" class="form-select">
                         <option value="">@Localizer["Events_Submission_SelectDay"]</option>
                         @foreach (var day in Model.EventDays)
@@ -96,12 +96,12 @@
                     <span asp-validation-for="StartDate" class="text-danger"></span>
                 </div>
                 <div class="col-md-4 mb-3" id="startTimeField">
-                    <label asp-for="StartTime" class="form-label"></label>
+                    <label asp-for="StartTime" class="form-label">@Localizer["Events_Submission_FieldStartTime"]</label>
                     <input asp-for="StartTime" type="time" class="form-control" step="900" />
                     <span asp-validation-for="StartTime" class="text-danger"></span>
                 </div>
                 <div class="col-md-4 mb-3" id="durationField">
-                    <label asp-for="DurationMinutes" class="form-label"></label>
+                    <label asp-for="DurationMinutes" class="form-label">@Localizer["Events_Submission_FieldDuration"]</label>
                     <select asp-for="DurationMinutes" class="form-select" id="durationSelect">
                         @for (var mins = 15; mins <= 480; mins += 15)
                         {
@@ -142,13 +142,13 @@
             </div>
 
             <div class="mb-3">
-                <label asp-for="LocationNote" class="form-label"></label>
+                <label asp-for="LocationNote" class="form-label">@Localizer["Events_Submission_FieldLocationNote"]</label>
                 <input asp-for="LocationNote" class="form-control" maxlength="120" placeholder="@Localizer["Events_Submission_LocationPlaceholder"]" />
                 <span asp-validation-for="LocationNote" class="text-danger"></span>
             </div>
 
             <div class="mb-3">
-                <label asp-for="Host" class="form-label"></label>
+                <label asp-for="Host" class="form-label">@Localizer["Events_Submission_FieldHost"]</label>
                 <input asp-for="Host" class="form-control" maxlength="40" placeholder="@Localizer["Events_Submission_HostPlaceholder"]" />
                 <div class="form-text">@Localizer["Events_Submission_HostHelp"]</div>
                 <span asp-validation-for="Host" class="text-danger"></span>

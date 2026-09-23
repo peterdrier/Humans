@@ -100,6 +100,16 @@
   <data name="Events_Submission_ReturnedForEdits" xml:space="preserve"><value>Aquest esdeveniment s'ha retornat per editar-lo. Actualitza'n els detalls i torna'l a enviar.</value></data>
   <data name="Events_Submission_CharactersRemaining" xml:space="preserve"><value>caràcters restants</value></data>
   <data name="Events_Submission_MarkdownSupported" xml:space="preserve"><value>S'admet el format Markdown</value></data>
+  <data name="Events_Submission_FieldTitle" xml:space="preserve"><value>Títol</value></data>
+  <data name="Events_Submission_FieldDescription" xml:space="preserve"><value>Descripció</value></data>
+  <data name="Events_Submission_FieldCategory" xml:space="preserve"><value>Categoria</value></data>
+  <data name="Events_Submission_FieldVenue" xml:space="preserve"><value>Lloc</value></data>
+  <data name="Events_Submission_FieldDate" xml:space="preserve"><value>Data</value></data>
+  <data name="Events_Submission_FieldStartTime" xml:space="preserve"><value>Hora d'inici</value></data>
+  <data name="Events_Submission_FieldDuration" xml:space="preserve"><value>Durada (minuts)</value></data>
+  <data name="Events_Submission_FieldLocationNote" xml:space="preserve"><value>Nota d'ubicació</value></data>
+  <data name="Events_Submission_FieldHost" xml:space="preserve"><value>Amfitrió</value></data>
+  <data name="Events_Submission_FieldPriorityRank" xml:space="preserve"><value>Prioritat</value></data>
   <data name="Events_Submission_SelectCategory" xml:space="preserve"><value>— Selecciona una categoria —</value></data>
   <data name="Events_Submission_SelectVenue" xml:space="preserve"><value>— Selecciona un lloc —</value></data>
   <data name="Events_Submission_AllDay" xml:space="preserve"><value>Esdeveniment de tot el dia</value></data>
