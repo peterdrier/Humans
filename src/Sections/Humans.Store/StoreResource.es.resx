@@ -65,4 +65,16 @@
   <data name="Store_OpenOrder" xml:space="preserve"><value>Abrir</value></data>
   <data name="Store_StartOrder" xml:space="preserve"><value>Iniciar pedido</value></data>
   <data name="Store_Title" xml:space="preserve"><value>Tienda</value></data>
+  <data name="Store_CheckoutFailed" xml:space="preserve"><value>No se pudo iniciar el pago con Stripe. Inténtalo de nuevo o contacta con una persona administradora.</value></data>
+  <data name="Store_InvoiceIssued" xml:space="preserve"><value>Factura emitida en Holded. El pedido queda bloqueado.</value></data>
+  <data name="Store_InvoiceFailed" xml:space="preserve"><value>No se pudo emitir la factura en Holded. Revisa los registros e inténtalo de nuevo.</value></data>
+  <data name="Store_OrderCreated" xml:space="preserve"><value>Pedido creado.</value></data>
+  <data name="Store_TeamOrderCreated" xml:space="preserve"><value>Pedido de equipo creado.</value></data>
+  <data name="Store_OrderDeleted" xml:space="preserve"><value>Pedido eliminado.</value></data>
+  <data name="Store_AddLineFailed" xml:space="preserve"><value>No se pudo añadir la línea.</value></data>
+  <data name="Store_LineAdded" xml:space="preserve"><value>Línea añadida.</value></data>
+  <data name="Store_RemoveLineFailed" xml:space="preserve"><value>No se pudo eliminar la línea.</value></data>
+  <data name="Store_LineRemoved" xml:space="preserve"><value>Línea eliminada.</value></data>
+  <data name="Store_UpdateCounterpartyFailed" xml:space="preserve"><value>No se pudo actualizar la contraparte.</value></data>
+  <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Contraparte actualizada.</value></data>
 </root>

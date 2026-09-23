@@ -65,4 +65,16 @@
   <data name="Store_OpenOrder" xml:space="preserve"><value>Obre</value></data>
   <data name="Store_StartOrder" xml:space="preserve"><value>Inicia una comanda</value></data>
   <data name="Store_Title" xml:space="preserve"><value>Botiga</value></data>
+  <data name="Store_CheckoutFailed" xml:space="preserve"><value>No s'ha pogut iniciar el pagament amb Stripe. Torna-ho a provar o contacta amb administració.</value></data>
+  <data name="Store_InvoiceIssued" xml:space="preserve"><value>Factura emesa a Holded. La comanda ara queda bloquejada.</value></data>
+  <data name="Store_InvoiceFailed" xml:space="preserve"><value>No s'ha pogut emetre la factura a Holded. Revisa els registres i torna-ho a provar.</value></data>
+  <data name="Store_OrderCreated" xml:space="preserve"><value>Comanda creada.</value></data>
+  <data name="Store_TeamOrderCreated" xml:space="preserve"><value>Comanda d'equip creada.</value></data>
+  <data name="Store_OrderDeleted" xml:space="preserve"><value>Comanda eliminada.</value></data>
+  <data name="Store_AddLineFailed" xml:space="preserve"><value>No s'ha pogut afegir la línia.</value></data>
+  <data name="Store_LineAdded" xml:space="preserve"><value>Línia afegida.</value></data>
+  <data name="Store_RemoveLineFailed" xml:space="preserve"><value>No s'ha pogut eliminar la línia.</value></data>
+  <data name="Store_LineRemoved" xml:space="preserve"><value>Línia eliminada.</value></data>
+  <data name="Store_UpdateCounterpartyFailed" xml:space="preserve"><value>No s'ha pogut actualitzar la contrapart.</value></data>
+  <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Contrapart actualitzada.</value></data>
 </root>
