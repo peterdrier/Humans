@@ -659,7 +659,7 @@ Admin-only flows for the section's cross-account hygiene (the `/Profile/Admin/*`
 - When a human verifies a pending email that already exists as a verified address on another account, `UserEmailService` creates an `AccountMergeRequest` (status `Pending`) for admin review.
 - When an `AccountMergeRequest` is accepted, `IAccountMergeService.AcceptAsync` orchestrates a **fold-into-target** as an ordered fan-out with no wrapping transaction (see Part 1, "A merge is atomic by ordering"): it runs every registered `IUserMerge` implementation (`merger.ReassignAsync(source, target, …)`), each owning section re-FKing its own user-keyed rows source→target; then calls `IUserServiceInternal.AnonymizeForMergeAsync` last to tombstone the source User row (sets `MergedToUserId` + `MergedAt`, locks out login). The source row is **not** deleted — it stays as a redirect for chain-follow reads on append-only history.
 - When `DuplicateAccountService` surfaces a pair of live accounts sharing an address, it writes one `DuplicateAccountFlagged` audit entry (job `DuplicateAccountScan`; entity the pair's lower id, related entity the higher) the first time the scan sees the pair, and never again for that pair.
-- When a profile field changes through any owning service, `CachingUserService` reloads the affected `UserInfo` dict entry from the section's repositories.
+- When a profile field changes through any owning service, `CachingUserService` reloads the affected `UserInfo` dict entry from the section's repositories. After a successful write that reload does not inherit the request cancellation token, so a disconnected client cannot leave the singleton snapshot stale.
 
 ## Cross-Section Dependencies
 

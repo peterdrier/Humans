@@ -141,6 +141,24 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
+    public async Task SetPreferredLanguageAsync_RefreshesAfterTheRequestIsCancelled()
+    {
+        var userId = Guid.NewGuid();
+        _inner.SetPreferredLanguageAsync(userId, "es", Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId)));
+        var sut = CreateSut();
+        using var requestCancellation = new CancellationTokenSource();
+        await requestCancellation.CancelAsync();
+
+        await sut.SetPreferredLanguageAsync(userId, "es", requestCancellation.Token);
+
+        await _inner.Received(1).GetUserInfoAsync(
+            userId, Arg.Is<CancellationToken>(ct => !ct.CanBeCanceled));
+    }
+
+    [HumansFact]
     public async Task GetUserInfoAsync_ConcurrentReads_ReturnSameEntryWithoutTearing()
     {
         var userId = Guid.NewGuid();
