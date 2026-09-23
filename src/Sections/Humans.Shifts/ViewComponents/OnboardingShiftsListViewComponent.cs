@@ -10,16 +10,22 @@ namespace Humans.Shifts.ViewComponents;
 /// <remarks>
 /// Invoked by name from <c>Humans.Onboarding</c>'s <c>Views/OnboardingWidget/Shifts.cshtml</c>.
 /// The caller has already filtered <paramref name="shifts"/> to the selected priority pill.
+/// It passes the event by id, not as a DTO: invocation by name has no compile-time
+/// argument check, and the rota partials need this section's <see cref="BurnSettingsInfo"/>.
 /// </remarks>
-public sealed class OnboardingShiftsListViewComponent : ViewComponent
+public sealed class OnboardingShiftsListViewComponent(IBurnSettingsService burnSettings) : ViewComponent
 {
-    public IViewComponentResult Invoke(
-        BurnSettingsInfo eventSettings,
+    public async Task<IViewComponentResult> InvokeAsync(
+        Guid eventSettingsId,
         IReadOnlyList<UrgentShiftInfo> shifts,
         HashSet<Guid> userSignupShiftIds,
         Dictionary<Guid, SignupStatus> userSignupStatuses,
         bool earlyEntrySignupsClosed)
     {
+        var eventSettings = await burnSettings.GetByIdAsync(eventSettingsId, HttpContext.RequestAborted);
+        if (eventSettings is null)
+            return Content(string.Empty);
+
         var rotaGroups = shifts
             .GroupBy(u => u.Shift.RotaId)
             .Select(rg => ShiftBrowseMapper.BuildRotaGroup(
