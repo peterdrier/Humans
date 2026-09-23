@@ -1,9 +1,11 @@
 @using Microsoft.AspNetCore.Html
-@model Humans.Users.Models.ProfileSummaryViewModel
+@using Humans.Base.Enums
+@model Humans.Users.ViewComponents.UsersGalleryViewModel
 
-@* The widget-gallery cards whose sample model (ProfileSummaryViewModel) is internal to
-   this section — rendered here so Shell/Debug never has to name it (ShiftsGallery's
-   shape; nobodies-collective/Humans#1091). The wg-* CSS classes are the gallery page's;
+@* The widget-gallery cards this section owns — sample models internal to this section
+   (_ProfileCard, _HumanPopover) plus this section's public view components, rendered here so
+   Debug never has to name their internals or pass a caller-supplied user id (ShiftsGallery's
+   shape; nobodies-collective/Humans#1091, #1815). The wg-* CSS classes are the gallery page's;
    this renders inside it. *@
 
 @functions {
@@ -11,12 +13,24 @@
     {
         var html = new System.Text.StringBuilder();
         html.Append("<dl class=\"wg-params\">");
-        foreach (var (name, desc) in entries)
+        if (entries.Length == 0)
         {
-            html.Append($"<dt>{System.Net.WebUtility.HtmlEncode(name)}</dt><dd>{desc}</dd>");
+            html.Append("<dd class=\"wg-params-none\">(no parameters — uses ambient request context)</dd>");
+        }
+        else
+        {
+            foreach (var (name, desc) in entries)
+            {
+                html.Append($"<dt>{System.Net.WebUtility.HtmlEncode(name)}</dt><dd>{desc}</dd>");
+            }
         }
         html.Append("</dl>");
         return new HtmlString(html.ToString());
+    }
+
+    private static IHtmlContent AuthLine(string text)
+    {
+        return new HtmlString($"<div class=\"wg-auth-line\">{text}</div>");
     }
 }
 
@@ -35,7 +49,7 @@
         ("@@model", "<code>ProfileSummaryViewModel</code> — UserId, DisplayName, Email, MembershipTier, MembershipStatus, IsSuspended, …")
     )
     <div class="wg-card-example">
-        @await Html.PartialAsync("_ProfileCard", Model)
+        @await Html.PartialAsync("_ProfileCard", Model.Sample)
     </div>
 </div>
 
@@ -57,6 +71,132 @@
     )
     <div class="wg-auth-line">Preferred-language flag is gated on <code>HumanAdminBoardOrAdmin</code> via <code>IAuthorizationService</code> evaluated in the partial.</div>
     <div class="wg-card-example">
-        @await Html.PartialAsync("_HumanPopover", Model)
+        @await Html.PartialAsync("_HumanPopover", Model.Sample)
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:profile-card&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/ProfileCardViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">
+        Full profile card. The view mode controls which sensitive fields render — legal name, board notes, emergency contacts.
+    </div>
+    @ParamsBlock(
+        ("userId", "<code>Guid</code> — required"),
+        ("viewMode", "<code>ProfileCardViewMode</code> — Self · Public · Admin")
+    )
+    @AuthLine("In <code>Public</code> mode, viewer's roles drive whether legal-name fields render — board members see legal name, others don't.")
+    <div class="wg-variants">
+        <div class="wg-variant-label">view-mode="Admin"<span class="wg-variant-sub">current human</span></div>
+        <div class="wg-variant-render" style="display:block;">
+            <vc:profile-card user-id="@Model.CurrentUserId" view-mode="@ProfileCardViewMode.Admin" />
+        </div>
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:human-summary&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/HumanSummaryViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">
+        Renders the same content as the hover popover (<code>_HumanPopover.cshtml</code>) inline — avatar, name, membership badge, city/country, public + (admin-only) hidden teams, and languages. Use on admin-review screens where the reviewer needs identity context without having to hover (e.g. ticket-transfer detail).
+    </div>
+    @ParamsBlock(
+        ("user-id", "<code>Guid</code> — required")
+    )
+    @AuthLine("Hidden-team rows render only for viewers with <code>TeamsAdminBoardOrAdmin</code> policy (gating lives in <code>_HumanPopover.cshtml</code>).")
+    <div class="wg-variants">
+        <div class="wg-variant-label">user-id=current<span class="wg-variant-sub">has profile</span></div>
+        <div class="wg-variant-render" style="display:block;">
+            <vc:human-summary user-id="@Model.CurrentUserId" />
+        </div>
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:communication-preferences-panel&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/CommunicationPreferencesPanelViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">
+        Per-user communication-preferences matrix. Write mode (default) renders toggle checkboxes that POST to <code>/Profile/Me/CommunicationPreferences/Update</code>. Read-only mode hides the form and surfaces <code>UpdateSource</code> + <code>UpdatedAt</code> per category — used on <code>/Users/Admin/{id}</code>.
+    </div>
+    @ParamsBlock(
+        ("user-id", "<code>Guid</code> — required"),
+        ("read-only", "<code>bool</code> — default <code>false</code>; <code>true</code> hides forms and adds attribution columns")
+    )
+    <div class="wg-variants">
+        <div class="wg-variant-label">read-only="false"<span class="wg-variant-sub">default — toggleable</span></div>
+        <div class="wg-variant-render" style="display:block;">
+            <vc:communication-preferences-panel user-id="@Model.CurrentUserId" />
+        </div>
+
+        <div class="wg-variant-label">read-only="true"<span class="wg-variant-sub">admin view</span></div>
+        <div class="wg-variant-render" style="display:block;">
+            <vc:communication-preferences-panel user-id="@Model.CurrentUserId" read-only="true" />
+        </div>
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:nobodies-email-badge&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/NobodiesEmailBadgeViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">
+        Indicates whether a human has a <code>nobodies.team</code> Workspace email. Four modes selected by the caller.
+    </div>
+    @ParamsBlock(
+        ("userId", "<code>Guid</code> — required"),
+        ("mode", "<code>string</code> — badge (default) · status · email · detail")
+    )
+    <div class="wg-variants">
+        <div class="wg-variant-label">mode="badge"<span class="wg-variant-sub">icon badge for cards</span></div>
+        <div class="wg-variant-render"><vc:nobodies-email-badge user-id="@Model.CurrentUserId" mode="badge" /></div>
+
+        <div class="wg-variant-label">mode="status"<span class="wg-variant-sub">warning when not primary</span></div>
+        <div class="wg-variant-render"><vc:nobodies-email-badge user-id="@Model.CurrentUserId" mode="status" /></div>
+
+        <div class="wg-variant-label">mode="email"<span class="wg-variant-sub">show address</span></div>
+        <div class="wg-variant-render"><vc:nobodies-email-badge user-id="@Model.CurrentUserId" mode="email" /></div>
+
+        <div class="wg-variant-label">mode="detail"<span class="wg-variant-sub">address + linked badge</span></div>
+        <div class="wg-variant-render"><vc:nobodies-email-badge user-id="@Model.CurrentUserId" mode="detail" /></div>
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:membership-tier-badge&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/MembershipTierBadgeViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">
+        The member's Colaborador/Asociado tier badge beside their name on the dashboard. Renders
+        nothing for a plain Volunteer, which is nearly everyone — so it's empty here unless your
+        account holds a tier.
+    </div>
+    @ParamsBlock(
+        ("userId", "<code>Guid</code> — required")
+    )
+    <div class="wg-card-example">
+        <vc:membership-tier-badge user-id="@Model.CurrentUserId" />
     </div>
 </div>

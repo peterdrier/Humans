@@ -7,5 +7,8 @@ namespace Humans.Users;
 internal sealed class SectionChrome : ISectionChrome
 {
     public IEnumerable<ChromeComponent> Components() =>
-        [new(ChromeSlots.AdminDashboard, typeof(PreferredLanguageCardViewComponent), Weight: 40)];
+        [
+            new(ChromeSlots.AdminDashboard, typeof(PreferredLanguageCardViewComponent), Weight: 40),
+            new(ChromeSlots.WidgetGallery, typeof(UsersGalleryViewComponent)),
+        ];
 }

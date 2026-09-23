@@ -33,7 +33,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// <c>Localizer</c> renders the raw key, in all six languages, on a green 200.
 /// </para>
 /// <para>
-/// <c>/WidgetGallery</c> is the probe page because it renders three of them, plus the
+/// <c>/Debug/WidgetGallery</c> is the probe page because it renders three of them, plus the
 /// <c>&lt;vc:user-search-result&gt;</c> that replaced <c>_HumanSearchResults</c>
 /// (nobodies-collective/Humans#1062), against real sample data on one request — the same
 /// reason Calendar, Tickets and AuditLog use it. <c>_FavouriteButton</c> is not on it (it
@@ -81,7 +81,7 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        var response = await Client.GetAsync("/WidgetGallery", ct);
+        var response = await Client.GetAsync("/Debug/WidgetGallery", ct);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
@@ -108,7 +108,7 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
                      "Search_MatchedIn",
                  })
         {
-            html.Should().NotContain(key, $"/WidgetGallery rendered the raw key {key}");
+            html.Should().NotContain(key, $"/Debug/WidgetGallery rendered the raw key {key}");
         }
     }
 
@@ -147,7 +147,7 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        var response = await Client.GetAsync("/WidgetGallery", ct);
+        var response = await Client.GetAsync("/Debug/WidgetGallery", ct);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
@@ -175,7 +175,7 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
                  })
         {
             html.Should().NotContain(literal,
-                $"GET /WidgetGallery shipped {literal} as literal markup instead of binding it");
+                $"GET /Debug/WidgetGallery shipped {literal} as literal markup instead of binding it");
         }
     }
 }

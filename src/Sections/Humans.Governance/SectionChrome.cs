@@ -6,5 +6,8 @@ namespace Humans.Governance;
 internal sealed class SectionChrome : ISectionChrome
 {
     public IEnumerable<ChromeComponent> Components() =>
-        [new(ChromeSlots.AdminDashboard, typeof(TierApplicationsCardViewComponent), Weight: 30)];
+        [
+            new(ChromeSlots.AdminDashboard, typeof(TierApplicationsCardViewComponent), Weight: 30),
+            new(ChromeSlots.WidgetGallery, typeof(MemberTermStatusViewComponent)),
+        ];
 }

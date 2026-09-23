@@ -194,13 +194,13 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
         // 200, correct-looking source, and the ticket cards simply absent from the homepage
         // dashboard, the holdings list and this page.
         //
-        // /WidgetGallery is the probe because it renders three stub variants from inline
+        // /Debug/WidgetGallery is the probe because it renders three stub variants from inline
         // sample data — no seeded orders, and it is the only page that exercises the void and
         // early-entry branches together.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        var response = await Client.GetAsync("/WidgetGallery", ct);
+        var response = await Client.GetAsync("/Debug/WidgetGallery", ct);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var html = await response.Content.ReadAsStringAsync(ct);

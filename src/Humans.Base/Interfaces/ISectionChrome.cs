@@ -28,6 +28,10 @@ public static class ChromeSlots
 
     /// <summary>Just before the closing <c>&lt;/body&gt;</c> tag, for floating page-chrome widgets.</summary>
     public const string BodyEnd = "body-end";
+
+    /// <summary>The widget gallery's fan-in area for a section's own sample cards (Debug's
+    /// <c>WidgetGallery/Index</c>).</summary>
+    public const string WidgetGallery = "widget-gallery";
 }
 
 /// <summary>

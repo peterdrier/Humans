@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Models;
@@ -7,18 +8,18 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Shifts.ViewComponents;
 
 /// <summary>
-/// The widget gallery's four rota cards — <c>_RotaHeader</c>, <c>_RotaBadges</c>,
-/// <c>_RotaDetails</c> and <c>_EventRotaTable</c> — rendered against live samples from
-/// the active event.
+/// The widget gallery's samples, contributed to
+/// <see cref="Humans.Base.Interfaces.ChromeSlots.WidgetGallery"/> via <see cref="SectionChrome"/>:
+/// four rota cards — <c>_RotaHeader</c>, <c>_RotaBadges</c>, <c>_RotaDetails</c> and
+/// <c>_EventRotaTable</c> — rendered against live samples from the active event, plus
+/// &lt;vc:dietary-missing-banner&gt;.
 /// </summary>
 /// <remarks>
-/// A view component rather than a partial because a partial needs a model and Shell would
-/// have to be able to name it; these four cards are the only ones in the gallery that
-/// construct section-internal types. Invoked by name from
-/// <c>WidgetGallery/Index.cshtml</c> and discovered by Shell's
-/// <c>SectionViewComponentFeatureProvider</c>, so it stays <c>internal</c>
-/// (design §15 step 6). Its one parameter is a
-/// <see cref="Guid"/>, which Shell can name — Governance's rider on invoke-by-name.
+/// A view component rather than a partial because a partial needs a model and Debug would have
+/// to be able to name it; these four cards are the only ones in the gallery that construct
+/// section-internal types. Stays <c>internal</c> (design §15 step 6). A chrome-slot contribution
+/// takes no arguments (<c>ISectionChrome</c>'s <c>[ViewComponentSlot]</c> declares none), so it
+/// reads the current user from claims rather than a caller-supplied id.
 /// </remarks>
 internal sealed class ShiftsGalleryViewComponent(
     IShiftManagementService shiftMgmt,
@@ -27,13 +28,17 @@ internal sealed class ShiftsGalleryViewComponent(
 {
     private const int SampleShiftCount = 8;
 
-    public async Task<IViewComponentResult> InvokeAsync(Guid currentUserId)
+    public async Task<IViewComponentResult> InvokeAsync()
     {
+        var currentUserId = Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
+            ? id
+            : Guid.Empty;
+
         try
         {
             var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
             if (es is null)
-                return View(ShiftsGalleryViewModel.Empty);
+                return View(ShiftsGalleryViewModel.Empty with { CurrentUserId = currentUserId });
 
             RotaInfo? rota = null;
             Guid? sampleDeptId = null;
@@ -68,6 +73,7 @@ internal sealed class ShiftsGalleryViewComponent(
 
             return View(new ShiftsGalleryViewModel
             {
+                CurrentUserId = currentUserId,
                 EventSettings = es,
                 Rota = rota,
                 RotaShifts = sampleRotaShifts,
@@ -77,7 +83,7 @@ internal sealed class ShiftsGalleryViewComponent(
         catch (Exception ex)
         {
             logger.LogWarning("Failed to resolve shifts samples for widget gallery: {Reason}", ex.Message);
-            return View(ShiftsGalleryViewModel.Empty);
+            return View(ShiftsGalleryViewModel.Empty with { CurrentUserId = currentUserId });
         }
     }
 
@@ -96,8 +102,9 @@ internal sealed class ShiftsGalleryViewComponent(
             rota.Tags.Select(t => new ShiftTagSummary(t.Id, t.Name)).ToList());
 }
 
-internal sealed class ShiftsGalleryViewModel
+internal sealed record ShiftsGalleryViewModel
 {
+    public Guid CurrentUserId { get; init; }
     public BurnSettingsInfo? EventSettings { get; init; }
     public RotaInfo? Rota { get; init; }
     public IReadOnlyList<ShiftDisplayItem> RotaShifts { get; init; } = [];

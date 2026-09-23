@@ -7,5 +7,8 @@ namespace Humans.Notifications;
 internal sealed class SectionChrome : ISectionChrome
 {
     public IEnumerable<ChromeComponent> Components() =>
-        [new(ChromeSlots.HeaderRight, typeof(NotificationBellViewComponent))];
+        [
+            new(ChromeSlots.HeaderRight, typeof(NotificationBellViewComponent)),
+            new(ChromeSlots.WidgetGallery, typeof(NotificationBellViewComponent)),
+        ];
 }

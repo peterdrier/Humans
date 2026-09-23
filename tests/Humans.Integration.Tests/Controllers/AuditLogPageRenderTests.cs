@@ -121,7 +121,7 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
         // Humans.Users — UsersAdmin/AdminDetail, the busiest call site — and Humans.Web —
         // WidgetGallery, Shell's own. Both render the widget for the signed-in human with no
         // extra fixtures, so both can carry the marker assertion.
-        foreach (var url in new[] { $"/Users/Admin/{adminId}", "/WidgetGallery" })
+        foreach (var url in new[] { $"/Users/Admin/{adminId}", "/Debug/WidgetGallery" })
         {
             var response = await Client.GetAsync(url, ct);
             response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
