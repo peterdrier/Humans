@@ -13,35 +13,31 @@ namespace Humans.Users.ViewComponents;
 ///   "badge"     — icon badge (ProfileCard)
 ///   "status"    — warning badge when email not primary (AdminList)
 ///   "email"     — show actual email address
-///   "provision" — show email or provisioning form (TeamAdmin/Members)
 ///   "detail"    — show email + linked badge, or provisioning form (AdminDetail)
+///
+/// Public, not internal: Razor's build-time tag-helper discovery only sees public view
+/// components (design; HUM0034 exempts view components), used in-assembly via
+/// <c>&lt;vc:nobodies-email-badge&gt;</c>. Teams' member roster (formerly this component's
+/// "provision" mode) now renders its own email-or-provisioning-form cell.
 /// </summary>
-internal sealed class NobodiesEmailBadgeViewComponent(IUserServiceRead userService) : ViewComponent
+public sealed class NobodiesEmailBadgeViewComponent(IUserServiceRead userService) : ViewComponent
 {
     /// <summary>
     /// Renders a nobodies.team email badge for the given user.
     /// </summary>
     /// <param name="userId">The user to check.</param>
     /// <param name="mode">Display mode — see class doc.</param>
-    /// <param name="teamSlug">Team slug for provisioning form (provision mode only).</param>
-    public async Task<IViewComponentResult> InvokeAsync(
-        Guid userId,
-        string mode = "badge",
-        string? teamSlug = null)
+    public async Task<IViewComponentResult> InvokeAsync(Guid userId, string mode = "badge")
     {
         var info = await userService.GetUserInfoAsync(userId);
         var nobodies = info?.UserEmails.FirstOrDefault(e => e.IsVerified
             && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
 
-        ViewBag.UserId = info?.Id ?? userId; // the provisioning form posts the live id
+        ViewBag.UserId = info?.Id ?? userId;
         ViewBag.HasEmail = nobodies is not null;
         ViewBag.Email = nobodies?.Email;
         ViewBag.IsPrimary = nobodies?.IsPrimary == true;
         ViewBag.Mode = mode;
-        ViewBag.TeamSlug = teamSlug;
-        ViewBag.DisplayName = string.Equals(mode, "provision", StringComparison.Ordinal) && nobodies is null
-            ? info?.BurnerName
-            : null;
 
         return View();
     }

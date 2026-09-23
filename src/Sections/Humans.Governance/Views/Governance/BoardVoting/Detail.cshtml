@@ -94,7 +94,7 @@
             </div>
         }
 
-        @await Component.InvokeAsync("ProfileCard", new { userId = Model.UserId, viewMode = ProfileCardViewMode.Admin })
+        <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.BoardVoteApplicant" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
     </div>
 
     <div class="col-md-4">

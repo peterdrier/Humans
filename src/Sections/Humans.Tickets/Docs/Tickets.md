@@ -82,6 +82,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 
 ## Invariants
 
+- `TicketHoldingsViewComponent` is contributed (`Humans.Tickets/SectionUserParts.cs`, `IUserPart`) to Users' `user-profile-sidebar` and `user-admin-detail-sidebar` slots. It renders nothing for `ProfileCardViewMode.Public` — its only visibility check — and shows an empty-holdings card only for `Admin`.
 - Ticket orders and attendees are synced from the external vendor — they cannot be manually created or edited from this app.
 - Stripe enrichment (`PaymentMethod`, `PaymentMethodDetail`, `StripeFee`, `ApplicationFee`) is preserved across re-syncs and only re-run for orders that have a `StripePaymentIntentId` and are still missing fee data; if `IStripeService.IsConfigured` is false the pass is silently skipped.
 - VAT is computed locally per order using VIP-split logic on attendees with `Status` in (`Valid`, `CheckedIn`): ticket base = Σ min(price, 315) minus the order's `DiscountAmount` (floored at 0), VAT = base × 10/110 rounded once per order. Discount codes reduce the taxable ticket part, never the VIP donation. Orders not in `Paid` status carry `VatAmount = 0`. The vendor's tax line is intentionally ignored.
