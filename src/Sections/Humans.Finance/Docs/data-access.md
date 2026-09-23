@@ -34,7 +34,7 @@ Repository: `IHoldedRepository`.
 | HoldedCreditorContacts | R/W (creditor-contact bindings per user) |
 | HoldedDocSyncStates | R/W |
 | SepaPayoutFiles | R/W (append-only writes; read joined for the Article 15 export and for `/Finance/Sepa`) |
-| SepaPayoutTransfers | R/W (appended at generation, `HoldedContactId` captured from the binding at that point; the booking columns are the only update — `SaveSepaTransferBookingAsync`. Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
+| SepaPayoutTransfers | R/W (appended at generation, `HoldedContactId` captured from the binding at that point; the booking columns are the only update — `SaveSepaTransferBookingAsync` (`BookedAt`/`BookedByUserId`/`HoldedBankMovementId`/`ReconciledAt`), `MarkSepaTransferReconciledAsync` (`ReconciledAt` only, a later reconcile pass). Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
 
 Cross-section calls via `IBudgetServiceRead` (`budget` in the ctor), `IHoldedService` (the Holded section's
 ledger-mirror read surface — `holded` in the ctor; ledger-line /
@@ -59,13 +59,26 @@ composes into "all docs") and `HoldedCreditorContacts`, plus
 index must not inherit the connector's 30 s timeout
 (nobodies-collective/Humans#976, #1000). The SEPA methods,
 `GetSepaPayoutSettings`, `GenerateSepaPayoutAsync`, `GetSepaPayoutsAsync` and
-`BookSepaTransferAsync`, serve `/Finance/Creditors`' payout column,
-`POST /Finance/Sepa/Generate`, `GET /Finance/Sepa` and
-`POST /Finance/Sepa/Book` — also this section's own screens, so also not
-cross-section surface. `BookSepaTransferAsync` is marked `[ExternalWrite]` and
-takes no `CancellationToken`: it posts payments to Holded and has to finish once
-it has started
+`BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`, serve
+`/Finance/Creditors`' payout column, `POST /Finance/Sepa/Generate`,
+`GET /Finance/Sepa` and `POST /Finance/Sepa/Book` — also this section's own
+screens, so also not cross-section surface. `BookSepaTransferAsync` is marked
+`[ExternalWrite]` and takes no `CancellationToken`: it posts payments to Holded
+and has to finish once it has started
 ([`cancellation-token-propagation`](../../../../memory/architecture/cancellation-token-propagation.md)).
+It calls the Holded section's `IHoldedClient.ListBankMovementsAsync` (find and
+match the bank line), `ListAccountingAccountsAsync` (live balance),
+`ListLedgerEntriesAsync` (what is already posted, by tag) and
+`ReconcileBankMovementAsync` (nobodies-collective/Humans#1185), alongside the
+existing `PayPurchaseDocumentAsync` / `PostLedgerEntryAsync` / `ListPurchaseDocumentsAsync`.
+
+`ISepaBankBooking.RunAsync` (`Humans.Finance.Contracts`, public — the Hangfire
+job needs a public concrete type but must not take the internal
+`IHoldedFinanceAdminService`, the `HoldedSyncJob`/`IHoldedNightlySync` seam) is
+the bank-line sweep: books every unbooked transfer whose Sabadell line has
+appeared, and retries the reconcile for every booked-but-unreconciled one.
+Also `[ExternalWrite]`. `SepaBankBookingJob` (`Jobs/`) is its Hangfire shim,
+registered in `SectionJobs.cs`, cron `17 */2 * * *`.
 
 ### SepaPaymentFileBuilder / SepaText / SepaSchema
 

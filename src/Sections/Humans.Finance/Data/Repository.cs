@@ -155,7 +155,8 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
                       orderby f.GeneratedAt
                       select new SepaPayoutExportRow(
                           f.GeneratedAt, f.FileName, t.SupplierAccountNum, t.HoldedContactId,
-                          t.CreditorName, t.IbanMasked, t.Amount, t.BookedAt))
+                          t.CreditorName, t.IbanMasked, t.Amount, t.BookedAt,
+                          t.HoldedBankMovementId, t.ReconciledAt))
             .ToListAsync(ct);
     }
 
@@ -169,7 +170,8 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
                           t.Id, f.Id, f.FileName, f.GeneratedAt, f.GeneratedByUserId,
                           t.UserId, t.SupplierAccountNum, t.HoldedContactId,
                           t.CreditorName, t.IbanMasked, t.Amount,
-                          t.BookedAt, t.BookedByUserId, t.HoldedPaymentRefs, null))
+                          t.BookedAt, t.BookedByUserId, t.HoldedBankMovementId, t.ReconciledAt,
+                          null, null))
             .ToListAsync(ct);
     }
 
@@ -182,8 +184,8 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
     }
 
     public async Task SaveSepaTransferBookingAsync(
-        Guid transferId, Instant? bookedAt, Guid? bookedByUserId, string? holdedPaymentRefs,
-        CancellationToken ct = default)
+        Guid transferId, Instant bookedAt, Guid? bookedByUserId,
+        string bankMovementId, Instant? reconciledAt, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var existing = await ctx.SepaPayoutTransfers.FirstOrDefaultAsync(t => t.Id == transferId, ct);
@@ -191,7 +193,19 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
 
         existing.BookedAt = bookedAt;
         existing.BookedByUserId = bookedByUserId;
-        existing.HoldedPaymentRefs = holdedPaymentRefs;
+        existing.HoldedBankMovementId = bankMovementId;
+        existing.ReconciledAt = reconciledAt;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task MarkSepaTransferReconciledAsync(
+        Guid transferId, Instant reconciledAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var existing = await ctx.SepaPayoutTransfers.FirstOrDefaultAsync(t => t.Id == transferId, ct);
+        if (existing is null) return;
+
+        existing.ReconciledAt = reconciledAt;
         await ctx.SaveChangesAsync(ct);
     }
 

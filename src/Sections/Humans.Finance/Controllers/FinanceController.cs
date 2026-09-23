@@ -146,7 +146,7 @@ internal sealed class FinanceController(
     [HttpGet("Sepa")]
     public async Task<IActionResult> Sepa(CancellationToken ct)
     {
-        var (rows, unavailable) = await holdedConnector.GetSepaPayoutsAsync(ct);
+        var (rows, unavailable, unmatched, bankFeedError) = await holdedConnector.GetSepaPayoutsAsync(ct);
 
         var names = new Dictionary<Guid, string>();
         var ids = rows.SelectMany(r => new[] { r.UserId, r.GeneratedByUserId })
@@ -172,18 +172,19 @@ internal sealed class FinanceController(
             .OrderByDescending(f => f.GeneratedAt)
             .ToList();
 
-        return View(new SepaPayoutsPageVm(files, unavailable));
+        return View(new SepaPayoutsPageVm(files, unavailable, unmatched, bankFeedError));
     }
 
-    /// <summary>Books one transfer's payment into Holded. No <c>CancellationToken</c> reaches the
-    /// service: a booking that has posted a payment must finish even if the admin closes the tab.</summary>
+    /// <summary>Books one transfer against the Sabadell line it was paired with on the page. No
+    /// <c>CancellationToken</c> reaches the service: a booking that has posted a payment must finish
+    /// even if the admin closes the tab.</summary>
     [HttpPost("Sepa/Book")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> BookSepaTransfer(Guid transferId)
+    public async Task<IActionResult> BookSepaTransfer(Guid transferId, string bankMovementId)
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
 
-        var result = await holdedConnector.BookSepaTransferAsync(transferId, actorUserId);
+        var result = await holdedConnector.BookSepaTransferAsync(transferId, bankMovementId, actorUserId);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
 
         return RedirectToAction(nameof(Sepa));
@@ -214,13 +215,13 @@ internal sealed class FinanceController(
         var ledger = await holdedFinance.GetCreditorLedgerAsync(accountNum);
         if (ledger is null) return NotFound();
 
-        // Controllers sort for display: newest activity first.
-        ViewBag.Lines = ledger.Lines
+        // Controllers assemble and sort the presentation model: newest activity first.
+        var lines = ledger.Lines
             .OrderByDescending(l => l.Date)
             .ThenByDescending(l => l.EntryNumber)
             .ThenBy(l => l.Line)
             .ToList();
-        return View(ledger);
+        return View(new CreditorStatementVm(ledger, lines));
     }
 
     [HttpPost("Creditors/Bind")]

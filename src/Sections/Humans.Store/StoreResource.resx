@@ -60,4 +60,16 @@
   <data name="Store_OpenOrder" xml:space="preserve"><value>Open</value></data>
   <data name="Store_StartOrder" xml:space="preserve"><value>Start order</value></data>
   <data name="Store_Title" xml:space="preserve"><value>Store</value></data>
+  <data name="Store_CheckoutFailed" xml:space="preserve"><value>Could not start Stripe checkout. Please try again or contact an admin.</value></data>
+  <data name="Store_InvoiceIssued" xml:space="preserve"><value>Invoice issued in Holded. The order is now frozen.</value></data>
+  <data name="Store_InvoiceFailed" xml:space="preserve"><value>Could not issue the invoice in Holded. Check the logs and try again.</value></data>
+  <data name="Store_OrderCreated" xml:space="preserve"><value>Order created.</value></data>
+  <data name="Store_TeamOrderCreated" xml:space="preserve"><value>Team order created.</value></data>
+  <data name="Store_OrderDeleted" xml:space="preserve"><value>Order deleted.</value></data>
+  <data name="Store_AddLineFailed" xml:space="preserve"><value>Could not add line.</value></data>
+  <data name="Store_LineAdded" xml:space="preserve"><value>Line added.</value></data>
+  <data name="Store_RemoveLineFailed" xml:space="preserve"><value>Could not remove line.</value></data>
+  <data name="Store_LineRemoved" xml:space="preserve"><value>Line removed.</value></data>
+  <data name="Store_UpdateCounterpartyFailed" xml:space="preserve"><value>Could not update counterparty.</value></data>
+  <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Counterparty updated.</value></data>
 </root>

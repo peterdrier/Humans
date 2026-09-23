@@ -812,7 +812,7 @@ internal sealed class EventService(
                     End: start.Plus(Duration.FromMinutes(e.DurationMinutes)),
                     Location: location.Length == 0 ? null : location,
                     // No per-event public page; the schedule is where favourites live.
-                    Url: $"{CalendarFeedItem.BaseUrl}/Events/Schedule"));
+                    Url: "/Events/Schedule"));
             }
         }
 

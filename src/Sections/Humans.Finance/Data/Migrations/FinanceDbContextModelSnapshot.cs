@@ -269,6 +269,10 @@ namespace Humans.Finance.Data.Migrations
                     b.Property<Guid>("FileId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("HoldedBankMovementId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("HoldedContactId")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
@@ -286,6 +290,9 @@ namespace Humans.Finance.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(34)
                         .HasColumnType("character varying(34)");
+
+                    b.Property<Instant?>("ReconciledAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("SupplierAccountNum")
                         .HasColumnType("integer");

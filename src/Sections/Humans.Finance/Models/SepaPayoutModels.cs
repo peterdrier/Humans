@@ -53,6 +53,8 @@ internal sealed record SepaPayoutSettings(decimal MaxPerTransfer, string? Unavai
 /// </summary>
 /// <param name="NotBookableReason">Why this transfer cannot be booked into Holded, or null when it
 /// can. The repository projects it null; <c>GetSepaPayoutsAsync</c> fills it in.</param>
+/// <param name="CandidateBankMovementId">The Sabadell line that matches this transfer, filled in by
+/// <c>GetSepaPayoutsAsync</c>; the repository always projects it null.</param>
 internal sealed record SepaPayoutTransferRow(
     Guid TransferId,
     Guid FileId,
@@ -67,14 +69,38 @@ internal sealed record SepaPayoutTransferRow(
     decimal Amount,
     Instant? BookedAt,
     Guid? BookedByUserId,
-    string? HoldedPaymentRefs,
-    string? NotBookableReason)
+    string? HoldedBankMovementId,
+    Instant? ReconciledAt,
+    string? NotBookableReason,
+    string? CandidateBankMovementId,
+    LocalDate? CandidateBankMovementDate = null,
+    decimal? CandidateBankMovementAmount = null,
+    string? CandidateBankMovementDescription = null)
 {
     /// <summary>Booked is exactly "has a <see cref="BookedAt"/>" — there is no status column.</summary>
     public bool IsBooked => BookedAt is not null;
 
-    public bool CanBook => !IsBooked && NotBookableReason is null;
+    /// <summary>Booked, against a known bank line, and Holded has not been told they match yet.</summary>
+    public bool ReconcilePending =>
+        IsBooked && HoldedBankMovementId is { Length: > 0 } && ReconciledAt is null;
+
+    /// <summary>A bank line was found for this transfer and everything else checks out. The three
+    /// <c>CandidateBankMovement*</c> fields describe that line, so the treasurer can recognise it
+    /// before clicking Book; they are filled together with the id and are null without it.</summary>
+    public bool CanBook =>
+        !IsBooked && NotBookableReason is null && CandidateBankMovementId is { Length: > 0 };
 }
+
+/// <summary>An outgoing Sabadell line the sweep could not book, with why — the page's
+/// "a human has to look at this" list (nobodies-collective/Humans#1185).</summary>
+internal sealed record SepaBankMovementVm(
+    string MovementId,
+    LocalDate Date,
+    decimal Amount,
+    string? Description,
+    int? ParsedAccountNum,
+    string Status,
+    string Reason);
 
 /// <summary>One transfer on <c>/Finance/Sepa</c>, with the two user ids on it resolved to names.</summary>
 internal sealed record SepaTransferVm(SepaPayoutTransferRow Row, string MemberName, string? BookedByName);
@@ -89,9 +115,15 @@ internal sealed record SepaPayoutFileVm(
 /// <summary>The /Finance/Sepa page model.</summary>
 /// <param name="UnavailableReason">Set when booking is off for every row (missing configuration);
 /// the page says so once instead of repeating it on each row.</param>
+/// <param name="UnmatchedMovements">Bank lines the live feed returned that matched no unbooked
+/// transfer, or matched ambiguously — the "needs a human" panel.</param>
+/// <param name="BankFeedError">Set when the live bank-feed call failed; every row then falls back to
+/// "waiting for the Sabadell line" and the page renders a warning banner instead of failing.</param>
 internal sealed record SepaPayoutsPageVm(
     IReadOnlyList<SepaPayoutFileVm> Files,
-    string? UnavailableReason);
+    string? UnavailableReason,
+    IReadOnlyList<SepaBankMovementVm> UnmatchedMovements,
+    string? BankFeedError);
 
 /// <summary>The outcome of one booking attempt. <paramref name="Message"/> is admin-facing either
 /// way — on failure it is the reason, on success what was posted.</summary>
@@ -110,4 +142,6 @@ internal sealed record SepaPayoutExportRow(
     string CreditorName,
     string IbanMasked,
     decimal Amount,
-    Instant? BookedAt);
+    Instant? BookedAt,
+    string? HoldedBankMovementId,
+    Instant? ReconciledAt);

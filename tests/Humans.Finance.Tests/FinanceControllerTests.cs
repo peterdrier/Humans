@@ -265,10 +265,24 @@ public class FinanceControllerTests
             ]));
 
         var controller = MakeController();
-        await controller.CreditorStatement(40000002);
-        var lines = (IReadOnlyList<CreditorLedgerLine>)controller.ViewBag.Lines;
+        var result = await controller.CreditorStatement(40000002);
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<CreditorStatementVm>().Subject;
 
-        lines.Select(l => (l.EntryNumber, l.Line)).Should().Equal((9, 1), (9, 2), (7, 1), (5, 1));
+        model.OwedBalance.Should().Be(10m);
+        model.Lines.Select(l => (l.EntryNumber, l.Line)).Should().Equal((9, 1), (9, 2), (7, 1), (5, 1));
+    }
+
+    [HumansFact]
+    public async Task CreditorStatement_MemberOwingTheOrganisation_ShowsNegativeBalance()
+    {
+        _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorLedger(40000002, 25m, 0m, []));
+
+        var result = await MakeController().CreditorStatement(40000002);
+
+        result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<CreditorStatementVm>().Subject.OwedBalance.Should().Be(-25m);
     }
 
     // ─── Connector index ─────────────────────────────────────────────────────────
@@ -302,7 +316,7 @@ public class FinanceControllerTests
                 Transfer(older, "old.xml", Stamp(1), admin, Ana, 40000002),
                 Transfer(newer, "new.xml", Stamp(2), admin, Ana, 40000002),
             },
-            null));
+            null, [], null));
         NameThem((Ana, "Ada"), (Bo, "Zoe"), (admin, "Treasurer"));
 
         var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
@@ -317,7 +331,8 @@ public class FinanceControllerTests
     public async Task Sepa_UnavailableReason_ReachesThePageUnchanged()
     {
         _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>())
-            .Returns((new List<SepaPayoutTransferRow>(), "Sepa:TreasuryAccountId is not configured."));
+            .Returns((new List<SepaPayoutTransferRow>(), "Sepa:TreasuryAccountId is not configured.",
+                (IReadOnlyList<SepaBankMovementVm>)[], (string?)null));
 
         var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
 
@@ -325,12 +340,56 @@ public class FinanceControllerTests
         page.Files.Should().BeEmpty();
     }
 
+    [HumansFact]
+    public async Task Sepa_RendersUnmatchedMovementsPanel()
+    {
+        var unmatched = new List<SepaBankMovementVm>
+        {
+            new("mov-1", new LocalDate(2026, 9, 18), 50.00m, "unrecognised text", null,
+                "pending", "its text names no creditor account"),
+        };
+        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>())
+            .Returns((new List<SepaPayoutTransferRow>(), (string?)null,
+                (IReadOnlyList<SepaBankMovementVm>)unmatched, (string?)null));
+
+        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
+
+        page.UnmatchedMovements.Should().BeSameAs(unmatched);
+    }
+
+    [HumansFact]
+    public async Task Sepa_BankFeedUnreadable_RendersTheBannerAndStillListsFiles()
+    {
+        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>()).Returns((
+            new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
+            (string?)null, (IReadOnlyList<SepaBankMovementVm>)[], "Holded's bank feed did not answer."));
+        NameThem((Ana, "Ada"));
+
+        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
+
+        page.BankFeedError.Should().Be("Holded's bank feed did not answer.");
+        page.Files.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task BookSepaTransfer_PassesTheMovementIdThrough()
+    {
+        var transferId = Guid.NewGuid();
+        _connector.BookSepaTransferAsync(transferId, "mov-1", Ana)
+            .Returns(new SepaBookingResult(true, "Booked."));
+        var controller = MakeControllerWithHttpContext(Ana);
+
+        await controller.BookSepaTransfer(transferId, "mov-1");
+
+        await _connector.Received(1).BookSepaTransferAsync(transferId, "mov-1", Ana);
+    }
+
     private static Instant Stamp(int day) => Instant.FromUtc(2026, 8, day, 9, 0);
 
     private static SepaPayoutTransferRow Transfer(
         Guid fileId, string fileName, Instant generatedAt, Guid generatedBy, Guid userId, int account) =>
         new(Guid.NewGuid(), fileId, fileName, generatedAt, generatedBy,
-            userId, account, "c1", "Ana Ruiz", "ES79****789", 12.34m, null, null, null, null);
+            userId, account, "c1", "Ana Ruiz", "ES79****789", 12.34m, null, null, null, null, null, null);
 
     private static SepaPayoutsPageVm SepaPageOf(IActionResult result) =>
         result.Should().BeOfType<ViewResult>().Subject.Model

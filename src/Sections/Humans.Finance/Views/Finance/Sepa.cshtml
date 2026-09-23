@@ -29,6 +29,43 @@
     </div>
 }
 
+@if (Model.BankFeedError is { } bankFeedError)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>@bankFeedError
+    </div>
+}
+
+@if (Model.UnmatchedMovements.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">Bank lines needing a human</div>
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th class="text-end">Amount</th>
+                    <th>Description</th>
+                    <th>Account</th>
+                    <th>Why</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var m in Model.UnmatchedMovements)
+            {
+                <tr>
+                    <td>@m.Date.ToInvariantDate()</td>
+                    <td class="text-end">@m.Amount.ToEuro()</td>
+                    <td class="text-muted small">@(m.Description ?? "—")</td>
+                    <td>@(m.ParsedAccountNum?.ToString() ?? "—")</td>
+                    <td class="text-muted small">@m.Reason</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
 @if (Model.Files.Count == 0)
 {
     <div class="card"><div class="card-body text-center py-5 text-muted">
@@ -71,6 +108,10 @@
                         @if (t.Row.BookedAt is { } bookedAt)
                         {
                             <span class="badge text-bg-success">Booked</span>
+                            @if (t.Row.ReconcilePending)
+                            {
+                                <span class="badge text-bg-warning">Reconcile pending (@t.Row.HoldedBankMovementId)</span>
+                            }
                             <div class="text-muted small">@bookedAt.ToDateTime(madrid) by @t.BookedByName</div>
                         }
                         else
@@ -82,7 +123,7 @@
                     <td>
                         @if (t.Row.IsBooked)
                         {
-                            <div class="text-muted small font-monospace">@(t.Row.HoldedPaymentRefs ?? "—")</div>
+                            <div class="text-muted small font-monospace">@(t.Row.HoldedBankMovementId ?? "—")</div>
                         }
                         else if (Model.UnavailableReason is not null)
                         {
@@ -91,23 +132,28 @@
                         else if (t.Row.NotBookableReason is { } reason)
                         {
                             <span class="text-muted small">@reason</span>
-                            @if (t.Row.HoldedPaymentRefs is { Length: > 0 } partial)
-                            {
-                                <div class="text-danger small">
-                                    Part-paid in Holded: <span class="font-monospace">@partial</span>
-                                </div>
-                            }
+                        }
+                        else if (t.Row.CanBook)
+                        {
+                            <form asp-action="BookSepaTransfer" method="post"
+                                  data-confirm="Book @t.Row.Amount.ToEuro() to @t.MemberName against Sabadell line @t.Row.CandidateBankMovementId? This posts real payments, and a journal entry for anything the member's documents do not cover.">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="transferId" value="@t.Row.TransferId" />
+                                <input type="hidden" name="bankMovementId" value="@t.Row.CandidateBankMovementId" />
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="fa-solid fa-file-invoice-dollar me-1"></i>Book against this line
+                                </button>
+                            </form>
+                            <div class="text-muted small">
+                                @(t.Row.CandidateBankMovementDate?.ToInvariantDate() ?? "—")
+                                · @(t.Row.CandidateBankMovementAmount?.ToEuro() ?? "—")
+                                <div class="font-monospace">@t.Row.CandidateBankMovementId</div>
+                                <div>@(t.Row.CandidateBankMovementDescription ?? "—")</div>
+                            </div>
                         }
                         else
                         {
-                            <form asp-action="BookSepaTransfer" method="post"
-                                  data-confirm="Book @t.Row.Amount.ToEuro() to @t.MemberName into Holded? This posts real payments, and a journal entry for anything the member's documents do not cover.">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="transferId" value="@t.Row.TransferId" />
-                                <button type="submit" class="btn btn-sm btn-primary">
-                                    <i class="fa-solid fa-file-invoice-dollar me-1"></i>Book in Holded
-                                </button>
-                            </form>
+                            <span class="text-muted small">waiting for the Sabadell line</span>
                         }
                     </td>
                 </tr>

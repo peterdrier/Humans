@@ -1,4 +1,6 @@
 using Humans.Auth.Contracts;
+using System.Globalization;
+using System.Resources;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using NodaTime;
@@ -44,6 +46,7 @@ internal sealed class IssuesService(
     internal const string Issues = "Issues";
 
     private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
+    private static readonly ResourceManager NoticeResources = new(typeof(IssuesResource));
 
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -875,7 +878,6 @@ internal sealed class IssuesService(
         Issue issue, IssueComment comment, bool senderIsReporter, CancellationToken ct)
     {
         var link = $"/Issues/{issue.Id}";
-        var subject = $"New comment on issue: {issue.Title}";
         var recipients = new HashSet<Guid>();
 
         if (senderIsReporter)
@@ -907,16 +909,13 @@ internal sealed class IssuesService(
 
         try
         {
-            await notifications.SendAsync(
+            await SendLocalizedNotificationAsync(
                 NotificationSource.IssueComment,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                subject,
                 targets,
-                body: comment.Content,
-                actionUrl: link,
-                actionLabel: "View issue",
-                cancellationToken: ct);
+                culture => (Notice(culture, "Issue_Notice_CommentTitle", issue.Title), comment.Content),
+                link, ct);
         }
         catch (Exception ex)
         {
@@ -967,16 +966,17 @@ internal sealed class IssuesService(
 
         try
         {
-            await notifications.SendAsync(
+            await SendLocalizedNotificationAsync(
                 NotificationSource.IssueStatusChanged,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                $"Issue status changed: {issue.Title}",
                 targets,
-                body: $"Status: {oldStatus} → {newStatus}",
-                actionUrl: $"/Issues/{issue.Id}",
-                actionLabel: "View issue",
-                cancellationToken: ct);
+                culture => (
+                    Notice(culture, "Issue_Notice_StatusChangedTitle", issue.Title),
+                    Notice(culture, "Issue_Notice_StatusChangedBody",
+                        Notice(culture, $"Enum_IssueStatus_{oldStatus}"),
+                        Notice(culture, $"Enum_IssueStatus_{newStatus}"))),
+                $"/Issues/{issue.Id}", ct);
         }
         catch (Exception ex)
         {
@@ -1008,17 +1008,13 @@ internal sealed class IssuesService(
 
         try
         {
-            await notifications.SendAsync(
+            await SendLocalizedNotificationAsync(
                 NotificationSource.IssueSubmitted,
                 NotificationClass.Actionable,
                 NotificationPriority.Normal,
-                $"New issue filed: {issue.Title}",
                 recipients.ToList(),
-                body: issue.Description,
-                actionUrl: $"/Issues/{issue.Id}",
-                actionLabel: "View issue",
-                sourceKey: issue.Id.ToString(),
-                cancellationToken: ct);
+                culture => (Notice(culture, "Issue_Notice_SubmittedTitle", issue.Title), issue.Description),
+                $"/Issues/{issue.Id}", ct, issue.Id.ToString());
         }
         catch (Exception ex)
         {
@@ -1070,22 +1066,48 @@ internal sealed class IssuesService(
 
         try
         {
-            await notifications.SendAsync(
+            await SendLocalizedNotificationAsync(
                 NotificationSource.IssueAssigned,
                 NotificationClass.Actionable,
                 NotificationPriority.Normal,
-                $"You were assigned an issue: {issue.Title}",
                 [newAssigneeUserId],
-                body: issue.Description,
-                actionUrl: $"/Issues/{issue.Id}",
-                actionLabel: "View issue",
-                cancellationToken: ct);
+                culture => (Notice(culture, "Issue_Notice_AssignedTitle", issue.Title), issue.Description),
+                $"/Issues/{issue.Id}", ct);
         }
         catch (Exception ex)
         {
             logger.LogError(ex,
                 "Failed to dispatch IssueAssigned notification for issue {IssueId}",
                 issue.Id);
+        }
+    }
+
+    private static string Notice(CultureInfo culture, string key, params object[] arguments) =>
+        string.Format(culture, NoticeResources.GetString(key, culture)!, arguments);
+
+    private async Task SendLocalizedNotificationAsync(
+        NotificationSource source,
+        NotificationClass notificationClass,
+        NotificationPriority priority,
+        IReadOnlyList<Guid> recipients,
+        Func<CultureInfo, (string Title, string? Body)> content,
+        string actionUrl,
+        CancellationToken ct,
+        string? sourceKey = null)
+    {
+        var people = await users.GetUserInfosAsync(recipients, ct);
+        foreach (var group in recipients.GroupBy(
+                     id => people.GetValueOrDefault(id)?.PreferredLanguage ?? "en",
+                     StringComparer.OrdinalIgnoreCase))
+        {
+            var culture = CultureInfo.GetCultureInfo(group.Key);
+            var (title, body) = content(culture);
+            await notifications.SendAsync(
+                source, notificationClass, priority, title, group.ToList(), body,
+                actionUrl: actionUrl,
+                actionLabel: Notice(culture, "Issue_Notice_Open"),
+                sourceKey: sourceKey,
+                cancellationToken: ct);
         }
     }
 }

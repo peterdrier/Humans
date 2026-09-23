@@ -17,6 +17,8 @@ internal sealed class SepaPayoutTransferConfiguration : IEntityTypeConfiguration
         b.Property(x => x.Iban).HasMaxLength(34);
         b.Property(x => x.IbanMasked).HasMaxLength(34);
         b.Property(x => x.Amount).HasColumnType("numeric(12,2)");
+        b.Property(x => x.HoldedBankMovementId).HasMaxLength(64);
+        // Retained unused (see the property): mapped so the shipped column stays on the table.
         b.Property(x => x.HoldedPaymentRefs).HasMaxLength(512);
     }
 }

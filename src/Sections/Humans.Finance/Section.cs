@@ -48,6 +48,10 @@ public sealed class Section : ISection
         services.AddScoped<IHoldedFinanceServiceRead>(sp => sp.GetRequiredService<Service>());
         // /Finance/Holded's read model. Internal — this section's own screen is the only consumer.
         services.AddScoped<IHoldedFinanceAdminService>(sp => sp.GetRequiredService<Service>());
+        // The SEPA bank-line sweep's body; its Hangfire target is SepaBankBookingJob, in this
+        // project's Jobs/ (nobodies-collective/Humans#1185).
+        services.AddScoped<ISepaBankBooking>(sp => sp.GetRequiredService<Service>());
+        services.AddScoped<Jobs.SepaBankBookingJob>();
         // Owns the user-scoped holded_creditor_contacts table → GDPR export contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<Service>());
     }

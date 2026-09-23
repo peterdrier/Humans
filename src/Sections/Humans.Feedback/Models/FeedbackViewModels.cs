@@ -28,7 +28,6 @@ internal sealed class FeedbackListItemViewModel
     public FeedbackCategory Category { get; set; }
     public FeedbackStatus Status { get; set; }
     public string Description { get; set; } = string.Empty;
-    public string ReporterName { get; set; } = string.Empty;
     public Guid ReporterUserId { get; set; }
     public string PageUrl { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }

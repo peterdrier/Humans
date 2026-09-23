@@ -1,7 +1,7 @@
 # Daily Codex tech-debt runner
 
 Unattended nightly native Codex goal against a **dedicated clone** of this
-repo — never your working checkout. Gates on build + test before pushing,
+repo — never your working checkout. Gates on build + test before publishing,
 opens one PR per run containing all substantive fixes. Ledger-only and test-only runs
 fail without publishing. Scheduler: systemd user timer (the only one shipped here).
 
@@ -45,6 +45,13 @@ The last completed turn supplies the cumulative Markdown PR body, followed
 by the wrapper's measured goal time, actual worker time, total elapsed time
 through validation, and gate result. No unfilled template is appended.
 Failed/blocked goals, missing reports, or disconnection fail without publishing. A clean tree and final build/test gates still apply.
+
+If the final build or non-integration test gate fails, the wrapper starts up to
+`GATE_REPAIR_ATTEMPTS` (default `2`) short Codex repair passes. Each pass gets
+the failure excerpt, must stay on the current branch, commit its repair, and
+has a separate `GATE_REPAIR_BUDGET` (default `15m`). The wrapper reruns the
+build and tests after each successful repair and still refuses to publish
+unless the final tree is clean and both gates pass.
 
 The deadline is not a kill timer. Finishing the active task and the wrapper's
 final build/test gates may extend past it. The systemd unit uses
@@ -171,10 +178,13 @@ resume. To remove entirely, also delete
 
 ## What it will and won't do
 
-- Never pushes to `main`, never opens a draft PR — a run either produces a
-  ready-for-review PR against `origin/main`, or produces nothing.
-- Never pushes if `dotnet build` or `dotnet test` fails after codex's pass —
-  the failure is logged, the branch stays local, exit code is non-zero.
+- Never pushes to `main`. A green run produces a ready-for-review PR; an
+  unrepaired gate failure produces a draft PR for follow-up repair.
+- A bounded repair pass may be attempted after a gate failure. If the final
+  build or test gate is still red, the runner pushes the committed branch and
+  opens a draft PR with the failure warning and log excerpt so the follow-up
+  reviewer can repair it. The service still exits non-zero to keep the failure
+  visible.
 - Never runs codex at all if `gh auth status`, the codex sign-in, or `codex`
   on `PATH` fail preflight — fails in seconds, before spending anything.
 - One branch/PR per calendar day (`$BRANCH_PREFIX/YYYY-MM-DD`); a second run

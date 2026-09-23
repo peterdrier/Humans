@@ -118,8 +118,7 @@ internal sealed class Service(
         return new IndexData(
             year,
             catalog,
-            counterparties,
-            counterparties.Count == 0 && !allCounterparties);
+            counterparties);
     }
 
     public async Task<IReadOnlyList<ProductDto>> GetActiveCatalogAsync(int year, CancellationToken ct = default)

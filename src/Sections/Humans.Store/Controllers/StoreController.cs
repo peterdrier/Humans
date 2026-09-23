@@ -8,6 +8,7 @@ using Humans.Store.Models;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 
 using Humans.Users.Contracts;
@@ -21,7 +22,8 @@ internal sealed class StoreController(
     ICampServiceRead campService,
     IAuthorizationService authService,
     IUserServiceRead userService,
-    ILogger<StoreController> logger) : HumansControllerBase(userService)
+    ILogger<StoreController> logger,
+    IStringLocalizer<StoreResource> localizer) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -36,10 +38,6 @@ internal sealed class StoreController(
         var pageData = isPrivilegedReader
             ? await storeService.GetAllCounterpartiesIndexDataAsync(ct)
             : await storeService.GetIndexDataAsync(user.Id, ct);
-        if (pageData.ShowNoOrdersMessage)
-        {
-            SetInfo("You don't lead any camps or coordinate any departments this year, so there are no Store orders to manage.");
-        }
 
         var canManage = new Dictionary<Guid, bool>(pageData.Counterparties.Count);
         foreach (var cp in pageData.Counterparties)
@@ -166,7 +164,7 @@ internal sealed class StoreController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Stripe Checkout Session creation failed for order {OrderId}", id);
-            SetError("Could not start Stripe checkout. Please try again or contact an admin.");
+            SetError(localizer["Store_CheckoutFailed"].Value);
             return RedirectToAction(nameof(Order), new { id });
         }
     }
@@ -190,7 +188,7 @@ internal sealed class StoreController(
             // document in Holded, and a torn write leaves a doc we have no local record of
             // (memory/architecture/cancellation-token-propagation.md).
             await storeService.IssueInvoiceAsync(id, user.Id, CancellationToken.None);
-            SetSuccess("Invoice issued in Holded. The order is now frozen.");
+            SetSuccess(localizer["Store_InvoiceIssued"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -202,7 +200,7 @@ internal sealed class StoreController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Holded invoice issuance failed for order {OrderId}", id);
-            SetError("Could not issue the invoice in Holded. Check the logs and try again.");
+            SetError(localizer["Store_InvoiceFailed"].Value);
         }
         return RedirectToAction(nameof(Order), new { id });
     }
@@ -224,7 +222,7 @@ internal sealed class StoreController(
         if (!auth.Succeeded) return Forbid();
 
         var newId = await storeService.CreateOrderAsync(campSeasonId, user.Id, ct);
-        SetSuccess("Order created.");
+        SetSuccess(localizer["Store_OrderCreated"].Value);
         return RedirectToAction(nameof(Order), new { id = newId });
     }
 
@@ -244,7 +242,7 @@ internal sealed class StoreController(
         try
         {
             var newId = await storeService.CreateTeamOrderAsync(teamId, user.Id, ct);
-            SetSuccess("Team order created.");
+            SetSuccess(localizer["Store_TeamOrderCreated"].Value);
             return RedirectToAction(nameof(Order), new { id = newId });
         }
         catch (InvalidOperationException ex)
@@ -270,7 +268,7 @@ internal sealed class StoreController(
         try
         {
             await storeService.DeleteOrderAsync(id, user.Id, ct);
-            SetSuccess("Order deleted.");
+            SetSuccess(localizer["Store_OrderDeleted"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -299,9 +297,9 @@ internal sealed class StoreController(
 
         var result = await storeService.AddLineWithResultAsync(id, productId, qty, user.Id, ct);
         if (!result.Succeeded)
-            SetError(result.ErrorMessage ?? "Could not add line.");
+            SetError(result.ErrorMessage ?? localizer["Store_AddLineFailed"].Value);
         else
-            SetSuccess("Line added.");
+            SetSuccess(localizer["Store_LineAdded"].Value);
 
         return RedirectToAction(nameof(Order), new { id });
     }
@@ -326,9 +324,9 @@ internal sealed class StoreController(
 
         var result = await storeService.RemoveLineWithResultAsync(id, lineId, user.Id, ct);
         if (!result.Succeeded)
-            SetError(result.ErrorMessage ?? "Could not remove line.");
+            SetError(result.ErrorMessage ?? localizer["Store_RemoveLineFailed"].Value);
         else
-            SetSuccess("Line removed.");
+            SetSuccess(localizer["Store_LineRemoved"].Value);
 
         return RedirectToAction(nameof(Order), new { id });
     }
@@ -351,9 +349,9 @@ internal sealed class StoreController(
 
         var result = await storeService.UpdateCounterpartyWithResultAsync(id, input, user.Id, ct);
         if (!result.Succeeded)
-            SetError(result.ErrorMessage ?? "Could not update counterparty.");
+            SetError(result.ErrorMessage ?? localizer["Store_UpdateCounterpartyFailed"].Value);
         else
-            SetSuccess("Counterparty updated.");
+            SetSuccess(localizer["Store_CounterpartyUpdated"].Value);
 
         return RedirectToAction(nameof(Order), new { id });
     }

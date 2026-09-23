@@ -10,10 +10,6 @@ inbox:
     status: needs-detail
     blocked_on: "A failing test at a named DST boundary date; code inspection casts doubt on the drift but does not confirm it."
   - added: 2026-09-19
-    id: CAL-2
-    what: "CalendarMonthViewModel.TeamOptions is read by no view, and CalendarController.BuildMonthViewAsync fetches every team on each month request to fill it. Drop the record member, drop the fetch and the argument, drop `TeamOptions: []` in Team. Written and reverted unverified — the run lost its compiler (finding 10, /section-doctor on Calendar 2026-09-19)."
-    review: panel
-  - added: 2026-09-19
     id: CAL-3
     what: "CreateCalendarEventDto and UpdateCalendarEventDto are identical records, member for member. A dedup needs a compiler to gate it (finding 16, /section-doctor on Calendar 2026-09-19)."
     review: panel

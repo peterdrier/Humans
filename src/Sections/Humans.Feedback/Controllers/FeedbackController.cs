@@ -89,7 +89,6 @@ internal sealed class FeedbackController(
                 Category = r.Category,
                 Status = r.Status,
                 Description = r.Description.Length > 100 ? r.Description[..100] + "..." : r.Description,
-                ReporterName = r.ReporterName,
                 ReporterUserId = r.UserId,
                 PageUrl = r.PageUrl,
                 CreatedAt = r.CreatedAt.ToDateTimeUtc(),

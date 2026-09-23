@@ -19,7 +19,8 @@ internal sealed class EmailController(
     IUserServiceRead userService,
     IEmailOutboxService outboxService,
     IAuditLogService audit,
-    ILogger<EmailController> logger) : HumansControllerBase(userService)
+    ILogger<EmailController> logger,
+    IOptions<EmailSettings> emailSettings) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public IActionResult Index()
@@ -39,6 +40,7 @@ internal sealed class EmailController(
             QueuedCount = stats.QueuedCount,
             SentLast24HoursCount = stats.SentLast24HoursCount,
             FailedCount = stats.FailedCount,
+            OutboxBatchSize = emailSettings.Value.OutboxBatchSize,
             IsPaused = stats.IsPaused,
             Messages = stats.RecentMessages.ToList(),
             DailyCounts = dailyCounts.ByDay.ToList(),

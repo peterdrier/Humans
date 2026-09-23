@@ -4,14 +4,6 @@ version: 1
 next_id: 8
 inbox:
   - added: 2026-09-22
-    id: EMAIL-3
-    what: "The local/ticket-stub test-address rule is written twice in the section: inline in the per-message loop of src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs and as a private IsTestAddress helper in src/Sections/Humans.Email/Services/EmailOutboxService.cs. One definition, two enforcement sites, and a third domain added to one of them would silently diverge. Neither class is the obvious owner, which is why the doctor run ledgered it rather than picking one. Found by /section-doctor on Email 2026-09-22."
-    review: panel
-  - added: 2026-09-22
-    id: EMAIL-4
-    what: "src/Sections/Humans.Email/Views/Email/EmailOutbox.cshtml renders a hardcoded 10/min under the label Throttle. The throttle in code is the one-second inter-send gap in EmailOutboxProcessor.ProcessQueuedAsync; 10/min is OutboxBatchSize times the one-minute schedule, so the tile shows one number under the name of another and stops being true the moment EmailSettings.OutboxBatchSize or the cron is changed. Correct under today's defaults — no override exists in any json, yml or env file. Found by /section-doctor on Email 2026-09-22."
-    review: panel
-  - added: 2026-09-22
     id: EMAIL-5
     what: "No test in tests/Humans.Email.Tests proves the sanitizing half of the no-raw-HTML invariant: EmailMessageFactoryTests and EmailPreviewServiceTests assert that Markdown renders, not that a script or event-handler payload is stripped, and nothing asserts that the recipient and sender names EmailMessageFactory interpolates are HTML-encoded. The renderer's own sanitizer tests live in Base and do not cover this section's call sites. Found by /section-doctor on Email 2026-09-22."
     review: light

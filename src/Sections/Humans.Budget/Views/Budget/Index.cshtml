@@ -2,7 +2,7 @@
 @using Humans.Base.Models.Tables
 @model Humans.Budget.Models.CoordinatorBudgetViewModel
 @{
-    ViewData["Title"] = $"Budget - {Model.Year.Name}";
+    ViewData["Title"] = Localizer["Budget_TitleYear", Model.Year.Name].Value;
     var groups = Model.Year.Groups
         .Where(g => !g.IsTicketingGroup || Model.IsFinanceAdmin)
         .OrderBy(g => g.SortOrder)
@@ -14,7 +14,7 @@
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Summary">Budget</a></li>
+        <li class="breadcrumb-item"><a asp-action="Summary">@Localizer["Budget_Title"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Model.Year.Name</li>
     </ol>
 </nav>
@@ -26,12 +26,12 @@
     </div>
     <div class="d-flex gap-2">
         <a asp-controller="Expenses" asp-action="Index" class="btn btn-outline-primary">
-            <i class="fa-solid fa-receipt me-1"></i>Expenses
+            <i class="fa-solid fa-receipt me-1"></i>@Localizer["Budget_Expenses"]
         </a>
         @if (Model.IsFinanceAdmin)
         {
             <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-primary">
-                <i class="fa-solid fa-gear me-1"></i>Finance Admin <i class="fa-solid fa-lock auth-lock-icon"></i>
+                <i class="fa-solid fa-gear me-1"></i>@Localizer["Budget_FinanceAdmin"] <i class="fa-solid fa-lock auth-lock-icon"></i>
             </a>
         }
     </div>
@@ -42,7 +42,7 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Total Allocated</h6>
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_TotalAllocated"]</h6>
                 <h3 class="card-title mb-0">@totalAllocated.ToEuro()</h3>
             </div>
         </div>
@@ -50,7 +50,7 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Detailed in Line Items</h6>
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_DetailedInLineItems"]</h6>
                 <h3 class="card-title mb-0">@totalLineItems.ToEuro()</h3>
             </div>
         </div>
@@ -58,7 +58,7 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Unallocated</h6>
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_Unallocated"]</h6>
                 <h3 class="card-title mb-0 @(unallocated < 0 ? "text-danger" : "")">
                     @unallocated.ToEuro()
                 </h3>
@@ -71,7 +71,7 @@
 {
     <div class="card">
         <div class="card-body text-center py-4">
-            <p class="text-muted mb-0">No budget groups available yet.</p>
+            <p class="text-muted mb-0">@Localizer["Budget_NoGroups"]</p>
         </div>
     </div>
 }
@@ -85,14 +85,14 @@
         <div class="card-header d-flex justify-content-between align-items-center" role="button" data-bs-toggle="collapse" data-bs-target="#@collapseId">
             <div>
                 <strong>@group.Name</strong>
-                <span class="text-muted ms-2">(@group.Categories.Count categories)</span>
+                <span class="text-muted ms-2">@Localizer["Budget_CategoryCount", group.Categories.Count]</span>
                 @if (group.IsDepartmentGroup)
                 {
-                    <span class="badge bg-info ms-1">Departments</span>
+                    <span class="badge bg-info ms-1">@Localizer["Budget_Departments"]</span>
                 }
                 @if (group.IsRestricted)
                 {
-                    <span class="badge bg-secondary ms-1"><i class="fa-solid fa-lock me-1"></i>Restricted</span>
+                    <span class="badge bg-secondary ms-1"><i class="fa-solid fa-lock me-1"></i>@Localizer["Budget_Restricted"]</span>
                 }
             </div>
             <span class="text-muted">@groupAllocated.ToEuro()</span>
@@ -105,7 +105,7 @@
                         @item.Name
                         @if (item.TeamId.HasValue && Model.EditableTeamIds.Contains(item.TeamId.Value))
                         {
-                            <span class="badge bg-success ms-1">Your dept</span>
+                            <span class="badge bg-success ms-1">@Localizer["Budget_YourDepartment"]</span>
                         }
                     </text>;
                     Func<BudgetCategoryDetail, IHtmlContent> unallocatedCell = @<text>
@@ -122,23 +122,23 @@
                     Func<BudgetCategoryDetail, IHtmlContent> actionsCell = @<text>
                         @if (group.IsRestricted && !Model.IsFinanceAdmin)
                         {
-                            <span class="badge bg-secondary"><i class="fa-solid fa-lock me-1"></i>Restricted</span>
+                            <span class="badge bg-secondary"><i class="fa-solid fa-lock me-1"></i>@Localizer["Budget_Restricted"]</span>
                         }
                         else
                         {
                             var isEditable = Model.IsFinanceAdmin || (item.TeamId.HasValue && Model.EditableTeamIds.Contains(item.TeamId.Value));
                             <a asp-action="CategoryDetail" asp-route-id="@item.Id"
                                class="btn btn-outline-@(isEditable ? "primary" : "secondary") btn-sm">
-                                @(isEditable ? "Manage" : "View") <i class="fa-solid fa-arrow-right ms-1"></i>
+                                @(isEditable ? Localizer["Budget_Manage"] : Localizer["Budget_View"]) <i class="fa-solid fa-arrow-right ms-1"></i>
                             </a>
                         }
                     </text>;
                     var groupTable = TableModel.For(group.Categories.OrderBy(c => c.SortOrder).ToList())
-                        .Template("Category", categoryNameCell)
-                        .Column("Allocated (€)", c => c.AllocatedAmount, c => c.Currency().End())
-                        .Column("Line Items (€)", c => c.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount), c => c.Currency().End())
-                        .Template("Unallocated", unallocatedCell, c => c.End())
-                        .Template("Type", expenditureTypeCell)
+                        .Template(Localizer["Budget_ColCategory"].Value, categoryNameCell)
+                        .Column(Localizer["Budget_Allocated"].Value, c => c.AllocatedAmount, c => c.Currency().End())
+                        .Column(Localizer["Budget_ColLineItems"].Value, c => c.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount), c => c.Currency().End())
+                        .Template(Localizer["Budget_Unallocated"].Value, unallocatedCell, c => c.End())
+                        .Template(Localizer["Budget_ColType"].Value, expenditureTypeCell)
                         .Template("", actionsCell, c => c.NoSort().End())
                         .Build();
                     <partial name="_Table" model="groupTable" />
@@ -146,7 +146,7 @@
                 else
                 {
                     <div class="card-body text-center text-muted py-3">
-                        No categories in this group.
+                        @Localizer["Budget_NoCategories"]
                     </div>
                 }
             </div>

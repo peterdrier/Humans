@@ -7,7 +7,6 @@ internal sealed record CalendarMonthViewModel(
     YearMonth Month,
     IReadOnlyList<CalendarOccurrence> Occurrences,
     Guid? FilterTeamId,
-    IReadOnlyList<TeamOption> TeamOptions,
     string ViewerTimezoneLabel)
 {
     /// <summary>

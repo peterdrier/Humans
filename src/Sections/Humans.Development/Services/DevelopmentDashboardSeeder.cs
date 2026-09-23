@@ -101,7 +101,7 @@ internal sealed class DevelopmentDashboardSeeder(
             Year: todayUtc.Year,
             TimeZoneId: "Europe/Madrid",
             GateOpeningDate: todayUtc.PlusDays(60),
-            BuildStartOffset: -14,
+            BuildStartOffset: -25,
             EventEndOffset: 6,
             StrikeEndOffset: 9,
             FirstCrewStartOffset: -25,

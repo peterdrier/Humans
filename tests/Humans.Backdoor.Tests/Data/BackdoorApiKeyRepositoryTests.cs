@@ -57,6 +57,27 @@ public sealed class BackdoorApiKeyRepositoryTests : IDisposable
         persisted.RevokedByUserId.Should().Be(revokedBy);
     }
 
+    [HumansFact]
+    public async Task RotateAsync_revokes_and_replaces_an_active_key()
+    {
+        var oldKey = Key("old");
+        var replacement = Key("replacement");
+        var revokedBy = Guid.NewGuid();
+        var revokedAt = Instant.FromUtc(2026, 9, 21, 6, 0);
+        _db.ApiKeys.Add(oldKey);
+        await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        (await _repository.RotateAsync(oldKey.Id, revokedBy, revokedAt, replacement, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeTrue();
+
+        var persistedOld = await _db.ApiKeys.AsNoTracking()
+            .SingleAsync(item => item.Id == oldKey.Id, Xunit.TestContext.Current.CancellationToken);
+        persistedOld.RevokedAt.Should().Be(revokedAt);
+        persistedOld.RevokedByUserId.Should().Be(revokedBy);
+        (await _db.ApiKeys.AsNoTracking().SingleAsync(item => item.Id == replacement.Id, Xunit.TestContext.Current.CancellationToken))
+            .KeyHash.Should().Be(replacement.KeyHash);
+    }
+
     private static BackdoorApiKey Key(string suffix) => new()
     {
         Id = Guid.NewGuid(),

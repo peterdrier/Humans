@@ -679,7 +679,9 @@ public sealed class IssuesServiceTests
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var newAssigneeId = Guid.NewGuid();
-        SeedUser(newAssigneeId, "Assignee").Email = "a@a.com";
+        var assignee = SeedUser(newAssigneeId, "Assignee");
+        assignee.Email = "a@a.com";
+        assignee.PreferredLanguage = "es";
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.UpdateAssigneeAsync(issueId, Admin, newAssigneeId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
@@ -688,11 +690,11 @@ public sealed class IssuesServiceTests
             NotificationSource.IssueAssigned,
             NotificationClass.Actionable,
             NotificationPriority.Normal,
-            Arg.Any<string>(),
+            Arg.Is<string>(title => title == "Se te asignó un asunto: Title"),
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(newAssigneeId)),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
-            Arg.Any<string?>(),
+            Arg.Is<string?>(label => label == "Ver asunto"),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());

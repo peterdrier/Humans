@@ -175,10 +175,15 @@ public sealed class EmailOutboxServiceTests
     public async Task PreviewDailySendCountBackfillAsync_ExcludesTestAddresses()
     {
         var day = new LocalDate(2026, 8, 15);
-        var testMessage = BuildOutboxMessage(day.AtMidnight().InUtc().ToInstant(), EmailOutboxStatus.Sent, "welcome");
-        testMessage.RecipientEmail = "bot@localhost";
+        var testMessages = new[]
+        {
+            BuildOutboxMessage(day.AtMidnight().InUtc().ToInstant(), EmailOutboxStatus.Sent, "welcome"),
+            BuildOutboxMessage(day.AtMidnight().InUtc().ToInstant(), EmailOutboxStatus.Sent, "welcome")
+        };
+        testMessages[0].RecipientEmail = "bot@localhost";
+        testMessages[1].RecipientEmail = "bot@ticketstub.local";
         _repo.GetSentSinceAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns([testMessage]);
+            .Returns(testMessages);
         _repo.GetDailySendCountKeysAsync(Arg.Any<CancellationToken>())
             .Returns(new HashSet<(LocalDate, string)>());
 

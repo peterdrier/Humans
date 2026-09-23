@@ -47,11 +47,15 @@ internal interface IHoldedRepository : IRepository
 
     Task<SepaPayoutTransfer?> GetSepaTransferAsync(Guid transferId, CancellationToken ct = default);
 
-    /// <summary>Stamps the booking onto the transfer. A null <paramref name="bookedAt"/> records the
-    /// payment references of an allocation that failed part-way without claiming it settled.</summary>
+    /// <summary>Stamps a completed booking: when, who (null = the sweep), the bank line it was booked
+    /// against, and whether the reconcile already succeeded.</summary>
     Task SaveSepaTransferBookingAsync(
-        Guid transferId, Instant? bookedAt, Guid? bookedByUserId, string? holdedPaymentRefs,
-        CancellationToken ct = default);
+        Guid transferId, Instant bookedAt, Guid? bookedByUserId,
+        string bankMovementId, Instant? reconciledAt, CancellationToken ct = default);
+
+    /// <summary>Stamps a reconcile that succeeded on a later pass, without touching the booking.</summary>
+    Task MarkSepaTransferReconciledAsync(
+        Guid transferId, Instant reconciledAt, CancellationToken ct = default);
 
     // Purchase-doc sync state (singleton, lazy-created)
     Task<HoldedDocSyncState> GetOrCreateDocSyncStateAsync(CancellationToken ct = default);

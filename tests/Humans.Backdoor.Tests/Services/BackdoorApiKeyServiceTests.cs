@@ -186,9 +186,11 @@ public class BackdoorApiKeyServiceTests
         var key = ExistingKey();
         MakeEligible(key.UserId);
         _repository.GetByIdAsync(key.Id, Arg.Any<CancellationToken>()).Returns(key);
-        _repository.RevokeAsync(key.Id, _actor, Now, Arg.Any<CancellationToken>()).Returns(true);
+        _repository.RotateAsync(key.Id, _actor, Now, Arg.Any<BackdoorApiKey>(), Arg.Any<CancellationToken>())
+            .Returns(true);
         BackdoorApiKey? replacement = null;
-        await _repository.AddAsync(Arg.Do<BackdoorApiKey>(k => replacement = k), Arg.Any<CancellationToken>());
+        _repository.RotateAsync(key.Id, _actor, Now, Arg.Do<BackdoorApiKey>(k => replacement = k), Arg.Any<CancellationToken>())
+            .Returns(true);
 
         var result = await _sut.RotateAsync(key.Id, _actor);
 
@@ -197,7 +199,7 @@ public class BackdoorApiKeyServiceTests
         replacement!.Label.Should().Be(key.Label);
         replacement.UserId.Should().Be(key.UserId);
         replacement.KeyHash.Should().NotBe(key.KeyHash);
-        await _repository.Received(1).RevokeAsync(key.Id, _actor, Now, Arg.Any<CancellationToken>());
+        await _repository.Received(1).RotateAsync(key.Id, _actor, Now, Arg.Any<BackdoorApiKey>(), Arg.Any<CancellationToken>());
     }
 
     /// <summary>
@@ -210,7 +212,8 @@ public class BackdoorApiKeyServiceTests
         var key = ExistingKey();
         MakeEligible(key.UserId);
         _repository.GetByIdAsync(key.Id, Arg.Any<CancellationToken>()).Returns(key);
-        _repository.RevokeAsync(key.Id, _actor, Now, Arg.Any<CancellationToken>()).Returns(true);
+        _repository.RotateAsync(key.Id, _actor, Now, Arg.Any<BackdoorApiKey>(), Arg.Any<CancellationToken>())
+            .Returns(true);
 
         (await _sut.RotateAsync(key.Id, _actor)).Succeeded.Should().BeTrue();
 
@@ -235,8 +238,7 @@ public class BackdoorApiKeyServiceTests
         var result = await _sut.RotateAsync(key.Id, _actor);
 
         result.Succeeded.Should().BeFalse();
-        await _repository.DidNotReceiveWithAnyArgs().RevokeAsync(default, default, default);
-        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        await _repository.DidNotReceiveWithAnyArgs().RotateAsync(default, default, default, default!, default);
     }
 
     // ==========================================================================

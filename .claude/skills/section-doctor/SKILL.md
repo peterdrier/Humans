@@ -151,7 +151,10 @@ writes `docs/health/runs/<yyyy-mm-dd>-<Section>.md` (header, empty blocks, the c
 thread tables); `git add` it, `doctor.py commit` it alone and `doctor.py push` — that file's path
 is how the next selector sees this run.
 Rename the session `section-doctor: <Section> — <yyyy-mm-dd>` via `set_session_title` where the
-tool exists; skip silently otherwise.
+tool exists (load it with ToolSearch if deferred); skip silently otherwise. It requires
+`session_id`: take `ccr.id` from `get_session` called with no arguments. Confirm the returned
+title changed; on an error retry once, and if that fails too, note it in the run file's Retro
+and carry on.
 
 ### Phase 3: Assess
 

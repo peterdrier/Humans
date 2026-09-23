@@ -1,8 +1,10 @@
 using Humans.Calendar.Contracts;
+using Humans.Base.Configuration;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
 using Humans.Users.Contracts;
+using Microsoft.Extensions.Options;
 
 namespace Humans.Calendar.Services;
 
@@ -16,6 +18,7 @@ internal sealed class ICalFeedService(
     IUserServiceRead users,
     ICalendarFeedTokenService tokens,
     IEnumerable<ICalendarFeedContributor> contributors,
+    IOptions<EmailSettings> emailSettings,
     ILogger<ICalFeedService> logger) : IICalFeedService
 {
     public async Task<IReadOnlyList<CalendarFeedItem>> GetFeedItemsAsync(Guid userId, CancellationToken ct = default)
@@ -85,10 +88,13 @@ internal sealed class ICalFeedService(
                 DtStart = new CalDateTime(item.Start.ToDateTimeUtc()),
                 DtEnd = new CalDateTime(item.End.ToDateTimeUtc()),
                 Categories = [item.Source],
-                Url = item.Url is null ? null : new Uri(item.Url),
+                Url = item.Url is null ? null : new Uri(BuildAbsoluteUrl(item.Url)),
             });
         }
 
         return new CalendarSerializer().SerializeToString(calendar);
     }
+
+    private string BuildAbsoluteUrl(string path) =>
+        $"{emailSettings.Value.BaseUrl.TrimEnd('/')}/{path.TrimStart('/')}";
 }

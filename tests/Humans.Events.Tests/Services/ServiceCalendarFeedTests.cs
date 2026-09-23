@@ -122,7 +122,7 @@ public class EventServiceCalendarFeedTests
         item.Description.Should().Contain("Bring a mat.");
         item.Description.Should().Contain("Host: Stretchy");
         item.Uid.Should().Be($"event-{ev.Id}-20260701@humans.nobodies.team");
-        item.Url.Should().Be("https://humans.nobodies.team/Events/Schedule");
+        item.Url.Should().Be("/Events/Schedule");
     }
 
     [HumansFact]
