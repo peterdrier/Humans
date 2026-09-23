@@ -107,17 +107,11 @@ internal sealed class CalendarController : HumansControllerBase
         var to = gridEnd.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
 
         var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, teamId, ct);
-        var teams = (await _teams.GetTeamsAsync(ct))
-            .Values
-            .Where(t => t.IsActive)
-            .Select(t => new TeamOption(t.Id, t.Name))
-            .ToList();
 
         return new CalendarMonthViewModel(
             Month: ym,
             Occurrences: occ,
             FilterTeamId: teamId,
-            TeamOptions: teams,
             ViewerTimezoneLabel: zone.Id);
     }
 
@@ -166,7 +160,6 @@ internal sealed class CalendarController : HumansControllerBase
             Month: ym,
             Occurrences: occ,
             FilterTeamId: teamId,
-            TeamOptions: [],
             ViewerTimezoneLabel: zone.Id));
     }
 
