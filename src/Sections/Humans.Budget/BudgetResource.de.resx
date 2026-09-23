@@ -63,6 +63,21 @@
   <data name="Budget_ColCategory" xml:space="preserve"><value>Kategorie</value></data>
   <data name="Budget_ColShare" xml:space="preserve"><value>Anteil</value></data>
   <data name="Budget_DepartmentDetail" xml:space="preserve"><value>Abteilungsdetails</value></data>
+  <data name="Budget_Departments" xml:space="preserve"><value>Abteilungen</value></data>
+  <data name="Budget_DetailedInLineItems" xml:space="preserve"><value>In Einzelposten aufgeführt</value></data>
+  <data name="Budget_FinanceAdmin" xml:space="preserve"><value>Finanzverwaltung</value></data>
+  <data name="Budget_CategoryCount" xml:space="preserve"><value>({0} Kategorien)</value></data>
+  <data name="Budget_ColLineItems" xml:space="preserve"><value>Einzelposten (€)</value></data>
+  <data name="Budget_ColType" xml:space="preserve"><value>Typ</value></data>
+  <data name="Budget_Allocated" xml:space="preserve"><value>Zugewiesen (€)</value></data>
+  <data name="Budget_Manage" xml:space="preserve"><value>Verwalten</value></data>
+  <data name="Budget_NoCategories" xml:space="preserve"><value>Keine Kategorien in dieser Gruppe.</value></data>
+  <data name="Budget_NoGroups" xml:space="preserve"><value>Noch keine Budgetgruppen verfügbar.</value></data>
+  <data name="Budget_Restricted" xml:space="preserve"><value>Eingeschränkt</value></data>
+  <data name="Budget_TotalAllocated" xml:space="preserve"><value>Insgesamt zugewiesen</value></data>
+  <data name="Budget_Unallocated" xml:space="preserve"><value>Nicht zugewiesen</value></data>
+  <data name="Budget_View" xml:space="preserve"><value>Ansehen</value></data>
+  <data name="Budget_YourDepartment" xml:space="preserve"><value>Deine Abteilung</value></data>
   <data name="Budget_Expenses" xml:space="preserve"><value>Ausgaben</value></data>
   <data name="Budget_ExpensesBreakdown" xml:space="preserve"><value>Aufschlüsselung der Ausgaben</value></data>
   <data name="Budget_Income" xml:space="preserve"><value>Einnahmen</value></data>
