@@ -31,4 +31,3 @@ src/Sections/Humans.Tickets/Data/TicketRepository.cs:OrderByDescending#6
 src/Sections/Humans.Tickets/Data/TicketRepository.cs:OrderByDescending#7
 src/Sections/Humans.Tickets/Data/TicketRepository.cs:OrderByDescending#8
 src/Sections/Humans.Tickets/Data/TicketRepository.cs:OrderByDescending#9
-src/Sections/Humans.Campaigns/Data/CampaignRepository.cs:OrderByDescending#1
