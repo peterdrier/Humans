@@ -249,8 +249,8 @@ person), mirroring the read-through Scanner section.
 **Layout:** the tablet-facing views (`Claim`, scan terminal `Index`, `Leaderboard`) use the
 **chromeless kiosk layout** `_GateLayout` — full-bleed, no admin nav/sidebar/breadcrumb, so the
 rugged tablet shows only the gate UI. It lives in the section's own `Views/Shared/`. The
-admin settings page (`Admin`) and the vendor
-check-in backfill page override back to Shell's `_AdminLayout` (desktop admin tasks). The shared
+admin settings page (`Admin`) overrides back to Shell's `_AdminLayout` (a desktop admin task); the
+vendor check-in backfill page lives outside the kiosk folder and gets it from the Shell's layout rule. The shared
 `GateTerminal` system account (no roles/teams) sees only this kiosk; on the device, Edge Assigned
 Access removes browser chrome too.
 **Static assets:** `wwwroot/css/gate/` and `wwwroot/js/gate/` ship with the RCL and are served

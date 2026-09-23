@@ -119,6 +119,32 @@ public class SectionSeamTests
         AdminNavComposition.Locate(LocateTree, "Admin", "Index", parent: null).Should().BeNull();
     }
 
+    private static Task<bool> IsAdminPage(bool adminRole, string controller, string action, bool signedIn = true)
+    {
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Base.Authorization.PolicyNames.AnyAdminRole)
+            .Returns(adminRole ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var user = new ClaimsPrincipal(signedIn ? new ClaimsIdentity("test") : new ClaimsIdentity());
+        return AdminNavComposition.IsAdminPageAsync(
+            [new Nav([.. LocateTree])], authorization, user, controller, action);
+    }
+
+    [HumansFact]
+    public async Task Admin_Role_Gets_The_Shell_On_Every_Page_Of_A_Nav_Group_And_The_Dashboard()
+    {
+        (await IsAdminPage(adminRole: true, "CampAdmin", "Roles")).Should().BeTrue();
+        (await IsAdminPage(adminRole: true, "CampAdmin", "MemberFacingPage")).Should().BeTrue();
+        (await IsAdminPage(adminRole: true, "Admin", "Index")).Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Everyone_Else_And_Every_Other_Page_Gets_The_Member_Layout()
+    {
+        (await IsAdminPage(adminRole: false, "CampAdmin", "Roles")).Should().BeFalse();
+        (await IsAdminPage(adminRole: true, "Profile", "Index")).Should().BeFalse();
+        (await IsAdminPage(adminRole: true, "CampAdmin", "Roles", signedIn: false)).Should().BeFalse();
+    }
+
     /// <summary>
     /// Discovery activates the real section contributions. Separate contribution classes are
     /// <c>internal sealed</c>: a class's compiler-generated default constructor is public even

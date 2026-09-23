@@ -9,6 +9,7 @@
   src/Sections/*/SectionAdminTiles.cs
   src/Humans.Web/Controllers/AdminController.cs
   src/Humans.Web/Views/Shared/_AdminLayout.cshtml
+  src/Humans.Web/Views/_ViewStart.cshtml
 -->
 
 # Admin Shell — Section Invariants
@@ -19,7 +20,7 @@ Frame-only section. Provides the shared admin sidebar, tab strip, breadcrumb, an
 
 - The **Admin Shell** is the persistent layout wrapper rendered for the admin dashboard and section admin pages: top-nav, left sidebar, breadcrumb, tab strip, and page container.
 - The **Sidebar** is the left navigation panel inside the admin shell: a pinned "Dashboard" row, then one row per **group**, alphabetical. A group is named after its owning section (the section whose `src/Sections/Humans.<Section>/Docs/` covers the feature); a section contributing into another's group names that group's label (Feedback into "Issues"). A row links to the group's first item the user can see, shows that item's icon, and carries the sum of the group's pill counts. Below 768px the rows render as one horizontally scrolling strip.
-- The **Tab strip** renders under the breadcrumb on every page of a group: one tab per visible item of the current group, with its own pill. It is hidden when the group has one visible item or fewer.
+- The **Tab strip** renders above the breadcrumb on every page of a group: one tab per visible item of the current group, with its own pill. It is hidden when the group has one visible item or fewer.
 - The **Breadcrumb** reads *Group / Page / Subpage*. The page is the nav item the route resolves to (`AdminNavComposition.Locate`): an exact controller+action match, else the item named by `ViewData["AdminNavParent"]` (`"Action"` or `"Controller/Action"`), else the first item on the same controller. A page whose label equals its group's renders the label once. A subpage shows its `ViewData["Title"]` last, or, when the view defines a `Crumbs` Razor section, that section's children instead (the last is the current crumb). A route that resolves to no item shows only its title. Admin views carry no in-page Bootstrap breadcrumb of their own.
 - The **Dashboard skeleton** is the top-level `/Admin` landing page. It renders `AdminSummaryViewComponent` (the greeting/strapline plus a tile strip merged from every section's `ISectionAdminTiles` contribution, interleaved with Shell's own presence tiles) and a `chrome-slot` for the `admin-dashboard` slot, into which sections contribute cards (`ISectionChrome`).
 
@@ -29,7 +30,7 @@ This section owns no entities.
 
 ## Routing
 
-The `/Admin` route is the shared dashboard. The `AdminLayout.cshtml` layout is selected by `_ViewStart.cshtml` in each admin view folder that uses the shell, including section-owned routes such as `/Debug/*`, `/Profile/*/Admin/*`, and `/Campaigns/Admin/*`. The breadcrumb and tab strip are resolved from the route by the `AdminBreadcrumb` and `AdminTabs` view components; a page adds only `ViewData["Title"]`, plus `ViewData["AdminNavParent"]` or a `Crumbs` section when it is a subpage.
+The `/Admin` route is the shared dashboard. One rule picks the layout for every page, in the Shell's root `Views/_ViewStart.cshtml` (`AdminNavComposition.IsAdminPageAsync`): a user who holds an admin-shaped role (`AnyAdminRole`) gets `_AdminLayout` on the dashboard and on every page of an admin nav group (the route `Locate`s to an item, exact or by controller), member pages on those controllers included; everyone else, and every other page, gets `_Layout`. Sections declare no admin layout of their own. The shell hides a page's own Bootstrap breadcrumb (`nav[aria-label=breadcrumb]`), since its crumb replaces it. Exceptions, each a view that sets `Layout` itself: the full-screen City Planning maps (`/CityPlanning`, `BarrioMap`, `ContainerMap`) stay on `_Layout`, the gate kiosk uses `_GateLayout` with `/Gate/Admin` opting back into `_AdminLayout`, and print views use none. The breadcrumb and tab strip are resolved from the route by the `AdminBreadcrumb` and `AdminTabs` view components; a page adds only `ViewData["Title"]`, plus `ViewData["AdminNavParent"]` or a `Crumbs` section when it is a subpage.
 
 ## Actors & Roles
 
@@ -59,6 +60,7 @@ Sidebar groups, alphabetical: Agent, Audit, Backdoor, Barrios, Budget, Campaigns
 - The Surveys group's "Surveys" item is gated by `PolicyNames.AppAccess` (any Active human), not a Board/Admin policy — every admin-shaped role's holder sees it once they reach the shell, not only Board. Only "Approvals" (the authoring approval queue) is `BoardOrAdmin`.
 - Sidebar items are filtered per-item by `IAuthorizationService.AuthorizeAsync`; an item the current user cannot access does not appear in the rendered HTML.
 - Sidebar groups whose entire visible-item list is empty do not render; the tab strip shows only the current group's visible items, under the same per-item gate.
+- The admin shell renders only for `AnyAdminRole` holders: a page shared with other users (Onsite roster with the gate terminal, Barrio compliance with team coordinators, survey authoring) renders in the member layout for them.
 - The admin shell adds no new authorization policies; it reuses existing `PolicyNames.*` constants defined in the Auth section.
 - The `body.admin-shell` CSS class scopes all admin-shell styles — no styles bleed into member-facing pages.
 

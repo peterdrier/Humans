@@ -145,6 +145,8 @@
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/client-metrics.js" asp-append-version="true" defer></script>
     @await RenderSectionAsync("Scripts", required: false)
+    @* A page's admin-shell crumbs have no place in the member layout. *@
+    @if (IsSectionDefined("Crumbs")) { IgnoreSection("Crumbs"); }
     <vc:chrome-slot name="body-end" />
 </body>
 </html>

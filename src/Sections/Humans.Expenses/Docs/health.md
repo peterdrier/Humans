@@ -144,8 +144,9 @@ Settled decisions that read as accidents. Do not re-litigate these.
 - **`ExpenseSepaSent` / `ExpenseSepaReopened` / `ExpensePaid` remain in the GDPR export's
   action list** although nothing writes them. The audit log is immutable; only the writers
   went away.
-- **The review queue renders in the admin shell for finance and the member shell for everyone
-  else.** An admin sidebar filtered down to nothing is worse than no sidebar.
+- **The review queue renders in the admin shell for admin-role users and the member shell for
+  everyone else**, by the Shell's one layout rule (`docs/sections/admin-shell.md`); the sidebar
+  filters itself.
 - **`Humans.Expenses` references `Humans.Budget` and `Humans.AuditLog` themselves**, not only
   their contracts leaves, because a view component and a resource key live in the section
   projects. Both directions are checked acyclic.

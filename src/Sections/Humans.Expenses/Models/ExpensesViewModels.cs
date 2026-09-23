@@ -198,13 +198,6 @@ internal sealed class ExpenseReviewViewModel
     /// Zero hides the banner.</summary>
     public required int FailedHoldedPushCount { get; init; }
 
-    /// <summary>
-    /// The viewer is a finance admin, so the page renders in the admin shell. Coordinators and
-    /// members see the same queue, scoped to them, in the member shell — an admin sidebar filtered
-    /// down to nothing is worse than no admin sidebar.
-    /// </summary>
-    public required bool IsAdminView { get; init; }
-
     /// <summary>Rows grouped for rendering: one table per status, in workflow order.</summary>
     public IEnumerable<IGrouping<ExpenseReportStatus, ExpenseReportDto>> ByStatus =>
         Reports.GroupBy(r => r.Status).OrderBy(g => g.Key);

@@ -1,4 +1,7 @@
+using System.Security.Claims;
+using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.ViewComponents;
 
@@ -22,6 +25,28 @@ public static class AdminNavComposition
     /// item on its controller: <c>"Action"</c> on the current controller, or <c>"Controller/Action"</c>.
     /// </summary>
     public const string ParentKey = "AdminNavParent";
+
+    /// <summary>The Shell's dashboard controller: the sidebar's pinned "Dashboard" row, on no group.</summary>
+    public const string DashboardController = "Admin";
+
+    /// <summary>
+    /// Whether a page renders in the admin shell: the user holds an admin-shaped role and the route is
+    /// the dashboard or belongs to an admin nav group. It is the one rule every page follows (the root
+    /// <c>_ViewStart</c>); the sidebar and tabs then filter to what the user may see.
+    /// </summary>
+    public static async Task<bool> IsAdminPageAsync(
+        IEnumerable<ISectionAdminNav> contributors, IAuthorizationService authorization, ClaimsPrincipal user,
+        string? controller, string? action)
+    {
+        if (user.Identity?.IsAuthenticated != true)
+            return false;
+
+        if (!string.Equals(controller, DashboardController, StringComparison.OrdinalIgnoreCase)
+            && Locate(Compose(contributors), controller, action, parent: null) is null)
+            return false;
+
+        return (await authorization.AuthorizeAsync(user, PolicyNames.AnyAdminRole)).Succeeded;
+    }
 
     public static IReadOnlyList<AdminNavGroup> Compose(IEnumerable<ISectionAdminNav> contributors) =>
         [.. contributors

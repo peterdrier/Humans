@@ -744,7 +744,6 @@ internal sealed class ExpensesController(
                 // Finance admins are the only ones who can act on a written-off push, and the
                 // count is queue-wide rather than scoped, so it stays with them.
                 FailedHoldedPushCount = isFinanceAdmin ? await service.CountFailedHoldedPushesAsync() : 0,
-                IsAdminView = isFinanceAdmin,
             });
         }
         catch (Exception ex)

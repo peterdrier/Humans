@@ -110,9 +110,9 @@ The shapes imply a section with no data layer at all:
 
 ## Load-bearing weirdness
 
-- **`ColorPaletteController` is `[AllowAnonymous]` and uses the public `_Layout`** on
-  purpose: a static design reference, reachable without a session, linked from the admin
-  sidebar's Debug group.
+- **`ColorPaletteController` is `[AllowAnonymous]`** on purpose: a static design reference,
+  reachable without a session (member layout), linked from the admin sidebar's Debug group
+  (admin shell for admin-role users).
 - **The widget gallery references the section assemblies whose public components it renders**
   (Camps, Users, Tickets, Shifts, Calendar, AuditLog, Teams, Events) plus contracts leaves. That
   fan-in is the page's job — it renders other sections' public view components as `<vc:>` tag

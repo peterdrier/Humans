@@ -36,7 +36,7 @@ Admin is layered. **Board** and **HumanAdmin** can do human management — the l
 
 ## Key pages at a glance
 
-- `/Admin` — the admin dashboard: stat tiles contributed by each section (users, teams, shift coverage, open feedback, audit events, emails, store orders, expense reports, and more) plus live online-now/active-in-the-last-hour/24h counts, wrapped in the admin shell, with a left sidebar listing one row per section, A to Z (Audit, Barrios, Budget, Debug, Events, Google, Governance, Issues, Onboarding, Shifts, Store, Tickets, Users and more); each section's pages show as tabs under the breadcrumb, which reads *Section / Page / Subpage*. Reachable by any admin-shaped role; each tile and sidebar item appears only if you're authorized for it.
+- `/Admin` — the admin dashboard: stat tiles contributed by each section (users, teams, shift coverage, open feedback, audit events, emails, store orders, expense reports, and more) plus live online-now/active-in-the-last-hour/24h counts, wrapped in the admin shell, with a left sidebar listing one row per section, A to Z (Audit, Barrios, Budget, Debug, Events, Google, Governance, Issues, Onboarding, Shifts, Store, Tickets, Users and more); each section's pages show as tabs above the breadcrumb, which reads *Section / Page / Subpage*. Reachable by any admin-shaped role; each tile and sidebar item appears only if you're authorized for it.
 - `/Users/Admin` — humans list; filter by `UserState` with values like `?filter=bare`, `?filter=active`, `?filter=suspended`, `?filter=rejected`, and `?filter=deleting`.
 - `/Users/Admin/{id}` — per-human detail, with suspend, unsuspend, reject, add role, and end role.
 - `/Users/Admin/{id}/Outbox` — per-human email outbox.

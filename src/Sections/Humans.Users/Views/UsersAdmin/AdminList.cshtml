@@ -1,7 +1,6 @@
 @model Humans.Users.Models.AdminHumanListViewModel
 @{
     ViewData["Title"] = Localizer["AdminHumans_Title"].Value;
-    Layout = "_AdminLayout";
     string ToggleDir(string col) => Model.SortBy == col && Model.SortDir == "asc" ? "desc" : "asc";
 }
 

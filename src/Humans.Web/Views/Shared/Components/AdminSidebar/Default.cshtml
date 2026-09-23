@@ -4,8 +4,8 @@
    Desktop: a vertical list. Below 768px: a horizontally scrolling strip. *@
 <div class="sidebar-rows-wrap">
     <nav class="sidebar-rows" aria-label="Admin sections">
-        <a class="@(ViewContext.RouteData.Values["controller"] as string == "Admin" ? "active" : null)"
-           asp-controller="Admin" asp-action="Index">
+        <a class="@(string.Equals(ViewContext.RouteData.Values["controller"] as string, Humans.Web.ViewComponents.AdminNavComposition.DashboardController, StringComparison.OrdinalIgnoreCase) ? "active" : null)"
+           asp-controller="@Humans.Web.ViewComponents.AdminNavComposition.DashboardController" asp-action="Index">
             <i class="fa-solid fa-house" aria-hidden="true"></i>
             <span>Dashboard</span>
         </a>

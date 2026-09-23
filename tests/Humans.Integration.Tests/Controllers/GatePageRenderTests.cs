@@ -127,9 +127,9 @@ public class GatePageRenderTests(HumansTestDatabase database) : IntegrationTestB
     [HumansFact(Timeout = 60000)]
     public async Task Admin_gate_pages_keep_the_shared_admin_layout()
     {
-        // /Gate/Admin and the backfill page override _ViewStart back to Shell's _AdminLayout —
-        // a section view resolving a layout that lives in the *host*, the mirror of the
-        // kiosk case above.
+        // /Gate/Admin overrides the kiosk _ViewStart back to Shell's _AdminLayout, and the backfill
+        // page gets it from Shell's layout rule — a section view resolving a layout that lives in
+        // the *host*, the mirror of the kiosk case above.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 

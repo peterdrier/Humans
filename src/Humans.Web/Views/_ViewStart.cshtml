@@ -1,3 +1,11 @@
+@using Humans.Web.ViewComponents
+@inject Microsoft.AspNetCore.Authorization.IAuthorizationService Authorization
+@inject IEnumerable<Humans.Base.Interfaces.ISectionAdminNav> AdminNav
 @{
-    Layout = "_Layout";
+    // Admin-role users get the admin shell on every page of an admin nav group; everyone else,
+    // and every other page, gets the member layout (docs/sections/admin-shell.md).
+    Layout = await AdminNavComposition.IsAdminPageAsync(AdminNav, Authorization, User,
+        ViewContext.RouteData.Values["controller"] as string, ViewContext.RouteData.Values["action"] as string)
+        ? "_AdminLayout"
+        : "_Layout";
 }

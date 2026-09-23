@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Web.ViewComponents;
 
 /// <summary>
-/// The tab strip under the breadcrumb: the current page's group's visible items, with the page
+/// The tab strip above the breadcrumb: the current page's group's visible items, with the page
 /// (or the item it is a subpage of) active. Renders nothing for a group with a single tab.
 /// </summary>
 public sealed class AdminTabsViewComponent(

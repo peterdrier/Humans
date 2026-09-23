@@ -3,7 +3,6 @@
     var humanId = (Guid?)ViewBag.HumanId;
     var isAdminView = humanId.HasValue;
     ViewData["Title"] = isAdminView ? Localizer["Outbox_AdminTitle"].Value : Localizer["Profile_MyEmails"].Value;
-    Layout = isAdminView ? "_AdminLayout" : "_Layout";
 }
 
 <div class="row">

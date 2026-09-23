@@ -2,7 +2,6 @@
 @using NodaTime
 @{
     ViewData["Title"] = "Vote peek";
-    Layout = "_AdminLayout";
     var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     var audiences = new List<(string Label, AssemblyVoteAudienceResult Audience, bool IsIndicative)>

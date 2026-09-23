@@ -1,7 +1,6 @@
 @model GateVendorBackfillViewModel
 @{
     ViewData["Title"] = "Vendor check-in backfill";
-    Layout = "_AdminLayout";
     var snapshot = Model.Snapshot;
     var pending = Model.Pending.OrderBy(r => r.AdmittedAt).ToList();
     var sent = Model.SentAwaitingSync.OrderBy(r => r.AdmittedAt).ToList();

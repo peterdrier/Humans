@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = Localizer["CityPlanning_BarrioMapTitle"].Value;
     ViewData["BodyClass"] = "city-map-fullscreen";
+    // Full-screen map: the member layout for everyone, admin shell or not.
+    Layout = "_Layout";
     var isPlacementOpen = Model.IsPlacementOpen;
     var isMapAdmin = Model.IsMapAdmin;
     var userCampSeasonId = Model.UserCampSeasonId;
