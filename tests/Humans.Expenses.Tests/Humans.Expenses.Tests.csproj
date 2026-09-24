@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.Expenses\Humans.Expenses.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />

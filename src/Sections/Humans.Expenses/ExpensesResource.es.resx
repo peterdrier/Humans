@@ -103,4 +103,10 @@
   <data name="Expenses_RejectReasonPlaceholder" xml:space="preserve"><value>p. ej. Faltan recibos de la línea 2</value></data>
   <data name="Expenses_ReviewQueue" xml:space="preserve"><value>Revisión de gastos</value></data>
   <data name="Expenses_ReviewQueueTitle" xml:space="preserve"><value>Informes de gastos — Revisión</value></data>
+  <data name="Expenses_Email_Approved_Body" xml:space="preserve"><value>&lt;h2&gt;Informe de gastos aprobado&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Finanzas ha aprobado tu informe de gastos. El importe a reembolsar es &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;El pago se realizará por transferencia bancaria a la cuenta que termina en {2}. Te avisaremos cuando la transferencia se haya enviado.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}"&gt;Ver tu informe de gastos&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Expenses_Email_Approved_Subject" xml:space="preserve"><value>Tu informe de gastos ha sido aprobado</value></data>
 </root>

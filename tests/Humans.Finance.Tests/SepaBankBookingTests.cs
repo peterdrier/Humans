@@ -8,6 +8,8 @@ using Humans.Finance.Domain;
 using Humans.Finance.Models;
 using Humans.Finance.Services;
 using Humans.Holded.Contracts;
+using Humans.Email.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -51,7 +53,9 @@ public class SepaBankBookingTests
     private readonly Guid _userId = Guid.NewGuid();
 
     private Service MakeService() => new(
-        _repo, _client, _budget, _holded, _clock, _cache, _audit, Options.Create(_sepa),
+        _repo, _client, _budget, _holded, _clock, _cache, _audit,
+        Substitute.For<IUserServiceRead>(), Substitute.For<IUserEmailService>(), Substitute.For<IEmailService>(),
+        TestFinanceEmails.Create(), Options.Create(_sepa),
         NullLogger<Service>.Instance);
 
     public SepaBankBookingTests()

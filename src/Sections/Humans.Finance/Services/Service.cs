@@ -1,4 +1,5 @@
 using Humans.AuditLog.Contracts;
+using Humans.Email.Contracts;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.Base.Helpers;
@@ -35,6 +36,10 @@ internal sealed class Service(
     IClock clock,
     IMemoryCache cache,
     IAuditLogService audit,
+    IUserServiceRead users,
+    IUserEmailService userEmails,
+    IEmailService emailService,
+    FinanceEmails emails,
     IOptions<SepaOptions> sepa,
     ILogger<Service> logger) : IHoldedFinanceService, IHoldedFinanceAdminService, ISepaBankBooking, IUserDataContributor
 {
@@ -1004,7 +1009,37 @@ internal sealed class Service(
                 + $"{t.SupplierAccountNum} (file {fileName}).",
                 actorUserId, t.UserId, nameof(User));
 
+        await SendPayoutEmailsAsync(transfers, ct);
+
         return new SepaPayoutResult(fileName, xml, null);
+    }
+
+    /// <summary>
+    /// Tells each paid member their transfer is on its way (peterdrier/Humans#1820). After the
+    /// save, like the audit lines: an outbox row is a promise of money, so a rolled-back file
+    /// must not leave one. Sent at generation rather than at booking because generation is when
+    /// the treasurer hands the file to the bank; booking only records that the money moved.
+    /// </summary>
+    private async Task SendPayoutEmailsAsync(IReadOnlyList<SepaPayoutTransfer> transfers, CancellationToken ct)
+    {
+        var userIds = transfers.Select(t => t.UserId).Distinct().ToList();
+        var infos = await users.GetUserInfosAsync(userIds, ct);
+        var targets = await userEmails.GetNotificationTargetEmailsAsync(userIds, ct);
+
+        foreach (var t in transfers)
+        {
+            if (!infos.TryGetValue(t.UserId, out var member)
+                || !targets.TryGetValue(t.UserId, out var recipient) || string.IsNullOrWhiteSpace(recipient))
+            {
+                logger.LogWarning(
+                    "Skipping SEPA payout email for transfer {TransferId}: member {UserId} has no notification email",
+                    t.Id, t.UserId);
+                continue;
+            }
+
+            await emailService.SendAsync(emails.SepaPayoutGenerated(
+                recipient, member.BurnerName, t.Amount, t.IbanMasked, member.PreferredLanguage), ct);
+        }
     }
 
     // ─── SEPA booking against the bank line (nobodies-collective/Humans#1185) ───

@@ -103,4 +103,10 @@
   <data name="Expenses_RejectReasonPlaceholder" xml:space="preserve"><value>es. Ricevute mancanti per la riga 2</value></data>
   <data name="Expenses_ReviewQueue" xml:space="preserve"><value>Revisione note spese</value></data>
   <data name="Expenses_ReviewQueueTitle" xml:space="preserve"><value>Note spese — Revisione</value></data>
+  <data name="Expenses_Email_Approved_Body" xml:space="preserve"><value>&lt;h2&gt;Nota spese approvata&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;L'amministrazione ha approvato la tua nota spese. L'importo da rimborsare è &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;Il pagamento avverrà tramite bonifico bancario sul conto che termina con {2}. Ti avviseremo quando il bonifico sarà stato inviato.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}"&gt;Vedi la tua nota spese&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Expenses_Email_Approved_Subject" xml:space="preserve"><value>La tua nota spese è stata approvata</value></data>
 </root>

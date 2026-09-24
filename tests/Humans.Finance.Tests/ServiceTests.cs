@@ -12,6 +12,8 @@ using Humans.Finance.Domain;
 using Humans.Finance.Models;
 using Humans.Gdpr.Contracts;
 using Humans.Holded.Contracts;
+using Humans.Email.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -35,7 +37,19 @@ public class HoldedFinanceServiceTests
     private readonly FakeClock _clock = new(FixedNow);
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly IUserServiceRead _users = NoUsers();
+    private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
+    private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly SepaOptions _sepa = new();
+
+    /// <summary>An unstubbed <c>ValueTask&lt;IReadOnlyDictionary&gt;</c> substitute yields null, not an empty map.</summary>
+    private static IUserServiceRead NoUsers()
+    {
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>());
+        return users;
+    }
 
     private Service MakeService() => new(
         _repo,
@@ -45,12 +59,17 @@ public class HoldedFinanceServiceTests
         _clock,
         _cache,
         _audit,
+        _users,
+        _userEmails,
+        _emailService,
+        TestFinanceEmails.Create(),
         Options.Create(_sepa),
         NullLogger<Service>.Instance);
 
     /// <summary>Same service, with a logger the test can read back.</summary>
     private Service MakeService(ILogger<Service> logger) => new(
-        _repo, _client, _budget, _holded, _clock, _cache, _audit, Options.Create(_sepa), logger);
+        _repo, _client, _budget, _holded, _clock, _cache, _audit,
+        _users, _userEmails, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), logger);
 
     /// <summary>Ledger-line stub for the mirror reads (positional: entry, line, account, date, type, description, debit, credit).</summary>
     private static HoldedLedgerLineInfo Line(int entry, int line, int account, Instant date,
@@ -2069,6 +2088,60 @@ public class HoldedFinanceServiceTests
             Arg.Is<string>(d => d.Contains("ES79****789", StringComparison.Ordinal)
                                 && !d.Contains(AnaIban, StringComparison.Ordinal)),
             actor, userId, Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayout_EmailsThePaidMember_InTheirLanguage_WithAMaskedIban()
+    {
+        // peterdrier/Humans#1820: generation is when the treasurer hands the file to the bank,
+        // so it is when the member is told the money is on its way.
+        ConfigureSepa();
+        var userId = SeedPayableCreditor();
+        StubMember(userId, "Ana", "ana@example.com", "es");
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 12.34m)], 50m, Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "sepa_payout_generated"
+                && m.RecipientEmail == "ana@example.com"
+                && m.RecipientName == "Ana"
+                && m.Subject.EndsWith("#es")
+                && m.HtmlBody.Contains("12,34 €")
+                && m.HtmlBody.Contains("ES79****789")
+                && !m.HtmlBody.Contains(AnaIban)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayout_WhenRefused_SendsNoEmail()
+    {
+        ConfigureSepa();
+        var userId = SeedPayableCreditor(owed: 10m);
+        StubMember(userId, "Ana", "ana@example.com", "es");
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 12.34m)], 50m, Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    private void StubMember(Guid userId, string burnerName, string email, string language)
+    {
+        _users.GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [userId] = UserInfo.Create(
+                    user: new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = language, CreatedAt = FixedNow },
+                    userEmails: [], eventParticipations: [], externalLogins: [],
+                    profile: null, communicationPreferences: []),
+            });
+        _userEmails.GetNotificationTargetEmailsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [userId] = email });
     }
 
     [HumansFact]

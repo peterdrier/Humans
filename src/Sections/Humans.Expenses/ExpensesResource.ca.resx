@@ -103,4 +103,10 @@
   <data name="Expenses_RejectReasonPlaceholder" xml:space="preserve"><value>p. ex. Falten rebuts de la línia 2</value></data>
   <data name="Expenses_ReviewQueue" xml:space="preserve"><value>Revisió de despeses</value></data>
   <data name="Expenses_ReviewQueueTitle" xml:space="preserve"><value>Informes de despeses — Revisió</value></data>
+  <data name="Expenses_Email_Approved_Body" xml:space="preserve"><value>&lt;h2&gt;Informe de despeses aprovat&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Finances ha aprovat el teu informe de despeses. L'import a reemborsar és &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;El pagament es farà per transferència bancària al compte que acaba en {2}. T'avisarem quan la transferència s'hagi enviat.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}"&gt;Veure el teu informe de despeses&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Expenses_Email_Approved_Subject" xml:space="preserve"><value>El teu informe de despeses ha estat aprovat</value></data>
 </root>

@@ -12,6 +12,8 @@ using Humans.Expenses.Services.Dtos;
 using Microsoft.Extensions.Options;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Enums;
+using Humans.Email.Contracts;
+using Humans.Expenses.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
@@ -51,6 +53,8 @@ public sealed class ExpenseReportServiceTests
     private readonly IBudgetServiceRead _budgetService;
     private readonly ITeamServiceRead _teamService;
     private readonly IUserService _userService;
+    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
+    private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
     private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
     private readonly ExpenseReportService _sut;
@@ -77,6 +81,9 @@ public sealed class ExpenseReportServiceTests
             _budgetService,
             _teamService,
             _userService,
+            _userEmailService,
+            _emailService,
+            TestExpensesEmails.Create(),
             AuditLog,
             _holdedClient,
             _holdedFinance,
@@ -456,6 +463,7 @@ public sealed class ExpenseReportServiceTests
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
@@ -497,6 +505,7 @@ public sealed class ExpenseReportServiceTests
 
         var sut = new ExpenseReportService(
             failingRepo, _fileStorage, _budgetService, _teamService, _userService,
+            _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
@@ -1071,6 +1080,7 @@ public sealed class ExpenseReportServiceTests
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
@@ -1099,6 +1109,7 @@ public sealed class ExpenseReportServiceTests
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
@@ -1896,6 +1907,60 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task ApproveAsync_EmailsTheSubmitter_WithTheCappedAmountAndAMaskedIban()
+    {
+        // peterdrier/Humans#1820: the one moment a member hears that money is coming.
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted, payeeIban: "ES9121000418450200051332", total: 40m);
+        StubSubmitter(submitter, "Ana", "ana@example.com", "es");
+
+        var ok = await _sut.ApproveAsync(reportId, Guid.NewGuid(), null, 25m, Xunit.TestContext.Current.CancellationToken);
+        ok.Should().BeTrue();
+
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "expense_approved"
+                && m.RecipientEmail == "ana@example.com"
+                && m.RecipientName == "Ana"
+                && m.Subject.EndsWith("#es")
+                && m.HtmlBody.Contains("25,00 €")
+                && m.HtmlBody.Contains("ES91****332")
+                && !m.HtmlBody.Contains("ES9121000418450200051332")
+                && m.HtmlBody.Contains($"{TestExpensesEmails.BaseUrl}/Expenses/{reportId}")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ApproveAsync_OnAReportThatCannotBeApproved_SendsNothing()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Draft);
+        StubSubmitter(submitter, "Ana", "ana@example.com", "es");
+
+        var ok = await _sut.ApproveAsync(reportId, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
+
+        ok.Should().BeFalse();
+        await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    private void StubSubmitter(Guid userId, string burnerName, string email, string language)
+    {
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(
+                user: new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = language, CreatedAt = FakeNow },
+                userEmails: [], eventParticipations: [], externalLogins: [],
+                profile: null, communicationPreferences: []));
+        _userEmailService.GetNotificationTargetEmailsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [userId] = email });
+    }
+
+    [HumansFact]
     public async Task ApproveAsync_WithOverrideCategory_AuditsBoth()
     {
         var (_, category) = SetupActiveYear();
@@ -2587,7 +2652,7 @@ public sealed class ExpenseReportServiceTests
 
     private async Task SeedReportWithStatus(
         Guid reportId, Guid submitter, Guid categoryId, Guid yearId,
-        ExpenseReportStatus status, string payeeIban = "")
+        ExpenseReportStatus status, string payeeIban = "", decimal total = 0m)
     {
         var now = Instant.FromUtc(2026, 5, 1, 0, 0);
         var report = new ExpenseReport
@@ -2598,6 +2663,7 @@ public sealed class ExpenseReportServiceTests
             BudgetYearId = yearId,
             Status = status,
             PayeeIban = payeeIban,
+            Total = total,
             CreatedAt = now,
             UpdatedAt = now
         };

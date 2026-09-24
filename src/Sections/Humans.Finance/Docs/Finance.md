@@ -265,6 +265,7 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 ## Triggers
 
 - None on the budget side: this section only reads Budget, so it fires no Budget-side effects.
+- On **SEPA payout generation**: after the file and its transfers are saved and audited, one `sepa_payout_generated` email per transfer goes to the bound member (`FinanceEmails.SepaPayoutGenerated`, `MessageCategory.System`, in their preferred language) naming the amount and the masked IBAN. A refused batch sends nothing; a member with no notification email is logged and skipped. Booking sends nothing — by then the money has moved (peterdrier/Humans#1820).
 - When the sync job starts, `HoldedDocSyncState.Status` flips to `Running`. On success returns to `Idle` with `LastSyncAt` and `LastSyncedDocCount` updated. On exception goes to `Error` with `LastError` populated; next scheduled run retries.
 
 ## Cross-Section Dependencies
@@ -273,7 +274,8 @@ Derived from `Humans.Finance.csproj`'s project references — contracts leaves o
 
 - **Budget** (`Humans.Budget.Contracts`): `IBudgetServiceRead.GetActiveYearAsync`, for the categories the provisioning plan is built from. Read-only.
 - **Holded** (`Humans.Holded.Contracts`): `IHoldedService` for cached ledger lines and account balances, and `IHoldedClient` for the live contact/account calls the provisioning and bind paths make.
-- **Users** (`Humans.Users.Contracts`): `IUserServiceRead.GetUserInfosAsync`, to name bound members on `/Finance/Creditors`.
+- **Users** (`Humans.Users.Contracts`): `IUserServiceRead.GetUserInfosAsync`, to name bound members on `/Finance/Creditors` and to address the payout email; `IUserEmailService.GetNotificationTargetEmailsAsync` for the address itself.
+- **Email** (`Humans.Email.Contracts`): `IEmailService.SendAsync` for the payout email. The template, its resx set (`FinanceResource`, the section's only one — its screens are admin-only and carry no keys) and its `/Email/EmailPreview` sample are this section's (`FinanceEmails`, `FinanceEmailPreviews`); Email keeps the mechanics (memory/architecture/email-templates-live-in-sender.md).
 - **GDPR** (`Humans.Gdpr.Contracts`): Finance implements `IUserDataContributor` for the Article 15 export of a member's creditor binding and of every SEPA payout made to them, and for Article 17 erasure — `EraseForUserAsync` drops the binding (`ClearCreditorContactAsync`); `ErasureDeclaration` maps `HoldedCreditorAccount` to `null` (erased in full) and `SepaPayouts` to a fiscal-retention basis (Código de Comercio Art. 30, Ley 58/2003 Art. 66 — GDPR Art. 17(3)(b)): a payment order stripped of its payee is no longer evidence of the payment. The invoices themselves live in Holded and are fiscal records outside this section's ownership.
 
 No Tickets dependency: the cash-flow view that had one is Budget's. Budget never calls into Finance.
@@ -315,7 +317,8 @@ The Expenses section reads creditor status via `GetCreditorStatusAsync(supplierA
 `/Finance/Creditors` doubles as the payout screen: tick the payable rows, adjust amounts, and
 `POST /Finance/Sepa/Generate` streams a Norma 34-14 / pain.001.001.09 file for Sabadell's "Enviar
 ficheros". It reads the same balances and the same cached contact list the page already shows — no
-extra Holded call — and writes only its own two tables plus one audit entry per transfer.
+extra Holded call — and writes only its own two tables plus one audit entry per transfer, then
+emails each paid member that the transfer is on its way.
 
 `/Finance/Sepa` closes the loop once the file is with the bank: it lists every generated file with
 its transfers and books each one's payment into Holded. Full spec:
