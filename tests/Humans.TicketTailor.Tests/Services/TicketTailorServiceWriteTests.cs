@@ -274,6 +274,10 @@ public class TicketTailorServiceWriteTests
     [HumansTheory]
     [InlineData(HttpStatusCode.BadRequest, TicketVendorFailureKind.Validation)]
     [InlineData(HttpStatusCode.UnprocessableEntity, TicketVendorFailureKind.Validation)]
+    [InlineData(HttpStatusCode.Unauthorized, TicketVendorFailureKind.AuthFailed)]
+    [InlineData(HttpStatusCode.Forbidden, TicketVendorFailureKind.AuthFailed)]
+    [InlineData(HttpStatusCode.NotFound, TicketVendorFailureKind.NotFound)]
+    [InlineData(HttpStatusCode.TooManyRequests, TicketVendorFailureKind.RateLimited)]
     [InlineData(HttpStatusCode.InternalServerError, TicketVendorFailureKind.Transient)]
     public async Task IssueTicketAsync_MapsStatusToFailureKind(HttpStatusCode status, TicketVendorFailureKind kind)
     {
