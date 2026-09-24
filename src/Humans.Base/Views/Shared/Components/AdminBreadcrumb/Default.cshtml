@@ -20,14 +20,7 @@ else
     {
         <span>@Model.Group</span><span class="sep">/</span>
     }
-    @if (item.RawHref is not null)
-    {
-        <a href="@item.RawHref">@item.Label</a>
-    }
-    else
-    {
-        <a asp-controller="@item.Controller" asp-action="@item.Action">@item.Label</a>
-    }
+    <a href="@(item.RawHref ?? Url.Action(item.Action, item.Controller))">@item.Label</a>
     <span class="sep">/</span>
     @if (Model.Trail is not null)
     {

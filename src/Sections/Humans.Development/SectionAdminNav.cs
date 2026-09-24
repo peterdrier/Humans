@@ -11,7 +11,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     [
         new("Development", [
             new("Seed data", "DevSeed", "Index", null, null, "fa-solid fa-seedling", PolicyNames.AdminOnly,
-                 EnvironmentGate: env => !env.IsProduction())
+                 EnvironmentGate: env => env.IsDevelopment())
         ])
     ];
 }

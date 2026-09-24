@@ -29,7 +29,7 @@ The section groups by "gate shape" and "what happens next":
 | Dev-seed request (default) | `SeedBudget`, `SeedCampRoles` | `[Authorize(policy)]` + dev-auth on, host non-Production | Seeder call, redirect to `/Admin` |
 | Dev-seed strict | `SeedDashboard`, `ResetDashboard` | `[Authorize(policy)]` + dev-auth on, host `IsDevelopment()` only | Seeder call, redirect to `/Shifts/Dashboard` |
 | Section boot | `Section.Register` | Non-Production env name only | Registers 3 seeders (fail-closed on unknown env) |
-| Nav contribution | `SectionAdminNav.Groups` | Environment gate: `!env.IsProduction()` | Renders the "Development" admin group (one item, `/dev/seed`) |
+| Nav contribution | `SectionAdminNav.Groups` | Environment gate: `env.IsDevelopment()` | Renders the "Development" admin group (one item, `/dev/seed`) |
 
 Everything else in the section is helpers reachable from one of the seven shapes.
 

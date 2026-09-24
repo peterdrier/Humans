@@ -1,7 +1,7 @@
-using System.Security.Claims;
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace Humans.Base.ViewComponents;
 
@@ -30,22 +30,26 @@ public static class AdminNavComposition
     public const string DashboardController = "Admin";
 
     /// <summary>
-    /// Whether a page renders in the admin shell: the user holds an admin-shaped role and the route is
-    /// the dashboard or belongs to an admin nav group. It is the one rule every page follows (the root
-    /// <c>_ViewStart</c>); the sidebar and tabs then filter to what the user may see.
+    /// Whether a page renders in the admin shell: its endpoint is restricted by a policy beyond
+    /// <see cref="PolicyNames.AppAccess"/>, and it is the dashboard or sits on a controller in the
+    /// admin nav. A page members share (an imperative check, or none) keeps the member layout. It is
+    /// the one rule every page follows (the root <c>_ViewStart</c>); whoever reached a restricted page
+    /// passed its gate, so the sidebar and tabs then filter to what that user may see.
     /// </summary>
-    public static async Task<bool> IsAdminPageAsync(
-        IEnumerable<ISectionAdminNav> contributors, IAuthorizationService authorization, ClaimsPrincipal user,
-        string? controller, string? action)
+    /// <remarks>
+    /// <c>_ViewStart</c> runs before the view names its <see cref="ParentKey"/>, so the controller
+    /// match alone decides: a page whose controller has no nav item stays out of the shell.
+    /// </remarks>
+    public static bool IsAdminPage(
+        IEnumerable<ISectionAdminNav> contributors, Endpoint? endpoint, string? controller, string? action)
     {
-        if (user.Identity?.IsAuthenticated != true)
+        if (endpoint is null || endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null
+            || !endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Any(a =>
+                a.Roles is not null || (a.Policy is not null && !string.Equals(a.Policy, PolicyNames.AppAccess, StringComparison.Ordinal))))
             return false;
 
-        if (!string.Equals(controller, DashboardController, StringComparison.OrdinalIgnoreCase)
-            && Locate(Compose(contributors), controller, action, parent: null) is null)
-            return false;
-
-        return (await authorization.AuthorizeAsync(user, PolicyNames.AnyAdminRole)).Succeeded;
+        return string.Equals(controller, DashboardController, StringComparison.OrdinalIgnoreCase)
+            || Locate(Compose(contributors), controller, action, parent: null) is not null;
     }
 
     public static IReadOnlyList<AdminNavGroup> Compose(IEnumerable<ISectionAdminNav> contributors) =>

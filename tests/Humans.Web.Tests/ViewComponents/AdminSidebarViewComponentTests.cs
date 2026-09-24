@@ -134,6 +134,35 @@ public class AdminSidebarViewComponentTests
         model!.Groups.Should().NotContain(g => g.Label == "Development");
     }
 
+    [HumansFact]
+    public async Task Dashboard_Row_Shows_Only_For_Admin_Shaped_Roles()
+    {
+        // A team coordinator reaches the shell on /Shifts/Dashboard but not the /Admin dashboard.
+        var auth = AlwaysAllow();
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.AnyAdminRole)
+            .Returns(AuthorizationResult.Failed());
+        var result = await MakeSut(auth, "Ticket", "Index").InvokeAsync() as ViewViewComponentResult;
+        (result!.ViewData!.Model as AdminSidebarViewModel)!.ShowDashboard.Should().BeFalse();
+
+        result = await MakeSut(AlwaysAllow(), "Ticket", "Index").InvokeAsync() as ViewViewComponentResult;
+        (result!.ViewData!.Model as AdminSidebarViewModel)!.ShowDashboard.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Tabs_Reuse_The_Sidebars_Item_Checks_Within_A_Request()
+    {
+        var auth = AlwaysAllow();
+        var sidebar = MakeSut(auth, "Debug", "Logs");
+        await sidebar.InvokeAsync();
+        var tabs = new AdminTabsViewComponent(auth, MakeDevEnv(), new ServiceLocatorBuilder().Build(), [new FakeNav()],
+            NullLogger<AdminTabsViewComponent>.Instance) { ViewComponentContext = sidebar.ViewComponentContext };
+
+        var result = await tabs.InvokeAsync() as ViewViewComponentResult;
+
+        ((IReadOnlyList<AdminSidebarItemViewModel>)result!.ViewData!.Model!).Select(t => t.Label).Should().Equal("Logs", "DB stats");
+        await auth.Received(1).AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.TicketAdminBoardOrAdmin);
+    }
+
     private static IAuthorizationService AlwaysAllow()
     {
         var auth = Substitute.For<IAuthorizationService>();

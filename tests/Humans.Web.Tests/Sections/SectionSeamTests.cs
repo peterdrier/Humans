@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
 using Humans.Base.ViewComponents;
@@ -120,30 +121,28 @@ public class SectionSeamTests
         AdminNavComposition.Locate(LocateTree, "Admin", "Index", parent: null).Should().BeNull();
     }
 
-    private static Task<bool> IsAdminPage(bool adminRole, string controller, string action, bool signedIn = true)
-    {
-        var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Base.Authorization.PolicyNames.AnyAdminRole)
-            .Returns(adminRole ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        var user = new ClaimsPrincipal(signedIn ? new ClaimsIdentity("test") : new ClaimsIdentity());
-        return AdminNavComposition.IsAdminPageAsync(
-            [new Nav([.. LocateTree])], authorization, user, controller, action);
-    }
+    private static bool IsAdminPage(string controller, string action, params object[] metadata) =>
+        AdminNavComposition.IsAdminPage([new Nav([.. LocateTree])],
+            new Endpoint(null, new EndpointMetadataCollection(metadata), null), controller, action);
+
+    private static AuthorizeAttribute Policy(string policy) => new() { Policy = policy };
 
     [HumansFact]
-    public async Task Admin_Role_Gets_The_Shell_On_Every_Page_Of_A_Nav_Group_And_The_Dashboard()
+    public void A_Page_Gated_By_An_Admin_Policy_On_A_Nav_Controller_Or_The_Dashboard_Gets_The_Shell()
     {
-        (await IsAdminPage(adminRole: true, "CampAdmin", "Roles")).Should().BeTrue();
-        (await IsAdminPage(adminRole: true, "CampAdmin", "MemberFacingPage")).Should().BeTrue();
-        (await IsAdminPage(adminRole: true, "Admin", "Index")).Should().BeTrue();
+        IsAdminPage("CampAdmin", "Roles", Policy(PolicyNames.CampAdminOrAdmin)).Should().BeTrue();
+        IsAdminPage("CampAdmin", "Detail", Policy(PolicyNames.AppAccess), Policy(PolicyNames.CampAdminOrAdmin)).Should().BeTrue();
+        IsAdminPage("Admin", "Index", Policy(PolicyNames.AnyAdminRole)).Should().BeTrue();
     }
 
+    /// <summary>A page members share keeps the member layout, even on a controller in the admin nav.</summary>
     [HumansFact]
-    public async Task Everyone_Else_And_Every_Other_Page_Gets_The_Member_Layout()
+    public void Shared_Anonymous_And_Off_Nav_Pages_Get_The_Member_Layout()
     {
-        (await IsAdminPage(adminRole: false, "CampAdmin", "Roles")).Should().BeFalse();
-        (await IsAdminPage(adminRole: true, "Profile", "Index")).Should().BeFalse();
-        (await IsAdminPage(adminRole: true, "CampAdmin", "Roles", signedIn: false)).Should().BeFalse();
+        IsAdminPage("CampAdmin", "MemberFacingPage", Policy(PolicyNames.AppAccess)).Should().BeFalse();
+        IsAdminPage("CampAdmin", "MemberFacingPage", new AuthorizeAttribute()).Should().BeFalse();
+        IsAdminPage("CampAdmin", "Roles", Policy(PolicyNames.CampAdminOrAdmin), new AllowAnonymousAttribute()).Should().BeFalse();
+        IsAdminPage("Profile", "Index", Policy(PolicyNames.AdminOnly)).Should().BeFalse();
     }
 
     /// <summary>

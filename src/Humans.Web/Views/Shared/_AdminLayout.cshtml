@@ -1,4 +1,5 @@
 @* Admin shell layout — CSS scoped under body.admin-shell to prevent leakage into member pages. *@
+@using Microsoft.AspNetCore.Html
 <!DOCTYPE html>
 <html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
@@ -67,8 +68,26 @@
                    its title, or that sits more than one level down, supplies its crumbs after Page as a
                    "Crumbs" section (links, then itself last). *@
                 <vc:admin-tabs />
+                @{
+                    // RenderSectionAsync writes straight to the output, so capture the section to hand it over.
+                    IHtmlContent? crumbs = null;
+                    if (IsSectionDefined("Crumbs"))
+                    {
+                        using var buffer = new StringWriter();
+                        PushWriter(buffer);
+                        try
+                        {
+                            await RenderSectionAsync("Crumbs");
+                        }
+                        finally
+                        {
+                            PopWriter();
+                        }
+                        crumbs = new HtmlString(buffer.ToString());
+                    }
+                }
                 <div class="crumb">
-                    <vc:admin-breadcrumb trail="@(await RenderSectionAsync("Crumbs", required: false))" />
+                    <vc:admin-breadcrumb trail="@crumbs" />
                 </div>
 
                 <partial name="_AuthorizationPill" />
