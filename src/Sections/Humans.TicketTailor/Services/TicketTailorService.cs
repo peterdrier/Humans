@@ -543,7 +543,6 @@ internal sealed class TicketTailorService : ITicketVendorService
             401 or 403 => TicketVendorFailureKind.AuthFailed,
             404 => TicketVendorFailureKind.NotFound,
             429 => TicketVendorFailureKind.RateLimited,
-            >= 500 => TicketVendorFailureKind.Transient,
             _ => TicketVendorFailureKind.Transient,
         };
         return new TicketVendorWriteException(
