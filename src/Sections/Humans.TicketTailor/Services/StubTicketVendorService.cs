@@ -67,7 +67,7 @@ internal sealed class StubTicketVendorService : ITicketVendorService
         Instant? since, string eventId, CancellationToken ct = default)
     {
         // Fixtures all "arrive" on the first full sync (the real client pages by
-        // record creation time); none on incremental, mirroring GetIssuedTicketsAsync.
+        // record creation time); none on incremental.
         IReadOnlyList<VendorCheckInDto> checkIns = since.HasValue
             ? []
             : _checkIns.ToList();
@@ -101,7 +101,7 @@ internal sealed class StubTicketVendorService : ITicketVendorService
         return Task.FromResult(codes);
     }
 
-    // Dev/preview stub: the gate's check-in mirror is a no-op (no vendor to call).
+    // The gate's check-in mirror is a no-op: there is no vendor to call.
     public Task CreateCheckInAsync(string vendorTicketId, Instant occurredAt, CancellationToken ct = default) =>
         Task.CompletedTask;
 

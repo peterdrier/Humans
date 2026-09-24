@@ -2,6 +2,7 @@
   src/Sections/Humans.TicketTailor/**
   src/Sections/Humans.Tickets/Contracts/ITicketVendorService.cs
   src/Sections/Humans.Tickets/Contracts/TicketVendorSettings.cs
+  src/Sections/Humans.Tickets/Services/Stores/CachingTicketVendorService.cs
   src/Humans.Web/Extensions/Infrastructure/TicketVendorInfrastructureExtensions.cs
   tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs
 -->
@@ -44,7 +45,7 @@ None — the section owns no tables. Tickets owns every local row mirrored from 
 - Attendee email is the answer to the custom question whose text is exactly `Email`, else the ticket's top-level email.
 - Money crosses the boundary in euros: vendor cents divided by 100 on the way in, monetary discount values multiplied by 100 on the way out.
 - Event capacity is `ticket_groups.max_quantity` summed, falling back to `ticket_types.quantity_total`. `TicketTailorService` itself is cache-free; Tickets' `CachingTicketVendorService` holds the summary for 15 minutes, and a failed read is never cached.
-- List and event reads throw `HttpRequestException`. Void and issue throw `TicketVendorWriteException` with a `TicketVendorFailureKind`: 400/422 Validation, 401/403 AuthFailed, 404 NotFound, 429 RateLimited, 5xx and transport failure Transient.
+- Void and issue throw `TicketVendorWriteException` with a `TicketVendorFailureKind`: 400/422 Validation, 401/403 AuthFailed, 404 NotFound, 429 RateLimited, anything else and transport failure Transient. Every other method — reads, discount codes, check-in — throws `HttpRequestException`.
 - Issue requires either `HoldId` or both `EventId` and `TicketTypeId`; anything else is an `ArgumentException` before any call.
 - Check-in posts form-encoded `issued_ticket_id`, `quantity=1` and `check_in_at`; the vendor call is not idempotent, so callers never retry it. The key needs Event-manager scope.
 - The stub dataset is deterministic: the first order is `peter@nobodies.team`; every paid order holds one or two valid tickets and every non-paid order one void ticket; check-ins fall on 2026-07-08; incremental syncs (`since` set) return no tickets and no check-ins. Exact totals are the tests' to own (`tests/Humans.TicketTailor.Tests/Services/StubTicketVendorServiceTests.cs`).
@@ -63,7 +64,7 @@ None — the section is a pure request/response surface. Side effects around syn
 ## Cross-Section Dependencies
 
 - **Tickets**: implements `Humans.Tickets.Contracts.ITicketVendorService`; reads `TicketVendorSettings` through `IOptions<>`, which Shell binds (`src/Humans.Web/Extensions/Infrastructure/TicketVendorInfrastructureExtensions.cs`) so that deleting this project cannot take the port's configuration with it. The `.csproj` references `Humans.Tickets` (the owner, not a leaf) directly — sanctioned and acyclic, nobodies-collective/Humans#866 — and `Humans.Tickets.Contracts`.
-- **Base**: `TimeOperation`. `CacheKeys.TicketEventSummary` is read by Tickets' `CachingTicketVendorService`, not by this section.
+- **Base**: `TimeOperation`.
 
 ## Architecture
 

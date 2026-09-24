@@ -350,6 +350,28 @@ public class TicketTailorServiceTests
     }
 
     [HumansFact]
+    public async Task GetCheckInsAsync_ReportsEarliestPositiveScan_FallingBackToCreatedAt()
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new object[]
+            {
+                new { id = "ci_1", issued_ticket_id = "it_twice", check_in_at = 1751990000L, created_at = 1751990000L, quantity = 1 },
+                new { id = "ci_2", issued_ticket_id = "it_twice", check_in_at = 1751983320L, created_at = 1751995000L, quantity = 1 },
+                new { id = "ci_3", issued_ticket_id = "it_offline", created_at = 1751984000L, quantity = 1 },
+            },
+            links = new { next = (string?)null }
+        });
+
+        var service = TicketTailorTestHost.CreateService(handler);
+        var checkIns = await service.GetCheckInsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        checkIns.Single(c => string.Equals(c.VendorTicketId, "it_twice", StringComparison.Ordinal)).CheckedInAt.Should().Be(Instant.FromUnixTimeSeconds(1751983320L));
+        checkIns.Single(c => string.Equals(c.VendorTicketId, "it_offline", StringComparison.Ordinal)).CheckedInAt.Should().Be(Instant.FromUnixTimeSeconds(1751984000L));
+    }
+
+    [HumansFact]
     public async Task Since_FiltersOrdersAndTicketsByUpdatedAtAndCheckInsByCreatedAt()
     {
         var handler = new RecordingHttpHandler();

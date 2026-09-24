@@ -74,12 +74,12 @@
             else
             {
                 @* Shifts' rota tables are that section's presentation, so the component lives in
-                   Humans.Shifts and resolves by name across application parts — the arguments
-                   are all Humans.Shifts.Contracts types, which is what lets this view pass them
-                   without a reference to the Shifts section project (design §15 step 6). *@
+                   Humans.Shifts and resolves by name across application parts (design §15 step 6).
+                   Name-based invocation is unchecked at compile time, so pass the event by id and
+                   let Shifts resolve its own settings DTO. *@
                 @await Component.InvokeAsync("OnboardingShiftsList", new
                 {
-                    eventSettings = Model.EventSettings!,
+                    eventSettingsId = Model.EventSettings!.Id,
                     shifts = Model.Shifts,
                     userSignupShiftIds = Model.UserSignupShiftIds,
                     userSignupStatuses = Model.UserSignupStatuses,

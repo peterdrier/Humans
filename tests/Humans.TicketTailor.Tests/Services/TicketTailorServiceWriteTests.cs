@@ -245,7 +245,8 @@ public class TicketTailorServiceWriteTests
             description = "Weekend Pass",
             listed_price = 20000,
             status = "valid",
-            order_id = (string?)null
+            order_id = (string?)null,
+            barcode = "Kx7Pq2Zm"
         });
 
         var service = TicketTailorTestHost.CreateService(handler);
@@ -267,11 +268,16 @@ public class TicketTailorServiceWriteTests
         result.TicketTypeName.Should().Be("Weekend Pass");
         result.Price.Should().Be(200m);
         result.Status.Should().Be("valid");
+        result.Barcode.Should().Be("Kx7Pq2Zm");
     }
 
     [HumansTheory]
     [InlineData(HttpStatusCode.BadRequest, TicketVendorFailureKind.Validation)]
     [InlineData(HttpStatusCode.UnprocessableEntity, TicketVendorFailureKind.Validation)]
+    [InlineData(HttpStatusCode.Unauthorized, TicketVendorFailureKind.AuthFailed)]
+    [InlineData(HttpStatusCode.Forbidden, TicketVendorFailureKind.AuthFailed)]
+    [InlineData(HttpStatusCode.NotFound, TicketVendorFailureKind.NotFound)]
+    [InlineData(HttpStatusCode.TooManyRequests, TicketVendorFailureKind.RateLimited)]
     [InlineData(HttpStatusCode.InternalServerError, TicketVendorFailureKind.Transient)]
     public async Task IssueTicketAsync_MapsStatusToFailureKind(HttpStatusCode status, TicketVendorFailureKind kind)
     {
