@@ -155,7 +155,8 @@ public class AdminSidebarViewComponentTests
         var sidebar = MakeSut(auth, "Debug", "Logs");
         await sidebar.InvokeAsync();
         var tabs = new AdminTabsViewComponent(auth, MakeDevEnv(), new ServiceLocatorBuilder().Build(), [new FakeNav()],
-            NullLogger<AdminTabsViewComponent>.Instance) { ViewComponentContext = sidebar.ViewComponentContext };
+            NullLogger<AdminTabsViewComponent>.Instance);
+        tabs.ViewComponentContext = sidebar.ViewComponentContext;
 
         var result = await tabs.InvokeAsync() as ViewViewComponentResult;
 
