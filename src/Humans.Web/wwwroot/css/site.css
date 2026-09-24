@@ -12,6 +12,66 @@
 /* Prevent layout shift when scrollbar appears/disappears */
 html { scrollbar-gutter: stable; }
 
+/* --- Bootstrap variable bridge ---
+   Retints unthemed Bootstrap utilities (text-*, border-*, bg-*-subtle/-text-emphasis/-border-subtle,
+   focus rings, alert-secondary/alert-light, link colors) to design tokens. .bg-primary/.bg-info stay
+   explicitly blue-muted below (existing info-style badge/panel use); --bs-primary maps to gold-dark to
+   match .btn-primary/.btn-outline-primary branding for the utilities that aren't already overridden. */
+:root {
+    --bs-body-color: var(--h-text);
+    --bs-body-bg: var(--h-bg);
+    --bs-border-color: var(--h-border);
+    --bs-secondary-color: var(--h-sepia);
+    --bs-tertiary-bg: var(--h-vellum);
+    --bs-link-color: var(--h-gold-dark);
+    --bs-link-color-rgb: 168, 138, 78;
+    --bs-link-hover-color: var(--h-aged-ink);
+    --bs-link-hover-color-rgb: 61, 43, 31;
+    --bs-focus-ring-color: rgba(201, 169, 110, 0.2);
+
+    --bs-primary: var(--h-gold-dark);
+    --bs-primary-rgb: 168, 138, 78;
+    --bs-secondary: var(--h-sepia);
+    --bs-secondary-rgb: 139, 115, 85;
+    --bs-success: var(--h-sage-dark);
+    --bs-success-rgb: 79, 112, 84;
+    --bs-info: var(--h-blue-muted);
+    --bs-info-rgb: 91, 125, 143;
+    --bs-warning: var(--h-amber);
+    --bs-warning-rgb: 196, 138, 42;
+    --bs-danger: var(--h-rust);
+    --bs-danger-rgb: 160, 64, 48;
+    --bs-light: var(--h-vellum);
+    --bs-light-rgb: 240, 226, 200;
+    --bs-dark: var(--h-aged-ink);
+    --bs-dark-rgb: 61, 43, 31;
+
+    --bs-primary-bg-subtle: var(--h-alert-info-bg);
+    --bs-primary-text-emphasis: var(--h-alert-info-text);
+    --bs-primary-border-subtle: var(--h-blue-muted);
+    --bs-success-bg-subtle: var(--h-alert-success-bg);
+    --bs-success-text-emphasis: var(--h-alert-success-text);
+    --bs-success-border-subtle: var(--h-sage);
+    --bs-warning-bg-subtle: var(--h-alert-warning-bg);
+    --bs-warning-text-emphasis: var(--h-alert-warning-text);
+    --bs-warning-border-subtle: var(--h-amber);
+    --bs-danger-bg-subtle: var(--h-alert-danger-bg);
+    --bs-danger-text-emphasis: var(--h-alert-danger-text);
+    --bs-danger-border-subtle: var(--h-rust);
+    --bs-info-bg-subtle: var(--h-alert-info-bg);
+    --bs-info-text-emphasis: var(--h-alert-info-text);
+    --bs-info-border-subtle: var(--h-blue-muted);
+    --bs-secondary-bg-subtle: var(--h-vellum);
+    --bs-secondary-text-emphasis: var(--h-aged-ink-light);
+    --bs-secondary-border-subtle: var(--h-border);
+    --bs-light-bg-subtle: var(--h-parchment-light);
+    --bs-light-text-emphasis: var(--h-sepia);
+    --bs-light-border-subtle: var(--h-border-light);
+    --bs-dark-bg-subtle: var(--h-aged-ink-light);
+    --bs-dark-text-emphasis: var(--h-parchment);
+    --bs-dark-border-subtle: var(--h-aged-ink);
+}
+
 /* --- Environment Banner (non-production) --- */
 .env-banner {
     background: var(--h-rust);
@@ -78,6 +138,19 @@ h5, .h5 { font-size: 1.1rem; }
     font-weight: 400;
     font-style: italic;
     color: var(--h-sepia);
+}
+
+/* --- Responsive heading steps --- */
+@media (max-width: 899px) {
+    h1, .h1 { font-size: 1.9rem; }
+    h2, .h2 { font-size: 1.55rem; }
+    h3, .h3 { font-size: 1.3rem; }
+}
+
+@media (max-width: 599px) {
+    h1, .h1 { font-size: 1.7rem; }
+    h2, .h2 { font-size: 1.4rem; }
+    h3, .h3 { font-size: 1.2rem; }
 }
 
 /* --- Navbar --- */
@@ -307,89 +380,218 @@ h5, .h5 { font-size: 1.1rem; }
 }
 
 /* --- Buttons --- */
-.btn-primary {
-    background-color: var(--h-gold) !important;
-    border-color: var(--h-gold) !important;
-    color: var(--h-aged-ink) !important;
-    border-radius: var(--h-radius);
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: var(--h-font-body);
     font-weight: 700;
+    font-size: 0.9rem;
+    padding: 9px 20px;
+    border-radius: var(--h-radius);
     letter-spacing: 0.02em;
     transition: all 0.2s ease;
 }
 
+.btn-sm {
+    padding: 5px 12px;
+    font-size: 0.8rem;
+}
+
+.btn-lg {
+    padding: 12px 28px;
+    font-size: 1rem;
+}
+
+.btn:disabled,
+.btn.disabled {
+    opacity: 0.45;
+}
+
+@media (max-width: 599px) {
+    .btn {
+        min-height: 40px;
+    }
+}
+
+.btn-primary {
+    background-color: var(--h-gold);
+    border-color: var(--h-gold);
+    color: var(--h-aged-ink);
+}
+
 .btn-primary:hover,
 .btn-primary:focus {
-    background-color: var(--h-gold-dark) !important;
-    border-color: var(--h-gold-dark) !important;
-    color: var(--h-warm-white) !important;
+    background-color: var(--h-gold-dark);
+    border-color: var(--h-gold-dark);
+    color: var(--h-warm-white);
     box-shadow: 0 2px 8px rgba(201, 169, 110, 0.3);
     transform: translateY(-1px);
 }
 
 .btn-outline-primary {
-    color: var(--h-gold-dark) !important;
-    border-color: var(--h-gold) !important;
-    border-radius: var(--h-radius);
-    font-weight: 700;
-    transition: all 0.2s ease;
+    color: var(--h-gold-dark);
+    border-color: var(--h-gold);
 }
 
 .btn-outline-primary:hover,
 .btn-outline-primary:focus {
-    background-color: var(--h-gold) !important;
-    border-color: var(--h-gold) !important;
-    color: var(--h-aged-ink) !important;
+    background-color: var(--h-gold);
+    border-color: var(--h-gold);
+    color: var(--h-aged-ink);
     transform: translateY(-1px);
 }
 
-.btn-outline-secondary {
+.btn-outline-secondary,
+.btn-secondary {
+    background-color: transparent;
     border-color: var(--h-border);
     color: var(--h-sepia);
-    border-radius: var(--h-radius);
-    font-weight: 700;
-    transition: all 0.2s ease;
 }
 
-.btn-outline-secondary:hover {
+.btn-outline-secondary:hover,
+.btn-secondary:hover {
     background-color: var(--h-vellum);
     border-color: var(--h-sepia-light);
     color: var(--h-aged-ink);
 }
 
+/* WCAG: white text on --h-amber is ~3:1, fails AA. aged-ink on amber is ~4.5:1; warm-white on the
+   darker amber-dark hover is ~4:1 — both are the best pairing available from existing tokens (see
+   gap-plan.md §2c-15/§4-26; a purpose-built darker amber or gold-text token is a design-system fix). */
 .btn-warning {
-    background-color: var(--h-umber);
-    border-color: var(--h-umber);
-    color: var(--h-text-on-dark);
-    border-radius: var(--h-radius);
-    font-weight: 700;
+    background-color: var(--h-amber);
+    border-color: var(--h-amber);
+    color: var(--h-aged-ink);
 }
 
 .btn-warning:hover {
-    background-color: var(--h-aged-ink-light);
-    border-color: var(--h-aged-ink-light);
-    color: var(--h-text-on-dark);
+    background-color: var(--h-amber-dark);
+    border-color: var(--h-amber-dark);
+    color: var(--h-warm-white);
 }
 
 .btn-outline-warning {
-    border-color: var(--h-umber);
-    color: var(--h-umber);
-    border-radius: var(--h-radius);
-    font-weight: 700;
-    transition: all 0.2s ease;
+    border-color: var(--h-amber);
+    color: var(--h-amber-dark);
 }
 
 .btn-outline-warning:hover {
-    background-color: var(--h-umber);
-    border-color: var(--h-umber);
-    color: var(--h-text-on-dark);
+    background-color: var(--h-amber);
+    border-color: var(--h-amber);
+    color: var(--h-aged-ink);
 }
 
 .btn-outline-warning:focus,
 .btn-outline-warning.active,
 .btn-outline-warning:active {
-    background-color: var(--h-umber);
-    border-color: var(--h-umber);
-    color: var(--h-text-on-dark);
+    background-color: var(--h-amber);
+    border-color: var(--h-amber);
+    color: var(--h-aged-ink);
+}
+
+.btn-danger {
+    background-color: var(--h-rust);
+    border-color: var(--h-rust);
+    color: #fff;
+}
+
+.btn-danger:hover {
+    background-color: #86372a;
+    border-color: #86372a;
+    color: #fff;
+}
+
+.btn-outline-danger {
+    color: var(--h-rust);
+    border-color: var(--h-rust);
+}
+
+.btn-outline-danger:hover,
+.btn-outline-danger:focus,
+.btn-outline-danger.active,
+.btn-outline-danger:active {
+    background-color: var(--h-rust);
+    border-color: var(--h-rust);
+    color: #fff;
+}
+
+.btn-success {
+    background-color: var(--h-sage-dark);
+    border-color: var(--h-sage-dark);
+    color: #fff;
+}
+
+.btn-success:hover {
+    background-color: #3e5a42;
+    border-color: #3e5a42;
+    color: #fff;
+}
+
+.btn-outline-success {
+    color: var(--h-sage-dark);
+    border-color: var(--h-sage-dark);
+}
+
+.btn-outline-success:hover,
+.btn-outline-success:focus,
+.btn-outline-success.active,
+.btn-outline-success:active {
+    background-color: var(--h-sage-dark);
+    border-color: var(--h-sage-dark);
+    color: #fff;
+}
+
+.btn-link {
+    color: var(--h-gold-dark);
+    font-weight: 700;
+}
+
+.btn-link:hover {
+    color: var(--h-aged-ink);
+}
+
+.btn-dark {
+    background-color: var(--h-aged-ink);
+    border-color: var(--h-aged-ink);
+    color: var(--h-parchment);
+}
+
+.btn-dark:hover {
+    background-color: var(--h-aged-ink-light);
+    border-color: var(--h-aged-ink-light);
+    color: var(--h-parchment);
+}
+
+.btn-light {
+    background-color: var(--h-vellum);
+    border-color: var(--h-border);
+    color: var(--h-aged-ink);
+}
+
+.btn-light:hover {
+    background-color: var(--h-parchment-dark);
+    border-color: var(--h-sepia-light);
+}
+
+.btn-group {
+    border-radius: var(--h-radius);
+}
+
+.btn-check:checked + .btn,
+.btn-check:active + .btn,
+.btn-group > .btn.active {
+    background-color: var(--h-aged-ink);
+    border-color: var(--h-aged-ink);
+    color: var(--h-parchment);
+}
+
+.btn:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
 }
 
 .btn-info {
@@ -441,12 +643,6 @@ h5, .h5 { font-size: 1.1rem; }
     color: var(--h-parchment);
 }
 
-.btn-lg {
-    padding: 0.65rem 2rem;
-    font-size: 1rem;
-    border-radius: var(--h-radius);
-}
-
 /* --- Authorization Visual Indicators --- */
 .auth-pill {
     display: inline-flex;
@@ -474,13 +670,84 @@ h5, .h5 { font-size: 1.1rem; }
     color: var(--h-amber) !important;
 }
 
-/* --- Badges --- */
+/* --- Badges ---
+   Status badges (EnumBadgeMap/StatusBadgeExtensions, PageHeaderTagHelper) become tinted pills, matching
+   the tables/alerts spec's status-pill principle. Plain (non-badge) .bg-* panel/utility uses below are
+   left as solid fills. Count badges (.rounded-pill, e.g. notification counts) keep their solid look. */
 .badge {
     font-family: var(--h-font-body);
     font-weight: 700;
     letter-spacing: 0.04em;
-    border-radius: var(--h-radius-sm);
-    padding: 0.35em 0.65em;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 0.78rem;
+}
+
+.badge.bg-primary,
+.badge.bg-info {
+    background-color: var(--h-alert-info-bg) !important;
+    color: var(--h-alert-info-text) !important;
+}
+
+.badge.bg-success {
+    background-color: var(--h-alert-success-bg) !important;
+    color: var(--h-alert-success-text) !important;
+}
+
+.badge.bg-warning {
+    background-color: var(--h-alert-warning-bg) !important;
+    color: var(--h-alert-warning-text) !important;
+}
+
+.badge.bg-danger {
+    background-color: var(--h-alert-danger-bg) !important;
+    color: var(--h-alert-danger-text) !important;
+}
+
+.badge.bg-secondary {
+    background-color: var(--h-parchment-dark) !important;
+    color: var(--h-sepia) !important;
+}
+
+.badge.bg-dark {
+    background-color: var(--h-aged-ink) !important;
+    color: var(--h-parchment) !important;
+}
+
+.badge.bg-light {
+    background-color: var(--h-vellum) !important;
+    color: var(--h-sepia) !important;
+}
+
+.badge.rounded-pill.bg-primary,
+.badge.rounded-pill.bg-info {
+    background-color: var(--h-blue-muted) !important;
+    color: #fff !important;
+}
+
+.badge.rounded-pill.bg-success {
+    background-color: var(--h-sage) !important;
+    color: #fff !important;
+}
+
+.badge.rounded-pill.bg-warning {
+    background-color: var(--h-amber) !important;
+    color: var(--h-aged-ink) !important;
+}
+
+.badge.rounded-pill.bg-danger {
+    background-color: var(--h-rust) !important;
+    color: #fff !important;
+}
+
+.badge.rounded-pill.bg-secondary {
+    background-color: var(--h-sepia) !important;
+    color: #fff !important;
+}
+
+.badge.rounded-pill.bg-dark {
+    background-color: var(--h-aged-ink) !important;
+    color: var(--h-parchment) !important;
 }
 
 .bg-primary {
@@ -512,7 +779,36 @@ h5, .h5 { font-size: 1.1rem; }
 .alert {
     border-radius: var(--h-radius);
     border: none;
-    font-size: 0.9rem;
+    padding: 14px 18px;
+    font-size: 0.92rem;
+}
+
+.alert-heading {
+    font-family: var(--h-font-display);
+    font-weight: 700;
+    font-size: 1.02rem;
+    margin-bottom: 2px;
+}
+
+.alert-link {
+    color: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+.alert .btn-close {
+    opacity: 0.6;
+}
+
+.alert .btn-close:hover {
+    opacity: 1;
+}
+
+.alert-secondary,
+.alert-light {
+    background-color: var(--h-vellum);
+    color: var(--h-aged-ink);
+    border-left: 4px solid var(--h-sepia-light);
 }
 
 .alert-warning {
@@ -558,6 +854,26 @@ h5, .h5 { font-size: 1.1rem; }
     color: var(--h-aged-ink);
 }
 
+.list-group-item-success {
+    background-color: var(--h-alert-success-bg);
+    color: var(--h-alert-success-text);
+}
+
+.list-group-item-warning {
+    background-color: var(--h-alert-warning-bg);
+    color: var(--h-alert-warning-text);
+}
+
+.list-group-item-danger {
+    background-color: var(--h-alert-danger-bg);
+    color: var(--h-alert-danger-text);
+}
+
+.list-group-item-info {
+    background-color: var(--h-alert-info-bg);
+    color: var(--h-alert-info-text);
+}
+
 /* --- Forms --- */
 .form-control,
 .form-select {
@@ -575,12 +891,73 @@ h5, .h5 { font-size: 1.1rem; }
     background-color: var(--h-bg-elevated);
 }
 
+.form-control::placeholder {
+    color: var(--h-sepia-light);
+    font-style: italic;
+}
+
+.form-control:disabled,
+.form-control[readonly],
+.form-select:disabled {
+    background-color: var(--h-parchment);
+    color: var(--h-sepia);
+    opacity: 1;
+}
+
+.form-text {
+    font-family: var(--h-font-display);
+    font-style: italic;
+    font-size: 0.78rem;
+    color: var(--h-sepia);
+}
+
+.input-group-text {
+    background-color: var(--h-vellum);
+    border-color: var(--h-border);
+    color: var(--h-sepia);
+}
+
+/* WCAG: appearance:none checkboxes/switches can't use accent-color, so the checked state is styled
+   directly (spec-buttons-forms-cards.md forms section). */
+.form-check-input:checked {
+    background-color: var(--h-gold-dark);
+    border-color: var(--h-gold-dark);
+}
+
+.form-check-input:focus {
+    border-color: var(--h-gold);
+    box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
+}
+
+.is-invalid,
+.form-control.is-invalid,
+.form-select.is-invalid,
+.input-validation-error,
+.was-validated .form-control:invalid,
+.was-validated .form-select:invalid {
+    border-color: var(--h-rust) !important;
+}
+
+.is-invalid:focus,
+.form-control.is-invalid:focus,
+.form-select.is-invalid:focus,
+.input-validation-error:focus {
+    box-shadow: 0 0 0 3px rgba(160, 64, 48, 0.15);
+}
+
+.invalid-feedback,
+.validation-summary-errors {
+    font-size: 0.82rem;
+    color: var(--h-rust);
+}
+
 .form-label {
     font-family: var(--h-font-display);
     font-weight: 600;
     font-size: 0.95rem;
     color: var(--h-aged-ink);
     letter-spacing: 0.01em;
+    margin-bottom: 4px;
 }
 
 /* --- Tables --- */
@@ -595,13 +972,54 @@ h5, .h5 { font-size: 1.1rem; }
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--h-sepia);
+    background-color: var(--h-vellum);
+    padding: 12px 16px;
     border-bottom-width: 2px;
     border-color: var(--h-border);
 }
 
 .table td {
+    padding: 14px 16px;
     border-color: var(--h-border-light);
     vertical-align: middle;
+}
+
+.table-sm > :not(caption) > * > * {
+    padding: 8px 12px;
+}
+
+.table-light,
+.table > thead.table-light > tr > * {
+    --bs-table-bg: var(--h-vellum);
+    --bs-table-color: var(--h-sepia);
+}
+
+.table-success {
+    --bs-table-bg: var(--h-alert-success-bg);
+    --bs-table-color: var(--h-alert-success-text);
+}
+
+.table-warning {
+    --bs-table-bg: var(--h-alert-warning-bg);
+    --bs-table-color: var(--h-alert-warning-text);
+}
+
+.table-danger {
+    --bs-table-bg: var(--h-alert-danger-bg);
+    --bs-table-color: var(--h-alert-danger-text);
+}
+
+.table-info {
+    --bs-table-bg: var(--h-alert-info-bg);
+    --bs-table-color: var(--h-alert-info-text);
+}
+
+.table-active {
+    --bs-table-bg: var(--h-vellum);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    --bs-table-accent-bg: var(--h-vellum);
 }
 
 .sortable-table-header {
@@ -632,6 +1050,7 @@ footer {
     color: var(--h-gold-dark);
     border-color: var(--h-border);
     border-radius: var(--h-radius-sm);
+    font-size: 0.82rem;
 }
 
 .page-link:hover {
@@ -640,9 +1059,165 @@ footer {
 }
 
 .page-item.active .page-link {
-    background-color: var(--h-gold);
-    border-color: var(--h-gold);
+    background-color: var(--h-aged-ink);
+    border-color: var(--h-aged-ink);
+    color: var(--h-parchment);
+}
+
+/* --- Nav tabs / pills --- */
+.nav-tabs {
+    border-bottom: 1px solid var(--h-border);
+}
+
+.nav-tabs .nav-link {
+    font-family: var(--h-font-display);
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--h-sepia);
+    background-color: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+}
+
+.nav-tabs .nav-link:hover {
     color: var(--h-aged-ink);
+    border-color: transparent;
+}
+
+.nav-tabs .nav-link.active,
+.nav-tabs .nav-item.show .nav-link {
+    color: var(--h-aged-ink);
+    background-color: transparent;
+    border-color: transparent transparent var(--h-gold);
+}
+
+.nav-pills .nav-link {
+    font-family: var(--h-font-body);
+    font-size: 0.82rem;
+    color: var(--h-sepia);
+    background-color: var(--h-warm-white);
+    border: 1px solid var(--h-border);
+    border-radius: var(--h-radius);
+}
+
+.nav-pills .nav-link.active {
+    background-color: var(--h-aged-ink);
+    color: var(--h-parchment);
+    border-color: var(--h-aged-ink);
+}
+
+/* --- Breadcrumb --- */
+.breadcrumb {
+    font-family: var(--h-font-body);
+    font-size: 0.85rem;
+}
+
+.breadcrumb-item,
+.breadcrumb-item a {
+    color: var(--h-sepia);
+    text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+    color: var(--h-aged-ink);
+    text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+    color: var(--h-aged-ink);
+    font-weight: 600;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    color: var(--h-sepia-light);
+}
+
+/* --- Modal --- */
+.modal-content {
+    border: 1px solid var(--h-border);
+    border-radius: var(--h-radius-lg);
+    box-shadow: var(--h-shadow-lg);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--h-border-light);
+}
+
+.modal-header .modal-title {
+    font-family: var(--h-font-display);
+    font-weight: 700;
+    color: var(--h-aged-ink);
+}
+
+.modal-footer {
+    background-color: var(--h-vellum);
+    border-top: 1px solid var(--h-border-light);
+}
+
+/* --- Accordion --- */
+.accordion-item {
+    border-color: var(--h-border);
+}
+
+.accordion-button {
+    font-family: var(--h-font-body);
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: var(--h-aged-ink);
+    background-color: var(--h-bg-elevated);
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: var(--h-vellum);
+    color: var(--h-aged-ink);
+    box-shadow: inset 0 -1px 0 var(--h-border);
+}
+
+.accordion-button:focus {
+    border-color: var(--h-gold);
+    box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
+}
+
+/* --- Progress / spinner --- */
+.progress {
+    background-color: var(--h-parchment-dark);
+    border-radius: var(--h-radius);
+}
+
+.progress-bar {
+    background-color: var(--h-gold);
+}
+
+.spinner-border,
+.spinner-grow {
+    color: var(--h-aged-ink);
+}
+
+/* --- Tooltip / popover --- */
+.tooltip {
+    --bs-tooltip-bg: var(--h-aged-ink);
+    --bs-tooltip-color: var(--h-parchment);
+}
+
+.popover {
+    --bs-popover-border-color: var(--h-border);
+    --bs-popover-header-bg: var(--h-vellum);
+    --bs-popover-header-color: var(--h-aged-ink);
+    --bs-popover-body-color: var(--h-aged-ink-light);
+    --bs-popover-box-shadow: var(--h-shadow-lg);
+}
+
+/* --- Toast --- */
+.toast {
+    background-color: var(--h-aged-ink);
+    color: var(--h-parchment);
+    border: none;
+    box-shadow: var(--h-shadow-lg);
+}
+
+.toast .toast-body {
+    color: var(--h-parchment);
 }
 
 /* --- Profile Avatar --- */
@@ -695,6 +1270,11 @@ footer {
     color: var(--h-aged-ink);
 }
 
+.dropdown-item.text-danger:hover,
+.dropdown-item.text-danger:focus {
+    background-color: var(--h-alert-danger-bg);
+}
+
 /* --- Links --- */
 a {
     color: var(--h-gold-dark);
@@ -729,6 +1309,22 @@ a:hover {
 
 .text-dark {
     color: var(--h-aged-ink) !important;
+}
+
+.text-danger {
+    color: var(--h-rust) !important;
+}
+
+.text-primary {
+    color: var(--h-gold-dark) !important;
+}
+
+.text-info {
+    color: var(--h-blue-muted) !important;
+}
+
+.text-secondary {
+    color: var(--h-sepia) !important;
 }
 
 /* --- Selection --- */
