@@ -1,4 +1,3 @@
-using Humans.Base.ViewComponents;
 using Humans.Base.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,14 +17,8 @@ public sealed class AdminTabsViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        var location = AdminNavComposition.Locate(AdminNavComposition.Compose(navContributors),
-            (string?)RouteData.Values["controller"], (string?)RouteData.Values["action"],
-            ViewData[AdminNavComposition.ParentKey] as string);
-        if (location is null)
-            return Content(string.Empty);
-
-        var tabs = await AdminNavItems.VisibleAsync(location.Group, location.Item, HttpContext.User,
-            authorization, environment, serviceProvider, logger);
-        return tabs.Count > 1 ? View(tabs) : Content(string.Empty);
+        var groups = await AdminNavItems.ForRequestAsync(this, navContributors, authorization, environment, serviceProvider, logger);
+        var tabs = groups.FirstOrDefault(g => g.IsActive)?.Items;
+        return tabs is { Count: > 1 } ? View(tabs) : Content(string.Empty);
     }
 }

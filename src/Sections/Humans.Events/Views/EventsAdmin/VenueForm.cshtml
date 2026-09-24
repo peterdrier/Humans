@@ -2,7 +2,7 @@
 @{
     var isEdit = Model.Id.HasValue;
     ViewData["Title"] = isEdit ? "Edit Venue" : "New Venue";
-    ViewData["AdminNavParent"] = "Venues";
+    ViewData[Humans.Base.ViewComponents.AdminNavComposition.ParentKey] = nameof(Humans.Events.Controllers.EventsAdminController.Venues);
 }
 
 <h2>@ViewData["Title"]</h2>

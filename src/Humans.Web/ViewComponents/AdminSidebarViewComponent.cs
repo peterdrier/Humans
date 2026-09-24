@@ -1,4 +1,4 @@
-using Humans.Base.ViewComponents;
+using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,20 +19,11 @@ public sealed class AdminSidebarViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        var groups = AdminNavComposition.Compose(navContributors);
-        var location = AdminNavComposition.Locate(groups,
-            (string?)RouteData.Values["controller"], (string?)RouteData.Values["action"],
-            ViewData[AdminNavComposition.ParentKey] as string);
+        var groups = await AdminNavItems.ForRequestAsync(this, navContributors, authorization, environment, serviceProvider, logger);
 
-        var rows = new List<AdminSidebarGroupViewModel>(groups.Count);
-        foreach (var group in groups)
-        {
-            var items = await AdminNavItems.VisibleAsync(group, location?.Item, HttpContext.User,
-                authorization, environment, serviceProvider, logger);
-            if (items.Count > 0)
-                rows.Add(new AdminSidebarGroupViewModel(group.Label, items, ReferenceEquals(group, location?.Group)));
-        }
-
-        return View(new AdminSidebarViewModel(rows));
+        // A restricted page puts non-admin roles (a team coordinator on the shift dashboard) in the
+        // shell too; the dashboard itself is AnyAdminRole-only.
+        var showDashboard = (await authorization.AuthorizeAsync(HttpContext.User, PolicyNames.AnyAdminRole)).Succeeded;
+        return View(new AdminSidebarViewModel(showDashboard, groups));
     }
 }

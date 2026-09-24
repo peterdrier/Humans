@@ -1,6 +1,7 @@
 namespace Humans.Web.ViewComponents;
 
-public sealed record AdminSidebarViewModel(IReadOnlyList<AdminSidebarGroupViewModel> Groups);
+/// <param name="ShowDashboard">The pinned Dashboard row: only for admin-shaped roles, the dashboard's own gate.</param>
+public sealed record AdminSidebarViewModel(bool ShowDashboard, IReadOnlyList<AdminSidebarGroupViewModel> Groups);
 
 /// <summary>One sidebar row: the group, linking to its first visible item.</summary>
 public sealed record AdminSidebarGroupViewModel(string Label, IReadOnlyList<AdminSidebarItemViewModel> Items, bool IsActive)

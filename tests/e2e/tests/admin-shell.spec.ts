@@ -96,7 +96,7 @@ const sidebarMatrix: SidebarExpectation[] = [
 ];
 
 // Note: 'Development' is intentionally omitted — its items are env-gated
-// (!env.IsProduction()), so the group renders for admins in QA/Preview, and
+// (env.IsDevelopment()), so the group renders only on local dev, and
 // the comment at the top of this file scopes us to role-based-policy items.
 const ALL_GROUP_LABELS = [
   'Agent',
