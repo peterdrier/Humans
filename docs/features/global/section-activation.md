@@ -48,8 +48,9 @@ before anything composes from discovery:
 ### What the scan cannot see
 
 Only references the compiler emits. A section named as a *string* — an
-`asp-controller="X"` link in a Razor view, `Component.InvokeAsync("Y")` — produces no
-assembly reference, so no reference-based scan can find it.
+`asp-controller="X"` link in a Razor view — produces no assembly reference, so no
+reference-based scan can find it. (`Component.InvokeAsync("Y")` was the other shape; HUM0036
+now fails the build on it, so view components are always a compiled `Type` reference.)
 
 nobodies-collective/Humans#1090 found two shapes of this and closed most of it:
 

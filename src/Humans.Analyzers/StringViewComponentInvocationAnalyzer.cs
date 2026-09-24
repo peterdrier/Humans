@@ -26,6 +26,7 @@ public sealed class StringViewComponentInvocationAnalyzer : DiagnosticAnalyzer
     private const string HelperFullName = "Microsoft.AspNetCore.Mvc.IViewComponentHelper";
     private const string HelperExtensionsFullName = "Microsoft.AspNetCore.Mvc.Rendering.ViewComponentHelperExtensions";
     private const string ControllerFullName = "Microsoft.AspNetCore.Mvc.Controller";
+    private const string ResultFullName = "Microsoft.AspNetCore.Mvc.ViewComponentResult";
 
     private static readonly LocalizableString Title =
         "String-name view component invocation";
@@ -42,8 +43,9 @@ public sealed class StringViewComponentInvocationAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description:
-            "IViewComponentHelper.InvokeAsync(string, …), its InvokeAsync(helper, string) extension and " +
-            "Controller.ViewComponent(string, …) resolve a view component by name at render time. " +
+            "IViewComponentHelper.InvokeAsync(string, …), its InvokeAsync(helper, string) extension, " +
+            "Controller.ViewComponent(string, …) and ViewComponentResult.ViewComponentName resolve a view " +
+            "component by name at render time. " +
             "Invoke by Type so the compiler checks the target (design-rules §8b).");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
@@ -55,6 +57,28 @@ public sealed class StringViewComponentInvocationAnalyzer : DiagnosticAnalyzer
             GeneratedCodeAnalysisFlags.Analyze | GeneratedCodeAnalysisFlags.ReportDiagnostics);
         context.EnableConcurrentExecution();
         context.RegisterOperationAction(AnalyzeInvocation, OperationKind.Invocation);
+        context.RegisterOperationAction(AnalyzeAssignment, OperationKind.SimpleAssignment);
+    }
+
+    // new ViewComponentResult { ViewComponentName = "…" } (or a later assignment) is the same
+    // by-name lookup without a method call; ViewComponentType is the Type-checked alternative.
+    private static void AnalyzeAssignment(OperationAnalysisContext context)
+    {
+        var op = (ISimpleAssignmentOperation)context.Operation;
+        if (op.Target is not IPropertyReferenceOperation { Property: var property }
+            || !string.Equals(property.Name, "ViewComponentName", StringComparison.Ordinal)
+            || !string.Equals(property.ContainingType?.ToDisplayString(), ResultFullName, StringComparison.Ordinal))
+            return;
+
+        // Assigning null clears the name; only a non-null value selects a component by name.
+        if (op.Value.ConstantValue is { HasValue: true, Value: null })
+            return;
+
+        var name = op.Value.ConstantValue is { HasValue: true, Value: string s }
+            ? s
+            : op.Value.Syntax.ToString();
+
+        context.ReportDiagnostic(Diagnostic.Create(Rule, op.Syntax.GetLocation(), name));
     }
 
     private static void AnalyzeInvocation(OperationAnalysisContext context)

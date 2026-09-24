@@ -21,6 +21,13 @@ public class StringViewComponentInvocationAnalyzerTests
                 public virtual object ViewComponent(string componentName) => componentName;
                 public virtual object ViewComponent(Type componentType) => componentType;
             }
+
+            public class ViewComponentResult
+            {
+                public string? ViewComponentName { get; set; }
+                public Type? ViewComponentType { get; set; }
+                public object? Arguments { get; set; }
+            }
         }
 
         namespace Microsoft.AspNetCore.Mvc.Rendering
@@ -73,6 +80,33 @@ public class StringViewComponentInvocationAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Fires_on_ViewComponentResult_name_assignment()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Shifts
+            {
+                using Microsoft.AspNetCore.Mvc;
+
+                public sealed class Caller
+                {
+                    public ViewComponentResult Run(ViewComponentResult later)
+                    {
+                        later.ViewComponentName = "ShiftCards";
+                        later.ViewComponentName = null;
+                        return new ViewComponentResult { ViewComponentName = "ShiftCards", Arguments = new { Id = 1 } };
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = (await RunAsync(source)).Where(IsHum0036).ToList();
+
+        diagnostics.Should().HaveCount(2);
+        diagnostics.Should().OnlyContain(d => d.GetMessage(null).Contains("\"ShiftCards\"", StringComparison.Ordinal));
+    }
+
+    [HumansFact]
     public async Task Does_not_fire_on_Type_invocations()
     {
         var source = Stubs + """
@@ -92,6 +126,7 @@ public class StringViewComponentInvocationAnalyzerTests
                         _ = component.InvokeAsync(typeof(ShiftCards));
                         _ = component.InvokeAsync<ShiftCards>();
                         _ = ViewComponent(typeof(ShiftCards));
+                        _ = new ViewComponentResult { ViewComponentType = typeof(ShiftCards) };
                     }
                 }
             }
