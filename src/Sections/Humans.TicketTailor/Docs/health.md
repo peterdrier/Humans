@@ -128,4 +128,4 @@ account. It stores nothing, caches nothing, and talks to nobody but Tickets and 
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-09-05 | First doctoring — invariant doc written, wire records collapsed to one naming mechanism, dead test scaffolding cut, untested invariants pinned | peterdrier/Humans#1595 |
-| 2 | 2026-09-24 | Cache-move drift cleared from the docs; one issued-ticket mapping; dead test setup cut | pending |
+| 2 | 2026-09-24 | Cache-move drift cleared from the docs; one issued-ticket mapping; dead test setup cut | peterdrier/Humans#1817 |
