@@ -136,7 +136,7 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
 - Below it, a **matrix**: one row per on-site human, one column per canonical dietary preference, allergy and intolerance chip, plus the two free-text columns, and a **totals row** counting each column over the rendered rows. Coordinators scan a column to count portions and a row to find one person. The per-chip counts live in that totals row, counted in the view from the rendered rows. This page renders no separate roll-up panel.
 - Matrix rows sort alphabetically by burner name (cultural collation, case-insensitive) — deliberately *not* the weekly arrival/allergy/dietary ordering, because this is a look-up surface.
 - The day's cohort includes arrival-day humans (those whose first confirmed shift is the following day), matching the weekly mini-summary count for the same day.
-- A "Today" badge appears when the day being viewed is today in the event timezone; a breadcrumb links back to the containing week.
+- A "Today" badge appears when the day being viewed is today in the event timezone; a back button links to the containing week (the admin crumb goes to the current week).
 - No `MedicalConditions` column, under any role.
 - Same authorization gate as every other route in this section.
 

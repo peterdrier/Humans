@@ -1,6 +1,8 @@
 @model Humans.GoogleIntegration.Models.SyncAuditViewModel
 @{
     ViewData["Title"] = Model.Title;
+    // A resource audit sits under Resource sync; a human's under Users / Humans, where it is opened from.
+    ViewData["AdminNavParent"] = Model.UserId is null ? "Sync" : "UsersAdmin/AdminList";
 }
 
 <page-header title="@Model.Title">

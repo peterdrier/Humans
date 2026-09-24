@@ -14,4 +14,5 @@ Stop privileging Voting / Review / Applications in design proposals. Their audie
 - Lower priority, but still on screen: Voting, Review, Board materials, tier applications.
 - Don't lead a stat row with "pending approvals" or "open votes." Lead with operational scale (active humans, shift coverage %, open feedback) and put approvals/votes in the sidebar pills where the 8 people who care will find them.
 - Same rule for grouping: an "Onboarding & members" group that contains Review should not be the first sidebar group. "Operations" (Volunteers, Tickets, Scanner) goes first.
+- **Exception: the admin sidebar's rows are A-Z.** Peter chose it for the one-row-per-section sidebar (peterdrier/Humans#1809): with ~30 section rows, the alphabet is how admins find things. Traffic order still governs dashboard tiles and cards, and the item order inside a group (its tabs).
 - Applies equally to feature spec drafting, user-story ordering, and release-notes sequencing — don't write up Voting features as if they're the headline.
