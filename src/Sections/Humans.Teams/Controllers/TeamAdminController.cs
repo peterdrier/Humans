@@ -111,14 +111,27 @@ internal sealed class TeamAdminController(
             .Take(pageSize)
             .ToList();
 
+        var pagedMemberInfos = await _userService.GetUserInfosAsync(pagedMembers.Select(m => m.UserId).ToList());
+
         var members = pagedMembers
-            .Select(m => new TeamMemberViewModel
+            .Select(m =>
             {
-                UserId = m.UserId,
-                Email = m.Email ?? "",
-                Role = m.Role,
-                JoinedAt = m.JoinedAt.ToDateTimeUtc(),
-                IsCoordinator = m.Role == TeamMemberRole.Coordinator
+                var nobodiesEmail = pagedMemberInfos.TryGetValue(m.UserId, out var info)
+                    ? info.UserEmails.FirstOrDefault(e => e.IsVerified
+                        && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))?.Email
+                    : null;
+
+                return new TeamMemberViewModel
+                {
+                    UserId = m.UserId,
+                    DisplayName = m.DisplayName,
+                    Email = m.Email ?? "",
+                    Role = m.Role,
+                    JoinedAt = m.JoinedAt.ToDateTimeUtc(),
+                    IsCoordinator = m.Role == TeamMemberRole.Coordinator,
+                    NobodiesTeamEmail = nobodiesEmail,
+                    LiveUserId = info?.Id ?? m.UserId
+                };
             }).ToList();
 
         var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);

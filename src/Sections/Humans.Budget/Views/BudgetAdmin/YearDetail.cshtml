@@ -484,6 +484,7 @@
                                                         <tr>
                                                             <th class="ps-4">Document</th>
                                                             <th>Supplier</th>
+                                                            <th>Description</th>
                                                             <th>Date</th>
                                                             <th class="text-end pe-4">Amount</th>
                                                         </tr>
@@ -499,6 +500,7 @@
                                                                     </a>
                                                                 </td>
                                                                 <td>@doc.ContactName</td>
+                                                                <td class="text-muted small">@doc.Description</td>
                                                                 <td>@doc.Date.ToDate()</td>
                                                                 <td class="text-end pe-4">@doc.Total.ToEuro()</td>
                                                             </tr>

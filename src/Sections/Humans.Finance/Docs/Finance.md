@@ -47,6 +47,7 @@ What lives here: the Holded purchase-doc sync and its attribution to budget cate
 | HoldedDocId | string | Unique. Natural key for upsert. |
 | DocNumber | string | e.g. `F260009` |
 | ContactName | string | Vendor name, denormalized. |
+| Description | string? | Holded's internal description (`description`; "Add an internal description" in its UI). Trimmed; blank stored as null. Shown beside the doc on `/Finance`, `/Finance/Holded` and the unmatched queue. |
 | Date | LocalDate | From Holded `date` (epoch s, Europe/Madrid) |
 | Subtotal | decimal | EUR, raw |
 | Tax | decimal | EUR, raw (net of IVA − IRPF) |
@@ -178,7 +179,7 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 | `GET /Finance/HoldedAccounts` | Account provisioning UI (reconcile + apply) |
 | `GET /Finance/HoldedUnmatched` | Unmatched-doc worklist with deep links and "Sync now" |
 | `GET /Finance/Creditors` | Admin overview of all cached 400000xx creditor accounts with member bindings |
-| `GET /Finance/Creditors/{accountNum:int}` | Per-account creditor statement (Holded's balance sign-flipped so positive means the organisation owes the member and negative means the member owes it; plus itemized journal lines) |
+| `GET /Finance/Creditors/{accountNum:int}` | Per-account creditor statement (Holded's balance sign-flipped so positive means the organisation owes the member and negative means the member owes it; plus itemized journal lines). "See in Holded" opens the same account's ledger at `app.holded.com/accounting/ledger/{accountNum}` |
 | `GET /Finance/Sepa` | Generated payout files and their transfers, with each transfer's booking state and the reason it cannot be booked. Makes one live `ListBankMovementsAsync` call to match transfers to Sabadell lines (nobodies-collective/Humans#1185); a failure banners and every row falls back to "waiting for the Sabadell line" |
 | `POST /Finance/HoldedAccounts/Provision` | Add one or all pending Holded accounts + map rows |
 | `POST /Finance/HoldedSync/Run` | Manual sync trigger |
@@ -210,6 +211,7 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 - Tags are normalized: lowercase, all non-alphanumeric characters stripped (Holded strips separators like dashes from tag values).
 - Provisioning is additive only, and nothing retires a map entry today: `IsActive` is set `true` on insert and never flipped, so an orphaned row stays active. Holded accounts are never deleted.
 - `GetActualsForYearAsync` returns the per-category total **and the approved docs it sums** (`HoldedActualRow.Docs`, newest first). Budget's year page renders them under the category so a wrong Holded figure can be traced to the document behind it; a draft excluded from the total is absent from the list too.
+- Every link to a Holded purchase doc is `https://app.holded.com/expenses/list#open:purchase-{HoldedDocId}` (`Service.HoldedDocUrl`) — Holded has no stable per-doc page, so its list opens the doc from the fragment.
 - `HoldedExpenseDoc.Total` is included in category-level actuals only when `IsApproved = true` — set on sync as `doc.IsDraft == false` (`Service.MapDoc`). Actuals are doc-derived rather than ledger-derived because the budget pages are gross/IVA-inclusive while a 629 balance is net, and ledger lines exist for drafts Holded has not approved.
 - Holded API key read from env var `HOLDED_API_KEY_V2` only — never `appsettings.json`.
 - The member ↔ creditor-account link resolves through the Holded contact's `supplierRecord.num` field, never by name matching. It is attempted **exactly once**, best-effort, during outbox processing after the payable exists (`ExpenseReportService` → `IHoldedClient.GetContactAsync`); a failure or a null `num` is logged, the null link is stored, and the outbox event is still marked processed so a created doc is never stranded as permanently-failed. **There is no automatic retry** — `SyncCreditorLedgerAsync` imports daybook lines but never re-resolves the contact — so after an initial miss the member stays unlinked until someone runs `POST /Finance/Creditors/Bind`, or a later report from the same member resolves it and backfills the member-level binding (nobodies-collective/Humans#972). `ListCreditorAccountsAsync` returns exactly these unresolved bindings as the `Unresolved` half of its result — they have no account row to sit on, so the account list alone cannot show them — and they render in their own card on `/Finance/Creditors`, making the manual step discoverable rather than silent.
@@ -265,6 +267,7 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 ## Triggers
 
 - None on the budget side: this section only reads Budget, so it fires no Budget-side effects.
+- On **SEPA payout generation**: after the file and its transfers are saved and audited, one `sepa_payout_generated` email per transfer goes to the bound member (`FinanceEmails.SepaPayoutGenerated`, `MessageCategory.System`, in their preferred language) naming the amount and the masked IBAN. A refused batch sends nothing; a member with no notification email is logged and skipped. Booking sends nothing — by then the money has moved (peterdrier/Humans#1820).
 - When the sync job starts, `HoldedDocSyncState.Status` flips to `Running`. On success returns to `Idle` with `LastSyncAt` and `LastSyncedDocCount` updated. On exception goes to `Error` with `LastError` populated; next scheduled run retries.
 
 ## Cross-Section Dependencies
@@ -273,7 +276,8 @@ Derived from `Humans.Finance.csproj`'s project references — contracts leaves o
 
 - **Budget** (`Humans.Budget.Contracts`): `IBudgetServiceRead.GetActiveYearAsync`, for the categories the provisioning plan is built from. Read-only.
 - **Holded** (`Humans.Holded.Contracts`): `IHoldedService` for cached ledger lines and account balances, and `IHoldedClient` for the live contact/account calls the provisioning and bind paths make.
-- **Users** (`Humans.Users.Contracts`): `IUserServiceRead.GetUserInfosAsync`, to name bound members on `/Finance/Creditors`.
+- **Users** (`Humans.Users.Contracts`): `IUserServiceRead.GetUserInfosAsync`, to name bound members on `/Finance/Creditors` and to address the payout email; `IUserEmailService.GetNotificationTargetEmailsAsync` for the address itself.
+- **Email** (`Humans.Email.Contracts`): `IEmailService.SendAsync` for the payout email. The template, its resx set (`FinanceResource`, the section's only one — its screens are admin-only and carry no keys) and its `/Email/EmailPreview` sample are this section's (`FinanceEmails`, `FinanceEmailPreviews`); Email keeps the mechanics (memory/architecture/email-templates-live-in-sender.md).
 - **GDPR** (`Humans.Gdpr.Contracts`): Finance implements `IUserDataContributor` for the Article 15 export of a member's creditor binding and of every SEPA payout made to them, and for Article 17 erasure — `EraseForUserAsync` drops the binding (`ClearCreditorContactAsync`); `ErasureDeclaration` maps `HoldedCreditorAccount` to `null` (erased in full) and `SepaPayouts` to a fiscal-retention basis (Código de Comercio Art. 30, Ley 58/2003 Art. 66 — GDPR Art. 17(3)(b)): a payment order stripped of its payee is no longer evidence of the payment. The invoices themselves live in Holded and are fiscal records outside this section's ownership.
 
 No Tickets dependency: the cash-flow view that had one is Budget's. Budget never calls into Finance.
@@ -315,7 +319,8 @@ The Expenses section reads creditor status via `GetCreditorStatusAsync(supplierA
 `/Finance/Creditors` doubles as the payout screen: tick the payable rows, adjust amounts, and
 `POST /Finance/Sepa/Generate` streams a Norma 34-14 / pain.001.001.09 file for Sabadell's "Enviar
 ficheros". It reads the same balances and the same cached contact list the page already shows — no
-extra Holded call — and writes only its own two tables plus one audit entry per transfer.
+extra Holded call — and writes only its own two tables plus one audit entry per transfer, then
+emails each paid member that the transfer is on its way.
 
 `/Finance/Sepa` closes the loop once the file is with the bank: it lists every generated file with
 its transfers and books each one's payment into Holded. Full spec:

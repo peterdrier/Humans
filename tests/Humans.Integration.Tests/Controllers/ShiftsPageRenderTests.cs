@@ -262,7 +262,7 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
         // the table only through SectionControllerFeatureProvider.
         //
         // Asserted here rather than off a rendered page: the component returns
-        // Content(string.Empty) for a fully-onboarded admin on both /WidgetGallery and
+        // Content(string.Empty) for a fully-onboarded admin on both /Debug/WidgetGallery and
         // /Home/Dashboard, so there is no card to read an href off. Residual gap, stated:
         // this proves the pair the contribution writes today resolves, not that it still
         // writes it.

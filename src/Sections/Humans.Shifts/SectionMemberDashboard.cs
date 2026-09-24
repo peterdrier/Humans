@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces;
+using Humans.Shifts.ViewComponents;
 
 namespace Humans.Shifts;
 
@@ -7,5 +8,5 @@ namespace Humans.Shifts;
 internal sealed class SectionMemberDashboard : ISectionMemberDashboard
 {
     public IEnumerable<ChromeComponent> Components() =>
-        [new ChromeComponent(ChromeSlots.MemberDashboard, "DashboardShifts", Weight: 30)];
+        [new ChromeComponent(ChromeSlots.MemberDashboard, typeof(DashboardShiftsViewComponent), Weight: 30)];
 }

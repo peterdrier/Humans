@@ -81,6 +81,8 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 
 - [`no-identity-email-column-reads`](architecture/no-identity-email-column-reads.md) — HARD RULE. Application/Web code must not read `User.Email`/`NormalizedEmail`/`UserName`/`NormalizedUserName` — use `UserInfo.Email`/`IUserEmailService`. Enforced by HUM0019.
 
+- [`view-component-slots`](architecture/view-component-slots.md) — When adding or invoking a view component across sections, or a contribution record carrying one, pass a `Type` into a host-named `[ViewComponentSlot]` seam — never a string name.
+
 ## code/
 
 - [`admin-role-superset`](code/admin-role-superset.md) — When writing role checks/lists, include Admin (system-wide) and the domain's *Admin role (TeamsAdmin/CampAdmin/TicketAdmin) — never one without the other.

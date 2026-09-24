@@ -59,16 +59,16 @@
 
         <div class="app-shell">
             <aside class="sidebar">
-                @await Component.InvokeAsync("AdminSidebar")
+                <vc:admin-sidebar />
             </aside>
 
             <main class="main">
                 @* The group's pages as tabs, then Group / Page / Subpage. A subpage whose last crumb is not
                    its title, or that sits more than one level down, supplies its crumbs after Page as a
                    "Crumbs" section (links, then itself last). *@
-                @await Component.InvokeAsync("AdminTabs")
+                <vc:admin-tabs />
                 <div class="crumb">
-                    @await Component.InvokeAsync("AdminBreadcrumb", new { trail = await RenderSectionAsync("Crumbs", required: false) })
+                    <vc:admin-breadcrumb trail="@(await RenderSectionAsync("Crumbs", required: false))" />
                 </div>
 
                 <partial name="_AuthorizationPill" />

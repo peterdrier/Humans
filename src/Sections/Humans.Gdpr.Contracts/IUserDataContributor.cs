@@ -30,10 +30,10 @@ public interface IUserDataContributor : IFanout
     /// A slice whose <see cref="UserDataSlice.Data"/> is <c>null</c> is dropped
     /// from the final export by the orchestrator. Every
     /// <see cref="UserDataSlice.SectionName"/> returned here must be a key of
-    /// <see cref="ErasureDeclaration"/> — the orchestrator enforces this at
-    /// export time — so a category a person can download is always accounted
-    /// for under Article 17 too. The reverse isn't required: a contributor may
-    /// declare erasure-only keys it never exports (see
+    /// <see cref="ErasureDeclaration"/>, so a category a person can download is
+    /// accounted for under Article 17 too; the orchestrator logs an error for one
+    /// that isn't and still exports it. The reverse isn't required: a contributor
+    /// may declare erasure-only keys it never exports (see
     /// <see cref="ErasureDeclaration"/>).
     /// </summary>
     Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);

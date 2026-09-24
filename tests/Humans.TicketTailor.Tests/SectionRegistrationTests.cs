@@ -5,7 +5,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using NodaTime;
 
 namespace Humans.TicketTailor.Tests;
 
@@ -59,9 +58,7 @@ public class SectionRegistrationTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddMemoryCache();
         services.AddOptions();
-        services.AddSingleton<IClock>(SystemClock.Instance);
         configure?.Invoke(services);
 
         var config = new ConfigurationBuilder()

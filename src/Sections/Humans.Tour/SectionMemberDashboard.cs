@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces;
+using Humans.Tour.ViewComponents;
 
 namespace Humans.Tour;
 
@@ -11,6 +12,6 @@ internal sealed class SectionMemberDashboard : ISectionMemberDashboard
 {
     public IEnumerable<ChromeComponent> Components() =>
     [
-        new ChromeComponent(ChromeSlots.MemberDashboard, "TourCard", Weight: 100)
+        new ChromeComponent(ChromeSlots.MemberDashboard, typeof(TourCardViewComponent), Weight: 100)
     ];
 }

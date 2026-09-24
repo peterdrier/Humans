@@ -7,7 +7,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Client tests build TicketTailorService over a stubbed HttpMessageHandler and MemoryCache. -->
+    <!-- Client tests build TicketTailorService over a stubbed HttpMessageHandler. -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 

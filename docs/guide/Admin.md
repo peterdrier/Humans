@@ -2,7 +2,7 @@
   src/Humans.Web/Views/Admin/**
   src/Humans.Web/Views/Shared/_AdminLayout.cshtml
   src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs
-  src/Humans.Web/ViewComponents/AdminNavComposition.cs
+  src/Humans.Base/ViewComponents/AdminNavComposition.cs
   src/Sections/Humans.Users/Views/UsersAdmin/AdminList.cshtml
   src/Sections/Humans.Users/Views/UsersAdmin/AdminDetail.cshtml
   src/Sections/Humans.Users/Views/UsersAdminAccountMerges/**

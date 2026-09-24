@@ -43,7 +43,7 @@
     </div>
 
 
-    @await Component.InvokeAsync("DietaryMissingBanner", new { userId = Model.UserId })
+    <vc:dietary-missing-banner user-id="@Model.UserId" />
 
     @if (Model.EventSettings == null)
     {

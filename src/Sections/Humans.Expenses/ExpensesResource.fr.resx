@@ -103,4 +103,10 @@
   <data name="Expenses_RejectReasonPlaceholder" xml:space="preserve"><value>p. ex. Justificatifs manquants pour la ligne 2</value></data>
   <data name="Expenses_ReviewQueue" xml:space="preserve"><value>Contrôle des notes de frais</value></data>
   <data name="Expenses_ReviewQueueTitle" xml:space="preserve"><value>Notes de frais — Contrôle</value></data>
+  <data name="Expenses_Email_Approved_Body" xml:space="preserve"><value>&lt;h2&gt;Note de frais approuvée&lt;/h2&gt;
+&lt;p&gt;Bonjour {0},&lt;/p&gt;
+&lt;p&gt;La trésorerie a approuvé ta note de frais. Le montant à rembourser est de &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;Le paiement sera effectué par virement bancaire sur le compte se terminant par {2}. Nous te préviendrons dès que le virement aura été envoyé.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}"&gt;Voir ta note de frais&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Expenses_Email_Approved_Subject" xml:space="preserve"><value>Ta note de frais a été approuvée</value></data>
 </root>

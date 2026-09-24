@@ -1,8 +1,8 @@
 <!-- freshness:triggers
-  src/Humans.Web/ViewComponents/AdminNavComposition.cs
+  src/Humans.Base/ViewComponents/AdminNavComposition.cs
   src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs
   src/Humans.Web/ViewComponents/AdminTabsViewComponent.cs
-  src/Humans.Web/ViewComponents/AdminBreadcrumbViewComponent.cs
+  src/Humans.Base/ViewComponents/AdminBreadcrumbViewComponent.cs
   src/Humans.Web/ViewComponents/AdminSummaryViewComponent.cs
   src/Humans.Base/Interfaces/ISectionAdminNav.cs
   src/Sections/*/SectionAdminNav.cs
@@ -96,7 +96,7 @@ Shell's own contribution is the three presence tiles (Online now / Active 1h / A
 **Owned tables:** None.
 **Status:** (A) Migrated — greenfield (admin-shell-impl, 2026-04-26).
 
-- The admin shell is implemented as a Razor layout (`Views/Shared/_AdminLayout.cshtml`) plus the `AdminSidebar`, `AdminTabs` and `AdminBreadcrumb` view components, all composed from `AdminNavComposition`.
+- The admin shell is implemented as a Razor layout (`Views/Shared/_AdminLayout.cshtml`) plus the `AdminSidebar`, `AdminTabs` and `AdminBreadcrumb` view components, all composed from `AdminNavComposition`. The composition and the breadcrumb live in Base beside the other slot renderers; the sidebar and tabs stay in the Shell.
 - **Decorator decision — no caching decorator.** Owns no data.
 - **Cross-domain navs:** N/A — owns no entities.
 - **Architecture test:** N/A — no service layer to pin. Sidebar authorization is covered by the integration tests for each section's admin pages.

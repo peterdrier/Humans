@@ -65,6 +65,9 @@ public sealed record HoldedPurchaseDocListItemDto
     public required string DocNumber { get; init; }
     public string? ContactId { get; init; }            // `contact_id` — who the doc is payable to
     public required string ContactName { get; init; }
+    /// <summary>`description` — the doc's internal description ("Add an internal description" in
+    /// Holded's UI). Null when blank.</summary>
+    public string? Description { get; init; }
     public required Instant Date { get; init; }        // doc `date` (ISO yyyy-MM-dd, Madrid midnight)
     public required decimal Subtotal { get; init; }
     public required decimal Tax { get; init; }

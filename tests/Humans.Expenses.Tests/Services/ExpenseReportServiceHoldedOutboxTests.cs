@@ -16,6 +16,8 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Email.Contracts;
+using Humans.Expenses.Tests.Infrastructure;
 
 namespace Humans.Expenses.Tests.Services;
 
@@ -92,6 +94,9 @@ public class ExpenseReportServiceHoldedOutboxTests
             _budgetService,
             Substitute.For<ITeamServiceRead>(),
             _userService,
+            Substitute.For<IUserEmailService>(),
+            Substitute.For<IEmailService>(),
+            TestExpensesEmails.Create(),
             _auditLog,
             _holdedClient,
             _holdedFinance,
@@ -1137,6 +1142,9 @@ public class ExpenseReportServiceHoldedOutboxTests
             _budgetService,
             Substitute.For<ITeamServiceRead>(),
             _userService,
+            Substitute.For<IUserEmailService>(),
+            Substitute.For<IEmailService>(),
+            TestExpensesEmails.Create(),
             Substitute.For<IAuditLogService>(),
             _holdedClient,
             _holdedFinance,

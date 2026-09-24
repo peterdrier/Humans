@@ -3,7 +3,7 @@
   src/Sections/Humans.Gdpr.Contracts/**
 -->
 <!-- freshness:flag-on-change
-  The fan-out contract (IUserDataContributor / UserDataSlice) and the failure rules the orchestrator enforces — never swallow a contributor exception, never accept a duplicate export section name, never export a section with no erasure declaration, never leave an erasure section behind silently — review whenever the leaf or GdprService changes.
+  The fan-out contract (IUserDataContributor / UserDataSlice) and the failure rules the orchestrator enforces — never swallow a contributor exception, never accept a duplicate export section name, log an error for an exported section with no erasure declaration, never leave an erasure section behind silently — review whenever the leaf or GdprService changes.
 -->
 
 # Gdpr — Section Invariants
@@ -26,8 +26,10 @@
   section-name constants — there is no central registry. The export format is
   not a spec: it changes as contributors change, and nothing outside this
   codebase reads it.
-- **`GdprExport`** is the envelope — an ISO-8601 UTC timestamp and the merged
-  section bag, which is what each download route serializes to the file.
+- **`GdprExport`** is the envelope — an ISO-8601 UTC timestamp, the user id (the
+  surviving account when asked under a merged-away id, else the id asked with),
+  the merged-away ids folded into it, and the merged section bag. Each download
+  route serializes it to the file.
 - **Erasure shares the contract *and* the orchestrator.** `IUserDataContributor`
   also carries `ErasureDeclaration` (a static section-name →
   retention-reason table; `null` = erased in full) and `EraseForUserAsync`, so a
@@ -88,15 +90,10 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
   `Profile`) and the key is omitted. A collection section with no rows must
   return an empty list, which survives into the JSON as `[]` rather than being
   omitted.
-- **The fan-out is sequential, never `Task.WhenAll`.** A deliberate simplicity
-  choice, not a correctness requirement any more: the original reason was that
-  every contributor read through one shared scoped `HumansDbContext`, which no
-  longer exists. Each section now has its own `DbContext` type, so no two
-  contributors touch the same instance — however each obtains it, by injection
-  or through `IDbContextFactory<T>`. `design-rules.md` §8a records the same
-  conclusion. One contributor at a time keeps failure attribution and log order
-  plain, and at this scale an export completes well under a second, so there is
-  nothing to win by changing it.
+- **The fan-out is sequential, never `Task.WhenAll`.** A simplicity choice, not
+  a correctness requirement: one contributor at a time keeps failure
+  attribution and log order plain, and there is nothing to win at this scale
+  (`design-rules.md` §8b).
 - **No cross-section database reads.** A contributor reads only its own
   section's tables; data from another section arrives through that section's
   own contributor, never through an `Include` chain.
@@ -133,14 +130,18 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
 
 ## Cross-Section Dependencies
 
-**Outbound:** none at compile time. The section names no other section's type —
-the fan-out is over its own interface.
+**Outbound:** `Humans.Gdpr` references `Humans.Users.Contracts`. `GdprService`
+injects `IUserServiceRead` and calls `GetUserInfoAsync` once per export to
+stamp the envelope with the surviving account id and the merged-away ids;
+`GuestDataController`'s base class `HumansControllerBase` also takes
+`IUserServiceRead`.
 
-**Inbound:** the widest of any moved section, and all of it through the leaf.
-Every contributor implements `Humans.Gdpr.Contracts.IUserDataContributor`, so
-Section projects reference `Humans.Gdpr.Contracts`, plus `Humans.Web` for
-the two download controllers. It references `Humans.Base` alone, so
-none of that cycles.
+**Inbound:** wide, and all of it through the leaf, which
+references `Humans.Base` alone so none of it cycles. Every section owning
+user-scoped tables references `Humans.Gdpr.Contracts` to implement
+`IUserDataContributor`; Users also references it for `ProfileController` (the
+other download route) and `AccountDeletionService` (the erasure caller).
+`Humans.Web` references both Gdpr projects only to compose sections.
 
 ## Architecture
 
@@ -167,7 +168,8 @@ sealed`) behind the public `IGdprService` on the leaf, exposing both
 - **Decorator decision:** no caching decorator. An export is a one-off download
   assembled from live data; caching it would be a privacy hazard, not a
   performance win.
-- **Known gap (G0 G3 gap #1):** the contributor-coverage tests are
-  reflection-based, so a new user-scoped section whose owning service never
-  implements `IUserDataContributor` at all leaves nothing to enumerate and the
-  suite passes vacuously. The guardrail is prose in `design-rules.md` §8a.
+- **Known gap:** the contributor-coverage tests are reflection-based, so a new
+  user-scoped section whose owning service never implements
+  `IUserDataContributor` at all leaves nothing to enumerate and the suite
+  passes vacuously. The guardrail is prose in `design-rules.md` §8a. Tracked
+  as CENTRAL-67 in docs/architecture/debt-ledger.yml.

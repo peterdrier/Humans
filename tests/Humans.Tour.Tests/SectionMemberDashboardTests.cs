@@ -12,8 +12,5 @@ public class SectionMemberDashboardTests
         var component = new SectionMemberDashboard().Components().Should().ContainSingle().Subject;
 
         component.Slot.Should().Be(ChromeSlots.MemberDashboard);
-        typeof(SectionMemberDashboard).Assembly
-            .GetType($"Humans.Tour.ViewComponents.{component.ComponentName}ViewComponent")
-            .Should().NotBeNull(because: "the slot renders by name — a renamed component would drop the card silently");
     }
 }

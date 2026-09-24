@@ -1,3 +1,4 @@
+using Humans.Base.ViewComponents;
 using Humans.Base.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

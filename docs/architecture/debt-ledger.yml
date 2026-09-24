@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 66
+next_id: 68
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -566,3 +566,11 @@ inbox:
     id: CENTRAL-59
     what: "src/Sections/Humans.Users.Contracts/IUserInfoInvalidator.cs:24 deliberately omits the IInvalidator marker (its own comment says so, debt nobodies-collective/Humans#805), so HUM0028 cannot see it and it needs no [Grandfathered] marker — one invalidator dodging the ratchet by being invisible to it. Marking it (or recording the exemption where the analyzer reads it) is small and separable from the big invalidator rework the HUM0028 theme is parked on. Found by the 2026-09-20 accepted-smell audit."
     review: light
+  - added: 2026-09-24
+    id: CENTRAL-66
+    what: "src/Humans.Base/Caching/CacheKeys.cs still defines TicketEventSummary and its CacheKeys.Metadata TTL entry, but nothing reads either since Tickets' CachingTicketVendorService moved the vendor event-summary cache onto its own TrackedCache. peterdrier/Humans#1653 asked for the key to move from Base to Tickets; with no reader left it can simply go, together with the service-data-access-map row that lists it as unused (finding 12, /section-doctor on TicketTailor 2026-09-24)."
+    review: light
+  - added: 2026-09-23
+    id: CENTRAL-67
+    what: "The erasure-coverage and DI-coverage tests find contributors by reflecting over IUserDataContributor implementers, so a new user-scoped section whose service never implements the contract leaves nothing to enumerate and both suites pass. The only guardrail is prose in docs/architecture/design-rules.md. nobodies-collective/Humans#1116 described exactly this and asked for an independent inventory (reflection over entities carrying a user foreign key), but it was closed when the section-name registry was removed, which fixed a different problem, and the gap is now tracked nowhere open. The fix is a cross-section test beside the existing coverage tests in tests/Humans.Web.Tests/Services/Gdpr/, plus a per-section export/erasure decision for whatever it surfaces (Calendar's CreatedByUserId is nobodies-collective/Humans#1199). Found by /section-doctor on Gdpr 2026-09-23."
+    review: panel

@@ -11,9 +11,9 @@ namespace Humans.Calendar.Contracts;
 /// <remarks>
 /// Public, under <c>Contracts/</c>, so MVC's default provider discovers it and the
 /// tag helper is generated — Shell's widget gallery renders it as
-/// <c>&lt;vc:user-calendar&gt;</c> and Users' admin detail invokes it by name. An
-/// internal view component ships the element as inert literal markup with a green
-/// build (HUM0034's carve-out is the folder).
+/// <c>&lt;vc:user-calendar&gt;</c> and Users' admin detail invokes it by <see cref="Type"/>
+/// through the <c>IUserPart</c> seam. An internal view component ships the element as
+/// inert literal markup with a green build (HUM0034's carve-out is the folder).
 /// </remarks>
 public sealed class UserCalendarViewComponent(
     IICalFeedService feed,

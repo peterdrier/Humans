@@ -97,15 +97,14 @@
 
             <partial name="_CampRosterCard" model="Model" />
 
-            @* Events the camp is hosting this edition (logged-in users only; auto-hidden when empty) *@
+            @* Camp parts (today: Events' hosted-events card, logged-in users only) render through
+               the ICampPart seam — invoked by Type, not by name (nobodies-collective/Humans#1815).
+               ViewComponentSlotContractTests type-checks CampPartArgs.CampId against every
+               contributor's matching parameter, including an optional one; it is a fanout, so it
+               does not require every contributor to bind CampId. *@
             @if (User.Identity?.IsAuthenticated == true)
             {
-                @* EventsCardViewComponent injects IEventServiceRead and binds the Events section's view
-       models; it lives in Humans.Events/ViewComponents/ and resolves by name. Its own doc
-       comment says it is "invoked
-       with ids only — no Event types cross into the host section's views", which is what makes
-       invoke-by-name available here (design §15 step 6). *@
-                @await Component.InvokeAsync("EventsCard", new { campId = Model.Id })
+                <vc:camp-parts camp-id="@Model.Id" />
             }
 
             @* Blurb *@

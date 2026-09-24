@@ -3,6 +3,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
+using Humans.Base.ViewComponents;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;

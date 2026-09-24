@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces;
+using Humans.GoogleIntegration.ViewComponents;
 
 namespace Humans.GoogleIntegration;
 
@@ -6,5 +7,5 @@ namespace Humans.GoogleIntegration;
 internal sealed class SectionMemberDashboard : ISectionMemberDashboard
 {
     public IEnumerable<ChromeComponent> Components() =>
-        [new(ChromeSlots.MemberDashboard, "MyGoogleResources")];
+        [new(ChromeSlots.MemberDashboard, typeof(MyGoogleResourcesViewComponent))];
 }

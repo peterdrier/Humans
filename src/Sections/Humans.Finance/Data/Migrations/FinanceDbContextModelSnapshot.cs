@@ -158,6 +158,9 @@ namespace Humans.Finance.Data.Migrations
                     b.Property<LocalDate>("Date")
                         .HasColumnType("date");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
                     b.Property<string>("DocNumber")
                         .IsRequired()
                         .HasColumnType("text");

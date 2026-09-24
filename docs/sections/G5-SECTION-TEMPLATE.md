@@ -1098,8 +1098,9 @@ Git Bash.)
      public constructor cannot take an internal parameter type (CS0051), so
      `NotificationBellViewComponent(INotificationInboxService)` is internal until that
      service has a `Contracts/` interface. **That is a dependency defect to fix, not a
-     choice** — and while it holds, the component must be invoked by name, never with
-     `<vc:…>`. HUM0034's carve-out is not the contracts *leaf* — read
+     choice** — and while it holds, the component is reached only by `Type`: contributed to a
+     host's slot (`typeof(NotificationBellViewComponent)` into `ChromeSlots.HeaderRight`) or
+     `InvokeAsync<T>` inside its own section — never `<vc:…>`, never by name (HUM0036). HUM0034's carve-out is not the contracts *leaf* — read
      `src/Humans.Analyzers/Internal/Rules/PublicSurfaceRule.cs`, `IsUnderContracts`: it matches a
      namespace segment **or file-path segment** named `Contracts`, so a `Contracts/` folder
      inside the section project qualifies, and the section project is `Sdk.Razor` with the
@@ -1129,29 +1130,31 @@ Git Bash.)
      itself, which moved into `Humans.Users` and stayed `public`, keeping `<vc:profile-card />`
      intact — but the constraint is general and still bites wherever invoke-by-name is genuinely
      forced. When it was still expected to stay in Shell,
-     `<vc:profile-card view-mode="@ProfileCardViewMode.Admin" />` would have become
-     `@await Component.InvokeAsync("ProfileCard", new { userId, viewMode })` — except the enum
+     `<vc:profile-card view-mode="@ProfileCardViewMode.Admin" />` would have become an
+     invocation from another assembly passing `viewMode` — except the enum
      was declared beside the component in `Humans.Web.ViewComponents` and the section cannot
      name it, so the invocation does not compile. The enum moved to `Humans.UI/ViewComponents/`
      (Self/Public/Admin carries no section vocabulary, the same test as the filter base),
      Shell's `Views/_ViewImports.cshtml` gained `@using Humans.UI.ViewComponents`, and Shell's
-     own `<vc:profile-card>` call sites were untouched. Check the component's parameter types
-     before choosing invoke-by-name (proven: Governance).
-   - **A section that renders *another section's* presentation layer gets a new Shell view
-     component, invoked by name.** The three earlier answers are about a component that already
+     own `<vc:profile-card>` call sites were untouched. Today the same constraint is written
+     down once: a cross-section slot's `[ViewComponentSlot(typeof(TArgs))]` args record must
+     be nameable by both host and contributor, so it lives in Base or a `Contracts/` surface
+     (proven: Governance).
+   - **A section that renders *another section's* presentation layer hosts a slot; the owner
+     fills it by `Type`.** The three earlier answers are about a component that already
      exists; this is the case where one has to be written. The onboarding widget's shift step
      renders Shifts' rota tables — `ShiftBrowseViewModel`, `RotaShiftGroup`, `ShiftBrowseMapper`
      (`internal` to `Humans.Web`) and two `Views/Shared/` partials, ~400 lines of a section that
      has not moved. Pushing them to `Humans.UI` is the registry inversion at scale and would be
      undone at that section's own G5; taking them in steals its presentation; leaving the whole
-     view in Shell splits the moving section's page. So the mapping and the markup became a new
-     `Humans.Web` view component and the section's view calls
-     `@await Component.InvokeAsync("…", new { … })`. Governance's rider is the constraint that
-     shapes it: **every parameter must be nameable from a section**, so the component takes Base
-     types only (written as "`Humans.Domain` / `Humans.Application`" before lane 3b deleted the
-     former and lane 3a filled `Humans.Interfaces`) and the controller passes what it already
-     fetched — otherwise the component re-queries and the move quietly doubles a page's reads
-     (proven: Onboarding).
+     view in Shell splits the moving section's page. The first answer was a Shell component
+     invoked by name; it is now a slot (peterdrier/Humans#1815): the host section declares the
+     seam (`IOnboardingShiftsStep.ShiftsList`, `[ViewComponentSlot(typeof(OnboardingShiftsStepArgs))]`),
+     the owning section (Shifts) contributes `typeof` its own component, and the host view calls
+     `Component.InvokeAsync(step.ShiftsList, new OnboardingShiftsStepArgs(…))`. Governance's rider
+     still shapes it: **the args record must be nameable by both sides**, and the controller
+     passes what it already fetched — otherwise the component re-queries and the move quietly
+     doubles a page's reads (proven: Onboarding).
    - **A SignalR hub is `internal`, and the section maps it itself.** The section's
      `SectionEndpoints : ISectionEndpoints` calls `endpoints.MapHub<TheHub>("/hubs/…")` from
      inside its own assembly, so Shell never names the concrete type and the hub needs no public
@@ -1170,23 +1173,24 @@ Git Bash.)
      `IApplicationFeatureProvider<ViewComponentFeature>` pass (the base one is not virtual and
      `ViewComponentConventions` is internal to MVC) that adds non-public components from
      discovered section assemblies. Write it once; every later section with a
-     view component inherits it. Second, **every `<vc:…>` call site in Shell must become
-     `@await Component.InvokeAsync("Name")`** — the tag helper is generated at compile time
-     from *public* types in referenced assemblies, so it cannot see the section's. Shell's
-     `_Layout`/`_AdminLayout` already invoked the bell by name and needed no edit; the widget
-     gallery's `<vc:notification-bell />` did. Failure mode is loud in one direction and silent
-     in the other: an unresolvable `Component.InvokeAsync` **throws**, so one render test on any
-     authenticated page catches the provider being missing, while a stray `<vc:>` renders as
-     inert markup and needs the `NotContain("<vc:")` assertion (proven: Notifications).
-   - **A `<vc:…>` whose component reads a Shell-owned *cross-section registry* does not move —
-     invoke it by name.** The Gate fix (move the component down to `Humans.UI`) is right when the
+     view component inherits it. Second, **no `<vc:…>` can reach it from outside** — the tag
+     helper is generated at compile time from *public* types in referenced assemblies. The
+     section contributes it by `Type` to the host's slot instead
+     (`SectionChrome`: `typeof(NotificationBellViewComponent)` into `ChromeSlots.HeaderRight`),
+     and the layout renders whatever the slot holds. Failure mode is loud in one direction and
+     silent in the other: an unresolvable `Component.InvokeAsync` **throws**, so one render test
+     on any authenticated page catches the provider being missing, while a stray `<vc:>` renders
+     as inert markup and needs the `NotContain("<vc:")` assertion (proven: Notifications).
+   - **A `<vc:…>` whose component reads a Shell-owned *cross-section registry* does not move
+     down with its section.** The Gate fix (move the component down to `Humans.UI`) is right when the
      component is self-contained. `<vc:access-matrix>` is not: `AccessMatrixViewComponent` reads
      `AccessMatrixDefinitions` and `SectionHelpContent`, ~900 lines naming every section's roles,
      routes and FAQ, which `Humans.Web`'s agent preloader reads too. Dragging that into
      `Humans.UI` to satisfy one section is the registry-inversion problem (step 5b) wearing a
-     different hat. `@await Component.InvokeAsync("AccessMatrix", new { section = "…" })` resolves
-     the component **by name across application parts**, so the widget renders from a section
-     view with the registry left in Shell. Assert it rendered — the component emits a modal id
+     different hat. The first answer invoked it by name from the section view; that is banned
+     now (HUM0036). `AccessMatrixViewComponent` has since landed public in `Humans.Base`, so
+     sections write `<vc:access-matrix section="…" />`; a component that must stay out of reach
+     is contributed by `Type` to a host-declared slot instead. Assert it rendered — the component emits a modal id
      built from the section key, and a component that fails to resolve throws rather than
      degrading, so one assertion per call site is enough (proven: CityPlanning, the first moved
      section to use the widget).

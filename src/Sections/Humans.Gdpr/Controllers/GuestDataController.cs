@@ -13,12 +13,8 @@ namespace Humans.Gdpr.Controllers;
 
 /// <summary>
 /// Article 15 data export for profileless accounts (authenticated users without a
-/// Profile). It lives here rather than beside the rest of the Guest dashboard — whose
-/// frame is in Humans.Onboarding and whose comms and erasure actions are in
-/// Humans.Users — because the only data surface it chooses is Gdpr's own
-/// <see cref="IGdprService"/>. The <c>IUserServiceRead</c> beside it is not a choice:
-/// <see cref="HumansControllerBase"/> takes it, so every controller in the codebase
-/// has it, and it argues for placing this one nowhere in particular.
+/// Profile); lives in Gdpr because its only data surface is
+/// <see cref="IGdprService"/>.
 /// </summary>
 [Authorize]
 internal sealed class GuestDataController(

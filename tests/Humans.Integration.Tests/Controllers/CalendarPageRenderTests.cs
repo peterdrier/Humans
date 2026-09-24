@@ -198,13 +198,13 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
         // Views/_ViewImports.cshtml, and the component must stay public. Without either the
         // element ships as inert literal markup: 200, correct-looking source, no card.
         //
-        // /WidgetGallery is the probe because it is the only Shell page with a <vc:user-calendar>
+        // /Debug/WidgetGallery is the probe because it is the only Shell page with a <vc:user-calendar>
         // element. The "Calendar Feed" assertion is the component's own card header, so it is
         // absent unless the component actually ran — an empty feed still renders it.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        var response = await Client.GetAsync("/WidgetGallery", ct);
+        var response = await Client.GetAsync("/Debug/WidgetGallery", ct);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var html = await response.Content.ReadAsStringAsync(ct);

@@ -26,7 +26,7 @@
 @* <vc:ticket-stub> is this section's own component, public under Contracts/ so MVC's
    default provider discovers it and the tag helper is generated (step 6). Everything else
    the views open — <vc:human>, <vc:human-search>, <vc:access-matrix> — is Humans.Base's.
-   <vc:human-summary> is Users' and is invoked by name. *@
+   <vc:human-summary> is Users', contributed to the ticket-transfer-party IUserPart slot. *@
 @addTagHelper *, Humans.Base
 @addTagHelper *, Humans.Tickets
 @* <vc:audit-log> (TicketTransferAdmin/Detail) is the AuditLog section's own component. *@

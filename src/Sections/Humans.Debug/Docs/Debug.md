@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Debug/**
-  src/Humans.Web/ViewComponents/AdminNavComposition.cs
+  src/Humans.Base/ViewComponents/AdminNavComposition.cs
   src/Humans.Web/Middleware/ClientStatsMiddleware.cs
   src/Humans.Web/Program.cs
 -->
@@ -13,7 +13,7 @@ Developer/diagnostics section: admin-only pages exposing operational insight tha
 
 - The **Debug** section is the developer/diagnostics area: admin-only pages surfacing operational insight (client demographics, request health, logs, cache/db stats, timings, configuration status, the section catalog, and maintenance operations) that belongs to no domain section.
 - It is the home for "any tool a developer wants." New developer/diagnostic pages live at `/Debug/*`, not under the `/Admin/*` shell route.
-- It also hosts the **design reference**: `/ColorPalette` (tokens, controls, typography), `/WidgetGallery` (every reusable widget rendered against sample data), `/Debug/FormatGallery` and `/Debug/Translations`.
+- It also hosts the **design reference**: `/ColorPalette` (tokens, controls, typography), `/Debug/WidgetGallery` (every reusable widget rendered against sample data), `/Debug/FormatGallery` and `/Debug/Translations`.
 - The section owns no domain data. Most figures it shows come from process-local, in-memory trackers that reset on every restart/redeploy.
 
 ## Data Model
@@ -22,7 +22,7 @@ This section owns no entities. Displayed telemetry comes from in-memory, process
 
 ## Routing
 
-One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the reflection galleries), `WidgetGalleryController` (`/WidgetGallery`) and `ColorPaletteController` (`/ColorPalette`). Pages sit at `/Debug/<Page>` directly, not `/Debug/Admin/*`: the section has no user-facing pages, so there is no public-vs-admin split to disambiguate. The `/<Section>/Admin/*` shape in [`../../../../memory/architecture/no-admin-url-section.md`](../../../../memory/architecture/no-admin-url-section.md) exists to separate admin actions from public ones inside a mixed section.
+One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the reflection galleries), `WidgetGalleryController` (`/Debug/WidgetGallery`) and `ColorPaletteController` (`/ColorPalette`). Pages sit at `/Debug/<Page>` directly, not `/Debug/Admin/*`: the section has no user-facing pages, so there is no public-vs-admin split to disambiguate. The `/<Section>/Admin/*` shape in [`../../../../memory/architecture/no-admin-url-section.md`](../../../../memory/architecture/no-admin-url-section.md) exists to separate admin actions from public ones inside a mixed section.
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
@@ -41,7 +41,7 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 | `/Debug/Maintenance/ClearHangfireLocks` | POST | Admin | Clear stale Hangfire locks |
 | `/Debug/Timings` | GET | Admin | Operation timing table: per-operation call count, last/avg/min/max ms, total ms, last-called timestamp; ordered by total cost descending |
 | `/Debug/Sections` | GET | Admin | The DI-published section catalog: every discovered section with its tables, contracts, resx set, seams, dependencies, and which of guide page / agent doc key / issue queue it has |
-| `/WidgetGallery` | GET | Admin | Catalog of every reusable widget rendered against sample data and live keys |
+| `/Debug/WidgetGallery` | GET | Admin | Catalog of every reusable widget rendered against sample data and live keys |
 | `/ColorPalette` | GET | Anonymous | Static design reference: colour tokens, controls, typography |
 
 ## Actors & Roles
@@ -75,7 +75,7 @@ The telemetry trackers are fed passively by `ClientStatsMiddleware` (page views;
 
 Debug consumes in-memory telemetry trackers (`IClientStatsTracker`, `IHttpStatusTracker`, query/cache statistics), the configuration registry, `IAdminDatabaseDiagnosticsService` for migration status and Hangfire lock cleanup, and `ISectionCatalog` (`Humans.Base.Interfaces`, published by Shell at startup) to render `/Debug/Sections`. That page names no section: everything on it arrives through the catalog.
 
-The widget gallery and the dashboard card read other sections through their contracts: `ITeamServiceRead`, `ICampServiceRead`, `IShiftManagementServiceRead`, `IEventServiceRead`, `IUserServiceRead`, `IShiftView`, and `ISettingsService` (Shifts' read-only supplier of the active event). The gallery also references the section assemblies whose public view components it renders as `<vc:>` tag helpers (Camps, Users, Tickets, Shifts, Calendar, AuditLog, Teams, Events); that fan-in is the page's job and is opened in `Views/_ViewImports.cshtml`.
+The widget gallery and the dashboard card read other sections through their contracts: `ITeamServiceRead`, `ICampServiceRead`, `IShiftManagementServiceRead`, `IEventServiceRead`, `IUserServiceRead`, `IShiftView`, and `ISettingsService` (Shifts' read-only supplier of the active event). The gallery also references the section assemblies whose public view components it renders as `<vc:>` tag helpers (Camps, Users, Tickets, Shifts, Calendar, AuditLog, Teams, Events); that fan-in is the page's job and is opened in `Views/_ViewImports.cshtml`. `MemberTermStatus` (Governance), `MyGoogleResources` (GoogleIntegration) and `NotificationBell` (Notifications) get no gallery card at all — they already render on the page through the member-dashboard and header-right chrome-slot demos, and a `WidgetGallery` contribution would only duplicate them.
 
 ## Architecture
 
@@ -85,6 +85,7 @@ The widget gallery and the dashboard card read other sections through their cont
 - All controllers are `internal sealed` in `Humans.Debug.Controllers`, routed by Shell's `SectionControllerFeatureProvider`. `DebugController` consumes telemetry trackers, configuration metadata, query/cache counters, and admin database diagnostics, all of them Base singletons registered by their owners.
 - `Section.Register` is **empty**, and the class ships anyway: `ISection` is what puts the assembly in the discovered-sections log. `Contracts/` holds only a README - nothing outside the section names a Debug type.
 - Root-level seams contribute by name: `SectionAdminNav` (`ISectionAdminNav`) supplies the Debug sidebar group (diagnostics plus the design references), merged into the Shell nav by `AdminNavComposition`; `SectionChrome` (`ISectionChrome`) contributes the `UserSetMembershipCard` view component to the admin dashboard's chrome slot.
+- `/Debug/WidgetGallery` itself is a chrome-slot *consumer*: Base-hosted widgets render through `<vc:chrome-slot>`, `<vc:admin-breadcrumb>`, `<vc:section-nav>`, `<vc:things-to-do>`, and Users' and Shifts' own gallery samples render through one `<vc:chrome-slot name="@ChromeSlots.WidgetGallery">` call, fed by their `ISectionChrome` contributions (`UsersGalleryViewComponent`, `ShiftsGalleryViewComponent`) — the page holds no per-section state for those cards and needs no reference to the sections that contribute nothing else it uses.
 - The section references `Humans.Base` despite owning no tables: it names `QueryStatistics` (`Humans.Base.Data`) and the host-local `InMemoryLogSink` (`Humans.Base.Logging`; Shell configures it from `Program.cs`, and Backdoor's `BackdoorLogsController` reads the same DI instance at `/api/backdoor/logs`). Cache-entry counts come from `ICacheStatsProvider.GetActiveEntryCounts()`; Debug never names `TrackingMemoryCache`.
 - `TranslationsGalleryModelBuilder` lives in Base (`src/Humans.Base/Models/TranslationsGalleryViewModel.cs`): it enumerates `SharedResource` and `CultureCatalog`, and `SharedResourceParityTests` asserts translation parity through it. `FormatGalleryModelBuilder` lives here - its only consumer is `/Debug/FormatGallery`.
 - **Decorator decision - no caching decorator.** Owns no data; the trackers are already in-memory singletons.

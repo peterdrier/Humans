@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces;
+using Humans.Users.ViewComponents;
 
 namespace Humans.Users;
 
@@ -6,5 +7,8 @@ namespace Humans.Users;
 internal sealed class SectionChrome : ISectionChrome
 {
     public IEnumerable<ChromeComponent> Components() =>
-        [new(ChromeSlots.AdminDashboard, "PreferredLanguageCard", Weight: 40)];
+        [
+            new(ChromeSlots.AdminDashboard, typeof(PreferredLanguageCardViewComponent), Weight: 40),
+            new(ChromeSlots.WidgetGallery, typeof(UsersGalleryViewComponent)),
+        ];
 }

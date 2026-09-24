@@ -9,11 +9,8 @@ namespace Humans.Gdpr.Services;
 /// <summary>
 /// Fans both halves of GDPR subject rights out across <see cref="IUserDataContributor"/>s:
 /// Article 15 export into one keyed document, and Article 17 erasure in turn. Sequential,
-/// not Task.WhenAll — a simplicity choice, not a correctness one. The single shared scoped
-/// DbContext that once made overlapping contributors unsafe is gone; each section has its
-/// own context type now, so no two contributors touch the same instance, and design-rules.md
-/// §8a records the old reason as obsolete. One contributor at a time keeps failure attribution
-/// and log order plain, and overlapping them would buy nothing at this scale.
+/// not Task.WhenAll — a simplicity choice, not a correctness one, which keeps failure
+/// attribution and log order plain.
 /// </summary>
 internal sealed class GdprService(
     IEnumerable<IUserDataContributor> contributors,
@@ -92,10 +89,8 @@ internal sealed class GdprService(
 
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        // The contributor that owns the Account identity runs last, so the sections that
-        // need the human's addresses to reach an external processor (the Workspace suspend)
-        // can still resolve them. Ordering is derived from each contributor's own
-        // ErasesLast declaration, not from a pinned type list.
+        // The ErasesLast contributor (the identity owner) runs after everything that
+        // still needs the person's addresses.
         var ordered = contributors
             .OrderBy(c => c.ErasesLast ? 1 : 0);
 

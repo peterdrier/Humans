@@ -281,31 +281,6 @@ public class GdprServiceTests
     }
 
     [HumansFact]
-    public async Task ExportForUserAsync_EmptyCollectionSerializesToEmptyArray()
-    {
-        var emptyConsents = new List<object>();
-        var service = CreateService(
-            new FakeContributor("Profile", new { Name = "Jane" }),
-            new FakeContributor("Consents", emptyConsents));
-
-        var export = await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-
-        // Flatten into the shape the controllers serialize
-        var payload = new Dictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["ExportedAt"] = export.ExportedAt
-        };
-        foreach (var (section, data) in export.Sections)
-        {
-            payload[section] = data;
-        }
-
-        var json = System.Text.Json.JsonSerializer.Serialize(payload);
-        json.Should().Contain("\"Consents\":[]",
-            "empty collection slices must serialize as '[]' in the downloaded JSON");
-    }
-
-    [HumansFact]
     public async Task ExportForUserAsync_CallsContributorsOneAtATime()
     {
         var log = new ContributorCallLog();

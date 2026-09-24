@@ -18,7 +18,6 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("agent");
         tab.Label.Should().Be("Settings_TabAgent");
-        tab.ComponentName.Should().Be("AgentSettingsTab");
         tab.Policy.Should().Be(PolicyNames.AdminOnly);
     }
 }

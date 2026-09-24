@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Tickets. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 8
+next_id: 9
 inbox:
   - added: 2026-09-05
     id: TICKETS-1
@@ -27,3 +27,8 @@ inbox:
     id: TICKETS-7
     what: "Services/Stores/CachingTicketVendorService.cs caches GetEventSummaryAsync with a hand-rolled 15-minute TTL EventSummaryCache instead of the standard TrackedCache decorator pattern (design-rules §15). Replace it with the standard caching pattern (Peter, freshness sweep 2026-09-22)."
     review: panel
+  - added: 2026-09-24
+    id: TICKETS-8
+    what: "Docs/data-access.md (the cache-key paragraph and the cache table row) and Docs/Tickets.md's caching invariant still describe a TicketEventSummary:{eventId} cache entry, while Docs/Tickets.md's CachingTicketVendorService paragraph says the key string is no longer used — the decorator keys its TrackedCache by raw vendor event id (finding 13, /section-doctor on TicketTailor 2026-09-24)."
+    review: light
+    root: CENTRAL-57

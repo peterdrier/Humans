@@ -18,7 +18,6 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("shifts");
         tab.Label.Should().Be("Settings_TabShifts");
-        tab.ComponentName.Should().Be("ShiftsSettingsTab");
         tab.Policy.Should().Be(PolicyNames.AdminOnly);
     }
 }

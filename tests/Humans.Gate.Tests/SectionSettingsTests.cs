@@ -18,7 +18,6 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("gate");
         tab.Label.Should().Be("Settings_TabGate");
-        tab.ComponentName.Should().Be("GateSettingsTab");
         tab.Policy.Should().Be(PolicyNames.TicketAdminOrAdmin);
     }
 }

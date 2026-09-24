@@ -12,6 +12,5 @@ public sealed class SectionChromeTests
 
         var component = components.Should().ContainSingle().Which;
         component.Slot.Should().Be(ChromeSlots.UserMenu);
-        component.ComponentName.Should().Be("SettingsUserMenu");
     }
 }

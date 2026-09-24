@@ -1,14 +1,19 @@
 @using Humans.Teams.Contracts
 @model Humans.Debug.Controllers.WidgetGalleryViewModel
 @using Humans.Base.Authorization
+@using Humans.Base.Interfaces
 @using Humans.Base.Models.Tables
 @using Humans.Shifts.Contracts
 @using Humans.Tickets.Contracts
 @using Humans.Base.Enums
 @using Microsoft.AspNetCore.Html
 @* The section tag-helper assemblies this catalog renders are opened in Views/_ViewImports.cshtml.
-   Shell-resident components (AdminBreadcrumb, ChromeSlot, SectionNav, …) are invoked by name —
-   Debug cannot addTagHelper against Humans.Web. *@
+   AdminBreadcrumb, ChromeSlot, SectionNav and ThingsToDo live in Humans.Base (every section's
+   _ViewImports opens it), so they render as ordinary <vc:> tag helpers here. Widgets owned by a
+   section this page has no reason to reference otherwise (Governance, GoogleIntegration,
+   Notifications) — plus Users' and Shifts' own samples — render through one shared
+   <c>ChromeSlots.WidgetGallery</c> chrome slot instead: each section contributes its sample card(s)
+   through its existing SectionChrome (ISectionChrome), same mechanism as any other chrome slot. *@
 @{
     ViewData["Title"] = "Widget Gallery";
 }
@@ -290,136 +295,18 @@
                     </div>
                 </div>
 
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">&lt;vc:profile-card&gt;</span>
-                            <span class="wg-card-kind kind-vc">ViewComponent</span>
-                        </div>
-                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/ProfileCardViewComponent.cs</span>
-                    </div>
-                    <div class="wg-card-note">
-                        Full profile card. The view mode controls which sensitive fields render — legal name, board notes, emergency contacts.
-                    </div>
-                    @ParamsBlock(
-                        ("userId", "<code>Guid</code> — required"),
-                        ("viewMode", "<code>ProfileCardViewMode</code> — Self · Public · Admin")
-                    )
-                    @AuthLine("In <code>Public</code> mode, viewer's roles drive whether legal-name fields render — board members see legal name, others don't.")
-                    <div class="wg-variants">
-                        <div class="wg-variant-label">view-mode="Admin"<span class="wg-variant-sub">current human</span></div>
-                        <div class="wg-variant-render" style="display:block;">
-                            @await Component.InvokeAsync("ProfileCard", new { userId = Model.CurrentUserId, viewMode = ProfileCardViewMode.Admin })
-                        </div>
-                    </div>
+                <div class="wg-card-note" style="margin-bottom: 1.5rem;">
+                    The cards below render through one shared chrome slot — <code>ChromeSlots.WidgetGallery</code>
+                    (see <code>&lt;vc:chrome-slot&gt;</code> under <a href="#layout">Layout Bits</a>). Each owning
+                    section contributes its own sample(s) via its existing <code>SectionChrome</code>
+                    (<code>ISectionChrome</code>): Users (<code>&lt;vc:profile-card&gt;</code>,
+                    <code>_ProfileCard</code>/<code>_HumanPopover</code>, <code>&lt;vc:human-summary&gt;</code>,
+                    <code>&lt;vc:communication-preferences-panel&gt;</code>,
+                    <code>&lt;vc:nobodies-email-badge&gt;</code>, <code>&lt;vc:membership-tier-badge&gt;</code>)
+                    and Shifts (the rota cards, <code>&lt;vc:dietary-missing-banner&gt;</code>) — no
+                    hand-written card for either of them here.
                 </div>
-
-                @* ProfileSummaryViewModel is internal to Humans.Users, so that section renders
-                   the _ProfileCard + _HumanPopover cards itself. *@
-                @await Component.InvokeAsync("UsersGallery", new { currentUserId = Model.CurrentUserId, displayName = Model.CurrentUserDisplayName })
-
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">&lt;vc:communication-preferences-panel&gt;</span>
-                            <span class="wg-card-kind kind-vc">ViewComponent</span>
-                        </div>
-                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/CommunicationPreferencesPanelViewComponent.cs</span>
-                    </div>
-                    <div class="wg-card-note">
-                        Per-user communication-preferences matrix. Write mode (default) renders toggle checkboxes that POST to <code>/Profile/Me/CommunicationPreferences/Update</code>. Read-only mode hides the form and surfaces <code>UpdateSource</code> + <code>UpdatedAt</code> per category — used on <code>/Users/Admin/{id}</code>.
-                    </div>
-                    @ParamsBlock(
-                        ("user-id", "<code>Guid</code> — required"),
-                        ("read-only", "<code>bool</code> — default <code>false</code>; <code>true</code> hides forms and adds attribution columns")
-                    )
-                    <div class="wg-variants">
-                        <div class="wg-variant-label">read-only="false"<span class="wg-variant-sub">default — toggleable</span></div>
-                        <div class="wg-variant-render" style="display:block;">
-                            @await Component.InvokeAsync("CommunicationPreferencesPanel", new { userId = Model.CurrentUserId })
-                        </div>
-
-                        <div class="wg-variant-label">read-only="true"<span class="wg-variant-sub">admin view</span></div>
-                        <div class="wg-variant-render" style="display:block;">
-                            @await Component.InvokeAsync("CommunicationPreferencesPanel", new { userId = Model.CurrentUserId, readOnly = true })
-                        </div>
-                    </div>
-                </div>
-
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">&lt;vc:human-summary&gt;</span>
-                            <span class="wg-card-kind kind-vc">ViewComponent</span>
-                        </div>
-                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/HumanSummaryViewComponent.cs</span>
-                    </div>
-                    <div class="wg-card-note">
-                        Renders the same content as the hover popover (<code>_HumanPopover.cshtml</code>) inline — avatar, name, membership badge, city/country, public + (admin-only) hidden teams, and languages. Use on admin-review screens where the reviewer needs identity context without having to hover (e.g. ticket-transfer detail).
-                    </div>
-                    @ParamsBlock(
-                        ("user-id", "<code>Guid</code> — required")
-                    )
-                    @AuthLine("Hidden-team rows render only for viewers with <code>TeamsAdminBoardOrAdmin</code> policy (gating lives in <code>_HumanPopover.cshtml</code>).")
-                    <div class="wg-variants">
-                        <div class="wg-variant-label">user-id=current<span class="wg-variant-sub">has profile</span></div>
-                        <div class="wg-variant-render" style="display:block;">
-                            @await Component.InvokeAsync("HumanSummary", new { userId = Model.CurrentUserId })
-                        </div>
-                    </div>
-                </div>
-
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">&lt;vc:nobodies-email-badge&gt;</span>
-                            <span class="wg-card-kind kind-vc">ViewComponent</span>
-                        </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/NobodiesEmailBadgeViewComponent.cs</span>
-                    </div>
-                    <div class="wg-card-note">
-                        Indicates whether a human has a <code>nobodies.team</code> Workspace email. Five modes selected by the caller.
-                    </div>
-                    @ParamsBlock(
-                        ("userId", "<code>Guid</code> — required"),
-                        ("mode", "<code>string</code> — badge (default) · status · email · provision · detail"),
-                        ("teamSlug", "<code>string?</code> — required for <code>provision</code> mode (which team to provision into)")
-                    )
-                    <div class="wg-variants">
-                        <div class="wg-variant-label">mode="badge"<span class="wg-variant-sub">icon badge for cards</span></div>
-                        <div class="wg-variant-render">@await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.CurrentUserId, mode = "badge" })</div>
-
-                        <div class="wg-variant-label">mode="status"<span class="wg-variant-sub">warning when not primary</span></div>
-                        <div class="wg-variant-render">@await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.CurrentUserId, mode = "status" })</div>
-
-                        <div class="wg-variant-label">mode="email"<span class="wg-variant-sub">show address</span></div>
-                        <div class="wg-variant-render">@await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.CurrentUserId, mode = "email" })</div>
-
-                        <div class="wg-variant-label">mode="detail"<span class="wg-variant-sub">address + linked badge</span></div>
-                        <div class="wg-variant-render">@await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.CurrentUserId, mode = "detail" })</div>
-                    </div>
-                </div>
-
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">&lt;vc:membership-tier-badge&gt;</span>
-                            <span class="wg-card-kind kind-vc">ViewComponent</span>
-                        </div>
-                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/MembershipTierBadgeViewComponent.cs</span>
-                    </div>
-                    <div class="wg-card-note">
-                        The member's Colaborador/Asociado tier badge beside their name on the dashboard. Renders
-                        nothing for a plain Volunteer, which is nearly everyone — so it's empty here unless your
-                        account holds a tier.
-                    </div>
-                    @ParamsBlock(
-                        ("userId", "<code>Guid</code> — required")
-                    )
-                    <div class="wg-card-example">
-                        @await Component.InvokeAsync("MembershipTierBadge", new { userId = Model.CurrentUserId })
-                    </div>
-                </div>
+                <vc:chrome-slot name="@ChromeSlots.WidgetGallery" />
 
                 <div class="wg-card">
                     <div class="wg-card-header">
@@ -524,24 +411,6 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
-                            <span class="wg-card-name">&lt;vc:my-google-resources&gt;</span>
-                            <span class="wg-card-kind kind-vc">ViewComponent</span>
-                        </div>
-                        <span class="wg-card-path">src/Sections/Humans.GoogleIntegration/ViewComponents/MyGoogleResourcesViewComponent.cs</span>
-                    </div>
-                    <div class="wg-card-note">Google Drive / Calendar / Group resources the current human can access via team membership.</div>
-                    @ParamsBlock()
-                    @AuthLine("Authenticated only.")
-                    <div class="wg-card-example">
-                        @* Invoked by name: the component is internal to Humans.GoogleIntegration, so a
-                           <vc:> tag helper would ship as inert literal markup. *@
-                        @await Component.InvokeAsync("MyGoogleResources")
-                    </div>
-                </div>
-
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
                             <span class="wg-card-name">&lt;vc:shift-signups&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
@@ -583,7 +452,7 @@
                             <span class="wg-card-name">&lt;vc:things-to-do&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/ThingsToDoViewComponent.cs + each section&#39;s ThingsToDo.cs</span>
+                        <span class="wg-card-path">src/Humans.Base/ViewComponents/ThingsToDoViewComponent.cs + each section&#39;s ThingsToDo.cs</span>
                     </div>
                     <div class="wg-card-note">
                         Onboarding checklist on the human dashboard, merged from every section's
@@ -591,27 +460,7 @@
                         items are done — if you see nothing here, your account is fully onboarded.
                     </div>
                     <div class="wg-card-example">
-                        @await Component.InvokeAsync("ThingsToDo")
-                    </div>
-                </div>
-
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">&lt;vc:dietary-missing-banner&gt;</span>
-                            <span class="wg-card-kind kind-vc">ViewComponent</span>
-                        </div>
-                        <span class="wg-card-path">src/Sections/Humans.Shifts/ViewComponents/DietaryMissingBannerViewComponent.cs</span>
-                    </div>
-                    <div class="wg-card-note">
-                        Red dietary-info nudge shown on /Shifts and /Shifts/Mine. Self-gates: renders only when the user has a
-                        qualifying cantina signup but no dietary preference on file — so it's empty here unless your account matches.
-                    </div>
-                    @ParamsBlock(
-                        ("userId", "<code>Guid</code> — required")
-                    )
-                    <div class="wg-card-example">
-                        @await Component.InvokeAsync("DietaryMissingBanner", new { userId = Model.CurrentUserId })
+                        <vc:things-to-do />
                     </div>
                 </div>
 
@@ -651,23 +500,6 @@
                     </div>
                 </div>
 
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">&lt;vc:member-term-status&gt;</span>
-                            <span class="wg-card-kind kind-vc">ViewComponent</span>
-                        </div>
-                        <span class="wg-card-path">src/Sections/Humans.Governance/ViewComponents/MemberTermStatusViewComponent.cs</span>
-                    </div>
-                    <div class="wg-card-note">
-                        The member dashboard's term card for a Colaborador/Asociado: expired, expiring within 90
-                        days, renewal pending, or active. Renders nothing for a plain Volunteer, which is nearly
-                        everyone — so it's empty here unless your account holds a tracked term.
-                    </div>
-                    <div class="wg-card-example">
-                        @await Component.InvokeAsync("MemberTermStatus")
-                    </div>
-                </div>
             </section>
 
             <section id="shifts" class="wg-section">
@@ -697,10 +529,6 @@
                         @await Html.PartialAsync("_ShiftsSummaryCard", Model.SampleShiftsSummary)
                     </div>
                 </div>
-
-                @* The four rota cards live in Humans.Shifts on types internal to it, so
-                   ShiftsGallery is resolved by name across application parts. *@
-                @await Component.InvokeAsync("ShiftsGallery", new { currentUserId = Model.CurrentUserId })
 
                 <div class="wg-card">
                     <div class="wg-card-header">
@@ -759,24 +587,6 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
-                            <span class="wg-card-name">&lt;vc:notification-bell&gt;</span>
-                            <span class="wg-card-kind kind-vc">ViewComponent</span>
-                        </div>
-                        <span class="wg-card-path">src/Sections/Humans.Notifications/ViewComponents/NotificationBellViewComponent.cs</span>
-                    </div>
-                    <div class="wg-card-note">Unread-counts bell rendered in the topbar. Caches per-human counts for 2 minutes.</div>
-                    @ParamsBlock()
-                    @AuthLine("Authenticated only — empty model when unauthenticated.")
-                    <div class="wg-card-example">
-                        @* Internal to Notifications, so the <vc:> tag helper cannot bind it — invoke by
-                           name across application parts. *@
-                        @await Component.InvokeAsync("NotificationBell")
-                    </div>
-                </div>
-
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
                             <span class="wg-card-name">&lt;vc:temp-data-alerts&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
@@ -823,12 +633,12 @@
                             <span class="wg-card-name">&lt;vc:admin-breadcrumb&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/AdminBreadcrumbViewComponent.cs</span>
+                        <span class="wg-card-path">src/Humans.Base/ViewComponents/AdminBreadcrumbViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">Resolves <em>Group / Page / Subpage</em> from the sections' <code>ISectionAdminNav</code> contributions and the current route; a subpage's own trail comes from the page's <code>Crumbs</code> section. Falls back to the page title when no nav match.</div>
                     @ParamsBlock()
                     <div class="wg-card-example">
-                        @await Component.InvokeAsync("AdminBreadcrumb")
+                        <vc:admin-breadcrumb />
                         <div class="text-muted small">↑ resolves to whatever admin nav entry matches this route, or the page title.</div>
                     </div>
                 </div>
@@ -857,7 +667,7 @@
                             <span class="wg-card-name">&lt;vc:user-parts&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/UserPartsViewComponent.cs + each contributing section&#39;s Section.cs</span>
+                        <span class="wg-card-path">src/Humans.Base/ViewComponents/UserPartsViewComponent.cs + each contributing section&#39;s Section.cs</span>
                     </div>
                     <div class="wg-card-note">
                         The section-contributed parts of a profile page, merged from every active section's
@@ -866,10 +676,12 @@
                         Renders nothing when no section contributes.
                     </div>
                     @ParamsBlock(
-                        ("user-id", "<code>Guid</code>, required: the profile being viewed, never the viewer")
+                        ("slot", "<code>string</code> — a <code>UserPartSlots</code> constant"),
+                        ("user-id", "<code>Guid</code>, required: the profile being viewed, never the viewer"),
+                        ("view-mode", "<code>ProfileCardViewMode</code> — Self · Public · Admin")
                     )
                     <div class="wg-card-example">
-                        <vc:user-parts user-id="@Model.CurrentUserId" />
+                        <vc:user-parts slot="@UserPartSlots.Profile" user-id="@Model.CurrentUserId" view-mode="@ProfileCardViewMode.Admin" />
                     </div>
                 </div>
 
@@ -1280,7 +1092,7 @@
                             <span class="wg-card-name">&lt;vc:chrome-slot&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/ChromeSlotViewComponent.cs</span>
+                        <span class="wg-card-path">src/Humans.Base/ViewComponents/ChromeSlotViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">
                         A named hole in the layout that sections fill. Renders whatever the active sections
@@ -1290,20 +1102,20 @@
                         and a slot nothing has contributed to renders nothing at all.
                     </div>
                     @ParamsBlock(
-                        ("name", "<code>string</code> — slot name from <code>ChromeSlots</code>: <code>header-right</code> · <code>above-content</code> · <code>member-dashboard</code> · <code>guest-page</code>")
+                        ("name", "<code>string</code> — slot name from <code>ChromeSlots</code>: <code>header-right</code> · <code>above-content</code> · <code>member-dashboard</code> · <code>guest-page</code> · <code>widget-gallery</code>")
                     )
                     <div class="wg-variants">
                         <div class="wg-variant-label">name="header-right"<span class="wg-variant-sub">member top nav, beside language + login</span></div>
-                        <div class="wg-variant-render">@await Component.InvokeAsync("ChromeSlot", new { name = "header-right" })</div>
+                        <div class="wg-variant-render"><vc:chrome-slot name="@ChromeSlots.HeaderRight" /></div>
 
                         <div class="wg-variant-label">name="above-content"<span class="wg-variant-sub">between header and page, member + admin layouts</span></div>
-                        <div class="wg-variant-render">@await Component.InvokeAsync("ChromeSlot", new { name = "above-content" })</div>
+                        <div class="wg-variant-render"><vc:chrome-slot name="@ChromeSlots.AboveContent" /></div>
 
                         <div class="wg-variant-label">name="member-dashboard"<span class="wg-variant-sub">contributed area of the member dashboard</span></div>
-                        <div class="wg-variant-render">@await Component.InvokeAsync("ChromeSlot", new { name = "member-dashboard" })</div>
+                        <div class="wg-variant-render"><vc:chrome-slot name="@ChromeSlots.MemberDashboard" /></div>
 
                         <div class="wg-variant-label">name="guest-page"<span class="wg-variant-sub">contributed area of the profileless-account page</span></div>
-                        <div class="wg-variant-render">@await Component.InvokeAsync("ChromeSlot", new { name = "guest-page" })</div>
+                        <div class="wg-variant-render"><vc:chrome-slot name="@ChromeSlots.GuestPage" /></div>
                     </div>
                 </div>
 
@@ -1313,7 +1125,7 @@
                             <span class="wg-card-name">&lt;vc:section-nav&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/SectionNavViewComponent.cs</span>
+                        <span class="wg-card-path">src/Humans.Base/ViewComponents/SectionNavViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">
                         The member top-nav links sections contributed through <code>ISectionNav</code>, ordered by
@@ -1324,7 +1136,7 @@
                     @ParamsBlock()
                     @AuthLine("Every item is filtered by its optional <code>Policy</code> and its <code>Visible</code> predicate. Dropdown children are gated the same way, and a dropdown left with no visible children is dropped rather than rendered empty.")
                     <div class="wg-card-example">
-                        <ul class="nav">@await Component.InvokeAsync("SectionNav")</ul>
+                        <ul class="nav"><vc:section-nav /></ul>
                         <div class="text-muted small">↑ empty until a section contributes; each contributed link is gated for the current viewer.</div>
                     </div>
                 </div>
@@ -1381,7 +1193,7 @@
                             <tr>
                                 <th>How it's invoked</th>
                                 <td>HTML-like syntax — element name (<code>&lt;environment names="Development"&gt;</code>) or attribute on an existing element (<code>&lt;li authorize-policy="…"&gt;</code>)</td>
-                                <td><code>&lt;vc:name attr="…"/&gt;</code> or <code>@@await Component.InvokeAsync("Name", new { … })</code></td>
+                                <td><code>&lt;vc:name attr="…"/&gt;</code> tag helper, or by <code>Type</code> for an internal component via a <code>@@await Component.InvokeAsync(…)</code> overload</td>
                                 <td><code>@@await Html.PartialAsync("_Name", model)</code> or <code>&lt;partial name="…" model="@@x"/&gt;</code></td>
                             </tr>
                             <tr>

@@ -14,8 +14,12 @@ namespace Humans.Users.ViewComponents;
 ///   - <c>readonly: true</c> (admin view on <c>/Users/Admin/{id}</c>): values only,
 ///     plus per-category <c>UpdateSource</c> and <c>UpdatedAt</c> for attribution.
 ///     No POST forms, no anti-forgery, no submit buttons.
+///
+/// Public, not internal: Razor's build-time tag-helper discovery only sees public view
+/// components (design; HUM0034 exempts view components), used in-assembly via
+/// <c>&lt;vc:communication-preferences-panel&gt;</c>.
 /// </summary>
-internal sealed class CommunicationPreferencesPanelViewComponent(
+public sealed class CommunicationPreferencesPanelViewComponent(
     ICommunicationPreferenceService commPrefService,
     ITicketServiceRead ticketQueryService,
     IClock clock) : ViewComponent

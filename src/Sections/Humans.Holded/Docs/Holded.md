@@ -47,7 +47,8 @@ mirror tables runs before this baseline recreates them.
   Account balances read in the association's POV (below).
 - `/Holded/Accounts/{number}` — the general-ledger page for ANY account (departments, banks,
   creditors): header balances, and every cached line with its counterparty and signed Amount,
-  both in the association's POV. The Entry cell links to the entry page below.
+  both in the association's POV. The Entry cell links to the entry page below; "See in Holded"
+  opens the account's own ledger at `app.holded.com/accounting/ledger/{number}`.
 - `/Holded/Entries/{number}` — every leg of one journal entry (account + name, type,
   description, signed Amount), no balancing total row. 404 when no cached line carries the
   entry number.

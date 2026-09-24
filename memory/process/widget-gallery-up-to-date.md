@@ -1,5 +1,5 @@
 ---
-name: Register new widgets in /WidgetGallery when adding them
+name: Register new widgets in /Debug/WidgetGallery when adding them
 description: Adding/removing a public TagHelper, ViewComponent, or shared partial → also update `Views/WidgetGallery/Index.cshtml` (and controller if sample data needed).
 ---
 
@@ -11,7 +11,7 @@ When you **add** a new TagHelper, ViewComponent, or user-facing shared partial �
 
 When you **remove** or **rename** a widget, also remove or rename its card in the gallery.
 
-**Why:** `/WidgetGallery` exists so designers and developers can see every reusable widget in one place. If new widgets aren't registered, the catalog rots — stale entries linger and new ones go undiscovered, and the next person reinvents what already exists. Tying registration to the same PR as the widget change keeps the catalog perpetually accurate without a separate maintenance loop. We deliberately did not add an automated ratchet test for this — the legitimate Skipped list, plus partials that are pieces of larger pages, would make the test noisy. Discipline + PR review catches drift.
+**Why:** `/Debug/WidgetGallery` exists so designers and developers can see every reusable widget in one place. If new widgets aren't registered, the catalog rots — stale entries linger and new ones go undiscovered, and the next person reinvents what already exists. Tying registration to the same PR as the widget change keeps the catalog perpetually accurate without a separate maintenance loop. We deliberately did not add an automated ratchet test for this — the legitimate Skipped list, plus partials that are pieces of larger pages, would make the test noisy. Discipline + PR review catches drift.
 
 **How to apply:**
 

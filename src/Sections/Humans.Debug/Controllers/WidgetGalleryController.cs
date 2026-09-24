@@ -23,7 +23,7 @@ namespace Humans.Debug.Controllers;
 /// <c>/ColorPalette</c>. Admin dev tool — linked from the admin sidebar "Design" group.
 /// </summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
-[Route("WidgetGallery")]
+[Route("Debug/WidgetGallery")]
 internal sealed class WidgetGalleryController(
     IUserServiceRead userService,
     ITeamServiceRead teamService,

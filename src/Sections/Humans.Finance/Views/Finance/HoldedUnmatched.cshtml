@@ -43,6 +43,7 @@ else
     var unmatchedTable = TableModel.For(Model)
         .Column("Doc #", r => r.DocNumber)
         .Column("Contact", r => r.ContactName)
+        .Column("Description", r => r.Description ?? "", c => c.Css("text-muted small"))
         .Template("Total", totalCell, c => c.NoSort().End())
         .Column("Reason", r => r.Reason, c => c.Css("text-muted small"))
         .Template("", linkCell, c => c.NoSort())

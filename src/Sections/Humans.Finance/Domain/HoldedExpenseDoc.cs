@@ -8,6 +8,8 @@ internal sealed class HoldedExpenseDoc
     public string HoldedDocId { get; set; } = "";  // unique upsert key
     public string DocNumber { get; set; } = "";
     public string ContactName { get; set; } = "";
+    /// <summary>Holded's internal description of the doc; null when blank.</summary>
+    public string? Description { get; set; }
     public LocalDate Date { get; set; }
     public decimal Subtotal { get; set; }
     public decimal Tax { get; set; }

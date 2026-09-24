@@ -1,6 +1,0 @@
-@model Humans.Users.Models.UserPartsViewModel
-
-@foreach (var part in Model.Parts)
-{
-    @await Component.InvokeAsync(part.ComponentName, new { userId = Model.UserId })
-}

@@ -70,7 +70,10 @@ longer needs a redeploy.
 5. `SepaPaymentFileBuilder.Build` enforces the file-level rules, serializes, and validates against
    the embedded official XSD. It is pure — no IO, no clock, no configuration.
 6. The file, its SHA-256 checksum, the timestamp and the generating admin are persisted with the
-   transfer rows in one save; one `AuditAction.SepaPayoutTransfer` entry per transfer follows.
+   transfer rows in one save; one `AuditAction.SepaPayoutTransfer` entry per transfer follows, then
+   one `sepa_payout_generated` email per transfer to the bound member — amount and masked IBAN, in
+   their preferred language, `MessageCategory.System` (peterdrier/Humans#1820). Both come after the
+   save so a rolled-back file leaves neither a ghost audit row nor a promise of money in the outbox.
 7. The XML streams back as `<org-slug>-<yyyy-MM-dd-HHmm>-<first 8 hex of the file id>.xml`. The
    stamp is minute-resolution, so the id suffix is what keeps two batches in one minute apart — the
    filename is the treasurer's handle on a downloaded copy and is quoted in the audit line.

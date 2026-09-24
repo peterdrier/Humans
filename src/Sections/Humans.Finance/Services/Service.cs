@@ -1,4 +1,5 @@
 using Humans.AuditLog.Contracts;
+using Humans.Email.Contracts;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.Base.Helpers;
@@ -35,6 +36,10 @@ internal sealed class Service(
     IClock clock,
     IMemoryCache cache,
     IAuditLogService audit,
+    IUserServiceRead users,
+    IUserEmailService userEmails,
+    IEmailService emailService,
+    FinanceEmails emails,
     IOptions<SepaOptions> sepa,
     ILogger<Service> logger) : IHoldedFinanceService, IHoldedFinanceAdminService, ISepaBankBooking, IUserDataContributor
 {
@@ -258,6 +263,7 @@ internal sealed class Service(
             HoldedDocId = doc.Id,
             DocNumber = doc.DocNumber,
             ContactName = doc.ContactName,
+            Description = string.IsNullOrWhiteSpace(doc.Description) ? null : doc.Description.Trim(),
             Date = localDate,
             Subtotal = doc.Subtotal,
             Tax = doc.Tax,
@@ -297,7 +303,8 @@ internal sealed class Service(
                 g.OrderByDescending(d => d.Date)
                     .ThenBy(d => d.DocNumber, StringComparer.Ordinal)
                     .Select(d => new HoldedActualDoc(
-                        d.HoldedDocId, d.DocNumber, d.ContactName, d.Date, d.Total, HoldedDocUrl(d.HoldedDocId)))
+                        d.HoldedDocId, d.DocNumber, d.ContactName, d.Description, d.Date, d.Total,
+                        HoldedDocUrl(d.HoldedDocId)))
                     .ToList()))
             .Where(r => r.Actual != 0m)
             .ToList();
@@ -313,14 +320,16 @@ internal sealed class Service(
                 d.HoldedDocId,
                 d.DocNumber,
                 d.ContactName,
+                d.Description,
                 d.Total,
                 ReasonFor(d),
                 HoldedDocUrl(d.HoldedDocId)))
             .ToList();
     }
 
+    // Holded has no stable per-doc page; its purchase list opens a doc from this fragment.
     private static string HoldedDocUrl(string holdedDocId) =>
-        $"https://app.holded.com/purchases/{holdedDocId}";
+        $"https://app.holded.com/expenses/list#open:purchase-{holdedDocId}";
 
     public async Task<string?> GetHoldedAccountIdForCategoryAsync(
         Guid budgetCategoryId, CancellationToken ct = default)
@@ -380,6 +389,8 @@ internal sealed class Service(
                 d.HoldedDocId,
                 d.DocNumber,
                 d.ContactName,
+                d.Description,
+                HoldedDocUrl(d.HoldedDocId),
                 d.Date,
                 d.Total,
                 d.IsApproved,
@@ -1004,7 +1015,37 @@ internal sealed class Service(
                 + $"{t.SupplierAccountNum} (file {fileName}).",
                 actorUserId, t.UserId, nameof(User));
 
+        await SendPayoutEmailsAsync(transfers, ct);
+
         return new SepaPayoutResult(fileName, xml, null);
+    }
+
+    /// <summary>
+    /// Tells each paid member their transfer is on its way (peterdrier/Humans#1820). After the
+    /// save, like the audit lines: an outbox row is a promise of money, so a rolled-back file
+    /// must not leave one. Sent at generation rather than at booking because generation is when
+    /// the treasurer hands the file to the bank; booking only records that the money moved.
+    /// </summary>
+    private async Task SendPayoutEmailsAsync(IReadOnlyList<SepaPayoutTransfer> transfers, CancellationToken ct)
+    {
+        var userIds = transfers.Select(t => t.UserId).Distinct().ToList();
+        var infos = await users.GetUserInfosAsync(userIds, ct);
+        var targets = await userEmails.GetNotificationTargetEmailsAsync(userIds, ct);
+
+        foreach (var t in transfers)
+        {
+            if (!infos.TryGetValue(t.UserId, out var member)
+                || !targets.TryGetValue(t.UserId, out var recipient) || string.IsNullOrWhiteSpace(recipient))
+            {
+                logger.LogWarning(
+                    "Skipping SEPA payout email for transfer {TransferId}: member {UserId} has no notification email",
+                    t.Id, t.UserId);
+                continue;
+            }
+
+            await emailService.SendAsync(emails.SepaPayoutGenerated(
+                recipient, member.BurnerName, t.Amount, t.IbanMasked, member.PreferredLanguage), ct);
+        }
     }
 
     // ─── SEPA booking against the bank line (nobodies-collective/Humans#1185) ───

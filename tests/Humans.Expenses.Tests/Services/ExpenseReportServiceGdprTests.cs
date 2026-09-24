@@ -16,6 +16,8 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Email.Contracts;
+using Humans.Expenses.Tests.Infrastructure;
 
 namespace Humans.Expenses.Tests.Services;
 
@@ -54,6 +56,9 @@ public class ExpenseReportServiceGdprTests
             Substitute.For<IBudgetServiceRead>(),
             Substitute.For<ITeamServiceRead>(),
             _userService,
+            Substitute.For<IUserEmailService>(),
+            Substitute.For<IEmailService>(),
+            TestExpensesEmails.Create(),
             _auditLogService,
             Substitute.For<IHoldedClient>(),
             _holdedFinance,

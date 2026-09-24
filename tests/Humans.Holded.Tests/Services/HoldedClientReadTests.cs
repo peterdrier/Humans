@@ -128,6 +128,23 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
+    public async Task ListPurchaseDocuments_parses_the_internal_description()
+    {
+        var json = """
+        {"items":[
+          {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","description":"ER: Tent pegs"},
+          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","description":null},
+          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00"}
+        ],"cursor":null,"has_more":false}
+        """;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var docs = await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        docs.Select(d => d.Description).Should().Equal("ER: Tent pegs", null, null);
+    }
+
+    [HumansFact]
     public async Task ListPurchaseDocuments_parses_the_draft_flag()
     {
         // Neither ?approval_status=draft nor ?draft=true reliably filters the live list endpoint

@@ -18,7 +18,6 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("email");
         tab.Label.Should().Be("Settings_TabEmail");
-        tab.ComponentName.Should().Be("EmailPauseSettingsTab");
         tab.Policy.Should().Be(PolicyNames.AdminOnly);
     }
 }

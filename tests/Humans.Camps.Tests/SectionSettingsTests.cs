@@ -18,7 +18,6 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("barrios");
         tab.Label.Should().Be("Settings_TabBarrios");
-        tab.ComponentName.Should().Be("CampBarriosSettingsTab");
         tab.Policy.Should().Be(PolicyNames.CampAdminOrAdmin);
     }
 }

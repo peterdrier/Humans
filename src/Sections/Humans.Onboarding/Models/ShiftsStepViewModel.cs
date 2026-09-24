@@ -13,9 +13,9 @@ namespace Humans.Onboarding.Models;
 /// <c>ShiftBrowseViewModel</c>, <c>RotaShiftGroup</c>, <c>ShiftBrowseMapper</c> and the
 /// <c>_BuildStrikeRotaTable</c>/<c>_EventRotaTable</c> partials all live in
 /// <c>Humans.Shifts</c> — so the view hands this model's contents to Shifts'
-/// <c>OnboardingShiftsList</c> view component and invokes it by name (design §15 step 6).
-/// Everything on this record is a <c>Humans.Shifts.Contracts</c> type, which is what makes
-/// that invocation compile from here without referencing the Shifts section project.
+/// <c>OnboardingShiftsList</c> view component, invoked by Type through the
+/// <c>IOnboardingShiftsStep</c> seam. The event goes across by id, since Shifts' rota
+/// partials need its own settings DTO.
 /// </remarks>
 internal sealed class ShiftsStepViewModel
 {

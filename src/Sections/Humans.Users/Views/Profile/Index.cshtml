@@ -93,7 +93,7 @@
         }
 
         @* Section-contributed parts (IUserPart), e.g. the Events card; each auto-hides when empty *@
-        <vc:user-parts user-id="@Model.UserId" />
+        <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.Profile" user-id="@Model.UserId" view-mode="@cardViewMode" />
 
         @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)
         {
@@ -171,7 +171,8 @@
     @if (Model.IsOwnProfile)
     {
         <div class="col-md-4">
-            @await Component.InvokeAsync("TicketHoldings", new { userId = Model.UserId })
+            @* Section-contributed parts (IUserPart) — TicketHoldings (Tickets), each auto-hides when empty *@
+            <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.ProfileSidebar" user-id="@Model.UserId" view-mode="@cardViewMode" />
 
             <div class="card mb-4">
                 <div class="card-header">@Localizer["Profile_QuickActions"]</div>

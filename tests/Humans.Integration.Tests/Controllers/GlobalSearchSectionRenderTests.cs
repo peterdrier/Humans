@@ -54,7 +54,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// instance per row must not mean one query per row.
 /// </para>
 /// <para>
-/// The third covers the other call site — <c>/WidgetGallery</c>, which catalogs all four
+/// The third covers the other call site — <c>/Debug/WidgetGallery</c>, which catalogs all four
 /// and needs its own <c>@addTagHelper</c> lines in <c>Humans.Debug</c>.
 /// </para>
 /// </remarks>
@@ -106,7 +106,7 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         await SeedOneRowPerBucketAsync(token, 0, Factory.Services, ct);
 
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
-        var response = await Client.GetAsync("/WidgetGallery", ct);
+        var response = await Client.GetAsync("/Debug/WidgetGallery", ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);

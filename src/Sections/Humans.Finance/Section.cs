@@ -4,6 +4,7 @@ using Humans.Finance.Contracts;
 using Humans.Finance.Data;
 using Humans.Finance.Services;
 using Humans.Base.Hosting;
+using Humans.Email.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -54,5 +55,10 @@ public sealed class Section : ISection
         services.AddScoped<Jobs.SepaBankBookingJob>();
         // Owns the user-scoped holded_creditor_contacts table → GDPR export contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<Service>());
+
+        // Finance owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<FinanceEmails>();
+        services.AddScoped<IEmailPreviewContributor, FinanceEmailPreviews>();
     }
 }

@@ -5,6 +5,7 @@ using Humans.Expenses.Jobs;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Humans.Base.Hosting;
+using Humans.Email.Contracts;
 using Humans.Base.Models.Tables;
 using Humans.Expenses.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -41,6 +42,11 @@ public sealed class Section : ISection
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ExpenseReportService>());
 
         services.Configure<TravelReimbursementConfig>(configuration.GetSection("TravelReimbursement"));
+
+        // Expenses owns its email copy and its gallery samples; Email keeps the mechanics
+        // (memory/architecture/email-templates-live-in-sender.md).
+        services.AddScoped<ExpensesEmails>();
+        services.AddScoped<IEmailPreviewContributor, ExpensesEmailPreviews>();
 
         // Resource-based handlers move into the section; the policies they satisfy stay in
         // Shell's AuthorizationPolicyExtensions (design §8's asymmetry, §15 step 6).

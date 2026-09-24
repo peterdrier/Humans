@@ -35,10 +35,8 @@
     </div>
 </div>
 
-@* Tickets contributes the order summary here; renders nothing without an order.
-   ChromeSlotViewComponent is Shell-resident (Humans.Web) — a section RCL cannot
-   @addTagHelper it, so invoke by name (design §15 step 6). *@
-@await Component.InvokeAsync("ChromeSlot", new { name = "guest-page" })
+@* Tickets contributes the order summary here; renders nothing without an order. *@
+<vc:chrome-slot name="@Humans.Base.Interfaces.ChromeSlots.GuestPage" />
 
 <div class="row justify-content-center mb-5">
     <div class="col-lg-8">

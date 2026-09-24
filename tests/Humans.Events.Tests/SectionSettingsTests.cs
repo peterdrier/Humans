@@ -19,7 +19,6 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("event-guide");
         tab.Label.Should().Be("Settings_TabEventGuide");
-        tab.ComponentName.Should().Be("EventGuideSettingsTab");
         tab.Policy.Should().Be(PolicyNames.EventsAdminOrAdmin);
     }
 }

@@ -3,6 +3,7 @@ using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
+using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Holded.Contracts;
@@ -31,6 +32,9 @@ internal sealed class ExpenseReportService(
     IBudgetServiceRead budgetService,
     ITeamServiceRead teamService,
     IUserService userService,
+    IUserEmailService userEmailService,
+    IEmailService emailService,
+    ExpensesEmails emails,
     IAuditLogService auditLogService,
     IHoldedClient holdedClient,
     IHoldedFinanceService holdedFinance,
@@ -1078,7 +1082,36 @@ internal sealed class ExpenseReportService(
                 actorUserId);
         }
 
+        await SendApprovedEmailAsync(reportId, ct);
+
         return true;
+    }
+
+    /// <summary>
+    /// Tells the submitter their report was approved (peterdrier/Humans#1820). Re-reads the
+    /// report after the flip so the amount is the DTO's own <c>Payable</c> — the cap the approver
+    /// just set included — rather than a second copy of that formula. Sent after the save: the
+    /// outbox row is a promise of money, and a failed approval must not make it.
+    /// </summary>
+    private async Task SendApprovedEmailAsync(Guid reportId, CancellationToken ct)
+    {
+        var approved = await GetAsync(reportId, ct);
+        if (approved is null) return;
+
+        var submitter = await userService.GetUserInfoAsync(approved.SubmitterUserId, ct);
+        var targets = await userEmailService.GetNotificationTargetEmailsAsync([approved.SubmitterUserId], ct);
+        if (submitter is null || !targets.TryGetValue(approved.SubmitterUserId, out var recipient)
+            || string.IsNullOrWhiteSpace(recipient))
+        {
+            logger.LogWarning(
+                "Skipping expense-approved email for report {ReportId}: submitter {UserId} has no notification email",
+                reportId, approved.SubmitterUserId);
+            return;
+        }
+
+        await emailService.SendAsync(emails.ReportApproved(
+            recipient, submitter.BurnerName, reportId, approved.Payable,
+            IbanFormatter.Mask(approved.PayeeIban), submitter.PreferredLanguage), ct);
     }
 
     public Task<ExpenseMutationResult> ApproveWithResultAsync(

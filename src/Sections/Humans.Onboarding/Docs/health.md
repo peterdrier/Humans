@@ -73,7 +73,7 @@ Notes the table hides:
 - Root `Section*.cs` files are the composition entry points (DI, admin nav, chrome).
 
 Presentation the section does *not* own: the rota tables on the shifts step are Shifts'
-(`OnboardingShiftsListViewComponent`, invoked by name), the consent body is Consent's
+(`OnboardingShiftsListViewComponent`, invoked by Type through the `IOnboardingShiftsStep` seam), the consent body is Consent's
 (`_ConsentReviewBody`), and the person and access-matrix widgets are Base's.
 
 ## 4. Invariants

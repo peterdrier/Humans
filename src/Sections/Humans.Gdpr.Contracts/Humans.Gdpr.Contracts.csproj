@@ -10,8 +10,9 @@
     (memory/architecture/section-project-cycle-fix.md).
 
     Everything here is named from outside:
-      - IUserDataContributor + UserDataSlice + GdprExportSections — the contributor half,
-        named by every service that implements it.
+      - IUserDataContributor + UserDataSlice — the contributor half, named by every
+        service that implements it; each contributor declares its own section-name
+        constants.
       - IGdprService + GdprExport — the orchestrator half, named by Users'
         ProfileController (the /Profile export download), Users' AccountDeletionService
         (the erasure cascade) and this section's own GuestDataController.

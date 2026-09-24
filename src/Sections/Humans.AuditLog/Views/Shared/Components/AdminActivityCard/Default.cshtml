@@ -4,6 +4,6 @@
             <h3>Recent activity</h3>
             <small>last 24h</small>
         </div>
-        @await Component.InvokeAsync("AuditLog", new { limit = 8, layout = "activity", showCard = false, emptyText = "No recent activity." })
+        <vc:audit-log limit="8" layout="activity" show-card="false" empty-text="No recent activity." />
     </div>
 </div>

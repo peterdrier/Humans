@@ -19,7 +19,6 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("city-planning");
         tab.Label.Should().Be("Settings_TabCityPlanning");
-        tab.ComponentName.Should().Be("CityPlanningSettingsTab");
         tab.Policy.Should().Be(PolicyNames.CityPlanningMapAdmin,
             because: "these controls moved off a page that admitted city-planning team "
                      + "members too, so the tab must admit the same audience");

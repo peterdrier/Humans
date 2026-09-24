@@ -103,4 +103,10 @@
   <data name="Expenses_RejectReasonPlaceholder" xml:space="preserve"><value>e.g. Missing receipts for line 2</value></data>
   <data name="Expenses_ReviewQueue" xml:space="preserve"><value>Expense review</value></data>
   <data name="Expenses_ReviewQueueTitle" xml:space="preserve"><value>Expense Reports — Review</value></data>
+  <data name="Expenses_Email_Approved_Body" xml:space="preserve"><value>&lt;h2&gt;Expense Report Approved&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;Finance has approved your expense report. The amount to be reimbursed is &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;Payment will follow by bank transfer to the account ending {2}. We will let you know when the transfer has been sent.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}"&gt;View your expense report&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Expenses_Email_Approved_Subject" xml:space="preserve"><value>Your expense report has been approved</value></data>
 </root>

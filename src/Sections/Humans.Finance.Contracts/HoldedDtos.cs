@@ -17,11 +17,11 @@ public sealed record HoldedActualRow(
 
 /// <summary>One approved Holded purchase doc behind a category's actual.</summary>
 public sealed record HoldedActualDoc(
-    string HoldedDocId, string DocNumber, string ContactName, LocalDate Date,
+    string HoldedDocId, string DocNumber, string ContactName, string? Description, LocalDate Date,
     decimal Total, string HoldedUrl);
 
 public sealed record HoldedUnmatchedRow(
-    string HoldedDocId, string DocNumber, string ContactName, decimal Total,
+    string HoldedDocId, string DocNumber, string ContactName, string? Description, decimal Total,
     string Reason, string HoldedUrl);
 
 public sealed record HoldedSyncResult(int DocCount, int Matched, int Unmatched);

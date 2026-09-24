@@ -1,0 +1,40 @@
+@model Humans.Base.ViewComponents.AdminBreadcrumbViewModel
+@{
+    var item = Model.Page;
+}
+@if (Model.Group is null || item is null)
+{
+    <span class="here">@Model.Title</span>
+}
+else if (!Model.IsSubpage)
+{
+    @if (!Model.PageRepeatsGroup)
+    {
+        <span>@Model.Group</span><span class="sep">/</span>
+    }
+    <span class="here">@item.Label</span>
+}
+else
+{
+    @if (!Model.PageRepeatsGroup)
+    {
+        <span>@Model.Group</span><span class="sep">/</span>
+    }
+    @if (item.RawHref is not null)
+    {
+        <a href="@item.RawHref">@item.Label</a>
+    }
+    else
+    {
+        <a asp-controller="@item.Controller" asp-action="@item.Action">@item.Label</a>
+    }
+    <span class="sep">/</span>
+    @if (Model.Trail is not null)
+    {
+        <span class="trail">@Model.Trail</span>
+    }
+    else
+    {
+        <span class="here">@Model.Title</span>
+    }
+}

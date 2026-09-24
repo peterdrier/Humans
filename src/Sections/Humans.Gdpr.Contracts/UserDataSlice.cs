@@ -19,10 +19,10 @@ namespace Humans.Gdpr.Contracts;
 /// <param name="SectionName">
 /// The section name this contributor chose for its slice (e.g.
 /// <c>"Profile"</c>, <c>"ShiftSignups"</c>), declared as a constant on the
-/// owning contributor. Must be unique across contributors — duplicates are a
-/// bug — and must be a key of the same contributor's
-/// <see cref="IUserDataContributor.ErasureDeclaration"/>; both are enforced at
-/// runtime by the orchestrator.
+/// owning contributor. Must be unique across contributors — the orchestrator
+/// throws on a duplicate — and must be a key of the same contributor's
+/// <see cref="IUserDataContributor.ErasureDeclaration"/>; a missing key is
+/// logged and the slice still exported.
 /// </param>
 /// <param name="Data">
 /// Section-specific payload. Any shape that System.Text.Json can serialize

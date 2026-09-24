@@ -1,3 +1,4 @@
+using Humans.Base.ViewComponents;
 using Humans.Base.Interfaces;
 using Humans.Integration.Tests.Infrastructure;
 using Humans.Web.ViewComponents;

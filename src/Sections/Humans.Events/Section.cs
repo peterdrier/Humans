@@ -1,5 +1,6 @@
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
+using Humans.Camps.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Calendar.Contracts;
 using Humans.Email.Contracts;
@@ -7,6 +8,7 @@ using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Filters;
 using Humans.Events.Services;
+using Humans.Events.ViewComponents;
 using Humans.Settings.Contracts;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -18,13 +20,12 @@ namespace Humans.Events;
 /// Events' DI entry point, at the project root by convention. Discovered by Shell —
 /// nothing names it, so it needs no section prefix.
 /// </summary>
-public sealed class Section : ISection, IUserPart
+public sealed class Section : ISection, IUserPart, ICampPart
 {
-    ValueTask<IEnumerable<UserPart>> IUserPart.PartsAsync(
-        IServiceProvider services,
-        System.Security.Claims.ClaimsPrincipal viewer,
-        Guid userId) =>
-        ValueTask.FromResult<IEnumerable<UserPart>>([new("EventsCard")]);
+    IEnumerable<UserPart> IUserPart.Parts() => [new(UserPartSlots.Profile, typeof(EventsCardViewComponent))];
+
+    // The camp detail page's hosted-events card (nobodies-collective/Humans#1815).
+    IEnumerable<CampPart> ICampPart.Parts() => [new(typeof(EventsCardViewComponent))];
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {

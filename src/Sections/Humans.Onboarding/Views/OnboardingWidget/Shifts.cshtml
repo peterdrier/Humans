@@ -1,4 +1,6 @@
 @model ShiftsStepViewModel
+@using Humans.Onboarding.Contracts
+@inject IOnboardingShiftsStep ShiftsStep
 @{
     ViewData["Title"] = Localizer["Onboarding_ShiftsTitle"].Value;
     var hasShifts = Model.EventSettings is not null && Model.Shifts.Count > 0;
@@ -74,17 +76,18 @@
             else
             {
                 @* Shifts' rota tables are that section's presentation, so the component lives in
-                   Humans.Shifts and resolves by name across application parts — the arguments
-                   are all Humans.Shifts.Contracts types, which is what lets this view pass them
-                   without a reference to the Shifts section project (design §15 step 6). *@
-                @await Component.InvokeAsync("OnboardingShiftsList", new
-                {
-                    eventSettings = Model.EventSettings!,
-                    shifts = Model.Shifts,
-                    userSignupShiftIds = Model.UserSignupShiftIds,
-                    userSignupStatuses = Model.UserSignupStatuses,
-                    earlyEntrySignupsClosed = Model.EarlyEntrySignupsClosed,
-                })
+                   Humans.Shifts. Invoked by Type through the IOnboardingShiftsStep seam
+                   (nobodies-collective/Humans#1815) — a single-contributor slot, so
+                   ViewComponentSlotContractTests requires every OnboardingShiftsStepArgs property
+                   to bind to a parameter and vice versa: a dropped or renamed argument fails the
+                   build instead of silently 500ing (#1810). The event goes across by id; Shifts
+                   resolves its own settings DTO. *@
+                @await Component.InvokeAsync(ShiftsStep.ShiftsList, new OnboardingShiftsStepArgs(
+                    EventSettingsId: Model.EventSettings!.Id,
+                    Shifts: Model.Shifts,
+                    UserSignupShiftIds: Model.UserSignupShiftIds,
+                    UserSignupStatuses: Model.UserSignupStatuses,
+                    EarlyEntrySignupsClosed: Model.EarlyEntrySignupsClosed))
             }
         </div>
     </div>
