@@ -51,8 +51,8 @@ Every row in the section ledger was verified; the cap was not reached.
 
 ## Skipped
 
-- Finding 10: changes what the timing log reports for the other list reads; Peter's call (Needs Peter).
-- Finding 11: existing issues are read-only to a run; verdicts are in Needs Peter.
+- Finding 10: changes what the timing log reports for the other list reads; Peter's call (Needs Peter). State: kept by Peter.
+- Finding 11: existing issues are read-only to a run; verdicts are in Needs Peter. State: both closed on Peter's answer.
 - Finding 14: off-section rows; recorded here for their owners, not edited.
 - Blocked this run: Gdpr (open section-doctor PR) and Settings (recent pushed branch).
 
@@ -68,8 +68,8 @@ Every row in the section ledger was verified; the cap was not reached.
 
 ## Needs Peter
 
-- [ ] 10 — time each page in the issued-ticket and check-in reads too, as orders does?
-- [ ] 11 — close peterdrier/Humans#1653 and nobodies-collective/Humans#946 as shipped?
+- [x] 10 — time each page in the issued-ticket and check-in reads too, as orders does? **Keep** (Peter): the whole-loop timing stays.
+- [x] 11 — close peterdrier/Humans#1653 and nobodies-collective/Humans#946 as shipped? **Closed** (Peter), both as completed.
 
 ## File coverage
 
