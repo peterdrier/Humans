@@ -14,8 +14,8 @@ namespace Humans.TicketTailor.Services;
 
 /// <summary>
 /// Ticket Tailor v1 client: one method per <see cref="ITicketVendorService"/> port method.
-/// List and event reads throw <see cref="HttpRequestException"/>; void and issue throw
-/// <see cref="TicketVendorWriteException"/>.
+/// Void and issue throw <see cref="TicketVendorWriteException"/>; every other method throws
+/// <see cref="HttpRequestException"/>.
 /// </summary>
 internal sealed class TicketTailorService : ITicketVendorService
 {
@@ -291,7 +291,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         // Form-encoded, not JSON — a JSON body silently 400s. issued_ticket_id and quantity are
         // required; check_in_at is unix seconds. Not idempotent (each POST creates a record), so
         // callers never retry. The key needs Event-manager scope; an Order-manager key 403s.
-        var form = new FormUrlEncodedContent(new Dictionary<string, string>(StringComparer.Ordinal)
+        using var form = new FormUrlEncodedContent(new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["issued_ticket_id"] = vendorTicketId,
             ["quantity"] = "1",
@@ -402,7 +402,6 @@ internal sealed class TicketTailorService : ITicketVendorService
         List<TtCustomQuestion>? CustomQuestions,
         string? Barcode = null);
 
-    // Gate scans are their own /check_ins resource; the issued ticket stays "valid".
     // check_in_at and created_at are epoch seconds.
     internal sealed record TtCheckIn(
         string Id,

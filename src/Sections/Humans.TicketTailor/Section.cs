@@ -40,8 +40,8 @@ public sealed class Section : ISection
         {
             services.AddHttpClient<TicketTailorService>(client =>
             {
-                // nobodies-collective/Humans#946: production calls routinely land at 21.6-27.1s, brushing the old 30s
-                // ceiling — raised comfortably above that observed range.
+                // nobodies-collective/Humans#946: production calls routinely land at 21.6-27.1s; keep the
+                // timeout well above that range.
                 client.Timeout = TimeSpan.FromSeconds(90);
             });
             services.AddKeyedScoped<ITicketVendorService>(
