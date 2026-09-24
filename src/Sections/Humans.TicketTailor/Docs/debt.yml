@@ -2,10 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 2
-inbox:
-  - added: 2026-09-05
-    id: TTAILOR-1
-    what: "StubTicketVendorService.BuildSampleData trips reforge longMethod and cognitiveComplexity, the section's whole score. It is the one deterministic fixture the target shape blesses; recorded so the score is not mistaken for unexamined debt. Split only if the dataset grows a second shape (finding 12, /section-doctor on TicketTailor 2026-09-05)."
-    review: light
-    status: needs-detail
-    blocked_on: "Name the target shape for BuildSampleData (or retire the row): accepted fixture complexity with no defect claimed."
+inbox: []
