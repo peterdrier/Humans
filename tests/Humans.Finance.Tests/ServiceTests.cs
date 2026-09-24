@@ -352,8 +352,14 @@ public class HoldedFinanceServiceTests
 
         static HoldedPurchaseDocListItemDto Doc(string id, string description) => new()
         {
-            Id = id, DocNumber = id, ContactName = "Dan", Description = description,
-            Date = Instant.FromUtc(2026, 4, 15, 10, 0), Subtotal = 10, Tax = 0, Total = 10,
+            Id = id,
+            DocNumber = id,
+            ContactName = "Dan",
+            Description = description,
+            Date = Instant.FromUtc(2026, 4, 15, 10, 0),
+            Subtotal = 10,
+            Tax = 0,
+            Total = 10,
         };
     }
 
