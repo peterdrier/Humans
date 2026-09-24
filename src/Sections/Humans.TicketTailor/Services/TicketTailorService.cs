@@ -129,18 +129,7 @@ internal sealed class TicketTailorService : ITicketVendorService
             if (body?.Data is null || body.Data.Count == 0)
                 break;
 
-            foreach (var ticket in body.Data)
-            {
-                tickets.Add(new VendorTicketDto(
-                    VendorTicketId: ticket.Id,
-                    VendorOrderId: ticket.OrderId,
-                    AttendeeName: ticket.FullName ?? $"{ticket.FirstName} {ticket.LastName}".Trim(),
-                    AttendeeEmail: ResolveAttendeeEmail(ticket),
-                    TicketTypeName: ticket.Description ?? "Unknown",
-                    Price: (ticket.ListedPrice ?? 0) / 100m,
-                    Status: ticket.Status ?? "valid",
-                    Barcode: ticket.Barcode));
-            }
+            tickets.AddRange(body.Data.Select(ToVendorTicket));
 
             cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
         } while (cursor is not null);
@@ -414,6 +403,17 @@ internal sealed class TicketTailorService : ITicketVendorService
         string? Question,
         string? Answer);
 
+    // One mapping for an issued ticket, whether it came from a list page or an issue response.
+    private static VendorTicketDto ToVendorTicket(TtIssuedTicket ticket) => new(
+        VendorTicketId: ticket.Id,
+        VendorOrderId: ticket.OrderId,
+        AttendeeName: ticket.FullName ?? $"{ticket.FirstName} {ticket.LastName}".Trim(),
+        AttendeeEmail: ResolveAttendeeEmail(ticket),
+        TicketTypeName: ticket.Description ?? "Unknown",
+        Price: (ticket.ListedPrice ?? 0) / 100m,
+        Status: ticket.Status ?? "valid",
+        Barcode: ticket.Barcode);
+
     // TT's issued_ticket.email is the buyer/account email replicated onto every
     // ticket in the order — useless for matching the actual attendee. The real
     // attendee email is collected via a custom checkout question whose text is
@@ -526,14 +526,7 @@ internal sealed class TicketTailorService : ITicketVendorService
                 "TicketTailor issue returned 2xx with empty body",
                 TicketVendorFailureKind.Transient);
 
-        return new VendorTicketDto(
-            VendorTicketId: body.Id,
-            VendorOrderId: body.OrderId,
-            AttendeeName: body.FullName ?? $"{body.FirstName} {body.LastName}".Trim(),
-            AttendeeEmail: ResolveAttendeeEmail(body),
-            TicketTypeName: body.Description ?? "Unknown",
-            Price: (body.ListedPrice ?? 0) / 100m,
-            Status: body.Status ?? "valid");
+        return ToVendorTicket(body);
     }
 
     internal sealed record TtVoidResponse(

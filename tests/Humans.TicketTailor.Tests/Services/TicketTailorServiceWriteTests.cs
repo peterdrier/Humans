@@ -245,7 +245,8 @@ public class TicketTailorServiceWriteTests
             description = "Weekend Pass",
             listed_price = 20000,
             status = "valid",
-            order_id = (string?)null
+            order_id = (string?)null,
+            barcode = "Kx7Pq2Zm"
         });
 
         var service = TicketTailorTestHost.CreateService(handler);
@@ -267,6 +268,7 @@ public class TicketTailorServiceWriteTests
         result.TicketTypeName.Should().Be("Weekend Pass");
         result.Price.Should().Be(200m);
         result.Status.Should().Be("valid");
+        result.Barcode.Should().Be("Kx7Pq2Zm");
     }
 
     [HumansTheory]

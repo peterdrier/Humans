@@ -51,16 +51,16 @@ account. It stores nothing, caches nothing, and talks to nobody but Tickets and 
   (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:101`). Orders and issued
   tickets filter on `updated_at.gte`; check-ins filter on `created_at.gte` (upload time, not
   scan time) so a late-uploaded offline scan is never skipped
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:167`).
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:156`).
 - A check-in is reported only when a ticket's net quantity across records is positive; its
   time is the earliest positive record's `check_in_at`, falling back to `created_at`
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:204`).
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:193`).
 - Attendee email is the answer to the custom question whose text is exactly `Email`,
   else the ticket's top-level email
   (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:427`).
 - Money crosses the boundary in euros: vendor cents divided by 100 on the way in, monetary
   discount values multiplied by 100 on the way out
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:270`).
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:259`).
 - Void and issue map HTTP status to `TicketVendorFailureKind`: 400/422 Validation, 401/403
   AuthFailed, 404 NotFound, 429 RateLimited, anything else and transport failure Transient
   (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:548`). Every other
@@ -69,7 +69,7 @@ account. It stores nothing, caches nothing, and talks to nobody but Tickets and 
   `ArgumentException` before any call
   (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:485`).
 - Check-in posts form-encoded `issued_ticket_id`, `quantity=1`, `check_in_at`
-  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:294`); the vendor call is
+  (`src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs:283`); the vendor call is
   not idempotent, so callers never retry it.
 - Both implementations are `internal sealed`; only `Section.Register` binds them, and
   only Tickets injects the port (`tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs`).
