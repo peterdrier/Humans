@@ -177,37 +177,6 @@ internal sealed class TicketTailorService : ITicketVendorService
         return checkIns;
     }
 
-    // TicketTailor /check_ins includes checkout/undo records (quantity = -1) alongside
-    // check-ins (quantity = +1, or more for a group ticket). Net the quantity per issued
-    // ticket and report a check-in only when the net is positive — otherwise a checkout
-    // record would wrongly mark the attendee onsite. The recorded arrival is the earliest
-    // positive scan (check_in_at, falling back to created_at).
-    private static IReadOnlyList<VendorCheckInDto> NetCheckIns(IEnumerable<TtCheckIn> records)
-    {
-        var result = new List<VendorCheckInDto>();
-
-        foreach (var group in records
-                     .Where(r => r.IssuedTicketId is { Length: > 0 })
-                     .GroupBy(r => r.IssuedTicketId!, StringComparer.Ordinal))
-        {
-            if (group.Sum(r => r.Quantity ?? 1) <= 0)
-                continue;
-
-            var earliest = group
-                .Where(r => (r.Quantity ?? 1) > 0)
-                .Select(r => r.CheckInAt ?? r.CreatedAt)
-                .Where(e => e is > 0)
-                .Select(e => e!.Value)
-                .DefaultIfEmpty(0L)
-                .Min();
-
-            if (earliest > 0)
-                result.Add(new VendorCheckInDto(group.Key, Instant.FromUnixTimeSeconds(earliest)));
-        }
-
-        return result;
-    }
-
     public async Task<VendorEventSummaryDto> GetEventSummaryAsync(
         string eventId, CancellationToken ct = default)
     {
@@ -301,151 +270,6 @@ internal sealed class TicketTailorService : ITicketVendorService
             "Recorded TicketTailor check-in for issued ticket {VendorTicketId}", vendorTicketId);
     }
 
-    /// <summary>
-    /// TT puts the code in a "gift_card" line item's description, in parentheses:
-    /// "NCA Contributor Discount (DISC25-OPGYT8-004)".
-    /// </summary>
-    private static string? ExtractDiscountCode(List<TtLineItem>? lineItems)
-    {
-        var discountItem = lineItems?.FirstOrDefault(li =>
-            string.Equals(li.Type, "gift_card", StringComparison.OrdinalIgnoreCase));
-
-        if (discountItem?.Description is null) return null;
-
-        var openParen = discountItem.Description.LastIndexOf('(');
-        var closeParen = discountItem.Description.LastIndexOf(')');
-        if (openParen >= 0 && closeParen > openParen)
-            return discountItem.Description[(openParen + 1)..closeParen];
-
-        return discountItem.Description;
-    }
-
-    /// <summary>gift_card totals are negative in the API; null when no discount applied.</summary>
-    private static decimal? ExtractDiscountAmount(List<TtLineItem>? lineItems)
-    {
-        if (lineItems is null) return null;
-
-        var discountCents = lineItems
-            .Where(li => string.Equals(li.Type, "gift_card", StringComparison.OrdinalIgnoreCase))
-            .Sum(li => Math.Abs(li.Total ?? 0));
-
-        return discountCents > 0 ? discountCents / 100m : null;
-    }
-
-    /// <summary>Standalone "donation" line items (VAT-exempt add-ons); 0 when none.</summary>
-    private static decimal ExtractDonationAmount(List<TtLineItem>? lineItems)
-    {
-        if (lineItems is null) return 0m;
-
-        var donationCents = lineItems
-            .Where(li => string.Equals(li.Type, "donation", StringComparison.OrdinalIgnoreCase))
-            .Sum(li => li.Total ?? 0);
-
-        return donationCents > 0 ? donationCents / 100m : 0m;
-    }
-
-    // Wire records: internal (not private) for System.Text.Json; names follow JsonOptions'
-    // snake_case policy.
-
-    internal sealed record TtPaginatedResponse<T>(
-        List<T> Data,
-        TtLinks? Links);
-
-    internal sealed record TtLinks(
-        string? Next);
-
-    internal sealed record TtOrder(
-        string Id,
-        TtBuyerDetails? BuyerDetails,
-        int? Total,
-        TtCurrency? Currency,
-        string? Status,
-        long CreatedAt,
-        List<TtLineItem>? LineItems,
-        string? TxnId);
-
-    internal sealed record TtLineItem(
-        string? Description,
-        string? Type,
-        int? Total);
-
-    internal sealed record TtBuyerDetails(
-        string? FirstName,
-        string? LastName,
-        string? Email,
-        string? Name);
-
-    internal sealed record TtCurrency(
-        string? Code);
-
-    internal sealed record TtIssuedTicket(
-        string Id,
-        string? FirstName,
-        string? LastName,
-        string? FullName,
-        string? Email,
-        string? Description,
-        int? ListedPrice,
-        string? Status,
-        string? OrderId,
-        List<TtCustomQuestion>? CustomQuestions,
-        string? Barcode = null);
-
-    // check_in_at and created_at are epoch seconds.
-    internal sealed record TtCheckIn(
-        string Id,
-        string? IssuedTicketId,
-        long? CheckInAt,
-        long? CreatedAt,
-        int? Quantity);
-
-    internal sealed record TtCustomQuestion(
-        string? Question,
-        string? Answer);
-
-    // One mapping for an issued ticket, whether it came from a list page or an issue response.
-    private static VendorTicketDto ToVendorTicket(TtIssuedTicket ticket) => new(
-        VendorTicketId: ticket.Id,
-        VendorOrderId: ticket.OrderId,
-        AttendeeName: ticket.FullName ?? $"{ticket.FirstName} {ticket.LastName}".Trim(),
-        AttendeeEmail: ResolveAttendeeEmail(ticket),
-        TicketTypeName: ticket.Description ?? "Unknown",
-        Price: (ticket.ListedPrice ?? 0) / 100m,
-        Status: ticket.Status ?? "valid",
-        Barcode: ticket.Barcode);
-
-    // TT's issued_ticket.email is the buyer/account email replicated onto every
-    // ticket in the order — useless for matching the actual attendee. The real
-    // attendee email is collected via a custom checkout question whose text is
-    // exactly "Email". Match the question string verbatim; fall back to the
-    // top-level field when absent.
-    internal static string? ResolveAttendeeEmail(TtIssuedTicket ticket)
-    {
-        var customEmail = ticket.CustomQuestions?
-            .FirstOrDefault(q =>
-                string.Equals(q.Question, "Email", StringComparison.Ordinal) &&
-                !string.IsNullOrWhiteSpace(q.Answer))
-            ?.Answer
-            ?.Trim();
-
-        return !string.IsNullOrEmpty(customEmail) ? customEmail : ticket.Email;
-    }
-
-    internal sealed record TtEvent(
-        string? Name,
-        int? TotalIssuedTickets,
-        List<TtTicketType>? TicketTypes,
-        List<TtTicketGroup>? TicketGroups);
-
-    internal sealed record TtTicketType(
-        int? QuantityTotal);
-
-    internal sealed record TtTicketGroup(
-        int? MaxQuantity);
-
-    internal sealed record TtVoucherCode(
-        string? Code);
-
     public async Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(
         string vendorTicketId, bool voidToHold, CancellationToken ct = default)
     {
@@ -529,9 +353,107 @@ internal sealed class TicketTailorService : ITicketVendorService
         return ToVendorTicket(body);
     }
 
-    internal sealed record TtVoidResponse(
-        string? Id,
-        string? HoldId);
+    // TicketTailor /check_ins includes checkout/undo records (quantity = -1) alongside
+    // check-ins (quantity = +1, or more for a group ticket). Net the quantity per issued
+    // ticket and report a check-in only when the net is positive — otherwise a checkout
+    // record would wrongly mark the attendee onsite. The recorded arrival is the earliest
+    // positive scan (check_in_at, falling back to created_at).
+    private static IReadOnlyList<VendorCheckInDto> NetCheckIns(IEnumerable<TtCheckIn> records)
+    {
+        var result = new List<VendorCheckInDto>();
+
+        foreach (var group in records
+                     .Where(r => r.IssuedTicketId is { Length: > 0 })
+                     .GroupBy(r => r.IssuedTicketId!, StringComparer.Ordinal))
+        {
+            if (group.Sum(r => r.Quantity ?? 1) <= 0)
+                continue;
+
+            var earliest = group
+                .Where(r => (r.Quantity ?? 1) > 0)
+                .Select(r => r.CheckInAt ?? r.CreatedAt)
+                .Where(e => e is > 0)
+                .Select(e => e!.Value)
+                .DefaultIfEmpty(0L)
+                .Min();
+
+            if (earliest > 0)
+                result.Add(new VendorCheckInDto(group.Key, Instant.FromUnixTimeSeconds(earliest)));
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// TT puts the code in a "gift_card" line item's description, in parentheses:
+    /// "NCA Contributor Discount (DISC25-OPGYT8-004)".
+    /// </summary>
+    private static string? ExtractDiscountCode(List<TtLineItem>? lineItems)
+    {
+        var discountItem = lineItems?.FirstOrDefault(li =>
+            string.Equals(li.Type, "gift_card", StringComparison.OrdinalIgnoreCase));
+
+        if (discountItem?.Description is null) return null;
+
+        var openParen = discountItem.Description.LastIndexOf('(');
+        var closeParen = discountItem.Description.LastIndexOf(')');
+        if (openParen >= 0 && closeParen > openParen)
+            return discountItem.Description[(openParen + 1)..closeParen];
+
+        return discountItem.Description;
+    }
+
+    /// <summary>gift_card totals are negative in the API; null when no discount applied.</summary>
+    private static decimal? ExtractDiscountAmount(List<TtLineItem>? lineItems)
+    {
+        if (lineItems is null) return null;
+
+        var discountCents = lineItems
+            .Where(li => string.Equals(li.Type, "gift_card", StringComparison.OrdinalIgnoreCase))
+            .Sum(li => Math.Abs(li.Total ?? 0));
+
+        return discountCents > 0 ? discountCents / 100m : null;
+    }
+
+    /// <summary>Standalone "donation" line items (VAT-exempt add-ons); 0 when none.</summary>
+    private static decimal ExtractDonationAmount(List<TtLineItem>? lineItems)
+    {
+        if (lineItems is null) return 0m;
+
+        var donationCents = lineItems
+            .Where(li => string.Equals(li.Type, "donation", StringComparison.OrdinalIgnoreCase))
+            .Sum(li => li.Total ?? 0);
+
+        return donationCents > 0 ? donationCents / 100m : 0m;
+    }
+
+    // One mapping for an issued ticket, whether it came from a list page or an issue response.
+    private static VendorTicketDto ToVendorTicket(TtIssuedTicket ticket) => new(
+        VendorTicketId: ticket.Id,
+        VendorOrderId: ticket.OrderId,
+        AttendeeName: ticket.FullName ?? $"{ticket.FirstName} {ticket.LastName}".Trim(),
+        AttendeeEmail: ResolveAttendeeEmail(ticket),
+        TicketTypeName: ticket.Description ?? "Unknown",
+        Price: (ticket.ListedPrice ?? 0) / 100m,
+        Status: ticket.Status ?? "valid",
+        Barcode: ticket.Barcode);
+
+    // TT's issued_ticket.email is the buyer/account email replicated onto every
+    // ticket in the order — useless for matching the actual attendee. The real
+    // attendee email is collected via a custom checkout question whose text is
+    // exactly "Email". Match the question string verbatim; fall back to the
+    // top-level field when absent.
+    private static string? ResolveAttendeeEmail(TtIssuedTicket ticket)
+    {
+        var customEmail = ticket.CustomQuestions?
+            .FirstOrDefault(q =>
+                string.Equals(q.Question, "Email", StringComparison.Ordinal) &&
+                !string.IsNullOrWhiteSpace(q.Answer))
+            ?.Answer
+            ?.Trim();
+
+        return !string.IsNullOrEmpty(customEmail) ? customEmail : ticket.Email;
+    }
 
     private static async Task<TicketVendorWriteException> BuildVendorWriteExceptionAsync(
         HttpResponseMessage response, string op, string subject, CancellationToken ct)
@@ -548,4 +470,82 @@ internal sealed class TicketTailorService : ITicketVendorService
         return new TicketVendorWriteException(
             $"TicketTailor {op} {subject} returned {(int)response.StatusCode}: {body}", kind);
     }
+
+    // Wire records: internal (not private) for System.Text.Json; names follow JsonOptions'
+    // snake_case policy.
+
+    internal sealed record TtPaginatedResponse<T>(
+        List<T> Data,
+        TtLinks? Links);
+
+    internal sealed record TtLinks(
+        string? Next);
+
+    internal sealed record TtOrder(
+        string Id,
+        TtBuyerDetails? BuyerDetails,
+        int? Total,
+        TtCurrency? Currency,
+        string? Status,
+        long CreatedAt,
+        List<TtLineItem>? LineItems,
+        string? TxnId);
+
+    internal sealed record TtLineItem(
+        string? Description,
+        string? Type,
+        int? Total);
+
+    internal sealed record TtBuyerDetails(
+        string? FirstName,
+        string? LastName,
+        string? Email,
+        string? Name);
+
+    internal sealed record TtCurrency(
+        string? Code);
+
+    internal sealed record TtIssuedTicket(
+        string Id,
+        string? FirstName,
+        string? LastName,
+        string? FullName,
+        string? Email,
+        string? Description,
+        int? ListedPrice,
+        string? Status,
+        string? OrderId,
+        List<TtCustomQuestion>? CustomQuestions,
+        string? Barcode = null);
+
+    // check_in_at and created_at are epoch seconds.
+    internal sealed record TtCheckIn(
+        string Id,
+        string? IssuedTicketId,
+        long? CheckInAt,
+        long? CreatedAt,
+        int? Quantity);
+
+    internal sealed record TtCustomQuestion(
+        string? Question,
+        string? Answer);
+
+    internal sealed record TtEvent(
+        string? Name,
+        int? TotalIssuedTickets,
+        List<TtTicketType>? TicketTypes,
+        List<TtTicketGroup>? TicketGroups);
+
+    internal sealed record TtTicketType(
+        int? QuantityTotal);
+
+    internal sealed record TtTicketGroup(
+        int? MaxQuantity);
+
+    internal sealed record TtVoucherCode(
+        string? Code);
+
+    internal sealed record TtVoidResponse(
+        string? Id,
+        string? HoldId);
 }
