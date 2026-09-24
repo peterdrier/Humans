@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 66
+next_id: 67
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -565,4 +565,8 @@ inbox:
   - added: 2026-09-20
     id: CENTRAL-59
     what: "src/Sections/Humans.Users.Contracts/IUserInfoInvalidator.cs:24 deliberately omits the IInvalidator marker (its own comment says so, debt nobodies-collective/Humans#805), so HUM0028 cannot see it and it needs no [Grandfathered] marker — one invalidator dodging the ratchet by being invisible to it. Marking it (or recording the exemption where the analyzer reads it) is small and separable from the big invalidator rework the HUM0028 theme is parked on. Found by the 2026-09-20 accepted-smell audit."
+    review: light
+  - added: 2026-09-24
+    id: CENTRAL-66
+    what: "src/Humans.Base/Caching/CacheKeys.cs still defines TicketEventSummary and its CacheKeys.Metadata TTL entry, but nothing reads either since Tickets' CachingTicketVendorService moved the vendor event-summary cache onto its own TrackedCache. peterdrier/Humans#1653 asked for the key to move from Base to Tickets; with no reader left it can simply go, together with the service-data-access-map row that lists it as unused (finding 12, /section-doctor on TicketTailor 2026-09-24)."
     review: light
