@@ -265,8 +265,18 @@
                     {
                         <tr>
                             <td class="text-nowrap">@d.Date.ToDate()</td>
-                            <td class="text-nowrap">@d.DocNumber</td>
-                            <td>@d.ContactName</td>
+                            <td class="text-nowrap">
+                                <a href="@d.HoldedUrl" target="_blank" rel="noopener noreferrer" title="Open in Holded">
+                                    @(string.IsNullOrWhiteSpace(d.DocNumber) ? d.HoldedDocId : d.DocNumber)<i class="fa-solid fa-arrow-up-right-from-square ms-1 small"></i>
+                                </a>
+                            </td>
+                            <td>
+                                @d.ContactName
+                                @if (d.Description is not null)
+                                {
+                                    <div class="small text-muted">@d.Description</div>
+                                }
+                            </td>
                             <td class="text-end">@d.Total.ToEuro()</td>
                             <td>
                                 @if (d.IsApproved == true)

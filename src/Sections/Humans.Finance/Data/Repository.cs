@@ -38,6 +38,7 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
             {
                 cur.DocNumber = d.DocNumber;
                 cur.ContactName = d.ContactName;
+                cur.Description = d.Description;
                 cur.Date = d.Date;
                 cur.Subtotal = d.Subtotal;
                 cur.Tax = d.Tax;

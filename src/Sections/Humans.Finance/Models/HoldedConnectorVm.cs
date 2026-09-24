@@ -73,6 +73,8 @@ internal sealed record HoldedDocVm(
     string HoldedDocId,
     string DocNumber,
     string ContactName,
+    string? Description,
+    string HoldedUrl,
     LocalDate Date,
     decimal Total,
     bool? IsApproved,

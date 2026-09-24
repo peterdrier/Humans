@@ -47,6 +47,7 @@ What lives here: the Holded purchase-doc sync and its attribution to budget cate
 | HoldedDocId | string | Unique. Natural key for upsert. |
 | DocNumber | string | e.g. `F260009` |
 | ContactName | string | Vendor name, denormalized. |
+| Description | string? | Holded's internal description (`description`; "Add an internal description" in its UI). Trimmed; blank stored as null. Shown beside the doc on `/Finance`, `/Finance/Holded` and the unmatched queue. |
 | Date | LocalDate | From Holded `date` (epoch s, Europe/Madrid) |
 | Subtotal | decimal | EUR, raw |
 | Tax | decimal | EUR, raw (net of IVA − IRPF) |
@@ -178,7 +179,7 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 | `GET /Finance/HoldedAccounts` | Account provisioning UI (reconcile + apply) |
 | `GET /Finance/HoldedUnmatched` | Unmatched-doc worklist with deep links and "Sync now" |
 | `GET /Finance/Creditors` | Admin overview of all cached 400000xx creditor accounts with member bindings |
-| `GET /Finance/Creditors/{accountNum:int}` | Per-account creditor statement (Holded's balance sign-flipped so positive means the organisation owes the member and negative means the member owes it; plus itemized journal lines) |
+| `GET /Finance/Creditors/{accountNum:int}` | Per-account creditor statement (Holded's balance sign-flipped so positive means the organisation owes the member and negative means the member owes it; plus itemized journal lines). "See in Holded" opens the same account's ledger at `app.holded.com/accounting/ledger/{accountNum}` |
 | `GET /Finance/Sepa` | Generated payout files and their transfers, with each transfer's booking state and the reason it cannot be booked. Makes one live `ListBankMovementsAsync` call to match transfers to Sabadell lines (nobodies-collective/Humans#1185); a failure banners and every row falls back to "waiting for the Sabadell line" |
 | `POST /Finance/HoldedAccounts/Provision` | Add one or all pending Holded accounts + map rows |
 | `POST /Finance/HoldedSync/Run` | Manual sync trigger |
@@ -210,6 +211,7 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 - Tags are normalized: lowercase, all non-alphanumeric characters stripped (Holded strips separators like dashes from tag values).
 - Provisioning is additive only, and nothing retires a map entry today: `IsActive` is set `true` on insert and never flipped, so an orphaned row stays active. Holded accounts are never deleted.
 - `GetActualsForYearAsync` returns the per-category total **and the approved docs it sums** (`HoldedActualRow.Docs`, newest first). Budget's year page renders them under the category so a wrong Holded figure can be traced to the document behind it; a draft excluded from the total is absent from the list too.
+- Every link to a Holded purchase doc is `https://app.holded.com/expenses/list#open:purchase-{HoldedDocId}` (`Service.HoldedDocUrl`) — Holded has no stable per-doc page, so its list opens the doc from the fragment.
 - `HoldedExpenseDoc.Total` is included in category-level actuals only when `IsApproved = true` — set on sync as `doc.IsDraft == false` (`Service.MapDoc`). Actuals are doc-derived rather than ledger-derived because the budget pages are gross/IVA-inclusive while a 629 balance is net, and ledger lines exist for drafts Holded has not approved.
 - Holded API key read from env var `HOLDED_API_KEY_V2` only — never `appsettings.json`.
 - The member ↔ creditor-account link resolves through the Holded contact's `supplierRecord.num` field, never by name matching. It is attempted **exactly once**, best-effort, during outbox processing after the payable exists (`ExpenseReportService` → `IHoldedClient.GetContactAsync`); a failure or a null `num` is logged, the null link is stored, and the outbox event is still marked processed so a created doc is never stranded as permanently-failed. **There is no automatic retry** — `SyncCreditorLedgerAsync` imports daybook lines but never re-resolves the contact — so after an initial miss the member stays unlinked until someone runs `POST /Finance/Creditors/Bind`, or a later report from the same member resolves it and backfills the member-level binding (nobodies-collective/Humans#972). `ListCreditorAccountsAsync` returns exactly these unresolved bindings as the `Unresolved` half of its result — they have no account row to sit on, so the account list alone cannot show them — and they render in their own card on `/Finance/Creditors`, making the manual step discoverable rather than silent.

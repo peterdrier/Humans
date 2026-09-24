@@ -258,6 +258,7 @@ internal sealed class Service(
             HoldedDocId = doc.Id,
             DocNumber = doc.DocNumber,
             ContactName = doc.ContactName,
+            Description = string.IsNullOrWhiteSpace(doc.Description) ? null : doc.Description.Trim(),
             Date = localDate,
             Subtotal = doc.Subtotal,
             Tax = doc.Tax,
@@ -297,7 +298,8 @@ internal sealed class Service(
                 g.OrderByDescending(d => d.Date)
                     .ThenBy(d => d.DocNumber, StringComparer.Ordinal)
                     .Select(d => new HoldedActualDoc(
-                        d.HoldedDocId, d.DocNumber, d.ContactName, d.Date, d.Total, HoldedDocUrl(d.HoldedDocId)))
+                        d.HoldedDocId, d.DocNumber, d.ContactName, d.Description, d.Date, d.Total,
+                        HoldedDocUrl(d.HoldedDocId)))
                     .ToList()))
             .Where(r => r.Actual != 0m)
             .ToList();
@@ -313,14 +315,16 @@ internal sealed class Service(
                 d.HoldedDocId,
                 d.DocNumber,
                 d.ContactName,
+                d.Description,
                 d.Total,
                 ReasonFor(d),
                 HoldedDocUrl(d.HoldedDocId)))
             .ToList();
     }
 
+    // Holded has no stable per-doc page; its purchase list opens a doc from this fragment.
     private static string HoldedDocUrl(string holdedDocId) =>
-        $"https://app.holded.com/purchases/{holdedDocId}";
+        $"https://app.holded.com/expenses/list#open:purchase-{holdedDocId}";
 
     public async Task<string?> GetHoldedAccountIdForCategoryAsync(
         Guid budgetCategoryId, CancellationToken ct = default)
@@ -380,6 +384,8 @@ internal sealed class Service(
                 d.HoldedDocId,
                 d.DocNumber,
                 d.ContactName,
+                d.Description,
+                HoldedDocUrl(d.HoldedDocId),
                 d.Date,
                 d.Total,
                 d.IsApproved,

@@ -88,7 +88,7 @@ public class HoldedFinanceServiceTests
         {
             new() { HoldedDocId = "d1", DocNumber = "PUR-1", ContactName = "Acme",
                     Date = new LocalDate(2026, 3, 1), Total = 121m, IsApproved = true },
-            new() { HoldedDocId = "d2", DocNumber = "PUR-2", ContactName = "Beta",
+            new() { HoldedDocId = "d2", DocNumber = "PUR-2", ContactName = "Beta", Description = "ER: Tent pegs",
                     Date = new LocalDate(2026, 5, 1), Total = 60.50m, IsApproved = true },
             new() { HoldedDocId = "d3", DocNumber = "PUR-3", ContactName = "Draft Co",
                     Date = new LocalDate(2026, 6, 1), Total = 999m, IsApproved = false },
@@ -100,8 +100,9 @@ public class HoldedFinanceServiceTests
         // Only what the total is made of — the draft is excluded from both.
         row.Docs.Select(d => d.DocNumber).Should().Equal("PUR-2", "PUR-1");
         row.Docs.Sum(d => d.Total).Should().Be(row.Actual);
-        row.Docs[0].HoldedUrl.Should().Be("https://app.holded.com/purchases/d2");
+        row.Docs[0].HoldedUrl.Should().Be("https://app.holded.com/expenses/list#open:purchase-d2");
         row.Docs[0].ContactName.Should().Be("Beta");
+        row.Docs[0].Description.Should().Be("ER: Tent pegs");
         row.Docs[0].Date.Should().Be(new LocalDate(2026, 5, 1));
     }
 
@@ -327,6 +328,33 @@ public class HoldedFinanceServiceTests
         await MakeService().SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         capturedDocs.Should().ContainSingle().Which.IsApproved.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Sync_StoresTheInternalDescription_BlankAsNull()
+    {
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new HoldedDocSyncState());
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
+            (IReadOnlyList<HoldedPurchaseDocListItemDto>)
+            [
+                Doc("d-desc", " ER: Tent pegs "),
+                Doc("d-blank", "  "),
+            ]);
+        IReadOnlyList<HoldedExpenseDoc>? capturedDocs = null;
+        await _repo.UpsertDocsAsync(
+            Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => capturedDocs = d),
+            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+
+        await MakeService().SyncAsync(Xunit.TestContext.Current.CancellationToken);
+
+        capturedDocs!.Select(d => d.Description).Should().Equal("ER: Tent pegs", null);
+
+        static HoldedPurchaseDocListItemDto Doc(string id, string description) => new()
+        {
+            Id = id, DocNumber = id, ContactName = "Dan", Description = description,
+            Date = Instant.FromUtc(2026, 4, 15, 10, 0), Subtotal = 10, Tax = 0, Total = 10,
+        };
     }
 
     [HumansFact]
@@ -1379,7 +1407,7 @@ public class HoldedFinanceServiceTests
             ("both", "Account and tags not mapped"),
             ("account-only", "Account not mapped"),
             ("tags-only", "Tags not matched"));
-        rows[0].HoldedUrl.Should().Be("https://app.holded.com/purchases/doc-neither");
+        rows[0].HoldedUrl.Should().Be("https://app.holded.com/expenses/list#open:purchase-doc-neither");
     }
 
     private static HoldedExpenseDoc UnmatchedDoc(string docNumber, string? account, string tagsJson) => new()
