@@ -83,19 +83,19 @@ h5, .h5 { font-size: 1.1rem; }
 /* --- Navbar --- */
 .navbar {
     background-color: var(--h-aged-ink) !important;
-    border-bottom: 3px solid var(--h-gold) !important;
-    box-shadow: var(--h-shadow);
-    padding-top: 0.6rem;
-    padding-bottom: 0.6rem;
+    height: 64px;
+    padding: 0 28px;
+    gap: 28px;
 }
 
 .navbar-brand {
     font-family: var(--h-font-display) !important;
+    font-style: italic;
     font-weight: 700 !important;
-    font-size: 1.4rem !important;
-    color: var(--h-parchment) !important;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    font-size: 1.45rem !important;
+    color: var(--h-gold) !important;
+    letter-spacing: 0.01em;
+    flex-shrink: 0;
     transition: color 0.2s ease;
 }
 
@@ -119,24 +119,43 @@ h5, .h5 { font-size: 1.1rem; }
     opacity: 1;
 }
 
+/* Links strip: the flexible middle column between the brand and the right
+   cluster. Desktop: fits inline. <900px: becomes a horizontally scrolling
+   strip with a mask-image edge fade (site.js scrolls the active link into
+   view, and fixed-positions an open dropdown's menu, on load). */
+.navbar-links {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.navbar .navbar-nav {
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+}
+
 .navbar .nav-link {
-    color: rgba(245, 230, 200, 0.7) !important;
+    color: var(--h-parchment) !important;
     font-family: var(--h-font-body);
-    font-weight: 600;
-    font-size: 0.82rem;
-    letter-spacing: 0.06em;
+    font-weight: 500;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    padding: 0.5rem 0.85rem !important;
-    transition: color 0.2s ease;
-    border-radius: var(--h-radius-sm);
+    padding: 8px 14px !important;
+    border-radius: 4px;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.2s ease, background-color 0.2s ease;
 }
 
 /* Queue count bubbles inside nav links */
 .nav-badge {
     font-size: 0.65rem;
+    font-weight: 700;
     line-height: 1;
-    padding: 0.2em 0.5em;
+    padding: 2px 7px;
     margin-left: 0.3em;
+    letter-spacing: 0.04em;
     vertical-align: middle;
     background-color: var(--h-amber);
     color: var(--h-warm-white);
@@ -144,13 +163,19 @@ h5, .h5 { font-size: 1.1rem; }
 
 .navbar .nav-link:hover,
 .navbar .nav-link:focus {
-    color: var(--h-parchment) !important;
-    background-color: rgba(201, 169, 110, 0.1);
+    color: var(--h-gold) !important;
+    background-color: rgba(255, 245, 221, 0.08);
+}
+
+.navbar .nav-link.active {
+    color: var(--h-gold) !important;
+    border-bottom-color: var(--h-gold);
+    border-radius: 0;
 }
 
 /* Login/logout links in nav */
 .navbar .btn-link {
-    color: rgba(245, 230, 200, 0.7) !important;
+    color: var(--h-parchment) !important;
     font-family: var(--h-font-body);
     font-weight: 600;
     font-size: 0.82rem;
@@ -161,21 +186,13 @@ h5, .h5 { font-size: 1.1rem; }
 }
 
 .navbar .btn-link:hover {
-    color: var(--h-parchment) !important;
-}
-
-.navbar-toggler {
-    border-color: rgba(245, 230, 200, 0.2);
-}
-
-.navbar-toggler-icon {
-    filter: invert(1) sepia(0.3) brightness(0.9);
+    color: var(--h-gold) !important;
 }
 
 /* Language chooser in dark nav */
 .navbar .btn-outline-secondary {
-    color: rgba(245, 230, 200, 0.7) !important;
-    border-color: rgba(245, 230, 200, 0.2) !important;
+    color: var(--h-parchment) !important;
+    border-color: rgba(245, 230, 200, 0.3) !important;
     font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -183,12 +200,51 @@ h5, .h5 { font-size: 1.1rem; }
 
 .navbar .btn-outline-secondary:hover {
     background-color: rgba(201, 169, 110, 0.15) !important;
-    color: var(--h-parchment) !important;
+    color: var(--h-gold) !important;
+}
+
+/* <900px: no hamburger, ever — the links strip scrolls horizontally instead,
+   with a two-sided mask-image edge fade. Scrollbar hidden; touch/drag panning
+   is native (site.js scrolls the active link into view on load). */
+@media (max-width: 899.98px) {
+    .navbar-links {
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        -webkit-mask-image: linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent);
+        mask-image: linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent);
+    }
+
+    .navbar-links::-webkit-scrollbar {
+        display: none;
+    }
+
+    .navbar .navbar-nav {
+        flex-wrap: nowrap;
+    }
+}
+
+@media (max-width: 599.98px) {
+    .navbar {
+        height: 56px;
+        padding: 0 16px;
+        gap: 16px;
+    }
+
+    .navbar-brand {
+        font-size: 1.15rem !important;
+    }
+
+    .navbar .nav-link {
+        font-size: 0.75rem;
+        padding: 6px 10px !important;
+    }
 }
 
 /* --- Profile Dropdown --- */
 .profile-dropdown-name {
-    color: rgba(245, 230, 200, 0.7);
+    color: var(--h-parchment);
     font-family: var(--h-font-body);
     font-weight: 600;
     font-size: 0.82rem;
@@ -228,33 +284,35 @@ h5, .h5 { font-size: 1.1rem; }
     border-color: var(--h-border-light);
 }
 
-/* Below the navbar's lg expansion breakpoint the avatar toggle sits mid-row
-   (after the notification bell and language chooser), so a 220px menu anchored
-   to the toggle can escape the viewport on either side. Anchor it to the
-   full-width account row (position-relative in _Layout.cshtml) instead. */
-@media (max-width: 991.98px) {
-    .navbar [data-testid="user-nav"].dropdown {
-        position: static;
-    }
-}
-
 /* Dropdown toggle in navbar — style and remove Bootstrap's default caret */
 .navbar .dropdown > .btn-link.dropdown-toggle::after {
     display: none;
 }
 
 .navbar .dropdown > .btn-link {
-    color: rgba(245, 230, 200, 0.7) !important;
+    color: var(--h-parchment) !important;
 }
 
 .navbar .dropdown > .btn-link:hover {
-    color: var(--h-parchment) !important;
+    color: var(--h-gold) !important;
 }
 
 /* --- Main Content --- */
 .main-content {
     flex: 1;
-    padding-top: 0.5rem;
+    padding: 2.25rem 0 3rem;
+}
+
+@media (max-width: 899.98px) {
+    .main-content {
+        padding: 2rem 0 2.5rem;
+    }
+}
+
+@media (max-width: 599.98px) {
+    .main-content {
+        padding: 1.375rem 0 1.5rem;
+    }
 }
 
 /* --- Cards --- */

@@ -2,12 +2,20 @@
 @using Microsoft.Extensions.Localization
 @model IReadOnlyList<MemberNavItem>
 @inject IStringLocalizer<Humans.Base.SharedResource> NavLocalizer
+@{
+    // Shallow match — controller only, no action — the same rule _Layout.cshtml
+    // uses for the two top-nav links it renders itself (Legal, Admin).
+    var currentController = ViewContext.RouteData.Values["controller"] as string;
+    bool IsActive(MemberNavItem navItem) =>
+        navItem.Controller is not null && string.Equals(navItem.Controller, currentController, StringComparison.OrdinalIgnoreCase);
+}
 @foreach (var item in Model)
 {
     @if (item.Children is { Count: > 0 })
     {
+        var parentActive = item.Children.Any(IsActive);
         <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">@NavLocalizer[item.Label]</a>
+            <a class="nav-link dropdown-toggle@(parentActive ? " active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-current="@(parentActive ? "page" : null)">@NavLocalizer[item.Label]</a>
             <ul class="dropdown-menu">
                 @foreach (var child in item.Children)
                 {
@@ -17,14 +25,15 @@
                     }
                     else
                     {
+                        var childActive = IsActive(child);
                         <li>
                             @if (child.RawHref is not null)
                             {
-                                <a class="dropdown-item" href="@child.RawHref">@NavLocalizer[child.Label]</a>
+                                <a class="dropdown-item@(childActive ? " active" : "")" href="@child.RawHref" aria-current="@(childActive ? "page" : null)">@NavLocalizer[child.Label]</a>
                             }
                             else
                             {
-                                <a class="dropdown-item" asp-area="" asp-controller="@child.Controller" asp-action="@child.Action">@NavLocalizer[child.Label]</a>
+                                <a class="dropdown-item@(childActive ? " active" : "")" asp-area="" asp-controller="@child.Controller" asp-action="@child.Action" aria-current="@(childActive ? "page" : null)">@NavLocalizer[child.Label]</a>
                             }
                         </li>
                     }
@@ -34,25 +43,27 @@
     }
     else
     {
+        var active = IsActive(item);
+        var cssClass = (item.CssClass + (active ? " active" : "")).Trim();
         <li class="nav-item">
             @if (item.IconCssClass is not null)
             {
                 @if (item.RawHref is not null)
                 {
-                    <a class="nav-link @item.CssClass" href="@item.RawHref" aria-label="@NavLocalizer[item.Label]" title="@NavLocalizer[item.Label]"><i class="@item.IconCssClass"></i></a>
+                    <a class="nav-link @cssClass" href="@item.RawHref" aria-label="@NavLocalizer[item.Label]" title="@NavLocalizer[item.Label]" aria-current="@(active ? "page" : null)"><i class="@item.IconCssClass"></i></a>
                 }
                 else
                 {
-                    <a class="nav-link @item.CssClass" asp-area="" asp-controller="@item.Controller" asp-action="@item.Action" aria-label="@NavLocalizer[item.Label]" title="@NavLocalizer[item.Label]"><i class="@item.IconCssClass"></i></a>
+                    <a class="nav-link @cssClass" asp-area="" asp-controller="@item.Controller" asp-action="@item.Action" aria-label="@NavLocalizer[item.Label]" title="@NavLocalizer[item.Label]" aria-current="@(active ? "page" : null)"><i class="@item.IconCssClass"></i></a>
                 }
             }
             else if (item.RawHref is not null)
             {
-                <a class="nav-link @item.CssClass" href="@item.RawHref">@NavLocalizer[item.Label]</a>
+                <a class="nav-link @cssClass" href="@item.RawHref" aria-current="@(active ? "page" : null)">@NavLocalizer[item.Label]</a>
             }
             else
             {
-                <a class="nav-link @item.CssClass" asp-area="" asp-controller="@item.Controller" asp-action="@item.Action">@NavLocalizer[item.Label]</a>
+                <a class="nav-link @cssClass" asp-area="" asp-controller="@item.Controller" asp-action="@item.Action" aria-current="@(active ? "page" : null)">@NavLocalizer[item.Label]</a>
             }
         </li>
     }
