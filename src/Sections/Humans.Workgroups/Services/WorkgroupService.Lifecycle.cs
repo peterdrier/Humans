@@ -103,6 +103,7 @@ internal sealed partial class WorkgroupService
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Withdrawn, reasons.Trim(), ct);
         // Withdrawn is not Active, so the source stops claiming write access.
         await RequestDriveSyncAsync(workgroup, ct);
+        await SetAccountActiveAsync(workgroup, isActive: false, ct);
     }
 
     public async Task CloseAsync(
@@ -136,6 +137,7 @@ internal sealed partial class WorkgroupService
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Reactivated, detail: null, ct);
         // Active again: the source claims Contributor for the current members once more.
         await RequestDriveSyncAsync(workgroup, ct);
+        await SetAccountActiveAsync(workgroup, isActive: true, ct);
     }
 
     public async Task<Guid> RegisterExistingAsync(

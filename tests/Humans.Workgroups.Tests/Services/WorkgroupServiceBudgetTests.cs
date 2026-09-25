@@ -117,6 +117,76 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
         reloaded.HoldedAccountNumber.Should().BeNull();
     }
 
+    [HumansFact]
+    public async Task Close_RetiresTheAccount()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        await BindAsync(workgroup.Id, 62900160, "acc-160", 100m);
+
+        await NewService().CloseAsync(workgroup.Id, SeedUser("Secretary"), "Quiet for months", Ct);
+
+        await Finance.Received(1).SetExpenseAccountActiveAsync(62900160, false, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task MarkDone_RetiresTheAccount()
+    {
+        var coordinator = SeedUser("Coordinator");
+        var workgroup = await SeedWorkgroupAsync(coordinatorUserId: coordinator);
+        await BindAsync(workgroup.Id, 62900160, "acc-160", 100m);
+
+        await NewService().MarkDoneAsync(workgroup.Id, coordinator, WorkgroupDormantReason.Delivered, Ct);
+
+        await Finance.Received(1).SetExpenseAccountActiveAsync(62900160, false, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Withdraw_RetiresTheAccount()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        await BindAsync(workgroup.Id, 62900160, "acc-160", 100m);
+
+        await NewService().WithdrawAsync(workgroup.Id, SeedUser("Secretary"), "Wrong register", Ct);
+
+        await Finance.Received(1).SetExpenseAccountActiveAsync(62900160, false, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Reactivate_RestoresTheAccount()
+    {
+        var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Dormant, dormantReason: WorkgroupDormantReason.Quiet);
+        await BindAsync(workgroup.Id, 62900160, "acc-160", 100m);
+
+        await NewService().ReactivateAsync(workgroup.Id, SeedUser("Secretary"), Ct);
+
+        await Finance.Received(1).SetExpenseAccountActiveAsync(62900160, true, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Close_NoAccountBound_DoesNotCallFinance()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+
+        await NewService().CloseAsync(workgroup.Id, SeedUser("Secretary"), "Quiet", Ct);
+
+        await Finance.DidNotReceive().SetExpenseAccountActiveAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Close_FinanceThrows_StillEndsTheGroup()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        await BindAsync(workgroup.Id, 62900160, "acc-160", 100m);
+        Finance.SetExpenseAccountActiveAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(_ => throw new HttpRequestException("Holded down"));
+
+        await NewService().CloseAsync(workgroup.Id, SeedUser("Secretary"), "Quiet", Ct);
+
+        await using var ctx = OpenContext();
+        (await ctx.Workgroups.SingleAsync(w => w.Id == workgroup.Id, Ct)).Status.Should().Be(WorkgroupStatus.Dormant);
+        Logger.Entries.Should().Contain(e => e.Level == Microsoft.Extensions.Logging.LogLevel.Error);
+    }
+
     private async Task BindAsync(Guid workgroupId, int accountNum, string accountId, decimal amount)
     {
         var w = await Db.Workgroups.SingleAsync(x => x.Id == workgroupId, Ct);

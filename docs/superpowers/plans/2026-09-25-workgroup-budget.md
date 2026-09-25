@@ -1434,7 +1434,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 **Interfaces:**
 - Consumes: `IHoldedFinanceService.SetExpenseAccountActiveAsync(int, bool, CancellationToken)`.
 
-- [ ] **Step 1: Failing tests**
+- [x] **Step 1: Failing tests**
 
 Append to `WorkgroupServiceBudgetTests`:
 
@@ -1511,14 +1511,14 @@ Append to `WorkgroupServiceBudgetTests`:
 ```
 `CapturingLogger<T>.Entries` is `List<LogEntry(LogLevel Level, string Message, Exception? Exception)>` (`tests/Humans.Testing/CapturingLogger.cs`).
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 dotnet test tests/Humans.Workgroups.Tests -v quiet --filter "FullyQualifiedName~WorkgroupServiceBudgetTests"
 ```
 Expected: the six new tests FAIL (no Finance call received).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `WorkgroupService.Helpers.cs`, next to `RequestDriveSyncAsync`:
 
@@ -1556,14 +1556,14 @@ In `ReactivateAsync`, after its `RequestDriveSyncAsync` call:
         await SetAccountActiveAsync(workgroup, isActive: true, ct);
 ```
 
-- [ ] **Step 4: Run the section tests**
+- [x] **Step 4: Run the section tests**
 
 ```bash
 dotnet test tests/Humans.Workgroups.Tests -v quiet
 ```
 Expected: all PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/Sections/Humans.Workgroups tests/Humans.Workgroups.Tests
