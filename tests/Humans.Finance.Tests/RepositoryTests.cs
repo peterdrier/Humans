@@ -347,16 +347,26 @@ public class RepositoryTests
         var t0 = Instant.FromUtc(2026, 9, 1, 0, 0);
         var first = new HoldedManagedAccount
         {
-            Id = Guid.NewGuid(), HoldedAccountNumber = 62900150, HoldedAccountId = "acc-1",
-            Label = "Workgroups / ALM 2027", IsActive = true, CreatedAt = t0, UpdatedAt = t0,
+            Id = Guid.NewGuid(),
+            HoldedAccountNumber = 62900150,
+            HoldedAccountId = "acc-1",
+            Label = "Workgroups / ALM 2027",
+            IsActive = true,
+            CreatedAt = t0,
+            UpdatedAt = t0,
         };
         await repo.UpsertManagedAccountAsync(first, Ct);
 
         var t1 = t0.Plus(Duration.FromDays(1));
         await repo.UpsertManagedAccountAsync(new HoldedManagedAccount
         {
-            Id = Guid.NewGuid(), HoldedAccountNumber = 62900150, HoldedAccountId = "acc-1",
-            Label = "Workgroups / ALM 2027", IsActive = false, CreatedAt = t1, UpdatedAt = t1,
+            Id = Guid.NewGuid(),
+            HoldedAccountNumber = 62900150,
+            HoldedAccountId = "acc-1",
+            Label = "Workgroups / ALM 2027",
+            IsActive = false,
+            CreatedAt = t1,
+            UpdatedAt = t1,
         }, Ct);
 
         var rows = await repo.GetManagedAccountsAsync(Ct);
