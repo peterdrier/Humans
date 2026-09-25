@@ -40,7 +40,7 @@ internal sealed class CityPlanningApiController(
     private async Task<Guid?> FindUserLeadCampIdAsync(Guid userId, int year, CancellationToken ct)
     {
         // Lead status comes from the role system (Camp Lead special role on a season
-        // of this year), not the legacy camp_leads table.
+        // of this year).
         var camps = await campService.GetCampsForYearAsync(year, ct);
         return camps.FirstOrDefault(camp => camp.GetLeadSeasonIdForYear(userId, year).HasValue)?.Id;
     }

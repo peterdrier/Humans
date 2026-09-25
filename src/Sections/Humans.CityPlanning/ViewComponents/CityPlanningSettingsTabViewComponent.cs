@@ -6,8 +6,9 @@ namespace Humans.CityPlanning.ViewComponents;
 /// <summary>
 /// The /Settings#city-planning tab (peterdrier/Humans#1634): placement windows,
 /// scheduled times, and registration info. <see cref="SectionSettings"/> gates it on
-/// <c>PolicyNames.CampAdminOrAdmin</c>, so every viewer who reaches this component may
-/// edit — no read-only branch, unlike <c>EventSettingsTabViewComponent</c>.
+/// <c>PolicyNames.CityPlanningMapAdmin</c> (Admin/CampAdmin or a city-planning team
+/// member), so every viewer who reaches this component may edit — no read-only branch,
+/// unlike <c>EventSettingsTabViewComponent</c>.
 /// </summary>
 internal sealed class CityPlanningSettingsTabViewComponent(ICityPlanningServiceRead cityPlanningService) : ViewComponent
 {

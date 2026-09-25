@@ -79,10 +79,10 @@
         </div>
     </div>
 
-    @* New — never had an admin UI before (peterdrier/Humans#1634); the underlying write
-       already existed (CityPlanningService.UpdateRegistrationInfoAsync), only reachable
-       from Camps' own admin page. This tab is CampAdminOrAdmin-gated (admin/operator-only
-       per memory/code/localization-admin-exempt.md), so plain strings, no resx keys. *@
+    @* The write (CityPlanningService.UpdateRegistrationInfoAsync) has two front doors:
+       this tab and Camps' own admin page (CampAdminController.UpdateRegistrationInfo).
+       This tab is CityPlanningMapAdmin-gated (admin/operator-only per
+       memory/code/localization-admin-exempt.md), so plain strings, no resx keys. *@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header fw-semibold">

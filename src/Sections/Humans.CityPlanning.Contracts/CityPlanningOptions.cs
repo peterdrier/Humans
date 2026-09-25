@@ -1,7 +1,7 @@
 namespace Humans.CityPlanning.Contracts;
 
 /// <summary>
-/// On the contracts leaf rather than inside the section because Shell's
+/// On the contracts leaf rather than inside the section because Development's
 /// <c>DevPersonaSeeder</c> reads <see cref="CityPlanningTeamSlug"/> to seed the dev
 /// city-planning team, and <c>ConfigurationMetadataExtensions</c> surfaces the same key
 /// on the admin config page.
