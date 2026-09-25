@@ -1316,6 +1316,11 @@ footer {
     color: var(--h-parchment);
 }
 
+/* Close icon sits on the ink body (toast-header stays light, so skip it). */
+.toast :not(.toast-header) > .btn-close {
+    filter: var(--bs-btn-close-white-filter);
+}
+
 /* --- Profile Avatar --- */
 .rounded-circle {
     border: 2px solid var(--h-border);
