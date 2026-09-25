@@ -23,3 +23,5 @@ Click the **Measure** button (ruler icon) to enter measurement mode, then click 
 If the placement phase is open and you are a Barrio Lead, a **Go to barrio placement** button appears — click it to open the interactive barrio placement map where you can draw or adjust your camp's polygon.
 
 Similarly, if container placement is open and you are a Barrio Lead, a **Go to container placement** button appears for placing your barrio's shipping containers.
+
+Map Admins always see both links, regardless of the placement phase.

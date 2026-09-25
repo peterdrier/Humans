@@ -28,7 +28,7 @@ Three entities back this section: `CityPlanningSettings` (per-year singleton, co
 - **Container map** (`/CityPlanning/ContainerMap/{year}`) — where containers are placed. Containers have their **own** placement phase, separate from barrio placement: unless you are a map admin, you can only open this page while container placement is open and you lead a camp.
 - **Admin panel** (`/CityPlanning/BarrioMap/Admin`) — map admins (Camp Admin or City Planning team members) upload overlays, export and import GeoJSON. Container admin lives under `/CityPlanning/BarrioMap/Admin/Containers/{year}`, and that is also where container placement is opened and closed. Toggling barrio placement, setting informational placement dates, and editing the barrio registration-page markdown live on `/Settings#city-planning`.
 
-Each map is its own full-screen view. On the barrio map, editing, polygon history and the placement-phase card are surfaced through panels inside it. The separate Admin panel is where overlay zones are uploaded and placement is toggled.
+Each map is its own full-screen view. On the barrio map, editing, polygon history and the placement-phase card are surfaced through panels inside it. The separate Admin panel is where overlay zones are uploaded.
 
 An API under `/api/city-planning/` and a SignalR hub at `/hubs/city-planning` power live polygon updates and cursor broadcast.
 
@@ -36,13 +36,16 @@ An API under `/api/city-planning/` and a SignalR hub at `/hubs/city-planning` po
 
 Anyone signed in can open the map and watch it evolve:
 
-- **View the map** at [/CityPlanning](/CityPlanning). Every placed barrio shows its name label and sound-zone color. Placements outside the limit zone get a red crosshatch; overlaps with another camp get orange dashed stripes; both prepend a warning indicator to the label.
+- **View the map** at [/CityPlanning](/CityPlanning). Every placed barrio shows its name label and sound-zone color.
+
+If you are a **Camp Lead** and barrio placement is open, the overview map links you through to the barrio map (`/CityPlanning/BarrioMap`), where you get tools to place and adjust your own barrio. The container map is linked on the same panel, but on its own phase — you see that link while *container* placement is open. Map Admins always see both links.
+
+On the barrio map:
+
+- **See warnings.** Placements outside the limit zone get a red crosshatch; overlaps with another camp get orange dashed stripes; both prepend a warning indicator to the label.
 - **Find your camp.** If you lead a camp that has been placed, your placement draws with a heavier outline and more opaque fill so it stands out.
 - **See who else is on the map.** Other humans' cursors appear live as they move. When anyone saves a placement the map updates for everyone — no refresh needed.
 - **Check the placement phase.** A card shows whether placement is open or closed, and a help modal lists the scheduled open and close dates (informational, Spain time).
-
-If you are a **Camp Lead** and barrio placement is open, the overview map links you through to the barrio map (`/CityPlanning/BarrioMap`), where you get tools to place and adjust your own barrio. The container map is linked on the same panel, but on its own phase — you see that link while *container* placement is open.
-
 - **Place your barrio.** Enter edit mode for your camp, draw your placement on the map, and save. Area and edge lengths update live while you draw.
 - **Adjust an existing placement.** Move corners, reshape, or reposition. Saving writes a history entry with the note "Saved".
 - **View history.** The offcanvas lists every prior version with timestamp and the human who made the change.
@@ -55,7 +58,7 @@ Map admin access is held by **Camp Admin**, **[Admin](Glossary.md#admin)**, and 
 
 - **Edit any camp's placement.** Draw, reshape, or move any placement regardless of who leads the camp and regardless of placement phase.
 - **Place on behalf of a camp.** The admin dropdown lists camp seasons without a placement; pick one to start drawing.
-- **Restore a prior version.** From a placement's history, choose a past version and restore. The current state writes to history first with the note "Restored from {timestamp}", then the placement is overwritten. History is append-only — nothing is ever lost.
+- **Restore a prior version.** From a placement's history, choose a past version and restore. It becomes the new current version, noted "Restored from {timestamp}". History is append-only — the version it replaces was already recorded there, so nothing is lost.
 - **Toggle barrio placement.** From [/Settings#city-planning](/Settings), open or close placement. Timestamps are recorded. Closing blocks camp leads from editing but not you.
 - **Toggle container placement.** A separate phase with its own open/close buttons, on the container admin page (`/CityPlanning/BarrioMap/Admin/Containers/{year}`). While it is closed, camp leads can neither reach the container map nor place their containers; you can, either way.
 - **Set informational placement dates.** Scheduled open and close datetimes show in the help modal, edited from `/Settings#city-planning`. They do not auto-open or auto-close the phase.
