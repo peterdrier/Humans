@@ -1029,7 +1029,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Produces on `Workgroup`: `decimal? BudgetAmount`, `int? HoldedAccountNumber`, `string? HoldedAccountId`.
 - Produces on `WorkgroupInfo` (appended positional params): `decimal? BudgetAmount, int? HoldedAccountNumber, string? HoldedAccountId`. `WorkgroupInfo.HasBudget => BudgetAmount is not null`.
 
-- [ ] **Step 1: Entity**
+- [x] **Step 1: Entity**
 
 In `Workgroup.cs`, after `DiscordChannelUrl`:
 
@@ -1046,7 +1046,7 @@ In `Workgroup.cs`, after `DiscordChannelUrl`:
     public string? HoldedAccountId { get; set; }
 ```
 
-- [ ] **Step 2: Configuration**
+- [x] **Step 2: Configuration**
 
 In `WorkgroupConfiguration.cs`, next to the `DriveFolderId` max-length line:
 
@@ -1055,7 +1055,7 @@ In `WorkgroupConfiguration.cs`, next to the `DriveFolderId` max-length line:
         b.Property(w => w.HoldedAccountId).HasMaxLength(64);
 ```
 
-- [ ] **Step 3: DTO**
+- [x] **Step 3: DTO**
 
 In `WorkgroupDtos.cs`, `WorkgroupInfo`: add three positional parameters at the end, after `Documents`:
 
@@ -1074,14 +1074,14 @@ and inside the record body (create one if the record has none):
 ```
 In `ToInfo` (`WorkgroupService.Helpers.cs:21`) append `w.BudgetAmount, w.HoldedAccountNumber, w.HoldedAccountId` as the last arguments. Grep `new WorkgroupInfo(` across `src` and `tests` — there were zero other constructions at plan time; fix any that appeared.
 
-- [ ] **Step 4: Migration**
+- [x] **Step 4: Migration**
 
 ```bash
 dotnet ef migrations add WorkgroupBudget --context WorkgroupsDbContext --output-dir Data/Migrations --project src/Sections/Humans.Workgroups --startup-project src/Humans.Web
 ```
 `git diff --stat src/Sections/Humans.Workgroups/Data/Migrations` — expect one new pair plus a snapshot diff adding exactly the three columns. Anything else: stop and report.
 
-- [ ] **Step 5: Build and run the section tests**
+- [x] **Step 5: Build and run the section tests**
 
 ```bash
 dotnet build src/Sections/Humans.Workgroups -v quiet
@@ -1089,7 +1089,7 @@ dotnet test tests/Humans.Workgroups.Tests -v quiet
 ```
 Expected: clean, all PASS (no behavior change yet).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Sections/Humans.Workgroups

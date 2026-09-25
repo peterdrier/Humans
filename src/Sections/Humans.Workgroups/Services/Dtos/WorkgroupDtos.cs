@@ -31,7 +31,13 @@ internal sealed record WorkgroupInfo(
     IReadOnlyList<WorkgroupMemberInfo> Members,
     IReadOnlyList<WorkgroupMeetingInfo> Meetings,
     IReadOnlyList<WorkgroupLogEntryInfo> LogEntries,
-    IReadOnlyList<WorkgroupDocumentInfo> Documents);
+    IReadOnlyList<WorkgroupDocumentInfo> Documents,
+    decimal? BudgetAmount,
+    int? HoldedAccountNumber,
+    string? HoldedAccountId)
+{
+    public bool HasBudget => BudgetAmount is not null;
+}
 
 /// <param name="LeftAt">Null while the person is a current member.</param>
 internal sealed record WorkgroupMemberInfo(

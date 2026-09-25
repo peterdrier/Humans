@@ -60,7 +60,10 @@ internal sealed partial class WorkgroupService
         w.Documents
             .OrderByDescending(d => d.CreatedAt)
             .Select(ToInfo)
-            .ToList());
+            .ToList(),
+        w.BudgetAmount,
+        w.HoldedAccountNumber,
+        w.HoldedAccountId);
 
     private static WorkgroupDocumentInfo ToInfo(WorkgroupDocument d) => new(
         d.Id,
