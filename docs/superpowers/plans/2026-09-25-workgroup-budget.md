@@ -921,7 +921,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Modify: `src/Sections/Humans.Finance/Docs/Finance.md`
 - Modify: `src/Sections/Humans.Finance/Docs/data-access.md` (table list)
 
-- [ ] **Step 1: View model**
+- [x] **Step 1: View model**
 
 In `HoldedConnectorVm.cs` add a positional parameter after `CategoryMap`:
 
@@ -936,7 +936,7 @@ and the record:
 internal sealed record HoldedManagedAccountVm(int AccountNumber, string AccountId, string Label, bool IsActive, Instant CreatedAt);
 ```
 
-- [ ] **Step 2: Service**
+- [x] **Step 2: Service**
 
 In `GetConnectorOverviewAsync` (around `Service.cs:347`), read `var managed = await repo.GetManagedAccountsAsync(ct);` and pass
 
@@ -947,7 +947,7 @@ In `GetConnectorOverviewAsync` (around `Service.cs:347`), read `var managed = aw
 ```
 in the new positional slot. Fix any test or other caller constructing `HoldedConnectorVm` (`grep -rn "new HoldedConnectorVm(" src tests`).
 
-- [ ] **Step 3: View**
+- [x] **Step 3: View**
 
 In `Holded.cshtml`, directly after the "Category map" card (ends after the `@foreach (var m in Model.CategoryMap …)` table), add:
 
@@ -984,7 +984,7 @@ In `Holded.cshtml`, directly after the "Category map" card (ends after the `@for
 </div>
 ```
 
-- [ ] **Step 4: Docs**
+- [x] **Step 4: Docs**
 
 `Finance.md`:
 - Concepts: add a bullet — *A **Managed Account** is an expense account Finance created or linked outside the budget map on another caller's request (`CreateOrLinkExpenseAccountAsync`). Finance records number, id, label and an active flag — never who asked. Docs booked to one are Matched with no category: off the Unmatched queue, outside every year's actuals.*
@@ -997,7 +997,7 @@ In `Holded.cshtml`, directly after the "Category map" card (ends after the `@for
 
 `data-access.md`: add `holded_managed_accounts` to the owned-table list.
 
-- [ ] **Step 5: Build and test**
+- [x] **Step 5: Build and test**
 
 ```bash
 dotnet build src/Sections/Humans.Finance -v quiet
@@ -1005,7 +1005,7 @@ dotnet test tests/Humans.Finance.Tests -v quiet
 ```
 Expected: clean, all PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Sections/Humans.Finance tests/Humans.Finance.Tests

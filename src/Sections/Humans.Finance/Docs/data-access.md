@@ -10,7 +10,7 @@ Folder: `src/Sections/Humans.Finance/Services/` (namespace
 — a distinct context from `ExpensesDbContext` and from
 `HoldedDbContext`. Owns `HoldedExpenseDocs`,
 `HoldedCategoryMap`, `HoldedDocSyncStates`, `HoldedCreditorContacts`,
-`SepaPayoutFiles`, `SepaPayoutTransfers`.
+`HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`.
 
 The ledger mirror (`HoldedLedgerLines` and its sync state, chart-of-accounts
 cache, and API call-metering log) is owned by the

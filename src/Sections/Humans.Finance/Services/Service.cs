@@ -458,6 +458,7 @@ internal sealed class Service(
         var state = await repo.GetOrCreateDocSyncStateAsync(ct);
         var bindings = await repo.GetCreditorContactsAsync(ct);
         var map = await repo.GetCategoryMapAsync(ct);
+        var managed = await repo.GetManagedAccountsAsync(ct);
         var docs = await repo.GetAllDocsAsync(ct);
 
         // Category names come from the active budget year, the same source the provisioning plan
@@ -498,6 +499,9 @@ internal sealed class Service(
                 m.Tag,
                 m.IsActive,
                 m.UpdatedAt)).ToList(),
+            managed.OrderBy(m => m.HoldedAccountNumber)
+                .Select(m => new HoldedManagedAccountVm(m.HoldedAccountNumber, m.HoldedAccountId, m.Label, m.IsActive, m.CreatedAt))
+                .ToList(),
             docs.Select(d => new HoldedDocVm(
                 d.HoldedDocId,
                 d.DocNumber,
