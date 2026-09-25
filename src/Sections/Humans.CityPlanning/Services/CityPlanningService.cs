@@ -79,7 +79,6 @@ internal sealed class CityPlanningService(
         var polygons = await repo.GetPolygonsByCampSeasonIdsAsync(seasonIds, cancellationToken);
 
         return polygons
-            .Where(p => displayData.ContainsKey(p.CampSeasonId))
             .Select(p =>
             {
                 var data = displayData[p.CampSeasonId];
@@ -402,21 +401,6 @@ internal sealed class CityPlanningService(
             userId,
             cancellationToken);
 
-    private async Task UpdatePlacementDatesAsync(
-        LocalDateTime? opensAt, LocalDateTime? closesAt, CancellationToken cancellationToken = default)
-    {
-        var campSettings = await campService.GetSettingsAsync(cancellationToken);
-        await repo.MutateSettingsAsync(
-            campSettings.PublicYear,
-            s =>
-            {
-                s.PlacementOpensAt = opensAt;
-                s.PlacementClosesAt = closesAt;
-            },
-            clock.GetCurrentInstant(),
-            cancellationToken);
-    }
-
     public async Task<PlacementDateUpdateResult> UpdatePlacementDatesAsync(
         string? opensAt, string? closesAt, CancellationToken cancellationToken = default)
     {
@@ -430,7 +414,16 @@ internal sealed class CityPlanningService(
         if (!closesResult.Success)
             return new PlacementDateUpdateResult(false, "InvalidClosesAt");
 
-        await UpdatePlacementDatesAsync(opensResult.Value, closesResult.Value, cancellationToken);
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        await repo.MutateSettingsAsync(
+            campSettings.PublicYear,
+            s =>
+            {
+                s.PlacementOpensAt = opensResult.Value;
+                s.PlacementClosesAt = closesResult.Value;
+            },
+            clock.GetCurrentInstant(),
+            cancellationToken);
         return new PlacementDateUpdateResult(true);
     }
 
