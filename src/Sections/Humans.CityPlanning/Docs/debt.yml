@@ -11,7 +11,3 @@ inbox:
     id: CITY-2
     what: "CityPlanningApiController.SaveCampPolygon validates GeoJSON with its own private IsValidJson, a copy of CityPlanningService.IsValidJson, and the service then validates the same text again and throws ArgumentException. The rule lives twice; folding it into the service needs a result-returning save instead of the throw, which changes ICityPlanningService. Found by /section-doctor on CityPlanning 2026-09-25."
     review: panel
-  - added: 2026-09-25
-    id: CITY-3
-    what: "RestoreCampPolygon with a historyId that does not belong to the season surfaces as a 500: CityPlanningService.RestoreCampPolygonVersionAsync throws InvalidOperationException and CityPlanningApiController does not map it to NotFound. Fixing it changes the endpoint's response, so it is a behaviour change for Peter to accept. Found by /section-doctor on CityPlanning 2026-09-25."
-    review: light

@@ -123,6 +123,7 @@ internal sealed class CityPlanningApiController(
 
         var restored = await cityPlanningService.RestoreCampPolygonVersionAsync(
             campSeasonId, historyId, userId, cancellationToken);
+        if (restored is null) return NotFound();
 
         return await BroadcastAndReturnAsync(campSeasonId, restored, cancellationToken);
     }

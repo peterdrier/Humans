@@ -92,7 +92,8 @@ Stated so a violation is recognisable:
    a single history row; the season-scoped delete removes the polygon with its history.
 3. A restore writes the restored geometry as a *new* current polygon with the note
    `Restored from {timestamp} UTC`, composed server-side (`Services/CityPlanningService.cs:226`);
-   it never rewinds history. The note on an ordinary save is whatever the caller sends,
+   it never rewinds history. A history id that is not the season's restores nothing and answers
+   404 (`Controllers/CityPlanningApiController.cs:126`). The note on an ordinary save is whatever the caller sends,
    falling back to `Saved` (`Controllers/CityPlanningApiController.cs:104`).
 4. A camp lead may edit their own polygon only while `IsPlacementOpen`, and only a season of the
    settings year (`Services/CityPlanningService.cs:265`). City-planning team members
@@ -104,18 +105,18 @@ Stated so a violation is recognisable:
    handler. Same exemptions.
 6. Restore and the polygon export are map-admin only — a lead cannot restore even their own
    camp's polygon (`Controllers/CityPlanningApiController.cs:119`,
-   `Controllers/CityPlanningApiController.cs:157`).
+   `Controllers/CityPlanningApiController.cs:158`).
 7. The settings row for a year is created on demand, closed (`Data/CityPlanningRepository.cs:181`),
    keyed to `CampSettings.PublicYear` — **except** `RegistrationInfo`, which is keyed to the
    highest open season year and falls back to `PublicYear`
    (`Services/CityPlanningService.cs:469`).
 8. Every polygon save and restore broadcasts `CampPolygonUpdated` to every connected client; a
    broadcast failure is logged and never fails the save
-   (`Controllers/CityPlanningApiController.cs:145`).
+   (`Controllers/CityPlanningApiController.cs:146`).
 9. Stored GeoJSON is validated as *parseable JSON* only (`Controllers/CityPlanningApiController.cs:97`),
    except container placements, which must additionally be a `Feature` with `Polygon` geometry
    and `center_lng` / `center_lat` / `rotation_degrees` properties
-   (`Controllers/CityPlanningApiController.cs:349`).
+   (`Controllers/CityPlanningApiController.cs:350`).
 10. Uploaded zone files are rejected above 10 MB and when unparseable
     (`Services/CityPlanningService.cs:358`).
 11. Every settings write that takes a `userId` — both placement phases, the zone uploads and

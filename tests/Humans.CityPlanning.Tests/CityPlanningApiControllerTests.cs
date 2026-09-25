@@ -118,6 +118,28 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     }
 
     [HumansFact]
+    public async Task RestoreCampPolygon_HistoryIdFromAnotherSeason_IsNotFoundAndWritesNothing()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
+        {
+            [Guid.NewGuid()] = new(
+                Guid.NewGuid(), "City Planning", null, "city-planning",
+                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+                Members: [new(Guid.NewGuid(), _userId, string.Empty, null, null, TeamMemberRole.Member, Instant.MinValue)]),
+        });
+        await _service.SaveCampPolygonAsync(Guid.NewGuid(), Square, 10, Guid.NewGuid(), cancellationToken: ct);
+        var otherSeasonHistoryId = (await CityPlanningDb.CampPolygonHistories.SingleAsync(ct)).Id;
+
+        var result = await CreateController().RestoreCampPolygon(_campSeasonId, otherSeasonHistoryId, ct);
+
+        result.Should().BeOfType<NotFoundResult>();
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task ExportGeoJson_UserWhoIsNotMapAdmin_IsForbidden()
     {
         var result = await CreateController().ExportGeoJson(null, Xunit.TestContext.Current.CancellationToken);

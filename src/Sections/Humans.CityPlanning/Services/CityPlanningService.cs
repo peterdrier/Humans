@@ -215,13 +215,13 @@ internal sealed class CityPlanningService(
         }
     }
 
-    public async Task<CampPolygonSaveResult> RestoreCampPolygonVersionAsync(
+    /// <summary>Null when the history entry is not one of this camp season's.</summary>
+    public async Task<CampPolygonSaveResult?> RestoreCampPolygonVersionAsync(
         Guid campSeasonId, Guid historyId, Guid restoredByUserId,
         CancellationToken cancellationToken = default)
     {
-        var entry = await repo.GetHistoryEntryAsync(campSeasonId, historyId, cancellationToken)
-            ?? throw new InvalidOperationException(
-                $"History entry {historyId} not found for CampSeason {campSeasonId}.");
+        var entry = await repo.GetHistoryEntryAsync(campSeasonId, historyId, cancellationToken);
+        if (entry is null) return null;
 
         var note = $"Restored from {entry.ModifiedAt.ToDateTimeUtc().ToInvariantTimestamp()} UTC";
         return await SaveCampPolygonAsync(

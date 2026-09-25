@@ -49,14 +49,15 @@ Every row in the section ledger was verified; the cap was not reached.
 - Finding 6: one `BroadcastAndReturnAsync` helper.
 - Finding 7: the placement-date overload inlined and the redundant filter cut. Reviewer (light tier) approved; it checked the write is identical and that the repository query already scopes to the display keys.
 - Finding 14: page titles localized in all six cultures.
-- Findings 7 (the `IsValidJson` copy), 8, 9 and 10: ledgered as `CITY-2`, `CAMPS-3`, `CONTAINERS-3` (root `CITY-1`) and `CITY-3`.
+- Findings 7 (the `IsValidJson` copy), 8 and 9: ledgered as `CITY-2`, `CAMPS-3` and `CONTAINERS-3` (root `CITY-1`).
+- Finding 10 (Peter, 2026-09-25: a 500 is for failures, not user error): restore of a history id that is not the season's answers 404 and writes nothing; pinned by a controller test. `CITY-3` closed.
 
 ## Skipped
 
 - Finding 7, the `IsValidJson` copy: folding it into the service means a result-returning save in place of the throw, a change to `ICityPlanningService`; ledgered as `CITY-2`.
-- Findings 9 and 10: behaviour changes; ledgered, and finding 10 is in Needs Peter.
-- Finding 11: whether the exemption covers team members is Peter's call (Needs Peter).
-- Finding 12: existing issues are read-only to a run; the recommended edit is in Needs Peter.
+- Finding 9: behaviour change; ledgered.
+- Finding 11: Peter ruled the city-planning team are the section's admins, so the exemption holds; recorded in `memory/code/localization-admin-exempt.md`.
+- Finding 12: issue corrected on Peter's go-ahead.
 - Finding 13: deferred by Peter to the winter year-specific work.
 - Finding 3, the container-map gate and the CampAdmin exemption at the API: not pinned this run; the restore/export and broadcast invariants took the budget.
 - No section was blocked this run.
@@ -73,9 +74,9 @@ Every row in the section ledger was verified; the cap was not reached.
 
 ## Needs Peter
 
-- [ ] 10 — return 404 for a restore of an unknown history id?
-- [ ] 11 — do city-planning team members count as operators for the localization exemption?
-- [ ] 12 — edit nobodies-collective/Humans#523 (paths, `AreaSqm` claim, resource name)?
+- [x] 10 — return 404 for a restore of an unknown history id? **Yes** — fixed.
+- [x] 11 — do city-planning team members count as operators for the localization exemption? **Yes** — left as is.
+- [x] 12 — edit nobodies-collective/Humans#523 (paths, `AreaSqm` claim, resource name)? **Yes** — edited.
 
 ## File coverage
 

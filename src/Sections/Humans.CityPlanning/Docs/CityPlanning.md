@@ -128,7 +128,7 @@ The container entity CRUD for barrio leads is served by `ContainerController` at
 | `GET /api/city-planning/state` | Map state: settings + all polygons + unmapped seasons |
 | `PUT /api/city-planning/camp-polygons/{campSeasonId}` | Save or update a polygon |
 | `GET /api/city-planning/camp-polygons/{campSeasonId}/history` | Version history (newest first) |
-| `POST /api/city-planning/camp-polygons/{campSeasonId}/restore/{historyId}` | Restore historical version (map admin only) |
+| `POST /api/city-planning/camp-polygons/{campSeasonId}/restore/{historyId}` | Restore historical version (map admin only; 404 when the history id is not the season's) |
 | `GET /api/city-planning/export.geojson?year={year}` | Export all polygons as GeoJSON (map admin only) |
 | `GET /api/city-planning/containers/{year}` | Container placement map state for the year |
 | `GET /api/city-planning/containers/{year}/export.geojson` | Export all container placements as GeoJSON |
