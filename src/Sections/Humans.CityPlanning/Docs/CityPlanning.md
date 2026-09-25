@@ -1,6 +1,10 @@
 <!-- freshness:triggers
   src/Sections/Humans.CityPlanning/**
   src/Sections/Humans.CityPlanning.Contracts/**
+  src/Sections/Humans.Containers/Authorization/ContainerAuthorizationHandler.cs
+  src/Sections/Humans.Containers/Contracts/ContainerOperationRequirement.cs
+  src/Sections/Humans.Containers/Controllers/ContainerController.cs
+  src/Sections/Humans.Camps/Humans.Camps.csproj
 -->
 <!-- freshness:flag-on-change
   Polygon edit authorization (lead vs city-planning team vs CampAdmin), placement-open gating, and append-only history rules — review when CityPlanning service/entities/controllers change.
@@ -83,7 +87,7 @@ The pages served by `CityPlanningController` (`[Route("CityPlanning")]`):
 | Route | Purpose | Access |
 |-------|---------|--------|
 | `/CityPlanning/` | Read-only overview map — all placed barrios, all placed containers for the year | Any authenticated human |
-| `/CityPlanning/BarrioMap` | Barrio polygon editing — draw/edit own polygon (leads) or any polygon (admins) | Camp leads + Map Admins |
+| `/CityPlanning/BarrioMap` | Barrio polygon editing — draw/edit own polygon (leads) or any polygon (admins) | Any authenticated human (editing is gated to camp leads and Map Admins) |
 | `/CityPlanning/ContainerMap/{year}` | Container placement map — drag-to-place containers within the site boundary | Camp leads (phase open) + Map Admins |
 
 Admin sub-pages hosted on `CityPlanningController` under `/CityPlanning/BarrioMap/Admin/*`:
@@ -166,12 +170,12 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - Regular humans **cannot** edit polygons for camps they do not lead.
 - Camp leads **cannot** edit their polygon when barrio placement is closed.
 - Camp leads **cannot** add/edit/delete their containers when container placement is closed.
-- Non-admin humans **cannot** access the admin panel (placement toggles, zone uploads, export).
+- Non-admin humans **cannot** access the admin panel (zone uploads, container management and its placement-phase toggle, export/import; barrio placement toggle lives on `/Settings#city-planning`).
 
 ## Triggers
 
 - Saving a polygon creates a CampPolygonHistory entry with note `"Saved"`, or the note the client supplied — the bulk import sends `"Imported {timestamp}"`.
-- Restoring a historical version saves the current polygon state to history first (note: `"Restored from {timestamp}"`), then overwrites the polygon with the restored version.
+- Restoring a historical version overwrites the current polygon with the restored version and appends a history entry for it (note: `"Restored from {timestamp}"`).
 - SignalR broadcasts `CampPolygonUpdated` to all connected clients after every save.
 
 ## Cross-Section Dependencies
@@ -189,7 +193,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 **Owned tables:** `city_planning_settings`, `camp_polygons`, `camp_polygon_histories`
 **Status:** (A) Migrated (peterdrier/Humans PR #543, 2026-04-22). Own project since G5 (nobodies-collective/Humans#866).
 
-- `CityPlanningService` lives in `Humans.CityPlanning.Services` and never imports `Microsoft.EntityFrameworkCore` — the repository is the only EF consumer, pinned by `CityPlanningArchitectureTests`.
+- `CityPlanningService` lives in `Humans.CityPlanning.Services` and never imports `Microsoft.EntityFrameworkCore` — the repository is the only EF consumer. `CityPlanningArchitectureTests` pins the API controller's route prefix only, not this EF boundary.
 - `ICityPlanningRepository` / `CityPlanningRepository` (`Humans.CityPlanning.Data`) is the only code path that touches this section's tables via `CityPlanningDbContext`.
 - **Decorator decision — no caching decorator.** Admin-facing, low-traffic (same rationale as Governance / User / Feedback).
 - **Read/write interface split.** `ICityPlanningServiceRead` (`GetSettingsAsync`, `GetRegistrationInfoAsync`, `IsCityPlanningTeamMemberAsync`) is the cross-section read surface. External sections inject `ICityPlanningServiceRead`; `ICityPlanningService : ICityPlanningServiceRead` adds writes. `ContainerAuthorizationHandler` and `ContainerController` inject `ICityPlanningServiceRead` — not `ICityPlanningService`. The service exposes no display-name read; `CityPlanningHub` resolves the burner name directly via `IUserServiceRead.GetUserInfoAsync`, and lives at `Services/CityPlanningHub.cs` in this section — `internal`, mapped by the section's own `SectionEndpoints : ISectionEndpoints` rather than by Shell's `MapHub<T>` on the concrete type. See `memory/architecture/section-read-write-split.md`.
