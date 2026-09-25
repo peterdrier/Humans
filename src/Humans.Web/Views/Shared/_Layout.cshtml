@@ -33,6 +33,15 @@
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="@(ViewData["BodyClass"])">
+    <environment exclude="Production">
+        <div class="env-banner">
+            @{
+                var envName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Non-Production";
+                var label = envName.Equals("Staging", StringComparison.OrdinalIgnoreCase) ? "QA" : envName.ToUpperInvariant();
+            }
+            <span>@label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label</span>
+        </div>
+    </environment>
     <header>
         <nav class="navbar navbar-expand navbar-dark mb-3">
             @{
@@ -103,15 +112,6 @@
         </nav>
         <vc:chrome-slot name="above-content" />
     </header>
-    <environment exclude="Production">
-        <div class="env-banner">
-            @{
-                var envName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Non-Production";
-                var label = envName.Equals("Staging", StringComparison.OrdinalIgnoreCase) ? "QA" : envName.ToUpperInvariant();
-            }
-            <span>@label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label &bull; @label</span>
-        </div>
-    </environment>
     <div class="container main-content">
         <main role="main" class="pb-3">
             <partial name="_AuthorizationPill" />
