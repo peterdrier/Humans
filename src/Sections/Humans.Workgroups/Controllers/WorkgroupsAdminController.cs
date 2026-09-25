@@ -125,7 +125,7 @@ internal sealed class WorkgroupsAdminController(
 
         if (!ModelState.IsValid)
         {
-            SetError("Check the budget amount.");
+            SetError("Check the budget amount and account.");
             return RedirectToAction("Details", "Workgroups", new { slug });
         }
 

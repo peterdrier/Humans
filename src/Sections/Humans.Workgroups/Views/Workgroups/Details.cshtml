@@ -10,6 +10,8 @@
     {
         foreach (var e in w.LogEntries)
         {
+            // The allocation is hidden from Volunteers; its History entry carries the figures.
+            if (e.Kind == WorkgroupLogKind.BudgetSet && !Model.CanSeeBudget) continue;
             yield return (e.OccurredOn, e, null);
         }
         foreach (var m in w.Meetings)

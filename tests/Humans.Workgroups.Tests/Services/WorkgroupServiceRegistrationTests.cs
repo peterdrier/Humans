@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Finance.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
@@ -121,6 +122,26 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
         var w = await ctx.Workgroups.SingleAsync(x => x.Id == id, Ct);
         w.BudgetAmount.Should().Be(1200m);
         w.HoldedAccountNumber.Should().Be(62900150);
+    }
+
+    [HumansFact]
+    public async Task RegisterExisting_FinanceFails_RegistersNothing()
+    {
+        Finance.CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns<HoldedExpenseAccountRef>(_ => throw new InvalidOperationException("Holded is down."));
+        var bootstrap = new WorkgroupBootstrap(
+            new WorkgroupApplication("ALM 2027", "Purpose", "A report", WorkgroupDeliverableKind.Report,
+                WorkgroupAudience.Board, null, null, null),
+            SeedUser("Coordinator"), Clock.GetCurrentInstant(),
+            new WorkgroupBudgetSave(1200m, null));
+
+        var act = () => NewService().RegisterExistingAsync(SeedUser("Secretary"), bootstrap, Ct);
+
+        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
+            .Should().Be(WorkgroupErrorKeys.BudgetAccountFailed);
+        await using var ctx = OpenContext();
+        (await ctx.Workgroups.AnyAsync(Ct)).Should().BeFalse();
+        await GoogleSync.DidNotReceive().CreateSubfolderAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

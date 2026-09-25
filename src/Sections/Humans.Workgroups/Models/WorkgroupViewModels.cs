@@ -55,7 +55,7 @@ internal sealed class RegisterViewModel
 }
 
 /// <summary>The Board/Admin budget form on the group page and on the bootstrap form.</summary>
-internal sealed class WorkgroupBudgetFormViewModel
+internal sealed class WorkgroupBudgetFormViewModel : IValidatableObject
 {
     public bool HasBudget { get; set; }
 
@@ -67,9 +67,22 @@ internal sealed class WorkgroupBudgetFormViewModel
 
     public int? ExistingAccountNum { get; set; }
 
+    private bool IsLink => string.Equals(AccountMode, "link", StringComparison.Ordinal);
+
     public WorkgroupBudgetSave ToSave() => new(
         HasBudget ? Amount : null,
-        string.Equals(AccountMode, "link", StringComparison.Ordinal) ? ExistingAccountNum : null);
+        IsLink ? ExistingAccountNum : null);
+
+    // A ticked box with no amount would clear the budget, and "link" with no account would
+    // create one: both are incomplete submissions, not their silent fallbacks.
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (!HasBudget) yield break;
+        if (Amount is null)
+            yield return new ValidationResult("Enter the budget amount.", [nameof(Amount)]);
+        if (IsLink && ExistingAccountNum is null)
+            yield return new ValidationResult("Choose the Holded account to link.", [nameof(ExistingAccountNum)]);
+    }
 }
 
 /// <summary>One group's page: the register entry, the people on it, and what this reader may do.</summary>

@@ -283,7 +283,8 @@ Settings and Register an existing group on first setup or after clearing the que
   anything is written, so a failed create or an unknown account number changes nothing;
   the first account bound is created as "Workgroups / {Name}" or linked to an existing
   account of that normalized name; clearing keeps the binding; rebinding never touches
-  the old account.
+  the old account. Registering an existing group with a budget resolves the account before
+  anything is written, so a Holded failure registers nothing.
 
 ## Negative Access Rules
 
@@ -298,6 +299,8 @@ Settings and Register an existing group on first setup or after clearing the que
   gates the member controller class-wide, `BoardOrAdmin` gates the admin controller.
 - A member **cannot** leave as the last coordinator without naming a replacement
   (`BoardOrAdmin` may override).
+- A Volunteer **cannot** see a group's budget: neither the budget card nor the `BudgetSet`
+  History entries render unless the viewer is `BoardOrAdmin`, Colaborador or Asociado.
 
 ## Triggers
 
