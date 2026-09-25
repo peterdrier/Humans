@@ -757,7 +757,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Produces: `HoldedMatcher.Match(string? bookedAccountId, IReadOnlyList<string> tags, IReadOnlyList<HoldedMatchEntry> map, IReadOnlySet<string> managedAccountIds)` — new overload; the three-argument form stays and delegates with an empty set.
 - `HoldedMatchResult` gains `bool IsManaged` (default false). Managed hit → `(CategoryId: null, Source: Account, IsManaged: true)`.
 
-- [ ] **Step 1: Failing matcher test**
+- [x] **Step 1: Failing matcher test**
 
 Append to `HoldedMatcherTests.cs`:
 
@@ -789,7 +789,7 @@ Append to `HoldedMatcherTests.cs`:
     }
 ```
 
-- [ ] **Step 2: Failing sync test**
+- [x] **Step 2: Failing sync test**
 
 Append to `HoldedFinanceServiceTests`:
 
@@ -827,14 +827,14 @@ Append to `HoldedFinanceServiceTests`:
 
 Check `HoldedDocSyncState`'s required members against the domain class and adjust the object initializer to compile.
 
-- [ ] **Step 3: Run to verify failure**
+- [x] **Step 3: Run to verify failure**
 
 ```bash
 dotnet test tests/Humans.Finance.Tests -v quiet --filter "FullyQualifiedName~Match_BookedToAManaged|FullyQualifiedName~Match_CategoryAccountWins|FullyQualifiedName~Sync_DocBookedToManaged"
 ```
 Expected: build errors (overload / `IsManaged` missing).
 
-- [ ] **Step 4: Matcher change**
+- [x] **Step 4: Matcher change**
 
 In `HoldedMatcher.cs` replace the `HoldedMatchResult` record and `Match`:
 
@@ -875,7 +875,7 @@ internal readonly record struct HoldedMatchResult(Guid? CategoryId, HoldedMatchS
 ```
 Add `using System.Collections.Immutable;`.
 
-- [ ] **Step 5: Sync change**
+- [x] **Step 5: Sync change**
 
 In `Service.SyncAsync`, after building `entries`:
 
@@ -894,14 +894,14 @@ Change the doc mapping line to `MapDoc(doc, entries, managedIds, now)`. Change `
 
 Grep for other `MapDoc(` callers and the existing `SyncAsync` tests (`grep -n "MapDoc\|SyncAsync" tests/Humans.Finance.Tests/ServiceTests.cs`) — existing sync tests must now stub `GetManagedAccountsAsync`; an unstubbed NSubstitute `Task<IReadOnlyList<T>>` returns an empty list, so they should pass unchanged. Verify.
 
-- [ ] **Step 6: Run the Finance test project**
+- [x] **Step 6: Run the Finance test project**
 
 ```bash
 dotnet test tests/Humans.Finance.Tests -v quiet
 ```
 Expected: all PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/Sections/Humans.Finance tests/Humans.Finance.Tests

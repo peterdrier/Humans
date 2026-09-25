@@ -309,9 +309,13 @@ internal sealed class Service(
                 .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.Tag))
                 .ToArray();
 
+            var managedIds = (await repo.GetManagedAccountsAsync(ct))
+                .Select(m => m.HoldedAccountId)
+                .ToHashSet(StringComparer.Ordinal);
+
             var allDocs = await client.ListPurchaseDocumentsAsync(ct);
 
-            var docs = allDocs.Select(doc => MapDoc(doc, entries, now)).ToList();
+            var docs = allDocs.Select(doc => MapDoc(doc, entries, managedIds, now)).ToList();
 
             await repo.UpsertDocsAsync(docs, now, ct);
 
@@ -352,6 +356,7 @@ internal sealed class Service(
     private static HoldedExpenseDoc MapDoc(
         HoldedPurchaseDocListItemDto doc,
         HoldedMatchEntry[] entries,
+        IReadOnlySet<string> managedIds,
         Instant now)
     {
         // The whole doc goes on its FIRST line's account, with the union of doc and line tags:
@@ -361,7 +366,7 @@ internal sealed class Service(
             .Concat(doc.Lines.SelectMany(l => l.Tags))
             .ToList();
 
-        var matchResult = HoldedMatcher.Match(bookedAccount, tags, entries);
+        var matchResult = HoldedMatcher.Match(bookedAccount, tags, entries, managedIds);
 
         var localDate = doc.Date.InZone(MadridZone).Date;
 
@@ -385,7 +390,7 @@ internal sealed class Service(
             TagsJson = JsonSerializer.Serialize(tags),
             BookedAccountId = bookedAccount,
             BudgetCategoryId = matchResult.CategoryId,
-            MatchStatus = matchResult.CategoryId is null
+            MatchStatus = matchResult.CategoryId is null && !matchResult.IsManaged
                 ? HoldedMatchStatus.Unmatched
                 : HoldedMatchStatus.Matched,
             MatchSource = matchResult.Source,

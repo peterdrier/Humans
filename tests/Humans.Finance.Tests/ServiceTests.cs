@@ -350,6 +350,36 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task Sync_DocBookedToManagedAccount_IsMatchedWithNoCategory()
+    {
+        NoCategoryMap();
+        _repo.GetManagedAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedManagedAccount>
+        {
+            new() { Id = Guid.NewGuid(), HoldedAccountNumber = 62900150, HoldedAccountId = "m-1", Label = "Workgroups / ALM 2027", IsActive = true },
+        });
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState { Id = 1, Status = "Idle" });
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedPurchaseDocListItemDto>
+        {
+            new()
+            {
+                Id = "doc-1", DocNumber = "F1", ContactName = "Vendor", Date = FixedNow, Subtotal = 10m, Tax = 2.1m, Total = 12.1m,
+                IsDraft = false, Lines = [new HoldedPurchaseLineDto { Amount = 10m, AccountId = "m-1" }],
+            },
+        });
+        List<HoldedExpenseDoc>? saved = null;
+        await _repo.UpsertDocsAsync(Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => saved = d.ToList()), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+
+        var result = await MakeService().SyncAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.Matched.Should().Be(1);
+        result.Unmatched.Should().Be(0);
+        var doc = saved.Should().ContainSingle().Which;
+        doc.MatchStatus.Should().Be(HoldedMatchStatus.Matched);
+        doc.MatchSource.Should().Be(HoldedMatchSource.Account);
+        doc.BudgetCategoryId.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task Sync_StoresTheInternalDescription_BlankAsNull()
     {
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());

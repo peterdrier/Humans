@@ -59,4 +59,30 @@ public class HoldedMatcherTests
     {
         HoldedMatcher.NormalizeAccountName(raw).Should().Be(expected);
     }
+
+    [HumansFact]
+    public void Match_BookedToAManagedAccount_IsAnAccountMatchWithNoCategory()
+    {
+        var map = new[] { new HoldedMatchEntry(Guid.NewGuid(), "cat-0", "geeks") };
+        var managed = new HashSet<string>(StringComparer.Ordinal) { "m-1" };
+
+        var result = HoldedMatcher.Match("m-1", ["geeks"], map, managed);
+
+        result.CategoryId.Should().BeNull();
+        result.Source.Should().Be(HoldedMatchSource.Account);
+        result.IsManaged.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void Match_CategoryAccountWinsOverManagedSet()
+    {
+        var cat = Guid.NewGuid();
+        var map = new[] { new HoldedMatchEntry(cat, "cat-0", "geeks") };
+        var managed = new HashSet<string>(StringComparer.Ordinal) { "cat-0" };
+
+        var result = HoldedMatcher.Match("cat-0", [], map, managed);
+
+        result.CategoryId.Should().Be(cat);
+        result.IsManaged.Should().BeFalse();
+    }
 }
