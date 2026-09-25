@@ -99,7 +99,8 @@ internal sealed class WorkgroupsAdminController(
             // a date somebody typed from memory.
             var registeredAt = model.RegisteredOn.AtMidnight().InUtc().ToInstant();
             await workgroups.RegisterExistingAsync(user.Id,
-                new WorkgroupBootstrap(model.Application.ToApplication(), model.CoordinatorUserId, registeredAt),
+                new WorkgroupBootstrap(model.Application.ToApplication(), model.CoordinatorUserId, registeredAt,
+                    model.Budget.ToSave()),
                 ct);
         }
         catch (WorkgroupRuleException ex)
@@ -111,6 +112,43 @@ internal sealed class WorkgroupsAdminController(
 
         SetSuccess("Existing group registered");
         return RedirectToAction(nameof(Index));
+    }
+
+    // ── Budget ────────────────────────────────────────────────────────────
+
+    [HttpPost("{id:guid}/Budget")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Budget(Guid id, WorkgroupBudgetFormViewModel model, string slug, CancellationToken ct)
+    {
+        var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        if (error is not null) return error;
+
+        if (!ModelState.IsValid)
+        {
+            SetError("Check the budget amount.");
+            return RedirectToAction("Details", "Workgroups", new { slug });
+        }
+
+        try
+        {
+            var account = await workgroups.SetBudgetAsync(id, user.Id, model.ToSave(), ct);
+            SetSuccess(account switch
+            {
+                { Created: true } => $"Budget saved; created Holded account {account.AccountNum} '{account.Name}'.",
+                { Created: false } => $"Budget saved; linked to existing Holded account {account.AccountNum} '{account.Name}'.",
+                null => "Budget saved.",
+            });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (WorkgroupRuleException ex)
+        {
+            logger.LogInformation(ex, "Workgroups admin Budget: rule {Rule}", ex.Key);
+            SetError(localizer[ex.Key, ex.Args]);
+        }
+        return RedirectToAction("Details", "Workgroups", new { slug });
     }
 
     // ── The Board's reply ─────────────────────────────────────────────────

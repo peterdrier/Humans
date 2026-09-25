@@ -1595,7 +1595,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
   - `WorkgroupBootstrap` gains `WorkgroupBudgetSave? Budget` (positional, last).
   - `POST /Workgroups/Admin/{id:guid}/Budget` (`WorkgroupsAdminController.Budget(Guid id, WorkgroupBudgetFormViewModel model, string slug, CancellationToken ct)`).
 
-- [ ] **Step 1: Failing controller tests**
+- [x] **Step 1: Failing controller tests**
 
 Append to `WorkgroupsAdminControllerTests` (reuse the file's controller-building pattern; the existing test around line 36 shows how `http`, `localizer` and `sut` are made — copy that setup into a private helper if one does not exist):
 
@@ -1694,14 +1694,14 @@ Append to `WorkgroupServiceRegistrationTests`:
 ```
 Existing `WorkgroupBootstrap` constructions in tests get a trailing `null` (or use a named default — make the new parameter `WorkgroupBudgetSave? Budget = null`).
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 dotnet test tests/Humans.Workgroups.Tests -v quiet --filter "FullyQualifiedName~Budget_|FullyQualifiedName~RegisterExisting_WithBudget"
 ```
 Expected: build errors.
 
-- [ ] **Step 3: View models**
+- [x] **Step 3: View models**
 
 `WorkgroupViewModels.cs`:
 
@@ -1746,7 +1746,7 @@ internal sealed record WorkgroupBootstrap(
     WorkgroupBudgetSave? Budget = null);
 ```
 
-- [ ] **Step 4: Service — bootstrap applies the budget**
+- [x] **Step 4: Service — bootstrap applies the budget**
 
 In `RegisterExistingAsync`, after `await RequestDriveSyncAsync(workgroup, ct);` and before `return workgroup.Id;`:
 
@@ -1755,7 +1755,7 @@ In `RegisterExistingAsync`, after `await RequestDriveSyncAsync(workgroup, ct);` 
             await SetBudgetAsync(workgroup.Id, actorUserId, budget, ct);
 ```
 
-- [ ] **Step 5: Admin controller**
+- [x] **Step 5: Admin controller**
 
 In `WorkgroupsAdminController`, after `RegisterExisting` POST:
 
@@ -1799,7 +1799,7 @@ In `WorkgroupsAdminController`, after `RegisterExisting` POST:
 ```
 In `RegisterExisting` POST, pass `model.Budget.ToSave()` as the bootstrap's fourth argument.
 
-- [ ] **Step 6: Member controller — Details**
+- [x] **Step 6: Member controller — Details**
 
 `WorkgroupsController.Details`: add `IHoldedClient holded` to the controller's primary constructor right after `IClock clock` (add `using Humans.Holded.Contracts;` and `using Humans.Users.Contracts;`), then:
 
@@ -1822,7 +1822,7 @@ and set `CanAdminister = canAdminister, CanSeeBudget = canSeeBudget, ExpenseAcco
 
 Every other place that constructs `WorkgroupPageViewModel` (the `Edit` GET around line 278 and any tests) gets `CanSeeBudget = false` (or the same computation where cheap).
 
-- [ ] **Step 7: Details view**
+- [x] **Step 7: Details view**
 
 In `Details.cshtml`, after the register-facts card (the `</div>` closing `<div class="card mb-3">` that holds Purpose/Deliverable/Discord/Drive) add:
 
@@ -1885,7 +1885,7 @@ In `Details.cshtml`, after the register-facts card (the `</div>` closing `<div c
 ```
 The "Keep account" radio posts `AccountMode=create` with an account already bound, which `SetBudgetAsync` treats as amount-only — that is the spec's "defaults to keeping it".
 
-- [ ] **Step 8: RegisterExisting view**
+- [x] **Step 8: RegisterExisting view**
 
 In `RegisterExisting.cshtml`, before the submit button, add:
 
@@ -1906,14 +1906,14 @@ In `RegisterExisting.cshtml`, before the submit button, add:
 ```
 The bootstrap form is create-only (`AccountMode` stays "create"); the group page carries the full picker.
 
-- [ ] **Step 9: Run the section tests**
+- [x] **Step 9: Run the section tests**
 
 ```bash
 dotnet test tests/Humans.Workgroups.Tests -v quiet
 ```
 Expected: all PASS.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add src/Sections/Humans.Workgroups tests/Humans.Workgroups.Tests

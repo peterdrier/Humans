@@ -71,6 +71,20 @@
                 </div>
             </div>
 
+            <fieldset class="border rounded p-3 mb-3">
+                <legend class="fs-6">Budget</legend>
+                <div class="form-check mb-2">
+                    <input asp-for="Budget.HasBudget" class="form-check-input" />
+                    <label asp-for="Budget.HasBudget" class="form-check-label">This workgroup has a budget</label>
+                </div>
+                <div class="mb-2" style="max-width: 240px;">
+                    <label asp-for="Budget.Amount" class="form-label">Amount (EUR)</label>
+                    <input asp-for="Budget.Amount" type="number" step="0.01" min="0" class="form-control" />
+                    <span asp-validation-for="Budget.Amount" class="text-danger"></span>
+                </div>
+                <p class="small text-muted mb-0">The Holded account <code>Workgroups / {name}</code> is created on save, or linked when one of that name already exists. Use the group page to link a differently named account.</p>
+            </fieldset>
+
             <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary">Register</button>
                 <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>

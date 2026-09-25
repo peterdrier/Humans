@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
@@ -53,6 +54,24 @@ internal sealed class RegisterViewModel
         };
 }
 
+/// <summary>The Board/Admin budget form on the group page and on the bootstrap form.</summary>
+internal sealed class WorkgroupBudgetFormViewModel
+{
+    public bool HasBudget { get; set; }
+
+    [Range(0, 99_999_999)]
+    public decimal? Amount { get; set; }
+
+    /// <summary>"create" (default) or "link".</summary>
+    public string AccountMode { get; set; } = "create";
+
+    public int? ExistingAccountNum { get; set; }
+
+    public WorkgroupBudgetSave ToSave() => new(
+        HasBudget ? Amount : null,
+        string.Equals(AccountMode, "link", StringComparison.Ordinal) ? ExistingAccountNum : null);
+}
+
 /// <summary>One group's page: the register entry, the people on it, and what this reader may do.</summary>
 internal sealed class WorkgroupPageViewModel
 {
@@ -77,6 +96,12 @@ internal sealed class WorkgroupPageViewModel
 
     /// <summary>Member work is frozen unless the group is Active — see the authorization handler.</summary>
     public required bool CanDoMemberWork { get; init; }
+
+    /// <summary>Board/Admin, Colaborador and Asociado see the allocation; Volunteers do not.</summary>
+    public required bool CanSeeBudget { get; init; }
+
+    /// <summary>The live Holded expense chart for the "link existing" picker; empty unless the viewer can administer.</summary>
+    public IReadOnlyList<HoldedExpenseAccountDto> ExpenseAccounts { get; init; } = [];
 
     public string DisplayName(Guid? userId) =>
         userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
@@ -302,6 +327,8 @@ internal sealed class RegisterExistingViewModel
 
     /// <summary>When the group really started; the register is backdated to it.</summary>
     public LocalDate RegisteredOn { get; set; }
+
+    public WorkgroupBudgetFormViewModel Budget { get; set; } = new();
 }
 
 /// <summary>The one Workgroups setting: the Drive folder every group's subfolder is created under.</summary>

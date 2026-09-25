@@ -106,6 +106,24 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
+    public async Task RegisterExisting_WithBudget_BindsTheAccount()
+    {
+        var coordinator = SeedUser("Coordinator");
+        var bootstrap = new WorkgroupBootstrap(
+            new WorkgroupApplication("ALM 2027", "Purpose", "A report", WorkgroupDeliverableKind.Report,
+                WorkgroupAudience.Board, null, null, null),
+            coordinator, Clock.GetCurrentInstant(),
+            new WorkgroupBudgetSave(1200m, null));
+
+        var id = await NewService().RegisterExistingAsync(SeedUser("Secretary"), bootstrap, Ct);
+
+        await using var ctx = OpenContext();
+        var w = await ctx.Workgroups.SingleAsync(x => x.Id == id, Ct);
+        w.BudgetAmount.Should().Be(1200m);
+        w.HoldedAccountNumber.Should().Be(62900150);
+    }
+
+    [HumansFact]
     public async Task Apply_WithAVeryLongName_TrimsTheSlugToItsColumn()
     {
         var name = new string('a', 200);

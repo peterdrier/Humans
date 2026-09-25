@@ -188,6 +188,9 @@ internal sealed partial class WorkgroupService
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
 
+        if (bootstrap.Budget is { Amount: not null } budget)
+            await SetBudgetAsync(workgroup.Id, actorUserId, budget, ct);
+
         return workgroup.Id;
     }
 
