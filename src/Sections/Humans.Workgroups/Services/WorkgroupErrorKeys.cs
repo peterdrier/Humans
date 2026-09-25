@@ -28,6 +28,8 @@ internal static class WorkgroupErrorKeys
     public const string NotPublished = "Workgroups_Error_NotPublished";
     public const string CategoriesRequired = "Workgroups_Error_CategoriesRequired";
     public const string CategoryTooLong = "Workgroups_Error_CategoryTooLong";
+    public const string BudgetNegative = "Workgroups_Error_BudgetNegative";
+    public const string BudgetAccountFailed = "Workgroups_Error_BudgetAccountFailed";
 
     public const string SurveyNotYours = "Workgroups_Error_SurveyNotYours";
     public const string WindowInvalid = "Workgroups_Error_WindowInvalid";

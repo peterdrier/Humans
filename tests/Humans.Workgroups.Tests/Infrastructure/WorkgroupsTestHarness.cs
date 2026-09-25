@@ -2,6 +2,7 @@ using Humans.Surveys.Contracts;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
+using Humans.Finance.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Settings.Contracts;
@@ -91,6 +92,12 @@ public abstract class WorkgroupsTestHarness : IDisposable
         GoogleSync.CreateSubfolderAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => $"folder-{Guid.NewGuid()}");
 
+        Finance = Substitute.For<IHoldedFinanceService>();
+        Finance.CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(call => new HoldedExpenseAccountRef(
+                call.Arg<int?>() ?? 62900150, $"acc-{call.Arg<int?>() ?? 62900150}", call.Arg<string>(),
+                Created: call.Arg<int?>() is null));
+
         Notifications = Substitute.For<INotificationService>();
         Email = Substitute.For<IEmailService>();
         EmailFactory = TestWorkgroupsEmails.Create();
@@ -112,6 +119,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private protected ITeamServiceRead Teams { get; }
     private protected ISettingsService Settings { get; }
     private protected IGoogleSyncService GoogleSync { get; }
+    private protected IHoldedFinanceService Finance { get; }
     private protected INotificationService Notifications { get; }
     private protected IEmailService Email { get; }
     private protected WorkgroupsEmails EmailFactory { get; }
@@ -123,7 +131,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
     /// <summary>The undecorated service over the real repository and the substitutes above.</summary>
     private protected WorkgroupService NewService(IWorkgroupRepository? repository = null) => new(
         repository ?? new WorkgroupRepository(DbFactory), Users, Surveys, UserEmails, Roles, Settings, GoogleSync,
-        Notifications, Email, EmailFactory, AuditLog, Clock, Logger);
+        Finance, Notifications, Email, EmailFactory, AuditLog, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through.</summary>
     private protected WorkgroupsDbContext OpenContext() => DbFactory.CreateDbContext();

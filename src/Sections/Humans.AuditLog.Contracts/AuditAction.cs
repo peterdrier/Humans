@@ -277,6 +277,8 @@ public enum AuditAction
     WorkgroupDispositionRecorded,
     // Bootstrapping: the Secretary registered a group that already existed, backdated.
     WorkgroupRegisteredExisting,
+    // Board/Admin set, changed or cleared a group's budget allocation and Holded account.
+    WorkgroupBudgetSet,
     // The daily job set DormantSince after sixty days' silence.
     WorkgroupDormancyFlagged,
     // The daily job notified the Board that a flagged group is a close candidate.

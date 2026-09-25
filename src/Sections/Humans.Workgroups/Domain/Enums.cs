@@ -100,6 +100,7 @@ internal enum WorkgroupLogKind
     DispositionRecorded,
     SurveySubmitted,
     SurveySent,
+    BudgetSet,
 
     // Member kinds.
     Update,

@@ -1,5 +1,6 @@
 using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
+using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
@@ -209,6 +210,10 @@ internal sealed class CachingWorkgroupService(
     public Task<Guid> RegisterExistingAsync(
         Guid actorUserId, WorkgroupBootstrap bootstrap, CancellationToken ct = default) =>
         MutateAsync(inner => inner.RegisterExistingAsync(actorUserId, bootstrap, ct));
+
+    public Task<HoldedExpenseAccountRef?> SetBudgetAsync(
+        Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.SetBudgetAsync(workgroupId, actorUserId, save, ct));
 
     public Task RecordDispositionAsync(
         Guid documentId,

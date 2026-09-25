@@ -4,6 +4,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Helpers;
 using Humans.Email.Contracts;
+using Humans.Finance.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Settings.Contracts;
@@ -27,7 +28,7 @@ namespace Humans.Workgroups.Services;
 /// lifecycle step writes a system log entry, an audit entry, and the §14 notifications;
 /// every change to who may see a group's Drive folder asks GoogleIntegration for a sync.
 /// </remarks>
-[CrossSectionWrite("Registration creates the group's Drive subfolder and requests Drive access syncs through IGoogleSyncService, and stores the root folder id through ISettingsService.")]
+[CrossSectionWrite("Registration creates the group's Drive subfolder and requests Drive access syncs through IGoogleSyncService, and stores the root folder id through ISettingsService; SetBudgetAsync creates or links the group's Holded expense account through IHoldedFinanceService, and the lifecycle steps retire or restore it.")]
 internal sealed partial class WorkgroupService(
     IWorkgroupRepository repository,
     IUserServiceRead users,
@@ -36,6 +37,7 @@ internal sealed partial class WorkgroupService(
     IRoleAssignmentService roles,
     ISettingsService settings,
     IGoogleSyncService googleSync,
+    IHoldedFinanceService finance,
     INotificationService notifications,
     IEmailService email,
     WorkgroupsEmails emailFactory,
@@ -483,6 +485,57 @@ internal sealed partial class WorkgroupService(
             throw new WorkgroupRuleException(WorkgroupErrorKeys.CommentsStillOpen);
 
         await EndAsync(workgroup, actorUserId, reason, reasons: null, ct);
+    }
+
+    // ── Budget ────────────────────────────────────────────────────────────
+
+    public async Task<HoldedExpenseAccountRef?> SetBudgetAsync(
+        Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(save);
+        if (save.Amount is < 0)
+            throw new WorkgroupRuleException(WorkgroupErrorKeys.BudgetNegative);
+
+        var workgroup = await RequireAsync(workgroupId, ct);
+        RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred,
+            WorkgroupStatus.Active, WorkgroupStatus.Dormant);
+
+        // Finance is asked first, before anything is written: a failed create or an unknown
+        // account number leaves the row exactly as it was.
+        HoldedExpenseAccountRef? account = null;
+        var needsAccount = save.Amount is not null
+            && (workgroup.HoldedAccountNumber is null
+                || (save.ExistingAccountNum is { } wanted && wanted != workgroup.HoldedAccountNumber));
+        if (needsAccount)
+        {
+            try
+            {
+                account = await finance.CreateOrLinkExpenseAccountAsync(
+                    $"Workgroups / {workgroup.Name}", save.ExistingAccountNum, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Finance could not resolve a Holded account for workgroup {WorkgroupId}", workgroup.Id);
+                throw new WorkgroupRuleException(WorkgroupErrorKeys.BudgetAccountFailed);
+            }
+        }
+
+        var now = clock.GetCurrentInstant();
+        workgroup.BudgetAmount = save.Amount;
+        if (account is not null)
+        {
+            workgroup.HoldedAccountNumber = account.AccountNum;
+            workgroup.HoldedAccountId = account.AccountId;
+        }
+        workgroup.UpdatedAt = now;
+        await repository.UpdateWorkgroupAsync(workgroup, ct);
+
+        var summary = save.Amount is { } amount
+            ? $"Budget set to {amount:0.00} EUR, account {workgroup.HoldedAccountNumber}"
+            : "Budget cleared";
+        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.BudgetSet, now, summary, ct, authorUserId: actorUserId);
+        await AuditAsync(AuditAction.WorkgroupBudgetSet, workgroup, summary, actorUserId);
+        return account;
     }
 
     // ── Settings ──────────────────────────────────────────────────────────

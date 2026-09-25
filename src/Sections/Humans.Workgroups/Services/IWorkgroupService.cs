@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces;
+using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Workgroups.Domain;
 using NodaTime;
@@ -177,6 +178,12 @@ internal interface IWorkgroupService : IApplicationService
 
     /// <summary>Bootstrapping (design §21): applies on behalf, backdated, immediately Active.</summary>
     Task<Guid> RegisterExistingAsync(Guid actorUserId, WorkgroupBootstrap bootstrap, CancellationToken ct = default);
+
+    /// <summary>Board/Admin: set, change or clear the group's budget and bind its Holded account
+    /// through Finance. Returns the account Finance resolved when one was created or linked this
+    /// call, else null. Refused and Withdrawn groups are rejected.</summary>
+    Task<HoldedExpenseAccountRef?> SetBudgetAsync(
+        Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default);
 
     /// <summary>The Board's written reply to a delivered document.</summary>
     Task RecordDispositionAsync(

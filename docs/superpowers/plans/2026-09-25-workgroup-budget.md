@@ -1123,7 +1123,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
   - `WorkgroupErrorKeys.BudgetNegative = "Workgroups_Error_BudgetNegative"`, `WorkgroupErrorKeys.BudgetAccountFailed = "Workgroups_Error_BudgetAccountFailed"`.
   - `WorkgroupService` ctor gains `IHoldedFinanceService finance` after `IGoogleSyncService googleSync`.
 
-- [ ] **Step 1: Project references**
+- [x] **Step 1: Project references**
 
 In `Humans.Workgroups.csproj`, beside the other `.Contracts` references:
 
@@ -1132,7 +1132,7 @@ In `Humans.Workgroups.csproj`, beside the other `.Contracts` references:
     <ProjectReference Include="..\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />
 ```
 
-- [ ] **Step 2: Harness**
+- [x] **Step 2: Harness**
 
 In `WorkgroupsTestHarness.cs`: add `using Humans.Finance.Contracts;`; in the constructor after `GoogleSync`:
 
@@ -1145,7 +1145,7 @@ In `WorkgroupsTestHarness.cs`: add `using Humans.Finance.Contracts;`; in the con
 ```
 property `private protected IHoldedFinanceService Finance { get; }`, and in `NewService` pass `Finance` right after `GoogleSync`.
 
-- [ ] **Step 3: Failing tests**
+- [x] **Step 3: Failing tests**
 
 `tests/Humans.Workgroups.Tests/Services/WorkgroupServiceBudgetTests.cs`:
 
@@ -1282,14 +1282,14 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
 
 Match the `AuditLog.Received(...).LogAsync(...)` argument list to the overload `AuditAsync` in `WorkgroupService.Helpers.cs:373` calls (`action, entityType, id, description, actorUserId, relatedEntityId:, relatedEntityType:`).
 
-- [ ] **Step 4: Run to verify failure**
+- [x] **Step 4: Run to verify failure**
 
 ```bash
 dotnet test tests/Humans.Workgroups.Tests -v quiet --filter "FullyQualifiedName~WorkgroupServiceBudgetTests"
 ```
 Expected: build errors.
 
-- [ ] **Step 5: Enum, audit action, error keys, DTO, interface**
+- [x] **Step 5: Enum, audit action, error keys, DTO, interface**
 
 `Enums.cs`, `WorkgroupLogKind`, after `SurveySent`:
 
@@ -1331,7 +1331,7 @@ internal sealed record WorkgroupBudgetSave(decimal? Amount, int? ExistingAccount
 ```
 Add `using Humans.Finance.Contracts;`.
 
-- [ ] **Step 6: Service**
+- [x] **Step 6: Service**
 
 `WorkgroupService.cs`: add ctor parameter `IHoldedFinanceService finance,` after `IGoogleSyncService googleSync,` and `using Humans.Finance.Contracts;`. Extend the `[CrossSectionWrite(...)]` text: `"…; SetBudgetAsync creates or links the group's Holded expense account through IHoldedFinanceService, and the lifecycle steps retire or restore it."`
 
@@ -1401,7 +1401,7 @@ Check `WorkgroupRuleException` has a `(string key)` constructor (it does — `Wo
 ```
 If `MutateAsync` has only a `Func<IWorkgroupService, Task>` overload, use the generic one the `Task<Guid>` members use (`RegisterExistingAsync` returns `Task<Guid>` through `MutateAsync`, so a generic overload exists).
 
-- [ ] **Step 7: Run the tests**
+- [x] **Step 7: Run the tests**
 
 ```bash
 dotnet test tests/Humans.Workgroups.Tests -v quiet --filter "FullyQualifiedName~WorkgroupServiceBudgetTests"
@@ -1413,7 +1413,7 @@ dotnet test tests/Humans.Workgroups.Tests -v quiet
 ```
 Any test constructing `WorkgroupService` directly (outside the harness) needs the new parameter — fix them.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/Sections/Humans.Workgroups src/Sections/Humans.AuditLog.Contracts tests/Humans.Workgroups.Tests

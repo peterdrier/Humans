@@ -169,3 +169,8 @@ internal sealed record WorkgroupBootstrap(
     WorkgroupApplication Application,
     Guid CoordinatorUserId,
     Instant RegisteredAt);
+
+/// <summary>The budget form. <paramref name="Amount"/> null clears the budget (the account binding
+/// stays). <paramref name="ExistingAccountNum"/> set links that Holded account; null creates
+/// "Workgroups / {Name}" when nothing is bound yet, and is an amount-only change otherwise.</summary>
+internal sealed record WorkgroupBudgetSave(decimal? Amount, int? ExistingAccountNum);
