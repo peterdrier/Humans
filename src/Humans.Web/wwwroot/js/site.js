@@ -535,7 +535,10 @@ function showToast(message, type) {
     if (active) {
         var prevBehavior = scroller.style.scrollBehavior;
         scroller.style.scrollBehavior = 'auto';
-        scroller.scrollLeft = active.offsetLeft - (scroller.clientWidth - active.offsetWidth) / 2;
+        // Rect diff, not offsetLeft: .navbar-links isn't the links' offsetParent.
+        var linkRect = active.getBoundingClientRect();
+        scroller.scrollLeft += linkRect.left - scroller.getBoundingClientRect().left
+            - (scroller.clientWidth - linkRect.width) / 2;
         scroller.style.scrollBehavior = prevBehavior;
     }
 
@@ -545,6 +548,7 @@ function showToast(message, type) {
         if (!toggle || !menu) return;
 
         dropdown.addEventListener('show.bs.dropdown', function () {
+            scroller.classList.add('dropdown-open');
             var rect = toggle.getBoundingClientRect();
             menu.style.position = 'fixed';
             menu.style.top = rect.bottom + 'px';
@@ -560,6 +564,7 @@ function showToast(message, type) {
         });
 
         dropdown.addEventListener('hidden.bs.dropdown', function () {
+            scroller.classList.remove('dropdown-open');
             menu.style.position = '';
             menu.style.top = '';
             menu.style.left = '';

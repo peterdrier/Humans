@@ -8,6 +8,11 @@
     var currentController = ViewContext.RouteData.Values["controller"] as string;
     bool IsActive(MemberNavItem navItem) =>
         navItem.Controller is not null && string.Equals(navItem.Controller, currentController, StringComparison.OrdinalIgnoreCase);
+    // Dropdown children share a controller (Events: Browse / MySubmissions / Schedule),
+    // so a child also matches on action; the parent keeps the shallow match.
+    var currentAction = ViewContext.RouteData.Values["action"] as string;
+    bool IsActiveChild(MemberNavItem child) =>
+        IsActive(child) && string.Equals(child.Action, currentAction, StringComparison.OrdinalIgnoreCase);
 }
 @foreach (var item in Model)
 {
@@ -25,7 +30,7 @@
                     }
                     else
                     {
-                        var childActive = IsActive(child);
+                        var childActive = IsActiveChild(child);
                         <li>
                             @if (child.RawHref is not null)
                             {

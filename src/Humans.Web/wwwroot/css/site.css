@@ -296,11 +296,34 @@ h5, .h5 { font-size: 1.1rem; }
     .navbar .navbar-nav {
         flex-wrap: nowrap;
     }
+
+    /* The strip gets its own full-width row under the brand/right-cluster bar. */
+    .navbar {
+        height: auto;
+        flex-wrap: wrap;
+        row-gap: 0;
+    }
+
+    .navbar-brand {
+        display: inline-flex;
+        align-items: center;
+        min-height: 56px;
+    }
+
+    .navbar > .navbar-links {
+        order: 3;
+        flex: 0 0 100%;
+    }
+
+    /* site.js sets this while a strip dropdown is open: the mask would hide the menu. */
+    .navbar-links.dropdown-open {
+        -webkit-mask-image: none;
+        mask-image: none;
+    }
 }
 
 @media (max-width: 599.98px) {
     .navbar {
-        height: 56px;
         padding: 0 16px;
         gap: 16px;
     }
@@ -373,18 +396,21 @@ h5, .h5 { font-size: 1.1rem; }
 /* --- Main Content --- */
 .main-content {
     flex: 1;
-    padding: 2.25rem 0 3rem;
+    padding-top: 2.25rem;
+    padding-bottom: 3rem;
 }
 
 @media (max-width: 899.98px) {
     .main-content {
-        padding: 2rem 0 2.5rem;
+        padding-top: 2rem;
+        padding-bottom: 2.5rem;
     }
 }
 
 @media (max-width: 599.98px) {
     .main-content {
-        padding: 1.375rem 0 1.5rem;
+        padding-top: 1.375rem;
+        padding-bottom: 1.5rem;
     }
 }
 
@@ -501,11 +527,17 @@ h5, .h5 { font-size: 1.1rem; }
     transform: translateY(-1px);
 }
 
-.btn-outline-secondary,
-.btn-secondary {
+.btn-outline-secondary {
     background-color: transparent;
     border-color: var(--h-border);
     color: var(--h-sepia);
+}
+
+/* Filled: filter toggles pair it with .btn-outline-secondary to mark the selected value. */
+.btn-secondary {
+    background-color: var(--h-parchment-dark);
+    border-color: var(--h-sepia);
+    color: var(--h-aged-ink);
 }
 
 .btn-outline-secondary:hover,
@@ -764,7 +796,7 @@ h5, .h5 { font-size: 1.1rem; }
 
 .badge.bg-secondary {
     background-color: var(--h-parchment-dark) !important;
-    color: var(--h-sepia) !important;
+    color: var(--h-aged-ink-light) !important;
 }
 
 .badge.bg-dark {
