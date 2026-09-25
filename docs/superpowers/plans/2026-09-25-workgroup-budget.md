@@ -1988,7 +1988,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 11: Full gate, push, PR
 
-- [ ] **Step 1: Build and test the whole solution**
+- [x] **Step 1: Build and test the whole solution**
 
 ```bash
 dotnet build Humans.slnx -v quiet
@@ -1998,7 +1998,7 @@ Expected: 0 warnings-as-errors from analyzers, all tests PASS (integration tests
 
 If an architecture test or analyzer flags the new Workgroups → Finance.Contracts / Holded.Contracts references, read the failure: a baseline that lists allowed section references needs the two new edges added in the same commit, with the reason in the commit body. Never suppress.
 
-- [ ] **Step 2: Migration verification**
+- [x] **Step 2: Migration verification**
 
 ```bash
 dotnet ef migrations list --context FinanceDbContext --project src/Sections/Humans.Finance --startup-project src/Humans.Web
@@ -2006,7 +2006,7 @@ dotnet ef migrations list --context WorkgroupsDbContext --project src/Sections/H
 ```
 Expected: each chain ends with this branch's single new migration.
 
-- [ ] **Step 3: Push and open the PR**
+- [x] **Step 3: Push and open the PR**
 
 ```bash
 git push -u origin feat/workgroup-budget
