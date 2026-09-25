@@ -3088,4 +3088,65 @@ public class HoldedFinanceServiceTests
         var act = () => MakeService().CreateOrLinkExpenseAccountAsync("   ", null, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<ArgumentException>();
     }
+
+    // ─── SetExpenseAccountActive / ListExpenseAccounts ───────────────────────────
+
+    [HumansFact]
+    public async Task SetExpenseAccountActive_FlipsAManagedRow()
+    {
+        _repo.GetManagedAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedManagedAccount>
+        {
+            new() { Id = Guid.NewGuid(), HoldedAccountNumber = 62900150, HoldedAccountId = "m", Label = "Workgroups / ALM 2027", IsActive = true, CreatedAt = FixedNow },
+        });
+
+        await MakeService().SetExpenseAccountActiveAsync(62900150, false, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).UpsertManagedAccountAsync(
+            Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900150 && !a.IsActive && a.UpdatedAt == FixedNow),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SetExpenseAccountActive_UnknownNumber_IsANoOp()
+    {
+        NoManagedAccounts();
+
+        await MakeService().SetExpenseAccountActiveAsync(1, false, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.DidNotReceive().UpsertManagedAccountAsync(Arg.Any<HoldedManagedAccount>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ListExpenseAccounts_UnionsCategoryMapAndRegistry_FiltersInactive()
+    {
+        var catId = Guid.NewGuid();
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>
+        {
+            new() { Id = Guid.NewGuid(), BudgetCategoryId = catId, HoldedAccountNumber = 62900100, HoldedAccountId = "cat-0", Tag = "x" },
+        });
+        _repo.GetManagedAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedManagedAccount>
+        {
+            new() { Id = Guid.NewGuid(), HoldedAccountNumber = 62900150, HoldedAccountId = "m-1", Label = "Workgroups / ALM 2027", IsActive = true },
+            new() { Id = Guid.NewGuid(), HoldedAccountNumber = 62900151, HoldedAccountId = "m-2", Label = "Workgroups / ALM 2026", IsActive = false },
+        });
+        _budget.GetActiveYearAsync().Returns(new BudgetYearDetail(Guid.NewGuid(), "2026", "2026", BudgetYearStatus.Active, false,
+        [
+            new BudgetGroupDetail(Guid.NewGuid(), Guid.NewGuid(), "Departments", 0, false, true, false, null,
+            [
+                new BudgetCategoryDetail(catId, Guid.NewGuid(), "Geeks", -100m, ExpenditureType.OpEx, null, 0, []),
+            ]),
+        ]));
+
+        var all = await MakeService().ListExpenseAccountsAsync(activeOnly: false, Xunit.TestContext.Current.CancellationToken);
+        var active = await MakeService().ListExpenseAccountsAsync(activeOnly: true, Xunit.TestContext.Current.CancellationToken);
+
+        all.Select(o => (o.AccountNum, o.Label, o.IsBudgetCategory, o.IsActive)).Should().BeEquivalentTo(
+        [
+            (62900100, "Departments / Geeks", true, true),
+            (62900150, "Workgroups / ALM 2027", false, true),
+            (62900151, "Workgroups / ALM 2026", false, false),
+        ]);
+        active.Select(o => o.AccountNum).Should().BeEquivalentTo([62900100, 62900150]);
+        await _client.DidNotReceive().ListExpenseAccountsAsync(Arg.Any<CancellationToken>());
+    }
 }

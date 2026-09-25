@@ -17,6 +17,11 @@ public interface IHoldedFinanceService : IApplicationService, IHoldedFinanceServ
     Task<HoldedExpenseAccountRef> CreateOrLinkExpenseAccountAsync(
         string name, int? existingAccountNum, CancellationToken ct = default);
 
+    /// <summary>Retires or restores a managed account so it drops out of, or returns to, the active
+    /// pickers. No-op for a budget-category account or a number Finance does not manage — the
+    /// account itself is never touched in Holded.</summary>
+    Task SetExpenseAccountActiveAsync(int accountNum, bool isActive, CancellationToken ct = default);
+
     /// <summary>Manually binds a member to an existing Holded creditor account by 400000xx number.
     /// Fails, writing nothing, when the account is already bound or no Holded contact carries it.</summary>
     Task<CreditorBindResult> SetCreditorContactAsync(Guid userId, int supplierAccountNum, CancellationToken ct = default);

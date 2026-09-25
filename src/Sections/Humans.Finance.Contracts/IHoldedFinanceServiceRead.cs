@@ -19,6 +19,12 @@ public interface IHoldedFinanceServiceRead
     /// line's `items[].account` directly at doc creation.</summary>
     Task<string?> GetHoldedAccountIdForCategoryAsync(Guid budgetCategoryId, CancellationToken ct = default);
 
+    /// <summary>Every expense account a report or a workgroup may book to — the category map's
+    /// accounts plus Finance's managed registry. <paramref name="activeOnly"/> drops retired managed
+    /// accounts; category accounts are always active. Cache reads only.</summary>
+    Task<IReadOnlyList<HoldedExpenseAccountOption>> ListExpenseAccountsAsync(
+        bool activeOnly, CancellationToken ct = default);
+
     /// <summary>Derives cached creditor status (balance, owed, payments) for a member's 400000xx account
     /// from the cached daybook lines. Returns null when no lines are cached for the account.</summary>
     Task<HoldedCreditorStatus?> GetCreditorStatusAsync(

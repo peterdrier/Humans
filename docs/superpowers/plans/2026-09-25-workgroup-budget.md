@@ -579,7 +579,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
   - `IHoldedFinanceService.SetExpenseAccountActiveAsync(int accountNum, bool isActive, CancellationToken ct = default)` → `Task`
   - `IHoldedFinanceServiceRead.ListExpenseAccountsAsync(bool activeOnly, CancellationToken ct = default)` → `Task<IReadOnlyList<HoldedExpenseAccountOption>>`
 
-- [ ] **Step 1: Failing tests**
+- [x] **Step 1: Failing tests**
 
 Append to `HoldedFinanceServiceTests`:
 
@@ -646,14 +646,14 @@ Append to `HoldedFinanceServiceTests`:
     }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 dotnet test tests/Humans.Finance.Tests -v quiet --filter "FullyQualifiedName~SetExpenseAccountActive|FullyQualifiedName~ListExpenseAccounts_Unions"
 ```
 Expected: build errors.
 
-- [ ] **Step 3: Contracts**
+- [x] **Step 3: Contracts**
 
 `HoldedDtos.cs`, append:
 
@@ -684,7 +684,7 @@ public sealed record HoldedExpenseAccountOption(
         bool activeOnly, CancellationToken ct = default);
 ```
 
-- [ ] **Step 4: Service implementation**
+- [x] **Step 4: Service implementation**
 
 In `Service.cs`, after `RegisterManagedAsync`:
 
@@ -728,14 +728,14 @@ In `Service.cs`, after `RegisterManagedAsync`:
     }
 ```
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 ```bash
 dotnet test tests/Humans.Finance.Tests -v quiet --filter "FullyQualifiedName~SetExpenseAccountActive|FullyQualifiedName~ListExpenseAccounts_Unions"
 ```
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Sections/Humans.Finance src/Sections/Humans.Finance.Contracts tests/Humans.Finance.Tests

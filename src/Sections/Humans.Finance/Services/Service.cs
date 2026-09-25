@@ -252,6 +252,44 @@ internal sealed class Service(
         }, ct);
     }
 
+    public async Task SetExpenseAccountActiveAsync(int accountNum, bool isActive, CancellationToken ct = default)
+    {
+        var managed = await repo.GetManagedAccountsAsync(ct);
+        var row = managed.FirstOrDefault(m => m.HoldedAccountNumber == accountNum);
+        if (row is null || row.IsActive == isActive) return;
+
+        row.IsActive = isActive;
+        row.UpdatedAt = clock.GetCurrentInstant();
+        await repo.UpsertManagedAccountAsync(row, ct);
+    }
+
+    public async Task<IReadOnlyList<HoldedExpenseAccountOption>> ListExpenseAccountsAsync(
+        bool activeOnly, CancellationToken ct = default)
+    {
+        var map = await repo.GetCategoryMapAsync(ct);
+        var managed = await repo.GetManagedAccountsAsync(ct);
+        var year = await budget.GetActiveYearAsync();
+        var labels = year?.Groups
+            .SelectMany(g => g.Categories.Select(c => (c.Id, Label: $"{g.Name} / {c.Name}")))
+            .ToDictionary(x => x.Id, x => x.Label)
+            ?? new Dictionary<Guid, string>();
+
+        var options = map
+            .Where(m => m.IsActive)
+            .Select(m => new HoldedExpenseAccountOption(
+                m.HoldedAccountNumber, m.HoldedAccountId,
+                labels.GetValueOrDefault(m.BudgetCategoryId, $"Category {m.HoldedAccountNumber}"),
+                IsBudgetCategory: true, IsActive: true))
+            .Concat(managed
+                .Where(m => !activeOnly || m.IsActive)
+                .Select(m => new HoldedExpenseAccountOption(
+                    m.HoldedAccountNumber, m.HoldedAccountId, m.Label,
+                    IsBudgetCategory: false, IsActive: m.IsActive)))
+            .OrderBy(o => o.AccountNum)
+            .ToList();
+        return options;
+    }
+
     // ─── Sync ────────────────────────────────────────────────────────────────────
 
     public async Task<HoldedSyncResult> SyncAsync(CancellationToken ct = default)
