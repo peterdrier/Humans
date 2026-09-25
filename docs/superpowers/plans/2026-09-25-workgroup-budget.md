@@ -246,7 +246,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
   - `Service.ExpenseAccountBlockStart = 62900100` (internal const)
   - `AuditAction.HoldedExpenseAccountCreated`, `AuditAction.HoldedExpenseAccountLinked`
 
-- [ ] **Step 1: Failing test for name normalization**
+- [x] **Step 1: Failing test for name normalization**
 
 Append to `tests/Humans.Finance.Tests/HoldedMatcherTests.cs`:
 
@@ -262,14 +262,14 @@ Append to `tests/Humans.Finance.Tests/HoldedMatcherTests.cs`:
     }
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 ```bash
 dotnet test tests/Humans.Finance.Tests -v quiet --filter "FullyQualifiedName~NormalizeAccountName"
 ```
 Expected: build error, method missing.
 
-- [ ] **Step 3: Implement `NormalizeAccountName`**
+- [x] **Step 3: Implement `NormalizeAccountName`**
 
 In `HoldedMatcher.cs`, after `NormalizeTag`:
 
@@ -294,14 +294,14 @@ In `HoldedMatcher.cs`, after `NormalizeTag`:
 ```
 Add `using System.Globalization;` to the file.
 
-- [ ] **Step 4: Run the normalization test**
+- [x] **Step 4: Run the normalization test**
 
 ```bash
 dotnet test tests/Humans.Finance.Tests -v quiet --filter "FullyQualifiedName~NormalizeAccountName"
 ```
 Expected: PASS.
 
-- [ ] **Step 5: Failing service tests**
+- [x] **Step 5: Failing service tests**
 
 Append to `tests/Humans.Finance.Tests/ServiceTests.cs` (class `HoldedFinanceServiceTests`):
 
@@ -426,14 +426,14 @@ Append to `tests/Humans.Finance.Tests/ServiceTests.cs` (class `HoldedFinanceServ
 
 The audit `LogAsync` signature used above must match `IAuditLogService.LogAsync` — check `src/Sections/Humans.AuditLog.Contracts/IAuditLogService.cs` and adjust the `Received` argument list to the overload the service calls (the existing creditor-binding audit at `Service.cs:1012` shows the overload in use).
 
-- [ ] **Step 6: Run to verify they fail**
+- [x] **Step 6: Run to verify they fail**
 
 ```bash
 dotnet test tests/Humans.Finance.Tests -v quiet --filter "FullyQualifiedName~CreateOrLink"
 ```
 Expected: build errors (record, method, audit actions missing).
 
-- [ ] **Step 7: Contracts**
+- [x] **Step 7: Contracts**
 
 `HoldedDtos.cs`, append:
 
@@ -464,7 +464,7 @@ public sealed record HoldedExpenseAccountRef(int AccountNum, string AccountId, s
     HoldedExpenseAccountLinked,
 ```
 
-- [ ] **Step 8: Service implementation**
+- [x] **Step 8: Service implementation**
 
 In `Service.cs`, add the constant near the other `internal const` lines:
 
@@ -546,14 +546,14 @@ After `ProvisionAsync`, add:
 
 Use the same `audit.LogAsync` overload the existing creditor audit uses (the one that takes an actor name string rather than a user id, since there is no acting user at this layer — pass `"Finance"` or the overload's job-name form). Adjust the test's `Received` call to match.
 
-- [ ] **Step 9: Run the tests**
+- [x] **Step 9: Run the tests**
 
 ```bash
 dotnet test tests/Humans.Finance.Tests -v quiet --filter "FullyQualifiedName~CreateOrLink|FullyQualifiedName~NormalizeAccountName"
 ```
 Expected: all PASS.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add src/Sections/Humans.Finance src/Sections/Humans.Finance.Contracts src/Sections/Humans.AuditLog.Contracts tests/Humans.Finance.Tests

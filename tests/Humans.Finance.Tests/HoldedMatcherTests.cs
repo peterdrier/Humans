@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Finance.Services;
 using Humans.Finance.Domain;
+using Xunit;
 
 namespace Humans.Finance.Tests;
 
@@ -47,5 +48,15 @@ public class HoldedMatcherTests
         var r = HoldedMatcher.Match("acc-generic", new[] { "unknown" }, map);
         r.CategoryId.Should().BeNull();
         r.Source.Should().Be(HoldedMatchSource.None);
+    }
+
+    [HumansTheory]
+    [InlineData("Workgroups / ALM 2027", "workgroups / alm 2027")]
+    [InlineData("  Workgroups  /  ALM   2027 ", "workgroups / alm 2027")]
+    [InlineData("Workgroups / Asamblea Éxito", "workgroups / asamblea exito")]
+    [InlineData(null, "")]
+    public void NormalizeAccountName_TrimsCollapsesLowersAndFoldsAccents(string? raw, string expected)
+    {
+        HoldedMatcher.NormalizeAccountName(raw).Should().Be(expected);
     }
 }

@@ -2971,4 +2971,121 @@ public class HoldedFinanceServiceTests
             });
         return userId;
     }
+
+    // ─── CreateOrLinkExpenseAccount ──────────────────────────────────────────────
+
+    private void NoManagedAccounts() =>
+        _repo.GetManagedAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedManagedAccount>());
+
+    private void NoCategoryMap() =>
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>());
+
+    private void LiveChart(params (int Num, string Id, string Name)[] accounts) =>
+        _client.ListExpenseAccountsAsync(Arg.Any<CancellationToken>()).Returns(
+            accounts.Select(a => new HoldedExpenseAccountDto { AccountNum = a.Num, Id = a.Id, Name = a.Name }).ToList());
+
+    [HumansFact]
+    public async Task CreateOrLink_NoMatch_CreatesAtNextFreeNumberAndRegisters()
+    {
+        NoManagedAccounts();
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>
+        {
+            new() { Id = Guid.NewGuid(), BudgetCategoryId = Guid.NewGuid(), HoldedAccountNumber = 62900100, HoldedAccountId = "cat-0", Tag = "x" },
+        });
+        LiveChart((62900100, "cat-0", "Departments / Geeks"), (62900101, "manual-1", "Something by hand"));
+        _client.CreateExpenseAccountAsync(62900102, "Workgroups / ALM 2027", Arg.Any<CancellationToken>()).Returns("new-1");
+
+        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(new HoldedExpenseAccountRef(62900102, "new-1", "Workgroups / ALM 2027", Created: true));
+        await _repo.Received(1).UpsertManagedAccountAsync(
+            Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900102 && a.HoldedAccountId == "new-1"
+                && a.Label == "Workgroups / ALM 2027" && a.IsActive && a.CreatedAt == FixedNow),
+            Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(AuditAction.HoldedExpenseAccountCreated, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Is<string>(d => d.Contains("62900102")), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task CreateOrLink_NameMatchesIgnoringCaseSpaceAndAccents_LinksInsteadOfCreating()
+    {
+        NoManagedAccounts();
+        NoCategoryMap();
+        LiveChart((62900150, "acc-150", "workgroups /  alm 2027"));
+
+        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(new HoldedExpenseAccountRef(62900150, "acc-150", "workgroups /  alm 2027", Created: false));
+        await _client.DidNotReceive().CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).UpsertManagedAccountAsync(
+            Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900150 && a.Label == "workgroups /  alm 2027"),
+            Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(AuditAction.HoldedExpenseAccountLinked, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task CreateOrLink_ExplicitNumber_LinksThatAccount()
+    {
+        NoManagedAccounts();
+        NoCategoryMap();
+        LiveChart((62900150, "acc-150", "Anything"), (62900151, "acc-151", "Other"));
+
+        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", 62900151, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(new HoldedExpenseAccountRef(62900151, "acc-151", "Other", Created: false));
+        await _client.DidNotReceive().CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateOrLink_ExplicitNumberUnknownInHolded_Throws()
+    {
+        NoManagedAccounts();
+        NoCategoryMap();
+        LiveChart((62900150, "acc-150", "Anything"));
+
+        var act = () => MakeService().CreateOrLinkExpenseAccountAsync("X", 62900199, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*62900199*");
+        await _repo.DidNotReceive().UpsertManagedAccountAsync(Arg.Any<HoldedManagedAccount>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateOrLink_LinkingABudgetCategoryAccount_DoesNotRegisterIt()
+    {
+        NoManagedAccounts();
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>
+        {
+            new() { Id = Guid.NewGuid(), BudgetCategoryId = Guid.NewGuid(), HoldedAccountNumber = 62900100, HoldedAccountId = "cat-0", Tag = "x" },
+        });
+        LiveChart((62900100, "cat-0", "Departments / Geeks"));
+
+        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / Geeks", 62900100, Xunit.TestContext.Current.CancellationToken);
+
+        result.AccountId.Should().Be("cat-0");
+        await _repo.DidNotReceive().UpsertManagedAccountAsync(Arg.Any<HoldedManagedAccount>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateOrLink_SkipsNumbersHeldByTheManagedRegistry()
+    {
+        _repo.GetManagedAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedManagedAccount>
+        {
+            new() { Id = Guid.NewGuid(), HoldedAccountNumber = 62900100, HoldedAccountId = "m-0", Label = "Old", IsActive = false },
+        });
+        NoCategoryMap();
+        LiveChart();
+        _client.CreateExpenseAccountAsync(62900101, "Workgroups / New", Arg.Any<CancellationToken>()).Returns("new-2");
+
+        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / New", null, Xunit.TestContext.Current.CancellationToken);
+
+        result.AccountNum.Should().Be(62900101);
+    }
+
+    [HumansFact]
+    public async Task CreateOrLink_BlankName_Throws()
+    {
+        var act = () => MakeService().CreateOrLinkExpenseAccountAsync("   ", null, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
 }

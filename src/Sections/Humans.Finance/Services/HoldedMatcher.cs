@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 using Humans.Finance.Domain;
@@ -20,6 +21,24 @@ internal static class HoldedMatcher
         var sb = new StringBuilder(raw.Length);
         foreach (var c in raw)
             if (char.IsLetterOrDigit(c)) sb.Append(char.ToLowerInvariant(c));
+        return sb.ToString();
+    }
+
+    /// <summary>Trim, collapse whitespace runs to one space, lowercase, fold accents. Two account
+    /// names that normalize equal are the same account as far as dedup is concerned.</summary>
+    public static string NormalizeAccountName(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "";
+        var decomposed = raw.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(decomposed.Length);
+        var pendingSpace = false;
+        foreach (var c in decomposed)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) == UnicodeCategory.NonSpacingMark) continue;
+            if (char.IsWhiteSpace(c)) { pendingSpace = sb.Length > 0; continue; }
+            if (pendingSpace) { sb.Append(' '); pendingSpace = false; }
+            sb.Append(char.ToLowerInvariant(c));
+        }
         return sb.ToString();
     }
 
