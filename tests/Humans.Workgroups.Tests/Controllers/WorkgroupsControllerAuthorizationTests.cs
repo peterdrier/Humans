@@ -238,7 +238,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         var controller = new WorkgroupsController(
             NewService(), Users, Teams,
             Substitute.For<IStringLocalizer<WorkgroupsResource>>(),
-            Clock, Holded,
+            Clock,
             provider.GetRequiredService<IAuthorizationService>(),
             NullLogger<WorkgroupsController>.Instance);
 

@@ -2,6 +2,7 @@ using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
+using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
 using Microsoft.Extensions.DependencyInjection;
@@ -214,6 +215,9 @@ internal sealed class CachingWorkgroupService(
     public Task<HoldedExpenseAccountRef?> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.SetBudgetAsync(workgroupId, actorUserId, save, ct));
+
+    public Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(CancellationToken ct = default) =>
+        WithInner(inner => inner.ListExpenseAccountsAsync(ct));
 
     public Task RecordDispositionAsync(
         Guid documentId,

@@ -6,6 +6,7 @@ using Humans.Base.Attributes;
 using Humans.Base.Helpers;
 using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
+using Humans.Holded.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Settings.Contracts;
@@ -39,6 +40,7 @@ internal sealed partial class WorkgroupService(
     ISettingsService settings,
     IGoogleSyncService googleSync,
     IHoldedFinanceService finance,
+    IHoldedClient holded,
     INotificationService notifications,
     IEmailService email,
     WorkgroupsEmails emailFactory,
@@ -524,6 +526,16 @@ internal sealed partial class WorkgroupService(
             authorUserId: actorUserId);
         await AuditAsync(AuditAction.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
         return account;
+    }
+
+    public async Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(CancellationToken ct = default)
+    {
+        try { return await holded.ListExpenseAccountsAsync(ct); }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Holded chart unavailable; the link-existing picker is empty");
+            return [];
+        }
     }
 
     /// <summary>Asks Finance for the group's account; any failure becomes one rule error.</summary>

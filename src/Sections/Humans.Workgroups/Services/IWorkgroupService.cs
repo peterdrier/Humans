@@ -1,6 +1,7 @@
 using Humans.Base.Interfaces;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
+using Humans.Holded.Contracts;
 using Humans.Workgroups.Domain;
 using NodaTime;
 
@@ -184,6 +185,10 @@ internal interface IWorkgroupService : IApplicationService
     /// call, else null. Refused and Withdrawn groups are rejected.</summary>
     Task<HoldedExpenseAccountRef?> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default);
+
+    /// <summary>The live Holded expense chart for the budget form's link-existing picker; empty
+    /// when Holded is unreachable, so the page still renders.</summary>
+    Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(CancellationToken ct = default);
 
     /// <summary>The Board's written reply to a delivered document.</summary>
     Task RecordDispositionAsync(

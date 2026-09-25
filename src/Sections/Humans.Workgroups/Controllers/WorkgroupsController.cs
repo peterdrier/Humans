@@ -26,7 +26,6 @@ internal sealed class WorkgroupsController(
     ITeamServiceRead teams,
     IStringLocalizer<WorkgroupsResource> localizer,
     IClock clock,
-    IHoldedClient holded,
     IAuthorizationService authorization,
     ILogger<WorkgroupsController> logger) : HumansControllerBase(users)
 {
@@ -82,15 +81,9 @@ internal sealed class WorkgroupsController(
         var canAdminister = await MayAdministerAsync(workgroup);
         var canSeeBudget = canAdminister
             || user.Profile?.MembershipTier is MembershipTier.Colaborador or MembershipTier.Asociado;
-        IReadOnlyList<HoldedExpenseAccountDto> accounts = [];
-        if (canAdminister)
-        {
-            try { accounts = await holded.ListExpenseAccountsAsync(ct); }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogWarning(ex, "Holded chart unavailable; the link-existing picker is empty");
-            }
-        }
+        IReadOnlyList<HoldedExpenseAccountDto> accounts = canAdminister
+            ? await workgroups.ListExpenseAccountsAsync(ct)
+            : [];
 
         return View(new WorkgroupPageViewModel
         {

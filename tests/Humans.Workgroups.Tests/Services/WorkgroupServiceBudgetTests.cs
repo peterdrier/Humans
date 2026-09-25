@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Finance.Contracts;
+using Humans.Holded.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;
@@ -115,6 +116,15 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
         var reloaded = await ctx.Workgroups.SingleAsync(w => w.Id == workgroup.Id, Ct);
         reloaded.BudgetAmount.Should().BeNull();
         reloaded.HoldedAccountNumber.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ListExpenseAccounts_HoldedFails_ReturnsEmpty()
+    {
+        Holded.ListExpenseAccountsAsync(Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<HoldedExpenseAccountDto>>(_ => throw new HttpRequestException("Holded down"));
+
+        (await NewService().ListExpenseAccountsAsync(Ct)).Should().BeEmpty();
     }
 
     [HumansFact]
