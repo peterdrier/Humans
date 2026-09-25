@@ -2,7 +2,7 @@
 
 `WorkgroupsController` requires `AppAccess`. `WorkgroupsAdminController` requires
 `BoardOrAdmin` for registration, referral, refusal, withdrawal, closing, reactivation,
-coordinator overrides, dispositions, bootstrapping and settings.
+coordinator overrides, dispositions, bootstrapping, settings and the budget.
 
 `WorkgroupAuthorizationHandler` is called by the member controller before member-only
 operations and when building page permissions. Its Member requirement allows current
@@ -19,6 +19,7 @@ independently enforce lifecycle and document rules; they do not authorize the ca
   Their service rules enforce Active status, membership when leaving, the last-coordinator
   replacement and the comment window. A status request is rate-limited by nothing.
 - Only Board/Admin can reach admin actions. Anonymous callers cannot reach any route.
+- A member or coordinator cannot set the budget; the route lives on the admin controller.
 - Page controls use the same Member authorization result as POST actions.
 
 Tests: `WorkgroupAuthorizationHandlerTests` and `WorkgroupsControllerAuthorizationTests`.

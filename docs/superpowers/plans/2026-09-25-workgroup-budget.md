@@ -1931,7 +1931,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Modify: `src/Sections/Humans.Workgroups/Docs/Workgroups.md`, `Docs/authorization.md`, `Docs/data-access.md`
 - Modify: `docs/architecture/dependency-graph.md`
 
-- [ ] **Step 1: Resx keys, all six files**
+- [x] **Step 1: Resx keys, all six files**
 
 Add to each resx (values per culture):
 
@@ -1945,14 +1945,14 @@ Add to each resx (values per culture):
 
 Match the existing `<data name="…" xml:space="preserve"><value>…</value></data>` one-line style.
 
-- [ ] **Step 2: Run the parity test**
+- [x] **Step 2: Run the parity test**
 
 ```bash
 dotnet test tests/Humans.Workgroups.Tests -v quiet
 ```
 Find the resource-parity test in the solution if the section project does not carry one (`grep -rln "parity" tests --include=*.cs`) and run that project too. Expected: PASS.
 
-- [ ] **Step 3: Workgroups.md**
+- [x] **Step 3: Workgroups.md**
 
 - Concepts: add *A **Budget** is an optional EUR allocation on the register plus the Holded expense account the group's spending books to. Finance owns the account's creation and naming ("Workgroups / {Name}"); Workgroups owns the amount and the reference. Visible to Board/Admin, Colaborador and Asociado.*
 - Data Model / Workgroup table: three rows — `BudgetAmount | decimal(18,2)? | Null = no budget`, `HoldedAccountNumber | int? | Bare external reference, no FK; kept when the budget is cleared`, `HoldedAccountId | string(64)? |`.
@@ -1965,17 +1965,17 @@ Find the resource-parity test in the solution if the section project does not ca
 - Architecture → Cross-section calls: add `IHoldedFinanceService`, `IHoldedClient`.
 - Update the freshness `flag-on-change` comment to mention the budget rules.
 
-- [ ] **Step 4: authorization.md and data-access.md**
+- [x] **Step 4: authorization.md and data-access.md**
 
 `authorization.md`: add to the admin paragraph "…, bootstrapping, settings and the budget." and a bullet *A member or coordinator cannot set the budget; the route lives on the admin controller.*
 
 `data-access.md`: in the cross-section reference sentence add `HoldedAccountNumber`/`HoldedAccountId` as bare external references (no FK).
 
-- [ ] **Step 5: Dependency graph**
+- [x] **Step 5: Dependency graph**
 
 In `docs/architecture/dependency-graph.md`, add edges `Workgroups --> HoldedFinance` (or whatever node name the Finance service carries there) and `Workgroups --> HoldedClient`, following the file's node naming. Read the node list first.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Sections/Humans.Workgroups docs/architecture/dependency-graph.md
