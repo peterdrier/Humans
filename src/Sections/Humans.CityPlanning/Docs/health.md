@@ -91,33 +91,33 @@ Stated so a violation is recognisable:
    (`Data/CityPlanningRepository.cs:125`). The repository exposes no update and no delete for
    a single history row; the season-scoped delete removes the polygon with its history.
 3. A restore writes the restored geometry as a *new* current polygon with the note
-   `Restored from {timestamp} UTC`, composed server-side (`Services/CityPlanningService.cs:227`);
+   `Restored from {timestamp} UTC`, composed server-side (`Services/CityPlanningService.cs:226`);
    it never rewinds history. The note on an ordinary save is whatever the caller sends,
-   falling back to `Saved` (`Controllers/CityPlanningApiController.cs:107`).
+   falling back to `Saved` (`Controllers/CityPlanningApiController.cs:104`).
 4. A camp lead may edit their own polygon only while `IsPlacementOpen`, and only a season of the
    settings year (`Services/CityPlanningService.cs:265`). City-planning team members
-   (`Services/CityPlanningService.cs:262`) and `CampAdmin`/`Admin`
-   (`Controllers/CityPlanningApiController.cs:94`) are exempt from the phase and the ownership check.
+   (`Services/CityPlanningService.cs:258`) and `CampAdmin`/`Admin`
+   (`Controllers/CityPlanningApiController.cs:91`) are exempt from the phase and the ownership check.
 5. A camp lead may place, annotate or clear their own camp's containers only while
    `IsContainerPlacementOpen` — the `ContainerOperationRequirement.Place` check each placement
-   endpoint makes (`Controllers/CityPlanningApiController.cs:272`), decided by Containers'
+   endpoint makes (`Controllers/CityPlanningApiController.cs:266`), decided by Containers'
    handler. Same exemptions.
 6. Restore and the polygon export are map-admin only — a lead cannot restore even their own
-   camp's polygon (`Controllers/CityPlanningApiController.cs:135`,
-   `Controllers/CityPlanningApiController.cs:164`).
+   camp's polygon (`Controllers/CityPlanningApiController.cs:119`,
+   `Controllers/CityPlanningApiController.cs:157`).
 7. The settings row for a year is created on demand, closed (`Data/CityPlanningRepository.cs:181`),
    keyed to `CampSettings.PublicYear` — **except** `RegistrationInfo`, which is keyed to the
    highest open season year and falls back to `PublicYear`
-   (`Services/CityPlanningService.cs:477`).
+   (`Services/CityPlanningService.cs:469`).
 8. Every polygon save and restore broadcasts `CampPolygonUpdated` to every connected client; a
    broadcast failure is logged and never fails the save
-   (`Controllers/CityPlanningApiController.cs:118`).
-9. Stored GeoJSON is validated as *parseable JSON* only (`Controllers/CityPlanningApiController.cs:100`),
+   (`Controllers/CityPlanningApiController.cs:145`).
+9. Stored GeoJSON is validated as *parseable JSON* only (`Controllers/CityPlanningApiController.cs:97`),
    except container placements, which must additionally be a `Feature` with `Polygon` geometry
    and `center_lng` / `center_lat` / `rotation_degrees` properties
-   (`Controllers/CityPlanningApiController.cs:276`).
+   (`Controllers/CityPlanningApiController.cs:349`).
 10. Uploaded zone files are rejected above 10 MB and when unparseable
-    (`Services/CityPlanningService.cs:362`).
+    (`Services/CityPlanningService.cs:358`).
 11. Every settings write that takes a `userId` — both placement phases, the zone uploads and
     the zone deletes — appends an audit entry naming that actor, after the save, and a request
     aborted mid-write does not drop it: the row id is resolved before the save, and the save
@@ -125,7 +125,7 @@ Stated so a violation is recognisable:
     row records *when* a value changed; the audit log is the only record of *who*. A rejected
     upload never reaches the row and writes no entry.
 12. The city-planning team slug is normalized on both sides before comparing, and a blank
-    configured slug matches nothing (`Services/CityPlanningService.cs:248`).
+    configured slug matches nothing (`Services/CityPlanningService.cs:244`, `Services/CityPlanningService.cs:249`).
 13. The container map page refuses anyone who is neither a map admin nor, while container
     placement is open, a lead of a camp in that year (`Controllers/CityPlanningController.cs:277`).
 
@@ -193,3 +193,4 @@ touching these callers are shaped by them.
 | Date | Run | Reforge score | Notes |
 |---|---|---|---|
 | 2026-08-26 | [2026-08-26-CityPlanning](../../../../docs/health/runs/2026-08-26-CityPlanning.md) | 210 → 218 (loc 1947 → 1964, cogP95 4, cogMax 6) | First doctor run; this target derived from scratch. The score rose only after Peter approved the audit change: the whole +8 is `crossSectionFullService` for injecting `IAuditLogService`, which has no read-only half — it is the one interface every writer to the crosscut takes, so the cost is not narrowable and is the price of the audit trail. Structure was sound — the value was in what the section claimed about itself (a documented ordering guarantee the query does not make, a non-existent EF relationship, both authorization rows naming the wrong guard) and in untested paths, including the cross-section delete Camps calls. Behaviour bugs found and recorded in `Docs/debt.yml` rather than fixed. PR: peterdrier/Humans#1525 |
+| 2026-09-25 | [2026-09-25-CityPlanning](../../../../docs/health/runs/2026-09-25-CityPlanning.md) | — | Re-doctor; target regenerated with cited invariants. The value was in what the section told people: the in-app help and member guide described a read-only container map, a restore that saves twice and an admin panel that toggles placement, none of which the code does. Map admin is now one policy both controllers ask; the broadcast tail is written once; restore/export gates and save-then-broadcast are pinned by tests. Behaviour gaps ledgered, not fixed. PR: pending |
