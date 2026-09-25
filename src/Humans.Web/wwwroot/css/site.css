@@ -2430,25 +2430,12 @@ a.notification-row-line:hover .notification-title {
 
 /* --- Shifts Header Redesign --- */
 
-/* Tabs — Renaissance style */
-.shifts-nav-tabs .nav-link {
-    color: var(--h-aged-ink-light);
-    border: none;
-    border-bottom: 2px solid transparent;
-    padding: 0.5rem 1rem;
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1.25rem;
-    font-weight: 600;
-}
-.shifts-nav-tabs .nav-link:hover {
-    color: var(--h-aged-ink);
-    border-bottom-color: var(--h-gold-light);
-}
-.shifts-nav-tabs .nav-link.active {
-    color: var(--h-aged-ink);
-    border-bottom-color: var(--h-gold);
-    background: transparent;
-}
+/* Tabs: .shifts-nav-tabs used to hand-roll its own nav-link look (hardcoded
+   'Cormorant Garamond' font stack, own sizing); the global .nav-tabs .nav-link
+   rule (site.css component layer) now covers this — same active gold
+   underline, display font via --h-font-display token, spec-matching size.
+   Markup keeps the shifts-nav-tabs class (harmless, used by shifts.js as a
+   scoping selector) but no longer needs page CSS to look right. */
 
 /* Hero Banner */
 .shifts-hero-banner {
