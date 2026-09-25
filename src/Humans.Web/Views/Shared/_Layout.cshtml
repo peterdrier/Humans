@@ -34,71 +34,71 @@
 </head>
 <body class="@(ViewData["BodyClass"])">
     <header>
-        <nav class="navbar navbar-expand-lg navbar-dark mb-3">
-            <div class="container">
-                @{
-                    var isFullAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
-                    string? buildHashTooltip = null;
-                    if (isFullAdmin)
+        <nav class="navbar navbar-expand navbar-dark mb-3">
+            @{
+                var isFullAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
+                string? buildHashTooltip = null;
+                if (isFullAdmin)
+                {
+                    var brandAssembly = System.Reflection.Assembly.GetEntryAssembly()!;
+                    var brandAttr = (System.Reflection.AssemblyInformationalVersionAttribute?)
+                        Attribute.GetCustomAttribute(brandAssembly, typeof(System.Reflection.AssemblyInformationalVersionAttribute));
+                    var brandInfoVersion = brandAttr?.InformationalVersion ?? "";
+                    var brandPlusIndex = brandInfoVersion.IndexOf('+', StringComparison.Ordinal);
+                    var brandFullCommit = brandPlusIndex >= 0 ? brandInfoVersion[(brandPlusIndex + 1)..] : "";
+                    if (brandFullCommit.Length > 0)
                     {
-                        var brandAssembly = System.Reflection.Assembly.GetEntryAssembly()!;
-                        var brandAttr = (System.Reflection.AssemblyInformationalVersionAttribute?)
-                            Attribute.GetCustomAttribute(brandAssembly, typeof(System.Reflection.AssemblyInformationalVersionAttribute));
-                        var brandInfoVersion = brandAttr?.InformationalVersion ?? "";
-                        var brandPlusIndex = brandInfoVersion.IndexOf('+', StringComparison.Ordinal);
-                        var brandFullCommit = brandPlusIndex >= 0 ? brandInfoVersion[(brandPlusIndex + 1)..] : "";
-                        if (brandFullCommit.Length > 0)
-                        {
-                            buildHashTooltip = brandFullCommit.Length > 8 ? brandFullCommit[..8] : brandFullCommit;
-                        }
+                        buildHashTooltip = brandFullCommit.Length > 8 ? brandFullCommit[..8] : brandFullCommit;
                     }
                 }
-                @if (buildHashTooltip != null)
-                {
-                    <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index"
-                       data-bs-toggle="tooltip" data-bs-custom-class="build-hash-tooltip" title="@buildHashTooltip">
-                        <img src="~/img/logo.svg" alt="" aria-hidden="true" />
-                        @Localizer["Nav_Brand"]
-                    </a>
-                }
-                else
-                {
-                    <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
-                        <img src="~/img/logo.svg" alt="" aria-hidden="true" />
-                        @Localizer["Nav_Brand"]
-                    </a>
-                }
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-lg-inline-flex justify-content-between">
-                    @{
-                        var isAuthenticated = User.Identity?.IsAuthenticated == true;
-                        // Name-only access: top-nav membership cues key off Active state.
-                        var hasProfile = RoleAssignmentClaimsTransformation.IsActive(User);
-                    }
-                    <ul class="navbar-nav flex-grow-1">
-                        @* Links sections contribute through ISectionNav; renders nothing while none do.
-                           Search and Tour are real sections (Humans.Search, Humans.Tour) and contribute
-                           their own nav links here rather than being named by this file — see
-                           nobodies-collective/Humans#1090. *@
-                        <vc:section-nav />
-                        @if (!isAuthenticated || !hasProfile)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Legal" asp-action="Index">Legal</a>
-                            </li>
-                        }
-                        <li class="nav-item" authorize-policy="AnyAdminRole">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
+            }
+            @if (buildHashTooltip != null)
+            {
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index"
+                   data-bs-toggle="tooltip" data-bs-custom-class="build-hash-tooltip" title="@buildHashTooltip">
+                    <img src="~/img/logo.svg" alt="" aria-hidden="true" />
+                    @Localizer["Nav_Brand"]
+                </a>
+            }
+            else
+            {
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <img src="~/img/logo.svg" alt="" aria-hidden="true" />
+                    @Localizer["Nav_Brand"]
+                </a>
+            }
+            @{
+                var isAuthenticated = User.Identity?.IsAuthenticated == true;
+                // Name-only access: top-nav membership cues key off Active state.
+                var hasProfile = RoleAssignmentClaimsTransformation.IsActive(User);
+                // Shallow match on controller only — the same rule SectionNav's own
+                // Default.cshtml uses for the links it contributes.
+                var currentController = ViewContext.RouteData.Values["controller"] as string;
+                bool IsCurrentController(string controller) =>
+                    string.Equals(controller, currentController, StringComparison.OrdinalIgnoreCase);
+            }
+            <div class="navbar-links">
+                <ul class="navbar-nav">
+                    @* Links sections contribute through ISectionNav; renders nothing while none do.
+                       Search and Tour are real sections (Humans.Search, Humans.Tour) and contribute
+                       their own nav links here rather than being named by this file — see
+                       nobodies-collective/Humans#1090. *@
+                    <vc:section-nav />
+                    @if (!isAuthenticated || !hasProfile)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link@(IsCurrentController("Legal") ? " active" : "")" asp-controller="Legal" asp-action="Index" aria-current="@(IsCurrentController("Legal") ? "page" : null)">Legal</a>
                         </li>
-                    </ul>
-                    <div class="d-flex align-items-center gap-2 position-relative">
-                        <vc:chrome-slot name="header-right" />
-                        <partial name="_LanguageChooser" />
-                        <partial name="_LoginPartial" />
-                    </div>
-                </div>
+                    }
+                    <li class="nav-item" authorize-policy="AnyAdminRole">
+                        <a class="nav-link nav-restricted@(IsCurrentController("Admin") ? " active" : "")" asp-area="" asp-controller="Admin" asp-action="Index" aria-current="@(IsCurrentController("Admin") ? "page" : null)">@Localizer["Nav_Admin"]</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="d-flex align-items-center gap-2 position-relative">
+                <vc:chrome-slot name="header-right" />
+                <partial name="_LanguageChooser" />
+                <partial name="_LoginPartial" />
             </div>
         </nav>
         <vc:chrome-slot name="above-content" />
