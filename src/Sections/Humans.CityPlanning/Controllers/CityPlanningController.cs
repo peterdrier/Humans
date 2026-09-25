@@ -18,20 +18,18 @@ internal sealed class CityPlanningController(
     ICampServiceRead campService,
     IContainerService containerService,
     IUserServiceRead userService,
+    IAuthorizationService authorizationService,
     ILogger<CityPlanningController> logger) : HumansControllerBase(userService)
 {
-    private async Task<bool> IsMapAdminAsync(Guid userId, CancellationToken ct)
-    {
-        return RoleChecks.IsCampAdmin(User) ||
-               await cityPlanningService.IsCityPlanningTeamMemberAsync(userId, ct);
-    }
+    private async Task<bool> IsMapAdminAsync() =>
+        (await authorizationService.AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)).Succeeded;
 
     /// <summary>Resolves the current user and gates on the map-admin check.</summary>
     private async Task<(IActionResult? Error, UserInfo? User)> RequireMapAdminAsync(CancellationToken ct)
     {
-        var (userError, user) = await RequireCurrentUserAsync();
+        var (userError, user) = await RequireCurrentUserAsync(ct);
         if (userError is not null) return (userError, null);
-        if (!await IsMapAdminAsync(user.Id, ct)) return (Forbid(), null);
+        if (!await IsMapAdminAsync()) return (Forbid(), null);
         return (null, user);
     }
 
@@ -42,7 +40,7 @@ internal sealed class CityPlanningController(
         if (error != null) return error;
 
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
-        var isMapAdmin = await IsMapAdminAsync(user.Id, cancellationToken);
+        var isMapAdmin = await IsMapAdminAsync();
         var userSeasonId = await FindUserLeadSeasonIdAsync(user.Id, settings.Year, cancellationToken);
 
         return View(new CityPlanningIndexViewModel
@@ -62,7 +60,7 @@ internal sealed class CityPlanningController(
         if (error != null) return error;
 
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
-        var isMapAdmin = await IsMapAdminAsync(user.Id, cancellationToken);
+        var isMapAdmin = await IsMapAdminAsync();
         var userSeasonId = await FindUserLeadSeasonIdAsync(user.Id, settings.Year, cancellationToken);
         var seasonsWithout = await cityPlanningService.GetCampSeasonsWithoutCampPolygonAsync(settings.Year, cancellationToken);
 
@@ -270,7 +268,7 @@ internal sealed class CityPlanningController(
         var (error, user) = await RequireCurrentUserAsync();
         if (error != null) return error;
 
-        var isMapAdmin = await IsMapAdminAsync(user.Id, cancellationToken);
+        var isMapAdmin = await IsMapAdminAsync();
         var userCamp = await FindUserLeadCampAsync(user.Id, year, cancellationToken);
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
 

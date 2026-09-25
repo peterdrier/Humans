@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
+using Humans.Base.Enums;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Controllers;
@@ -10,7 +11,6 @@ using Humans.CityPlanning.Services;
 using Humans.Containers.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -20,12 +20,13 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using NodaTime;
 
 namespace Humans.CityPlanning.Tests;
 
 /// <summary>
-/// Pins the map-admin gate on restore and export (health.md invariant 6) and the
-/// save-then-broadcast contract (invariant 8) at the API surface the map JavaScript calls.
+/// Pins the map-admin gate on restore and export, team members included (health.md
+/// invariant 6), and the save-then-broadcast contract (invariant 8) at the API surface the map JavaScript calls.
 /// </summary>
 public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
 {
@@ -64,7 +65,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
             .Append(new Claim(ClaimTypes.NameIdentifier, _userId.ToString()));
         var controller = new CityPlanningApiController(
             _service, _campService, Substitute.For<IContainerService>(),
-            Substitute.For<IAuthorizationService>(), hubContext, userManager,
+            MapAdminAuthorization(_service), hubContext, userManager,
             NullLogger<CityPlanningApiController>.Instance)
         {
             ControllerContext = new ControllerContext
@@ -91,6 +92,29 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
 
         result.Should().BeOfType<ForbidResult>();
         (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task RestoreCampPolygon_CityPlanningTeamMemberWithNoRole_Restores()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var teamId = Guid.NewGuid();
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
+        {
+            [teamId] = new(
+                teamId, "City Planning", null, "city-planning",
+                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+                Members: [new(Guid.NewGuid(), _userId, string.Empty, null, null, TeamMemberRole.Member, Instant.MinValue)]),
+        });
+        await _service.SaveCampPolygonAsync(_campSeasonId, Square, 10, Guid.NewGuid(), cancellationToken: ct);
+        var historyId = (await CityPlanningDb.CampPolygonHistories.SingleAsync(ct)).Id;
+
+        var result = await CreateController().RestoreCampPolygon(_campSeasonId, historyId, ct);
+
+        result.Should().BeOfType<OkObjectResult>();
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(2);
     }
 
     [HumansFact]

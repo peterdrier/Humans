@@ -60,8 +60,8 @@ The layout those shapes imply, written fresh:
   calls, because the maps are single-page surfaces that fetch their own state. A polygon save
   and a restore end the same way — broadcast the new shape — and that tail is written once.
 - **One definition of "map admin".** The `CityPlanningMapAdmin` policy (Admin or CampAdmin,
-  else city-planning team member) is the rule; today the two controllers each restate it
-  in-method alongside the handler.
+  else city-planning team member) is the rule, and both controllers ask it through
+  `IAuthorizationService` rather than restating it.
 - **One service** (`CityPlanningService`) holding both business rules: *who may edit what,
   when* and *what a save does to history*. It is the only repository caller.
 - **One repository** over the section's tables, exposing polygon reads, an atomic

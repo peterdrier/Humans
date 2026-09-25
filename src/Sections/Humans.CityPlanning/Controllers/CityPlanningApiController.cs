@@ -31,11 +31,8 @@ internal sealed class CityPlanningApiController(
         return Guid.Parse(id);
     }
 
-    private async Task<bool> IsMapAdminAsync(Guid userId, CancellationToken ct)
-    {
-        return RoleChecks.IsCampAdmin(User) ||
-               await cityPlanningService.IsCityPlanningTeamMemberAsync(userId, ct);
-    }
+    private async Task<bool> IsMapAdminAsync() =>
+        (await authorizationService.AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)).Succeeded;
 
     private async Task<Guid?> FindUserLeadCampIdAsync(Guid userId, int year, CancellationToken ct)
     {
@@ -119,7 +116,7 @@ internal sealed class CityPlanningApiController(
         CancellationToken cancellationToken)
     {
         var userId = CurrentUserId();
-        if (!await IsMapAdminAsync(userId, cancellationToken))
+        if (!await IsMapAdminAsync())
         {
             return Forbid();
         }
@@ -157,8 +154,7 @@ internal sealed class CityPlanningApiController(
     [HttpGet("export.geojson")]
     public async Task<IActionResult> ExportGeoJson([FromQuery] int? year, CancellationToken cancellationToken)
     {
-        var userId = CurrentUserId();
-        if (!await IsMapAdminAsync(userId, cancellationToken))
+        if (!await IsMapAdminAsync())
         {
             return Forbid();
         }
@@ -175,7 +171,7 @@ internal sealed class CityPlanningApiController(
     public async Task<IActionResult> GetContainers(int year, CancellationToken cancellationToken)
     {
         var userId = CurrentUserId();
-        var isMapAdmin = await IsMapAdminAsync(userId, cancellationToken);
+        var isMapAdmin = await IsMapAdminAsync();
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
         var userCampId = await FindUserLeadCampIdAsync(userId, year, cancellationToken);
 
@@ -212,7 +208,7 @@ internal sealed class CityPlanningApiController(
     public async Task<IActionResult> ExportContainersGeoJson(int year, CancellationToken cancellationToken)
     {
         var userId = CurrentUserId();
-        var isMapAdmin = await IsMapAdminAsync(userId, cancellationToken);
+        var isMapAdmin = await IsMapAdminAsync();
         var userCampId = await FindUserLeadCampIdAsync(userId, year, cancellationToken);
 
         if (!isMapAdmin && !userCampId.HasValue)
