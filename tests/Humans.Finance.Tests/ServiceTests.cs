@@ -3134,6 +3134,8 @@ public class HoldedFinanceServiceTests
         await _repo.Received(1).UpsertManagedAccountAsync(
             Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900150 && !a.IsActive && a.UpdatedAt == FixedNow),
             Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(AuditAction.HoldedExpenseAccountActiveChanged, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Is<string>(s => s.Contains("Retired") && s.Contains("62900150")), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -3144,6 +3146,8 @@ public class HoldedFinanceServiceTests
         await MakeService().SetExpenseAccountActiveAsync(1, false, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().UpsertManagedAccountAsync(Arg.Any<HoldedManagedAccount>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceive().LogAsync(AuditAction.HoldedExpenseAccountActiveChanged, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]

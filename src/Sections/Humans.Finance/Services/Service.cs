@@ -261,6 +261,8 @@ internal sealed class Service(
         row.IsActive = isActive;
         row.UpdatedAt = clock.GetCurrentInstant();
         await repo.UpsertManagedAccountAsync(row, ct);
+        await audit.LogAsync(AuditAction.HoldedExpenseAccountActiveChanged, HoldedExpenseAccount, Guid.Empty,
+            $"{(isActive ? "Restored" : "Retired")} Holded expense account {accountNum} '{row.Label}'", "Finance");
     }
 
     public async Task<IReadOnlyList<HoldedExpenseAccountOption>> ListExpenseAccountsAsync(

@@ -220,6 +220,8 @@ public enum AuditAction
     // Finance created or linked a Holded expense account outside the budget map on a caller's behalf.
     HoldedExpenseAccountCreated,
     HoldedExpenseAccountLinked,
+    // Finance retired or restored a managed Holded expense account (a workgroup lifecycle hook).
+    HoldedExpenseAccountActiveChanged,
     // Backdoor personal machine-API key lifecycle (nobodies-collective/Humans#1128).
     // Rotation is recorded as a revoke of the old key followed by an issue of the new one.
     BackdoorApiKeyIssued,
