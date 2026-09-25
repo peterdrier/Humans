@@ -359,4 +359,7 @@
   <data name="CityPlanning_Help_ColorsImageAlt" xml:space="preserve">
     <value>Screenshot: Barrios eingefärbt nach Klangzone</value>
   </data>
+  <data name="CityPlanning_OverviewTitle" xml:space="preserve">
+    <value>Stadtplanung</value>
+  </data>
 </root>

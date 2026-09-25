@@ -359,4 +359,7 @@
   <data name="CityPlanning_Help_ColorsImageAlt" xml:space="preserve">
     <value>Captura: barrios acolorits segons la seva zona de so</value>
   </data>
+  <data name="CityPlanning_OverviewTitle" xml:space="preserve">
+    <value>Planificació urbana</value>
+  </data>
 </root>

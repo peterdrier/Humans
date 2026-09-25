@@ -141,4 +141,5 @@
   <data name="CityPlanning_Help_ZonesImageAlt" xml:space="preserve"><value>Screenshot: a barrio drawn outside the dashed camping zones</value></data>
   <data name="CityPlanning_Help_OverlapsImageAlt" xml:space="preserve"><value>Screenshot: two barrios overlapping on the map</value></data>
   <data name="CityPlanning_Help_ColorsImageAlt" xml:space="preserve"><value>Screenshot: barrios coloured by sound zone</value></data>
+  <data name="CityPlanning_OverviewTitle" xml:space="preserve"><value>City Planning</value></data>
 </root>
