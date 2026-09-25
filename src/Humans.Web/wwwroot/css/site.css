@@ -21,7 +21,7 @@ html { scrollbar-gutter: stable; }
     --bs-body-color: var(--h-text);
     --bs-body-bg: var(--h-bg);
     --bs-border-color: var(--h-border);
-    --bs-secondary-color: var(--h-sepia);
+    --bs-secondary-color: var(--h-umber);
     --bs-tertiary-bg: var(--h-vellum);
     --bs-link-color: var(--h-gold-dark);
     --bs-link-color-rgb: 168, 138, 78;
@@ -547,37 +547,38 @@ h5, .h5 { font-size: 1.1rem; }
     color: var(--h-aged-ink);
 }
 
-/* WCAG: white text on --h-amber is ~3:1, fails AA. aged-ink on amber is ~4.5:1; warm-white on the
-   darker amber-dark hover is ~4:1 — both are the best pairing available from existing tokens (see
-   gap-plan.md §2c-15/§4-26; a purpose-built darker amber or gold-text token is a design-system fix). */
+/* WCAG AA: aged-ink on amber-light is ~6.2:1; every other amber fill fails with any text token
+   (ink on amber 4.49, warm-white on amber-dark 4.0), so hover darkens the border, not the fill. */
 .btn-warning {
-    background-color: var(--h-amber);
-    border-color: var(--h-amber);
+    background-color: var(--h-amber-light);
+    border-color: var(--h-amber-light);
     color: var(--h-aged-ink);
 }
 
 .btn-warning:hover {
-    background-color: var(--h-amber-dark);
+    background-color: var(--h-amber-light);
     border-color: var(--h-amber-dark);
-    color: var(--h-warm-white);
+    color: var(--h-aged-ink);
+    box-shadow: 0 2px 8px rgba(196, 138, 42, 0.3);
+    transform: translateY(-1px);
 }
 
 .btn-outline-warning {
     border-color: var(--h-amber);
-    color: var(--h-amber-dark);
+    color: var(--h-alert-warning-text);
 }
 
 .btn-outline-warning:hover {
-    background-color: var(--h-amber);
-    border-color: var(--h-amber);
+    background-color: var(--h-amber-light);
+    border-color: var(--h-amber-light);
     color: var(--h-aged-ink);
 }
 
 .btn-outline-warning:focus,
 .btn-outline-warning.active,
 .btn-outline-warning:active {
-    background-color: var(--h-amber);
-    border-color: var(--h-amber);
+    background-color: var(--h-amber-light);
+    border-color: var(--h-amber-light);
     color: var(--h-aged-ink);
 }
 
@@ -806,22 +807,22 @@ h5, .h5 { font-size: 1.1rem; }
 
 .badge.bg-light {
     background-color: var(--h-vellum) !important;
-    color: var(--h-sepia) !important;
+    color: var(--h-umber) !important;
 }
 
 .badge.rounded-pill.bg-primary,
 .badge.rounded-pill.bg-info {
-    background-color: var(--h-blue-muted) !important;
+    background-color: #4a6977 !important;
     color: #fff !important;
 }
 
 .badge.rounded-pill.bg-success {
-    background-color: var(--h-sage) !important;
+    background-color: var(--h-sage-dark) !important;
     color: #fff !important;
 }
 
 .badge.rounded-pill.bg-warning {
-    background-color: var(--h-amber) !important;
+    background-color: var(--h-amber-light) !important;
     color: var(--h-aged-ink) !important;
 }
 
@@ -831,7 +832,7 @@ h5, .h5 { font-size: 1.1rem; }
 }
 
 .badge.rounded-pill.bg-secondary {
-    background-color: var(--h-sepia) !important;
+    background-color: var(--h-umber) !important;
     color: #fff !important;
 }
 
@@ -982,7 +983,7 @@ h5, .h5 { font-size: 1.1rem; }
 }
 
 .form-control::placeholder {
-    color: var(--h-sepia-light);
+    color: var(--h-umber);
     font-style: italic;
 }
 
@@ -990,7 +991,7 @@ h5, .h5 { font-size: 1.1rem; }
 .form-control[readonly],
 .form-select:disabled {
     background-color: var(--h-parchment);
-    color: var(--h-sepia);
+    color: var(--h-umber);
     opacity: 1;
 }
 
@@ -998,13 +999,13 @@ h5, .h5 { font-size: 1.1rem; }
     font-family: var(--h-font-display);
     font-style: italic;
     font-size: 0.78rem;
-    color: var(--h-sepia);
+    color: var(--h-umber);
 }
 
 .input-group-text {
     background-color: var(--h-vellum);
     border-color: var(--h-border);
-    color: var(--h-sepia);
+    color: var(--h-umber);
 }
 
 /* WCAG: appearance:none checkboxes/switches can't use accent-color, so the checked state is styled
@@ -1061,8 +1062,6 @@ h5, .h5 { font-size: 1.1rem; }
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--h-sepia);
-    background-color: var(--h-vellum);
     padding: 12px 16px;
     border-bottom-width: 2px;
     border-color: var(--h-border);
@@ -1078,10 +1077,17 @@ h5, .h5 { font-size: 1.1rem; }
     padding: 8px 12px;
 }
 
+/* Header tint via the table variables at zero specificity, so a contextual thead (.table-dark,
+   .table-danger) and body-row th cells keep Bootstrap's own colors. */
+:where(.table > thead) {
+    --bs-table-bg: var(--h-vellum);
+    --bs-table-color: var(--h-umber);
+}
+
 .table-light,
 .table > thead.table-light > tr > * {
     --bs-table-bg: var(--h-vellum);
-    --bs-table-color: var(--h-sepia);
+    --bs-table-color: var(--h-umber);
 }
 
 .table-success {
@@ -1163,7 +1169,7 @@ footer {
     font-family: var(--h-font-display);
     font-weight: 600;
     font-size: 1.05rem;
-    color: var(--h-sepia);
+    color: var(--h-umber);
     background-color: transparent;
     border: none;
     border-bottom: 2px solid transparent;
@@ -1185,7 +1191,7 @@ footer {
 .nav-pills .nav-link {
     font-family: var(--h-font-body);
     font-size: 0.82rem;
-    color: var(--h-sepia);
+    color: var(--h-umber);
     background-color: var(--h-warm-white);
     border: 1px solid var(--h-border);
     border-radius: var(--h-radius);
@@ -1205,7 +1211,7 @@ footer {
 
 .breadcrumb-item,
 .breadcrumb-item a {
-    color: var(--h-sepia);
+    color: var(--h-umber);
     text-decoration: none;
 }
 
@@ -1410,11 +1416,11 @@ a:hover {
 }
 
 .text-info {
-    color: var(--h-blue-muted) !important;
+    color: var(--h-alert-info-text) !important;
 }
 
 .text-secondary {
-    color: var(--h-sepia) !important;
+    color: var(--h-umber) !important;
 }
 
 /* --- Selection --- */
