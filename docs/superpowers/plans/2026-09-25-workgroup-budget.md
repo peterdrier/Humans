@@ -52,7 +52,7 @@
   - `Task<IReadOnlyList<HoldedManagedAccount>> GetManagedAccountsAsync(CancellationToken ct = default)`
   - `Task UpsertManagedAccountAsync(HoldedManagedAccount row, CancellationToken ct = default)` — keyed on `HoldedAccountNumber`; an existing row keeps its `Id` and `CreatedAt`, takes `Label`, `HoldedAccountId`, `IsActive`, `UpdatedAt`.
 
-- [ ] **Step 1: Write the failing repository test**
+- [x] **Step 1: Write the failing repository test**
 
 Append to `tests/Humans.Finance.Tests/RepositoryTests.cs` (inside the class, uses the existing `Make()` helper):
 
@@ -87,14 +87,14 @@ Append to `tests/Humans.Finance.Tests/RepositoryTests.cs` (inside the class, use
 
 Add `using NodaTime;` and `using Humans.Finance.Domain;` at the top if missing.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```bash
 dotnet test tests/Humans.Finance.Tests -v quiet --filter "FullyQualifiedName~ManagedAccounts_UpsertByNumber"
 ```
 Expected: build error, `HoldedManagedAccount` not defined.
 
-- [ ] **Step 3: Add the entity**
+- [x] **Step 3: Add the entity**
 
 `src/Sections/Humans.Finance/Domain/HoldedManagedAccount.cs`:
 
@@ -122,7 +122,7 @@ internal sealed class HoldedManagedAccount
 }
 ```
 
-- [ ] **Step 4: Add the configuration and register it**
+- [x] **Step 4: Add the configuration and register it**
 
 `src/Sections/Humans.Finance/Data/Configurations/HoldedManagedAccountConfiguration.cs`:
 
@@ -157,7 +157,7 @@ In `FinanceDbContext.cs` add the DbSet and the configuration:
 ```
 Update the class summary's table count ("the four holded_* tables" → "the five holded_* tables").
 
-- [ ] **Step 5: Repository interface and implementation**
+- [x] **Step 5: Repository interface and implementation**
 
 In `IHoldedRepository.cs`, after the category-map block:
 
@@ -202,21 +202,21 @@ In `Repository.cs`, after `AddCategoryMapAsync`:
     }
 ```
 
-- [ ] **Step 6: Generate the migration**
+- [x] **Step 6: Generate the migration**
 
 ```bash
 dotnet ef migrations add HoldedManagedAccounts --context FinanceDbContext --output-dir Data/Migrations --project src/Sections/Humans.Finance --startup-project src/Humans.Web
 ```
 Then `git diff --stat src/Sections/Humans.Finance/Data/Migrations` — expect one new migration pair plus a snapshot diff that only adds `holded_managed_accounts`. If the snapshot diff touches anything else, stop and report.
 
-- [ ] **Step 7: Run the test**
+- [x] **Step 7: Run the test**
 
 ```bash
 dotnet test tests/Humans.Finance.Tests -v quiet --filter "FullyQualifiedName~ManagedAccounts_UpsertByNumber"
 ```
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/Sections/Humans.Finance tests/Humans.Finance.Tests/RepositoryTests.cs

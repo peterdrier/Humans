@@ -11,6 +11,14 @@ internal interface IHoldedRepository : IRepository
     Task<IReadOnlyList<HoldedCategoryMap>> GetCategoryMapAsync(CancellationToken ct = default);
     Task AddCategoryMapAsync(HoldedCategoryMap row, CancellationToken ct = default);
 
+    // Managed accounts (expense accounts created outside the budget map)
+    Task<IReadOnlyList<HoldedManagedAccount>> GetManagedAccountsAsync(CancellationToken ct = default);
+
+    /// <summary>Insert or, when a row already carries this account number, update its label, id and
+    /// active flag. Keyed on the number because that is what Holded and every caller identify the
+    /// account by.</summary>
+    Task UpsertManagedAccountAsync(HoldedManagedAccount row, CancellationToken ct = default);
+
     // Docs
     Task UpsertDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedExpenseDoc>> GetUnmatchedAsync(CancellationToken ct = default);

@@ -338,6 +338,35 @@ public class RepositoryTests
         booked.ReconciledAt.Should().Be(reconciledAt);
     }
 
+    // ─── Managed accounts ────────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task ManagedAccounts_UpsertByNumber_KeepsIdAndCreatedAt_ReplacesTheRest()
+    {
+        var (repo, _) = Make();
+        var t0 = Instant.FromUtc(2026, 9, 1, 0, 0);
+        var first = new HoldedManagedAccount
+        {
+            Id = Guid.NewGuid(), HoldedAccountNumber = 62900150, HoldedAccountId = "acc-1",
+            Label = "Workgroups / ALM 2027", IsActive = true, CreatedAt = t0, UpdatedAt = t0,
+        };
+        await repo.UpsertManagedAccountAsync(first, Ct);
+
+        var t1 = t0.Plus(Duration.FromDays(1));
+        await repo.UpsertManagedAccountAsync(new HoldedManagedAccount
+        {
+            Id = Guid.NewGuid(), HoldedAccountNumber = 62900150, HoldedAccountId = "acc-1",
+            Label = "Workgroups / ALM 2027", IsActive = false, CreatedAt = t1, UpdatedAt = t1,
+        }, Ct);
+
+        var rows = await repo.GetManagedAccountsAsync(Ct);
+        var row = rows.Should().ContainSingle().Which;
+        row.Id.Should().Be(first.Id);
+        row.CreatedAt.Should().Be(t0);
+        row.UpdatedAt.Should().Be(t1);
+        row.IsActive.Should().BeFalse();
+    }
+
     // ─── Builders ────────────────────────────────────────────────────────────────
 
     private static HoldedExpenseDoc Doc(
