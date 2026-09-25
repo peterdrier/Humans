@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
+using Humans.Holded.Contracts;
 using Humans.Testing;
 using Humans.Workgroups.Controllers;
 using Humans.Workgroups.Domain;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 using NSubstitute;
 using Xunit;
 
@@ -82,6 +84,46 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
 
         result.Should().BeOfType<RedirectToActionResult>();
         sut.TempData.Should().ContainKey(TempDataKeys.ErrorMessage);
+    }
+
+    [HumansFact]
+    public async Task RegisterExisting_Get_OffersTheLiveChartForLinking()
+    {
+        Holded.ListExpenseAccountsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyList<HoldedExpenseAccountDto>>(
+                [new HoldedExpenseAccountDto { Id = "a1", AccountNum = 62900007, Name = "Sound (legacy)" }]));
+        var sut = MakeAdminController(nameof(WorkgroupsAdminController.RegisterExisting));
+
+        var result = await sut.RegisterExisting(Ct);
+
+        result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<RegisterExistingViewModel>()
+            .Subject.ExpenseAccounts.Should().ContainSingle().Which.AccountNum.Should().Be(62900007);
+    }
+
+    [HumansFact]
+    public async Task RegisterExisting_LinkMode_BindsTheChosenAccountInsteadOfCreating()
+    {
+        var sut = MakeAdminController(nameof(WorkgroupsAdminController.RegisterExisting));
+        var model = new RegisterExistingViewModel
+        {
+            Application = new WorkgroupFormViewModel
+            {
+                Name = "Sound",
+                Purpose = "Purpose",
+                Deliverable = "A report",
+                DeliverableKind = WorkgroupDeliverableKind.Report,
+                Audience = WorkgroupAudience.Board
+            },
+            CoordinatorUserId = SeedUser("Coordinator"),
+            RegisteredOn = new LocalDate(2025, 3, 1),
+            Budget = new WorkgroupBudgetFormViewModel
+            { HasBudget = true, Amount = 500m, AccountMode = "link", ExistingAccountNum = 62900007 }
+        };
+
+        var result = await sut.RegisterExisting(model, Ct);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        await Finance.Received(1).CreateOrLinkExpenseAccountAsync("Workgroups / Sound", 62900007, Arg.Any<CancellationToken>());
     }
 
     /// <summary>A Board-actor <see cref="WorkgroupsAdminController"/> wired to an in-memory context,

@@ -82,8 +82,8 @@ internal sealed class WorkgroupsAdminController(
     // ── Bootstrapping (§21) ───────────────────────────────────────────────
 
     [HttpGet("RegisterExisting")]
-    public IActionResult RegisterExisting() =>
-        View(new RegisterExistingViewModel { RegisteredOn = clock.GetCurrentInstant().InUtc().Date });
+    public Task<IActionResult> RegisterExisting(CancellationToken ct) =>
+        RegisterExistingViewAsync(new RegisterExistingViewModel { RegisteredOn = clock.GetCurrentInstant().InUtc().Date }, ct);
 
     [HttpPost("RegisterExisting")]
     [ValidateAntiForgeryToken]
@@ -91,7 +91,7 @@ internal sealed class WorkgroupsAdminController(
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid) return await RegisterExistingViewAsync(model, ct);
 
         try
         {
@@ -107,11 +107,19 @@ internal sealed class WorkgroupsAdminController(
         {
             logger.LogInformation(ex, "Workgroups admin RegisterExisting: rule {Rule}", ex.Key);
             ModelState.AddModelError(string.Empty, localizer[ex.Key, ex.Args]);
-            return View(model);
+            return await RegisterExistingViewAsync(model, ct);
         }
 
         SetSuccess("Existing group registered");
         return RedirectToAction(nameof(Index));
+    }
+
+    // A group that already books to a differently named Holded account must be linkable here,
+    // or registering it mints an orphan "Workgroups / {name}" account.
+    private async Task<IActionResult> RegisterExistingViewAsync(RegisterExistingViewModel model, CancellationToken ct)
+    {
+        model.ExpenseAccounts = await workgroups.ListExpenseAccountsAsync(ct);
+        return View(nameof(RegisterExisting), model);
     }
 
     // ── Budget ────────────────────────────────────────────────────────────

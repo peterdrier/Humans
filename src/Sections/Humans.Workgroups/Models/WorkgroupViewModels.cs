@@ -3,6 +3,7 @@ using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 
 namespace Humans.Workgroups.Models;
@@ -342,6 +343,10 @@ internal sealed class RegisterExistingViewModel
     public LocalDate RegisteredOn { get; set; }
 
     public WorkgroupBudgetFormViewModel Budget { get; set; } = new();
+
+    /// <summary>The live Holded expense chart for the "link existing" picker; filled by the controller, never bound.</summary>
+    [BindNever]
+    public IReadOnlyList<HoldedExpenseAccountDto> ExpenseAccounts { get; set; } = [];
 }
 
 /// <summary>The one Workgroups setting: the Drive folder every group's subfolder is created under.</summary>
