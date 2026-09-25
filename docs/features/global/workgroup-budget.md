@@ -89,13 +89,13 @@ managed registry beside the category map.
 | HoldedAccountId | string(64)? | |
 
 **Service.** `IWorkgroupService.SetBudgetAsync(Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken)`
-with `WorkgroupBudgetSave(decimal? Amount, bool LinkExisting, int? ExistingAccountNum)`.
+with `WorkgroupBudgetSave(decimal? Amount, int? ExistingAccountNum)` — a non-null `ExistingAccountNum` means "link that account".
 
 - Amount null clears the budget; the account binding is kept (Holded accounts are never
   deleted, and a group that had money once keeps its ledger).
 - Amount set and no account bound yet: call `CreateOrLinkExpenseAccountAsync` with
-  `"Workgroups / {Name}"`, or with `ExistingAccountNum` when `LinkExisting`. Store number and id.
-- Amount set and an account already bound: amount-only change unless `LinkExisting` names a
+  `"Workgroups / {Name}"`, passing `ExistingAccountNum` when given. Store number and id.
+- Amount set and an account already bound: amount-only change unless `ExistingAccountNum` names a
   different number, which rebinds. Rebinding never touches the old account.
 - Amount must be ≥ 0 when set.
 - Writes a system log entry (`WorkgroupLogKind.BudgetSet`, title carries the amount and
