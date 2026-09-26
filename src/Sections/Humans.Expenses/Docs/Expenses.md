@@ -110,7 +110,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 | `/Expenses/Attachment/{id}/View` | GET | Authenticated (resource-based) | Same file inline (images + PDFs render in the tab; other types fall back to download) |
 | `/Expenses/{id}/Endorse` | POST | Authenticated (coordinator, resource-based) | Endorse |
 | `/Expenses/{id}/CoordinatorReject` | POST | Authenticated (coordinator, resource-based) | Coordinator reject |
-| `/Expenses/Review` | GET | Authenticated | The review queue, scoped to the viewer — see Invariants. Admin shell for finance admins, member shell for everyone else |
+| `/Expenses/Review` | GET | Authenticated | The review queue, scoped to the viewer — see Invariants. Member layout for everyone, admins included |
 | `/Expenses/{id}/Approve` | POST | FinanceAdminOrAdmin (resource-based) | Approve. Carries the max-amount and category-override inputs, so it is also how a wrong cap is corrected |
 | `/Expenses/{id}/Reject` | POST | FinanceAdminOrAdmin (resource-based) | Finance reject |
 | `/Expenses/{id}/HoldedRetry` | POST | FinanceAdminOrAdmin (resource-based, Approved only) | Re-queue a failed or backing-off Holded push |
@@ -198,14 +198,14 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 **Owned tables:** `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`
 **Status:** (A) Migrated (2026-05-10). Moved into its own project `src/Sections/Humans.Expenses` at G5 (nobodies-collective/Humans#866); the cross-section leaf `Humans.Expenses.Contracts` later folded into the project's own `Contracts/` folder (ruling 44).
 
-- `ExpenseReportService` lives in `Humans.Expenses.Services` and depends only on Application-layer abstractions. `IExpenseReportServiceRead` is the public cross-section read surface in `Contracts/` (no `[SurfaceBudget]` — budgets are off for the duration of the #866 migration); `IExpenseReportService` adds the mutations. The public surface is `Section` plus everything under `Contracts/`: `IExpenseReportBackgroundProcessor` (`DrainHoldedOutboxAsync`, how `HoldedExpenseOutboxJob` reaches the section), `IExpenseReportServiceRead`, and its DTO/enum graph. The job lives in this project's `Jobs/` folder; only its DI registration and roll-call entry stay in Shell, because recurring jobs are named by concrete type there.
+- `ExpenseReportService` lives in `Humans.Expenses.Services` and depends only on Application-layer abstractions. `IExpenseReportServiceRead` is the public cross-section read surface in `Contracts/` (no `[SurfaceBudget]`); `IExpenseReportService` adds the mutations. The public surface is `Section` plus everything under `Contracts/`: `IExpenseReportBackgroundProcessor` (`DrainHoldedOutboxAsync`, how `HoldedExpenseOutboxJob` reaches the section), `IExpenseReportServiceRead`, and its DTO/enum graph. The job lives in this project's `Jobs/` folder; the section registers and schedules it itself (`Section.cs`, `SectionJobs.cs`).
 - `ExpenseRepository` (impl `src/Sections/Humans.Expenses/Data/ExpenseRepository.cs`, §15b Singleton + `IDbContextFactory<ExpensesDbContext>`) is the only file that touches expense tables via `DbContext`.
 - **DbContext** — `ExpensesDbContext` (`src/Sections/Humans.Expenses/Data/ExpensesDbContext.cs`, `internal sealed`) is the section's own per-section EF model (nobodies-collective/Humans#858 split): maps only `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`, with its own `__EFMigrationsHistory_Expenses` table and migrations under `Data/Migrations/` (baseline `20260715101338_BaselineExpenses`). Same database and connection as `HumansDbContext` — the split partitions the EF model, not the database.
 - **DI registration** lives in `Section.Register` at the project root, discovered by Shell through `ISection`. It also registers the section's `ExpenseReportStatus` badge colours into `EnumBadgeMap` rather than Base holding a literal row per section enum.
 - **Decorator decision — no caching decorator.** Expense data is mutable and user-specific; low-traffic at our scale.
 - **Badge colours** — `Models/StatusBadgeExtensions.GetBadgeClass` is the single source; `Section.Register` projects it into `EnumBadgeMap` for the table-column half of the same page.
 - **Cross-domain navs** — none declared. All cross-section linkage is scalar FK only.
-- **Cross-section calls** route through `IBudgetServiceRead`, `ITeamServiceRead`, `IUserService`, `IAuditLogService`, `IFileStorage`, `IHoldedClient`, and `IHoldedFinanceService` (Finance, Feature 2).
+- **Cross-section calls** route through `IBudgetServiceRead`, `ITeamServiceRead`, `IUserService`, `IEmailService`, `IUserEmailService`, `IAuditLogService`, `IFileStorage`, `IHoldedClient`, `IHoldedFinanceService`, and `IHoldedFinanceServiceRead` (Finance, Feature 2).
 - **Architecture test** — `tests/Humans.Expenses.Tests/ExpensesArchitectureTests.cs` pins the shape.
 
 ### Feature 2 — Holded contact enrichment and payment status
