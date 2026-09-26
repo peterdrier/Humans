@@ -21,9 +21,8 @@ using Humans.Users.Contracts;
 namespace Humans.Expenses.Services;
 
 /// <summary>
-/// Application-layer orchestrator for Expense Reports. Coordinates
-/// <see cref="IExpenseRepository"/>, audit logging, IBAN snapshots, and
-/// cross-section reads via interfaces — never imports EF Core directly.
+/// Expenses' application service: the report state machine over the section's repository,
+/// plus the Holded outbox drain and the GDPR export contributor.
 /// </summary>
 [CrossSectionWrite("Writes the reimbursement IBAN onto the claimant profile.")]
 internal sealed class ExpenseReportService(
@@ -784,7 +783,7 @@ internal sealed class ExpenseReportService(
             var submitted = await SubmitAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
             return submitted
                 ? ExpenseMutationResult.Success
-                : ExpenseMutationResult.Failure("Could not submit the report. Receipt lines need an attachment and your payment IBAN must be set.");
+                : ExpenseMutationResult.Failure("Could not submit the report. It may no longer be a draft.");
         }, "Error submitting expense report {ReportId}", "Submission failed", reportId);
 
     internal async Task<bool> WithdrawAsync(
@@ -983,13 +982,14 @@ internal sealed class ExpenseReportService(
     }
 
     internal async Task<bool> CoordinatorEndorseAsync(
-        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
         CancellationToken ct = default)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return false;
 
-        await RequireCoordinatorForCategoryAsync(report.BudgetCategoryId, coordinatorUserId, ct);
+        if (!actorIsFinanceAdmin)
+            await RequireCoordinatorForCategoryAsync(report.BudgetCategoryId, coordinatorUserId, ct);
 
         var now = clock.GetCurrentInstant();
         var ok = await repo.CoordinatorEndorseAsync(reportId, coordinatorUserId, maxAmount, now, ct);
@@ -998,7 +998,8 @@ internal sealed class ExpenseReportService(
         await auditLogService.LogAsync(
             AuditAction.ExpenseEndorse,
             AuditEntityTypes.Report, reportId,
-            "Coordinator endorsed expense report." + MaxAmountDetail(maxAmount),
+            (actorIsFinanceAdmin ? "Finance admin" : "Coordinator")
+                + " endorsed expense report." + MaxAmountDetail(maxAmount),
             coordinatorUserId);
 
         return true;
@@ -1011,24 +1012,25 @@ internal sealed class ExpenseReportService(
             : "";
 
     public Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
         CancellationToken ct = default) =>
         RunMutationAsync(async () =>
         {
-            var endorsed = await CoordinatorEndorseAsync(reportId, coordinatorUserId, maxAmount, ct);
+            var endorsed = await CoordinatorEndorseAsync(reportId, coordinatorUserId, actorIsFinanceAdmin, maxAmount, ct);
             return endorsed
                 ? ExpenseMutationResult.Success
                 : ExpenseMutationResult.Failure("Could not endorse the report. It may no longer be in Submitted status.");
         }, "Error endorsing expense report {ReportId}", "Endorsement failed", reportId);
 
     internal async Task<bool> CoordinatorRejectAsync(
-        Guid reportId, Guid coordinatorUserId, string reason,
+        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
         CancellationToken ct = default)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return false;
 
-        await RequireCoordinatorForCategoryAsync(report.BudgetCategoryId, coordinatorUserId, ct);
+        if (!actorIsFinanceAdmin)
+            await RequireCoordinatorForCategoryAsync(report.BudgetCategoryId, coordinatorUserId, ct);
 
         var now = clock.GetCurrentInstant();
         var ok = await repo.CoordinatorRejectAsync(reportId, coordinatorUserId, reason, now, ct);
@@ -1037,18 +1039,18 @@ internal sealed class ExpenseReportService(
         await auditLogService.LogAsync(
             AuditAction.ExpenseCoordinatorReject,
             AuditEntityTypes.Report, reportId,
-            $"Coordinator rejected expense report: {reason}",
+            $"{(actorIsFinanceAdmin ? "Finance admin" : "Coordinator")} rejected expense report: {reason}",
             coordinatorUserId);
 
         return true;
     }
 
     public Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, string reason,
+        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
         CancellationToken ct = default) =>
         RunMutationAsync(async () =>
         {
-            var rejected = await CoordinatorRejectAsync(reportId, coordinatorUserId, reason, ct);
+            var rejected = await CoordinatorRejectAsync(reportId, coordinatorUserId, actorIsFinanceAdmin, reason, ct);
             return rejected
                 ? ExpenseMutationResult.Success
                 : ExpenseMutationResult.Failure("Could not reject the report. It may no longer be in Submitted status.");
@@ -1082,7 +1084,16 @@ internal sealed class ExpenseReportService(
                 actorUserId);
         }
 
-        await SendApprovedEmailAsync(reportId, ct);
+        // The approval is committed and its Holded push queued; a failed notice must not
+        // report it as a failed approval.
+        try
+        {
+            await SendApprovedEmailAsync(reportId, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Expense report {ReportId} approved but the approval email failed", reportId);
+        }
 
         return true;
     }

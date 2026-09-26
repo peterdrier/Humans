@@ -7,14 +7,15 @@ Derived fresh each section-doctor run, before any scan. The invariant doc is
 
 A member claims money back. They build a claim out of line items — a receipt they paid for,
 or an invoice a contractor sent the association — attach the paperwork to each one, and send
-it in. If the budget the claim is booked against has a coordinator, that coordinator vouches
-for it first. Finance then reads the claim with the paperwork in front of them and either
-approves it, caps it at a lower figure, or sends it back with a reason.
+it in. If the budget the claim is booked against has a coordinator, that coordinator is meant
+to vouch for it first. Finance then reads the claim with the paperwork in front of them and
+either approves it, caps it at a lower figure, or sends it back with a reason.
 
-Approving it books it into the association's accounting system as a bill the association owes
-that member. That is where this section's authority ends: nobody here marks anything paid.
-Whether the member has actually been paid is read back out of the accounting ledger and
-shown to them, and it is the treasurer's bank, not this system, that moves the money.
+Approving it tells the member by email and books the claim into the association's accounting
+system: one bill per line item, carrying only that line's own attachment, owed to that
+member, trimmed so the bills add up to what was authorized. That is where this section's authority ends: nobody here marks anything paid.
+Whether the member has actually been paid is read back out of the accounting ledger and shown
+to them, and it is the treasurer's bank, not this system, that moves the money.
 
 Everything a person does on someone else's behalf leaves a trail naming both of them, and the
 member's bank account number is masked everywhere it is written out, except the places that need
@@ -28,20 +29,22 @@ Every question the section answers, and how it answers it.
 |---|---|---|
 | What claims are mine, and where do I stand with the association? | member | `/Expenses` |
 | What is on this claim, and what may I do to it? | anyone who may see it | `/Expenses/{id}` |
-| Change the claim's header / lines / files | owner in Draft, finance any time pre-approval | `/Expenses/{id}/Edit` + `Lines/*` |
+| Change the claim's header / lines / files | owner in Draft, finance any time pre-approval | `/Expenses/{id}/Edit` + the `/Expenses/{id}/Lines/...` pages |
 | What is behind this invoice? | reviewer, submitter | `/Expenses/{id}/Lines/{lineId}/Proofs` |
 | Which account gets paid for this claim? | submitter, finance | `/Expenses/{id}/Iban` |
 | Show me that receipt | anyone who may see the claim | `/Expenses/Attachment/{id}[/View]` |
 | What is waiting on me? | member, coordinator, finance — one queue, scoped | `/Expenses/Review` |
 | Move the claim along | submitter / coordinator / finance | Submit, Withdraw, Endorse, Approve, both Rejects |
+| Was my claim approved, and for how much? | member | the `expense_approved` email (`ExpensesEmails`) |
 | Did this claim reach the accounting system? | finance | Holded sync card + `HoldedRetry` |
 | Push approved claims into accounting | nobody — the clock | `HoldedExpenseOutboxJob` → outbox drain |
 | Everything this member's claims hold | GDPR export | `IUserDataContributor` |
 
 Structural facts follow from the table. **Every decision is taken from the claim's own
-page**, never from a queue row — the queue lists and links, it does not decide. And **the
+page**, never from a queue row — the queue lists and links, it does not decide. **The
 outbox is the only writer that is not a person**, which is why it is the only path with
-retries, a backoff and a write-off.
+retries, a backoff and a write-off. And **every question is asked from inside the section**:
+no other section reads a claim.
 
 ## 3. Structure
 
@@ -51,49 +54,58 @@ What the shapes imply, written fresh:
   load the claim, ask the authorization handler, hand off to the service, redirect. No branch
   in a controller that the handler could have answered.
 - **One authorization handler** that owns the actor × operation × status matrix, and one
-  operation per thing a person can do. Nothing hand-rolls an ownership check beside it.
+  operation per thing a person can do. What the handler grants, the service accepts; nothing
+  hand-rolls an ownership check beside it.
 - **One service** holding the state machine, with one method per transition. A transition
   method validates, calls exactly one repository write, and writes an audit entry per auditable
-  action it took — normally one, and two where approval also overrides the category, which is its
-  own thing to have done and its own thing to be able to see afterwards.
+  action it took — normally one, and two where approval also overrides the category.
 - **One repository** owning the section's tables, each write atomic, returning DTOs only.
 - **The outbox drain is its own concern** inside the service — queue semantics in one place,
-  the Holded conversation in another, and a scheduler shim that holds neither.
-- **DTOs are the only thing that crosses out.** The section's public surface is what another
-  section actually consumes, and nothing wider.
+  the Holded conversation in another, a scheduler shim that holds neither — and **one cap
+  allocation** (`PayableAllocation`) that the push, the detail page and the audit text all read.
+- **The public surface is what another section consumes.** Nothing outside the section reads
+  a claim today, so the cross-section read interface has no reader; the section needs only
+  `Section` and the background-processor seam the job calls.
 
 Where today's layout departs from that: mutations exist twice (an `internal XxxAsync` that
 throws and a `public XxxWithResultAsync` that catches), and the controller repeats a
-load-and-authorize preamble in nearly every action that takes a report id. Both are open
-questions for Peter — see run 1.
+load-and-authorize preamble in nearly every action that takes a report id — see the run files.
 
 ## 4. Invariants
 
-Stated so a violation is recognisable. The authoritative list is `Expenses.md`; these are the
-ones a change is most likely to break silently.
+Stated so a violation is recognisable, each with the line that enforces it. The authoritative
+list is `Expenses.md`; these are the ones a change is most likely to break silently.
 
-- A claim belongs to its `SubmitterUserId`; the actor appears only in audit rows and
-  `UploadedByUserId`, never as the payee. The payee is a *snapshot* — submit copies the submitter's
-  profile IBAN and legal name into `PayeeIban` / `PayeeName`, and the Holded push pays from those,
-  not from the live profile. `/Expenses/{id}/Iban` refreshes the snapshot, and only while the report
-  is pre-approval.
-- `Approved` closes the claim to edits and to further decisions; the one move out of it is
-  `Withdrawn`, the terminal alternate reachable from `Submitted` / `CoordinatorEndorsed` /
-  `Approved`. No payment state is ever stamped on a claim.
-- `Payable = min(Total, MaxAmount)` is the only figure payment math may use; `Total` is the
-  receipts total and renders as nothing else.
-- Only a decider sets `MaxAmount`, on their own decision form, and it is recorded in that
-  decision's audit entry.
-- Proof rows never reach `Total` and never reach Holded — not as document lines, not as files.
-- A header edit never moves a claim between budget years.
-- Masking is a rule about *output*, not storage. Every log, audit entry and error message carrying
-  an IBAN goes through `IbanFormatter.Mask`, with one exception: an audit row whose subject is not
-  the actor keeps it whole, so a wrongly-typed account traces to who typed it. `PayeeIban` and
-  `Profile.Iban` are stored raw — Holded is paid from the raw value and fiscal retention requires
-  it — and revealing a stored IBAN to an admin is Users' own admin page, not this section's.
-- The drain does nothing when no Holded key is configured, and a written-off push is visible
-  on both `/Expenses/Review` and the claim, never silently dropped.
-- Attachment pushes are stamped, so a re-drain resumes rather than duplicating files.
+- **The payee is the submitter, snapshotted.** Submit copies the *submitter's* profile IBAN and
+  legal name into the claim (`Services/ExpenseReportService.cs:750`), never the actor's; the
+  Holded push pays from that snapshot. `/Expenses/{id}/Iban` refreshes it only while the claim
+  is pending approval (`Services/ExpenseReportService.cs:839`).
+- **Approved closes the claim.** Approve and finance-reject accept only Submitted or
+  CoordinatorEndorsed (`Data/ExpenseRepository.cs:296`, `Data/ExpenseRepository.cs:328`);
+  endorse and coordinator-reject only Submitted (`Data/ExpenseRepository.cs:260`,
+  `Data/ExpenseRepository.cs:278`); the only move out of Approved is Withdrawn
+  (`Data/ExpenseRepository.cs:245`). No payment state is ever stamped on a claim.
+- **Payable is the only figure payment math uses** — `min(Total, MaxAmount)`
+  (`Contracts/ExpenseReportDto.cs:19`).
+- **A decider's form replaces the cap outright**, blank clears it
+  (`Data/ExpenseRepository.cs:262`, `Data/ExpenseRepository.cs:306`); neither reject touches it.
+- **Proof rows never reach `Total`** (`Data/ExpenseRepository.cs:117`) and never reach Holded —
+  the allocation skips them (`Services/PayableAllocation.cs:29`).
+- **The cap allocates greedily in line order**, and a line past the cap gets no Holded doc and
+  no upload (`Services/ExpenseReportService.cs:1460`).
+- **A retried push resumes from what it recorded.** A line's doc id is written the moment Holded
+  issues it (`Services/ExpenseReportService.cs:1505`), an upload is stamped
+  (`Services/ExpenseReportService.cs:1562`), and a legacy single-doc claim resumes onto its one
+  doc (`Services/ExpenseReportService.cs:1385`). A failure between Holded issuing a doc and that
+  write can still mint a second one; nothing guards that window, by the small-scale rule.
+- **A header edit never moves a claim between budget years** once submitted
+  (`Services/ExpenseReportService.cs:314`).
+- **Masking is a rule about output, not storage.** The approval email and the GDPR export carry
+  the masked form (`Services/ExpenseReportService.cs:1113`, `Services/ExpenseReportService.cs:1682`);
+  the one unmasked write is an IBAN audit row whose actor is not its subject
+  (`Services/ExpenseReportService.cs:937`).
+- **The drain does nothing without a Holded key** (`Services/ExpenseReportService.cs:1210`), and a
+  written-off push is counted on `/Expenses/Review` (`Data/ExpenseRepository.cs:370`).
 
 ## 5. Seams — specified but unbuilt
 
@@ -101,11 +113,14 @@ ones a change is most likely to break silently.
   the service methods, enum members, `PerDiemKind` and `TravelReimbursementConfig` remain so
   existing lines still render, total and submit. Turning it back on is restoring the
   controller actions and their forms. Retained deliberately — not dead code to reap.
-- **Deleting a Draft.** `ExpenseRepository.WithdrawAsync` refuses Draft and its comment names
-  a "Delete-while-Draft when that ships". Nothing ships it; a draft is abandoned, not removed.
+- **Deleting a Draft.** `ExpenseRepository.WithdrawAsync` refuses Draft; a draft is abandoned,
+  not removed.
 - **Recategorise after push.** `UpdateIncomingDocTag` outbox events drain to a log line —
   Holded v2 has no tag endpoint, so the correction is made inside Holded and mirrored back.
   The enum member survives so pre-existing rows drain instead of poisoning the queue.
+- **"Waiting on the coordinator" in the queue.** `CategoryRequiresCoordinatorEndorsementAsync`
+  computes whether a category has a coordinator and has no production caller; it is reserved for
+  telling the two review states apart, not for gating approval.
 
 ## 6. Deliberately not done
 
@@ -118,6 +133,8 @@ ones a change is most likely to break silently.
 - **No re-reading of audit for the report history page.** The section emits
   `<vc:audit-log>` and lets AuditLog own the read and the render.
 - **No concurrency token on a claim.** Repo-wide rule.
+- **No per-line category.** Where a cap's reduction lands is presentation only; the whole claim
+  books to one category account.
 
 ## Load-bearing weirdness
 
@@ -126,9 +143,12 @@ Settled decisions that read as accidents. Do not re-litigate these.
 - **`Approved` is terminal, and paid/unpaid is derived from the Holded creditor balance.**
   Blending local claim rows into that ledger nets a local claim against a Holded debit whose
   matching credit is never shown — the reason the old "IOU ledger" card was removed.
-- **The negative adjustment line on a capped push.** The receipts book in full and one
-  negative line brings the document down to the payable, so the receipt lines are never
-  rewritten to match a cap.
+- **A trimmed line books its receipt at face value plus a negative adjustment line.** Each doc
+  then matches its attached receipt, and the cap is visible inside Holded rather than hidden in a
+  rewritten amount.
+- **Two places a claim's Holded documents live.** Claims pushed before per-line docs keep their
+  one doc id on the report; newer ones carry an id per line. `ExpenseReportDto.HoldedDocIds`
+  folds the two so nothing downstream has to know.
 - **A finance admin's edit does not send a claim back a step**, and the edit window closes at
   approval because the Holded push is queued in that same transaction.
 - **`IbanSet` audit rows written by somebody else carry the IBAN unmasked** — the one
@@ -139,11 +159,17 @@ Settled decisions that read as accidents. Do not re-litigate these.
 - **Coordinator endorsement is a route, not a gate.** The coordinator knows their department, so
   they are meant to vouch first; but the finance admin is the one who pays and may approve
   straight from `Submitted` when it is urgent. The audit entry, not a refusal, is the control.
-  `CategoryRequiresCoordinatorEndorsementAsync` is the seam for showing *whose* queue a report
-  is in — not for blocking. Peter confirmed this 2026-08-27 — run 1's finding 2.
+  Peter confirmed this 2026-08-27 — run 1's finding 2.
 - **`ExpenseSepaSent` / `ExpenseSepaReopened` / `ExpensePaid` remain in the GDPR export's
   action list** although nothing writes them. The audit log is immutable; only the writers
   went away.
+- **The approval email is sent after the approval commits**, so a refused approval sends
+  nothing; a member with no notification address is logged and skipped, and a failed send is
+  logged without turning the committed approval into a reported failure. Peter confirmed this
+  2026-09-26 — run 2's finding 3.
+- **Finance admins hold every coordinator capability.** They may endorse and coordinator-reject
+  in any category; the audit entry names them as finance admin. Peter confirmed this
+  2026-09-26 — run 2's finding 1.
 - **The review queue renders in the admin shell for admin-role users and the member shell for
   everyone else**, by the Shell's one layout rule (`docs/sections/admin-shell.md`); the sidebar
   filters itself.
@@ -153,6 +179,7 @@ Settled decisions that read as accidents. Do not re-litigate these.
 
 ## Health history
 
-| Run | Date | Reforge (surface) | loc | cogP95 / cogMax | PR |
-|---|---|---|---|---|---|
-| 1 | 2026-08-26 | 285 | 4071 | 9 / 20 | peterdrier/Humans#1537 |
+| Run | Date | Headline | PR |
+|---|---|---|---|
+| 1 | 2026-08-26 | Gates nothing asked for, removed or queued; docs trued to the code | peterdrier/Humans#1537 |
+| 2 | 2026-09-26 | Finance admins endorse; approval email failure no longer fails the approval; read interface folded; Edit page, submit error and docs trued to the code | peterdrier/Humans#1827 |

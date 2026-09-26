@@ -33,14 +33,15 @@ Happy path. When something needs fixing it gets more complicated.
    Submitted when there is a rush, and the approval's audit entry records that they did.
 3. **The treasurer (finance admin) also approves it.**
 4. **The report is uploaded to Holded** for the accountant, and because math. **One purchase
-   document per receipt**: each invoice/receipt on the report becomes its own Holded purchase doc
-   carrying that one attachment, so what the accountant registers matches the underlying legal
-   documents one-to-one. The report's subject/note stays in Humans — each doc's description is its
-   receipt's description plus a reference back to the report. When the approvers capped the payout
-   below the receipts total, the receipts book in order until the cap runs out: the receipt the cap
-   lands inside books at face value with a negative "authorized maximum" adjustment on the same
-   account, and any receipt entirely past the cap is **not booked at all** — nothing is reimbursed
-   for it, so Holded holds no record of it (the report's own audit trail and detail view say so).
+   document per bookable line** (proof rows don't get their own doc): each line becomes its own
+   Holded purchase doc carrying that line's attachment, so what the accountant registers matches
+   the underlying legal documents. The report's subject/note stays in Humans — each doc's
+   description is its line's description plus a reference back to the report. When the approvers
+   capped the payout below the receipts total, the lines book in order until the cap runs out: the
+   line the cap lands inside books at face value with a negative "authorized maximum" adjustment on
+   the same account, and any line entirely past the cap is **not booked at all** — nothing is
+   reimbursed for it, so Holded holds no record of it (the report's own audit trail and detail view
+   say so). A report pushed before per-line docs existed keeps its single report-level doc.
    The member gets a Holded contact with a creditor account. A member without a contact yet is
    created as an
    *acreedor* (contact type `creditor`), which Holded mints in the **410 series** (e.g. `41000004`)

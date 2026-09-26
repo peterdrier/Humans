@@ -10,12 +10,47 @@ namespace Humans.Expenses.Services;
 /// report, and differ when a finance admin files or fixes one on a member's behalf. Every mutation
 /// therefore takes <c>actorUserId</c> plus <c>actorIsFinanceAdmin</c> — the caller's authority,
 /// resolved at the controller (design-rules §6), mirroring
-/// <see cref="IExpenseReportServiceRead.GetReviewQueueAsync"/>. Set it and the ownership match is
+/// <see cref="GetReviewQueueAsync"/>. Set it and the ownership match is
 /// waived and the editable window widens from Draft to Draft/Submitted/CoordinatorEndorsed; the
 /// checks are defence in depth behind the resource-based handler, not the primary gate.</para>
 /// </remarks>
-internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicationService
+internal interface IExpenseReportService : IApplicationService
 {
+    Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default);
+
+    Task<ExpenseHoldedTimeline?> GetHoldedTimelineAsync(
+        ExpenseReportDto report, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the report that owns the given attachment (via its line), with
+    /// Lines populated. Returns null if the attachment doesn't belong to any
+    /// line or the report is gone.
+    /// </summary>
+    Task<ExpenseReportDto?> GetReportOwningAttachmentAsync(
+        Guid attachmentId, CancellationToken ct = default);
+
+    Task<ExpenseAttachmentDownload?> TryReadAttachmentAsync(
+        ExpenseReportDto owningReport,
+        Guid attachmentId,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
+        Guid submitterUserId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
+        Guid coordinatorUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The review queue as <paramref name="viewerUserId"/> may see it: every non-draft,
+    /// non-withdrawn report for a finance admin; otherwise the viewer's own reports plus those
+    /// booked to a budget category they coordinate.
+    /// </summary>
+    Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
+        Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default);
+
+    /// <summary>All expense reports, all statuses — dashboard/aggregate reads sum client-side (small dataset).</summary>
+    Task<IReadOnlyList<ExpenseReportDto>> GetAllAsync(CancellationToken ct = default);
+
     /// <summary>Creates a draft owned by <paramref name="submitterUserId"/>. When
     /// <paramref name="actorUserId"/> is someone else, the creation is audited as on-behalf.</summary>
     Task<Guid> CreateDraftAsync(
@@ -84,11 +119,11 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
 
     /// <summary>A non-null <paramref name="maxAmount"/> caps what this report pays out; null leaves it uncapped.</summary>
     Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, string reason,
+        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
         CancellationToken ct = default);
 
     /// <summary>A non-null <paramref name="maxAmount"/> overrides any cap the coordinator set.</summary>

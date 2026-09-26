@@ -9,11 +9,11 @@ namespace Humans.Expenses.Data;
 /// <c>expense_lines</c>, <c>expense_attachments</c> and
 /// <c>holded_expense_outbox_events</c>, with its own
 /// <c>__EFMigrationsHistory_Expenses</c> table and migrations under
-/// <c>Migrations/Expenses/</c>. Same database, same connection — the split
+/// <c>Data/Migrations/</c>. Same database, same connection — the split
 /// is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like every section context (issue #750): repositories
+/// Internal-sealed like every section context (nobodies-collective/Humans#750): repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// </remarks>

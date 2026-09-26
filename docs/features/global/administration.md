@@ -196,7 +196,7 @@ Each active section implementing `ISectionAdminTiles` contributes `AdminTile`s (
 | `auditlog.total` | Audit events | Audit Log | — | `IAuditViewerService.GetPageAsync`'s `TotalCount` |
 | `email.outbox` | Emails | Email | — | `IEmailOutboxServiceRead.GetOutboxStatsAsync` total |
 | `store.orders` | Store orders | Store | StoreCatalogAdmin | Store's own `Service.GetStoreSummaryAsync` for the active event year; blank with no active event |
-| `expenses.reports` | Expense reports | Expenses | FinanceAdminOrAdmin | `IExpenseReportServiceRead.GetAllAsync`, all statuses |
+| `expenses.reports` | Expense reports | Expenses | FinanceAdminOrAdmin | `IExpenseReportService.GetAllAsync`, all statuses |
 | `workgroups.queue` | Workgroups | Workgroups | BoardOrAdmin | `IWorkgroupService.GetRegisterAsync` — pending applications/referrals plus items awaiting a disposition; hidden when nothing is waiting |
 
 ### Cards — `admin-dashboard` chrome slot
