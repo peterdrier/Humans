@@ -53,7 +53,6 @@
   <data name="Common_Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Common_Back" xml:space="preserve"><value>Back</value></data>
   <data name="Common_ExportGeoJson" xml:space="preserve"><value>Export GeoJSON</value></data>
-  <data name="Common_Submit" xml:space="preserve"><value>Submit</value></data>
   <data name="Common_NotProvided" xml:space="preserve"><value>Not provided</value></data>
   <data name="Common_Error" xml:space="preserve"><value>Something went wrong. Please try again later.</value></data>
   <data name="Common_Unknown" xml:space="preserve"><value>Unknown</value></data>

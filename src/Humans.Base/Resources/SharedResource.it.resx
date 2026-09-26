@@ -94,9 +94,6 @@
   <data name="Common_ExportGeoJson" xml:space="preserve">
     <value>Esporta GeoJSON</value>
   </data>
-  <data name="Common_Submit" xml:space="preserve">
-    <value>Invia</value>
-  </data>
   <data name="Common_NotProvided" xml:space="preserve">
     <value>Non fornito</value>
   </data>
