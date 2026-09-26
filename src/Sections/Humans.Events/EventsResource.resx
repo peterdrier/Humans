@@ -56,6 +56,8 @@
   <data name="Events_ConflictBadge" xml:space="preserve"><value>Time conflict with another favourited event</value></data>
   <data name="Events_DownloadCsv" xml:space="preserve"><value>Download events CSV</value></data>
   <data name="Events_DurationMin" xml:space="preserve"><value>{0} min</value></data>
+  <data name="Events_DurationHours" xml:space="preserve"><value>{0} h</value></data>
+  <data name="Events_DurationHoursMinutes" xml:space="preserve"><value>{0} h {1} min</value></data>
   <data name="Events_FavouritesOnly" xml:space="preserve"><value>Only</value></data>
   <data name="Events_FilterCategory" xml:space="preserve"><value>Category</value></data>
   <data name="Events_FilterDay" xml:space="preserve"><value>Day</value></data>
