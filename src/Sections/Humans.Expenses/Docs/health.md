@@ -178,4 +178,4 @@ Settled decisions that read as accidents. Do not re-litigate these.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-08-26 | Gates nothing asked for, removed or queued; docs trued to the code | peterdrier/Humans#1537 |
-| 2 | 2026-09-26 | Endorse contradiction queued; Edit page, submit error and docs trued to the code | pending |
+| 2 | 2026-09-26 | Endorse contradiction queued; Edit page, submit error and docs trued to the code | peterdrier/Humans#1827 |
