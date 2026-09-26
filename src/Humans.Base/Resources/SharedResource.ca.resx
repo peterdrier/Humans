@@ -279,26 +279,8 @@
   <data name="Dashboard_TierActive" xml:space="preserve">
     <value>El teu nivell de membres està actiu.</value>
   </data>
-  <data name="Dashboard_YourMembership" xml:space="preserve">
-    <value>El teu estat de voluntari</value>
-  </data>
-  <data name="Dashboard_MemberSince" xml:space="preserve">
-    <value>Membre des de</value>
-  </data>
-  <data name="Dashboard_LastLogin" xml:space="preserve">
-    <value>Últim accés</value>
-  </data>
-  <data name="Dashboard_QuickLinks" xml:space="preserve">
-    <value>Accesos ràpids</value>
-  </data>
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Revisar acords</value>
-  </data>
-  <data name="Dashboard_PendingAgreementsSingular" xml:space="preserve">
-    <value>{0} acord per revisar</value>
-  </data>
-  <data name="Dashboard_PendingAgreementsPlural" xml:space="preserve">
-    <value>{0} acords per revisar</value>
   </data>
   <data name="Dashboard_RejectedTitle" xml:space="preserve">
     <value>Registre rebutjat</value>

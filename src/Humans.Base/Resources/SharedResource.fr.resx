@@ -279,26 +279,8 @@
   <data name="Dashboard_TierActive" xml:space="preserve">
     <value>Votre niveau d'adhésion est actif.</value>
   </data>
-  <data name="Dashboard_YourMembership" xml:space="preserve">
-    <value>Votre statut de bénévole</value>
-  </data>
-  <data name="Dashboard_MemberSince" xml:space="preserve">
-    <value>Membre depuis</value>
-  </data>
-  <data name="Dashboard_LastLogin" xml:space="preserve">
-    <value>Dernière connexion</value>
-  </data>
-  <data name="Dashboard_QuickLinks" xml:space="preserve">
-    <value>Accès rapides</value>
-  </data>
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Consulter les accords</value>
-  </data>
-  <data name="Dashboard_PendingAgreementsSingular" xml:space="preserve">
-    <value>{0} accord à consulter</value>
-  </data>
-  <data name="Dashboard_PendingAgreementsPlural" xml:space="preserve">
-    <value>{0} accords à consulter</value>
   </data>
   <data name="Dashboard_RejectedTitle" xml:space="preserve">
     <value>Inscription refusée</value>

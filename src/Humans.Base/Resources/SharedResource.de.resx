@@ -279,26 +279,8 @@
   <data name="Dashboard_TierActive" xml:space="preserve">
     <value>Ihre Mitgliedschaftsstufe ist aktiv.</value>
   </data>
-  <data name="Dashboard_YourMembership" xml:space="preserve">
-    <value>Ihr Freiwilligenstatus</value>
-  </data>
-  <data name="Dashboard_MemberSince" xml:space="preserve">
-    <value>Mitglied seit</value>
-  </data>
-  <data name="Dashboard_LastLogin" xml:space="preserve">
-    <value>Letzte Anmeldung</value>
-  </data>
-  <data name="Dashboard_QuickLinks" xml:space="preserve">
-    <value>Schnellzugriff</value>
-  </data>
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Vereinbarungen prüfen</value>
-  </data>
-  <data name="Dashboard_PendingAgreementsSingular" xml:space="preserve">
-    <value>{0} Vereinbarung zu prüfen</value>
-  </data>
-  <data name="Dashboard_PendingAgreementsPlural" xml:space="preserve">
-    <value>{0} Vereinbarungen zu prüfen</value>
   </data>
   <data name="Dashboard_RejectedTitle" xml:space="preserve">
     <value>Anmeldung abgelehnt</value>
