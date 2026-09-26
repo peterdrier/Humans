@@ -14,6 +14,7 @@ internal sealed record HoldedConnectorVm(
     HoldedDocSyncVm DocSync,
     int CreditorBindingCount,
     IReadOnlyList<HoldedCategoryMapVm> CategoryMap,
+    IReadOnlyList<HoldedManagedAccountVm> ManagedAccounts,
     IReadOnlyList<HoldedDocVm> Docs)
 {
     public int ActiveMappings => CategoryMap.Count(m => m.IsActive);
@@ -65,6 +66,10 @@ internal sealed record HoldedCategoryMapVm(
     string Tag,
     bool IsActive,
     Instant UpdatedAt);
+
+/// <summary>One Finance-managed expense account (created outside the budget map) as the connector
+/// index lists it.</summary>
+internal sealed record HoldedManagedAccountVm(int AccountNumber, string AccountId, string Label, bool IsActive, Instant CreatedAt);
 
 /// <summary>One pulled purchase doc, matched or not. <c>/Finance/HoldedUnmatched</c> shows only the
 /// unmatched subset, so this is the only place "why did this doc land on that category" can be

@@ -28,6 +28,28 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
+    [InlineData(true, null, "create", null, false)]
+    [InlineData(true, 100, "link", null, false)]
+    [InlineData(true, 100, "link", 62900170, true)]
+    [InlineData(true, 100, "create", null, true)]
+    [InlineData(false, null, "link", null, true)]
+    public void BudgetForm_RequiresAmountAndLinkedAccountWhenBudgeted(
+        bool hasBudget, int? amount, string mode, int? account, bool valid)
+    {
+        var model = new WorkgroupBudgetFormViewModel
+        {
+            HasBudget = hasBudget,
+            Amount = amount,
+            AccountMode = mode,
+            ExistingAccountNum = account
+        };
+        var errors = new List<ValidationResult>();
+
+        Validator.TryValidateObject(model, new ValidationContext(model), errors, validateAllProperties: true)
+            .Should().Be(valid);
+    }
+
+    [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task LogBody_RejectsOverflowWithoutChangingStoredEntries(bool editing)

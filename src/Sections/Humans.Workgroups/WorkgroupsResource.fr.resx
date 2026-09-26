@@ -205,6 +205,11 @@
   <data name="Workgroups_Leave" xml:space="preserve"><value>Quitter</value></data>
   <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Canal Discord</value></data>
   <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Dossier Drive</value></data>
+  <data name="Workgroups_Budget" xml:space="preserve"><value>Budget</value></data>
+  <data name="Workgroups_BudgetAccount" xml:space="preserve"><value>Compte Holded</value></data>
+  <data name="Enum_WorkgroupLogKind_BudgetSet" xml:space="preserve"><value>Budget défini</value></data>
+  <data name="Workgroups_Error_BudgetNegative" xml:space="preserve"><value>Le montant du budget ne peut pas être négatif.</value></data>
+  <data name="Workgroups_Error_BudgetAccountFailed" xml:space="preserve"><value>Finance n'a pas pu créer ni lier le compte Holded. Rien n'a été enregistré.</value></data>
   <data name="Workgroups_NextMeeting" xml:space="preserve"><value>Prochaine réunion</value></data>
   <data name="Workgroups_PublicMeeting" xml:space="preserve"><value>Calendrier communautaire</value></data>
   <data name="Workgroups_Roster" xml:space="preserve"><value>Membres</value></data>

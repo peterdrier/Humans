@@ -2,6 +2,7 @@ using Humans.Workgroups.Authorization;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Controllers;
+using Humans.Holded.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
@@ -77,6 +78,12 @@ internal sealed class WorkgroupsController(
 
         var people = await PeopleAsync([workgroup], ct);
         var board = await teams.GetTeamAsync(SystemTeamIds.Board, ct);
+        var canAdminister = await MayAdministerAsync(workgroup);
+        var canSeeBudget = canAdminister
+            || user.Profile?.MembershipTier is MembershipTier.Colaborador or MembershipTier.Asociado;
+        IReadOnlyList<HoldedExpenseAccountDto> accounts = canAdminister
+            ? await workgroups.ListExpenseAccountsAsync(ct)
+            : [];
 
         return View(new WorkgroupPageViewModel
         {
@@ -87,8 +94,10 @@ internal sealed class WorkgroupsController(
             BoardUserIds = board?.Members.Select(m => m.UserId).ToHashSet() ?? [],
             IsMember = workgroup.IsMember(user.Id),
             IsCoordinator = workgroup.CoordinatorUserIds().Contains(user.Id),
-            CanAdminister = await MayAdministerAsync(workgroup),
-            CanDoMemberWork = await MayDoMemberWorkAsync(workgroup)
+            CanAdminister = canAdminister,
+            CanDoMemberWork = await MayDoMemberWorkAsync(workgroup),
+            CanSeeBudget = canSeeBudget,
+            ExpenseAccounts = accounts
         });
     }
 

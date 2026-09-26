@@ -43,6 +43,17 @@ internal sealed class Workgroup
 
     public string? DiscordChannelUrl { get; set; }
 
+    /// <summary>Allocated budget in EUR; null means the group has no budget. Shown on the register
+    /// to association members. Finance and Expenses never read it.</summary>
+    public decimal? BudgetAmount { get; set; }
+
+    /// <summary>The Holded expense account the group's spending books to — created or linked
+    /// through Finance. Same posture as <see cref="DriveFolderId"/>: an opaque external reference
+    /// with no FK. Kept when the budget is cleared; Holded accounts are never deleted.</summary>
+    public int? HoldedAccountNumber { get; set; }
+
+    public string? HoldedAccountId { get; set; }
+
     /// <summary>Refusal or withdrawal reasons; required for Refused, Withdrawn and a Quiet close.</summary>
     public string? Reasons { get; set; }
 

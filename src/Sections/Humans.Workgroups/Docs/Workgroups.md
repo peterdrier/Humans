@@ -4,7 +4,8 @@
 -->
 <!-- freshness:flag-on-change
   Lifecycle transitions and the Dormant freeze, the one-or-two-coordinators rule, the
-  document/comment-period rules, the daily rhythm job's actions, and the GDPR
+  document/comment-period rules, the daily rhythm job's actions, the budget rules
+  (amount and Holded account ownership, clearing keeps the binding), and the GDPR
   erase-attribution-keep-content posture — review when Workgroups services, entities,
   or controllers change.
 -->
@@ -40,6 +41,10 @@ administrative recognition, and every decision is a human's.
   comment window, tagged with one of the document's categories, answered by the group.
 - **Dormant** is the terminal status: delivered, abandoned, or closed for silence. Roster
   and documents stay readable; the Drive folder goes read-only. The Secretary may reactivate.
+- A **Budget** is an optional EUR allocation on the register plus the Holded expense
+  account the group's spending books to. Finance owns the account's creation and naming
+  ("Workgroups / {Name}"); Workgroups owns the amount and the reference. Visible to
+  Board/Admin, Colaborador and Asociado.
 
 ## Data Model
 
@@ -63,6 +68,9 @@ administrative recognition, and every decision is a human's.
 | AppliedByUserId | Guid? | Bare cross-section reference; nulled on erasure |
 | AppliedAt / RegisteredAt / EndedAt | Instant / Instant? / Instant? | |
 | CreatedAt / UpdatedAt | Instant | |
+| BudgetAmount | decimal(18,2)? | Null = no budget |
+| HoldedAccountNumber | int? | Bare external reference, no FK; kept when the budget is cleared |
+| HoldedAccountId | string(64)? | |
 
 Indexes: `Slug`; `Status`; `DriveFolderId` unique filtered non-null (one group per folder — a Google-assigned opaque id, not editable display data).
 
@@ -129,7 +137,7 @@ failed item's queue form, while successful decisions redirect back to the queue.
 `WorkgroupLogKind` — system: Applied, Registered, Referred, Refused, Withdrawn, Ended,
 Reactivated, CoordinatorChanged, ScopeChanged, MemberJoined, MemberLeft,
 DormancyInquiry, DocumentPublished, CommentPeriodOpened, CommentPeriodClosed, Delivered,
-DispositionRecorded, SurveySubmitted, SurveySent. Member: Update, Disclosure,
+DispositionRecorded, SurveySubmitted, SurveySent, BudgetSet. Member: Update, Disclosure,
 StatusRequested, Note.
 
 `DormancyInquiry` is no longer written by anything. The member stays because `Kind` is
@@ -212,6 +220,7 @@ a clear error while unset.
 | `/Workgroups/{slug}/Done` | Member ends the group: Dormant/Delivered or Dormant/Abandoned |
 | `/Workgroups/{slug}/Surveys/Link` | Attach an authored survey |
 | `/Workgroups/Admin/*` | Secretary/Board queue and decisions; `BoardOrAdmin`, localization-exempt |
+| `/Workgroups/Admin/{id}/Budget` | Set, change or clear the budget; `BoardOrAdmin` |
 
 See `authorization.md` for the auth policy per route.
 
@@ -225,7 +234,7 @@ Settings and Register an existing group on first setup or after clearing the que
 | Any signed-in human with an approved profile | Browse the register and every group page; read Published/Delivered documents, meetings and the log; join or leave a group; comment during an open window; request a status update; apply to form a group |
 | Workgroup member | Additionally: read Draft documents; edit register fields; create/edit meetings and minutes; post Update, Disclosure and Note entries; create/edit/publish/deliver documents; open/close comment periods; respond to and dispose of comments; hide a comment with a reason; link an authored survey; mark the group done |
 | Coordinator | Everything a member can. Named on the register; addressee of notifications; may hand coordination to another member. Register-facing distinction, not a separate permission level |
-| Board, Admin (`BoardOrAdmin`) | Register, refer, refuse, withdraw, close, reactivate; set coordinators (override); register on behalf (bootstrapping); record a document's disposition; view the admin queue; edit any group; set the root Drive folder |
+| Board, Admin (`BoardOrAdmin`) | Register, refer, refuse, withdraw, close, reactivate; set coordinators (override); register on behalf (bootstrapping); record a document's disposition; view the admin queue; edit any group; set the root Drive folder; set the budget and its Holded account |
 
 ## Invariants
 
@@ -270,6 +279,12 @@ Settings and Register an existing group on first setup or after clearing the que
 - Comment/log/document responses stay possible after the comment window closes but not
   after the group leaves Active (`RequireAcceptsMemberWork` on the responding calls too).
 - A group's Slug never collides with a reserved route segment (`apply`, `admin`).
+- Budget: amount ≥ 0 or null; Refused/Withdrawn rejected; Finance is called before
+  anything is written, so a failed create or an unknown account number changes nothing;
+  the first account bound is created as "Workgroups / {Name}" or linked to an existing
+  account of that normalized name; clearing keeps the binding; rebinding never touches
+  the old account. Registering an existing group with a budget resolves the account before
+  anything is written, so a Holded failure registers nothing.
 
 ## Negative Access Rules
 
@@ -284,6 +299,8 @@ Settings and Register an existing group on first setup or after clearing the que
   gates the member controller class-wide, `BoardOrAdmin` gates the admin controller.
 - A member **cannot** leave as the last coordinator without naming a replacement
   (`BoardOrAdmin` may override).
+- A Volunteer **cannot** see a group's budget: neither the budget card nor the `BudgetSet`
+  History entries render unless the viewer is `BoardOrAdmin`, Colaborador or Asociado.
 
 ## Triggers
 
@@ -304,6 +321,9 @@ Settings and Register an existing group on first setup or after clearing the que
   the group has no coordinator (`WorkgroupService.Gdpr`).
 - The daily rhythm job (below) — every action it takes writes an audit entry (attributed to
   the job, not a human) and a notification; it writes no log entries.
+- SetBudget: system log entry (`BudgetSet`, attributed to the actor), audit entry.
+  Close/Done/Withdraw: retire the account in Finance's registry; Reactivate restores it;
+  a Finance failure there is logged, never blocks the transition.
 
 ## Daily Rhythm (design §13)
 
@@ -344,6 +364,9 @@ should end is the Board's decision, taken on the register in front of them.
 - **Notifications, Email, AuditLog**: crosscuts, per Triggers above. Member notifications
   use existing localized labels, grouped by recipient language; authored content is unchanged.
 - **Gdpr**: `IUserDataContributor`, `IUserMerge` — see GDPR below.
+- **Finance**: `IHoldedFinanceService.CreateOrLinkExpenseAccountAsync` /
+  `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedClient.ListExpenseAccountsAsync`
+  for the admin picker only.
 
 ## GDPR
 
@@ -393,7 +416,7 @@ should end is the Board's decision, taken on the register in front of them.
 - **Cross-section calls** — `IUserServiceRead`, `IUserEmailService`,
   `IRoleAssignmentService`, `ITeamServiceRead`, `ISettingsService`, `IGoogleSyncService`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
-  `ISurveyAnalysisRead`, `IClock`.
+  `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceService`, `IHoldedClient`.
 - **Email** — Workgroups owns the working-group notice: `WorkgroupsEmails` (internal)
   builds the `EmailMessage` for each `WorkgroupNoticeKind` from Workgroups' own
   `Workgroups_Email_*` keys in `WorkgroupsResource`, rendered in the recipient's culture

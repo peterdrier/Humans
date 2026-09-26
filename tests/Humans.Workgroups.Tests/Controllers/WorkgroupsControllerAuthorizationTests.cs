@@ -2,10 +2,13 @@ using Humans.Workgroups.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Testing;
+using Humans.Users.Contracts;
 using Humans.Workgroups.Controllers;
 using Humans.Workgroups.Domain;
+using Humans.Workgroups.Models;
 using Humans.Workgroups.Tests.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -220,7 +223,13 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         var actorId = asMember
             ? workgroup.Members.Single().UserId
             : SeedUser("Outsider");
+        return (BuildController(actorId, isBoard), workgroup);
+    }
 
+    /// <summary>A <see cref="WorkgroupsController"/> for <paramref name="actorId"/>, Board-flagged
+    /// or not, wired to the real <see cref="WorkgroupAuthorizationHandler"/>.</summary>
+    private WorkgroupsController BuildController(Guid actorId, bool isBoard)
+    {
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddAuthorization();
@@ -249,6 +258,32 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         };
         controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         controller.Url = Substitute.For<IUrlHelper>();
-        return (controller, workgroup);
+        return controller;
+    }
+
+    [HumansFact]
+    public void Budget_IsOnTheAdminController_SoBoardOrAdminGatesIt()
+    {
+        var method = typeof(WorkgroupsAdminController).GetMethod(nameof(WorkgroupsAdminController.Budget));
+        method.Should().NotBeNull();
+        typeof(WorkgroupsAdminController).GetCustomAttributes(typeof(AuthorizeAttribute), true)
+            .Cast<AuthorizeAttribute>().Should().Contain(a => a.Policy == PolicyNames.BoardOrAdmin);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(nameof(MembershipTier.Volunteer), false)]
+    [Xunit.InlineData(nameof(MembershipTier.Colaborador), true)]
+    [Xunit.InlineData(nameof(MembershipTier.Asociado), true)]
+    public async Task Details_BudgetBlockVisibility_FollowsMembershipTier(string tierName, bool expected)
+    {
+        var tier = Enum.Parse<MembershipTier>(tierName);
+        var workgroup = await SeedWorkgroupAsync();
+        var viewer = SeedUser("Viewer", tier: tier);
+        var controller = BuildController(viewer, isBoard: false);
+
+        var result = await controller.Details(workgroup.Slug, Ct);
+
+        var vm = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<WorkgroupPageViewModel>().Which;
+        vm.CanSeeBudget.Should().Be(expected);
     }
 }

@@ -82,8 +82,8 @@ internal sealed class WorkgroupsAdminController(
     // ── Bootstrapping (§21) ───────────────────────────────────────────────
 
     [HttpGet("RegisterExisting")]
-    public IActionResult RegisterExisting() =>
-        View(new RegisterExistingViewModel { RegisteredOn = clock.GetCurrentInstant().InUtc().Date });
+    public Task<IActionResult> RegisterExisting(CancellationToken ct) =>
+        RegisterExistingViewAsync(new RegisterExistingViewModel { RegisteredOn = clock.GetCurrentInstant().InUtc().Date }, ct);
 
     [HttpPost("RegisterExisting")]
     [ValidateAntiForgeryToken]
@@ -91,7 +91,7 @@ internal sealed class WorkgroupsAdminController(
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid) return await RegisterExistingViewAsync(model, ct);
 
         try
         {
@@ -99,18 +99,64 @@ internal sealed class WorkgroupsAdminController(
             // a date somebody typed from memory.
             var registeredAt = model.RegisteredOn.AtMidnight().InUtc().ToInstant();
             await workgroups.RegisterExistingAsync(user.Id,
-                new WorkgroupBootstrap(model.Application.ToApplication(), model.CoordinatorUserId, registeredAt),
+                new WorkgroupBootstrap(model.Application.ToApplication(), model.CoordinatorUserId, registeredAt,
+                    model.Budget.ToSave()),
                 ct);
         }
         catch (WorkgroupRuleException ex)
         {
             logger.LogInformation(ex, "Workgroups admin RegisterExisting: rule {Rule}", ex.Key);
             ModelState.AddModelError(string.Empty, localizer[ex.Key, ex.Args]);
-            return View(model);
+            return await RegisterExistingViewAsync(model, ct);
         }
 
         SetSuccess("Existing group registered");
         return RedirectToAction(nameof(Index));
+    }
+
+    // A group that already books to a differently named Holded account must be linkable here,
+    // or registering it mints an orphan "Workgroups / {name}" account.
+    private async Task<IActionResult> RegisterExistingViewAsync(RegisterExistingViewModel model, CancellationToken ct)
+    {
+        model.ExpenseAccounts = await workgroups.ListExpenseAccountsAsync(ct);
+        return View(nameof(RegisterExisting), model);
+    }
+
+    // ── Budget ────────────────────────────────────────────────────────────
+
+    [HttpPost("{id:guid}/Budget")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Budget(Guid id, WorkgroupBudgetFormViewModel model, string slug, CancellationToken ct)
+    {
+        var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        if (error is not null) return error;
+
+        if (!ModelState.IsValid)
+        {
+            SetError("Check the budget amount and account.");
+            return RedirectToAction("Details", "Workgroups", new { slug });
+        }
+
+        try
+        {
+            var account = await workgroups.SetBudgetAsync(id, user.Id, model.ToSave(), ct);
+            SetSuccess(account switch
+            {
+                { Created: true } => $"Budget saved; created Holded account {account.AccountNum} '{account.Name}'.",
+                { Created: false } => $"Budget saved; linked to existing Holded account {account.AccountNum} '{account.Name}'.",
+                null => "Budget saved.",
+            });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (WorkgroupRuleException ex)
+        {
+            logger.LogInformation(ex, "Workgroups admin Budget: rule {Rule}", ex.Key);
+            SetError(localizer[ex.Key, ex.Args]);
+        }
+        return RedirectToAction("Details", "Workgroups", new { slug });
     }
 
     // ── The Board's reply ─────────────────────────────────────────────────

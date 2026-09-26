@@ -31,7 +31,13 @@ internal sealed record WorkgroupInfo(
     IReadOnlyList<WorkgroupMemberInfo> Members,
     IReadOnlyList<WorkgroupMeetingInfo> Meetings,
     IReadOnlyList<WorkgroupLogEntryInfo> LogEntries,
-    IReadOnlyList<WorkgroupDocumentInfo> Documents);
+    IReadOnlyList<WorkgroupDocumentInfo> Documents,
+    decimal? BudgetAmount,
+    int? HoldedAccountNumber,
+    string? HoldedAccountId)
+{
+    public bool HasBudget => BudgetAmount is not null;
+}
 
 /// <param name="LeftAt">Null while the person is a current member.</param>
 internal sealed record WorkgroupMemberInfo(
@@ -162,4 +168,10 @@ internal sealed record WorkgroupCommentWindow(
 internal sealed record WorkgroupBootstrap(
     WorkgroupApplication Application,
     Guid CoordinatorUserId,
-    Instant RegisteredAt);
+    Instant RegisteredAt,
+    WorkgroupBudgetSave? Budget = null);
+
+/// <summary>The budget form. <paramref name="Amount"/> null clears the budget (the account binding
+/// stays). <paramref name="ExistingAccountNum"/> set links that Holded account; null creates
+/// "Workgroups / {Name}" when nothing is bound yet, and is an amount-only change otherwise.</summary>
+internal sealed record WorkgroupBudgetSave(decimal? Amount, int? ExistingAccountNum);

@@ -239,6 +239,37 @@
     }
 </div>
 
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fa-solid fa-folder-tree me-1"></i>Managed accounts</span>
+        <span class="badge bg-secondary">@Model.ManagedAccounts.Count rows</span>
+    </div>
+    @if (Model.ManagedAccounts.Count == 0)
+    {
+        <div class="card-body text-muted small">No expense accounts created outside the budget map yet.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Account</th><th>Label</th><th>Holded id</th><th>Active</th><th>Since</th></tr></thead>
+                <tbody>
+                @foreach (var m in Model.ManagedAccounts)
+                {
+                    <tr>
+                        <td><code>@m.AccountNumber</code></td>
+                        <td>@m.Label</td>
+                        <td class="text-muted small">@m.AccountId</td>
+                        <td>@(m.IsActive ? "Yes" : "Retired")</td>
+                        <td>@m.CreatedAt.InUtc().Date</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
 <div class="card" id="docs">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="fa-solid fa-file-invoice me-1"></i>Purchase documents</span>

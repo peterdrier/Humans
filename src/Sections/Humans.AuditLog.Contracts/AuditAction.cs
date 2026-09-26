@@ -217,6 +217,11 @@ public enum AuditAction
     ExpenseHoldedPushed,
     ExpenseHoldedFailed,
     ExpenseHoldedRequeued,
+    // Finance created or linked a Holded expense account outside the budget map on a caller's behalf.
+    HoldedExpenseAccountCreated,
+    HoldedExpenseAccountLinked,
+    // Finance retired or restored a managed Holded expense account (a workgroup lifecycle hook).
+    HoldedExpenseAccountActiveChanged,
     // Backdoor personal machine-API key lifecycle (nobodies-collective/Humans#1128).
     // Rotation is recorded as a revoke of the old key followed by an issue of the new one.
     BackdoorApiKeyIssued,
@@ -274,6 +279,8 @@ public enum AuditAction
     WorkgroupDispositionRecorded,
     // Bootstrapping: the Secretary registered a group that already existed, backdated.
     WorkgroupRegisteredExisting,
+    // Board/Admin set, changed or cleared a group's budget allocation and Holded account.
+    WorkgroupBudgetSet,
     // The daily job set DormantSince after sixty days' silence.
     WorkgroupDormancyFlagged,
     // The daily job notified the Board that a flagged group is a close candidate.

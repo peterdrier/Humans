@@ -20,6 +20,8 @@ internal sealed class WorkgroupConfiguration : IEntityTypeConfiguration<Workgrou
         b.Property(w => w.Status).IsRequired().HasConversion<string>().HasMaxLength(50);
         b.Property(w => w.DormantReason).HasConversion<string>().HasMaxLength(50);
         b.Property(w => w.DriveFolderId).HasMaxLength(100);
+        b.Property(w => w.BudgetAmount).HasPrecision(18, 2);
+        b.Property(w => w.HoldedAccountId).HasMaxLength(64);
         b.Property(w => w.DiscordChannelUrl).HasMaxLength(500);
         b.Property(w => w.Reasons).HasMaxLength(4000);
         // AppliedByUserId is a bare cross-section reference: no FK, no navigation.

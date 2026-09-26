@@ -46,6 +46,10 @@ internal sealed class Service(
     internal const string HoldedCreditorAccount = "HoldedCreditorAccount";
     internal const string SepaPayouts = "SepaPayouts";
 
+    /// <summary>First number of the P&amp;L expense block both provisioning paths allocate from.</summary>
+    internal const int ExpenseAccountBlockStart = 62900100;
+    internal const string HoldedExpenseAccount = "HoldedExpenseAccount";
+
     private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
@@ -182,6 +186,112 @@ internal sealed class Service(
         return created;
     }
 
+    // ─── Managed expense accounts ───────────────────────────────────────────────
+
+    public async Task<HoldedExpenseAccountRef> CreateOrLinkExpenseAccountAsync(
+        string name, int? existingAccountNum, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        name = name.Trim();
+
+        var chart = await client.ListExpenseAccountsAsync(ct);
+        var map = await repo.GetCategoryMapAsync(ct);
+        var managed = await repo.GetManagedAccountsAsync(ct);
+
+        HoldedExpenseAccountDto? found;
+        if (existingAccountNum is { } num)
+        {
+            found = chart.FirstOrDefault(a => a.AccountNum == num)
+                ?? throw new InvalidOperationException($"Holded has no expense account {num}.");
+        }
+        else
+        {
+            var wanted = HoldedMatcher.NormalizeAccountName(name);
+            found = chart.FirstOrDefault(a => string.Equals(HoldedMatcher.NormalizeAccountName(a.Name), wanted, StringComparison.Ordinal));
+        }
+
+        var now = clock.GetCurrentInstant();
+        if (found is not null)
+        {
+            var isCategoryAccount = map.Any(m => m.HoldedAccountNumber == found.AccountNum);
+            if (!isCategoryAccount)
+                await RegisterManagedAsync(found.AccountNum, found.Id, found.Name, managed, now, ct);
+            await audit.LogAsync(AuditAction.HoldedExpenseAccountLinked, HoldedExpenseAccount, Guid.Empty,
+                $"Linked Holded expense account {found.AccountNum} '{found.Name}' for '{name}'", "Finance");
+            return new HoldedExpenseAccountRef(found.AccountNum, found.Id, found.Name, Created: false);
+        }
+
+        var used = map.Select(m => m.HoldedAccountNumber)
+            .Concat(managed.Select(m => m.HoldedAccountNumber))
+            .Concat(chart.Select(a => a.AccountNum))
+            .ToHashSet();
+        var next = ExpenseAccountBlockStart;
+        while (used.Contains(next)) next++;
+
+        var id = await client.CreateExpenseAccountAsync(next, name, ct);
+        await RegisterManagedAsync(next, id, name, managed, now, ct);
+        await audit.LogAsync(AuditAction.HoldedExpenseAccountCreated, HoldedExpenseAccount, Guid.Empty,
+            $"Created Holded expense account {next} '{name}'", "Finance");
+        return new HoldedExpenseAccountRef(next, id, name, Created: true);
+    }
+
+    private Task RegisterManagedAsync(
+        int accountNum, string accountId, string label,
+        IReadOnlyList<HoldedManagedAccount> managed, Instant now, CancellationToken ct)
+    {
+        var existing = managed.FirstOrDefault(m => m.HoldedAccountNumber == accountNum);
+        return repo.UpsertManagedAccountAsync(new HoldedManagedAccount
+        {
+            Id = existing?.Id ?? Guid.NewGuid(),
+            HoldedAccountNumber = accountNum,
+            HoldedAccountId = accountId,
+            Label = label,
+            IsActive = true,
+            CreatedAt = existing?.CreatedAt ?? now,
+            UpdatedAt = now,
+        }, ct);
+    }
+
+    public async Task SetExpenseAccountActiveAsync(int accountNum, bool isActive, CancellationToken ct = default)
+    {
+        var managed = await repo.GetManagedAccountsAsync(ct);
+        var row = managed.FirstOrDefault(m => m.HoldedAccountNumber == accountNum);
+        if (row is null || row.IsActive == isActive) return;
+
+        row.IsActive = isActive;
+        row.UpdatedAt = clock.GetCurrentInstant();
+        await repo.UpsertManagedAccountAsync(row, ct);
+        await audit.LogAsync(AuditAction.HoldedExpenseAccountActiveChanged, HoldedExpenseAccount, Guid.Empty,
+            $"{(isActive ? "Restored" : "Retired")} Holded expense account {accountNum} '{row.Label}'", "Finance");
+    }
+
+    public async Task<IReadOnlyList<HoldedExpenseAccountOption>> ListExpenseAccountsAsync(
+        bool activeOnly, CancellationToken ct = default)
+    {
+        var map = await repo.GetCategoryMapAsync(ct);
+        var managed = await repo.GetManagedAccountsAsync(ct);
+        var year = await budget.GetActiveYearAsync();
+        var labels = year?.Groups
+            .SelectMany(g => g.Categories.Select(c => (c.Id, Label: $"{g.Name} / {c.Name}")))
+            .ToDictionary(x => x.Id, x => x.Label)
+            ?? new Dictionary<Guid, string>();
+
+        var options = map
+            .Where(m => m.IsActive)
+            .Select(m => new HoldedExpenseAccountOption(
+                m.HoldedAccountNumber, m.HoldedAccountId,
+                labels.GetValueOrDefault(m.BudgetCategoryId, $"Category {m.HoldedAccountNumber}"),
+                IsBudgetCategory: true, IsActive: true))
+            .Concat(managed
+                .Where(m => !activeOnly || m.IsActive)
+                .Select(m => new HoldedExpenseAccountOption(
+                    m.HoldedAccountNumber, m.HoldedAccountId, m.Label,
+                    IsBudgetCategory: false, IsActive: m.IsActive)))
+            .OrderBy(o => o.AccountNum)
+            .ToList();
+        return options;
+    }
+
     // ─── Sync ────────────────────────────────────────────────────────────────────
 
     public async Task<HoldedSyncResult> SyncAsync(CancellationToken ct = default)
@@ -201,9 +311,13 @@ internal sealed class Service(
                 .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.Tag))
                 .ToArray();
 
+            var managedIds = (await repo.GetManagedAccountsAsync(ct))
+                .Select(m => m.HoldedAccountId)
+                .ToHashSet(StringComparer.Ordinal);
+
             var allDocs = await client.ListPurchaseDocumentsAsync(ct);
 
-            var docs = allDocs.Select(doc => MapDoc(doc, entries, now)).ToList();
+            var docs = allDocs.Select(doc => MapDoc(doc, entries, managedIds, now)).ToList();
 
             await repo.UpsertDocsAsync(docs, now, ct);
 
@@ -244,6 +358,7 @@ internal sealed class Service(
     private static HoldedExpenseDoc MapDoc(
         HoldedPurchaseDocListItemDto doc,
         HoldedMatchEntry[] entries,
+        IReadOnlySet<string> managedIds,
         Instant now)
     {
         // The whole doc goes on its FIRST line's account, with the union of doc and line tags:
@@ -253,7 +368,7 @@ internal sealed class Service(
             .Concat(doc.Lines.SelectMany(l => l.Tags))
             .ToList();
 
-        var matchResult = HoldedMatcher.Match(bookedAccount, tags, entries);
+        var matchResult = HoldedMatcher.Match(bookedAccount, tags, entries, managedIds);
 
         var localDate = doc.Date.InZone(MadridZone).Date;
 
@@ -277,7 +392,7 @@ internal sealed class Service(
             TagsJson = JsonSerializer.Serialize(tags),
             BookedAccountId = bookedAccount,
             BudgetCategoryId = matchResult.CategoryId,
-            MatchStatus = matchResult.CategoryId is null
+            MatchStatus = matchResult.CategoryId is null && !matchResult.IsManaged
                 ? HoldedMatchStatus.Unmatched
                 : HoldedMatchStatus.Matched,
             MatchSource = matchResult.Source,
@@ -345,6 +460,7 @@ internal sealed class Service(
         var state = await repo.GetOrCreateDocSyncStateAsync(ct);
         var bindings = await repo.GetCreditorContactsAsync(ct);
         var map = await repo.GetCategoryMapAsync(ct);
+        var managed = await repo.GetManagedAccountsAsync(ct);
         var docs = await repo.GetAllDocsAsync(ct);
 
         // Category names come from the active budget year, the same source the provisioning plan
@@ -385,6 +501,9 @@ internal sealed class Service(
                 m.Tag,
                 m.IsActive,
                 m.UpdatedAt)).ToList(),
+            managed.OrderBy(m => m.HoldedAccountNumber)
+                .Select(m => new HoldedManagedAccountVm(m.HoldedAccountNumber, m.HoldedAccountId, m.Label, m.IsActive, m.CreatedAt))
+                .ToList(),
             docs.Select(d => new HoldedDocVm(
                 d.HoldedDocId,
                 d.DocNumber,

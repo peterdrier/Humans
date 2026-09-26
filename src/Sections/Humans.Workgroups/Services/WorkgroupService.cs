@@ -1,9 +1,12 @@
+using System.Globalization;
 using Humans.Base.Extensions;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Helpers;
 using Humans.Email.Contracts;
+using Humans.Finance.Contracts;
+using Humans.Holded.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Settings.Contracts;
@@ -27,7 +30,7 @@ namespace Humans.Workgroups.Services;
 /// lifecycle step writes a system log entry, an audit entry, and the §14 notifications;
 /// every change to who may see a group's Drive folder asks GoogleIntegration for a sync.
 /// </remarks>
-[CrossSectionWrite("Registration creates the group's Drive subfolder and requests Drive access syncs through IGoogleSyncService, and stores the root folder id through ISettingsService.")]
+[CrossSectionWrite("Registration creates the group's Drive subfolder and requests Drive access syncs through IGoogleSyncService, and stores the root folder id through ISettingsService; SetBudgetAsync creates or links the group's Holded expense account through IHoldedFinanceService, and the lifecycle steps retire or restore it.")]
 internal sealed partial class WorkgroupService(
     IWorkgroupRepository repository,
     IUserServiceRead users,
@@ -36,6 +39,8 @@ internal sealed partial class WorkgroupService(
     IRoleAssignmentService roles,
     ISettingsService settings,
     IGoogleSyncService googleSync,
+    IHoldedFinanceService finance,
+    IHoldedClient holded,
     INotificationService notifications,
     IEmailService email,
     WorkgroupsEmails emailFactory,
@@ -484,6 +489,80 @@ internal sealed partial class WorkgroupService(
 
         await EndAsync(workgroup, actorUserId, reason, reasons: null, ct);
     }
+
+    // ── Budget ────────────────────────────────────────────────────────────
+
+    public async Task<HoldedExpenseAccountRef?> SetBudgetAsync(
+        Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(save);
+        if (save.Amount is < 0)
+            throw new WorkgroupRuleException(WorkgroupErrorKeys.BudgetNegative);
+
+        var workgroup = await RequireAsync(workgroupId, ct);
+        RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred,
+            WorkgroupStatus.Active, WorkgroupStatus.Dormant);
+
+        // Finance is asked first, before anything is written: a failed create or an unknown
+        // account number leaves the row exactly as it was.
+        HoldedExpenseAccountRef? account = null;
+        var needsAccount = save.Amount is not null
+            && (workgroup.HoldedAccountNumber is null
+                || (save.ExistingAccountNum is { } wanted && wanted != workgroup.HoldedAccountNumber));
+        if (needsAccount)
+            account = await ResolveBudgetAccountAsync(workgroup, save.ExistingAccountNum, ct);
+
+        var now = clock.GetCurrentInstant();
+        workgroup.BudgetAmount = save.Amount;
+        if (account is not null)
+        {
+            workgroup.HoldedAccountNumber = account.AccountNum;
+            workgroup.HoldedAccountId = account.AccountId;
+        }
+        workgroup.UpdatedAt = now;
+        await repository.UpdateWorkgroupAsync(workgroup, ct);
+
+        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.BudgetSet, now, BudgetLogBody(workgroup), ct,
+            authorUserId: actorUserId);
+        await AuditAsync(AuditAction.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
+        return account;
+    }
+
+    public async Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(CancellationToken ct = default)
+    {
+        try { return await holded.ListExpenseAccountsAsync(ct); }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Holded chart unavailable; the link-existing picker is empty");
+            return [];
+        }
+    }
+
+    /// <summary>Asks Finance for the group's account; any failure becomes one rule error.</summary>
+    private async Task<HoldedExpenseAccountRef> ResolveBudgetAccountAsync(
+        Workgroup workgroup, int? existingAccountNum, CancellationToken ct)
+    {
+        try
+        {
+            return await finance.CreateOrLinkExpenseAccountAsync(
+                $"Workgroups / {workgroup.Name}", existingAccountNum, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Finance could not resolve a Holded account for workgroup {WorkgroupId}", workgroup.Id);
+            throw new WorkgroupRuleException(WorkgroupErrorKeys.BudgetAccountFailed);
+        }
+    }
+
+    // The History body is read in six cultures under the localized "Budget set" badge, so it
+    // carries only figures, never English prose.
+    private static string BudgetLogBody(Workgroup w) => w.BudgetAmount is { } amount
+        ? $"{amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR · {w.HoldedAccountNumber}"
+        : "—";
+
+    private static string BudgetAuditSummary(Workgroup w) => w.BudgetAmount is { } amount
+        ? $"Budget set to {amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR, account {w.HoldedAccountNumber}"
+        : "Budget cleared";
 
     // ── Settings ──────────────────────────────────────────────────────────
 

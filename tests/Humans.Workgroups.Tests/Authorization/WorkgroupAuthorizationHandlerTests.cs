@@ -123,7 +123,7 @@ public sealed class WorkgroupAuthorizationHandlerTests
         Instant.FromUtc(2026, 1, 1, 0, 0), null,
         [new WorkgroupMemberInfo(Guid.NewGuid(), MemberId, WorkgroupMemberRole.Coordinator,
             Instant.FromUtc(2026, 1, 1, 0, 0), null)],
-        [], [], []);
+        [], [], [], null, null, null);
 
     private static ClaimsPrincipal Anonymous() => new(new ClaimsIdentity());
 

@@ -577,6 +577,8 @@ graph LR
     Workgroup --> GSyncSvc
     Workgroup --> Survey
     Workgroup --> SettingsSvc
+    Workgroup --> Finance
+    Workgroup --> Holded
 
     %% ═══════════════════════════════════
     %% Lazy-resolved (IServiceProvider/Lazy<T>) — break DI cycles

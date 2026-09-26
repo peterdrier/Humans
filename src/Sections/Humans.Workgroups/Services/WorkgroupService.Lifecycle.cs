@@ -103,6 +103,7 @@ internal sealed partial class WorkgroupService
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Withdrawn, reasons.Trim(), ct);
         // Withdrawn is not Active, so the source stops claiming write access.
         await RequestDriveSyncAsync(workgroup, ct);
+        await SetAccountActiveAsync(workgroup, isActive: false, ct);
     }
 
     public async Task CloseAsync(
@@ -136,6 +137,7 @@ internal sealed partial class WorkgroupService
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Reactivated, detail: null, ct);
         // Active again: the source claims Contributor for the current members once more.
         await RequestDriveSyncAsync(workgroup, ct);
+        await SetAccountActiveAsync(workgroup, isActive: true, ct);
     }
 
     public async Task<Guid> RegisterExistingAsync(
@@ -176,6 +178,21 @@ internal sealed partial class WorkgroupService
         workgroup.LogEntries.Add(SystemEntry(workgroup.Id, WorkgroupLogKind.Registered,
             bootstrap.RegisteredAt, body: null));
 
+        // Finance before anything durable: a Holded failure must fail the whole registration,
+        // or the form reports an error for a group that exists and a retry registers it twice.
+        var budget = bootstrap.Budget is { Amount: not null } b ? b : null;
+        if (budget is not null)
+        {
+            if (budget.Amount < 0)
+                throw new WorkgroupRuleException(WorkgroupErrorKeys.BudgetNegative);
+            var account = await ResolveBudgetAccountAsync(workgroup, budget.ExistingAccountNum, ct);
+            workgroup.BudgetAmount = budget.Amount;
+            workgroup.HoldedAccountNumber = account.AccountNum;
+            workgroup.HoldedAccountId = account.AccountId;
+            workgroup.LogEntries.Add(SystemEntry(workgroup.Id, WorkgroupLogKind.BudgetSet, now,
+                BudgetLogBody(workgroup), actorUserId));
+        }
+
         workgroup.DriveFolderId = await CreateGroupFolderAsync(workgroup, ct);
         await repository.AddWorkgroupAsync(workgroup, ct);
 
@@ -185,6 +202,8 @@ internal sealed partial class WorkgroupService
             actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
+        if (budget is not null)
+            await AuditAsync(AuditAction.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
 
         return workgroup.Id;
     }

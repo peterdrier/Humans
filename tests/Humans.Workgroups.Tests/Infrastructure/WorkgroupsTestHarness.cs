@@ -2,6 +2,8 @@ using Humans.Surveys.Contracts;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
+using Humans.Finance.Contracts;
+using Humans.Holded.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Settings.Contracts;
@@ -91,12 +93,22 @@ public abstract class WorkgroupsTestHarness : IDisposable
         GoogleSync.CreateSubfolderAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => $"folder-{Guid.NewGuid()}");
 
+        Finance = Substitute.For<IHoldedFinanceService>();
+        Finance.CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(call => new HoldedExpenseAccountRef(
+                call.Arg<int?>() ?? 62900150, $"acc-{call.Arg<int?>() ?? 62900150}", call.Arg<string>(),
+                Created: call.Arg<int?>() is null));
+
         Notifications = Substitute.For<INotificationService>();
         Email = Substitute.For<IEmailService>();
         EmailFactory = TestWorkgroupsEmails.Create();
 
         AuditLog = Substitute.For<IAuditLogService>();
         Logger = new CapturingLogger<WorkgroupService>();
+
+        Holded = Substitute.For<IHoldedClient>();
+        Holded.ListExpenseAccountsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyList<HoldedExpenseAccountDto>>([]));
     }
 
     /// <summary>Null means "unset" — registration then throws RootFolderNotConfigured.</summary>
@@ -112,6 +124,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private protected ITeamServiceRead Teams { get; }
     private protected ISettingsService Settings { get; }
     private protected IGoogleSyncService GoogleSync { get; }
+    private protected IHoldedFinanceService Finance { get; }
+    private protected IHoldedClient Holded { get; }
     private protected INotificationService Notifications { get; }
     private protected IEmailService Email { get; }
     private protected WorkgroupsEmails EmailFactory { get; }
@@ -123,7 +137,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
     /// <summary>The undecorated service over the real repository and the substitutes above.</summary>
     private protected WorkgroupService NewService(IWorkgroupRepository? repository = null) => new(
         repository ?? new WorkgroupRepository(DbFactory), Users, Surveys, UserEmails, Roles, Settings, GoogleSync,
-        Notifications, Email, EmailFactory, AuditLog, Clock, Logger);
+        Finance, Holded, Notifications, Email, EmailFactory, AuditLog, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through.</summary>
     private protected WorkgroupsDbContext OpenContext() => DbFactory.CreateDbContext();
@@ -140,10 +154,11 @@ public abstract class WorkgroupsTestHarness : IDisposable
 
     /// <summary>Registers a human the <see cref="IUserServiceRead"/> substitute knows by burner name.</summary>
     protected Guid SeedUser(
-        string burnerName = "Test Human", Guid? id = null, ProfileInfo? profile = null, string language = "en")
+        string burnerName = "Test Human", Guid? id = null, ProfileInfo? profile = null, string language = "en",
+        MembershipTier tier = MembershipTier.Volunteer)
     {
         var userId = id ?? Guid.NewGuid();
-        _users[userId] = UserInfoFor(userId, burnerName, profile, language);
+        _users[userId] = UserInfoFor(userId, burnerName, profile, language, tier);
         return userId;
     }
 
@@ -309,10 +324,12 @@ public abstract class WorkgroupsTestHarness : IDisposable
 
     // ── UserInfo construction ────────────────────────────────────────────
 
-    private static UserInfo UserInfoFor(Guid id, string burnerName, ProfileInfo? profile, string language) => new(
+    private static UserInfo UserInfoFor(
+        Guid id, string burnerName, ProfileInfo? profile, string language, MembershipTier tier) => new(
         id, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
         null, null, null, null, null, false, false, null, null, null,
-        null, null, null, [], [], [], profile, []);
+        null, null, null, [], [], [],
+        profile ?? UserFixtures.Profile(burnerName: burnerName, membershipTier: tier), []);
 
     public void Dispose()
     {

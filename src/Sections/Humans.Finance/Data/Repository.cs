@@ -23,6 +23,33 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         await ctx.SaveChangesAsync(ct);
     }
 
+    // ── Managed accounts ──────────────────────────────────────────────────────
+
+    public async Task<IReadOnlyList<HoldedManagedAccount>> GetManagedAccountsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedManagedAccounts.AsNoTracking().ToListAsync(ct);
+    }
+
+    public async Task UpsertManagedAccountAsync(HoldedManagedAccount row, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var existing = await ctx.HoldedManagedAccounts
+            .SingleOrDefaultAsync(a => a.HoldedAccountNumber == row.HoldedAccountNumber, ct);
+        if (existing is null)
+        {
+            ctx.HoldedManagedAccounts.Add(row);
+        }
+        else
+        {
+            existing.HoldedAccountId = row.HoldedAccountId;
+            existing.Label = row.Label;
+            existing.IsActive = row.IsActive;
+            existing.UpdatedAt = row.UpdatedAt;
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
     // ── Docs ─────────────────────────────────────────────────────────────────
 
     public async Task UpsertDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default)

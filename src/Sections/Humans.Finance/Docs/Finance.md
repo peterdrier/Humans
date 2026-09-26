@@ -9,7 +9,7 @@
   src/Sections/Humans.Expenses/Services/ExpenseReportService.cs
 -->
 <!-- freshness:flag-on-change
-  FinanceController routes or auth policy (FinanceAdminOrAdmin) — review when FinanceController or the section's cross-section contracts (IBudgetServiceRead, IHoldedService, IUserServiceRead) change. Holded attribution logic (Account → Tag → Unmatched) and the provisioning model reviewed when HoldedMatcher, IHoldedFinanceService, or HoldedCategoryMap change.
+  FinanceController routes or auth policy (FinanceAdminOrAdmin) — review when FinanceController or the section's cross-section contracts (IBudgetServiceRead, IHoldedService, IUserServiceRead) change. Holded attribution logic (Account → Tag → Managed → Unmatched) and the provisioning model reviewed when HoldedMatcher, IHoldedFinanceService, HoldedCategoryMap, or the managed-account registry (HoldedManagedAccount) change.
 -->
 
 # Finance — Section Invariants
@@ -27,11 +27,13 @@ What lives here: the Holded purchase-doc sync and its attribution to budget cate
 - A **Holded Expense Doc** is a purchase invoice pulled from Holded and stored verbatim. Each line is attributed to a budget category via the attribution chain below.
 - **Attribution chain (Account → Tag → Unmatched):**
   1. **Account (A):** the line's booked Holded `account` id is looked up in `HoldedCategoryMap.HoldedAccountId`. Match → `MatchSource = Account`.
+  1b. **Managed (A′):** the booked account id is in `holded_managed_accounts` → `Matched`, `MatchSource = Account`, `BudgetCategoryId = null`.
   2. **Tag (B):** each raw tag is normalized (lowercase, non-alphanumeric stripped — Holded strips separators like dashes) and compared against `HoldedCategoryMap.Tag`. First hit → `MatchSource = Tag`.
   3. **None:** doc lands in the **unmatched bucket** (`MatchStatus = Unmatched`, `MatchSource = None`).
 - A **Holded Category Map** row joins a `BudgetCategory` to its dedicated Holded account number/id and its dash-free fallback tag. `IsActive` is the retirement flag, but **nothing retires a row today** — a category deleted in Budget shows as an `Orphan` on the provisioning page and its map row stays active, so `IsActive` is always `true`. Holded accounts are never deleted.
 - The **Provisioning page** (`/Finance/HoldedAccounts`) reconciles the live Holded chart-of-accounts against the local `HoldedCategoryMap`: diffs into Mapped / ToAdd / Orphan. "Add one (test)" / "Add all" create accounts in Holded + map rows locally. Additive only.
 - The **Holded Sync State** is a singleton row tracking the operational state of the recurring sync job (`Idle / Running / Error`).
+- A **Managed Account** is an expense account Finance created or linked outside the budget map on another caller's request (`CreateOrLinkExpenseAccountAsync`). Finance records number, id, label and an active flag — never who asked. Docs booked to one are Matched with no category: off the Unmatched queue, outside every year's actuals. Create, link, retire and restore each write an audit entry (`HoldedExpenseAccountCreated` / `Linked` / `ActiveChanged`).
 - The **Unmatched Queue** (`/Finance/HoldedUnmatched`) is the working surface where the treasurer inspects unattributed docs and triggers a re-sync.
 - The **Connector index** (`/Finance/Holded`) is the read-only answer to "what is Finance's half of Holded doing": doc-sync status with its age rendered as a **Stale** badge rather than left implied, the live `HoldedCategoryMap` rows, every pulled `HoldedExpenseDoc` with its match source and raw tags, and the counts that link out to the four working screens. It never calls Holded — cache reads only, so it cannot inherit the live-contacts timeout `/Finance/Creditors` carries (nobodies-collective/Humans#976). Its read model is `IHoldedFinanceAdminService`, section-**internal**, the same shape as the Holded section's `IHoldedAdminService`.
 
@@ -77,6 +79,20 @@ What lives here: the Holded purchase-doc sync and its attribution to budget cate
 | HoldedAccountId | string | Holded's internal account id |
 | Tag | string | Dash-free normalized fallback tag (Holded strips separators) |
 | IsActive | bool | Always `true` today — nothing flips it; see Concepts |
+| CreatedAt | Instant | |
+| UpdatedAt | Instant | |
+
+### HoldedManagedAccount
+
+**Table:** `holded_managed_accounts`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| HoldedAccountNumber | int | Unique. Reserved account number in Holded. |
+| HoldedAccountId | string | Unique. Holded's internal account id. |
+| Label | string | The name the account was created or linked with. |
+| IsActive | bool | Retirement flag. |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
 
@@ -175,7 +191,7 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 
 | Route | Purpose |
 |-------|---------|
-| `GET /Finance/Holded` | Connector index — doc-sync health with explicit staleness, the live category map, every pulled doc, and the way into the four screens below. Read-only, cache only (nobodies-collective/Humans#1000) |
+| `GET /Finance/Holded` | Connector index — doc-sync health with explicit staleness, the live category map, the managed-account registry, every pulled doc, and the way into the four screens below. Read-only, cache only (nobodies-collective/Humans#1000) |
 | `GET /Finance/HoldedAccounts` | Account provisioning UI (reconcile + apply) |
 | `GET /Finance/HoldedUnmatched` | Unmatched-doc worklist with deep links and "Sync now" |
 | `GET /Finance/Creditors` | Admin overview of all cached 400000xx creditor accounts with member bindings |
@@ -210,6 +226,7 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 - Attribution order: **Account** (booked line account id) → **Tag** (normalized, dash-free) → **Unmatched**. First match wins.
 - Tags are normalized: lowercase, all non-alphanumeric characters stripped (Holded strips separators like dashes from tag values).
 - Provisioning is additive only, and nothing retires a map entry today: `IsActive` is set `true` on insert and never flipped, so an orphaned row stays active. Holded accounts are never deleted.
+- Created accounts are named exactly as the caller asked and numbered from `62900100` past every number in the category map, the managed registry and the live chart. A name that normalizes equal to an existing chart account (trim, whitespace, case, accents) links instead of creating.
 - `GetActualsForYearAsync` returns the per-category total **and the approved docs it sums** (`HoldedActualRow.Docs`, newest first). Budget's year page renders them under the category so a wrong Holded figure can be traced to the document behind it; a draft excluded from the total is absent from the list too.
 - Every link to a Holded purchase doc is `https://app.holded.com/expenses/list#open:purchase-{HoldedDocId}` (`Service.HoldedDocUrl`) — Holded has no stable per-doc page, so its list opens the doc from the fragment.
 - `HoldedExpenseDoc.Total` is included in category-level actuals only when `IsApproved = true` — set on sync as `doc.IsDraft == false` (`Service.MapDoc`). Actuals are doc-derived rather than ledger-derived because the budget pages are gross/IVA-inclusive while a 629 balance is net, and ledger lines exist for drafts Holded has not approved.
@@ -298,7 +315,7 @@ No Tickets dependency: the cash-flow view that had one is Budget's. Budget never
 
 | Read interface | Methods | Notes |
 |---|---|---|
-| `IHoldedFinanceServiceRead` | [`IHoldedFinanceServiceRead.cs`](../../Humans.Finance.Contracts/IHoldedFinanceServiceRead.cs) | Consumed by `BudgetAdminController` (actuals) and `ExpensesController` (creditor status, ledger, account list). `IHoldedFinanceService` inherits it and adds the writes. |
+| `IHoldedFinanceServiceRead` | [`IHoldedFinanceServiceRead.cs`](../../Humans.Finance.Contracts/IHoldedFinanceServiceRead.cs) | Consumed by `BudgetAdminController` (actuals) and `ExpensesController` (creditor status, ledger, account list). `IHoldedFinanceService` inherits it and adds the writes. `ListExpenseAccountsAsync` (read) plus `IHoldedFinanceService.CreateOrLinkExpenseAccountAsync` and `SetExpenseAccountActiveAsync` (writes) resolve, and retire/restore, an expense account for a caller with no budget category — the managed registry. |
 
 **Controllers.** `/Finance` is served by two controllers under one route prefix: this section's `FinanceController` — the Holded, creditor and SEPA-payout surface, the routing table above — and `Humans.Budget.Controllers.BudgetAdminController`, Budget CRUD under the same `[Route("Finance")]`. See [`Budget.md`](../../Humans.Budget/Docs/Budget.md) for the Budget side.
 

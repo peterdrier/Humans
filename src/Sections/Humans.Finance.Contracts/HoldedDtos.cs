@@ -31,3 +31,13 @@ public sealed record HoldedSyncResult(int DocCount, int Matched, int Unmatched);
 public sealed record HoldedDocSyncInfo(
     Instant? LastSyncAt, string Status, string? LastError, int LastSyncedDocCount,
     int CreditorBindingCount);
+
+/// <summary>The outcome of <see cref="IHoldedFinanceService.CreateOrLinkExpenseAccountAsync"/>:
+/// the account the caller should book to, and whether this call created it.</summary>
+public sealed record HoldedExpenseAccountRef(int AccountNum, string AccountId, string Name, bool Created);
+
+/// <summary>One expense account a caller may book to: a budget category's account (labelled
+/// "Group / Category" from the active budget year) or a Finance-managed account (its label).
+/// Cache reads only — never a Holded call.</summary>
+public sealed record HoldedExpenseAccountOption(
+    int AccountNum, string AccountId, string Label, bool IsBudgetCategory, bool IsActive);

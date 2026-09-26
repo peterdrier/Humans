@@ -60,7 +60,10 @@ internal sealed partial class WorkgroupService
         w.Documents
             .OrderByDescending(d => d.CreatedAt)
             .Select(ToInfo)
-            .ToList());
+            .ToList(),
+        w.BudgetAmount,
+        w.HoldedAccountNumber,
+        w.HoldedAccountId);
 
     private static WorkgroupDocumentInfo ToInfo(WorkgroupDocument d) => new(
         d.Id,
@@ -416,6 +419,25 @@ internal sealed partial class WorkgroupService
         }
     }
 
+    /// <summary>
+    /// Retires or restores the group's Holded account in Finance's registry so the pickers stop
+    /// (or start) offering it. Failures are logged, never surfaced: the lifecycle step is the
+    /// Board's decision and does not wait on Holded. A group with no account has nothing to flip.
+    /// </summary>
+    private async Task SetAccountActiveAsync(Workgroup w, bool isActive, CancellationToken ct)
+    {
+        if (w.HoldedAccountNumber is not { } accountNum) return;
+        try
+        {
+            await finance.SetExpenseAccountActiveAsync(accountNum, isActive, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Could not set Holded account {AccountNum} active={IsActive} for workgroup {WorkgroupId}",
+                accountNum, isActive, w.Id);
+        }
+    }
+
     // ── Shared transitions ────────────────────────────────────────────────
 
     /// <summary>
@@ -452,5 +474,6 @@ internal sealed partial class WorkgroupService
 
         // Dormant means read-only for the folder: the source now returns Viewer.
         await RequestDriveSyncAsync(w, ct);
+        await SetAccountActiveAsync(w, isActive: false, ct);
     }
 }

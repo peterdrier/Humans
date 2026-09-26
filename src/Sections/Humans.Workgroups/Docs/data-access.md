@@ -12,8 +12,8 @@ on reads. Owns all six tables: `workgroups`, `workgroup_members`, `workgroup_mee
 
 Every cross-section reference (`AppliedByUserId`, `UserId`, `CreatedByUserId`,
 `AuthorUserId`, `RespondedByUserId`, `HiddenByUserId`, `DispositionByUserId`,
-`SurveyId`) is a bare Guid column — no FK, no navigation
-(`memory/architecture/no-cross-section-ef-joins.md`). Intra-section FKs (Workgroup →
+`SurveyId`, `HoldedAccountNumber`, `HoldedAccountId`) is a bare column — no FK, no
+navigation (`memory/architecture/no-cross-section-ef-joins.md`). Intra-section FKs (Workgroup →
 Members/Meetings/LogEntries/Documents, cascade; Document → Comments, cascade; LogEntry →
 Document, `SetNull`) use EF navigations as usual.
 

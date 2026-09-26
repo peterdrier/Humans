@@ -293,7 +293,7 @@ public class FinanceControllerTests
         // The action is dispatch only — the read model is the service's, and the page has no
         // controller-side assembly to get wrong (nobodies-collective/Humans#1000).
         var vm = new HoldedConnectorVm(
-            new HoldedDocSyncVm(null, "Idle", null, 0, null, IsStale: true), 3, [], []);
+            new HoldedDocSyncVm(null, "Idle", null, 0, null, IsStale: true), 3, [], [], []);
         _connector.GetConnectorOverviewAsync(Arg.Any<CancellationToken>()).Returns(vm);
 
         var result = await MakeController().Holded(Xunit.TestContext.Current.CancellationToken);
