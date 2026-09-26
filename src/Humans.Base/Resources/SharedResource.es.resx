@@ -260,28 +260,12 @@
     <value>Bienvenido/a, {0}</value>
     <comment>{0} = display name</comment>
   </data>
-  <data name="Dashboard_PendingConsentsAlert" xml:space="preserve">
-    <value>&lt;strong&gt;Acción requerida:&lt;/strong&gt; Tiene {0} consentimiento(s) pendiente(s). &lt;a href="/Consent" class="alert-link"&gt;Revíselos y otorgue su consentimiento&lt;/a&gt; para mantener Su estado de voluntario activa.</value>
-    <comment>{0} = pending consent count</comment>
-  </data>
-  <data name="Dashboard_IncompleteProfileAlert" xml:space="preserve">
-    <value>&lt;strong&gt;Complete su perfil:&lt;/strong&gt; Su perfil está incompleto. &lt;a href="/Profile/Me/Edit" class="alert-link"&gt;Añada su información&lt;/a&gt; para que podamos conocerle mejor.</value>
-  </data>
   <data name="Dashboard_ProfileCard" xml:space="preserve">
     <value>Perfil</value>
-  </data>
-  <data name="Dashboard_ProfileIncomplete" xml:space="preserve">
-    <value>Complete su perfil para que podamos conocerle mejor.</value>
   </data>
   <data name="Dashboard_ProfileCompletionPercent" xml:space="preserve">
     <value>Perfil completado al {0}%</value>
     <comment>{0} = percentage 0-99</comment>
-  </data>
-  <data name="Dashboard_FinishProfile" xml:space="preserve">
-    <value>Completa tu perfil</value>
-  </data>
-  <data name="Dashboard_ViewProfile" xml:space="preserve">
-    <value>Ver perfil</value>
   </data>
   <data name="Dashboard_ConsentsCard" xml:space="preserve">
     <value>Acuerdos</value>

@@ -260,28 +260,12 @@
     <value>Benvingut/da, {0}</value>
     <comment>{0} = display name</comment>
   </data>
-  <data name="Dashboard_PendingConsentsAlert" xml:space="preserve">
-    <value>&lt;strong&gt;Acció requerida:&lt;/strong&gt; Tens {0} consentiment(s) pendent(s). &lt;a href="/Consent" class="alert-link"&gt;Revisa'ls i atorga el teu consentiment&lt;/a&gt; per mantenir el teu estat de voluntari actiu.</value>
-    <comment>{0} = pending consent count</comment>
-  </data>
-  <data name="Dashboard_IncompleteProfileAlert" xml:space="preserve">
-    <value>&lt;strong&gt;Completa el teu perfil:&lt;/strong&gt; El teu perfil està incomplet. &lt;a href="/Profile/Me/Edit" class="alert-link"&gt;Afegeix la teva informació&lt;/a&gt; perquè et puguem conèixer millor.</value>
-  </data>
   <data name="Dashboard_ProfileCard" xml:space="preserve">
     <value>Perfil</value>
-  </data>
-  <data name="Dashboard_ProfileIncomplete" xml:space="preserve">
-    <value>Completa el teu perfil perquè et puguem conèixer millor.</value>
   </data>
   <data name="Dashboard_ProfileCompletionPercent" xml:space="preserve">
     <value>Perfil completat al {0}%</value>
     <comment>{0} = percentage 0-99</comment>
-  </data>
-  <data name="Dashboard_FinishProfile" xml:space="preserve">
-    <value>Completa el teu perfil</value>
-  </data>
-  <data name="Dashboard_ViewProfile" xml:space="preserve">
-    <value>Veure perfil</value>
   </data>
   <data name="Dashboard_ConsentsCard" xml:space="preserve">
     <value>Acords</value>
