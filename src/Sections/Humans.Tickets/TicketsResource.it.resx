@@ -68,4 +68,9 @@
   <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>Impossibile preparare il trasferimento: scegli uno dei tuoi biglietti e una persona destinataria valida diversa da te.</value></data>
   <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Trasferimento richiesto. Il nostro team biglietti lo elaborerà e ti farà sapere a breve.</value></data>
   <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Trasferimento annullato.</value></data>
+  <data name="Tickets_TicketStub_EventLabel" xml:space="preserve"><value>Elsewhere 2026 · Ingresso singolo</value></data>
+  <data name="Tickets_TicketStub_CheckedIn" xml:space="preserve"><value>Check-in effettuato</value></data>
+  <data name="Tickets_TicketStub_Void" xml:space="preserve"><value>Annullato</value></data>
+  <data name="Tickets_TicketStub_EarlyEntry" xml:space="preserve"><value>Ingresso anticipato {0}</value><comment>{0} = data di ingresso</comment></data>
+  <data name="Tickets_TicketStub_TransferPending" xml:space="preserve"><value>Trasferimento in attesa</value></data>
 </root>

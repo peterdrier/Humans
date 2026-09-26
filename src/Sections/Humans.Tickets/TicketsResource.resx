@@ -57,4 +57,9 @@
   <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>Couldn't set up that transfer — choose one of your tickets and a valid recipient other than yourself.</value></data>
   <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Transfer requested. Our ticketing team will process it and let you know shortly.</value></data>
   <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Transfer cancelled.</value></data>
+  <data name="Tickets_TicketStub_EventLabel" xml:space="preserve"><value>Elsewhere 2026 · Admit One</value></data>
+  <data name="Tickets_TicketStub_CheckedIn" xml:space="preserve"><value>Checked in</value></data>
+  <data name="Tickets_TicketStub_Void" xml:space="preserve"><value>Void</value></data>
+  <data name="Tickets_TicketStub_EarlyEntry" xml:space="preserve"><value>Early entry {0}</value><comment>{0} = entry date</comment></data>
+  <data name="Tickets_TicketStub_TransferPending" xml:space="preserve"><value>Transfer pending</value></data>
 </root>
