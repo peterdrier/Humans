@@ -1786,7 +1786,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CoordinatorRejectAsync_ReturnsToSubmitted_And_Audits()
+    public async Task CoordinatorRejectAsync_ReturnsToDraft_And_Audits()
     {
         var (_, category) = SetupActiveYear();
         var coordinator = Guid.NewGuid();
@@ -1948,6 +1948,27 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task ApproveAsync_ForAMemberWithNoNotificationAddress_ApprovesAndSendsNothing()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        StubSubmitter(submitter, "Ana", "ana@example.com", "es");
+        _userEmailService.GetNotificationTargetEmailsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string>());
+
+        var ok = await _sut.ApproveAsync(reportId, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
+
+        ok.Should().BeTrue();
+        (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!
+            .Status.Should().Be(ExpenseReportStatus.Approved);
+        await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ApproveAsync_OnAReportThatCannotBeApproved_SendsNothing()
     {
         var (_, category) = SetupActiveYear();
@@ -2021,6 +2042,26 @@ public sealed class ExpenseReportServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("Could not approve");
+    }
+
+    [HumansFact]
+    public async Task FinanceRejectAsync_LeavesTheAuthorizedMaximumStanding()
+    {
+        // A rejection is not a decision about the cap: it stands until the next decider's form.
+        var (_, category) = SetupActiveYear();
+        var coordinator = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
+        await _sut.CoordinatorEndorseAsync(reportId, coordinator, 40m, Xunit.TestContext.Current.CancellationToken);
+
+        var ok = await _sut.FinanceRejectAsync(reportId, Guid.NewGuid(), "Wrong category", Xunit.TestContext.Current.CancellationToken);
+
+        ok.Should().BeTrue();
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Draft);
+        loaded.MaxAmount.Should().Be(40m);
     }
 
     [HumansFact]
