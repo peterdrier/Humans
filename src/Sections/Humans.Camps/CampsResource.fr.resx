@@ -151,6 +151,9 @@
   <data name="Camp_Index_NoFilterResults" xml:space="preserve"><value>Aucun {0} trouvé pour les filtres sélectionnés.</value></data>
   <data name="Camp_Index_NoSearchResults" xml:space="preserve"><value>Aucun {0} ne correspond à votre recherche.</value></data>
   <data name="Camp_Index_PendingApproval" xml:space="preserve"><value>en attente d'approbation</value></data>
+  <data name="Camp_MyCamps_Title" xml:space="preserve"><value>Mes camps</value></data>
+  <data name="Camp_MyCamps_Active" xml:space="preserve"><value>Actif</value></data>
+  <data name="Camp_MyCamps_Pending" xml:space="preserve"><value>En attente</value></data>
   <data name="Camp_Index_SearchLabel" xml:space="preserve"><value>Rechercher</value></data>
   <data name="Camp_Index_SearchPlaceholder" xml:space="preserve"><value>Tapez un nom de {0}…</value></data>
   <data name="Camp_Index_ShowLeadPositions" xml:space="preserve"><value>Afficher les postes de lead</value></data>

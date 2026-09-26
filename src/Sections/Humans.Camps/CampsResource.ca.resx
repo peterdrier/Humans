@@ -151,6 +151,9 @@
   <data name="Camp_Index_NoFilterResults" xml:space="preserve"><value>No s'ha trobat cap {0} per als filtres seleccionats.</value></data>
   <data name="Camp_Index_NoSearchResults" xml:space="preserve"><value>Cap {0} coincideix amb la teva cerca.</value></data>
   <data name="Camp_Index_PendingApproval" xml:space="preserve"><value>pendent d'aprovació</value></data>
+  <data name="Camp_MyCamps_Title" xml:space="preserve"><value>Els meus barris</value></data>
+  <data name="Camp_MyCamps_Active" xml:space="preserve"><value>Actiu</value></data>
+  <data name="Camp_MyCamps_Pending" xml:space="preserve"><value>Pendent</value></data>
   <data name="Camp_Index_SearchLabel" xml:space="preserve"><value>Cerca</value></data>
   <data name="Camp_Index_SearchPlaceholder" xml:space="preserve"><value>Escriu el nom d'un {0}…</value></data>
   <data name="Camp_Index_ShowLeadPositions" xml:space="preserve"><value>Mostra les posicions de lideratge</value></data>

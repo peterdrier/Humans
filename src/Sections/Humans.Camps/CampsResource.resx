@@ -100,6 +100,9 @@
   <data name="Camp_Index_NoFilterResults" xml:space="preserve"><value>No {0} found for the selected filters.</value></data>
   <data name="Camp_Index_NoSearchResults" xml:space="preserve"><value>No {0} match your search.</value></data>
   <data name="Camp_Index_PendingApproval" xml:space="preserve"><value>pending approval</value></data>
+  <data name="Camp_MyCamps_Title" xml:space="preserve"><value>My camps</value></data>
+  <data name="Camp_MyCamps_Active" xml:space="preserve"><value>Active</value></data>
+  <data name="Camp_MyCamps_Pending" xml:space="preserve"><value>Pending</value></data>
   <data name="Camp_Index_SearchLabel" xml:space="preserve"><value>Search</value></data>
   <data name="Camp_Index_SearchPlaceholder" xml:space="preserve"><value>Type a {0} name…</value></data>
   <data name="Camp_Index_ShowLeadPositions" xml:space="preserve"><value>Show lead positions</value></data>

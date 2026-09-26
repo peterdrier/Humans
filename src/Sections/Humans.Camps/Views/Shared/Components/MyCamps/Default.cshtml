@@ -2,7 +2,7 @@
 
 <div class="card mb-3">
     <div class="card-header">
-        <h5 class="mb-0"><i class="fa-solid fa-campground me-1"></i> My @SharedLocalizer["Camp_Plural"]</h5>
+        <h5 class="mb-0"><i class="fa-solid fa-campground me-1"></i> @Localizer["Camp_MyCamps_Title"]</h5>
     </div>
     <div class="card-body p-0">
         @foreach (var group in Model.Years)
@@ -20,10 +20,10 @@
                         @switch (membership.Status)
                         {
                             case CampMemberStatus.Active:
-                                <span class="badge bg-success">Active</span>
+                                <span class="badge bg-success">@Localizer["Camp_MyCamps_Active"]</span>
                                 break;
                             case CampMemberStatus.Pending:
-                                <span class="badge bg-warning text-dark">Pending</span>
+                                <span class="badge bg-warning text-dark">@Localizer["Camp_MyCamps_Pending"]</span>
                                 break;
                         }
                     </li>

@@ -151,6 +151,9 @@
   <data name="Camp_Index_NoFilterResults" xml:space="preserve"><value>No se encontró ningún {0} con los filtros seleccionados.</value></data>
   <data name="Camp_Index_NoSearchResults" xml:space="preserve"><value>Ningún {0} coincide con tu búsqueda.</value></data>
   <data name="Camp_Index_PendingApproval" xml:space="preserve"><value>pendiente de aprobación</value></data>
+  <data name="Camp_MyCamps_Title" xml:space="preserve"><value>Mis barrios</value></data>
+  <data name="Camp_MyCamps_Active" xml:space="preserve"><value>Activo</value></data>
+  <data name="Camp_MyCamps_Pending" xml:space="preserve"><value>Pendiente</value></data>
   <data name="Camp_Index_SearchLabel" xml:space="preserve"><value>Buscar</value></data>
   <data name="Camp_Index_SearchPlaceholder" xml:space="preserve"><value>Escribe el nombre de un {0}…</value></data>
   <data name="Camp_Index_ShowLeadPositions" xml:space="preserve"><value>Mostrar puestos de líder</value></data>
