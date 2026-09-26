@@ -905,9 +905,6 @@
   <data name="Todo_Profile_Done" xml:space="preserve">
     <value>El teu perfil està complet.</value>
   </data>
-  <data name="Todo_Profile_Pending" xml:space="preserve">
-    <value>Afegeix la teva informació perquè la comunitat et pugui conèixer.</value>
-  </data>
   <data name="Todo_Profile_Action" xml:space="preserve">
     <value>Edita el perfil</value>
   </data>

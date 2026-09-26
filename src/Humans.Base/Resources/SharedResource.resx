@@ -503,7 +503,6 @@
   <data name="Todo_PendingBadge" xml:space="preserve"><value>{0} pending</value><comment>{0} = pending count</comment></data>
   <data name="Todo_Profile_Title" xml:space="preserve"><value>Complete your profile</value></data>
   <data name="Todo_Profile_Done" xml:space="preserve"><value>Your profile is complete.</value></data>
-  <data name="Todo_Profile_Pending" xml:space="preserve"><value>Add your information so the community can get to know you.</value></data>
   <data name="Todo_Profile_Action" xml:space="preserve"><value>Edit Profile</value></data>
   <data name="Todo_Consents_Title" xml:space="preserve"><value>Accept agreements</value></data>
   <data name="Todo_Consents_Done" xml:space="preserve"><value>All agreements are up to date.</value></data>
