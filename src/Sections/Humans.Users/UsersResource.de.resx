@@ -1162,4 +1162,5 @@
   <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Löschantrag erfasst. Dein Konto wird am {0} endgültig gelöscht.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Löschantrag erfasst. Da du Tickets für eine bevorstehende Veranstaltung hast, wird dein Konto nach dem {0} gelöscht.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>Der Löschantrag konnte nicht storniert werden. Bitte versuche es erneut.</value></data>
+  <data name="NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Hat ein @nobodies.team-E-Mail-Konto</value></data>
 </root>

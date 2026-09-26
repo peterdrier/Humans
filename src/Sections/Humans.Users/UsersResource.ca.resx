@@ -1162,4 +1162,5 @@
   <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Sol·licitud d'eliminació registrada. El teu compte s'eliminarà definitivament el {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Sol·licitud d'eliminació registrada. Com que tens entrades per a un esdeveniment proper, el teu compte s'eliminarà després del {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>No s'ha pogut cancel·lar la sol·licitud d'eliminació. Torna-ho a provar.</value></data>
+  <data name="NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Té un compte de correu @nobodies.team</value></data>
 </root>

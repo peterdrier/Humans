@@ -1162,4 +1162,5 @@
   <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Solicitud de eliminación registrada. Tu cuenta se eliminará permanentemente el {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Solicitud de eliminación registrada. Como tienes entradas para un próximo evento, tu cuenta se eliminará después del {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>No se pudo cancelar la solicitud de eliminación. Inténtalo de nuevo.</value></data>
+  <data name="NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Tiene una cuenta de correo @nobodies.team</value></data>
 </root>
