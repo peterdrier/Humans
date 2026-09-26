@@ -835,9 +835,6 @@
   <data name="Camp_Plural" xml:space="preserve">
     <value>Barris</value>
   </data>
-  <data name="Agent_WidgetButton" xml:space="preserve">
-    <value>Obrir l'assistent</value>
-  </data>
   <data name="Login_MagicLink_Title" xml:space="preserve">
     <value>O inicia la sessió amb correu</value>
   </data>

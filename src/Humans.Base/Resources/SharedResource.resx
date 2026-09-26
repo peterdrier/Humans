@@ -471,9 +471,6 @@
 
   <!-- Issue Comment Email -->
 
-  <!-- Agent Widget -->
-  <data name="Agent_WidgetButton" xml:space="preserve"><value>Open the helper</value></data>
-
   <!-- Magic Link Auth -->
   <data name="Login_MagicLink_Title" xml:space="preserve"><value>Or sign in with email</value></data>
   <data name="Login_MagicLink_Placeholder" xml:space="preserve"><value>your@email.com</value></data>
