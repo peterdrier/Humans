@@ -703,7 +703,6 @@
   <data name="About_Staff_Intro" xml:space="preserve"><value>Every collective needs its keepers. These are the humans who volunteer their time and energy to keep Nobodies running — from governance to tech support, from trust and safety to ticket alchemy.</value></data>
   <data name="About_Staff_Title" xml:space="preserve"><value>The Humans Behind the Curtain</value></data>
   <data name="About_Title" xml:space="preserve"><value>About Humans</value></data>
-  <data name="Common_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="Common_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Common_Amount" xml:space="preserve"><value>Amount</value></data>
   <data name="Common_Clear" xml:space="preserve"><value>Clear</value></data>
