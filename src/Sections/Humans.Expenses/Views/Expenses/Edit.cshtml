@@ -38,7 +38,10 @@
                         }
                     }
                 </select>
-                <div class="form-text">Changing the category after submission requires a withdraw and re-file.</div>
+                @if (r.Status == ExpenseReportStatus.Draft)
+                {
+                    <div class="form-text">Changing the category after submission requires a withdraw and re-file.</div>
+                }
                 <span asp-validation-for="BudgetCategoryId" class="text-danger small"></span>
             </div>
 
