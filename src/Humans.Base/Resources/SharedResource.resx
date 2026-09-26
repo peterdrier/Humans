@@ -139,8 +139,6 @@
   <data name="Dashboard_ProfileCard" xml:space="preserve"><value>Profile</value></data>
   <data name="Dashboard_ProfileCompletionPercent" xml:space="preserve"><value>Your profile is {0}% complete</value><comment>{0} = percentage 0-99</comment></data>
   <data name="Dashboard_ConsentsCard" xml:space="preserve"><value>Agreements</value></data>
-  <data name="Dashboard_LatestApplication" xml:space="preserve"><value>Latest Application:</value></data>
-  <data name="Dashboard_ViewApplicationHistory" xml:space="preserve"><value>View application history</value></data>
   <data name="Dashboard_GovernanceDescription" xml:space="preserve"><value>Asociados are voting humans who participate in governance decisions like assemblies and elections. This is intended for community leaders and long-term committed humans.</value></data>
   <data name="Dashboard_GovernanceOptional" xml:space="preserve"><value>Governance participation is optional and doesn't affect your access to resources.</value></data>
   <data name="Dashboard_LearnMore" xml:space="preserve"><value>Learn More</value></data>

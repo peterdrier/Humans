@@ -270,12 +270,6 @@
   <data name="Dashboard_ConsentsCard" xml:space="preserve">
     <value>Acuerdos</value>
   </data>
-  <data name="Dashboard_LatestApplication" xml:space="preserve">
-    <value>Última solicitud:</value>
-  </data>
-  <data name="Dashboard_ViewApplicationHistory" xml:space="preserve">
-    <value>Ver historial de solicitudes</value>
-  </data>
   <data name="Dashboard_GovernanceDescription" xml:space="preserve">
     <value>Los asociados son humans con derecho a voto que participan en las decisiones de gobernanza como asambleas y elecciones. Esto está destinado a líderes comunitarios y humans comprometidos a largo plazo.</value>
   </data>

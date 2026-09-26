@@ -270,12 +270,6 @@
   <data name="Dashboard_ConsentsCard" xml:space="preserve">
     <value>Accords</value>
   </data>
-  <data name="Dashboard_LatestApplication" xml:space="preserve">
-    <value>Dernière candidature :</value>
-  </data>
-  <data name="Dashboard_ViewApplicationHistory" xml:space="preserve">
-    <value>Voir l'historique des candidatures</value>
-  </data>
   <data name="Dashboard_GovernanceDescription" xml:space="preserve">
     <value>Les asociados sont des humans votants qui participent aux décisions de gouvernance telles que les assemblées et les élections. Cela est destiné aux leaders communautaires et aux humans engagés sur le long terme.</value>
   </data>

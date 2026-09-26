@@ -270,12 +270,6 @@
   <data name="Dashboard_ConsentsCard" xml:space="preserve">
     <value>Vereinbarungen</value>
   </data>
-  <data name="Dashboard_LatestApplication" xml:space="preserve">
-    <value>Letzter Antrag:</value>
-  </data>
-  <data name="Dashboard_ViewApplicationHistory" xml:space="preserve">
-    <value>Antragsverlauf anzeigen</value>
-  </data>
   <data name="Dashboard_GovernanceDescription" xml:space="preserve">
     <value>Asociados sind humans mit Stimmrecht, die an Governance-Entscheidungen wie Versammlungen und Wahlen teilnehmen. Dies ist für Community-Leiter und langfristig engagierte humans gedacht.</value>
   </data>
