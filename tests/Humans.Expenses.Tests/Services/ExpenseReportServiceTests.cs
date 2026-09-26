@@ -66,8 +66,8 @@ public sealed class ExpenseReportServiceTests
     {
         _expenseRepo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_expensesOptions));
 
-        // The drain self-guards on the API key now (the job used to), so the substitute has to
-        // claim a key or DrainHoldedOutboxAsync returns before touching anything.
+        // DrainHoldedOutboxAsync returns early unless IHoldedClient.IsConfigured, so the
+        // substitute has to claim a key or it returns before touching anything.
         _holdedClient.IsConfigured.Returns(true);
 
         _fileStorage = Substitute.For<IFileStorage>();
@@ -2078,8 +2078,7 @@ public sealed class ExpenseReportServiceTests
     [HumansFact]
     public async Task GetReviewQueueAsync_ScopesToOwnReportsAndCoordinatedCategories()
     {
-        // The one queue replaced a separate coordinator page (peterdrier/Humans#1447): a
-        // coordinator sees their own reports plus their departments', and nothing else.
+        // A coordinator sees their own reports plus their categories' reports, and nothing else.
         var (_, category) = SetupActiveYear();
         var coordinatorUserId = Guid.NewGuid();
         var yearId = Guid.NewGuid();

@@ -17,8 +17,7 @@ using Humans.Expenses.Authorization;
 namespace Humans.Expenses;
 
 /// <summary>
-/// Expenses' DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix.
+/// Expenses' DI entry point.
 /// </summary>
 /// <remarks>
 /// The Holded HTTP client is <em>not</em> registered here. <c>IHoldedClient</c> belongs to the

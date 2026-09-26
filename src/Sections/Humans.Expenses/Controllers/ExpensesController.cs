@@ -420,12 +420,6 @@ internal sealed class ExpensesController(
         });
     }
 
-    // Mileage and per-diem lines can no longer be created: the Add mileage / Add per diem forms and
-    // their POST endpoints are gone. The service-layer plumbing
-    // (AddMileageLineWithResultAsync / AddPerDiemLineWithResultAsync, ExpenseLineType.Mileage/PerDiem,
-    // TravelReimbursementConfig) is retained so existing travel lines keep rendering and so the
-    // feature can be turned back on by restoring the two actions and the two Edit.cshtml forms.
-
     [HttpPost("{id:guid}/Lines/Update")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateLine(Guid id, EditLineInputModel input)

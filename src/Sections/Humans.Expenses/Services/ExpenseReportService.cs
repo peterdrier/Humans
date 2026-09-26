@@ -21,9 +21,8 @@ using Humans.Users.Contracts;
 namespace Humans.Expenses.Services;
 
 /// <summary>
-/// Application-layer orchestrator for Expense Reports. Coordinates
-/// <see cref="IExpenseRepository"/>, audit logging, IBAN snapshots, and
-/// cross-section reads via interfaces — never imports EF Core directly.
+/// Expenses' application service: the report state machine over the section's repository,
+/// plus the Holded outbox drain and the GDPR export contributor.
 /// </summary>
 [CrossSectionWrite("Writes the reimbursement IBAN onto the claimant profile.")]
 internal sealed class ExpenseReportService(
