@@ -758,32 +758,8 @@
   <data name="AdminApp_Review" xml:space="preserve">
     <value>Prüfen</value>
   </data>
-  <data name="GoogleSync_SyncNow" xml:space="preserve">
-    <value>Jetzt synchronisieren</value>
-  </data>
-  <data name="GoogleSync_TotalResources" xml:space="preserve">
-    <value>Ressourcen gesamt</value>
-  </data>
-  <data name="GoogleSync_InSync" xml:space="preserve">
-    <value>Synchron</value>
-  </data>
-  <data name="GoogleSync_Drifted" xml:space="preserve">
-    <value>Abweichend</value>
-  </data>
-  <data name="GoogleSync_Errors" xml:space="preserve">
-    <value>Fehler</value>
-  </data>
-  <data name="GoogleSync_NoResources" xml:space="preserve">
-    <value>Keine aktiven Google-Ressourcen gefunden.</value>
-  </data>
-  <data name="GoogleSync_Resource" xml:space="preserve">
-    <value>Ressource</value>
-  </data>
   <data name="GoogleSync_Details" xml:space="preserve">
     <value>Details</value>
-  </data>
-  <data name="GoogleSync_BackToDashboard" xml:space="preserve">
-    <value>Zurück zum Dashboard</value>
   </data>
   <data name="Nav_City" xml:space="preserve">
     <value>Karte</value>

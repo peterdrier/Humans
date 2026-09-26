@@ -409,15 +409,7 @@
   <!-- ======================== -->
   <!-- Google Sync View         -->
   <!-- ======================== -->
-  <data name="GoogleSync_SyncNow" xml:space="preserve"><value>Sync Now</value></data>
-  <data name="GoogleSync_TotalResources" xml:space="preserve"><value>Total Resources</value></data>
-  <data name="GoogleSync_InSync" xml:space="preserve"><value>In Sync</value></data>
-  <data name="GoogleSync_Drifted" xml:space="preserve"><value>Drifted</value></data>
-  <data name="GoogleSync_Errors" xml:space="preserve"><value>Errors</value></data>
-  <data name="GoogleSync_NoResources" xml:space="preserve"><value>No active Google resources found.</value></data>
-  <data name="GoogleSync_Resource" xml:space="preserve"><value>Resource</value></data>
   <data name="GoogleSync_Details" xml:space="preserve"><value>Details</value></data>
-  <data name="GoogleSync_BackToDashboard" xml:space="preserve"><value>Back to Dashboard</value></data>
 
   <!-- ======================== -->
   <!-- Team Admin Views         -->

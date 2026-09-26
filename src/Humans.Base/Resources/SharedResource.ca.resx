@@ -758,32 +758,8 @@
   <data name="AdminApp_Review" xml:space="preserve">
     <value>Revisar</value>
   </data>
-  <data name="GoogleSync_SyncNow" xml:space="preserve">
-    <value>Sincronitza ara</value>
-  </data>
-  <data name="GoogleSync_TotalResources" xml:space="preserve">
-    <value>Recursos totals</value>
-  </data>
-  <data name="GoogleSync_InSync" xml:space="preserve">
-    <value>Sincronitzat</value>
-  </data>
-  <data name="GoogleSync_Drifted" xml:space="preserve">
-    <value>Desviat</value>
-  </data>
-  <data name="GoogleSync_Errors" xml:space="preserve">
-    <value>Errors</value>
-  </data>
-  <data name="GoogleSync_NoResources" xml:space="preserve">
-    <value>No s'han trobat recursos actius de Google.</value>
-  </data>
-  <data name="GoogleSync_Resource" xml:space="preserve">
-    <value>Recurs</value>
-  </data>
   <data name="GoogleSync_Details" xml:space="preserve">
     <value>Detalls</value>
-  </data>
-  <data name="GoogleSync_BackToDashboard" xml:space="preserve">
-    <value>Torna al panell d'administració</value>
   </data>
   <data name="Nav_City" xml:space="preserve">
     <value>Mapa</value>
