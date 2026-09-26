@@ -12,7 +12,7 @@ to vouch for it first. Finance then reads the claim with the paperwork in front 
 either approves it, caps it at a lower figure, or sends it back with a reason.
 
 Approving it tells the member by email and books the claim into the association's accounting
-system: one bill per line item (the paperwork behind an invoice rides with it), owed to that
+system: one bill per line item, carrying only that line's own attachment, owed to that
 member, trimmed so the bills add up to what was authorized. That is where this section's authority ends: nobody here marks anything paid.
 Whether the member has actually been paid is read back out of the accounting ledger and shown
 to them, and it is the treasurer's bank, not this system, that moves the money.
@@ -82,7 +82,7 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
   legal name into the claim (`Services/ExpenseReportService.cs:750`), never the actor's; the
   Holded push pays from that snapshot. `/Expenses/{id}/Iban` refreshes it only while the claim
   is pending approval (`Services/ExpenseReportService.cs:839`).
-- **Approved closes the claim.** Approve and both rejects accept only Submitted or
+- **Approved closes the claim.** Approve and finance-reject accept only Submitted or
   CoordinatorEndorsed (`Data/ExpenseRepository.cs:296`, `Data/ExpenseRepository.cs:328`);
   endorse and coordinator-reject only Submitted (`Data/ExpenseRepository.cs:260`,
   `Data/ExpenseRepository.cs:278`); the only move out of Approved is Withdrawn
