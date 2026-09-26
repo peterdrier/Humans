@@ -59,7 +59,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         _budgetService = Substitute.For<IBudgetServiceRead>();
         _userService = Substitute.For<IUserService>();
         _holdedClient = Substitute.For<IHoldedClient>();
-        // The drain now self-guards on the API key instead of the job doing it, so every test
+        // DrainHoldedOutboxAsync returns early unless IHoldedClient.IsConfigured, so every test
         // that expects a push has to say the client is configured.
         _holdedClient.IsConfigured.Returns(true);
         _fileStorage = Substitute.For<IFileStorage>();
@@ -73,7 +73,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [SubmitterId] = MinimalUserInfo(submitter) }));
 
-        // Contact enrichment now lives in Finance: ExpenseReportService delegates to
+        // Contact enrichment is Finance's: ExpenseReportService delegates to
         // EnsureCreditorContactAsync for the contact id, then resolves its supplier-account number.
         _holdedFinance = Substitute.For<IHoldedFinanceService>();
         _holdedFinance.EnsureCreditorContactAsync(
@@ -185,9 +185,8 @@ public class ExpenseReportServiceHoldedOutboxTests
         };
     }
 
-    // Replaces UserInfoStubHelpers.ToUserInfo(), which reads through an in-memory
-    // UsersDbContext a section test project cannot see. Only the no-argument shape was
-    // ever used here, and it is two lines.
+    // Built directly: the shared UserInfoStubHelpers read through a UsersDbContext this
+    // test project cannot see.
     private static UserInfo MinimalUserInfo(User user) =>
         UserInfo.Create(user, [], [], [], profile: null, []);
 
@@ -738,7 +737,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             Arg.Any<string>(), null, null);
     }
 
-    // ─── UpdateIncomingDocTag: v2 has no tag-update endpoint, so this now just drains ──────────
+    // ─── UpdateIncomingDocTag: v2 has no tag-update endpoint, so this just drains ──────────
 
     [HumansFact]
     public async Task UpdateIncomingDocTag_NoClientCall_MarkedProcessed()

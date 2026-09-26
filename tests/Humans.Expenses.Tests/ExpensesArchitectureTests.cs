@@ -8,12 +8,8 @@ namespace Humans.Expenses.Tests;
 /// (nobodies-collective/Humans#866, G5).
 /// </summary>
 /// <remarks>
-/// Replaces <c>Humans.Application.Tests/Architecture/ExpensesArchitectureTests.cs</c>. Both of
-/// its tests are gone rather than carried: the namespace-pinning one is subsumed by the assembly
-/// boundary, and "does not reference EF Core" asserted a property of <c>Humans.Application</c>
-/// that says nothing about this section — the section project references EF Core because its
-/// repository lives in it. The rule that still matters, "only the repository touches the DbSets",
-/// is the universal HUM0025 analyzer's job (design §15 step 11).
+/// The section project references EF Core because its repository lives in it; "only the
+/// repository touches the DbSets" is the universal HUM0025 analyzer's job (design §15 step 11).
 /// </remarks>
 public class ExpensesArchitectureTests
 {
