@@ -48,7 +48,7 @@ Once every purchase item has a receipt and your IBAN is set, submit. You can wit
 - **Draft** — you're still building it
 - **Submitted** — waiting for a coordinator's sign-off (if its category has one) or for Finance
 - **Coordinator endorsed** — signed off by a coordinator; waiting for Finance
-- **Approved** — Finance has approved it; booked into the org's accounting system. A coordinator or Finance Admin can cap what's actually paid out below your submitted total — the report detail page shows the payable amount if a cap applies. Payment happens outside the app (bank transfer by Finance); you can see what you're owed on **My expenses**.
+- **Approved** — Finance has approved it; booked into the org's accounting system. A coordinator or Finance Admin can cap what's actually paid out below your submitted total — the report detail page shows the payable amount if a cap applies. You'll get an email with the approved amount and your masked IBAN, if you have a notification address on file. Payment happens outside the app (bank transfer by Finance); you can see what you're owed on **My expenses**.
 - **Withdrawn** — you pulled it back
 
 ![TODO: screenshot — expense report detail showing items, receipt links, and a status badge]
