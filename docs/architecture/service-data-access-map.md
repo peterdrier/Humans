@@ -365,15 +365,12 @@ separately below the key table.
 | `FeedbackBadgeCount` | 2 min | Static | **FeedbackService** (`GetActionableCountAsync`) | `INavBadgeCacheInvalidator` (FeedbackService, IssuesService, ApplicationDecisionService, RoleAssignmentService) |
 | `NotificationBadge:{userId}` | 2 min | Per-User | **NotificationBellViewComponent** | NotificationService, NotificationEmitter, NotificationInboxService |
 | `NotificationMeters` | 2 min | Static | NotificationMeterProvider | `INotificationMeterCacheInvalidator` (TeamService, ApplicationDecisionService) |
-| `ActiveTeams` | 10 min | Static | _(unused — `CachingTeamService`'s `TrackedCache<Guid, TeamInfo>` is the live cache; key remains in `CacheKeys.Metadata` for invalidator compat)_ | `IActiveTeamsCacheInvalidator` → `ITeamService.InvalidateActiveTeamsCache()` |
 | `claims:{userId}` | 60 sec | Per-User | (claims principal factory) | `IRoleAssignmentClaimsCacheInvalidator` (RoleAssignmentService, AccountDeletionService) |
 | `shift-auth:{userId}` | 60 sec | Per-User | ShiftManagementService | ShiftManagementService, `IShiftAuthorizationInvalidator` (TeamService, AccountDeletionService) |
 | `NavBadge:Voting:{userId}` | 2 min | Per-User | **ApplicationDecisionService** (`GetUnvotedApplicationCountAsync`) | `IVotingBadgeCacheInvalidator` (ApplicationDecisionService) |
 | `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | Per-User | NotificationMeterProvider | `ICampLeadJoinRequestsBadgeCacheInvalidator` (CampService) |
 | `NavBadge:Issues:{userId}` | 2 min | Per-User | IssuesService | `IIssuesBadgeCacheInvalidator` (IssuesService) |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService (GitHub-source read-through) | LegalDocumentService |
-| `TicketEventSummary:{eventId}` | 15 min | Per-Entity | _(unused — the vendor event summary is `CachingTicketVendorService`'s `Tickets.VendorEventSummary` tracked cache below; the key remains in `CacheKeys.Metadata`)_ | — |
-| `TicketDashboardStats` | 5 min | Static | TicketQueryService.GetDashboardStatsAsync (compute — no read-through cache; key reserved for future wrapper) | (reserved cache-stats key) |
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate Limit | CampContactService | CampContactService |
 | `magic_link_used:{tokenPrefix}` | 15 min | Rate Limit | MagicLinkRateLimiter (`Humans.Auth`) | MagicLinkRateLimiter |
 | `magic_link_signup:{normalizedEmail}` | 60 sec | Rate Limit | MagicLinkRateLimiter (`Humans.Auth`) | MagicLinkRateLimiter |
@@ -422,20 +419,12 @@ separately below the key table.
    `ITicketCacheInvalidator`; stale entries also reload after the 5-minute
    freshness deadline stored in the tracked value.
 
-3. **`TicketDashboardStats` is invalidation-only, not read-through.**
-   `TicketQueryService.GetDashboardStatsAsync()` is the canonical
-   producer of the `TicketDashboardStats` DTO — invoked directly by
-   `TicketController.Index` per request (passing through the decorator), with
-   no read-through caching. The cache key (`CacheKeys.TicketDashboardStats`)
-   is kept so a future caching wrapper can be added without changing the
-   cache-stats classification.
-
-4. **`CachingEarlyEntryService` caches negative results.** Most users have
+3. **`CachingEarlyEntryService` caches negative results.** Most users have
    no early entry, so the `EarlyEntry.UserEarlyEntry` tracked cache stores
    the `null` outcome too — otherwise every page render for the no-EE
    majority would re-fan-out across the provider chain.
 
-5. **Caching decorators live beside their inner service in each section's
+4. **Caching decorators live beside their inner service in each section's
    own project**, not in a shared Infrastructure layer. Every decorator
    listed above lives in its owning section's `Services/` (or, for Users,
    `Data/`) folder. They are transparent
@@ -504,7 +493,7 @@ Controllers and components that touch `IMemoryCache` directly.
 | **GateLoginThrottle** (Web infrastructure, used by the gate-terminal sign-in) | TryGetValue / Set / Remove | `GateLoginFailures:{sourceIp}` |
 | **GatePinThrottle** (`Humans.Gate/Services/Stores/`; used by `GateController` PIN claim / override) | TryGetValue / Set / Remove | `GatePinFailures:{key}` |
 | **GateVendorMirrorLedger** (`Humans.Gate/Services/Stores/`; used by `GateController` and `GateVendorBackfillAdminController`) | TryGetValue / Set (atomic claim) | `GateVendorMirrorSent:{vendorTicketId}` |
-| **GateTerminalAccountSeeder** (`Humans.Tickets/Services/`) | `InvalidateUserAccess` extension | `ActiveTeams` + `claims:{userId}` + `shift-auth:{userId}` for the kiosk account |
+| **GateTerminalAccountSeeder** (`Humans.Tickets/Services/`) | `InvalidateUserAccess` extension | `claims:{userId}` + `shift-auth:{userId}` for the kiosk account |
 
 The §15 work continues to push cache populators into the owning service
 behind transparent decorators. `NavBadgesViewComponent` does not inject

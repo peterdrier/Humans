@@ -61,6 +61,8 @@
   <data name="Events_ConflictBadge" xml:space="preserve"><value>Conflicte d'horari amb un altre esdeveniment preferit</value></data>
   <data name="Events_DownloadCsv" xml:space="preserve"><value>Descarrega el CSV d'esdeveniments</value></data>
   <data name="Events_DurationMin" xml:space="preserve"><value>{0} min</value></data>
+  <data name="Events_DurationHours" xml:space="preserve"><value>{0} h</value></data>
+  <data name="Events_DurationHoursMinutes" xml:space="preserve"><value>{0} h {1} min</value></data>
   <data name="Events_FavouritesOnly" xml:space="preserve"><value>Només</value></data>
   <data name="Events_FilterCategory" xml:space="preserve"><value>Categoria</value></data>
   <data name="Events_FilterDay" xml:space="preserve"><value>Dia</value></data>

@@ -68,4 +68,14 @@
   <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>Die Übertragung konnte nicht vorbereitet werden — wähle eines deiner Tickets und eine gültige andere empfangende Person.</value></data>
   <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Übertragung angefragt. Unser Ticketing-Team bearbeitet sie und gibt dir in Kürze Bescheid.</value></data>
   <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Übertragung storniert.</value></data>
+  <data name="Tickets_TicketStub_EventLabel" xml:space="preserve"><value>Elsewhere 2026 · Eintritt für eine Person</value></data>
+  <data name="Tickets_TicketStub_CheckedIn" xml:space="preserve"><value>Eingecheckt</value></data>
+  <data name="Tickets_TicketStub_Void" xml:space="preserve"><value>Ungültig</value></data>
+  <data name="Tickets_TicketStub_EarlyEntry" xml:space="preserve"><value>Früher Einlass {0}</value><comment>{0} = Einlassdatum</comment></data>
+  <data name="Tickets_TicketStub_TransferPending" xml:space="preserve"><value>Übertragung ausstehend</value></data>
+  <data name="Tickets_TicketHoldings_Title" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Tickets_TicketHoldings_OrderSingular" xml:space="preserve"><value>Bestellung</value></data>
+  <data name="Tickets_TicketHoldings_OrderPlural" xml:space="preserve"><value>Bestellungen</value></data>
+  <data name="Tickets_TicketHoldings_Empty" xml:space="preserve"><value>Keine Tickets.</value></data>
+  <data name="Tickets_MemberTicketStatus_Transfers" xml:space="preserve"><value>Übertragungen…</value></data>
 </root>

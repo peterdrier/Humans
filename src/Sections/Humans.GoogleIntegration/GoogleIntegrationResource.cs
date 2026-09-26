@@ -11,8 +11,7 @@ namespace Humans.GoogleIntegration;
 /// Public because the boot localization diagnostic discovers section resource markers via
 /// <c>GetExportedTypes()</c>; an internal marker is skipped in silence (§15.3b).
 /// The set is the two <c>GoogleAccounts_*</c> keys, which the section's own
-/// <c>Views/Google/Accounts.cshtml</c> is the sole renderer of. The dead
-/// <c>GoogleSync_*</c> keys stay in <c>SharedResource</c>: nothing renders them, so there is
-/// no renderer to carve by. Everything else on the section's pages is admin-only English.
+/// <c>Views/Google/Accounts.cshtml</c> is the sole renderer of. Everything else on the
+/// section's pages is admin-only English.
 /// </remarks>
 public class GoogleIntegrationResource;

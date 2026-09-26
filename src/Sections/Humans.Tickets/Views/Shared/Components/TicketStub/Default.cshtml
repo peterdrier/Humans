@@ -7,7 +7,7 @@
     var emitCss = !Context.Items.ContainsKey("ticket-stub-css");
     if (emitCss) { Context.Items["ticket-stub-css"] = true; }
     // TODO(open item): source the event label from the active event instead of a constant.
-    const string eventLabel = "Elsewhere 2026 · Admit One";
+    var eventLabel = Localizer["Tickets_TicketStub_EventLabel"];
 }
 @if (emitCss)
 {
@@ -44,16 +44,16 @@
         }
         @if (isCheckedIn)
         {
-            <div class="ticket-stub-badge checkedin"><i class="fa-solid fa-check me-1"></i>Checked in</div>
+            <div class="ticket-stub-badge checkedin"><i class="fa-solid fa-check me-1"></i>@Localizer["Tickets_TicketStub_CheckedIn"]</div>
         }
         else if (isVoid)
         {
-            <div class="ticket-stub-badge void">Void</div>
+            <div class="ticket-stub-badge void">@Localizer["Tickets_TicketStub_Void"]</div>
         }
         @if (Model.EarlyEntryDate is { } ee)
         {
             <div class="ticket-stub-badge" style="background:var(--h-aged-ink-light); color:var(--h-text-on-dark); margin-top:8px;">
-                <i class="fa-solid fa-door-open me-1"></i>Early entry @ee.ToWeekdayDayMonth()
+                <i class="fa-solid fa-door-open me-1"></i>@Localizer["Tickets_TicketStub_EarlyEntry", ee.ToWeekdayDayMonth()]
             </div>
         }
     </div>
@@ -62,6 +62,6 @@
     </div>
     @if (pending)
     {
-        <div class="ticket-stub-stamp">Transfer pending</div>
+        <div class="ticket-stub-stamp">@Localizer["Tickets_TicketStub_TransferPending"]</div>
     }
 </div>

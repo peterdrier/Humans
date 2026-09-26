@@ -61,6 +61,8 @@
   <data name="Events_ConflictBadge" xml:space="preserve"><value>Zeitkonflikt mit einer anderen favorisierten Veranstaltung</value></data>
   <data name="Events_DownloadCsv" xml:space="preserve"><value>Veranstaltungs-CSV herunterladen</value></data>
   <data name="Events_DurationMin" xml:space="preserve"><value>{0} Min.</value></data>
+  <data name="Events_DurationHours" xml:space="preserve"><value>{0} Std.</value></data>
+  <data name="Events_DurationHoursMinutes" xml:space="preserve"><value>{0} Std. {1} Min.</value></data>
   <data name="Events_FavouritesOnly" xml:space="preserve"><value>Nur</value></data>
   <data name="Events_FilterCategory" xml:space="preserve"><value>Kategorie</value></data>
   <data name="Events_FilterDay" xml:space="preserve"><value>Tag</value></data>

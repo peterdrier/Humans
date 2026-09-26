@@ -24,6 +24,7 @@ Event programming: submission, moderation, browsing, export, and preference mana
 - An **EventFavourite** records that a user has bookmarked an Event for their personal schedule.
 - An **EventPreference** stores a user's excluded category slugs as a JSON list.
 - **Recurring events** have `IsRecurring = true` and a comma-separated `RecurrenceDays` field encoding integer day offsets from gate-opening date.
+- Member-facing event duration labels use the shared `EventDurationFormatter` and `EventsResource` short-unit keys, so submission forms, browse results, and the dashboard card display the active culture consistently.
 
 ## Data Model
 

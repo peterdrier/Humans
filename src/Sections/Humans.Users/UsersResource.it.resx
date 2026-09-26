@@ -1162,4 +1162,7 @@
   <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Richiesta di eliminazione registrata. Il tuo account verrà eliminato definitivamente il {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Richiesta di eliminazione registrata. Poiché hai biglietti per un prossimo evento, il tuo account verrà eliminato dopo il {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>Impossibile annullare la richiesta di eliminazione. Riprova.</value></data>
+  <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Ha un account email @nobodies.team</value></data>
+  <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importato · nessun profilo ancora</value></data>
+  <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Questa persona esiste nel sistema ma non ha ancora completato un profilo (per esempio, è stata importata da una mailing list o dal ticketing).</value></data>
 </root>

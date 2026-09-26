@@ -1162,4 +1162,7 @@
   <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Löschantrag erfasst. Dein Konto wird am {0} endgültig gelöscht.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Löschantrag erfasst. Da du Tickets für eine bevorstehende Veranstaltung hast, wird dein Konto nach dem {0} gelöscht.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>Der Löschantrag konnte nicht storniert werden. Bitte versuche es erneut.</value></data>
+  <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Hat ein @nobodies.team-E-Mail-Konto</value></data>
+  <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importiert · noch kein Profil</value></data>
+  <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Diese Person existiert im System, hat aber noch kein Profil ausgefüllt (zum Beispiel wurde sie aus einer Mailingliste oder dem Ticketing importiert).</value></data>
 </root>
