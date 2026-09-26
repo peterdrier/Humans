@@ -549,5 +549,5 @@
   <data name="Teams_EditTeam_SensitiveHelp" xml:space="preserve"><value>Lorsqu'elle est activée, l'ajout ou l'approbation de personnes affiche une confirmation avec l'enregistrement d'audit qui sera créé. Cette option n'est pas visible pour les non-administrateurs.</value></data>
   <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Activer l'entrée anticipée</value></data>
   <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>Lorsqu'elle est activée, les coordinateurs de cette équipe et les administrateurs d'entrée anticipée peuvent accorder une entrée anticipée aux projets de cette équipe.</value></data>
-  <data name="TeamDetail_Roles" xml:space="preserve"><value>Rôles</value></data>
+  <data name="Teams_TeamDetail_Roles" xml:space="preserve"><value>Rôles</value></data>
 </root>

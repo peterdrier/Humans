@@ -151,13 +151,13 @@
   <data name="Camp_Index_NoFilterResults" xml:space="preserve"><value>No se encontró ningún {0} con los filtros seleccionados.</value></data>
   <data name="Camp_Index_NoSearchResults" xml:space="preserve"><value>Ningún {0} coincide con tu búsqueda.</value></data>
   <data name="Camp_Index_PendingApproval" xml:space="preserve"><value>pendiente de aprobación</value></data>
-  <data name="Camp_MyCamps_Title" xml:space="preserve"><value>Mis barrios</value></data>
-  <data name="Camp_MyCamps_Active" xml:space="preserve"><value>Activo</value></data>
-  <data name="Camp_MyCamps_Pending" xml:space="preserve"><value>Pendiente</value></data>
-  <data name="Camp_RolesCard_Roles" xml:space="preserve"><value>Roles</value></data>
-  <data name="Camp_RolesCard_Leads" xml:space="preserve"><value>Responsables</value></data>
-  <data name="Camp_RolesCard_OpenSlot" xml:space="preserve"><value>plaza libre</value></data>
-  <data name="Camp_RolesCard_OpenSlots" xml:space="preserve"><value>plazas libres</value></data>
+  <data name="Camps_MyCamps_Title" xml:space="preserve"><value>Mis barrios</value></data>
+  <data name="Camps_MyCamps_Active" xml:space="preserve"><value>Activo</value></data>
+  <data name="Camps_MyCamps_Pending" xml:space="preserve"><value>Pendiente</value></data>
+  <data name="Camps_RolesCard_Roles" xml:space="preserve"><value>Roles</value></data>
+  <data name="Camps_RolesCard_Leads" xml:space="preserve"><value>Responsables</value></data>
+  <data name="Camps_RolesCard_OpenSlot" xml:space="preserve"><value>plaza libre</value></data>
+  <data name="Camps_RolesCard_OpenSlots" xml:space="preserve"><value>plazas libres</value></data>
   <data name="Camp_Index_SearchLabel" xml:space="preserve"><value>Buscar</value></data>
   <data name="Camp_Index_SearchPlaceholder" xml:space="preserve"><value>Escribe el nombre de un {0}…</value></data>
   <data name="Camp_Index_ShowLeadPositions" xml:space="preserve"><value>Mostrar puestos de líder</value></data>
@@ -206,7 +206,7 @@
   <data name="Camp_Details_AlsoKnownAs" xml:space="preserve"><value>También conocido como:</value></data>
   <data name="Camp_Details_SwissCampBadge" xml:space="preserve"><value>Swiss Camp</value></data>
   <data name="Camp_Details_RosterEmpty" xml:space="preserve"><value>Aún no hay humans registrados para esta temporada.</value></data>
-  <data name="Camp_Details_Roster" xml:space="preserve"><value>Lista {0}</value></data>
+  <data name="Camps_Details_Roster" xml:space="preserve"><value>Lista {0}</value></data>
   <data name="Camp_Members_NoRolesDefined" xml:space="preserve"><value>Aún no hay roles de barrio definidos.</value></data>
   <data name="Camp_Members_NoRolesAdminHint" xml:space="preserve"><value>CampAdmin puede añadirlos en</value></data>
   <data name="Camp_Members_NoRolesAdminHintLink" xml:space="preserve"><value>Roles de barrio</value></data>

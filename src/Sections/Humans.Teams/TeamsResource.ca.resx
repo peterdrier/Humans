@@ -549,5 +549,5 @@
   <data name="Teams_EditTeam_SensitiveHelp" xml:space="preserve"><value>En activar-ho, afegir o aprovar persones mostra un diàleg de confirmació amb el registre d'auditoria que es crearà. Aquesta opció no és visible per a usuaris que no són administradors.</value></data>
   <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Activa l'entrada anticipada</value></data>
   <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>En activar-ho, els coordinadors d'aquest equip i els administradors d'entrada anticipada poden concedir entrada anticipada als projectes d'aquest equip.</value></data>
-  <data name="TeamDetail_Roles" xml:space="preserve"><value>Rols</value></data>
+  <data name="Teams_TeamDetail_Roles" xml:space="preserve"><value>Rols</value></data>
 </root>

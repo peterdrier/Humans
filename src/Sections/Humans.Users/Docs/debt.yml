@@ -8,6 +8,10 @@ inbox:
     what: "Admin_SortBy in Views/UsersAdmin/AdminList.cshtml:78 has no shared resource and renders raw. The call is correctly through SharedLocalizer, but adding a new Admin_* resource key conflicts with memory/code/localization-admin-exempt.md, which forbids new localization keys for admin pages. Peter must decide whether this existing admin localizer call should gain a resource or become an unlocalized literal."
     review: panel
   - added: 2026-09-06
+    id: USERS-3
+    what: "ProfileController sets member-facing flash/error strings as hardcoded English instead of UsersResource keys — ReplayShiftSignupAfterDietaryMedicalSaveAsync (the shift and shift-range signup success/warning/failure messages) and UpdatePreference (BadRequest \"Cannot change always-on categories.\"); each needs a key in every culture (/section-doctor on Users 2026-09-06; trimmed to the remaining sites by /debt-review 2026-09-26)."
+    review: light
+  - added: 2026-09-06
     id: USERS-4
     what: "PersonSearchFields.ManageAll and PersonSearchFields.LegalName have zero call sites — the user-search-overhaul follow-up that would use them was never built. Either build the caller or drop the members (public surface; /section-doctor on Users 2026-09-06)."
     review: light

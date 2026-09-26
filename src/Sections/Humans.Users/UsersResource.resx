@@ -557,7 +557,7 @@
   <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Deletion request recorded. Your account will be permanently deleted on {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Deletion request recorded. Because you have tickets for an upcoming event, your account will be deleted after {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>Failed to cancel deletion request. Please try again.</value></data>
-  <data name="NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Has a @nobodies.team email account</value></data>
-  <data name="ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Imported · no profile yet</value></data>
-  <data name="ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>This human exists in the system but has not completed a profile (for example, they were imported from a mailing list or ticketing).</value></data>
+  <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Has a @nobodies.team email account</value></data>
+  <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Imported · no profile yet</value></data>
+  <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>This human exists in the system but has not completed a profile (for example, they were imported from a mailing list or ticketing).</value></data>
 </root>

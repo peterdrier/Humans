@@ -371,7 +371,6 @@ separately below the key table.
 | `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | Per-User | NotificationMeterProvider | `ICampLeadJoinRequestsBadgeCacheInvalidator` (CampService) |
 | `NavBadge:Issues:{userId}` | 2 min | Per-User | IssuesService | `IIssuesBadgeCacheInvalidator` (IssuesService) |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService (GitHub-source read-through) | LegalDocumentService |
-| `TicketDashboardStats` | 5 min | Static | TicketQueryService.GetDashboardStatsAsync (compute — no read-through cache; key reserved for future wrapper) | (reserved cache-stats key) |
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate Limit | CampContactService | CampContactService |
 | `magic_link_used:{tokenPrefix}` | 15 min | Rate Limit | MagicLinkRateLimiter (`Humans.Auth`) | MagicLinkRateLimiter |
 | `magic_link_signup:{normalizedEmail}` | 60 sec | Rate Limit | MagicLinkRateLimiter (`Humans.Auth`) | MagicLinkRateLimiter |
@@ -420,20 +419,12 @@ separately below the key table.
    `ITicketCacheInvalidator`; stale entries also reload after the 5-minute
    freshness deadline stored in the tracked value.
 
-3. **`TicketDashboardStats` is invalidation-only, not read-through.**
-   `TicketQueryService.GetDashboardStatsAsync()` is the canonical
-   producer of the `TicketDashboardStats` DTO — invoked directly by
-   `TicketController.Index` per request (passing through the decorator), with
-   no read-through caching. The cache key (`CacheKeys.TicketDashboardStats`)
-   is kept so a future caching wrapper can be added without changing the
-   cache-stats classification.
-
-4. **`CachingEarlyEntryService` caches negative results.** Most users have
+3. **`CachingEarlyEntryService` caches negative results.** Most users have
    no early entry, so the `EarlyEntry.UserEarlyEntry` tracked cache stores
    the `null` outcome too — otherwise every page render for the no-EE
    majority would re-fan-out across the provider chain.
 
-5. **Caching decorators live beside their inner service in each section's
+4. **Caching decorators live beside their inner service in each section's
    own project**, not in a shared Infrastructure layer. Every decorator
    listed above lives in its owning section's `Services/` (or, for Users,
    `Data/`) folder. They are transparent
