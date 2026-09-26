@@ -22,11 +22,11 @@
         </div>
         @if (!Model.HasProfile)
         {
-            <span class="badge bg-secondary" style="font-size: 0.7rem;" title="This human exists in the system but has not completed a profile (e.g. imported from a mailing list or ticketing).">Imported · no profile yet</span>
+            <span class="badge bg-secondary" style="font-size: 0.7rem;" title="@Localizer["ProfilePopover_ImportedNoProfileHelp"]">@Localizer["ProfilePopover_ImportedNoProfile"]</span>
         }
         else if (Model.IsSuspended)
         {
-            <span class="badge bg-danger" style="font-size: 0.7rem;">Suspended</span>
+            <span class="badge bg-danger" style="font-size: 0.7rem;">@Localizer["ProfileCard_Suspended"]</span>
         }
         else if (!string.IsNullOrEmpty(Model.MembershipTier)
             && !string.Equals(Model.MembershipTier, "Volunteer", StringComparison.OrdinalIgnoreCase))
