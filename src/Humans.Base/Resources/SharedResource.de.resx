@@ -270,15 +270,6 @@
   <data name="Dashboard_ConsentsCard" xml:space="preserve">
     <value>Vereinbarungen</value>
   </data>
-  <data name="Dashboard_GovernanceDescription" xml:space="preserve">
-    <value>Asociados sind humans mit Stimmrecht, die an Governance-Entscheidungen wie Versammlungen und Wahlen teilnehmen. Dies ist für Community-Leiter und langfristig engagierte humans gedacht.</value>
-  </data>
-  <data name="Dashboard_GovernanceOptional" xml:space="preserve">
-    <value>Die Teilnahme an der Governance ist freiwillig und hat keinen Einfluss auf Ihren Zugang zu Ressourcen.</value>
-  </data>
-  <data name="Dashboard_LearnMore" xml:space="preserve">
-    <value>Mehr erfahren</value>
-  </data>
   <data name="Dashboard_OnboardingTitle" xml:space="preserve">
     <value>Erste Schritte</value>
   </data>

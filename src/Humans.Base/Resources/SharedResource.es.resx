@@ -270,15 +270,6 @@
   <data name="Dashboard_ConsentsCard" xml:space="preserve">
     <value>Acuerdos</value>
   </data>
-  <data name="Dashboard_GovernanceDescription" xml:space="preserve">
-    <value>Los asociados son humans con derecho a voto que participan en las decisiones de gobernanza como asambleas y elecciones. Esto está destinado a líderes comunitarios y humans comprometidos a largo plazo.</value>
-  </data>
-  <data name="Dashboard_GovernanceOptional" xml:space="preserve">
-    <value>La participación en la gobernanza es opcional y no afecta a su acceso a los recursos.</value>
-  </data>
-  <data name="Dashboard_LearnMore" xml:space="preserve">
-    <value>Más información</value>
-  </data>
   <data name="Dashboard_OnboardingTitle" xml:space="preserve">
     <value>Primeros pasos</value>
   </data>

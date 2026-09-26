@@ -270,15 +270,6 @@
   <data name="Dashboard_ConsentsCard" xml:space="preserve">
     <value>Acords</value>
   </data>
-  <data name="Dashboard_GovernanceDescription" xml:space="preserve">
-    <value>Els associats són humans amb dret a vot que participen en les decisions de governança com assemblees i eleccions. Això està destinat a líders comunitaris i humans compromesos a llarg termini.</value>
-  </data>
-  <data name="Dashboard_GovernanceOptional" xml:space="preserve">
-    <value>La participació en la governança és opcional i no afecta l'accés als recursos.</value>
-  </data>
-  <data name="Dashboard_LearnMore" xml:space="preserve">
-    <value>Més informació</value>
-  </data>
   <data name="Dashboard_OnboardingTitle" xml:space="preserve">
     <value>Primers passos</value>
   </data>
