@@ -73,4 +73,8 @@
   <data name="Tickets_TicketStub_Void" xml:space="preserve"><value>Annullato</value></data>
   <data name="Tickets_TicketStub_EarlyEntry" xml:space="preserve"><value>Ingresso anticipato {0}</value><comment>{0} = data di ingresso</comment></data>
   <data name="Tickets_TicketStub_TransferPending" xml:space="preserve"><value>Trasferimento in attesa</value></data>
+  <data name="Tickets_TicketHoldings_Title" xml:space="preserve"><value>Biglietti</value></data>
+  <data name="Tickets_TicketHoldings_OrderSingular" xml:space="preserve"><value>ordine</value></data>
+  <data name="Tickets_TicketHoldings_OrderPlural" xml:space="preserve"><value>ordini</value></data>
+  <data name="Tickets_TicketHoldings_Empty" xml:space="preserve"><value>Nessun biglietto.</value></data>
 </root>
