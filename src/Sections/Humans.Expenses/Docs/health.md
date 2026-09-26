@@ -79,9 +79,9 @@ Stated so a violation is recognisable, each with the line that enforces it. The 
 list is `Expenses.md`; these are the ones a change is most likely to break silently.
 
 - **The payee is the submitter, snapshotted.** Submit copies the *submitter's* profile IBAN and
-  legal name into the claim (`Services/ExpenseReportService.cs:751`), never the actor's; the
+  legal name into the claim (`Services/ExpenseReportService.cs:750`), never the actor's; the
   Holded push pays from that snapshot. `/Expenses/{id}/Iban` refreshes it only while the claim
-  is pending approval (`Services/ExpenseReportService.cs:840`).
+  is pending approval (`Services/ExpenseReportService.cs:839`).
 - **Approved closes the claim.** Approve and both rejects accept only Submitted or
   CoordinatorEndorsed (`Data/ExpenseRepository.cs:296`, `Data/ExpenseRepository.cs:328`);
   endorse and coordinator-reject only Submitted (`Data/ExpenseRepository.cs:260`,
@@ -94,18 +94,18 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
 - **Proof rows never reach `Total`** (`Data/ExpenseRepository.cs:117`) and never reach Holded —
   the allocation skips them (`Services/PayableAllocation.cs:29`).
 - **The cap allocates greedily in line order**, and a line past the cap gets no Holded doc and
-  no upload (`Services/ExpenseReportService.cs:1461`).
+  no upload (`Services/ExpenseReportService.cs:1460`).
 - **A pushed line is never pushed twice.** A line's doc id is written the moment Holded issues
-  it (`Services/ExpenseReportService.cs:1506`), an upload is stamped
-  (`Services/ExpenseReportService.cs:1563`), and a legacy single-doc claim resumes onto its one
-  doc (`Services/ExpenseReportService.cs:1386`).
+  it (`Services/ExpenseReportService.cs:1505`), an upload is stamped
+  (`Services/ExpenseReportService.cs:1562`), and a legacy single-doc claim resumes onto its one
+  doc (`Services/ExpenseReportService.cs:1385`).
 - **A header edit never moves a claim between budget years** once submitted
-  (`Services/ExpenseReportService.cs:315`).
+  (`Services/ExpenseReportService.cs:314`).
 - **Masking is a rule about output, not storage.** The approval email and the GDPR export carry
-  the masked form (`Services/ExpenseReportService.cs:1114`, `Services/ExpenseReportService.cs:1683`);
+  the masked form (`Services/ExpenseReportService.cs:1113`, `Services/ExpenseReportService.cs:1682`);
   the one unmasked write is an IBAN audit row whose actor is not its subject
-  (`Services/ExpenseReportService.cs:938`).
-- **The drain does nothing without a Holded key** (`Services/ExpenseReportService.cs:1211`), and a
+  (`Services/ExpenseReportService.cs:937`).
+- **The drain does nothing without a Holded key** (`Services/ExpenseReportService.cs:1210`), and a
   written-off push is counted on `/Expenses/Review` (`Data/ExpenseRepository.cs:370`).
 
 ## 5. Seams — specified but unbuilt
@@ -178,4 +178,4 @@ Settled decisions that read as accidents. Do not re-litigate these.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-08-26 | Gates nothing asked for, removed or queued; docs trued to the code | peterdrier/Humans#1537 |
-| 2 | 2026-09-26 | pending | pending |
+| 2 | 2026-09-26 | Endorse contradiction queued; Edit page, submit error and docs trued to the code | pending |
