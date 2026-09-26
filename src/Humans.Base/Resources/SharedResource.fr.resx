@@ -570,9 +570,6 @@
   <data name="AdminDashboard_Title" xml:space="preserve">
     <value>Tableau de bord administrateur</value>
   </data>
-  <data name="AdminGoogleSync_Title" xml:space="preserve">
-    <value>État de la synchronisation Google</value>
-  </data>
   <data name="Admin_CannotStartReview" xml:space="preserve">
     <value>Impossible de démarrer l'examen. La candidature n'est pas à l'état Envoyée.</value>
   </data>

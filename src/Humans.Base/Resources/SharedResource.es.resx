@@ -570,9 +570,6 @@
   <data name="AdminDashboard_Title" xml:space="preserve">
     <value>Panel de administración</value>
   </data>
-  <data name="AdminGoogleSync_Title" xml:space="preserve">
-    <value>Estado de sincronización con Google</value>
-  </data>
   <data name="Admin_CannotStartReview" xml:space="preserve">
     <value>No se puede iniciar la revisión. La solicitud no está en estado Enviada.</value>
   </data>
