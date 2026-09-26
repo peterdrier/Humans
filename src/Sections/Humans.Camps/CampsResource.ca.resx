@@ -154,6 +154,10 @@
   <data name="Camp_MyCamps_Title" xml:space="preserve"><value>Els meus barris</value></data>
   <data name="Camp_MyCamps_Active" xml:space="preserve"><value>Actiu</value></data>
   <data name="Camp_MyCamps_Pending" xml:space="preserve"><value>Pendent</value></data>
+  <data name="Camp_RolesCard_Roles" xml:space="preserve"><value>Rols</value></data>
+  <data name="Camp_RolesCard_Leads" xml:space="preserve"><value>Responsables</value></data>
+  <data name="Camp_RolesCard_OpenSlot" xml:space="preserve"><value>plaça lliure</value></data>
+  <data name="Camp_RolesCard_OpenSlots" xml:space="preserve"><value>places lliures</value></data>
   <data name="Camp_Index_SearchLabel" xml:space="preserve"><value>Cerca</value></data>
   <data name="Camp_Index_SearchPlaceholder" xml:space="preserve"><value>Escriu el nom d'un {0}…</value></data>
   <data name="Camp_Index_ShowLeadPositions" xml:space="preserve"><value>Mostra les posicions de lideratge</value></data>

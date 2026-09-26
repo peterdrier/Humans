@@ -154,6 +154,10 @@
   <data name="Camp_MyCamps_Title" xml:space="preserve"><value>Meine Camps</value></data>
   <data name="Camp_MyCamps_Active" xml:space="preserve"><value>Aktiv</value></data>
   <data name="Camp_MyCamps_Pending" xml:space="preserve"><value>Ausstehend</value></data>
+  <data name="Camp_RolesCard_Roles" xml:space="preserve"><value>Rollen</value></data>
+  <data name="Camp_RolesCard_Leads" xml:space="preserve"><value>Leads</value></data>
+  <data name="Camp_RolesCard_OpenSlot" xml:space="preserve"><value>offener Platz</value></data>
+  <data name="Camp_RolesCard_OpenSlots" xml:space="preserve"><value>offene Plätze</value></data>
   <data name="Camp_Index_SearchLabel" xml:space="preserve"><value>Suche</value></data>
   <data name="Camp_Index_SearchPlaceholder" xml:space="preserve"><value>Gib einen {0}-Namen ein…</value></data>
   <data name="Camp_Index_ShowLeadPositions" xml:space="preserve"><value>Lead-Positionen anzeigen</value></data>

@@ -10,7 +10,7 @@
 }
 <div class="card mb-4">
     <div class="card-header">
-        <i class="fa-solid fa-user-shield me-1"></i> @(Model.CanSeeFullCamp ? "Roles" : "Leads")
+        <i class="fa-solid fa-user-shield me-1"></i> @(Model.CanSeeFullCamp ? Localizer["Camp_RolesCard_Roles"] : Localizer["Camp_RolesCard_Leads"])
     </div>
     <ul class="list-group list-group-flush">
         @foreach (var role in rows)
@@ -29,7 +29,7 @@
                 }
                 @if (Model.CanSeeFullCamp && role.EmptySlotCount > 0)
                 {
-                    <div class="mt-1 text-muted fst-italic small">@role.EmptySlotCount open</div>
+                    <div class="mt-1 text-muted fst-italic small">@role.EmptySlotCount @(role.EmptySlotCount == 1 ? Localizer["Camp_RolesCard_OpenSlot"] : Localizer["Camp_RolesCard_OpenSlots"])</div>
                 }
             </li>
         }
