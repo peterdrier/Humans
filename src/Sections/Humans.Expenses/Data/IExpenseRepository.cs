@@ -8,7 +8,7 @@ namespace Humans.Expenses.Data;
 internal interface IExpenseRepository : IRepository
 {
     // Reads — all return fully-populated DTOs (Lines + Attachment metadata always included).
-    // EF entity types stay inside Infrastructure; the Application layer sees only DTOs.
+    // EF entities stay inside the repository; callers see only DTOs.
     Task<ExpenseReportDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default);
@@ -52,7 +52,7 @@ internal interface IExpenseRepository : IRepository
 
     /// <summary>
     /// Rewrites the payee IBAN snapshot on an already-submitted report. Which statuses may be
-    /// refreshed is the service's call, as with the header edit above; this only writes.
+    /// refreshed is the service's call, as with <c>UpdateDraftAsync</c>; this only writes.
     /// Returns false when the report does not exist.
     /// </summary>
     Task<bool> UpdatePayeeIbanAsync(
