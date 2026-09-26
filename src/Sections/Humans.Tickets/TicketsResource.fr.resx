@@ -77,4 +77,5 @@
   <data name="Tickets_TicketHoldings_OrderSingular" xml:space="preserve"><value>commande</value></data>
   <data name="Tickets_TicketHoldings_OrderPlural" xml:space="preserve"><value>commandes</value></data>
   <data name="Tickets_TicketHoldings_Empty" xml:space="preserve"><value>Aucun billet.</value></data>
+  <data name="Tickets_MemberTicketStatus_Transfers" xml:space="preserve"><value>Transferts…</value></data>
 </root>

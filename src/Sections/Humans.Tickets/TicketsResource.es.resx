@@ -77,4 +77,5 @@
   <data name="Tickets_TicketHoldings_OrderSingular" xml:space="preserve"><value>pedido</value></data>
   <data name="Tickets_TicketHoldings_OrderPlural" xml:space="preserve"><value>pedidos</value></data>
   <data name="Tickets_TicketHoldings_Empty" xml:space="preserve"><value>No hay entradas.</value></data>
+  <data name="Tickets_MemberTicketStatus_Transfers" xml:space="preserve"><value>Transferencias…</value></data>
 </root>
