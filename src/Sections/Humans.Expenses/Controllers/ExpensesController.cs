@@ -928,10 +928,6 @@ internal sealed class ExpensesController(
     {
         model.Report = report;
         model.Categories = await BuildCategoryOptionsAsync(report);
-        model.CanEditHeader = true;
-        // Only the Edit grant reaches this page, and it already encodes who may change lines in
-        // which status — for the submitter that is still their own Draft and nothing else.
-        model.CanEditLines = await AllowsAsync(report, ExpenseReportOperation.Edit);
     }
 
     /// <param name="report">

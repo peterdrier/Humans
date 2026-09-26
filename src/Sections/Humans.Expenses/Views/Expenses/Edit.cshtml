@@ -25,30 +25,20 @@
 
             <div class="mb-3">
                 <label asp-for="BudgetCategoryId" class="form-label">Budget Category <span class="text-danger">*</span></label>
-                @if (Model.CanEditLines)
-                {
-                    <select asp-for="BudgetCategoryId" class="form-select" required>
-                        @foreach (var c in Model.Categories)
+                <select asp-for="BudgetCategoryId" class="form-select" required>
+                    @foreach (var c in Model.Categories)
+                    {
+                        if (c.Id == Model.BudgetCategoryId)
                         {
-                            if (c.Id == Model.BudgetCategoryId)
-                            {
-                                <option value="@c.Id" selected>@c.DisplayName</option>
-                            }
-                            else
-                            {
-                                <option value="@c.Id">@c.DisplayName</option>
-                            }
+                            <option value="@c.Id" selected>@c.DisplayName</option>
                         }
-                    </select>
-                    <div class="form-text">Changing the category after submission requires a withdraw and re-file.</div>
-                }
-                else
-                {
-                    var selectedCategory = Model.Categories.FirstOrDefault(c => c.Id == Model.BudgetCategoryId);
-                    <input type="hidden" asp-for="BudgetCategoryId" />
-                    <p class="form-control-plaintext">@(selectedCategory?.DisplayName ?? "(unknown)")</p>
-                    <div class="form-text text-muted">Category cannot be changed after submission. Withdraw and re-file to change it.</div>
-                }
+                        else
+                        {
+                            <option value="@c.Id">@c.DisplayName</option>
+                        }
+                    }
+                </select>
+                <div class="form-text">Changing the category after submission requires a withdraw and re-file.</div>
                 <span asp-validation-for="BudgetCategoryId" class="text-danger small"></span>
             </div>
 
@@ -121,7 +111,7 @@
                             </td>
                             <td class="text-end text-nowrap">
                                 <a asp-action="LineEdit" asp-route-id="@r.Id" asp-route-lineId="@line.Id"
-                                   class="btn btn-sm btn-outline-secondary">@(Model.CanEditLines ? "Edit" : "View")</a>
+                                   class="btn btn-sm btn-outline-secondary">Edit</a>
                             </td>
                         </tr>
                     }
@@ -137,20 +127,11 @@
         </div>
     }
 
-    @if (Model.CanEditLines)
-    {
-        <div class="card-footer">
-            <a asp-action="NewLine" asp-route-id="@r.Id" class="btn btn-primary">
-                <i class="fa-solid fa-plus me-1"></i>Add line
-            </a>
-        </div>
-    }
-    else if (r.Status != ExpenseReportStatus.Draft)
-    {
-        <div class="card-footer text-muted small">
-            Lines and attachments are locked while the report is @r.Status. Header edits are still allowed.
-        </div>
-    }
+    <div class="card-footer">
+        <a asp-action="NewLine" asp-route-id="@r.Id" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i>Add line
+        </a>
+    </div>
 </div>
 
 <div class="d-flex gap-2">

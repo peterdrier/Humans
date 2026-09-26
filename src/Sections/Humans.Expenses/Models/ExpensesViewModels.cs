@@ -56,8 +56,6 @@ internal sealed class ExpenseEditViewModel
 {
     public ExpenseReportDto? Report { get; set; }
     public IReadOnlyList<BudgetCategoryOption> Categories { get; set; } = [];
-    public bool CanEditHeader { get; set; }
-    public bool CanEditLines { get; set; }
 
     public Guid BudgetCategoryId { get; set; }
 
