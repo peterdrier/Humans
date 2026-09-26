@@ -270,22 +270,6 @@
   <data name="Dashboard_ConsentsCard" xml:space="preserve">
     <value>Accordi</value>
   </data>
-  <data name="Dashboard_ConsentsNeeded" xml:space="preserve">
-    <value>&lt;strong&gt;{0}&lt;/strong&gt; di {1} documenti richiedono il Suo consenso.</value>
-    <comment>{0} = pending count, {1} = total required</comment>
-  </data>
-  <data name="Dashboard_ReviewConsents" xml:space="preserve">
-    <value>Esamina accordi</value>
-  </data>
-  <data name="Dashboard_ConsentsUpToDate" xml:space="preserve">
-    <value>Tutti i consensi sono aggiornati.</value>
-  </data>
-  <data name="Dashboard_ViewConsents" xml:space="preserve">
-    <value>Visualizza accordi</value>
-  </data>
-  <data name="Dashboard_NoConsentsRequired" xml:space="preserve">
-    <value>Al momento non sono richiesti consensi per alcun documento.</value>
-  </data>
   <data name="Dashboard_LatestApplication" xml:space="preserve">
     <value>Ultima domanda:</value>
   </data>

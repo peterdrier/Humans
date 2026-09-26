@@ -139,11 +139,6 @@
   <data name="Dashboard_ProfileCard" xml:space="preserve"><value>Profile</value></data>
   <data name="Dashboard_ProfileCompletionPercent" xml:space="preserve"><value>Your profile is {0}% complete</value><comment>{0} = percentage 0-99</comment></data>
   <data name="Dashboard_ConsentsCard" xml:space="preserve"><value>Agreements</value></data>
-  <data name="Dashboard_ConsentsNeeded" xml:space="preserve"><value>&lt;strong&gt;{0}&lt;/strong&gt; of {1} documents need your consent.</value><comment>{0} = pending count, {1} = total required</comment></data>
-  <data name="Dashboard_ReviewConsents" xml:space="preserve"><value>Review Agreements</value></data>
-  <data name="Dashboard_ConsentsUpToDate" xml:space="preserve"><value>All consents are up to date.</value></data>
-  <data name="Dashboard_ViewConsents" xml:space="preserve"><value>View Agreements</value></data>
-  <data name="Dashboard_NoConsentsRequired" xml:space="preserve"><value>No documents require consent at this time.</value></data>
   <data name="Dashboard_LatestApplication" xml:space="preserve"><value>Latest Application:</value></data>
   <data name="Dashboard_ViewApplicationHistory" xml:space="preserve"><value>View application history</value></data>
   <data name="Dashboard_GovernanceDescription" xml:space="preserve"><value>Asociados are voting humans who participate in governance decisions like assemblies and elections. This is intended for community leaders and long-term committed humans.</value></data>

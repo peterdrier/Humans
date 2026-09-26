@@ -270,22 +270,6 @@
   <data name="Dashboard_ConsentsCard" xml:space="preserve">
     <value>Acuerdos</value>
   </data>
-  <data name="Dashboard_ConsentsNeeded" xml:space="preserve">
-    <value>&lt;strong&gt;{0}&lt;/strong&gt; de {1} documentos necesitan su consentimiento.</value>
-    <comment>{0} = pending count, {1} = total required</comment>
-  </data>
-  <data name="Dashboard_ReviewConsents" xml:space="preserve">
-    <value>Revisar acuerdos</value>
-  </data>
-  <data name="Dashboard_ConsentsUpToDate" xml:space="preserve">
-    <value>Todos los consentimientos están al día.</value>
-  </data>
-  <data name="Dashboard_ViewConsents" xml:space="preserve">
-    <value>Ver acuerdos</value>
-  </data>
-  <data name="Dashboard_NoConsentsRequired" xml:space="preserve">
-    <value>No se requiere consentimiento en este momento.</value>
-  </data>
   <data name="Dashboard_LatestApplication" xml:space="preserve">
     <value>Última solicitud:</value>
   </data>
