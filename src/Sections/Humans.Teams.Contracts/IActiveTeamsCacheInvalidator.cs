@@ -4,8 +4,8 @@ using Humans.Base.Attributes;
 namespace Humans.Teams.Contracts;
 
 /// <summary>
-/// Cross-cutting invalidator for the <c>CacheKeys.ActiveTeams</c> in-memory
-/// team directory cache owned by the Teams section. Background jobs and other
+/// Cross-cutting invalidator for the in-memory team directory cache owned by
+/// the Teams section. Background jobs and other
 /// services that change team membership outside of <c>ITeamService</c>'s own
 /// write paths inject this and call <see cref="Invalidate"/> after their own
 /// writes — they never touch <see cref="Microsoft.Extensions.Caching.Memory.IMemoryCache"/>

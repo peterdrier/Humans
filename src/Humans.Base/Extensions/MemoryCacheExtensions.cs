@@ -73,11 +73,6 @@ public static class MemoryCacheExtensions
     public static void InvalidateNotificationMeters(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.NotificationMeters);
 
-    public static void InvalidateActiveTeams(this IMemoryCache cache)
-    {
-        cache.Remove(CacheKeys.ActiveTeams);
-    }
-
     // Camp-cache invalidation extensions were retired in T-06 — eviction
     // is now owned by CachingCampService (Infrastructure decorator) and
     // reached through ICampInfoInvalidator. The CampSeasonsByYear /
@@ -112,7 +107,6 @@ public static class MemoryCacheExtensions
 
     public static void InvalidateUserAccess(this IMemoryCache cache, Guid userId)
     {
-        cache.InvalidateActiveTeams();
         cache.InvalidateRoleAssignmentClaims(userId);
         cache.InvalidateShiftAuthorization(userId);
     }

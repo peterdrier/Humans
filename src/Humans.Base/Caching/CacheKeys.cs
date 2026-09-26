@@ -9,7 +9,6 @@ public static class CacheKeys
 
     public static string NotificationBadgeCounts(Guid userId) => $"NotificationBadge:{userId:N}";
     public const string NotificationMeters = "NotificationMeters";
-    public const string ActiveTeams = "ActiveTeams";
     public const string HoldedContacts = "HoldedContacts";
 
     public const string TicketDashboardStats = "TicketDashboardStats";
@@ -52,7 +51,6 @@ public static class CacheKeys
             ["FeedbackBadgeCount"] = new("2 min", CacheKeyType.Static),
             ["NotificationBadge"] = new("2 min", CacheKeyType.PerUser),
             ["NotificationMeters"] = new("2 min", CacheKeyType.Static),
-            ["ActiveTeams"] = new("10 min", CacheKeyType.Static),
             ["HoldedContacts"] = new("2 min", CacheKeyType.Static),
             ["TicketDashboardStats"] = new("5 min", CacheKeyType.Static),
             ["CampContactRateLimit"] = new("10 min", CacheKeyType.RateLimit),
