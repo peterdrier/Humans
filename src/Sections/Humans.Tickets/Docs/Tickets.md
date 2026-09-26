@@ -187,7 +187,7 @@ Outbound (what Tickets injects; the project references are the authority — `Hu
 Inbound (who injects `Humans.Tickets.Contracts`):
 
 - **`ITicketServiceRead`** (`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync`; no `SurfaceBudget` pinned) — Users (profile, guest orders, account deletion hold, audiences), MailerLite audiences, Shifts, Surveys, Teams admin, Budget, Gate (`GateService` barcode admits), Scanner (`/Scanner/Tickets` lookup card), Agent. Read-only; nobody writes back.
-- **`ITicketDiscountCodes`** — Campaigns' grant waves. **`ITicketVendorMirror`** — Gate's `GateVendorCheckInJob` mirrors admits to the vendor (best-effort, behind `Gate:VendorMirrorEnabled`, default off; Gate's own `gate_scan_events` remains the dedupe authority). **`ITicketSync`** — Notifications' `NotificationMeterProvider`. The transfer-queue count behind the admin nav badge (`ITicketTransferQueue`) is internal: no cross-section caller.
+- **`ITicketDiscountCodes`** — Campaigns' grant waves. **`ITicketVendorMirror`** — Gate's `GateVendorCheckInJob` mirrors admits to the vendor (best-effort, behind `Gate:VendorMirrorEnabled`, default off; Gate's own `gate_scan_events` remains the dedupe authority). Each vendor check-in POST creates a record, so the job always uses zero retry attempts. **`ITicketSync`** — Notifications' `NotificationMeterProvider`. The transfer-queue count behind the admin nav badge (`ITicketTransferQueue`) is internal: no cross-section caller.
 
 ## Architecture
 

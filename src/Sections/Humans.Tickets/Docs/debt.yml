@@ -19,10 +19,6 @@ inbox:
     id: TICKETS-5
     what: "Docs/features/ticket-transfer.md's freshness triggers omit src/Sections/Humans.TicketTailor/** while the spec asserts the vendor void+reissue writeback. Docs/Tickets.md credits tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs with pinning \"the two adapters\"; that is tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs (finding 19, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
     review: light
-  - added: 2026-09-14
-    id: TICKETS-6
-    what: "Contracts/ITicketVendorService.cs says CreateCheckInAsync is \"Safe to retry\", and src/Sections/Humans.Tickets.Contracts/ITicketVendorMirror.cs repeats it. The vendor call creates a record per POST, which is why Gate's GateVendorCheckInJob runs with Attempts = 0. Both should say \"not idempotent; never retried\" (finding 22, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
-    review: light
   - added: 2026-09-22
     id: TICKETS-7
     what: "Services/Stores/CachingTicketVendorService.cs caches GetEventSummaryAsync with a hand-rolled 15-minute TTL EventSummaryCache instead of the standard TrackedCache decorator pattern (design-rules §15). Replace it with the standard caching pattern (Peter, freshness sweep 2026-09-22)."
