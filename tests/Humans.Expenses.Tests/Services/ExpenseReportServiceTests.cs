@@ -1031,6 +1031,21 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task SubmitWithResultAsync_OnAReportNoLongerADraft_SaysSo()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = Guid.NewGuid();
+        await SeedReportWithStatus(id, submitter, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+
+        var result = await _sut.SubmitWithResultAsync(id, submitter, false, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("no longer be a draft");
+        result.ErrorMessage.Should().NotContain("IBAN");
+    }
+
+    [HumansFact]
     public async Task SubmitWithResultAsync_ReturnsFailure_WhenLineHasNoAttachment()
     {
         var (_, category) = SetupActiveYear();

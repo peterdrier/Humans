@@ -783,7 +783,7 @@ internal sealed class ExpenseReportService(
             var submitted = await SubmitAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
             return submitted
                 ? ExpenseMutationResult.Success
-                : ExpenseMutationResult.Failure("Could not submit the report. Receipt lines need an attachment and your payment IBAN must be set.");
+                : ExpenseMutationResult.Failure("Could not submit the report. It may no longer be a draft.");
         }, "Error submitting expense report {ReportId}", "Submission failed", reportId);
 
     internal async Task<bool> WithdrawAsync(
