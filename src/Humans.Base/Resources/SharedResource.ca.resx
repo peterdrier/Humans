@@ -270,9 +270,6 @@
   <data name="Dashboard_ProfileCard" xml:space="preserve">
     <value>Perfil</value>
   </data>
-  <data name="Dashboard_ProfileComplete" xml:space="preserve">
-    <value>El teu perfil està complet.</value>
-  </data>
   <data name="Dashboard_ProfileIncomplete" xml:space="preserve">
     <value>Completa el teu perfil perquè et puguem conèixer millor.</value>
   </data>
