@@ -270,24 +270,6 @@
   <data name="Dashboard_ConsentsCard" xml:space="preserve">
     <value>Acuerdos</value>
   </data>
-  <data name="Dashboard_OnboardingTitle" xml:space="preserve">
-    <value>Primeros pasos</value>
-  </data>
-  <data name="Dashboard_OnboardingDescription" xml:space="preserve">
-    <value>Completa estos pasos para ser voluntario:</value>
-  </data>
-  <data name="Dashboard_Step_Profile" xml:space="preserve">
-    <value>Completa tu perfil</value>
-  </data>
-  <data name="Dashboard_Step_Consents" xml:space="preserve">
-    <value>Revisa y acepta los documentos requeridos</value>
-  </data>
-  <data name="Dashboard_Step_Approval" xml:space="preserve">
-    <value>La junta revisa y aprueba tu cuenta</value>
-  </data>
-  <data name="Dashboard_Step_ConsentCheck" xml:space="preserve">
-    <value>Un coordinador revisa y aprueba tus documentos</value>
-  </data>
   <data name="Dashboard_MembershipTier" xml:space="preserve">
     <value>Nivel de membresía</value>
   </data>

@@ -139,12 +139,6 @@
   <data name="Dashboard_ProfileCard" xml:space="preserve"><value>Profile</value></data>
   <data name="Dashboard_ProfileCompletionPercent" xml:space="preserve"><value>Your profile is {0}% complete</value><comment>{0} = percentage 0-99</comment></data>
   <data name="Dashboard_ConsentsCard" xml:space="preserve"><value>Agreements</value></data>
-  <data name="Dashboard_OnboardingTitle" xml:space="preserve"><value>Getting Started</value></data>
-  <data name="Dashboard_OnboardingDescription" xml:space="preserve"><value>Complete these steps to become a volunteer:</value></data>
-  <data name="Dashboard_Step_Profile" xml:space="preserve"><value>Complete your profile</value></data>
-  <data name="Dashboard_Step_Consents" xml:space="preserve"><value>Review and consent to required documents</value></data>
-  <data name="Dashboard_Step_Approval" xml:space="preserve"><value>The board reviews and approves your account</value></data>
-  <data name="Dashboard_Step_ConsentCheck" xml:space="preserve"><value>A coordinator reviews and clears your documents</value></data>
   <data name="Dashboard_MembershipTier" xml:space="preserve"><value>Membership Tier</value></data>
   <data name="Dashboard_TierApplicationPending" xml:space="preserve"><value>Your tier application is awaiting Board review.</value></data>
   <data name="Dashboard_TierActive" xml:space="preserve"><value>Your membership tier is active.</value></data>

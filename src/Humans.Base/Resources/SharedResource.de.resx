@@ -270,24 +270,6 @@
   <data name="Dashboard_ConsentsCard" xml:space="preserve">
     <value>Vereinbarungen</value>
   </data>
-  <data name="Dashboard_OnboardingTitle" xml:space="preserve">
-    <value>Erste Schritte</value>
-  </data>
-  <data name="Dashboard_OnboardingDescription" xml:space="preserve">
-    <value>Führen Sie diese Schritte aus, um Freiwilliger zu werden:</value>
-  </data>
-  <data name="Dashboard_Step_Profile" xml:space="preserve">
-    <value>Profil vervollständigen</value>
-  </data>
-  <data name="Dashboard_Step_Consents" xml:space="preserve">
-    <value>Erforderliche Dokumente prüfen und zustimmen</value>
-  </data>
-  <data name="Dashboard_Step_Approval" xml:space="preserve">
-    <value>Der Vorstand prüft und genehmigt Ihr Konto</value>
-  </data>
-  <data name="Dashboard_Step_ConsentCheck" xml:space="preserve">
-    <value>Ein Koordinator prüft und gibt Ihre Dokumente frei</value>
-  </data>
   <data name="Dashboard_MembershipTier" xml:space="preserve">
     <value>Mitgliedschaftsstufe</value>
   </data>
