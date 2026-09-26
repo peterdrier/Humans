@@ -13,25 +13,25 @@
 {
     <style>
         .ticket-stub { display:flex; width:330px; max-width:100%; border-radius:12px; overflow:hidden;
-            background:#fff; border:1px solid #e3ddd0; box-shadow:0 3px 10px rgba(0,0,0,.12); position:relative; }
-        .ticket-stub-main { flex:1; padding:13px 16px; background:linear-gradient(135deg,#faf7f0,#f3ecdd); min-width:0; }
-        .ticket-stub-event { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:#9a8f78; font-weight:700; }
-        .ticket-stub-name { font-size:19px; font-weight:800; color:#2e2a22; margin:2px 0; overflow-wrap:anywhere; }
-        .ticket-stub-email { font-size:12.5px; color:#6b6453; overflow-wrap:anywhere; }
-        .ticket-stub-side { width:74px; background:#efe7d6; display:flex; flex-direction:column; align-items:center;
-            justify-content:center; gap:5px; border-left:2px dashed #c9bfa7; position:relative; flex-shrink:0; }
+            background:var(--h-bg-elevated); border:1px solid var(--h-border-light); box-shadow:0 3px 10px rgba(61,43,31,.12); position:relative; }
+        .ticket-stub-main { flex:1; padding:13px 16px; background:linear-gradient(135deg,var(--h-parchment-light),var(--h-vellum)); min-width:0; }
+        .ticket-stub-event { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--h-sepia-light); font-weight:700; }
+        .ticket-stub-name { font-size:19px; font-weight:800; color:var(--h-aged-ink); margin:2px 0; overflow-wrap:anywhere; }
+        .ticket-stub-email { font-size:12.5px; color:var(--h-sepia); overflow-wrap:anywhere; }
+        .ticket-stub-side { width:74px; background:var(--h-vellum); display:flex; flex-direction:column; align-items:center;
+            justify-content:center; gap:5px; border-left:2px dashed var(--h-border); position:relative; flex-shrink:0; }
 .ticket-stub-ico { font-size:18px; }
         .ticket-stub.pending .ticket-stub-main { filter:saturate(.6); }
         .ticket-stub.voided { opacity:.6; }
         .ticket-stub.voided .ticket-stub-name { text-decoration:line-through; }
         .ticket-stub-stamp { position:absolute; top:50%; left:38%; transform:translate(-50%,-50%) rotate(-14deg);
-            border:3px solid #b5532e; color:#b5532e; font-weight:900; font-size:14px; letter-spacing:.08em;
+            border:3px solid var(--h-rust); color:var(--h-rust); font-weight:900; font-size:14px; letter-spacing:.08em;
             padding:3px 10px; border-radius:6px; text-transform:uppercase; opacity:.82; background:rgba(255,255,255,.35);
             pointer-events:none; white-space:nowrap; }
         .ticket-stub-badge { display:inline-block; margin-top:8px; font-size:9.5px; font-weight:800; text-transform:uppercase;
             letter-spacing:.05em; padding:2px 8px; border-radius:20px; white-space:nowrap; }
-        .ticket-stub-badge.checkedin { background:#2f6b3d; color:#fff; }
-        .ticket-stub-badge.void { background:#8a7f68; color:#fff; }
+        .ticket-stub-badge.checkedin { background:var(--h-sage-dark); color:var(--h-text-on-dark); }
+        .ticket-stub-badge.void { background:var(--h-sepia); color:var(--h-text-on-dark); }
     </style>
 }
 <div class="ticket-stub@(pending ? " pending" : "")@(isVoid ? " voided" : "")">
@@ -52,7 +52,7 @@
         }
         @if (Model.EarlyEntryDate is { } ee)
         {
-            <div class="ticket-stub-badge" style="background:#5b4636; color:#fff; margin-top:8px;">
+            <div class="ticket-stub-badge" style="background:var(--h-aged-ink-light); color:var(--h-text-on-dark); margin-top:8px;">
                 <i class="fa-solid fa-door-open me-1"></i>@Localizer["Tickets_TicketStub_EarlyEntry", ee.ToWeekdayDayMonth()]
             </div>
         }

@@ -521,6 +521,58 @@ function showToast(message, type) {
         });
 })();
 
+// Member top nav (site.css: <900px the links become a horizontal scrolling
+// strip with a mask-image edge fade — no hamburger). Same active-into-view
+// contract as the admin sidebar/tabs strip above, plus a fix for dropdowns
+// (the Events menu) nested inside the strip: Bootstrap positions a navbar
+// dropdown-menu absolute with no Popper, so the strip's overflow-x clips it.
+// Escape that by switching it to position:fixed while open.
+(function () {
+    var scroller = document.querySelector('.navbar-links');
+    if (!scroller) return;
+
+    var active = scroller.querySelector('.nav-link.active');
+    if (active) {
+        var prevBehavior = scroller.style.scrollBehavior;
+        scroller.style.scrollBehavior = 'auto';
+        // Rect diff, not offsetLeft: .navbar-links isn't the links' offsetParent.
+        var linkRect = active.getBoundingClientRect();
+        scroller.scrollLeft += linkRect.left - scroller.getBoundingClientRect().left
+            - (scroller.clientWidth - linkRect.width) / 2;
+        scroller.style.scrollBehavior = prevBehavior;
+    }
+
+    scroller.querySelectorAll('.dropdown').forEach(function (dropdown) {
+        var toggle = dropdown.querySelector('.dropdown-toggle');
+        var menu = dropdown.querySelector('.dropdown-menu');
+        if (!toggle || !menu) return;
+
+        dropdown.addEventListener('show.bs.dropdown', function () {
+            scroller.classList.add('dropdown-open');
+            var rect = toggle.getBoundingClientRect();
+            menu.style.position = 'fixed';
+            menu.style.top = rect.bottom + 'px';
+            menu.style.left = rect.left + 'px';
+            menu.style.right = 'auto';
+        });
+
+        // The menu isn't rendered (so has no measurable width) until it's shown —
+        // clamp it back on screen now that it does, for a toggle near the edge.
+        dropdown.addEventListener('shown.bs.dropdown', function () {
+            var maxLeft = Math.max(8, window.innerWidth - menu.offsetWidth - 8);
+            menu.style.left = Math.min(parseFloat(menu.style.left), maxLeft) + 'px';
+        });
+
+        dropdown.addEventListener('hidden.bs.dropdown', function () {
+            scroller.classList.remove('dropdown-open');
+            menu.style.position = '';
+            menu.style.top = '';
+            menu.style.left = '';
+            menu.style.right = '';
+        });
+    });
+})();
+
 // Expand/collapse compressed date ranges in _BuildStrikeRotaTable.
 // Used by /Shifts/Index and /OnboardingWidget/Shifts; no-op elsewhere.
 (function () {
