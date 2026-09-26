@@ -227,4 +227,5 @@
   <data name="Teams_EditTeam_SensitiveHelp" xml:space="preserve"><value>When enabled, adding or approving humans triggers a confirmation modal showing the audit record that will be created. This flag is not visible to non-admin users.</value></data>
   <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Enable Early Entry</value></data>
   <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>When enabled, coordinators of this team (and Early-Entry Team Admins) can grant early entry for this team's projects.</value></data>
+  <data name="TeamDetail_Roles" xml:space="preserve"><value>Roles</value></data>
 </root>

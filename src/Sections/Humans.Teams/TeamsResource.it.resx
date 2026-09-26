@@ -549,4 +549,5 @@
   <data name="Teams_EditTeam_SensitiveHelp" xml:space="preserve"><value>Quando attivato, l'aggiunta o l'approvazione di persone mostra una conferma con il registro di controllo che verrà creato. Questa opzione non è visibile agli utenti non amministratori.</value></data>
   <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Abilita l'ingresso anticipato</value></data>
   <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>Quando attivato, i coordinatori di questo team e gli amministratori dell'ingresso anticipato possono concedere l'ingresso anticipato ai progetti di questo team.</value></data>
+  <data name="TeamDetail_Roles" xml:space="preserve"><value>Ruoli</value></data>
 </root>
