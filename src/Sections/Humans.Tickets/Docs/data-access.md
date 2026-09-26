@@ -50,8 +50,7 @@ The decorator is the registered
 rather than the full `ITicketService`. Tickets caching is entirely
 `TrackedCache`-based: an orders slice (`Tickets.Orders`, warmed on startup)
 and a user-holdings slice (`Tickets.UserHoldings`, lazy with a 5-minute
-freshness deadline embedded in the cached value). The only `IMemoryCache`
-key the section still defines is the reserved `TicketDashboardStats` key.
+freshness deadline embedded in the cached value).
 
 ### TicketQueryService (Scoped, keyed `"ticket-query-inner"` — inner of CachingTicketQueryService)
 
@@ -118,7 +117,7 @@ Implements `ITicketService`, `ITicketServiceRead`, `ITicketCacheInvalidator`,
 Scoped inner per-call via `IServiceScopeFactory`. Both `TrackedCache`
 instances are surfaced on `/Debug/CacheStats`.
 `GetDashboardStatsAsync` is a straight pass-through to the inner (compute-only,
-no read-through cache — see `TicketDashboardStats` note in the Cache Inventory).
+no read-through cache).
 
 ### CachingTicketVendorService (Singleton, `Humans.Tickets.Services.Stores`)
 
@@ -245,4 +244,3 @@ leaf rather than the raw vendor port. `GateVendorCheckInJob` (`Humans.Gate`)
 is the other consumer, via `ITicketVendorMirror`. No DB access, no cache.
 
 ---
-

@@ -88,9 +88,6 @@ The layout these shapes imply:
   view); the design reserves sourcing it from the active event. Not built.
 - **`VendorStepsJson`** column is dormant by design until prod soak; the drop is a scheduled
   follow-up, not this section's to do ad hoc.
-- **`CacheKeys.TicketDashboardStats`** is a reserved key for a dashboard cache that was never
-  added; nothing reads, writes or evicts it.
-
 ## Deliberately not done
 
 - No vendor-agnostic transfer abstraction beyond the port: the void-to-hold + reissue sequence
