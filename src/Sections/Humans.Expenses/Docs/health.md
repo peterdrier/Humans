@@ -12,8 +12,8 @@ to vouch for it first. Finance then reads the claim with the paperwork in front 
 either approves it, caps it at a lower figure, or sends it back with a reason.
 
 Approving it tells the member by email and books the claim into the association's accounting
-system: one bill per receipt, owed to that member, trimmed so the bills add up to what was
-authorized. That is where this section's authority ends: nobody here marks anything paid.
+system: one bill per line item (the paperwork behind an invoice rides with it), owed to that
+member, trimmed so the bills add up to what was authorized. That is where this section's authority ends: nobody here marks anything paid.
 Whether the member has actually been paid is read back out of the accounting ledger and shown
 to them, and it is the treasurer's bank, not this system, that moves the money.
 
@@ -95,10 +95,11 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
   the allocation skips them (`Services/PayableAllocation.cs:29`).
 - **The cap allocates greedily in line order**, and a line past the cap gets no Holded doc and
   no upload (`Services/ExpenseReportService.cs:1460`).
-- **A pushed line is never pushed twice.** A line's doc id is written the moment Holded issues
-  it (`Services/ExpenseReportService.cs:1505`), an upload is stamped
+- **A retried push resumes from what it recorded.** A line's doc id is written the moment Holded
+  issues it (`Services/ExpenseReportService.cs:1505`), an upload is stamped
   (`Services/ExpenseReportService.cs:1562`), and a legacy single-doc claim resumes onto its one
-  doc (`Services/ExpenseReportService.cs:1385`).
+  doc (`Services/ExpenseReportService.cs:1385`). A failure between Holded issuing a doc and that
+  write can still mint a second one; nothing guards that window, by the small-scale rule.
 - **A header edit never moves a claim between budget years** once submitted
   (`Services/ExpenseReportService.cs:314`).
 - **Masking is a rule about output, not storage.** The approval email and the GDPR export carry
