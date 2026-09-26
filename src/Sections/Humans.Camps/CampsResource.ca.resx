@@ -206,6 +206,7 @@
   <data name="Camp_Details_AlsoKnownAs" xml:space="preserve"><value>També conegut com:</value></data>
   <data name="Camp_Details_SwissCampBadge" xml:space="preserve"><value>Swiss Camp</value></data>
   <data name="Camp_Details_RosterEmpty" xml:space="preserve"><value>Encara no hi ha humans registrats per a aquesta temporada.</value></data>
+  <data name="Camp_Details_Roster" xml:space="preserve"><value>Llista {0}</value></data>
   <data name="Camp_Members_NoRolesDefined" xml:space="preserve"><value>Encara no hi ha rols de barri definits.</value></data>
   <data name="Camp_Members_NoRolesAdminHint" xml:space="preserve"><value>CampAdmin pot afegir-los a</value></data>
   <data name="Camp_Members_NoRolesAdminHintLink" xml:space="preserve"><value>Rols de barri</value></data>
