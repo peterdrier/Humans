@@ -184,7 +184,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - A department can have **at most one** role flagged as management (coordinator). Enforced in both the toggle and edit paths.
 - A sub-team can have **at most one** role flagged as management (manager).
 - Toggling or changing the `IsManagement` flag on a role definition is restricted to **TeamsAdmin / Admin** (`ToggleManagement` action and `EditRole` IsManagement field). Coordinators / sub-team managers can still create, rename, and delete other (non-management) role definitions on their team — they just cannot promote/demote the management role itself.
-- A `TeamRoleDefinition.IsPublic = false` role is hidden from volunteer-facing views (team detail, roster) but remains visible to coordinators and admins.
+- A `TeamRoleDefinition.IsPublic = false` role is hidden from volunteer-facing views (team detail, roster) but remains visible to coordinators and admins. The team-detail roster's headings, role periods, priorities, and empty-slot labels use section or shared resources.
 - Members of sub-teams are also considered members of the department. They appear in the department's member roster and inherit the department's legal requirements and Google resource access.
 - A human can be a member of multiple teams simultaneously.
 - System team membership is managed exclusively by an automated sync job. Manual add/remove is blocked for system teams.

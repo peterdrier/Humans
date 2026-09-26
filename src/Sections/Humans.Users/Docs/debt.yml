@@ -9,7 +9,7 @@ inbox:
     review: panel
   - added: 2026-09-06
     id: USERS-3
-    what: "The /Profile controllers set member-facing flash/error strings as hardcoded English instead of UsersResource keys — ProfileController (DeclareNotAttending, UndoNotAttending, GetActiveEventYearOrSetErrorAsync, SetUndoNotAttendingResult, ReplayShiftSignupAfterDietaryMedicalSaveAsync, UpdatePreference), ProfileEmailsController (SetAddedEmailFlash, VerifyEmailSuccess, ReportVerifiedEmailAddAsync) and ProfileViewController (SendMessage POST); each needs a key in every culture (/section-doctor on Users 2026-09-06)."
+    what: "ProfileController sets member-facing flash/error strings as hardcoded English instead of UsersResource keys — ReplayShiftSignupAfterDietaryMedicalSaveAsync (the shift and shift-range signup success/warning/failure messages) and UpdatePreference (BadRequest \"Cannot change always-on categories.\"); each needs a key in every culture (/section-doctor on Users 2026-09-06; trimmed to the remaining sites by /debt-review 2026-09-26)."
     review: light
   - added: 2026-09-06
     id: USERS-4

@@ -100,6 +100,13 @@
   <data name="Camp_Index_NoFilterResults" xml:space="preserve"><value>No {0} found for the selected filters.</value></data>
   <data name="Camp_Index_NoSearchResults" xml:space="preserve"><value>No {0} match your search.</value></data>
   <data name="Camp_Index_PendingApproval" xml:space="preserve"><value>pending approval</value></data>
+  <data name="Camps_MyCamps_Title" xml:space="preserve"><value>My Barrios</value></data>
+  <data name="Camps_MyCamps_Active" xml:space="preserve"><value>Active</value></data>
+  <data name="Camps_MyCamps_Pending" xml:space="preserve"><value>Pending</value></data>
+  <data name="Camps_RolesCard_Roles" xml:space="preserve"><value>Roles</value></data>
+  <data name="Camps_RolesCard_Leads" xml:space="preserve"><value>Leads</value></data>
+  <data name="Camps_RolesCard_OpenSlot" xml:space="preserve"><value>open slot</value></data>
+  <data name="Camps_RolesCard_OpenSlots" xml:space="preserve"><value>open slots</value></data>
   <data name="Camp_Index_SearchLabel" xml:space="preserve"><value>Search</value></data>
   <data name="Camp_Index_SearchPlaceholder" xml:space="preserve"><value>Type a {0} name…</value></data>
   <data name="Camp_Index_ShowLeadPositions" xml:space="preserve"><value>Show lead positions</value></data>
@@ -148,6 +155,7 @@
   <data name="Camp_Details_AlsoKnownAs" xml:space="preserve"><value>Also known as:</value></data>
   <data name="Camp_Details_SwissCampBadge" xml:space="preserve"><value>Swiss Camp</value></data>
   <data name="Camp_Details_RosterEmpty" xml:space="preserve"><value>No humans recorded for this season yet.</value></data>
+  <data name="Camps_Details_Roster" xml:space="preserve"><value>Roster {0}</value></data>
   <data name="Camp_Members_NoRolesDefined" xml:space="preserve"><value>No camp roles defined yet.</value></data>
   <data name="Camp_Members_NoRolesAdminHint" xml:space="preserve"><value>CampAdmin can add them at</value></data>
   <data name="Camp_Members_NoRolesAdminHintLink" xml:space="preserve"><value>Camp roles</value></data>

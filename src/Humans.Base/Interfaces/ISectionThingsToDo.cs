@@ -14,8 +14,7 @@ public sealed record ThingsToDoEntry(
     string? Controller = null,
     string? Action = null,
     string? RawHref = null,
-    int Weight = 0,
-    TileSeverity Severity = TileSeverity.Normal)
+    int Weight = 0)
 {
     /// <summary>The second line, under the title.</summary>
     public string? Description { get; init; }

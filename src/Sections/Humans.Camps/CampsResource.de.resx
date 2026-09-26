@@ -151,6 +151,13 @@
   <data name="Camp_Index_NoFilterResults" xml:space="preserve"><value>Keine {0} für die ausgewählten Filter gefunden.</value></data>
   <data name="Camp_Index_NoSearchResults" xml:space="preserve"><value>Keine {0} entsprechen deiner Suche.</value></data>
   <data name="Camp_Index_PendingApproval" xml:space="preserve"><value>Genehmigung ausstehend</value></data>
+  <data name="Camps_MyCamps_Title" xml:space="preserve"><value>Meine Barrios</value></data>
+  <data name="Camps_MyCamps_Active" xml:space="preserve"><value>Aktiv</value></data>
+  <data name="Camps_MyCamps_Pending" xml:space="preserve"><value>Ausstehend</value></data>
+  <data name="Camps_RolesCard_Roles" xml:space="preserve"><value>Rollen</value></data>
+  <data name="Camps_RolesCard_Leads" xml:space="preserve"><value>Leads</value></data>
+  <data name="Camps_RolesCard_OpenSlot" xml:space="preserve"><value>offener Platz</value></data>
+  <data name="Camps_RolesCard_OpenSlots" xml:space="preserve"><value>offene Plätze</value></data>
   <data name="Camp_Index_SearchLabel" xml:space="preserve"><value>Suche</value></data>
   <data name="Camp_Index_SearchPlaceholder" xml:space="preserve"><value>Gib einen {0}-Namen ein…</value></data>
   <data name="Camp_Index_ShowLeadPositions" xml:space="preserve"><value>Lead-Positionen anzeigen</value></data>
@@ -199,6 +206,7 @@
   <data name="Camp_Details_AlsoKnownAs" xml:space="preserve"><value>Auch bekannt als:</value></data>
   <data name="Camp_Details_SwissCampBadge" xml:space="preserve"><value>Swiss Camp</value></data>
   <data name="Camp_Details_RosterEmpty" xml:space="preserve"><value>Für diese Saison sind noch keine Humans erfasst.</value></data>
+  <data name="Camps_Details_Roster" xml:space="preserve"><value>Mitgliederliste {0}</value></data>
   <data name="Camp_Members_NoRolesDefined" xml:space="preserve"><value>Noch keine Camp-Rollen definiert.</value></data>
   <data name="Camp_Members_NoRolesAdminHint" xml:space="preserve"><value>CampAdmin kann sie hinzufügen unter</value></data>
   <data name="Camp_Members_NoRolesAdminHintLink" xml:space="preserve"><value>Camp-Rollen</value></data>

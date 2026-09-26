@@ -80,6 +80,12 @@
   <data name="Calendar_End" xml:space="preserve"><value>Fin</value></data>
   <data name="Calendar_EndDate" xml:space="preserve"><value>Fecha de fin</value></data>
   <data name="Calendar_EndDateHelp" xml:space="preserve"><value>Inclusive — déjalo en blanco para un evento de un solo día.</value></data>
+  <data name="Calendar_StartDateRequired" xml:space="preserve"><value>La fecha de inicio es obligatoria.</value></data>
+  <data name="Calendar_EndDateBeforeStart" xml:space="preserve"><value>La fecha de fin debe ser igual o posterior a la de inicio.</value></data>
+  <data name="Calendar_UnknownTimezone" xml:space="preserve"><value>Zona horaria IANA desconocida.</value></data>
+  <data name="Calendar_StartRequired" xml:space="preserve"><value>La hora de inicio es obligatoria.</value></data>
+  <data name="Calendar_EndBeforeStart" xml:space="preserve"><value>El fin debe ser igual o posterior al inicio.</value></data>
+  <data name="Calendar_SaveFailed" xml:space="preserve"><value>No se pudo guardar el evento del calendario.</value></data>
   <data name="Calendar_EventTitle" xml:space="preserve"><value>Evento</value></data>
   <data name="Calendar_FirstStart" xml:space="preserve"><value>Primer inicio</value></data>
   <data name="Calendar_FormTitle" xml:space="preserve"><value>Título</value></data>

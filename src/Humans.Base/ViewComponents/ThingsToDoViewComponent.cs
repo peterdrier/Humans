@@ -49,7 +49,6 @@ public class ThingsToDoViewComponent(
 
     private TodoItem ToItem(ThingsToDoEntry entry) => new()
     {
-        Key = entry.Key,
         Title = entry.Text,
         Description = entry.Description ?? string.Empty,
         IsDone = entry.IsDone,

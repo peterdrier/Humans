@@ -147,4 +147,6 @@
 &lt;p&gt;Das Humans Team&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = original description, {2} = response message</comment>
   </data>
+  <data name="Feedback_Notification_ResponseReceived_Title" xml:space="preserve"><value>Du hast eine Antwort auf dein Feedback</value></data>
+  <data name="Feedback_Notification_ResponseReceived_Body" xml:space="preserve"><value>Ein Administrator hat auf deinen Feedbackbericht geantwortet.</value></data>
 </root>

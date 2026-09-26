@@ -53,7 +53,6 @@
   <data name="Common_Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Common_Back" xml:space="preserve"><value>Back</value></data>
   <data name="Common_ExportGeoJson" xml:space="preserve"><value>Export GeoJSON</value></data>
-  <data name="Common_Submit" xml:space="preserve"><value>Submit</value></data>
   <data name="Common_NotProvided" xml:space="preserve"><value>Not provided</value></data>
   <data name="Common_Error" xml:space="preserve"><value>Something went wrong. Please try again later.</value></data>
   <data name="Common_Unknown" xml:space="preserve"><value>Unknown</value></data>
@@ -137,41 +136,13 @@
   <!-- ======================== -->
   <data name="Dashboard_Title" xml:space="preserve"><value>Dashboard</value></data>
   <data name="Dashboard_Welcome" xml:space="preserve"><value>Welcome, {0}</value><comment>{0} = display name</comment></data>
-  <data name="Dashboard_PendingConsentsAlert" xml:space="preserve"><value>&lt;strong&gt;Action Required:&lt;/strong&gt; You have {0} pending consent(s). &lt;a href="/Consent" class="alert-link"&gt;Review and consent&lt;/a&gt; to maintain your active membership.</value><comment>{0} = pending consent count</comment></data>
-  <data name="Dashboard_IncompleteProfileAlert" xml:space="preserve"><value>&lt;strong&gt;Complete Your Profile:&lt;/strong&gt; Your profile is incomplete. &lt;a href="/Profile/Me/Edit" class="alert-link"&gt;Add your information&lt;/a&gt; to help us know you better.</value></data>
   <data name="Dashboard_ProfileCard" xml:space="preserve"><value>Profile</value></data>
-  <data name="Dashboard_ProfileComplete" xml:space="preserve"><value>Your profile is complete.</value></data>
-  <data name="Dashboard_ProfileIncomplete" xml:space="preserve"><value>Complete your profile to help us know you better.</value></data>
   <data name="Dashboard_ProfileCompletionPercent" xml:space="preserve"><value>Your profile is {0}% complete</value><comment>{0} = percentage 0-99</comment></data>
-  <data name="Dashboard_FinishProfile" xml:space="preserve"><value>Finish profile</value></data>
-  <data name="Dashboard_ViewProfile" xml:space="preserve"><value>View Profile</value></data>
   <data name="Dashboard_ConsentsCard" xml:space="preserve"><value>Agreements</value></data>
-  <data name="Dashboard_ConsentsNeeded" xml:space="preserve"><value>&lt;strong&gt;{0}&lt;/strong&gt; of {1} documents need your consent.</value><comment>{0} = pending count, {1} = total required</comment></data>
-  <data name="Dashboard_ReviewConsents" xml:space="preserve"><value>Review Agreements</value></data>
-  <data name="Dashboard_ConsentsUpToDate" xml:space="preserve"><value>All consents are up to date.</value></data>
-  <data name="Dashboard_ViewConsents" xml:space="preserve"><value>View Agreements</value></data>
-  <data name="Dashboard_NoConsentsRequired" xml:space="preserve"><value>No documents require consent at this time.</value></data>
-  <data name="Dashboard_LatestApplication" xml:space="preserve"><value>Latest Application:</value></data>
-  <data name="Dashboard_ViewApplicationHistory" xml:space="preserve"><value>View application history</value></data>
-  <data name="Dashboard_GovernanceDescription" xml:space="preserve"><value>Asociados are voting humans who participate in governance decisions like assemblies and elections. This is intended for community leaders and long-term committed humans.</value></data>
-  <data name="Dashboard_GovernanceOptional" xml:space="preserve"><value>Governance participation is optional and doesn't affect your access to resources.</value></data>
-  <data name="Dashboard_LearnMore" xml:space="preserve"><value>Learn More</value></data>
-  <data name="Dashboard_OnboardingTitle" xml:space="preserve"><value>Getting Started</value></data>
-  <data name="Dashboard_OnboardingDescription" xml:space="preserve"><value>Complete these steps to become a volunteer:</value></data>
-  <data name="Dashboard_Step_Profile" xml:space="preserve"><value>Complete your profile</value></data>
-  <data name="Dashboard_Step_Consents" xml:space="preserve"><value>Review and consent to required documents</value></data>
-  <data name="Dashboard_Step_Approval" xml:space="preserve"><value>The board reviews and approves your account</value></data>
-  <data name="Dashboard_Step_ConsentCheck" xml:space="preserve"><value>A coordinator reviews and clears your documents</value></data>
   <data name="Dashboard_MembershipTier" xml:space="preserve"><value>Membership Tier</value></data>
   <data name="Dashboard_TierApplicationPending" xml:space="preserve"><value>Your tier application is awaiting Board review.</value></data>
   <data name="Dashboard_TierActive" xml:space="preserve"><value>Your membership tier is active.</value></data>
-  <data name="Dashboard_YourMembership" xml:space="preserve"><value>Your Volunteer Status</value></data>
-  <data name="Dashboard_MemberSince" xml:space="preserve"><value>Member Since</value></data>
-  <data name="Dashboard_LastLogin" xml:space="preserve"><value>Last Login</value></data>
-  <data name="Dashboard_QuickLinks" xml:space="preserve"><value>Quick Links</value></data>
   <data name="Dashboard_ManageConsents" xml:space="preserve"><value>Review Agreements</value></data>
-  <data name="Dashboard_PendingAgreementsSingular" xml:space="preserve"><value>{0} agreement to review</value><comment>{0} = pending consent count (singular)</comment></data>
-  <data name="Dashboard_PendingAgreementsPlural" xml:space="preserve"><value>{0} agreements to review</value><comment>{0} = pending consent count (plural)</comment></data>
   <data name="Dashboard_RejectedTitle" xml:space="preserve"><value>Signup Rejected</value></data>
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>Your signup has been reviewed and was not approved. If you have questions, please contact the admin team.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Reason</value></data>
@@ -297,8 +268,6 @@
   <!-- ======================== -->
   <!-- Admin                    -->
   <!-- ======================== -->
-  <data name="AdminDashboard_Title" xml:space="preserve"><value>Admin Dashboard</value></data>
-  <data name="AdminGoogleSync_Title" xml:space="preserve"><value>Google Sync Status</value></data>
 
   <!-- Admin Controller TempData -->
   <data name="Admin_CannotStartReview" xml:space="preserve"><value>Cannot start review. Application is not in Submitted state.</value></data>
@@ -410,15 +379,7 @@
   <!-- ======================== -->
   <!-- Google Sync View         -->
   <!-- ======================== -->
-  <data name="GoogleSync_SyncNow" xml:space="preserve"><value>Sync Now</value></data>
-  <data name="GoogleSync_TotalResources" xml:space="preserve"><value>Total Resources</value></data>
-  <data name="GoogleSync_InSync" xml:space="preserve"><value>In Sync</value></data>
-  <data name="GoogleSync_Drifted" xml:space="preserve"><value>Drifted</value></data>
-  <data name="GoogleSync_Errors" xml:space="preserve"><value>Errors</value></data>
-  <data name="GoogleSync_NoResources" xml:space="preserve"><value>No active Google resources found.</value></data>
-  <data name="GoogleSync_Resource" xml:space="preserve"><value>Resource</value></data>
   <data name="GoogleSync_Details" xml:space="preserve"><value>Details</value></data>
-  <data name="GoogleSync_BackToDashboard" xml:space="preserve"><value>Back to Dashboard</value></data>
 
   <!-- ======================== -->
   <!-- Team Admin Views         -->
@@ -471,9 +432,6 @@
 
   <!-- Issue Comment Email -->
 
-  <!-- Agent Widget -->
-  <data name="Agent_WidgetButton" xml:space="preserve"><value>Open the helper</value></data>
-
   <!-- Magic Link Auth -->
   <data name="Login_MagicLink_Title" xml:space="preserve"><value>Or sign in with email</value></data>
   <data name="Login_MagicLink_Placeholder" xml:space="preserve"><value>your@email.com</value></data>
@@ -516,7 +474,6 @@
   <data name="Todo_PendingBadge" xml:space="preserve"><value>{0} pending</value><comment>{0} = pending count</comment></data>
   <data name="Todo_Profile_Title" xml:space="preserve"><value>Complete your profile</value></data>
   <data name="Todo_Profile_Done" xml:space="preserve"><value>Your profile is complete.</value></data>
-  <data name="Todo_Profile_Pending" xml:space="preserve"><value>Add your information so the community can get to know you.</value></data>
   <data name="Todo_Profile_Action" xml:space="preserve"><value>Edit Profile</value></data>
   <data name="Todo_Consents_Title" xml:space="preserve"><value>Accept agreements</value></data>
   <data name="Todo_Consents_Done" xml:space="preserve"><value>All agreements are up to date.</value></data>
@@ -716,7 +673,6 @@
   <data name="About_Staff_Intro" xml:space="preserve"><value>Every collective needs its keepers. These are the humans who volunteer their time and energy to keep Nobodies running — from governance to tech support, from trust and safety to ticket alchemy.</value></data>
   <data name="About_Staff_Title" xml:space="preserve"><value>The Humans Behind the Curtain</value></data>
   <data name="About_Title" xml:space="preserve"><value>About Humans</value></data>
-  <data name="Common_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="Common_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Common_Amount" xml:space="preserve"><value>Amount</value></data>
   <data name="Common_Clear" xml:space="preserve"><value>Clear</value></data>

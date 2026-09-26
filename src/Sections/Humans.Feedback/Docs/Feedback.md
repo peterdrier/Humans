@@ -133,7 +133,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 ## Triggers
 
-- When an admin posts a message on a report, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendAsync(FeedbackEmails.FeedbackResponse(...))`. After the message is persisted, an in-app `NotificationSource.FeedbackResponse` notification is also dispatched.
+- When an admin posts a message on a report, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendAsync(FeedbackEmails.FeedbackResponse(...))`. After the message is persisted, a localized in-app `NotificationSource.FeedbackResponse` notification is also dispatched in the reporter's preferred language.
 - When a message is posted or a status changes, the nav-badge cache is invalidated via `INavBadgeCacheInvalidator`.
 - When an account merge accepts, `FeedbackService.ReassignAsync` (`IUserMerge`) re-FKs `FeedbackReport.UserId` / `AssignedToUserId` / `ResolvedByUserId` and `FeedbackMessage.SenderUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section) inside an ambient `TransactionScope`.
 

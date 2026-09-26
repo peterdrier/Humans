@@ -61,6 +61,8 @@
   <data name="Events_ConflictBadge" xml:space="preserve"><value>Sovrapposizione di orario con un altro evento preferito</value></data>
   <data name="Events_DownloadCsv" xml:space="preserve"><value>Scarica CSV eventi</value></data>
   <data name="Events_DurationMin" xml:space="preserve"><value>{0} min</value></data>
+  <data name="Events_DurationHours" xml:space="preserve"><value>{0} h</value></data>
+  <data name="Events_DurationHoursMinutes" xml:space="preserve"><value>{0} h {1} min</value></data>
   <data name="Events_FavouritesOnly" xml:space="preserve"><value>Solo</value></data>
   <data name="Events_FilterCategory" xml:space="preserve"><value>Categoria</value></data>
   <data name="Events_FilterDay" xml:space="preserve"><value>Giorno</value></data>

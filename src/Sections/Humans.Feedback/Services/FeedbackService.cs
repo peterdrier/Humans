@@ -201,15 +201,18 @@ internal sealed class FeedbackService(
     {
         try
         {
+            var reporter = await userService.GetUserInfoAsync(report.UserId, ct);
+            var notification = emailMessages.FeedbackResponseNotification(reporter?.PreferredLanguage);
+
             // No action link: /Feedback/{id} is Admin-only now, so the reporter would land on a 403.
             // The response text itself reaches them in the FeedbackResponse email.
             await notificationService.SendAsync(
                 NotificationSource.FeedbackResponse,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                "You have a response to your feedback",
+                notification.Title,
                 [report.UserId],
-                body: "An admin has responded to your feedback report.",
+                body: notification.Body,
                 cancellationToken: ct);
         }
         catch (Exception ex)

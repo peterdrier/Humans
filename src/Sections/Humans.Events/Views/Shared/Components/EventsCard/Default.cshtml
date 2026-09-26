@@ -1,15 +1,5 @@
 @model EventsCardViewModel
 
-@functions {
-    static string FormatDuration(int minutes)
-    {
-        var hours = minutes / 60;
-        var mins = minutes % 60;
-        if (hours == 0) return $"{mins}m";
-        return mins == 0 ? $"{hours}h" : $"{hours}h {mins}m";
-    }
-}
-
 <div class="card mb-4">
     <div class="card-header">
         <i class="fa-solid fa-calendar-days me-1"></i> @Localizer["Events_CardTitle"]
@@ -44,7 +34,7 @@
                 <div class="mt-1 small text-muted">
                     <i class="fa-solid fa-clock me-1"></i>@row.StartAt.ToWeekdayDayMonth() &middot;
                     @row.StartAt.ToTime() — @row.StartAt.AddMinutes(row.DurationMinutes).ToTime()
-                    (@FormatDuration(row.DurationMinutes))
+                    (@EventDurationFormatter.Format(row.DurationMinutes, Localizer))
                     @if (row.VenueName != null)
                     {
                         <text> &middot; <i class="fa-solid fa-location-dot me-1"></i>@row.VenueName</text>
