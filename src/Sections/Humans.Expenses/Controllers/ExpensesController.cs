@@ -17,7 +17,6 @@ namespace Humans.Expenses.Controllers;
 [Route("Expenses")]
 internal sealed class ExpensesController(
     IUserServiceRead userService,
-    IExpenseReportServiceRead expenseReadService,
     IExpenseReportService service,
     IBudgetServiceRead budgetService,
     IHoldedFinanceServiceRead holdedFinance,
@@ -34,7 +33,7 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            var reports = await expenseReadService.GetForSubmitterAsync(user.Id);
+            var reports = await service.GetForSubmitterAsync(user.Id);
             var activeYear = await budgetService.GetActiveYearAsync();
             var info = await _userService.GetUserInfoAsync(user.Id);
 
@@ -43,7 +42,7 @@ internal sealed class ExpensesController(
                 .ToDictionary(x => x.Id, x => x.Display)
                 ?? new Dictionary<Guid, string>();
 
-            var coordinatorQueue = await expenseReadService.GetCoordinatorQueueAsync(user.Id);
+            var coordinatorQueue = await service.GetCoordinatorQueueAsync(user.Id);
             var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
 
             // The member's own Holded creditor-account statement (read-only, real ledger lines). Own
@@ -166,7 +165,7 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            var report = await expenseReadService.GetAsync(id);
+            var report = await service.GetAsync(id);
             if (report is null) return NotFound();
 
             var authResult = await authService.AuthorizeAsync(User, report,
@@ -193,7 +192,7 @@ internal sealed class ExpensesController(
             // The submitter reads the payment half of the timeline; the finance admin reads the push
             // half and is the only one who can act on a failed push.
             var timeline = isSubmitter || isFinanceAdmin
-                ? await expenseReadService.GetHoldedTimelineAsync(report)
+                ? await service.GetHoldedTimelineAsync(report)
                 : null;
             var creditor = await GetCreditorBindingViewAsync(report.SubmitterUserId, isFinanceAdmin);
 
@@ -239,7 +238,7 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            var report = await expenseReadService.GetAsync(id);
+            var report = await service.GetAsync(id);
             if (report is null) return NotFound();
             if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
             {
@@ -273,7 +272,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
@@ -302,7 +301,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
         {
@@ -327,7 +326,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
@@ -377,7 +376,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user.Id);
         if (!allowed) return Forbid();
@@ -399,7 +398,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user.Id);
         if (!allowed) return Forbid();
@@ -427,7 +426,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
@@ -451,7 +450,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
@@ -475,7 +474,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
@@ -501,7 +500,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
@@ -525,7 +524,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (!await AllowsAsync(report, ExpenseReportOperation.Submit)) return Forbid();
 
@@ -542,7 +541,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
@@ -559,7 +558,7 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            var report = await expenseReadService.GetAsync(id);
+            var report = await service.GetAsync(id);
             if (report is null) return NotFound();
             if (!await CanSetReportIbanAsync(report, user.Id)) return Forbid();
 
@@ -593,7 +592,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
         if (!await CanSetReportIbanAsync(report, user.Id)) return Forbid();
 
@@ -639,14 +638,14 @@ internal sealed class ExpensesController(
             if (errorResult is not null) return errorResult;
 
             // Visibility = report's View handler grant. NotFound on both miss + denial (no leak).
-            var owningReport = await expenseReadService.GetReportOwningAttachmentAsync(attachmentId);
+            var owningReport = await service.GetReportOwningAttachmentAsync(attachmentId);
             if (owningReport is null) return NotFound();
 
             var authResult = await authService.AuthorizeAsync(User, owningReport,
                 new ExpenseReportOperationRequirement(ExpenseReportOperation.View));
             if (!authResult.Succeeded) return NotFound();
 
-            var attachment = await expenseReadService.TryReadAttachmentAsync(owningReport, attachmentId);
+            var attachment = await service.TryReadAttachmentAsync(owningReport, attachmentId);
             if (attachment is null) return NotFound();
 
             // Inline only for the browser-renderable subset of the upload whitelist — no filename
@@ -670,7 +669,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
 
         var authResult = await authService.AuthorizeAsync(User, report,
@@ -683,7 +682,8 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await service.CoordinatorEndorseWithResultAsync(id, user.Id, input.MaxAmount);
+        var result = await service.CoordinatorEndorseWithResultAsync(
+            id, user.Id, await IsFinanceAdminAsync(), input.MaxAmount);
         SetMutationResult(result, "Report endorsed.", "Could not endorse the report.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -696,7 +696,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
 
         var authResult = await authService.AuthorizeAsync(User, report,
@@ -709,7 +709,8 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await service.CoordinatorRejectWithResultAsync(id, user.Id, input.Reason);
+        var result = await service.CoordinatorRejectWithResultAsync(
+            id, user.Id, await IsFinanceAdminAsync(), input.Reason);
         SetMutationResult(result, "Report rejected.", "Could not reject the report.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -728,7 +729,7 @@ internal sealed class ExpensesController(
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
-            var reports = await expenseReadService.GetReviewQueueAsync(user.Id, isFinanceAdmin);
+            var reports = await service.GetReviewQueueAsync(user.Id, isFinanceAdmin);
             var submitterNames = await ResolveSubmitterNamesAsync(reports);
             return View(new ExpenseReviewViewModel
             {
@@ -756,7 +757,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
 
         var authResult = await authService.AuthorizeAsync(User, report,
@@ -784,7 +785,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
 
         var authResult = await authService.AuthorizeAsync(User, report,
@@ -811,7 +812,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
+        var report = await service.GetAsync(id);
         if (report is null) return NotFound();
 
         var authResult = await authService.AuthorizeAsync(User, report,

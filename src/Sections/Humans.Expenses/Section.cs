@@ -34,7 +34,6 @@ public sealed class Section : ISection
 
         services.AddSingleton<IExpenseRepository, ExpenseRepository>();
         services.AddScoped<ExpenseReportService>();
-        services.AddScoped<IExpenseReportServiceRead>(sp => sp.GetRequiredService<ExpenseReportService>());
         services.AddScoped<IExpenseReportService>(sp => sp.GetRequiredService<ExpenseReportService>());
         services.AddScoped<IExpenseReportBackgroundProcessor>(sp => sp.GetRequiredService<ExpenseReportService>());
         // Owns the user-scoped expense_reports table → GDPR export contributor (design-rules §8a).

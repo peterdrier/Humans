@@ -68,10 +68,8 @@ What the shapes imply, written fresh:
   `Section` and the background-processor seam the job calls.
 
 Where today's layout departs from that: mutations exist twice (an `internal XxxAsync` that
-throws and a `public XxxWithResultAsync` that catches), the controller repeats a
-load-and-authorize preamble in nearly every action that takes a report id, and the handler
-grants finance admins `Endorse` where the service refuses anyone who does not coordinate the
-category — see the run files.
+throws and a `public XxxWithResultAsync` that catches), and the controller repeats a
+load-and-authorize preamble in nearly every action that takes a report id — see the run files.
 
 ## 4. Invariants
 
@@ -166,7 +164,12 @@ Settled decisions that read as accidents. Do not re-litigate these.
   action list** although nothing writes them. The audit log is immutable; only the writers
   went away.
 - **The approval email is sent after the approval commits**, so a refused approval sends
-  nothing; a member with no notification address is logged and skipped.
+  nothing; a member with no notification address is logged and skipped, and a failed send is
+  logged without turning the committed approval into a reported failure. Peter confirmed this
+  2026-09-26 — run 2's finding 3.
+- **Finance admins hold every coordinator capability.** They may endorse and coordinator-reject
+  in any category; the audit entry names them as finance admin. Peter confirmed this
+  2026-09-26 — run 2's finding 1.
 - **The review queue renders in the admin shell for admin-role users and the member shell for
   everyone else**, by the Shell's one layout rule (`docs/sections/admin-shell.md`); the sidebar
   filters itself.
@@ -179,4 +182,4 @@ Settled decisions that read as accidents. Do not re-litigate these.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-08-26 | Gates nothing asked for, removed or queued; docs trued to the code | peterdrier/Humans#1537 |
-| 2 | 2026-09-26 | Endorse contradiction queued; Edit page, submit error and docs trued to the code | peterdrier/Humans#1827 |
+| 2 | 2026-09-26 | Finance admins endorse; approval email failure no longer fails the approval; read interface folded; Edit page, submit error and docs trued to the code | peterdrier/Humans#1827 |
