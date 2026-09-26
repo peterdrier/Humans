@@ -372,7 +372,6 @@ separately below the key table.
 | `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | Per-User | NotificationMeterProvider | `ICampLeadJoinRequestsBadgeCacheInvalidator` (CampService) |
 | `NavBadge:Issues:{userId}` | 2 min | Per-User | IssuesService | `IIssuesBadgeCacheInvalidator` (IssuesService) |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService (GitHub-source read-through) | LegalDocumentService |
-| `TicketEventSummary:{eventId}` | 15 min | Per-Entity | _(unused — the vendor event summary is `CachingTicketVendorService`'s `Tickets.VendorEventSummary` tracked cache below; the key remains in `CacheKeys.Metadata`)_ | — |
 | `TicketDashboardStats` | 5 min | Static | TicketQueryService.GetDashboardStatsAsync (compute — no read-through cache; key reserved for future wrapper) | (reserved cache-stats key) |
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate Limit | CampContactService | CampContactService |
 | `magic_link_used:{tokenPrefix}` | 15 min | Rate Limit | MagicLinkRateLimiter (`Humans.Auth`) | MagicLinkRateLimiter |

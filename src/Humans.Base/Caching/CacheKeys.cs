@@ -12,8 +12,6 @@ public static class CacheKeys
     public const string ActiveTeams = "ActiveTeams";
     public const string HoldedContacts = "HoldedContacts";
 
-    public static string TicketEventSummary(string eventId) => $"TicketEventSummary:{eventId}";
-
     public const string TicketDashboardStats = "TicketDashboardStats";
 
     public static string CampContactRateLimit(Guid userId, Guid campId) =>
@@ -56,7 +54,6 @@ public static class CacheKeys
             ["NotificationMeters"] = new("2 min", CacheKeyType.Static),
             ["ActiveTeams"] = new("10 min", CacheKeyType.Static),
             ["HoldedContacts"] = new("2 min", CacheKeyType.Static),
-            ["TicketEventSummary"] = new("15 min", CacheKeyType.PerEntity),
             ["TicketDashboardStats"] = new("5 min", CacheKeyType.Static),
             ["CampContactRateLimit"] = new("10 min", CacheKeyType.RateLimit),
             ["claims"] = new("60 sec", CacheKeyType.PerUser),
