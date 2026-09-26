@@ -564,9 +564,6 @@
   <data name="MyTeams_View" xml:space="preserve">
     <value>Anzeigen</value>
   </data>
-  <data name="AdminDashboard_Title" xml:space="preserve">
-    <value>Admin-Dashboard</value>
-  </data>
   <data name="Admin_CannotStartReview" xml:space="preserve">
     <value>Prüfung kann nicht gestartet werden. Der Antrag befindet sich nicht im Status „Eingereicht".</value>
   </data>

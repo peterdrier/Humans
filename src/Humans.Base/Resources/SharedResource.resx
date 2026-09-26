@@ -296,7 +296,6 @@
   <!-- ======================== -->
   <!-- Admin                    -->
   <!-- ======================== -->
-  <data name="AdminDashboard_Title" xml:space="preserve"><value>Admin Dashboard</value></data>
 
   <!-- Admin Controller TempData -->
   <data name="Admin_CannotStartReview" xml:space="preserve"><value>Cannot start review. Application is not in Submitted state.</value></data>
