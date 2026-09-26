@@ -17,10 +17,13 @@ piece of it move that piece.
   containers onto the site, rotates them, adds a note or a sketch of how it should look, and
   clears a placement that was wrong.
 - The organisers (the city-planning team, or a camp admin) do all of the above for anyone,
-  at any time, open phase or not. They also decide when each phase is open,
-  upload the site boundary and the official zones, publish the text barrio leads read on the
-  registration page, keep the org-wide container list, and download everything placed as a
-  file they can open in a GIS tool.
+  at any time, open phase or not. They decide when each phase is open and when it is
+  scheduled to open and close, upload the site boundary and the official zones, write the
+  text barrio leads read on the registration page, keep the org-wide container list, bulk-load
+  a surveyor's file of barrio outlines, and download everything placed as a file they can open
+  in a GIS tool.
+- It explains itself: each map page carries a help guide, a glossary and a who-can-do-what
+  table, and the section contributes its own nav links, settings tab and config key.
 
 ## 2. The shapes
 
@@ -30,19 +33,22 @@ structural item below follows from this table.
 | Shape | Question it answers | Surface today |
 |---|---|---|
 | **See the site** | What is placed where, this year? | `GET /CityPlanning/`, `GET /api/city-planning/state`, `GET /api/city-planning/containers/{year}` |
-| **Claim a barrio** | Where is my camp, and what was it before? | `GET /CityPlanning/BarrioMap`, `PUT /api/city-planning/camp-polygons/{id}`, `GET …/history`, `POST …/restore/{historyId}` |
+| **Claim a barrio** | Where is my camp, and what was it before? | `GET /CityPlanning/BarrioMap`, `PUT /api/city-planning/camp-polygons/{campSeasonId}`, `GET …/history`, `POST …/restore/{historyId}` |
 | **Place a container** | Where does this box go, and what should it look like? | `GET /CityPlanning/ContainerMap/{year}`, `PUT/DELETE /api/city-planning/containers/{id}/placement/{year}`, `PUT …/notes` |
-| **Run the phases** | Is placement open, and who may act now? | `GET /CityPlanning/BarrioMap/Admin`, the `Open*/Close*Placement` posts, `UpdatePlacementDates`, `ICityPlanningServiceRead.GetSettingsAsync` |
-| **Publish the ground truth** | What is the boundary and what are the named zones? | `Upload*/Download*/Delete*` for limit zone and official zones |
-| **Bulk-load barrios** | Here is the surveyor's file — match it to camps and apply it. | `barrio-map/admin-import.js` on the admin page: reads `GET …/state`, matches features to camps by name or slug, then `PUT`s each match |
+| **Run the phases** | Is placement open, when, and who may act now? | The `/Settings#city-planning` tab (`CityPlanningSettingsTabViewComponent`) posting to `OpenPlacement`, `ClosePlacement`, `UpdatePlacementDates`; container phase posts `OpenContainerPlacement` / `CloseContainerPlacement` from the containers page; `ICityPlanningServiceRead.GetSettingsAsync` |
+| **Write the registration blurb** | What do barrio leads read before they register? | `UpdateRegistrationInfo` on the settings tab **and** on Camps' own admin page (`CampAdminController.UpdateRegistrationInfo`), both through `ICityPlanningService.UpdateRegistrationInfoAsync`; read by `GetRegistrationInfoAsync` |
+| **Publish the ground truth** | What is the boundary and what are the named zones? | `GET /CityPlanning/BarrioMap/Admin`, the upload, download and delete posts for the limit zone and the official zones |
+| **Bulk-load barrios** | Here is the surveyor's file — match it to camps and apply it. | `wwwroot/js/city-planning/barrio-map/admin-import.js` on the admin page: reads `GET …/state`, matches features to camps by name or slug, then `PUT`s each match |
 | **Curate containers** | Which containers exist for which barrio? | `GET /CityPlanning/BarrioMap/Admin/Containers/{year}` plus its Create/Edit/Delete posts (entity owned by Containers) |
 | **Hand the data out** | Give me this as a file. | `GET /api/city-planning/export.geojson`, `GET /api/city-planning/containers/{year}/export.geojson` |
-| **Tell other sections** | Is placement open? Is this user an organiser? What's the registration blurb? | `ICityPlanningServiceRead` + `ICityPlanningService` |
-| **Watch each other work** | Who else is on this map right now? | `CityPlanningHub` at `/hubs/city-planning` (cursors + polygon broadcast) |
+| **Tell other sections** | Is placement open? Is this user an organiser? What's the registration blurb? | `ICityPlanningServiceRead` + `ICityPlanningService`; the `CityPlanningMapAdmin` policy |
+| **Watch each other work** | Who else is on the barrio map right now? | `CityPlanningHub` at `/hubs/city-planning` (cursors + polygon broadcast), barrio map only |
+| **Explain itself to the Shell** | Where is the section, what does it mean, who can do what? | `SectionNav`, `SectionAdminNav`, `SectionSettings`, `SectionHelp` over `Docs/help/`, `SectionAccessMatrix`, `SectionConfiguration`, the `IIssueQueueOwner` queue key |
 
 *Curate containers* and half of *place a container* are City Planning URLs over an entity
 Containers owns; that is deliberate (placement is a planning concern) and is the section's one
-standing width cost.
+standing width cost. *Write the registration blurb* has two front doors in two sections for one
+field — the one shape here with a duplicated pipeline.
 
 ## 3. Structure
 
@@ -51,7 +57,11 @@ The layout those shapes imply, written fresh:
 - **One page controller** (`CityPlanningController`) for the map screens plus the
   admin screens, because they share the map-admin gate and the settings row.
 - **One API controller** (`CityPlanningApiController`) for everything the map JavaScript
-  calls, because the maps are single-page surfaces that fetch their own state.
+  calls, because the maps are single-page surfaces that fetch their own state. A polygon save
+  and a restore end the same way — broadcast the new shape — and that tail is written once.
+- **One definition of "map admin".** The `CityPlanningMapAdmin` policy (Admin or CampAdmin,
+  else city-planning team member) is the rule, and both controllers ask it through
+  `IAuthorizationService` rather than restating it.
 - **One service** (`CityPlanningService`) holding both business rules: *who may edit what,
   when* and *what a save does to history*. It is the only repository caller.
 - **One repository** over the section's tables, exposing polygon reads, an atomic
@@ -61,10 +71,11 @@ The layout those shapes imply, written fresh:
   writes only for the callers that need them.
 - **A JavaScript bundle per map** — `main.js` (overview), `barrio-map/`, `container-map/` — and a
   `shared/` set holding exactly what more than one of them uses (map constants, the measure
-  tool, the official-zones layer, the sound-zone colour expressions). A per-map file that only
-  re-exports a shared one is indirection, not structure.
+  tool, the official-zones layer, the sound-zone colour expressions).
 - **One resx set** for City Planning's own vocabulary; container vocabulary is bound from
   `ContainersResource` at the call site, shared strings from `SharedResource`.
+- **Shell contributions as root `Section*.cs` classes**, one per seam, each a declaration with
+  no logic.
 
 This section does *not* have, and should not grow, a caching decorator (admin
 traffic, one row and one small list per read) and an internal service interface (the section's
@@ -74,39 +85,50 @@ own controllers take the concrete class; the seam that matters is the contracts 
 
 Stated so a violation is recognisable:
 
-1. One `CampPolygon` per `CampSeasonId` — enforced by a unique index, not by code.
-2. `camp_polygon_histories` is append-only. A save appends; a restore appends. The repository
-   exposes no update and no delete for a single history row (the season-scoped cascade delete
-   is the one exception, and it deletes the polygon with it).
+1. One `CampPolygon` per `CampSeasonId` — enforced by a unique index, not by code
+   (`Data/Configurations/CampPolygonConfiguration.cs:13`).
+2. `camp_polygon_histories` is append-only. A save appends; a restore appends
+   (`Data/CityPlanningRepository.cs:125`). The repository exposes no update and no delete for
+   a single history row; the season-scoped delete removes the polygon with its history.
 3. A restore writes the restored geometry as a *new* current polygon with the note
-   `Restored from {timestamp} UTC`, composed server-side; it never rewinds history. The note
-   on an ordinary save is open-ended — the `PUT` persists whatever the caller sends and
-   falls back to `Saved`. The one caller-supplied note the codebase itself sends is
-   `Imported {date}`, from `admin-import.js`.
-4. A camp lead may edit their own polygon only while `IsPlacementOpen`. City-planning team
-   members and `CampAdmin` are exempt from the phase and from the ownership check.
-5. A camp lead may place/clear their own camp's containers only while
-   `IsContainerPlacementOpen`. Same exemptions.
+   `Restored from {timestamp} UTC`, composed server-side (`Services/CityPlanningService.cs:226`);
+   it never rewinds history. A history id that is not the season's restores nothing and answers
+   404 (`Controllers/CityPlanningApiController.cs:126`). The note on an ordinary save is whatever the caller sends,
+   falling back to `Saved` (`Controllers/CityPlanningApiController.cs:104`).
+4. A camp lead may edit their own polygon only while `IsPlacementOpen`, and only a season of the
+   settings year (`Services/CityPlanningService.cs:265`). City-planning team members
+   (`Services/CityPlanningService.cs:258`) and `CampAdmin`/`Admin`
+   (`Controllers/CityPlanningApiController.cs:91`) are exempt from the phase and the ownership check.
+5. A camp lead may place, annotate or clear their own camp's containers only while
+   `IsContainerPlacementOpen` — the `ContainerOperationRequirement.Place` check each placement
+   endpoint makes (`Controllers/CityPlanningApiController.cs:266`), decided by Containers'
+   handler. Same exemptions.
 6. Restore and the polygon export are map-admin only — a lead cannot restore even their own
-   camp's polygon.
-7. The settings row for a year is created on demand, closed (`IsPlacementOpen = false`), keyed
-   to `CampSettings.PublicYear` — **except** `RegistrationInfo`, which is keyed to the highest
-   open season year and falls back to `PublicYear`.
+   camp's polygon (`Controllers/CityPlanningApiController.cs:119`,
+   `Controllers/CityPlanningApiController.cs:158`).
+7. The settings row for a year is created on demand, closed (`Data/CityPlanningRepository.cs:181`),
+   keyed to `CampSettings.PublicYear` — **except** `RegistrationInfo`, which is keyed to the
+   highest open season year and falls back to `PublicYear`
+   (`Services/CityPlanningService.cs:469`).
 8. Every polygon save and restore broadcasts `CampPolygonUpdated` to every connected client; a
-   broadcast failure is logged and never fails the save.
-9. Stored GeoJSON is validated as *parseable JSON* only, except container placements, which
-   must additionally be a `Feature` with `Polygon` geometry and `center_lng` / `center_lat` /
-   `rotation_degrees` properties.
-10. Uploaded zone files are rejected above 10 MB and when unparseable.
+   broadcast failure is logged and never fails the save
+   (`Controllers/CityPlanningApiController.cs:146`).
+9. Stored GeoJSON is validated as *parseable JSON* only (`Controllers/CityPlanningApiController.cs:97`),
+   except container placements, which must additionally be a `Feature` with `Polygon` geometry
+   and `center_lng` / `center_lat` / `rotation_degrees` properties
+   (`Controllers/CityPlanningApiController.cs:350`).
+10. Uploaded zone files are rejected above 10 MB and when unparseable
+    (`Services/CityPlanningService.cs:358`).
 11. Every settings write that takes a `userId` — both placement phases, the zone uploads and
     the zone deletes — appends an audit entry naming that actor, after the save, and a request
     aborted mid-write does not drop it: the row id is resolved before the save, and the save
-    itself runs on `CancellationToken.None`, so nothing cancellable sits between the committing
-    write and the token-less `LogAsync`. The settings row records *when* a
-    value changed; the audit log is the only record of *who*. A rejected upload never reaches the
-    row and writes no entry.
-12. The city-planning team slug is normalized on both sides before comparing, so the configured
-    value and the stored slug match regardless of case. A blank configured slug matches nothing.
+    itself runs on `CancellationToken.None` (`Services/CityPlanningService.cs:65`). The settings
+    row records *when* a value changed; the audit log is the only record of *who*. A rejected
+    upload never reaches the row and writes no entry.
+12. The city-planning team slug is normalized on both sides before comparing, and a blank
+    configured slug matches nothing (`Services/CityPlanningService.cs:244`, `Services/CityPlanningService.cs:249`).
+13. The container map page refuses anyone who is neither a map admin nor, while container
+    placement is open, a lead of a camp in that year (`Controllers/CityPlanningController.cs:277`).
 
 ## 5. Seams
 
@@ -117,6 +139,10 @@ touching these callers are shaped by them.
   container placements keep none. Peter's call (2026-08-26): keeping placement history
   within a season is reasonable, and the history is expected to be archived at the rollover
   into the next season. Neither half is built.
+- **Year-correct container admin.** The container admin pages take a `{year}` route value, but
+  their post-redirects and the placement authorization read the public year. Deferred by Peter
+  to the winter year-specific work (`CITY-1`).
+- **Snap to boundaries** (nobodies-collective/Humans#523) — designed, not built.
 
 ## 6. Deliberately not done
 
@@ -129,6 +155,8 @@ touching these callers are shaped by them.
   rather than a polygon editor.
 - **No `jsonb`.** GeoJSON columns are `text`: the app never queries inside the structure, it
   round-trips whole FeatureCollections to the browser.
+- **No server-side area.** The polygon's `AreaSqm` is what the browser computed with turf; the
+  server stores it as sent.
 - **No generic `MapFeature` / toggleable-layer entity.** Proposed in
   nobodies-collective/Humans#521, declined in favour of purpose-built screens.
 - **No test that the section lacks a decorator or a history-update method.** Absence
@@ -157,9 +185,13 @@ touching these callers are shaped by them.
 - **The section hosts placement endpoints for `Container`, an entity Containers owns.**
   Placement is a planning concern; the entity is not. Both directions of that split are
   intentional.
+- **The admin nav item is narrower than the pages it links.** "Barrio map" in the admin sidebar
+  is `CampAdminOrAdmin`; the pages and the settings tab admit city-planning team members too,
+  who reach them from the member-side City page.
 
 ## History
 
 | Date | Run | Reforge score | Notes |
 |---|---|---|---|
 | 2026-08-26 | [2026-08-26-CityPlanning](../../../../docs/health/runs/2026-08-26-CityPlanning.md) | 210 → 218 (loc 1947 → 1964, cogP95 4, cogMax 6) | First doctor run; this target derived from scratch. The score rose only after Peter approved the audit change: the whole +8 is `crossSectionFullService` for injecting `IAuditLogService`, which has no read-only half — it is the one interface every writer to the crosscut takes, so the cost is not narrowable and is the price of the audit trail. Structure was sound — the value was in what the section claimed about itself (a documented ordering guarantee the query does not make, a non-existent EF relationship, both authorization rows naming the wrong guard) and in untested paths, including the cross-section delete Camps calls. Behaviour bugs found and recorded in `Docs/debt.yml` rather than fixed. PR: peterdrier/Humans#1525 |
+| 2026-09-25 | [2026-09-25-CityPlanning](../../../../docs/health/runs/2026-09-25-CityPlanning.md) | — | Re-doctor; target regenerated with cited invariants. The value was in what the section told people: the in-app help and member guide described a read-only container map, a restore that saves twice and an admin panel that toggles placement, none of which the code does. Map admin is now one policy both controllers ask; the broadcast tail is written once; restore/export gates and save-then-broadcast are pinned by tests. Behaviour gaps ledgered, not fixed. PR: peterdrier/Humans#1824 |

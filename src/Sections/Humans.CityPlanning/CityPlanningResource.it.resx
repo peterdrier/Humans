@@ -359,4 +359,7 @@
   <data name="CityPlanning_Help_ColorsImageAlt" xml:space="preserve">
     <value>Screenshot: barrio colorati in base alla zona sonora</value>
   </data>
+  <data name="CityPlanning_OverviewTitle" xml:space="preserve">
+    <value>Pianificazione urbana</value>
+  </data>
 </root>

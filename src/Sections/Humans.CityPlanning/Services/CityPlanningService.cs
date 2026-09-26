@@ -79,7 +79,6 @@ internal sealed class CityPlanningService(
         var polygons = await repo.GetPolygonsByCampSeasonIdsAsync(seasonIds, cancellationToken);
 
         return polygons
-            .Where(p => displayData.ContainsKey(p.CampSeasonId))
             .Select(p =>
             {
                 var data = displayData[p.CampSeasonId];
@@ -216,13 +215,13 @@ internal sealed class CityPlanningService(
         }
     }
 
-    public async Task<CampPolygonSaveResult> RestoreCampPolygonVersionAsync(
+    /// <summary>Null when the history entry is not one of this camp season's.</summary>
+    public async Task<CampPolygonSaveResult?> RestoreCampPolygonVersionAsync(
         Guid campSeasonId, Guid historyId, Guid restoredByUserId,
         CancellationToken cancellationToken = default)
     {
-        var entry = await repo.GetHistoryEntryAsync(campSeasonId, historyId, cancellationToken)
-            ?? throw new InvalidOperationException(
-                $"History entry {historyId} not found for CampSeason {campSeasonId}.");
+        var entry = await repo.GetHistoryEntryAsync(campSeasonId, historyId, cancellationToken);
+        if (entry is null) return null;
 
         var note = $"Restored from {entry.ModifiedAt.ToDateTimeUtc().ToInvariantTimestamp()} UTC";
         return await SaveCampPolygonAsync(
@@ -238,12 +237,9 @@ internal sealed class CityPlanningService(
     public async Task<bool> IsCityPlanningTeamMemberAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        // Both sides are lower-cased before comparing. Only the configured value used to be,
-        // so a stored slug carrying any uppercase never matched and every city-planning team
-        // member silently lost their map-admin exemption.
-        // The option defaults to string.Empty, so an unconfigured instance would normalize
-        // to "" and match any team whose slug normalized to the same. No configured slug
-        // means no exemption, not a blanket one.
+        // Both sides are lower-cased before comparing, so a stored slug's case doesn't
+        // affect matching. The option defaults to string.Empty; no configured slug means
+        // no exemption, not a blanket one.
         var configuredSlug = options.Value.CityPlanningTeamSlug;
         if (string.IsNullOrWhiteSpace(configuredSlug)) return false;
 
@@ -405,21 +401,6 @@ internal sealed class CityPlanningService(
             userId,
             cancellationToken);
 
-    private async Task UpdatePlacementDatesAsync(
-        LocalDateTime? opensAt, LocalDateTime? closesAt, CancellationToken cancellationToken = default)
-    {
-        var campSettings = await campService.GetSettingsAsync(cancellationToken);
-        await repo.MutateSettingsAsync(
-            campSettings.PublicYear,
-            s =>
-            {
-                s.PlacementOpensAt = opensAt;
-                s.PlacementClosesAt = closesAt;
-            },
-            clock.GetCurrentInstant(),
-            cancellationToken);
-    }
-
     public async Task<PlacementDateUpdateResult> UpdatePlacementDatesAsync(
         string? opensAt, string? closesAt, CancellationToken cancellationToken = default)
     {
@@ -433,7 +414,16 @@ internal sealed class CityPlanningService(
         if (!closesResult.Success)
             return new PlacementDateUpdateResult(false, "InvalidClosesAt");
 
-        await UpdatePlacementDatesAsync(opensResult.Value, closesResult.Value, cancellationToken);
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        await repo.MutateSettingsAsync(
+            campSettings.PublicYear,
+            s =>
+            {
+                s.PlacementOpensAt = opensResult.Value;
+                s.PlacementClosesAt = closesResult.Value;
+            },
+            clock.GetCurrentInstant(),
+            cancellationToken);
         return new PlacementDateUpdateResult(true);
     }
 

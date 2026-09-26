@@ -262,7 +262,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `TeamController` | `EditTeam` (POST) `IsSensitive` flag | `authorizationService.AuthorizeAsync(User, PolicyNames.AdminOnly)` — non-Admin posts leave `IsSensitive` unchanged |
 | `StoreController` | Order CRUD/pay | `_authService.AuthorizeAsync(User, order, OrderOperationRequirement.*)` (resource-based) |
 | `IssuesController` | All mutating actions | `_authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` (resource-based) |
-| `CityPlanningController` / `CityPlanningApiController` | All actions except `Index`/`GetState` | `RoleChecks.IsCampAdmin(User)` and lead-of-camp checks; three API endpoints also call `_authorizationService.AuthorizeAsync` |
+| `CityPlanningController` / `CityPlanningApiController` | All actions except `Index`/`GetState` | `authorizationService.AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)` and lead-of-camp checks; polygon save checks `RoleChecks.IsCampAdmin(User)`; the container-placement endpoints authorize `ContainerOperationRequirement.Place` |
 | `GovernanceBoardVotingController` | `Detail` | `RoleChecks.IsAdmin(User)` drives the admin view-model flag (Finalize affordance) — the `Finalize` POST itself is attribute-gated `AdminOnly` |
 | `UsersAdminController.AddRole/EndRole` | After `[Authorize(Policy)]` attribute | `authorizationService.AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)` enforces the role-list filter |
 | `ProfileEmailsController` email-edit endpoints | After class-level `[Authorize]` | `_authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (resource-based) |

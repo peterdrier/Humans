@@ -31,16 +31,13 @@ internal sealed class CityPlanningApiController(
         return Guid.Parse(id);
     }
 
-    private async Task<bool> IsMapAdminAsync(Guid userId, CancellationToken ct)
-    {
-        return RoleChecks.IsCampAdmin(User) ||
-               await cityPlanningService.IsCityPlanningTeamMemberAsync(userId, ct);
-    }
+    private async Task<bool> IsMapAdminAsync() =>
+        (await authorizationService.AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)).Succeeded;
 
     private async Task<Guid?> FindUserLeadCampIdAsync(Guid userId, int year, CancellationToken ct)
     {
         // Lead status comes from the role system (Camp Lead special role on a season
-        // of this year), not the legacy camp_leads table.
+        // of this year).
         var camps = await campService.GetCampsForYearAsync(year, ct);
         return camps.FirstOrDefault(camp => camp.GetLeadSeasonIdForYear(userId, year).HasValue)?.Id;
     }
@@ -107,20 +104,7 @@ internal sealed class CityPlanningApiController(
             note: request.Note ?? "Saved",
             cancellationToken: cancellationToken);
 
-        var season = await campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
-        var soundZoneValue = season?.SoundZone is { } sz ? (int)sz : -1;
-        var campName = season?.Name ?? string.Empty;
-        try
-        {
-            await hubContext.Clients.All.SendAsync(
-                "CampPolygonUpdated", campSeasonId, saved.GeoJson, saved.AreaSqm, soundZoneValue, campName, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to broadcast CampPolygonUpdated for {CampSeasonId}", campSeasonId);
-        }
-
-        return Ok(new { campSeasonId, geoJson = saved.GeoJson, areaSqm = saved.AreaSqm });
+        return await BroadcastAndReturnAsync(campSeasonId, saved, cancellationToken);
     }
 
     /// <summary>Restore a camp polygon to a historical version. Map admins only.</summary>
@@ -132,36 +116,46 @@ internal sealed class CityPlanningApiController(
         CancellationToken cancellationToken)
     {
         var userId = CurrentUserId();
-        if (!await IsMapAdminAsync(userId, cancellationToken))
+        if (!await IsMapAdminAsync())
         {
             return Forbid();
         }
 
         var restored = await cityPlanningService.RestoreCampPolygonVersionAsync(
             campSeasonId, historyId, userId, cancellationToken);
+        if (restored is null) return NotFound();
 
+        return await BroadcastAndReturnAsync(campSeasonId, restored, cancellationToken);
+    }
+
+    /// <summary>
+    /// Tells every connected map about the new shape, then answers the caller. A broadcast
+    /// failure is logged and never fails the save that already happened.
+    /// </summary>
+    private async Task<IActionResult> BroadcastAndReturnAsync(
+        Guid campSeasonId, CampPolygonSaveResult polygon, CancellationToken cancellationToken)
+    {
         var season = await campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
         var soundZoneValue = season?.SoundZone is { } sz ? (int)sz : -1;
         var campName = season?.Name ?? string.Empty;
         try
         {
             await hubContext.Clients.All.SendAsync(
-                "CampPolygonUpdated", campSeasonId, restored.GeoJson, restored.AreaSqm, soundZoneValue, campName, cancellationToken);
+                "CampPolygonUpdated", campSeasonId, polygon.GeoJson, polygon.AreaSqm, soundZoneValue, campName, cancellationToken);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to broadcast CampPolygonUpdated for {CampSeasonId}", campSeasonId);
         }
 
-        return Ok(new { campSeasonId, geoJson = restored.GeoJson, areaSqm = restored.AreaSqm });
+        return Ok(new { campSeasonId, geoJson = polygon.GeoJson, areaSqm = polygon.AreaSqm });
     }
 
     /// <summary>Export all camp polygons for a year as GeoJSON FeatureCollection. Map admins only.</summary>
     [HttpGet("export.geojson")]
     public async Task<IActionResult> ExportGeoJson([FromQuery] int? year, CancellationToken cancellationToken)
     {
-        var userId = CurrentUserId();
-        if (!await IsMapAdminAsync(userId, cancellationToken))
+        if (!await IsMapAdminAsync())
         {
             return Forbid();
         }
@@ -178,7 +172,7 @@ internal sealed class CityPlanningApiController(
     public async Task<IActionResult> GetContainers(int year, CancellationToken cancellationToken)
     {
         var userId = CurrentUserId();
-        var isMapAdmin = await IsMapAdminAsync(userId, cancellationToken);
+        var isMapAdmin = await IsMapAdminAsync();
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
         var userCampId = await FindUserLeadCampIdAsync(userId, year, cancellationToken);
 
@@ -215,7 +209,7 @@ internal sealed class CityPlanningApiController(
     public async Task<IActionResult> ExportContainersGeoJson(int year, CancellationToken cancellationToken)
     {
         var userId = CurrentUserId();
-        var isMapAdmin = await IsMapAdminAsync(userId, cancellationToken);
+        var isMapAdmin = await IsMapAdminAsync();
         var userCampId = await FindUserLeadCampIdAsync(userId, year, cancellationToken);
 
         if (!isMapAdmin && !userCampId.HasValue)

@@ -20,7 +20,7 @@ internal sealed class ContainerMapViewModel
 {
     public int Year { get; set; }
     public bool IsMapAdmin { get; set; }
-    public string UserCampId { get; set; } = string.Empty; // empty for admins
+    public string UserCampId { get; set; } = string.Empty; // empty when the user has no lead camp for the year
     public string CampSlug { get; set; } = string.Empty; // empty for admins
     public string CampName { get; set; } = string.Empty; // empty for admins
 }
