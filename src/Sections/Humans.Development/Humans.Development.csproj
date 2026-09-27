@@ -44,7 +44,7 @@
       No Humans.Infrastructure reference (Scanner's and Cantina's shape, not Debug's):
       Development owns no tables, and every write the seeders make goes through a
       Humans.Application or contracts-leaf interface — IUserService, IProfileEditorService,
-      ITeamService, ICampService, IShiftManagementService, IConsentSubmission,
+      ITeamService, ICampService, IShiftSeeding, IShiftSignupSeeding, IConsentSubmission,
       IMembershipCalculatorRead, IBudgetDemoSeeder. The one framework type it names directly is
       UserManager<User>, which is Identity's, not Infrastructure's (docs/sections/Users.md's
       §2a exception). Decide the reference from what the section names
