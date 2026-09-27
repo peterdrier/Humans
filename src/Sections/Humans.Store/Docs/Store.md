@@ -202,6 +202,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - A team order is restricted to a **department** (top-level team — `ParentTeamId is null`). Sub-team orders are not supported.
 - At most **one team order per team per year** — enforced by `CreateTeamOrderAsync` via a repo lookup before insert.
 - Camp orders follow the lifecycle: **Open → InvoiceIssued**. There is no return-to-Open transition.
+- An order may be deleted only while `Open`, at zero balance, **and with no payment rows of any status** — payments cascade on delete, and a paid-in-full or pending-only order reads zero-balance, so the payment check is what keeps money records from being deleted with their order (`Service.DeleteOrderAsync`).
 - Team orders stay in **Open** indefinitely. The implicit close-out signal is per-product `OrderableUntil` — once every catalog product has passed its deadline, the order is effectively read-only.
 - Lines may only be added or removed while the order is `Open` AND `today <= Product.OrderableUntil`. The deadline gate is per-product and identical for camp and team orders. It is enforced at the **authorization layer** (`OrderAuthorizationHandler`, using the `OrderLineContext` resource): non-admins are denied past the deadline; Store admins are exempt and may edit lines on any Open order regardless of `OrderableUntil`. `Service.AddLineAsync` / `RemoveLineAsync` do not throw on a passed deadline — they only annotate the audit entry with `(past order deadline …)` when the line is edited past it.
 - Counterparty fields (`CounterpartyName`, `CounterpartyVatId`, `CounterpartyAddress`, `CounterpartyCountryCode`, `CounterpartyEmail`) are editable only while the order is `Open` (Camp Lead) or by FinanceAdmin/Admin always.
@@ -234,6 +235,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - A Camp Lead **cannot** view or edit orders for camp-seasons they do not lead (resource-based auth).
 - Anyone other than StoreAdmin/FinanceAdmin/Admin **cannot** issue an invoice.
 - Re-issuing an already-issued order **cannot** succeed — the second call throws and does not contact Holded.
+- An order holding any payment row — `Paid`, `Pending` or `Failed` — **cannot** be deleted, by anyone.
 - A camp lead, department coordinator or TeamsAdmin **cannot** issue an invoice — `IssueInvoice` is Store-admin only.
 - A team order **cannot** be invoiced, by anyone, including admins.
 

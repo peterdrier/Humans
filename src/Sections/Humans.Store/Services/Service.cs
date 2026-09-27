@@ -435,6 +435,12 @@ internal sealed class Service(
             throw new InvalidOperationException(
                 $"Order {orderId} has been invoiced; an invoiced order cannot be deleted.");
 
+        // Payments cascade on delete, and a paid-in-full or pending-only order reads zero-balance —
+        // any payment row, whatever its status, is a money record that must outlive the order.
+        if (order.Payments.Count > 0)
+            throw new InvalidOperationException(
+                $"Order {orderId} has payments recorded; an order with payments cannot be deleted.");
+
         var currentPrices = await LoadCurrentPricesAsync(ct);
         var balance = BalanceCalculator.Compute(order, currentPrices).BalanceEur;
         if (balance != 0m)

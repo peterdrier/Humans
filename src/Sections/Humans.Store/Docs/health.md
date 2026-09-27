@@ -78,37 +78,39 @@ left at year zero the page says so and nothing else in the section depends on it
 ## 4. Invariants
 
 - An order has exactly one counterparty: `CampSeasonId` xor `TeamId`, set only at create —
-  `Services/Service.cs:412` (camp) and `Services/Service.cs:469` (team).
+  `Services/Service.cs:412` (camp) and `Services/Service.cs:475` (team).
 - Team orders are non-billable at every privilege level: the service refuses counterparty edits,
-  checkout, payment recording and issuance (`Services/Service.cs:1718`, `Services/Service.cs:657`,
-  `Services/Service.cs:701`), and the handler never grants Pay or EditCounterparty on one, even to
+  checkout, payment recording and issuance (`Services/Service.cs:1724`, `Services/Service.cs:663`,
+  `Services/Service.cs:707`), and the handler never grants Pay or EditCounterparty on one, even to
   a store admin (`Authorization/OrderAuthorizationHandler.cs:61`).
 - At most one order per camp season, tested for *any* existing order, never for one matching the
   season's year — `Services/Service.cs:405`.
 - At most one team order per department per year, departments only —
-  `Services/Service.cs:455` and `Services/Service.cs:461`.
+  `Services/Service.cs:461` and `Services/Service.cs:467`.
 - Camp orders run `Open → InvoiceIssued`, one way — the only writer of the state is
-  `Services/Service.cs:1249`, behind the open-only guard at `Services/Service.cs:1039`.
+  `Services/Service.cs:1255`, behind the open-only guard at `Services/Service.cs:1045`.
 - An `Open` order is priced at the live catalog, an `InvoiceIssued` one at its frozen line
   snapshots — `Services/BalanceCalculator.cs:61`. Issuance rewrites the snapshots from the live
-  price first — `Services/Service.cs:1057`.
-- Lines change only while `Open` (`Services/Service.cs:491`, `Services/Service.cs:561`), and for
+  price first — `Services/Service.cs:1063`.
+- Lines change only while `Open` (`Services/Service.cs:497`, `Services/Service.cs:567`), and for
   everyone but a store admin only up to the product's `OrderableUntil`
   (`Authorization/OrderAuthorizationHandler.cs:70`).
+- Money records outlive their order: an order holding any payment row cannot be deleted —
+  `Services/Service.cs:440`.
 - Only `Paid` money counts toward a balance — `Services/BalanceCalculator.cs:80`; a `Pending`
-  payment blocks starting another — `Services/Service.cs:668`.
+  payment blocks starting another — `Services/Service.cs:674`.
 - Payment ingestion is idempotent on the Stripe PaymentIntent id whichever path records it —
-  `Services/Service.cs:695`, backed by the filtered unique index at
+  `Services/Service.cs:701`, backed by the filtered unique index at
   `Data/Configurations/PaymentConfiguration.cs:26`.
-- Issuance is idempotent locally (`Services/Service.cs:1039`) and remotely: Holded is searched for
-  a document tagged with the order before anything is created (`Services/Service.cs:1067`), and an
-  adopted document whose totals no longer match refuses (`Services/Service.cs:1174`).
+- Issuance is idempotent locally (`Services/Service.cs:1045`) and remotely: Holded is searched for
+  a document tagged with the order before anything is created (`Services/Service.cs:1073`), and an
+  adopted document whose totals no longer match refuses (`Services/Service.cs:1180`).
 - Every issued document is approved before anything is written locally —
-  `Services/Service.cs:1148`. Every line books to its product's revenue account and a missing or
-  unknown account refuses by name (`Services/Service.cs:1277`, `Services/Service.cs:1303`); a
-  deposit with no liability account configured refuses (`Services/Service.cs:1285`).
+  `Services/Service.cs:1154`. Every line books to its product's revenue account and a missing or
+  unknown account refuses by name (`Services/Service.cs:1283`, `Services/Service.cs:1309`); a
+  deposit with no liability account configured refuses (`Services/Service.cs:1291`).
 - A counterparty-less order above the simplified-invoice ceiling refuses rather than downgrading —
-  `Services/Service.cs:1111`.
+  `Services/Service.cs:1117`.
 - Deposits carry no VAT — `Services/BalanceCalculator.cs:67`.
 - The accounting export selects orders by their persisted year, never through the counterparty,
   so an order whose camp or team has since gone still exports — `Data/Repository.cs:154`.
