@@ -79,9 +79,8 @@
         </div>
     </div>
 
-    @* The write (CityPlanningService.UpdateRegistrationInfoAsync) has two front doors:
-       this tab and Camps' own admin page (CampAdminController.UpdateRegistrationInfo).
-       This tab is CityPlanningMapAdmin-gated (admin/operator-only per
+    @* This is CityPlanning's sole editor for CityPlanningService.UpdateRegistrationInfoAsync.
+       The tab is CityPlanningMapAdmin-gated (admin/operator-only per
        memory/code/localization-admin-exempt.md), so plain strings, no resx keys. *@
     <div class="col-md-6">
         <div class="card">
