@@ -66,6 +66,10 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
                 ? events.Where(e => e.OccurredAt >= since.Value).ToList()
                 : events;
         }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading audit log entries for EntityType={EntityType}, EntityId={EntityId}, UserId={UserId}",

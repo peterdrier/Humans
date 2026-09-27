@@ -26,13 +26,13 @@ public class AuditLogViewComponentTests
 
     private readonly IAuditViewerService _viewer = Substitute.For<IAuditViewerService>();
 
-    private AuditLogViewComponent BuildSut()
+    private AuditLogViewComponent BuildSut(CancellationToken requestAborted = default)
     {
         var component = new AuditLogViewComponent(_viewer, NullLogger<AuditLogViewComponent>.Instance);
         // Minimal ViewComponentContext so HttpContext.RequestAborted resolves.
         var viewContext = new ViewContext
         {
-            HttpContext = new DefaultHttpContext(),
+            HttpContext = new DefaultHttpContext { RequestAborted = requestAborted },
             ViewData = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary())
         };
         component.ViewComponentContext = new ViewComponentContext { ViewContext = viewContext };
@@ -166,5 +166,19 @@ public class AuditLogViewComponentTests
         var (_, model) = Unwrap(await BuildSut().InvokeAsync(userId: Guid.NewGuid()));
 
         model.Events.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task A_cancelled_request_is_not_converted_to_an_empty_audit_history()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        _viewer.GetFilteredAsync(Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
+                Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new OperationCanceledException(cancellation.Token));
+
+        var act = () => BuildSut(cancellation.Token).InvokeAsync(userId: Guid.NewGuid());
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 }
