@@ -283,6 +283,7 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 ## Negative Access Rules
 
 - Self-signup, including all-day ranges and onboarding/dietary form replay, requires an existing `UserState.Active` account. Privileged/conflict flags do not bypass account eligibility. Named Active humans may still sign up before consent completion; explicit admin-on-behalf Voluntell paths retain their own authorization.
+- The advisory dietary-missing banner passes `HttpContext.RequestAborted` through its qualifying-signup and profile reads. It still suppresses operational failures so the Shifts page renders, but does not log a disconnected browser as a banner failure.
 
 - Regular humans **cannot** manage rotas or shifts. They can only browse and sign up.
 - Regular humans **cannot** approve, refuse, or bail other humans' signups.

@@ -28,15 +28,20 @@ public sealed class DietaryMissingBannerViewComponent : ViewComponent
 
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
-            var hasQualifyingSignup = await _shiftMgmt.HasQualifyingCantinaSignupAsync(userId);
+            var hasQualifyingSignup = await _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, ct);
             if (!hasQualifyingSignup) return Content(string.Empty);
 
-            var profile = (await _userRead.GetUserInfoAsync(userId))?.Profile;
+            var profile = (await _userRead.GetUserInfoAsync(userId, ct))?.Profile;
             if (!string.IsNullOrEmpty(profile?.DietaryPreference)) return Content(string.Empty);
 
             return View();
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
