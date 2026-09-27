@@ -194,6 +194,7 @@ internal sealed class ProfileController(
 
     [HttpPost("Me/Edit")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(21 * 1024 * 1024)] // 20 MB picture plus multipart overhead; upload validation enforces the file cap.
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
         // Tag catalog not posted back — repopulate up front so validation-failure rerenders the picker.
