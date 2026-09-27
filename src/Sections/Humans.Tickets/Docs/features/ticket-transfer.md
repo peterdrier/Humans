@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Tickets/**
   src/Sections/Humans.Tickets.Contracts/**
+  src/Sections/Humans.TicketTailor/**
 -->
 <!-- freshness:flag-on-change
   The two processing paths (automated void+reissue vs manual mark-successful), lifecycle states, email

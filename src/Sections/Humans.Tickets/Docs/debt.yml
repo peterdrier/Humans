@@ -15,10 +15,6 @@ inbox:
     id: TICKETS-4
     what: "TicketTransferService.ProcessTransferAsync / ApproveAsync / RejectAsync guard on request.Status == Pending with a plain read-then-write, so two overlapping Decide POSTs on the same request both pass the check and can both enter the vendor void/reissue flow (the Decide form has no submit guard either). no-concurrency-tokens rules out a row version; the fix is an idempotent guard in the service (e.g. a Processing status written before the vendor call) or a disabled-on-submit form. Raised by Codex on peterdrier/Humans#1589; health.md records it as a gap."
     review: panel
-  - added: 2026-09-14
-    id: TICKETS-5
-    what: "Docs/features/ticket-transfer.md's freshness triggers omit src/Sections/Humans.TicketTailor/** while the spec asserts the vendor void+reissue writeback. Docs/Tickets.md credits tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs with pinning \"the two adapters\"; that is tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs (finding 19, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
-    review: light
   - added: 2026-09-22
     id: TICKETS-7
     what: "Services/Stores/CachingTicketVendorService.cs caches GetEventSummaryAsync with a hand-rolled 15-minute TTL EventSummaryCache instead of the standard TrackedCache decorator pattern (design-rules §15). Replace it with the standard caching pattern (Peter, freshness sweep 2026-09-22)."
