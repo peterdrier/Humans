@@ -488,6 +488,31 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
+    public async Task SendWaveAsync_EnqueueCancellation_PropagatesWithoutRecordingFailure()
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(["CANCEL-1"]);
+        var user = SeedUser();
+        var team = SeedTeam("Cancellation");
+        SeedTeamMember(team.Id, user.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        using var cancellation = new CancellationTokenSource();
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                await Task.FromCanceled(cancellation.Token);
+            });
+
+        var act = () => _service.SendWaveAsync(campaign.Id, team.Id, cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        var grant = await CampaignsDb.CampaignGrants.SingleAsync(
+            g => g.CampaignId == campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        grant.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
+    }
+
+    [HumansFact]
     public async Task SendWaveAsync_DuplicatePrevention_ExcludesAlreadyGranted()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["CODE-1", "CODE-2", "CODE-3"]);
