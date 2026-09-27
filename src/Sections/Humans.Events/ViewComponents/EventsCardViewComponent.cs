@@ -27,6 +27,7 @@ public sealed class EventsCardViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid? campId = null, Guid? userId = null)
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
             // Mirror EventsFeatureFilter: when the Event Guide is off, the Events
@@ -43,18 +44,18 @@ public sealed class EventsCardViewComponent(
             if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId))
                 return Content(string.Empty);
 
-            var approved = await events.GetApprovedEventsAsync(campId, null, null, null, []);
+            var approved = await events.GetApprovedEventsAsync(campId, null, null, null, [], ct);
             if (userId is not null)
                 approved = approved.Where(e => e.SubmitterUserId == userId && e.CampId is null).ToList();
             if (approved.Count == 0)
                 return Content(string.Empty);
 
-            var settings = await events.GetGuideSettingsAsync();
+            var settings = await events.GetGuideSettingsAsync(ct);
             var tz = settings?.TimeZoneId != null
                 ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(settings.TimeZoneId)
                 : null;
 
-            var favouriteIds = await events.GetFavouriteEventIdsAsync(viewerId);
+            var favouriteIds = await events.GetFavouriteEventIdsAsync(viewerId, ct);
 
             var rows = approved
                 .OrderBy(e => e.StartAt)
@@ -78,6 +79,10 @@ public sealed class EventsCardViewComponent(
             {
                 Rows = rows
             });
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

@@ -23,12 +23,13 @@ public class EventsCardViewComponentTests
 {
     private readonly IEventServiceRead _events = Substitute.For<IEventServiceRead>();
 
-    private EventsCardViewComponent BuildSut(Guid? viewerId, bool eventsEnabled = true)
+    private EventsCardViewComponent BuildSut(
+        Guid? viewerId, bool eventsEnabled = true, CancellationToken requestAborted = default)
     {
         var identity = viewerId is null
             ? new ClaimsIdentity()
             : new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, viewerId.Value.ToString())], "Test");
-        var http = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
+        var http = new DefaultHttpContext { User = new ClaimsPrincipal(identity), RequestAborted = requestAborted };
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal) { ["Features:Events"] = eventsEnabled ? "true" : "false" })
             .Build();
@@ -127,6 +128,22 @@ public class EventsCardViewComponentTests
         await _events.DidNotReceive().GetApprovedEventsAsync(
             Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<string?>(),
             Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RequestAborted_PropagatesCancellation()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _events.GetApprovedEventsAsync(Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<string?>(),
+                Arg.Any<IReadOnlyList<string>>(), aborted.Token)
+            .Returns(Task.FromException<IReadOnlyList<ApprovedEventView>>(
+                new OperationCanceledException(aborted.Token)));
+
+        var act = () => BuildSut(Guid.NewGuid(), requestAborted: aborted.Token)
+            .InvokeAsync(campId: Guid.NewGuid());
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]
