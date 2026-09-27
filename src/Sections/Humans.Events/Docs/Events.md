@@ -167,7 +167,7 @@ Unique constraint on (UserId, GuideEventId, DayOffset) with `NULLS NOT DISTINCT`
 |-------|--------------|
 | Any active member | Browse approved events; submit individual events during open window; manage own favourites and category preferences; view own submissions |
 | Camp Lead or Workshop Lead | Submit and manage barrio events via `EventsController` (`/Events/Barrio/{slug}/*`), shown in their **My Submissions** page alongside personal submissions; authority resolved per request by `HumansCampControllerBase.ResolveCampEventManagementAsync` (Camps-owned; `CampOperationRequirement.SubmitEvent` over `CampInfo.IsEventManager`). Workshop Leads do NOT gain general camp-management authority. Can bulk-upload events via CSV at `/Events/Barrio/{slug}/BulkUpload` (US-26.10). |
-| EventsAdmin, Admin | All active member capabilities. Additionally: view moderation queue, approve/reject/request-resubmit events, **edit any event's fields in place from the moderation queue (any status; status preserved, no re-queue)**, view dashboard, download CSV export, print guide; manage guide settings (`/Settings#event-guide`), event categories, shared venues |
+| EventsAdmin, Admin | All active member capabilities. Additionally: view moderation queue, approve/reject/request-resubmit events, **edit any event's fields in place from the moderation queue (any status; status preserved, no re-queue)**, view dashboard, download CSV export, print guide; manage guide settings (`/Settings#event-guide`), event categories, shared venues. The guide-settings tab propagates the browser abort token through its settings reads. |
 
 ## Invariants
 

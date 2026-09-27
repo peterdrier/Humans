@@ -4,6 +4,8 @@ using Humans.Events.Models;
 using Humans.Events.Services;
 using Humans.Events.ViewComponents;
 using Humans.Settings.Contracts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using NodaTime;
 using NSubstitute;
@@ -17,6 +19,29 @@ namespace Humans.Events.Tests.ViewComponents;
 public sealed class EventGuideSettingsTabViewComponentTests
 {
     private readonly IEventService _guide = Substitute.For<IEventService>();
+
+    [HumansFact]
+    public async Task InvokeAsync_RequestAborted_PropagatesCancellation()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _guide.GetGuideSettingsAsync(aborted.Token).Returns(Task.FromException<EventGuideSettingsView?>(
+            new OperationCanceledException(aborted.Token)));
+        var sut = new EventGuideSettingsTabViewComponent(_guide)
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext
+                {
+                    HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token }
+                }
+            }
+        };
+
+        var act = () => sut.InvokeAsync();
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
 
     [HumansFact]
     public async Task InvokeAsync_NoGuideSettingsYet_ReturnsAnEmptyFormDefaultingMaxPrintSlots()
