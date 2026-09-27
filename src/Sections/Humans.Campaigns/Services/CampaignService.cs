@@ -660,18 +660,9 @@ internal sealed class CampaignService(
 
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
         Campaign campaign, UserInfo user, string recipientEmail, string code, Guid grantId)
-    {
-        return new CampaignCodeEmailRequest(
-            UserId: user.Id,
-            CampaignGrantId: grantId,
-            CampaignId: campaign.Id,
-            RecipientEmail: recipientEmail,
-            RecipientName: user.BurnerName,
-            Subject: campaign.EmailSubject,
-            MarkdownBody: campaign.EmailBodyTemplate,
-            Code: code,
-            ReplyTo: campaign.ReplyToAddress);
-    }
+        => BuildCampaignCodeRequest(
+            campaign.EmailSubject, campaign.EmailBodyTemplate, campaign.ReplyToAddress,
+            user, recipientEmail, code, grantId, campaign.Id);
 
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
         string emailSubject, string emailBody, string? replyToAddress,
