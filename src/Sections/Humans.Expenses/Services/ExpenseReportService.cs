@@ -587,7 +587,7 @@ internal sealed class ExpenseReportService(
         "application/pdf", "image/jpeg", "image/jpg", "image/png", "image/heic"
     };
 
-    private static void ValidateAttachmentUpload(
+    private static string ValidateAttachmentUpload(
         string originalFileName, string contentType, Stream content)
     {
         if (content is null || content.Length == 0)
@@ -598,6 +598,8 @@ internal sealed class ExpenseReportService(
         var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
         if (!AllowedContentTypes.Contains(contentType) || !AllowedExtensions.Contains(extension))
             throw new ExpenseValidationException("Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.");
+
+        return extension;
     }
 
     internal async Task<Guid> AttachFileToLineAsync(
@@ -605,8 +607,7 @@ internal sealed class ExpenseReportService(
         Guid lineId, string originalFileName, string contentType,
         Stream content, CancellationToken ct = default)
     {
-        ValidateAttachmentUpload(originalFileName, contentType, content);
-        var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
+        var extension = ValidateAttachmentUpload(originalFileName, contentType, content);
 
         var report = await RequireEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
 
