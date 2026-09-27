@@ -177,7 +177,7 @@ Nobodies Collective uses Google Workspace for organizational email (@nobodies.te
 
 ## Password Generation
 
-`PasswordGenerator.GenerateTemporary()` produces a 16-character random password from:
+`PasswordGenerator.GenerateTemporary()` uses a cryptographically secure random source to produce a 16-character password from:
 ```
 ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$
 ```
