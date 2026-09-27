@@ -15,6 +15,32 @@ namespace Humans.Users.Tests.ViewComponents;
 public class CommunicationPreferencesPanelViewComponentTests
 {
     [HumansFact]
+    public async Task RequestAborted_PropagatesCancellation()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        var commPrefs = Substitute.For<ICommunicationPreferenceService>();
+        commPrefs.GetPreferencesReadOnlyAsync(Arg.Any<Guid>(), aborted.Token)
+            .Returns(Task.FromException<IReadOnlyList<CommunicationPreferenceSnapshot>>(
+                new OperationCanceledException(aborted.Token)));
+        var sut = new CommunicationPreferencesPanelViewComponent(
+            commPrefs, Substitute.For<ITicketServiceRead>(), new FakeClock(Instant.FromUtc(2026, 5, 20, 0, 0)))
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext
+                {
+                    HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token }
+                }
+            }
+        };
+
+        var act = () => sut.InvokeAsync(Guid.NewGuid());
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task MissingMarketingRow_RendersUnchecked()
     {
         // Regression: a deleted/never-set Marketing pref (null) must render as
