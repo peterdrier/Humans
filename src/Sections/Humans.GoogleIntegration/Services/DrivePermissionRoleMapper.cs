@@ -1,4 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
+using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Services;
 
@@ -14,4 +15,9 @@ internal static class DrivePermissionRoleMapper
         "organizer" => DrivePermissionLevel.Manager,
         _ => null
     };
+
+    internal static bool IsAnyUserPermission(DrivePermission permission) =>
+        string.Equals(permission.Type, "user", StringComparison.OrdinalIgnoreCase)
+        && !string.IsNullOrEmpty(permission.EmailAddress)
+        && !permission.EmailAddress.EndsWith(".iam.gserviceaccount.com", StringComparison.OrdinalIgnoreCase);
 }

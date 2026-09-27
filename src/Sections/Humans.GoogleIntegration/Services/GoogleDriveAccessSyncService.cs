@@ -209,7 +209,7 @@ internal sealed class GoogleDriveAccessSyncService(
 
         foreach (var perm in permissions)
         {
-            if (!IsAnyUserPermission(perm))
+            if (!DrivePermissionRoleMapper.IsAnyUserPermission(perm))
                 continue;
 
             var email = EmailNormalization.CanonicalizeGmail(perm.EmailAddress!);
@@ -434,18 +434,9 @@ internal sealed class GoogleDriveAccessSyncService(
         ErrorMessage = error
     };
 
-    private static bool IsAnyUserPermission(DrivePermission perm)
-    {
-        if (!string.Equals(perm.Type, "user", StringComparison.OrdinalIgnoreCase))
-            return false;
-        if (string.IsNullOrEmpty(perm.EmailAddress))
-            return false;
-        return !perm.EmailAddress.EndsWith(".iam.gserviceaccount.com", StringComparison.OrdinalIgnoreCase);
-    }
-
     private static bool IsDirectManagedPermission(DrivePermission perm)
     {
-        if (!IsAnyUserPermission(perm))
+        if (!DrivePermissionRoleMapper.IsAnyUserPermission(perm))
             return false;
         if (string.Equals(perm.Role, "owner", StringComparison.OrdinalIgnoreCase))
             return false;

@@ -773,7 +773,7 @@ internal sealed class GoogleWorkspaceSyncService(
             // expected member whose stored email carries a "+tag".
             var email = CanonicalizeDriveEmail(permission.EmailAddress);
 
-            if (IsAnyUserPermission(permission))
+            if (DrivePermissionRoleMapper.IsAnyUserPermission(permission))
             {
                 snapshot.AllEmails.Add(email);
                 if (!string.IsNullOrEmpty(permission.Role))
@@ -1869,17 +1869,6 @@ internal sealed class GoogleWorkspaceSyncService(
                 .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                 .Select(e => e.Email)
                 .FirstOrDefault();
-    }
-
-    private static bool IsAnyUserPermission(DrivePermission perm)
-    {
-        if (!string.Equals(perm.Type, "user", StringComparison.OrdinalIgnoreCase))
-            return false;
-        if (string.IsNullOrEmpty(perm.EmailAddress))
-            return false;
-        if (perm.EmailAddress.EndsWith(".iam.gserviceaccount.com", StringComparison.OrdinalIgnoreCase))
-            return false;
-        return true;
     }
 
     private static bool IsDirectManagedPermission(DrivePermission perm)
