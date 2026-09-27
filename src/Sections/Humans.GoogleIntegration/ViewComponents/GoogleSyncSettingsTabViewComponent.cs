@@ -17,7 +17,8 @@ internal sealed class GoogleSyncSettingsTabViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        var settings = (await syncSettingsService.GetAllAsync())
+        var ct = ViewComponentContext.ViewContext?.HttpContext?.RequestAborted ?? default;
+        var settings = (await syncSettingsService.GetAllAsync(ct))
             // Sort by the enum's string name to match the prior EF ordering
             // (ServiceType is stored via .HasConversion<string>()).
             .OrderBy(s => s.ServiceType.ToString(), StringComparer.Ordinal)
@@ -31,7 +32,7 @@ internal sealed class GoogleSyncSettingsTabViewComponent(
             .Distinct()
             .ToList();
         var updatedByUsers = updatedByUserIds.Count > 0
-            ? await userService.GetUserInfosAsync(updatedByUserIds)
+            ? await userService.GetUserInfosAsync(updatedByUserIds, ct)
             : new Dictionary<Guid, UserInfo>();
 
         var viewModel = new SyncSettingsViewModel
