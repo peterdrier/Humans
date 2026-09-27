@@ -48,4 +48,18 @@ public class CityPlanningArchitectureTests
             .GetValue(limit)
             .Should().Be(11L * 1024 * 1024);
     }
+
+    [HumansFact]
+    public void PlacementImageUpdate_CarriesTheServiceFileLimitPlusMultipartOverhead()
+    {
+        var apiController = typeof(Section).Assembly.GetType("Humans.CityPlanning.Controllers.CityPlanningApiController")!;
+        var limit = apiController.GetMethod("UpdateContainerPlacementNotes")!
+            .GetCustomAttribute<RequestSizeLimitAttribute>();
+
+        limit.Should().NotBeNull();
+        typeof(RequestSizeLimitAttribute)
+            .GetField("_bytes", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(limit)
+            .Should().Be(11L * 1024 * 1024);
+    }
 }

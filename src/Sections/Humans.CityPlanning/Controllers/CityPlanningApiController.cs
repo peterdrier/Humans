@@ -279,6 +279,7 @@ internal sealed class CityPlanningApiController(
     /// <summary>Update placement notes and/or sketch image for a placed container.</summary>
     [HttpPut("containers/{id:guid}/placement/{year:int}/notes")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(11 * 1024 * 1024)] // 10 MB placement image plus multipart overhead; service enforces the image cap.
     public async Task<IActionResult> UpdateContainerPlacementNotes(
         Guid id,
         int year,
