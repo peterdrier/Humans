@@ -2,20 +2,21 @@
 
 **Date:** 2026-06-04
 **Section:** Store
-**Status:** Design approved (Peter), pre-implementation
+**Status:** Implemented
 
 ## Problem
 
 Store payments are recorded only by the Stripe webhook (`POST /Store/StripeWebhook` →
 `HandleStripeCheckoutWebhookEventAsync` → `RecordStripePaymentAsync` → `Payment` row).
 When `STRIPE_STORE_WEBHOOK_SECRET` is unset the endpoint returns 503 to every Stripe
-delivery (`StoreStripeWebhookController.cs:24-28`), so a paid Checkout Session is never
-recorded — the order balance stays at the full amount even though Stripe collected the
-money. This happened in production: a paid €1800 camp order shows unpaid, and because the
-webhook was misconfigured there is **no event left to redeliver**.
+delivery (`StoreStripeWebhookController.Receive`'s webhook-configured check), so a paid
+Checkout Session is never recorded — the order balance stays at the full amount even
+though Stripe collected the money. This happened in production: a paid €1800 camp order
+shows unpaid, and because the webhook was misconfigured there is **no event left to
+redeliver**.
 
-There is no path to recover such a payment today: `RecordManualPaymentAsync` throws
-`NotSupportedException("Phase 5")`, and nothing polls Stripe. The webhook is the sole writer.
+There is no path to recover such a payment today: no manual (non-Stripe) payment entry
+exists, and nothing polls Stripe. The webhook is the sole writer.
 
 ## Goal
 
@@ -32,8 +33,7 @@ Reconciliation is mandatory infrastructure, not a one-off for the current €180
 
 - **Refunds / chargebacks / payouts** — stay 100% dashboard-manual per the Stripe-keys
   convention (`StripeSettings`). Out of scope.
-- **Non-Stripe (cash / bank transfer) manual entry** — that is the separate Phase-5
-  `RecordManualPaymentAsync` concern; not built here.
+- **Non-Stripe (cash / bank transfer) manual entry** — a separate concern; not built here.
 - **Automatic background sweep** — manual admin trigger only (re-runnable safely). A
   scheduled job is a trivial later add, deliberately deferred (YAGNI).
 - **Amount-mismatch auto-correction** — mismatches are surfaced for humans, never auto-fixed.
@@ -41,7 +41,7 @@ Reconciliation is mandatory infrastructure, not a one-off for the current €180
 ## The join key
 
 Every Checkout Session we create stamps `metadata["humans_store_order_id"]`
-(`StripeService.cs:108-111`). That metadata is returned by the Stripe API even though the
+(`StripeService.CreateCheckoutSessionAsync`). That metadata is returned by the Stripe API even though the
 dashboard's description column ("2026 - Yes") doesn't show it. So the **server** matches a
 Stripe payment to its order reliably; a human never has to eyeball or paste a session id.
 

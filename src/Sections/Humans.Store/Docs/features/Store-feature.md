@@ -3,14 +3,14 @@
   src/Sections/Humans.Stripe/**
 -->
 <!-- freshness:flag-on-change
-  Store catalog editing, order lifecycle, OrderableUntil gate, Stripe Checkout flow, webhook ingestion, invoice issuance idempotency, treasury sync matching, and resource-based authorization — review when Store services/entities/controllers/auth handlers change.
+  Store catalog editing, order lifecycle, OrderableUntil gate, Stripe Checkout flow, webhook ingestion, invoice issuance idempotency, and resource-based authorization — review when Store services/entities/controllers/auth handlers change.
 -->
 
 # 30 — Store
 
 ## Business Context
 
-The Store section lets Camp Leads order infrastructure-as-a-service items from the collective for the year (containers, electrical hookups, generator hours, etc.) and pay against those orders incrementally as the camp budget firms up. Historically every camp's purchase ran through ad-hoc spreadsheets, WhatsApp threads, and a single Treasurer who had to chase Camp Leads for line-item confirmation and chase Holded into emitting one consolidated factura per camp at year-end. The Store section replaces that workflow with: a section-owned product catalog (priced once per year by `StoreAdmin`), a per-camp running tab of order lines snapshotted at add-time, multi-method payments (Stripe Checkout for cards, manual entries for bank transfer / cash) accumulating against the order, and a single Holded-issued factura emitted by `FinanceAdmin` once the camp finishes and all reconciliation is done.
+The Store section lets Camp Leads order infrastructure-as-a-service items from the collective for the year (containers, electrical hookups, generator hours, etc.) and pay against those orders incrementally as the camp budget firms up. It provides: a section-owned product catalog (priced once per year by `StoreAdmin`), a per-camp running tab of order lines snapshotted at add-time, payments (Stripe Checkout for cards; bank transfer / cash entry is not yet built) accumulating against the order, and a single Holded-issued factura emitted by `FinanceAdmin` once the camp finishes and all reconciliation is done.
 
 This is fundamentally **camp data** with provenance recording (per `memory/architecture/provenance-fks-not-user-scoped.md`): order lines, payments, and invoices belong to the `CampSeason`, not to the lead who clicked the button. The `AddedByUserId` / `RecordedByUserId` / `IssuedByUserId` columns are audit/provenance only — deleting a user does not delete the order data.
 
@@ -37,7 +37,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 
 **Acceptance Criteria:**
 - `/Store` shows the lead's camp seasons for the active year (resolved via `ICampServiceRead.GetCampsForYearAsync`, scanning each camp's `GetLeadSeasonIdForYear`) with a list of orders for each.
-- "Create order" creates a new `Order` in `Open` state attached to the camp season; `CreateOrderAsync` rejects a second order for a season that already has one — any one, including a legacy row still at `Year = 0` — so a camp season carries at most one. (The order `Label` was removed from the UI in #816 — the column is retained but unused.)
+- "Create order" creates a new `Order` in `Open` state attached to the camp season; `CreateOrderAsync` rejects a second order for a season that already has one — any one, including a legacy row still at `Year = 0` — so a camp season carries at most one.
 - Order detail at `/Store/Order/{id}` shows the line list, payment list, running balance, and counterparty fields.
 - Add-line form posts to `/Store/Order/{id}/AddLine` with a product id and quantity. The line snapshots `UnitPriceSnapshot`, `VatRateSnapshot`, and `DepositAmountSnapshot` from the product at add-time. **An `Open` order is a live running tab (#816):** it reprices its lines to the current catalog price, so catalog edits DO propagate to Open orders; the snapshot is only frozen into the effective price once the order is `InvoiceIssued` (`Store.md`).
 - `AddLineAsync` rejects with a clear message if (a) the order is not `Open` or (b) the product is deactivated. The `OrderableUntil` deadline is **not** enforced by the service — it is enforced at the **authorization layer**: `OrderAuthorizationHandler` denies non-admin line edits once today's event-zone date has passed the product's deadline (using the `OrderLineContext` resource). Store admins are exempt and may add/remove lines on any Open order regardless of deadline. The service only annotates the audit entry with `(past order deadline …)` when a line is written past the deadline.
@@ -88,9 +88,9 @@ The section invariant doc is [`Store.md`](../Store.md).
 
 **Acceptance Criteria:**
 - `TreasurySyncState` is a singleton cursor row tracking `LastSyncAt`, `SyncStatus` (`Idle` / `Running` / `Failed`), and `LastError`.
-- The sync job (paused — Phase 7) polls Holded for new treasury entries since `LastSyncAt`, attempts to match them to outstanding `BankTransfer` `Payment` rows by amount + counterparty, and stores match results.
-- Unmatched entries are flagged for Treasurer attention.
-- *Note: implementation of US-30.6 is paused alongside US-30.5.*
+- The sync job would poll Holded for new treasury entries since `LastSyncAt`, attempt to match them to outstanding `BankTransfer` `Payment` rows by amount + counterparty, and store match results.
+- Unmatched entries would be flagged for Treasurer attention.
+- *Note: US-30.6 is not built — no sync job exists; `TreasurySyncState` ships with no reader or writer (`Docs/debt.yml` STORE-2).*
 
 ### US-30.7: Admin Aggregate Summary (StoreAdmin / FinanceAdmin / Admin)
 
@@ -162,10 +162,11 @@ Resource-based via `OrderAuthorizationHandler` keyed on `OrderOperationRequireme
 | Dependency | Used for |
 |---|---|
 | `ICampServiceRead` | resolve current user's lead camp season for the active year, fetch season name |
+| `ITeamServiceRead` | department (team order) lookups: team name, top-level check, coordinator check |
 | `ISettingsService` | derive the active event year + time zone for OrderableUntil deadline gate |
 | `IAuditLogService` | audit every write |
 | `IStripeService` | Checkout Session creation; webhook signature verification |
-| `IHoldedClient` | factura issuance + treasury sync (Phase 5/7, paused) |
+| `IHoldedClient` | factura issuance (treasury sync is not built) |
 
 ## Configuration
 
