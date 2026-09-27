@@ -52,7 +52,7 @@ Run suites matching `$ARGUMENTS` (default: all). Report PASS/FAIL after each ste
 1. `/Profile` → name, contact fields, team memberships visible
 2. `/Profile/Me/Edit` → form loads with current values; fields present: Burner Name, First/Last Name, Pronouns, City, Country, Bio, Birthday (month/day); contact fields section with "Add" button; volunteer history section
 3. Make a minor edit (e.g., Bio), submit, verify change appears, then undo it
-4. `/Profile/Emails` → email addresses with visibility controls
+4. `/Profile/Me/Emails` → email addresses with visibility controls
 
 ---
 
@@ -94,7 +94,7 @@ Requires Admin or Board role.
 
 ### gdpr
 
-1. `/Profile/Privacy` → page loads
+1. `/Profile/Me/Privacy` → page loads
 2. "Export My Data" button exists; click it → JSON file downloads with profile data
 3. "Request Account Deletion" button exists — do NOT click it
 
