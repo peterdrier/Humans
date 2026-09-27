@@ -137,7 +137,7 @@ public class CalendarServiceValidationTests
     public async Task UpdateEventWithResultAsync_returns_validation_member_for_unknown_timezone()
     {
         var service = BuildService(Substitute.For<ICalendarRepository>());
-        var dto = new UpdateCalendarEventDto(
+        var dto = new CreateCalendarEventDto(
             "Planning",
             Description: null,
             Location: null,
@@ -305,7 +305,7 @@ public class CalendarServiceValidationTests
             .Returns(Task.FromException(new InvalidOperationException("audit log connection lost")));
 
         var service = BuildService(repo, audit);
-        var dto = new UpdateCalendarEventDto(
+        var dto = new CreateCalendarEventDto(
             "Audit-fails-after-update", null, null, null,
             OwningTeamId: Guid.NewGuid(),
             StartUtc: Instant.FromUtc(2026, 5, 15, 17, 0),

@@ -3,9 +3,6 @@
 version: 1
 next_id: 7
 inbox:
-  - added: 2026-09-19
-    id: CAL-3
-    what: "CreateCalendarEventDto and UpdateCalendarEventDto are identical records, member for member. A dedup needs a compiler to gate it (finding 16, /section-doctor on Calendar 2026-09-19)."
     review: panel
   - added: 2026-09-19
     id: CAL-4

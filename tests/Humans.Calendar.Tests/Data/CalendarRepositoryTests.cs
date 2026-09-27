@@ -135,7 +135,7 @@ public sealed class CalendarRepositoryTests : IDisposable
         await _repo.UpsertExceptionAsync(ev.Id, ev.StartUtc, Guid.NewGuid(), ev.StartUtc.Value,
             x => x.IsCancelled = true, Xunit.TestContext.Current.CancellationToken);
         var service = CreateService();
-        var result = await service.UpdateEventWithResultAsync(ev.Id, new UpdateCalendarEventDto(
+        var result = await service.UpdateEventWithResultAsync(ev.Id, new CreateCalendarEventDto(
             "Edited", null, null, null, ev.OwningTeamId, null, null, true, "FREQ=DAILY", null,
             day, day.PlusDays(1)), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeTrue(result.ErrorMessage);
@@ -143,7 +143,7 @@ public sealed class CalendarRepositoryTests : IDisposable
         stored.StartUtc.Should().BeNull();
         stored.RecurrenceTimezone.Should().BeNull();
         stored.Exceptions.Should().ContainSingle().Subject.OriginalOccurrenceDate.Should().Be(day);
-        var changeType = await service.UpdateEventWithResultAsync(ev.Id, new UpdateCalendarEventDto(
+        var changeType = await service.UpdateEventWithResultAsync(ev.Id, new CreateCalendarEventDto(
             "Timed", null, null, null, ev.OwningTeamId, ev.StartUtc, ev.EndUtc, false, "FREQ=DAILY", zone.Id),
             Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         changeType.Succeeded.Should().BeFalse();

@@ -259,7 +259,7 @@ internal sealed class CalendarService(
         return last is null ? null : LocalDate.FromDateTime(last.Period.StartTime.Value).PlusDays(days);
     }
 
-    private async Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
+    private async Task<CalendarEvent> UpdateEventAsync(Guid id, CreateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
     {
         ValidateRecurrenceRule(dto.RecurrenceRule);
         ValidateTimezone(dto.RecurrenceTimezone);
@@ -332,7 +332,7 @@ internal sealed class CalendarService(
 
     public async Task<CalendarEventMutationResult> UpdateEventWithResultAsync(
         Guid id,
-        UpdateCalendarEventDto dto,
+        CreateCalendarEventDto dto,
         Guid updatedByUserId,
         CancellationToken ct = default)
     {
