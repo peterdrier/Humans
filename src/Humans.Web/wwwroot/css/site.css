@@ -503,6 +503,9 @@ h5, .h5 { font-size: 1.1rem; }
     background-color: var(--h-gold);
     border-color: var(--h-gold);
     color: var(--h-aged-ink);
+    --bs-btn-disabled-bg: var(--h-gold);
+    --bs-btn-disabled-border-color: var(--h-gold);
+    --bs-btn-disabled-color: var(--h-aged-ink);
 }
 
 .btn-primary:hover,
@@ -517,6 +520,9 @@ h5, .h5 { font-size: 1.1rem; }
 .btn-outline-primary {
     color: var(--h-gold-dark);
     border-color: var(--h-gold);
+    --bs-btn-disabled-bg: transparent;
+    --bs-btn-disabled-border-color: var(--h-gold);
+    --bs-btn-disabled-color: var(--h-gold-dark);
 }
 
 .btn-outline-primary:hover,
@@ -531,6 +537,9 @@ h5, .h5 { font-size: 1.1rem; }
     background-color: transparent;
     border-color: var(--h-border);
     color: var(--h-sepia);
+    --bs-btn-disabled-bg: transparent;
+    --bs-btn-disabled-border-color: var(--h-border);
+    --bs-btn-disabled-color: var(--h-sepia);
 }
 
 /* Filled: filter toggles pair it with .btn-outline-secondary to mark the selected value. */
@@ -538,6 +547,9 @@ h5, .h5 { font-size: 1.1rem; }
     background-color: var(--h-parchment-dark);
     border-color: var(--h-sepia);
     color: var(--h-aged-ink);
+    --bs-btn-disabled-bg: var(--h-parchment-dark);
+    --bs-btn-disabled-border-color: var(--h-sepia);
+    --bs-btn-disabled-color: var(--h-aged-ink);
 }
 
 .btn-outline-secondary:hover,
@@ -553,6 +565,9 @@ h5, .h5 { font-size: 1.1rem; }
     background-color: var(--h-amber-light);
     border-color: var(--h-amber-light);
     color: var(--h-aged-ink);
+    --bs-btn-disabled-bg: var(--h-amber-light);
+    --bs-btn-disabled-border-color: var(--h-amber-light);
+    --bs-btn-disabled-color: var(--h-aged-ink);
 }
 
 .btn-warning:hover {
@@ -566,6 +581,9 @@ h5, .h5 { font-size: 1.1rem; }
 .btn-outline-warning {
     border-color: var(--h-amber);
     color: var(--h-alert-warning-text);
+    --bs-btn-disabled-bg: transparent;
+    --bs-btn-disabled-border-color: var(--h-amber);
+    --bs-btn-disabled-color: var(--h-alert-warning-text);
 }
 
 .btn-outline-warning:hover {
@@ -586,6 +604,9 @@ h5, .h5 { font-size: 1.1rem; }
     background-color: var(--h-rust);
     border-color: var(--h-rust);
     color: #fff;
+    --bs-btn-disabled-bg: var(--h-rust);
+    --bs-btn-disabled-border-color: var(--h-rust);
+    --bs-btn-disabled-color: #fff;
 }
 
 .btn-danger:hover {
@@ -597,6 +618,9 @@ h5, .h5 { font-size: 1.1rem; }
 .btn-outline-danger {
     color: var(--h-rust);
     border-color: var(--h-rust);
+    --bs-btn-disabled-bg: transparent;
+    --bs-btn-disabled-border-color: var(--h-rust);
+    --bs-btn-disabled-color: var(--h-rust);
 }
 
 .btn-outline-danger:hover,
@@ -612,6 +636,9 @@ h5, .h5 { font-size: 1.1rem; }
     background-color: var(--h-sage-dark);
     border-color: var(--h-sage-dark);
     color: #fff;
+    --bs-btn-disabled-bg: var(--h-sage-dark);
+    --bs-btn-disabled-border-color: var(--h-sage-dark);
+    --bs-btn-disabled-color: #fff;
 }
 
 .btn-success:hover {
@@ -623,6 +650,9 @@ h5, .h5 { font-size: 1.1rem; }
 .btn-outline-success {
     color: var(--h-sage-dark);
     border-color: var(--h-sage-dark);
+    --bs-btn-disabled-bg: transparent;
+    --bs-btn-disabled-border-color: var(--h-sage-dark);
+    --bs-btn-disabled-color: var(--h-sage-dark);
 }
 
 .btn-outline-success:hover,
@@ -647,6 +677,9 @@ h5, .h5 { font-size: 1.1rem; }
     background-color: var(--h-aged-ink);
     border-color: var(--h-aged-ink);
     color: var(--h-parchment);
+    --bs-btn-disabled-bg: var(--h-aged-ink);
+    --bs-btn-disabled-border-color: var(--h-aged-ink);
+    --bs-btn-disabled-color: var(--h-parchment);
 }
 
 .btn-dark:hover {
@@ -659,6 +692,9 @@ h5, .h5 { font-size: 1.1rem; }
     background-color: var(--h-vellum);
     border-color: var(--h-border);
     color: var(--h-aged-ink);
+    --bs-btn-disabled-bg: var(--h-vellum);
+    --bs-btn-disabled-border-color: var(--h-border);
+    --bs-btn-disabled-color: var(--h-aged-ink);
 }
 
 .btn-light:hover {
@@ -691,6 +727,9 @@ h5, .h5 { font-size: 1.1rem; }
     color: var(--h-text-on-dark);
     border-radius: var(--h-radius);
     font-weight: 700;
+    --bs-btn-disabled-bg: var(--h-blue-muted);
+    --bs-btn-disabled-border-color: var(--h-blue-muted);
+    --bs-btn-disabled-color: var(--h-text-on-dark);
 }
 
 .btn-info:hover {

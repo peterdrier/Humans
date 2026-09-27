@@ -560,7 +560,7 @@ function showToast(message, type) {
         // clamp it back on screen now that it does, for a toggle near the edge.
         dropdown.addEventListener('shown.bs.dropdown', function () {
             var maxLeft = Math.max(8, window.innerWidth - menu.offsetWidth - 8);
-            menu.style.left = Math.min(parseFloat(menu.style.left), maxLeft) + 'px';
+            menu.style.left = Math.max(8, Math.min(parseFloat(menu.style.left), maxLeft)) + 'px';
         });
 
         dropdown.addEventListener('hidden.bs.dropdown', function () {
