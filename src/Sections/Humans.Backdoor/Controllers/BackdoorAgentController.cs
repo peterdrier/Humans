@@ -1,5 +1,6 @@
 using Humans.Agent.Contracts;
 using Humans.Backdoor.Filters;
+using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,7 +24,7 @@ internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserS
         [FromQuery] int skip = 0,
         CancellationToken ct = default)
     {
-        take = Math.Clamp(take, 1, 200);
+        take = take.ClampPageSize(max: 200);
         if (skip < 0) skip = 0;
 
         var rows = await agent.ListAllConversationsForAdminWithMessagesAsync(

@@ -1,4 +1,5 @@
 using Humans.Backdoor.Filters;
+using Humans.Base.Extensions;
 using Humans.Base.Logging;
 using Microsoft.AspNetCore.Mvc;
 using Serilog.Events;
@@ -18,7 +19,7 @@ internal sealed class BackdoorLogsController(InMemoryLogSink logSink) : Controll
         [FromQuery] int count = 50,
         [FromQuery] string? minLevel = null)
     {
-        count = Math.Clamp(count, 1, 1000);
+        count = count.ClampPageSize(max: 1000);
 
         LogEventLevel? minLogLevel = null;
         if (minLevel is not null)
