@@ -779,6 +779,10 @@ internal sealed class SurveyService(
                 await emailService.SendAsync(msg, ct);
                 emailsQueued++;
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex,
@@ -874,6 +878,10 @@ internal sealed class SurveyService(
                 await emailService.SendAsync(msg, ct);
                 await repo.SetReminderSentAsync(inv.Id, now, ct);
                 reminded++;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
