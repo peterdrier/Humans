@@ -80,6 +80,10 @@ internal sealed class ShiftsGalleryViewComponent(
                 UserSignupShiftIds = userSignupShiftIds,
             });
         }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogWarning("Failed to resolve shifts samples for widget gallery: {Reason}", ex.Message);
