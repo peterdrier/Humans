@@ -18,6 +18,7 @@ internal sealed class OnboardingProgressBannerViewComponent(
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var hidden = new OnboardingProgressBannerViewModel(Show: false);
+        var ct = HttpContext.RequestAborted;
 
         if (User?.Identity?.IsAuthenticated != true)
             return View(hidden);
@@ -40,7 +41,11 @@ internal sealed class OnboardingProgressBannerViewComponent(
         OnboardingWidgetStep step;
         try
         {
-            step = await state.GetCurrentStepAsync(userId);
+            step = await state.GetCurrentStepAsync(userId, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
