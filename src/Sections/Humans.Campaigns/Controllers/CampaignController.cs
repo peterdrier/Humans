@@ -138,7 +138,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
         }
 
         using var reader = new StreamReader(file.OpenReadStream());
-        var content = await reader.ReadToEndAsync();
+        var content = await reader.ReadToEndAsync(HttpContext.RequestAborted);
         var codes = content
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(line => line.Trim())
