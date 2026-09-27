@@ -3,12 +3,6 @@
 version: 1
 next_id: 7
 inbox:
-  - added: 2026-09-14
-    id: CAL-1
-    what: "Recurring all-day events drift across a DST transition and render a spurious extra day from then on: CalendarOccurrenceExpander builds each occurrence from an elapsed duration where it needs local dates. Diagnosed, not fixed — the Calendar run hit its review-round ceiling (finding 34, /section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Issues 2026-09-14)."
-    review: panel
-    status: needs-detail
-    blocked_on: "A failing test at a named DST boundary date; code inspection casts doubt on the drift but does not confirm it."
   - added: 2026-09-19
     id: CAL-3
     what: "CreateCalendarEventDto and UpdateCalendarEventDto are identical records, member for member. A dedup needs a compiler to gate it (finding 16, /section-doctor on Calendar 2026-09-19)."
