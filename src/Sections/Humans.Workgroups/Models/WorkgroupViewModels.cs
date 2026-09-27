@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
@@ -60,8 +61,10 @@ internal sealed class WorkgroupBudgetFormViewModel : IValidatableObject
 {
     public bool HasBudget { get; set; }
 
-    [Range(0, 99_999_999)]
-    public decimal? Amount { get; set; }
+    /// <summary>Raw posted text, parsed invariantly by <see cref="ParsedAmount"/> — not model-bound
+    /// as a decimal, which uses the request culture: <c>&lt;input type="number"&gt;</c> always posts
+    /// "12.34", and a comma-decimal culture would read that as 1234 (as FinanceController does).</summary>
+    public string? Amount { get; set; }
 
     /// <summary>"create" (default) or "link".</summary>
     public string AccountMode { get; set; } = "create";
@@ -70,8 +73,11 @@ internal sealed class WorkgroupBudgetFormViewModel : IValidatableObject
 
     private bool IsLink => string.Equals(AccountMode, "link", StringComparison.Ordinal);
 
+    public decimal? ParsedAmount =>
+        decimal.TryParse(Amount, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount) ? amount : null;
+
     public WorkgroupBudgetSave ToSave() => new(
-        HasBudget ? Amount : null,
+        HasBudget ? ParsedAmount : null,
         IsLink ? ExistingAccountNum : null);
 
     // A ticked box with no amount would clear the budget, and "link" with no account would
@@ -79,8 +85,10 @@ internal sealed class WorkgroupBudgetFormViewModel : IValidatableObject
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (!HasBudget) yield break;
-        if (Amount is null)
+        if (string.IsNullOrWhiteSpace(Amount))
             yield return new ValidationResult("Enter the budget amount.", [nameof(Amount)]);
+        else if (ParsedAmount is not (>= 0m and <= 99_999_999m))
+            yield return new ValidationResult("Enter an amount between 0 and 99,999,999.", [nameof(Amount)]);
         if (IsLink && ExistingAccountNum is null)
             yield return new ValidationResult("Choose the Holded account to link.", [nameof(ExistingAccountNum)]);
     }

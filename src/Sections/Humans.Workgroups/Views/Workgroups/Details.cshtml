@@ -119,7 +119,7 @@
                 </div>
                 <div class="mb-3" style="max-width: 240px;">
                     <label class="form-label" for="budget-amount">Amount (EUR)</label>
-                    <input class="form-control" type="number" step="0.01" min="0" id="budget-amount" name="Amount" value="@w.BudgetAmount" />
+                    <input class="form-control" type="number" step="0.01" min="0" id="budget-amount" name="Amount" value="@(w.BudgetAmount?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))" />
                 </div>
                 @if (w.HoldedAccountNumber is { } bound)
                 {

@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Models;
 using Humans.Workgroups.Services;
@@ -27,14 +28,37 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
             .Should().BeTrue();
     }
 
+    // <input type="number"> posts "12.34" in every culture; a comma-decimal request culture must
+    // not read it as 1234.
+    [HumansTheory]
+    [InlineData("es-ES")]
+    [InlineData("de-DE")]
+    public void BudgetForm_ParsesAmountInvariantlyWhateverTheRequestCulture(string culture)
+    {
+        var previous = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+            var model = new WorkgroupBudgetFormViewModel { HasBudget = true, Amount = "12.34" };
+
+            model.ToSave().Amount.Should().Be(12.34m);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
+
     [HumansTheory]
     [InlineData(true, null, "create", null, false)]
-    [InlineData(true, 100, "link", null, false)]
-    [InlineData(true, 100, "link", 62900170, true)]
-    [InlineData(true, 100, "create", null, true)]
+    [InlineData(true, "100", "link", null, false)]
+    [InlineData(true, "100", "link", 62900170, true)]
+    [InlineData(true, "100", "create", null, true)]
+    [InlineData(true, "abc", "create", null, false)]
+    [InlineData(true, "-1", "create", null, false)]
     [InlineData(false, null, "link", null, true)]
     public void BudgetForm_RequiresAmountAndLinkedAccountWhenBudgeted(
-        bool hasBudget, int? amount, string mode, int? account, bool valid)
+        bool hasBudget, string? amount, string mode, int? account, bool valid)
     {
         var model = new WorkgroupBudgetFormViewModel
         {

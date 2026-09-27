@@ -61,7 +61,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         var sut = MakeAdminController(nameof(WorkgroupsAdminController.Budget));
 
         var result = await sut.Budget(workgroup.Id,
-            new WorkgroupBudgetFormViewModel { HasBudget = true, Amount = 900m, AccountMode = "create" },
+            new WorkgroupBudgetFormViewModel { HasBudget = true, Amount = "900", AccountMode = "create" },
             workgroup.Slug, Ct);
 
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
@@ -79,7 +79,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         var sut = MakeAdminController(nameof(WorkgroupsAdminController.Budget));
 
         var result = await sut.Budget(workgroup.Id,
-            new WorkgroupBudgetFormViewModel { HasBudget = true, Amount = 10m, AccountMode = "create" },
+            new WorkgroupBudgetFormViewModel { HasBudget = true, Amount = "10", AccountMode = "create" },
             workgroup.Slug, Ct);
 
         result.Should().BeOfType<RedirectToActionResult>();
@@ -117,7 +117,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
             CoordinatorUserId = SeedUser("Coordinator"),
             RegisteredOn = new LocalDate(2025, 3, 1),
             Budget = new WorkgroupBudgetFormViewModel
-            { HasBudget = true, Amount = 500m, AccountMode = "link", ExistingAccountNum = 62900007 }
+            { HasBudget = true, Amount = "500", AccountMode = "link", ExistingAccountNum = 62900007 }
         };
 
         var result = await sut.RegisterExisting(model, Ct);
