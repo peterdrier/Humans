@@ -19,6 +19,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Surveys.Contracts;
+using System.Reflection;
 using Humans.Testing;
 using System.Security.Claims;
 
@@ -26,6 +27,19 @@ namespace Humans.Surveys.Tests.Controllers;
 
 public sealed class SurveyAdminControllerTests
 {
+    [HumansFact]
+    public void Save_allows_five_valid_information_images_without_accepting_a_larger_request()
+    {
+        var limit = typeof(SurveyAdminController).GetMethod(nameof(SurveyAdminController.Save))!
+            .GetCustomAttribute<RequestSizeLimitAttribute>();
+
+        limit.Should().NotBeNull();
+        typeof(RequestSizeLimitAttribute)
+            .GetField("_bytes", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(limit)
+            .Should().Be(55L * 1024 * 1024);
+    }
+
     [HumansFact]
     public async Task Reject_invalid_note_renders_queue_with_original_text_and_error()
     {

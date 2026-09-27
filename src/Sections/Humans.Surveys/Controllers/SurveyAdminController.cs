@@ -338,6 +338,7 @@ internal sealed class SurveyAdminController(
 
     [HttpPost("Save")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(55 * 1024 * 1024)] // Five 10 MB Information images plus multipart overhead; service enforces each image cap.
     public async Task<IActionResult> Save(SurveyBuilderViewModel model, string? submitAction, CancellationToken ct)
     {
         var actorId = GetCurrentUserId();
