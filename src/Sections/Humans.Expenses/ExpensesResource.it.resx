@@ -109,4 +109,24 @@
 &lt;p&gt;Il pagamento avverrà tramite bonifico bancario sul conto che termina con {2}. Ti avviseremo quando il bonifico sarà stato inviato.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{3}"&gt;Vedi la tua nota spese&lt;/a&gt;&lt;/p&gt;</value></data>
   <data name="Expenses_Email_Approved_Subject" xml:space="preserve"><value>La tua nota spese è stata approvata</value></data>
+  <data name="Expenses_Flash_LoadIndexFailed" xml:space="preserve"><value>Impossibile caricare i report spese.</value></data>
+  <data name="Expenses_Flash_NoActiveYearCategories" xml:space="preserve"><value>Non esiste un anno di bilancio attivo con categorie. Contatta un amministratore finanziario.</value></data>
+  <data name="Expenses_Flash_LoadFormFailed" xml:space="preserve"><value>Impossibile caricare il modulo.</value></data>
+  <data name="Expenses_Flash_DraftCreated" xml:space="preserve"><value>Bozza creata.</value></data>
+  <data name="Expenses_Flash_CreateFailed" xml:space="preserve"><value>Impossibile creare la bozza.</value></data>
+  <data name="Expenses_Flash_LoadReportFailed" xml:space="preserve"><value>Impossibile caricare il report spese.</value></data>
+  <data name="Expenses_Flash_NotEditable" xml:space="preserve"><value>Questo report non può più essere modificato.</value></data>
+  <data name="Expenses_Flash_LoadEditFailed" xml:space="preserve"><value>Impossibile caricare il modulo di modifica.</value></data>
+  <data name="Expenses_Flash_ReportUpdated" xml:space="preserve"><value>Report aggiornato.</value></data>
+  <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Dati della riga non validi.</value></data>
+  <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Ricevuta aggiunta.</value></data>
+  <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Fattura aggiunta. Ora aggiungi le ricevute che la giustificano.</value></data>
+  <data name="Expenses_Flash_LineAdded" xml:space="preserve"><value>Riga aggiunta.</value></data>
+  <data name="Expenses_Flash_SelectFile" xml:space="preserve"><value>Seleziona un file.</value></data>
+  <data name="Expenses_Flash_AttachmentRemoved" xml:space="preserve"><value>Allegato rimosso.</value></data>
+  <data name="Expenses_Flash_LoadIbanFailed" xml:space="preserve"><value>Impossibile caricare il modulo IBAN.</value></data>
+  <data name="Expenses_Flash_InvalidMaximum" xml:space="preserve"><value>Importo massimo non valido.</value></data>
+  <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>È richiesto un motivo del rifiuto.</value></data>
+  <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>Impossibile caricare la coda di revisione.</value></data>
+  <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Dati di approvazione non validi.</value></data>
 </root>

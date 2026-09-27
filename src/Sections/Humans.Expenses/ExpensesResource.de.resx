@@ -109,4 +109,24 @@
 &lt;p&gt;Die Zahlung erfolgt per Überweisung auf das Konto mit der Endung {2}. Wir sagen dir Bescheid, sobald die Überweisung abgeschickt wurde.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{3}"&gt;Deine Spesenabrechnung ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
   <data name="Expenses_Email_Approved_Subject" xml:space="preserve"><value>Deine Spesenabrechnung wurde genehmigt</value></data>
+  <data name="Expenses_Flash_LoadIndexFailed" xml:space="preserve"><value>Ausgabenberichte konnten nicht geladen werden.</value></data>
+  <data name="Expenses_Flash_NoActiveYearCategories" xml:space="preserve"><value>Es gibt kein aktives Haushaltsjahr mit Kategorien. Bitte wende dich an einen Finanzadministrator.</value></data>
+  <data name="Expenses_Flash_LoadFormFailed" xml:space="preserve"><value>Das Formular konnte nicht geladen werden.</value></data>
+  <data name="Expenses_Flash_DraftCreated" xml:space="preserve"><value>Entwurf erstellt.</value></data>
+  <data name="Expenses_Flash_CreateFailed" xml:space="preserve"><value>Entwurf konnte nicht erstellt werden.</value></data>
+  <data name="Expenses_Flash_LoadReportFailed" xml:space="preserve"><value>Der Ausgabenbericht konnte nicht geladen werden.</value></data>
+  <data name="Expenses_Flash_NotEditable" xml:space="preserve"><value>Dieser Bericht kann nicht mehr bearbeitet werden.</value></data>
+  <data name="Expenses_Flash_LoadEditFailed" xml:space="preserve"><value>Das Bearbeitungsformular konnte nicht geladen werden.</value></data>
+  <data name="Expenses_Flash_ReportUpdated" xml:space="preserve"><value>Bericht aktualisiert.</value></data>
+  <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Ungültige Positionsdaten.</value></data>
+  <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Beleg hinzugefügt.</value></data>
+  <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Rechnung hinzugefügt. Füge nun die dazugehörigen Belege hinzu.</value></data>
+  <data name="Expenses_Flash_LineAdded" xml:space="preserve"><value>Position hinzugefügt.</value></data>
+  <data name="Expenses_Flash_SelectFile" xml:space="preserve"><value>Bitte wähle eine Datei aus.</value></data>
+  <data name="Expenses_Flash_AttachmentRemoved" xml:space="preserve"><value>Anhang entfernt.</value></data>
+  <data name="Expenses_Flash_LoadIbanFailed" xml:space="preserve"><value>IBAN-Formular konnte nicht geladen werden.</value></data>
+  <data name="Expenses_Flash_InvalidMaximum" xml:space="preserve"><value>Ungültiger Höchstbetrag.</value></data>
+  <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>Ein Ablehnungsgrund ist erforderlich.</value></data>
+  <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>Die Prüfwarteschlange konnte nicht geladen werden.</value></data>
+  <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Ungültige Genehmigungsdaten.</value></data>
 </root>

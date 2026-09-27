@@ -10,6 +10,7 @@ using Humans.Expenses.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.Expenses.Controllers;
 
@@ -22,7 +23,8 @@ internal sealed class ExpensesController(
     IBudgetServiceRead budgetService,
     IHoldedFinanceServiceRead holdedFinance,
     IAuthorizationService authService,
-    ILogger<ExpensesController> logger) : HumansControllerBase(userService)
+    ILogger<ExpensesController> logger,
+    IStringLocalizer<ExpensesResource> localizer) : HumansControllerBase(userService)
 {
     private readonly IUserServiceRead _userService = userService;
 
@@ -83,7 +85,7 @@ internal sealed class ExpensesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading expense reports index for user");
-            SetError("Failed to load expense reports.");
+            SetError(localizer["Expenses_Flash_LoadIndexFailed"]);
             return View(new ExpensesIndexViewModel
             {
                 Reports = [],
@@ -104,7 +106,7 @@ internal sealed class ExpensesController(
             var categories = await BuildCategoryOptionsAsync();
             if (categories.Count == 0)
             {
-                SetInfo("No active budget year with categories exists. Please contact a FinanceAdmin.");
+                SetInfo(localizer["Expenses_Flash_NoActiveYearCategories"]);
                 return RedirectToAction(nameof(Index));
             }
 
@@ -117,7 +119,7 @@ internal sealed class ExpensesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading new expense report form");
-            SetError("Failed to load the form.");
+            SetError(localizer["Expenses_Flash_LoadFormFailed"]);
             return RedirectToAction(nameof(Index));
         }
     }
@@ -146,13 +148,13 @@ internal sealed class ExpensesController(
 
             var id = await service.CreateDraftAsync(
                 submitterUserId, user.Id, model.BudgetCategoryId, model.Note);
-            SetSuccess("Draft created.");
+            SetSuccess(localizer["Expenses_Flash_DraftCreated"]);
             return RedirectToAction(nameof(Edit), new { id });
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error creating draft expense report for user {UserId}", submitterUserId);
-            SetError("Failed to create draft.");
+            SetError(localizer["Expenses_Flash_CreateFailed"]);
             model.Categories = await BuildCategoryOptionsAsync();
             return View(model);
         }
@@ -226,7 +228,7 @@ internal sealed class ExpensesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading expense report {ReportId}", id);
-            SetError("Failed to load the expense report.");
+            SetError(localizer["Expenses_Flash_LoadReportFailed"]);
             return RedirectToAction(nameof(Index));
         }
     }
@@ -246,7 +248,7 @@ internal sealed class ExpensesController(
                 // Someone who may read the report but not change it is told why; everyone else is
                 // refused outright.
                 if (!await AllowsAsync(report, ExpenseReportOperation.View)) return Forbid();
-                SetError("This report can no longer be edited.");
+                SetError(localizer["Expenses_Flash_NotEditable"]);
                 return RedirectToAction(nameof(Detail), new { id });
             }
 
@@ -261,7 +263,7 @@ internal sealed class ExpensesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading edit form for report {ReportId}", id);
-            SetError("Failed to load the edit form.");
+            SetError(localizer["Expenses_Flash_LoadEditFailed"]);
             return RedirectToAction(nameof(Detail), new { id });
         }
     }
@@ -287,7 +289,7 @@ internal sealed class ExpensesController(
             id, user.Id, await IsFinanceAdminAsync(), model.BudgetCategoryId, model.Note);
         if (result.Succeeded)
         {
-            SetSuccess("Report updated.");
+            SetSuccess(localizer["Expenses_Flash_ReportUpdated"]);
             return RedirectToAction(nameof(Edit), new { id });
         }
 
@@ -307,7 +309,7 @@ internal sealed class ExpensesController(
         if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
         {
             if (!await AllowsAsync(report, ExpenseReportOperation.View)) return Forbid();
-            SetError("This report can no longer be edited.");
+            SetError(localizer["Expenses_Flash_NotEditable"]);
             return RedirectToAction(nameof(Detail), new { id });
         }
 
@@ -338,7 +340,7 @@ internal sealed class ExpensesController(
 
         if (!ModelState.IsValid)
         {
-            SetError("Invalid line data.");
+            SetError(localizer["Expenses_Flash_InvalidLineData"]);
             return BackToForm();
         }
 
@@ -359,15 +361,15 @@ internal sealed class ExpensesController(
 
         if (input.ParentLineId is { } parentId)
         {
-            SetSuccess("Receipt added.");
+            SetSuccess(localizer["Expenses_Flash_ReceiptAdded"]);
             return RedirectToAction(nameof(LineProofs), new { id, lineId = parentId });
         }
         if (input.LineType == ExpenseLineType.Invoice)
         {
-            SetSuccess("Invoice added. Now add the receipts behind it.");
+            SetSuccess(localizer["Expenses_Flash_InvoiceAdded"]);
             return RedirectToAction(nameof(LineProofs), new { id, lineId = result.LineId });
         }
-        SetSuccess("Line added.");
+        SetSuccess(localizer["Expenses_Flash_LineAdded"]);
         return RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -439,7 +441,7 @@ internal sealed class ExpensesController(
 
         if (!ModelState.IsValid)
         {
-            SetError("Invalid line data.");
+            SetError(localizer["Expenses_Flash_InvalidLineData"]);
             return RedirectToAction(nameof(LineEdit), new { id, lineId = input.LineId });
         }
 
@@ -487,7 +489,7 @@ internal sealed class ExpensesController(
 
         if (file is null || file.Length == 0)
         {
-            SetError("Please select a file.");
+            SetError(localizer["Expenses_Flash_SelectFile"]);
             return RedirectToAction(nameof(LineEdit), new { id, lineId });
         }
 
@@ -514,7 +516,7 @@ internal sealed class ExpensesController(
         try
         {
             await service.RemoveAttachmentFromLineAsync(id, user.Id, await IsFinanceAdminAsync(), lineId);
-            SetSuccess("Attachment removed.");
+            SetSuccess(localizer["Expenses_Flash_AttachmentRemoved"]);
         }
         catch (Exception ex)
         {
@@ -587,7 +589,7 @@ internal sealed class ExpensesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading IBAN modal for report {ReportId}", id);
-            SetError("Failed to load IBAN form.");
+            SetError(localizer["Expenses_Flash_LoadIbanFailed"]);
             return RedirectToAction(nameof(Detail), new { id });
         }
     }
@@ -685,7 +687,7 @@ internal sealed class ExpensesController(
 
         if (!ModelState.IsValid)
         {
-            SetError("Invalid maximum amount.");
+            SetError(localizer["Expenses_Flash_InvalidMaximum"]);
             return RedirectToAction(nameof(Detail), new { id });
         }
 
@@ -711,7 +713,7 @@ internal sealed class ExpensesController(
 
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(input.Reason))
         {
-            SetError("A rejection reason is required.");
+            SetError(localizer["Expenses_Flash_RejectionReasonRequired"]);
             return RedirectToAction(nameof(Detail), new { id });
         }
 
@@ -749,7 +751,7 @@ internal sealed class ExpensesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading expense review queue");
-            SetError("Failed to load the review queue.");
+            SetError(localizer["Expenses_Flash_LoadReviewQueueFailed"]);
             return RedirectToAction(nameof(Index));
         }
     }
@@ -771,7 +773,7 @@ internal sealed class ExpensesController(
 
         if (!ModelState.IsValid)
         {
-            SetError("Invalid approval input.");
+            SetError(localizer["Expenses_Flash_InvalidApprovalInput"]);
             return RedirectToAction(nameof(Detail), new { id });
         }
 
@@ -799,7 +801,7 @@ internal sealed class ExpensesController(
 
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(input.Reason))
         {
-            SetError("A rejection reason is required.");
+            SetError(localizer["Expenses_Flash_RejectionReasonRequired"]);
             return RedirectToAction(nameof(Detail), new { id });
         }
 

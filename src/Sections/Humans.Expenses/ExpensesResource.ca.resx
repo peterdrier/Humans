@@ -109,4 +109,24 @@
 &lt;p&gt;El pagament es farà per transferència bancària al compte que acaba en {2}. T'avisarem quan la transferència s'hagi enviat.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{3}"&gt;Veure el teu informe de despeses&lt;/a&gt;&lt;/p&gt;</value></data>
   <data name="Expenses_Email_Approved_Subject" xml:space="preserve"><value>El teu informe de despeses ha estat aprovat</value></data>
+  <data name="Expenses_Flash_LoadIndexFailed" xml:space="preserve"><value>No s'han pogut carregar els informes de despeses.</value></data>
+  <data name="Expenses_Flash_NoActiveYearCategories" xml:space="preserve"><value>No hi ha cap any pressupostari actiu amb categories. Contacta amb un administrador de finances.</value></data>
+  <data name="Expenses_Flash_LoadFormFailed" xml:space="preserve"><value>No s'ha pogut carregar el formulari.</value></data>
+  <data name="Expenses_Flash_DraftCreated" xml:space="preserve"><value>Esborrany creat.</value></data>
+  <data name="Expenses_Flash_CreateFailed" xml:space="preserve"><value>No s'ha pogut crear l'esborrany.</value></data>
+  <data name="Expenses_Flash_LoadReportFailed" xml:space="preserve"><value>No s'ha pogut carregar l'informe de despeses.</value></data>
+  <data name="Expenses_Flash_NotEditable" xml:space="preserve"><value>Aquest informe ja no es pot editar.</value></data>
+  <data name="Expenses_Flash_LoadEditFailed" xml:space="preserve"><value>No s'ha pogut carregar el formulari d'edició.</value></data>
+  <data name="Expenses_Flash_ReportUpdated" xml:space="preserve"><value>Informe actualitzat.</value></data>
+  <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Dades de línia no vàlides.</value></data>
+  <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Rebut afegit.</value></data>
+  <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Factura afegida. Ara afegeix els rebuts que la justifiquen.</value></data>
+  <data name="Expenses_Flash_LineAdded" xml:space="preserve"><value>Línia afegida.</value></data>
+  <data name="Expenses_Flash_SelectFile" xml:space="preserve"><value>Selecciona un fitxer.</value></data>
+  <data name="Expenses_Flash_AttachmentRemoved" xml:space="preserve"><value>Adjunt eliminat.</value></data>
+  <data name="Expenses_Flash_LoadIbanFailed" xml:space="preserve"><value>No s'ha pogut carregar el formulari d'IBAN.</value></data>
+  <data name="Expenses_Flash_InvalidMaximum" xml:space="preserve"><value>Import màxim no vàlid.</value></data>
+  <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>Cal un motiu de rebuig.</value></data>
+  <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>No s'ha pogut carregar la cua de revisió.</value></data>
+  <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Dades d'aprovació no vàlides.</value></data>
 </root>

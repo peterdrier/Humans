@@ -109,4 +109,24 @@
 &lt;p&gt;El pago se realizará por transferencia bancaria a la cuenta que termina en {2}. Te avisaremos cuando la transferencia se haya enviado.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{3}"&gt;Ver tu informe de gastos&lt;/a&gt;&lt;/p&gt;</value></data>
   <data name="Expenses_Email_Approved_Subject" xml:space="preserve"><value>Tu informe de gastos ha sido aprobado</value></data>
+  <data name="Expenses_Flash_LoadIndexFailed" xml:space="preserve"><value>No se pudieron cargar los informes de gastos.</value></data>
+  <data name="Expenses_Flash_NoActiveYearCategories" xml:space="preserve"><value>No hay un año presupuestario activo con categorías. Contacta con un administrador de finanzas.</value></data>
+  <data name="Expenses_Flash_LoadFormFailed" xml:space="preserve"><value>No se pudo cargar el formulario.</value></data>
+  <data name="Expenses_Flash_DraftCreated" xml:space="preserve"><value>Borrador creado.</value></data>
+  <data name="Expenses_Flash_CreateFailed" xml:space="preserve"><value>No se pudo crear el borrador.</value></data>
+  <data name="Expenses_Flash_LoadReportFailed" xml:space="preserve"><value>No se pudo cargar el informe de gastos.</value></data>
+  <data name="Expenses_Flash_NotEditable" xml:space="preserve"><value>Este informe ya no se puede editar.</value></data>
+  <data name="Expenses_Flash_LoadEditFailed" xml:space="preserve"><value>No se pudo cargar el formulario de edición.</value></data>
+  <data name="Expenses_Flash_ReportUpdated" xml:space="preserve"><value>Informe actualizado.</value></data>
+  <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Datos de línea no válidos.</value></data>
+  <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Recibo añadido.</value></data>
+  <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Factura añadida. Ahora añade los recibos que la respaldan.</value></data>
+  <data name="Expenses_Flash_LineAdded" xml:space="preserve"><value>Línea añadida.</value></data>
+  <data name="Expenses_Flash_SelectFile" xml:space="preserve"><value>Selecciona un archivo.</value></data>
+  <data name="Expenses_Flash_AttachmentRemoved" xml:space="preserve"><value>Adjunto eliminado.</value></data>
+  <data name="Expenses_Flash_LoadIbanFailed" xml:space="preserve"><value>No se pudo cargar el formulario de IBAN.</value></data>
+  <data name="Expenses_Flash_InvalidMaximum" xml:space="preserve"><value>Importe máximo no válido.</value></data>
+  <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>Se requiere un motivo de rechazo.</value></data>
+  <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>No se pudo cargar la cola de revisión.</value></data>
+  <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Datos de aprobación no válidos.</value></data>
 </root>

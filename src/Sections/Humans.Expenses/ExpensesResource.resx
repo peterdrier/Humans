@@ -109,4 +109,24 @@
 &lt;p&gt;Payment will follow by bank transfer to the account ending {2}. We will let you know when the transfer has been sent.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{3}"&gt;View your expense report&lt;/a&gt;&lt;/p&gt;</value></data>
   <data name="Expenses_Email_Approved_Subject" xml:space="preserve"><value>Your expense report has been approved</value></data>
+  <data name="Expenses_Flash_LoadIndexFailed" xml:space="preserve"><value>Failed to load expense reports.</value></data>
+  <data name="Expenses_Flash_NoActiveYearCategories" xml:space="preserve"><value>No active budget year with categories exists. Please contact a FinanceAdmin.</value></data>
+  <data name="Expenses_Flash_LoadFormFailed" xml:space="preserve"><value>Failed to load the form.</value></data>
+  <data name="Expenses_Flash_DraftCreated" xml:space="preserve"><value>Draft created.</value></data>
+  <data name="Expenses_Flash_CreateFailed" xml:space="preserve"><value>Failed to create draft.</value></data>
+  <data name="Expenses_Flash_LoadReportFailed" xml:space="preserve"><value>Failed to load the expense report.</value></data>
+  <data name="Expenses_Flash_NotEditable" xml:space="preserve"><value>This report can no longer be edited.</value></data>
+  <data name="Expenses_Flash_LoadEditFailed" xml:space="preserve"><value>Failed to load the edit form.</value></data>
+  <data name="Expenses_Flash_ReportUpdated" xml:space="preserve"><value>Report updated.</value></data>
+  <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Invalid line data.</value></data>
+  <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Receipt added.</value></data>
+  <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Invoice added. Now add the receipts behind it.</value></data>
+  <data name="Expenses_Flash_LineAdded" xml:space="preserve"><value>Line added.</value></data>
+  <data name="Expenses_Flash_SelectFile" xml:space="preserve"><value>Please select a file.</value></data>
+  <data name="Expenses_Flash_AttachmentRemoved" xml:space="preserve"><value>Attachment removed.</value></data>
+  <data name="Expenses_Flash_LoadIbanFailed" xml:space="preserve"><value>Failed to load IBAN form.</value></data>
+  <data name="Expenses_Flash_InvalidMaximum" xml:space="preserve"><value>Invalid maximum amount.</value></data>
+  <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>A rejection reason is required.</value></data>
+  <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>Failed to load the review queue.</value></data>
+  <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Invalid approval input.</value></data>
 </root>
