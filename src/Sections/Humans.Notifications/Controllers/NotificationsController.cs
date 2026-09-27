@@ -23,11 +23,11 @@ internal sealed class NotificationsController(
         var userId = GetCurrentUserId();
         if (userId is null) return Unauthorized();
 
-        var result = await inboxService.GetInboxAsync(userId.Value, search, filter, tab);
+        var result = await inboxService.GetInboxAsync(userId.Value, search, filter, tab, HttpContext.RequestAborted);
 
         var defaultActionLabel = localizer["Notification_DefaultActionLabel"].Value;
 
-        var meters = await meterProvider.GetMetersForUserAsync(User);
+        var meters = await meterProvider.GetMetersForUserAsync(User, HttpContext.RequestAborted);
 
         return View(new NotificationInboxViewModel
         {
@@ -54,11 +54,11 @@ internal sealed class NotificationsController(
         var userId = GetCurrentUserId();
         if (userId is null) return Unauthorized();
 
-        var result = await inboxService.GetPopupAsync(userId.Value);
+        var result = await inboxService.GetPopupAsync(userId.Value, HttpContext.RequestAborted);
 
         var defaultActionLabel = localizer["Notification_DefaultActionLabel"].Value;
 
-        var meters = await meterProvider.GetMetersForUserAsync(User);
+        var meters = await meterProvider.GetMetersForUserAsync(User, HttpContext.RequestAborted);
 
         return PartialView("_NotificationPopup", new NotificationPopupViewModel
         {
