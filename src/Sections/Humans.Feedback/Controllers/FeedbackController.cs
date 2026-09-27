@@ -108,13 +108,13 @@ internal sealed class FeedbackController(
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> Detail(Guid id)
+    public async Task<IActionResult> Detail(Guid id, CancellationToken ct)
     {
-        var report = await feedbackService.GetFeedbackByIdAsync(id);
+        var report = await feedbackService.GetFeedbackByIdAsync(id, ct);
         if (report is null) return NotFound();
 
         var viewModel = MapDetailViewModel(report);
-        await PopulateAssignmentOptionsAsync(viewModel);
+        await PopulateAssignmentOptionsAsync(viewModel, ct);
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
         {
@@ -282,9 +282,9 @@ internal sealed class FeedbackController(
         };
     }
 
-    private async Task PopulateAssignmentOptionsAsync(FeedbackDetailViewModel viewModel)
+    private async Task PopulateAssignmentOptionsAsync(FeedbackDetailViewModel viewModel, CancellationToken ct = default)
     {
-        var teamsById = await teamService.GetTeamsAsync();
+        var teamsById = await teamService.GetTeamsAsync(ct);
         var teamOptions = teamsById.Values
             .Where(t => t.IsActive)
             .OrderBy(t => t.Name, StringComparer.Ordinal)
@@ -300,7 +300,7 @@ internal sealed class FeedbackController(
 
         viewModel.TeamOptions = teamOptions;
 
-        viewModel.AssigneeOptions = await GetActiveAssigneeOptionsAsync();
+        viewModel.AssigneeOptions = await GetActiveAssigneeOptionsAsync(ct);
 
         // Same for the assignee.
         if (viewModel.AssignedToUserId.HasValue &&
