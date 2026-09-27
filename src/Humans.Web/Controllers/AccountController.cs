@@ -272,11 +272,20 @@ public class AccountController(
                 lastName,
                 HttpContext.RequestAborted);
         }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            // The reservation must still be released: no account may have been created, and a
+            // retry either completes signup or finds the account this request already created.
+            magicLinkService.ReleaseSignupToken(token);
+            logger.LogDebug("Magic link signup request was cancelled for {Email}; " +
+                "the signup token reservation was released", redeemedEmail);
+            throw;
+        }
         catch (Exception ex)
         {
-            // Provisioning threw — a cancelled request, a database failure. Hand the link
-            // back before the exception surfaces: if it created nothing, the retry signs
-            // them up; if it got as far as the account, the retry finds it and signs them in.
+            // Provisioning failed. Hand the link back before the exception surfaces: if it
+            // created nothing, the retry signs them up; if it got as far as the account, the
+            // retry finds it and signs them in.
             magicLinkService.ReleaseSignupToken(token);
             logger.LogError(ex, "Magic link signup: provisioning threw for {Email}; " +
                 "the signup token reservation was released", redeemedEmail);
