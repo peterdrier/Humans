@@ -23,13 +23,13 @@ internal sealed class EventsDashboardController(IEventService guide, ICampServic
     : HumansControllerBase(userService)
 {
     [HttpGet("")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings);
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
         var tz = GetTimeZone(eventSettings);
 
-        var allEvents = await guide.GetAllEventsForDashboardAsync();
+        var allEvents = await guide.GetAllEventsForDashboardAsync(ct);
 
         var model = new EventsDashboardViewModel
         {
@@ -70,7 +70,7 @@ internal sealed class EventsDashboardController(IEventService guide, ICampServic
                 }).ToList();
         }
 
-        var categories = await guide.GetActiveCategoriesAsync();
+        var categories = await guide.GetActiveCategoriesAsync(ct);
         model.CoverageByCategory = categories.Select(cat =>
         {
             var catEvents = allEvents.Where(e => e.CategoryId == cat.Id).ToList();
@@ -85,7 +85,7 @@ internal sealed class EventsDashboardController(IEventService guide, ICampServic
         }).ToList();
 
         var campEvents = allEvents.Where(e => e.CampId.HasValue).ToList();
-        var campsById = await LoadCampsByIdAsync(camps, gateOpeningDate?.Year);
+        var campsById = await LoadCampsByIdAsync(camps, gateOpeningDate?.Year, ct);
         model.TopCamps = campEvents
             .GroupBy(e => e.CampId!.Value)
             .Select(g =>
