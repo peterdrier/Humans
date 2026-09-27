@@ -318,14 +318,6 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
-  - added: 2026-09-21
-    id: CENTRAL-63
-    what: "docs/architecture/design-rules.md §8 still describes the pre-cutover Settings world: it says settings_event 'has no readers yet', that every section reads the app-wide values off the Shifts-owned event_settings row via IBurnSettingsService, and that the table is populated by an operator screen at /Settings/Admin/Carry. The cutover (nobodies-collective/Humans#1630, nobodies-collective/Humans#1631) repointed every reader at settings_event, deleted the carry screen and made /Settings/Admin POST-only. The same paragraph's key list also omits Workgroups:RootDriveFolderId, the third system_settings key. Central regulations, not a section file (/section-doctor on Settings 2026-09-21)."
-    review: light
-  - added: 2026-09-21
-    id: CENTRAL-64
-    what: "docs/architecture/service-data-access-map.md's table-ownership table carries the same stale Settings claim as CENTRAL-63: 'settings_event has no consumers yet — it is populated by /Settings/Admin/Carry and read by nothing until the sections are pointed at it'. Both halves are false since nobodies-collective/Humans#1630 and nobodies-collective/Humans#1631. The row above it, 'EventSettings | Shifts | ShiftRepository', is now the Shifts-local knobs row only and reads as if it were still the app-wide one. Central doc, not a section file (/section-doctor on Settings 2026-09-21)."
-    review: light
   - added: 2026-09-18
     id: CENTRAL-55
     what: "docs/guide/Glossary.md has no entry for assembly vote, the Governance lane that landed 2026-09-14 (peterdrier/Humans#1649), so the guide's own vocabulary page omits a term the Governance guide page now uses throughout. The file is shared guide input rather than section-owned (/section-doctor on Governance 2026-09-18)."
@@ -454,10 +446,6 @@ inbox:
     review: panel
     status: needs-detail
     blocked_on: "A measured cold-cache timing against a stated budget; no threshold is named, so nothing can be shown fixed."
-  - added: 2026-08-21
-    id: CENTRAL-23
-    what: "TicketTailor re-sync can resurrect erased ticket PII. GDPR erasure (nobodies-collective/Humans#853) tombstones BuyerName/BuyerEmail/AttendeeName/AttendeeEmail and nulls MatchedUserId in our copy of the vendor's data (Humans.Tickets/Data/TicketRepository.EraseUserPiiAsync), but the vendor still holds the real record. The next TicketTailor sync re-reads it and can write the real name and email straight back over the tombstone, silently undoing the erasure with no signal that it happened. Fixing it properly means either a per-order erased flag the sync respects (needs a column) or deleting the vendor-side record; both are larger than #853 and the first is a schema change."
-    review: panel
   - added: 2026-08-23
     id: CENTRAL-24
     what: "HumansControllerBase.SetError service-locates ILoggerFactory off HttpContext.RequestServices while SetSuccess and SetInfo resolve nothing. The original symptom is gone — the lookup is null-conditional (HttpContext?.RequestServices?.GetService), so it no longer throws in a controller unit test — but the asymmetry and the service-location remain, and injecting the logger would remove both. No test scaffolding rides on it: Onboarding's controller tests set ControllerContext and ctrl.Url because RedirectToAction resolves IUrlHelperFactory, which injection here would not change. Base's, so it has no section ledger. Found by /section-doctor on Onboarding 2026-08-23; symptom re-verified and corrected, test-scaffolding claim struck, 2026-09-13."
