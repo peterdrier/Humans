@@ -580,6 +580,7 @@ internal sealed class ExpenseReportService(
         }, "Error removing line {LineId} from report {ReportId}", null, lineId, reportId);
 
     private const long AttachmentMaxBytes = 20 * 1024 * 1024;
+    private const int AttachmentFileNameMaxLength = 255;
 
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -594,7 +595,11 @@ internal sealed class ExpenseReportService(
         if (content.Length > AttachmentMaxBytes)
             throw new ExpenseValidationException($"File too large. Maximum size is {AttachmentMaxBytes / (1024 * 1024)} MB.");
 
-        var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
+        var fileName = Path.GetFileName(originalFileName);
+        if (fileName.Length > AttachmentFileNameMaxLength)
+            throw new ExpenseValidationException($"Filename must be {AttachmentFileNameMaxLength} characters or fewer.");
+
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
         if (!AllowedContentTypes.Contains(contentType) || !AllowedExtensions.Contains(extension))
             throw new ExpenseValidationException("Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.");
 
