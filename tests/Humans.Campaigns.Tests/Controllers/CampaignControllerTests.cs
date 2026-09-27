@@ -70,6 +70,17 @@ public class CampaignControllerTests
         AssertActionHasValidateAntiForgery(nameof(CampaignController.RetryAllFailed), typeof(HttpPostAttribute));
     }
 
+    [HumansFact]
+    public void ImportCodes_caps_the_in_memory_csv_upload()
+    {
+        var action = GetAction(nameof(CampaignController.ImportCodes), typeof(HttpPostAttribute));
+
+        typeof(RequestSizeLimitAttribute)
+            .GetField("_bytes", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(action.GetCustomAttribute<RequestSizeLimitAttribute>())
+            .Should().Be(1L * 1024 * 1024);
+    }
+
     private static MethodInfo GetAction(string actionName, Type httpMethodAttributeType)
     {
         var candidates = typeof(CampaignController).GetMethods(BindingFlags.Instance | BindingFlags.Public)
