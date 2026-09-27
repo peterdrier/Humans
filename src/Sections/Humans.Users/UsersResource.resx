@@ -560,4 +560,11 @@
   <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Has a @nobodies.team email account</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Imported · no profile yet</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>This human exists in the system but has not completed a profile (for example, they were imported from a mailing list or ticketing).</value></data>
+  <data name="Users_Profile_ShiftSignupFailed" xml:space="preserve"><value>Shift signup failed.</value></data>
+  <data name="Users_Profile_ShiftSignupSucceeded" xml:space="preserve"><value>Signed up successfully!</value></data>
+  <data name="Users_Profile_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>Signed up successfully. Note: {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Users_Profile_ShiftRangeSignupFailed" xml:space="preserve"><value>Shift range signup failed.</value></data>
+  <data name="Users_Profile_ShiftRangeSignupSucceeded" xml:space="preserve"><value>Signed up for date range!</value></data>
+  <data name="Users_Profile_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Signed up for date range. Note: {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Cannot change always-on categories.</value></data>
 </root>

@@ -1165,4 +1165,11 @@
   <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Hat ein @nobodies.team-E-Mail-Konto</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importiert · noch kein Profil</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Diese Person existiert im System, hat aber noch kein Profil ausgefüllt (zum Beispiel wurde sie aus einer Mailingliste oder dem Ticketing importiert).</value></data>
+  <data name="Users_Profile_ShiftSignupFailed" xml:space="preserve"><value>Die Anmeldung zur Schicht ist fehlgeschlagen.</value></data>
+  <data name="Users_Profile_ShiftSignupSucceeded" xml:space="preserve"><value>Erfolgreich zur Schicht angemeldet!</value></data>
+  <data name="Users_Profile_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>Erfolgreich zur Schicht angemeldet. Hinweis: {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Users_Profile_ShiftRangeSignupFailed" xml:space="preserve"><value>Die Anmeldung zum Schichtzeitraum ist fehlgeschlagen.</value></data>
+  <data name="Users_Profile_ShiftRangeSignupSucceeded" xml:space="preserve"><value>Erfolgreich zum Schichtzeitraum angemeldet!</value></data>
+  <data name="Users_Profile_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Erfolgreich zum Schichtzeitraum angemeldet. Hinweis: {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Immer aktive Kategorien können nicht geändert werden.</value></data>
 </root>

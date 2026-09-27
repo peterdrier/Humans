@@ -1165,4 +1165,11 @@
   <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Possède un compte e-mail @nobodies.team</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importé · pas encore de profil</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Cette personne existe dans le système mais n'a pas encore complété de profil (par exemple, elle a été importée depuis une liste de diffusion ou la billetterie).</value></data>
+  <data name="Users_Profile_ShiftSignupFailed" xml:space="preserve"><value>L'inscription au créneau a échoué.</value></data>
+  <data name="Users_Profile_ShiftSignupSucceeded" xml:space="preserve"><value>Inscription au créneau réussie !</value></data>
+  <data name="Users_Profile_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>Inscription au créneau réussie. Remarque : {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Users_Profile_ShiftRangeSignupFailed" xml:space="preserve"><value>L'inscription à la plage de créneaux a échoué.</value></data>
+  <data name="Users_Profile_ShiftRangeSignupSucceeded" xml:space="preserve"><value>Inscription à la plage de dates réussie !</value></data>
+  <data name="Users_Profile_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Inscription à la plage de dates réussie. Remarque : {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Les catégories toujours actives ne peuvent pas être modifiées.</value></data>
 </root>

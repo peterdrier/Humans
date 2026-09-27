@@ -1165,4 +1165,11 @@
   <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Tiene una cuenta de correo @nobodies.team</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importado · sin perfil todavía</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Esta persona existe en el sistema, pero aún no ha completado un perfil (por ejemplo, se importó desde una lista de correo o de ticketing).</value></data>
+  <data name="Users_Profile_ShiftSignupFailed" xml:space="preserve"><value>No se pudo apuntar al turno.</value></data>
+  <data name="Users_Profile_ShiftSignupSucceeded" xml:space="preserve"><value>¡Te has apuntado correctamente!</value></data>
+  <data name="Users_Profile_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>Te has apuntado correctamente. Nota: {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Users_Profile_ShiftRangeSignupFailed" xml:space="preserve"><value>No se pudo apuntar al rango de turnos.</value></data>
+  <data name="Users_Profile_ShiftRangeSignupSucceeded" xml:space="preserve"><value>¡Te has apuntado al rango de fechas correctamente!</value></data>
+  <data name="Users_Profile_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Te has apuntado al rango de fechas correctamente. Nota: {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>No se pueden cambiar las categorías siempre activas.</value></data>
 </root>
