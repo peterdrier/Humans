@@ -148,6 +148,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 - Anonymous / unauthenticated visitors **cannot** access the calendar or view events (entire `CalendarController` requires `[Authorize]`).
 - The personal iCal feed is the one `[AllowAnonymous]` surface in the section: the secret is the user's stored `CalendarFeedToken` in the URL. The feed card and `POST /Calendar/Ical/Regenerate` act on the **viewer's own** token only — neither takes a user id, so no one can read or rotate another member's feed. A missing user, a merged user and a wrong token all return a plain 404 — no oracle. `UserCalendarViewComponent` renders the same items for an admin but **never** shows the token or the feed URL.
+- An aborted iCal-feed request propagates cancellation rather than being reported as a feed-building failure or returned as a 500 response.
 - `UserCalendarViewComponent` rethrows a request-abort cancellation rather than logging it as a feed load failure; other feed errors render the existing failure state.
 
 ## Triggers
