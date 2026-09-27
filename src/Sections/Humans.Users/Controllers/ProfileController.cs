@@ -544,7 +544,7 @@ internal sealed class ProfileController(
         }
 
         using var uploadStream = new MemoryStream();
-        await upload.CopyToAsync(uploadStream);
+        await upload.CopyToAsync(uploadStream, HttpContext.RequestAborted);
         var result = ResizeProfilePicture(uploadStream.ToArray());
         if (result is null)
         {
