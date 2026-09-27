@@ -184,6 +184,19 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
+    public async Task DownloadData_CancelledRequest_PropagatesCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        _gdprService.ExportForUserAsync(_userId, cancellation.Token)
+            .Returns(Task.FromException<GdprExport>(new OperationCanceledException(cancellation.Token)));
+
+        var act = () => _controller.DownloadData(cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task Edit_InitialSetup_Volunteer_DoesNotDispatchTierApplication()
     {
 
