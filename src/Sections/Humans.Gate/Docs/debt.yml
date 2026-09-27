@@ -3,8 +3,3 @@
 version: 1
 next_id: 2
 inbox:
-  - added: 2026-09-14
-    id: GATE-1
-    what: "Docs/Gate.md asserts TicketTailor's check-in contract (form-encoded POST /v1/check_ins, required fields, non-idempotency) with freshness triggers on src/Sections/Humans.Gate/** only; add src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs. Docs/features/gate-admissions.md names ITicketVendorService.CreateCheckInAsync, which Gate reaches through ITicketVendorMirror (finding 18, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
-    review: light
-    root: CENTRAL-57
