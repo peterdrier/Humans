@@ -837,7 +837,7 @@ internal sealed class GoogleWorkspaceSyncService(
             return MemberSyncState.Inherited;
 
         permissionSnapshot.RoleByEmail.TryGetValue(email, out var currentRole);
-        var currentLevel = ParseApiRole(currentRole);
+        var currentLevel = DrivePermissionRoleMapper.Parse(currentRole);
         return currentLevel.HasValue && currentLevel.Value < memberMaxLevel
             ? MemberSyncState.WrongRole
             : MemberSyncState.Correct;
@@ -900,7 +900,7 @@ internal sealed class GoogleWorkspaceSyncService(
     {
         try
         {
-            var memberLevel = ParseApiRole(member.ExpectedRole) ?? DrivePermissionLevel.Contributor;
+            var memberLevel = DrivePermissionRoleMapper.Parse(member.ExpectedRole) ?? DrivePermissionLevel.Contributor;
             await AddUserToDriveAsync(
                 primary, member.Email, member.UserId, memberLevel, syncSource, cancellationToken);
         }
@@ -1915,16 +1915,6 @@ internal sealed class GoogleWorkspaceSyncService(
     /// </summary>
     private static string CanonicalizeDriveEmail(string? email) =>
         email is null ? string.Empty : EmailNormalization.CanonicalizeGmail(email);
-
-    private static DrivePermissionLevel? ParseApiRole(string? role) => role switch
-    {
-        "reader" => DrivePermissionLevel.Viewer,
-        "commenter" => DrivePermissionLevel.Commenter,
-        "writer" => DrivePermissionLevel.Contributor,
-        "fileOrganizer" => DrivePermissionLevel.ContentManager,
-        "organizer" => DrivePermissionLevel.Manager,
-        _ => null
-    };
 
     private GroupSettingsExpected BuildExpectedGroupSettings() =>
         GroupSettingsPolicy.BuildExpected(_options.Groups);
