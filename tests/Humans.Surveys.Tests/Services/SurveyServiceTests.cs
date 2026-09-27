@@ -220,7 +220,7 @@ public class SurveyServiceTests
                     null,
                     L("Fire risk"),
                     L("Fire risk forecast table"),
-                    Upload: new SurveyImageUpload(content, "image/png", "fire-risk.png", 3)),
+                    Upload: new SurveyImageUpload(content, "image/png", "C:\\uploads\\fire-risk.png", 3)),
             ]);
 
         await CreateService().CreateAsync(
@@ -233,9 +233,34 @@ public class SurveyServiceTests
         var image = saved.InformationImages.Should().ContainSingle().Subject;
         image.StoragePath.Should().StartWith($"uploads/surveys/{captured.Id}/{questionId}/");
         image.StoragePath.Should().EndWith(".png");
+        image.FileName.Should().Be("fire-risk.png");
         image.Label.Resolve("en", "en").Should().Be("Fire risk");
         await _fileStorage.Received(1).SaveAsync(
             image.StoragePath, content, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_an_information_image_filename_over_256_characters()
+    {
+        await using var content = new MemoryStream([1, 2, 3]);
+        var information = new QuestionInput(
+            Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
+            L("Conditions"), L("Context"), false, null, null,
+            LocalizedText.Empty, LocalizedText.Empty, null, [],
+            InformationImages:
+            [
+                new InformationImageInput(
+                    null, L("Fire risk"), L("Fire risk forecast table"),
+                    Upload: new SurveyImageUpload(content, "image/png", new string('a', 253) + ".png", 3)),
+            ]);
+
+        var act = () => CreateService().CreateAsync(
+            Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*256 characters or fewer*");
+        await _fileStorage.DidNotReceive().SaveAsync(
+            Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
