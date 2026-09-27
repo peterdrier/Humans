@@ -95,4 +95,16 @@
   <data name="Budget_TitleYear" xml:space="preserve"><value>Pressupost - {0}</value></data>
   <data name="Budget_TotalExpenses" xml:space="preserve"><value>Despeses totals</value></data>
   <data name="Budget_TotalIncome" xml:space="preserve"><value>Ingressos totals</value></data>
+  <!-- Controller feedback -->
+  <data name="Budget_Flash_NoActiveYear" xml:space="preserve"><value>No hi ha cap any pressupostari actiu.</value></data>
+  <data name="Budget_Flash_LoadFailed" xml:space="preserve"><value>No s'han pogut carregar les dades del pressupost.</value></data>
+  <data name="Budget_Flash_SummaryLoadFailed" xml:space="preserve"><value>No s'ha pogut carregar el resum del pressupost.</value></data>
+  <data name="Budget_Flash_CategoryLoadFailed" xml:space="preserve"><value>No s'ha pogut carregar la categoria.</value></data>
+  <data name="Budget_Flash_LineCreated" xml:space="preserve"><value>Partida '{0}' creada.</value></data>
+  <data name="Budget_Flash_LineCreateFailed" xml:space="preserve"><value>No s'ha pogut crear la partida: {0}</value></data>
+  <data name="Budget_Flash_LineUpdated" xml:space="preserve"><value>Partida '{0}' actualitzada.</value></data>
+  <data name="Budget_Flash_LineUpdateFailed" xml:space="preserve"><value>No s'ha pogut actualitzar la partida: {0}</value></data>
+  <data name="Budget_Flash_LineDeleted" xml:space="preserve"><value>Partida eliminada.</value></data>
+  <data name="Budget_Flash_LineDeleteFailed" xml:space="preserve"><value>No s'ha pogut eliminar la partida: {0}</value></data>
+  <data name="Budget_Flash_CategoryEditDenied" xml:space="preserve"><value>No tens permís per editar aquesta categoria pressupostària.</value></data>
 </root>

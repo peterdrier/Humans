@@ -95,4 +95,16 @@
   <data name="Budget_TitleYear" xml:space="preserve"><value>Budget - {0}</value></data>
   <data name="Budget_TotalExpenses" xml:space="preserve"><value>Gesamtausgaben</value></data>
   <data name="Budget_TotalIncome" xml:space="preserve"><value>Gesamteinnahmen</value></data>
+  <!-- Controller feedback -->
+  <data name="Budget_Flash_NoActiveYear" xml:space="preserve"><value>Kein aktives Budgetjahr.</value></data>
+  <data name="Budget_Flash_LoadFailed" xml:space="preserve"><value>Budgetdaten konnten nicht geladen werden.</value></data>
+  <data name="Budget_Flash_SummaryLoadFailed" xml:space="preserve"><value>Budgetübersicht konnte nicht geladen werden.</value></data>
+  <data name="Budget_Flash_CategoryLoadFailed" xml:space="preserve"><value>Kategorie konnte nicht geladen werden.</value></data>
+  <data name="Budget_Flash_LineCreated" xml:space="preserve"><value>Einzelposten '{0}' erstellt.</value></data>
+  <data name="Budget_Flash_LineCreateFailed" xml:space="preserve"><value>Einzelposten konnte nicht erstellt werden: {0}</value></data>
+  <data name="Budget_Flash_LineUpdated" xml:space="preserve"><value>Einzelposten '{0}' aktualisiert.</value></data>
+  <data name="Budget_Flash_LineUpdateFailed" xml:space="preserve"><value>Einzelposten konnte nicht aktualisiert werden: {0}</value></data>
+  <data name="Budget_Flash_LineDeleted" xml:space="preserve"><value>Einzelposten gelöscht.</value></data>
+  <data name="Budget_Flash_LineDeleteFailed" xml:space="preserve"><value>Einzelposten konnte nicht gelöscht werden: {0}</value></data>
+  <data name="Budget_Flash_CategoryEditDenied" xml:space="preserve"><value>Du hast keine Berechtigung, diese Budgetkategorie zu bearbeiten.</value></data>
 </root>

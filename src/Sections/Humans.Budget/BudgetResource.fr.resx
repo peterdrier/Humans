@@ -95,4 +95,16 @@
   <data name="Budget_TitleYear" xml:space="preserve"><value>Budget - {0}</value></data>
   <data name="Budget_TotalExpenses" xml:space="preserve"><value>Dépenses totales</value></data>
   <data name="Budget_TotalIncome" xml:space="preserve"><value>Recettes totales</value></data>
+  <!-- Controller feedback -->
+  <data name="Budget_Flash_NoActiveYear" xml:space="preserve"><value>Aucune année budgétaire active.</value></data>
+  <data name="Budget_Flash_LoadFailed" xml:space="preserve"><value>Impossible de charger les données budgétaires.</value></data>
+  <data name="Budget_Flash_SummaryLoadFailed" xml:space="preserve"><value>Impossible de charger le résumé budgétaire.</value></data>
+  <data name="Budget_Flash_CategoryLoadFailed" xml:space="preserve"><value>Impossible de charger la catégorie.</value></data>
+  <data name="Budget_Flash_LineCreated" xml:space="preserve"><value>Ligne '{0}' créée.</value></data>
+  <data name="Budget_Flash_LineCreateFailed" xml:space="preserve"><value>Impossible de créer la ligne : {0}</value></data>
+  <data name="Budget_Flash_LineUpdated" xml:space="preserve"><value>Ligne '{0}' mise à jour.</value></data>
+  <data name="Budget_Flash_LineUpdateFailed" xml:space="preserve"><value>Impossible de mettre à jour la ligne : {0}</value></data>
+  <data name="Budget_Flash_LineDeleted" xml:space="preserve"><value>Ligne supprimée.</value></data>
+  <data name="Budget_Flash_LineDeleteFailed" xml:space="preserve"><value>Impossible de supprimer la ligne : {0}</value></data>
+  <data name="Budget_Flash_CategoryEditDenied" xml:space="preserve"><value>Vous n'avez pas l'autorisation de modifier cette catégorie budgétaire.</value></data>
 </root>

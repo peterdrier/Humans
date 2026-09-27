@@ -5,6 +5,7 @@ using Humans.Budget.Authorization;
 using Humans.Budget.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Users.Contracts;
 
@@ -16,6 +17,7 @@ internal sealed class BudgetController(
     IBudgetService budgetService,
     IAuthorizationService authService,
     IUserServiceRead userService,
+    IStringLocalizer<BudgetResource> localizer,
     ILogger<BudgetController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -34,7 +36,7 @@ internal sealed class BudgetController(
 
             if (data.Year is null)
             {
-                SetInfo("No active budget year.");
+                SetInfo(localizer["Budget_Flash_NoActiveYear"].Value);
                 return View("NoActiveBudget");
             }
 
@@ -49,7 +51,7 @@ internal sealed class BudgetController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading coordinator budget view");
-            SetError("Failed to load budget data.");
+            SetError(localizer["Budget_Flash_LoadFailed"].Value);
             return View("NoActiveBudget");
         }
     }
@@ -65,7 +67,7 @@ internal sealed class BudgetController(
             var activeYear = await budgetService.GetActiveYearAsync();
             if (activeYear is null)
             {
-                SetInfo("No active budget year.");
+                SetInfo(localizer["Budget_Flash_NoActiveYear"].Value);
                 return View("NoActiveBudget");
             }
 
@@ -96,7 +98,7 @@ internal sealed class BudgetController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading budget summary");
-            SetError("Failed to load budget summary.");
+            SetError(localizer["Budget_Flash_SummaryLoadFailed"].Value);
             return View("NoActiveBudget");
         }
     }
@@ -131,7 +133,7 @@ internal sealed class BudgetController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading budget category {CategoryId}", id);
-            SetError("Failed to load category.");
+            SetError(localizer["Budget_Flash_CategoryLoadFailed"].Value);
             return RedirectToAction(nameof(Index));
         }
     }
@@ -153,12 +155,12 @@ internal sealed class BudgetController(
         {
             await budgetService.CreateLineItemAsync(
                 budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
-            SetSuccess($"Line item '{description}' created.");
+            SetSuccess(localizer["Budget_Flash_LineCreated", description].Value);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to create line item in category {CategoryId}", budgetCategoryId);
-            SetError($"Failed to create line item: {ex.Message}");
+            SetError(localizer["Budget_Flash_LineCreateFailed", ex.Message].Value);
         }
 
         return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
@@ -184,12 +186,12 @@ internal sealed class BudgetController(
         {
             await budgetService.UpdateLineItemAsync(
                 id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
-            SetSuccess($"Line item '{description}' updated.");
+            SetSuccess(localizer["Budget_Flash_LineUpdated", description].Value);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to update line item {LineItemId}", id);
-            SetError($"Failed to update line item: {ex.Message}");
+            SetError(localizer["Budget_Flash_LineUpdateFailed", ex.Message].Value);
         }
 
         return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
@@ -211,12 +213,12 @@ internal sealed class BudgetController(
         try
         {
             await budgetService.DeleteLineItemAsync(id, user.Id);
-            SetSuccess("Line item deleted.");
+            SetSuccess(localizer["Budget_Flash_LineDeleted"].Value);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to delete line item {LineItemId}", id);
-            SetError($"Failed to delete line item: {ex.Message}");
+            SetError(localizer["Budget_Flash_LineDeleteFailed", ex.Message].Value);
         }
         return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
     }
@@ -229,7 +231,7 @@ internal sealed class BudgetController(
         var result = await authService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit);
         if (!result.Succeeded)
         {
-            SetError("You do not have permission to edit this budget category.");
+            SetError(localizer["Budget_Flash_CategoryEditDenied"].Value);
             return RedirectToAction(nameof(CategoryDetail), new { id = categoryId });
         }
 
