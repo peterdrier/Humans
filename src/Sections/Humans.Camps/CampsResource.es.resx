@@ -217,50 +217,50 @@
   <data name="Camp_Members_AddMemberSearchHelp" xml:space="preserve"><value>Busca por nombre. El human se añade a la temporada abierta del barrio como Activo.</value></data>
   <data name="Camp_Members_NoPendingRequests" xml:space="preserve"><value>No hay solicitudes pendientes.</value></data>
   <!-- Controller feedback -->
-  <data name="Camp_Flash_RegistrationClosed" xml:space="preserve"><value>El registro está cerrado actualmente.</value></data>
-  <data name="Camp_Flash_RegistrationPendingReview" xml:space="preserve"><value>Tu campamento se ha registrado y está pendiente de revisión.</value></data>
-  <data name="Camp_Flash_RegistrationFailed" xml:space="preserve"><value>No hemos podido registrar tu campamento ahora. Inténtalo de nuevo o contacta con un administrador si el problema persiste.</value></data>
-  <data name="Camp_Flash_NoSeason" xml:space="preserve"><value>No se encontró temporada para este campamento.</value></data>
-  <data name="Camp_Flash_UnknownHuman" xml:space="preserve"><value>(desconocido)</value></data>
-  <data name="Camp_Flash_UpdateFailed" xml:space="preserve"><value>No se pudo actualizar el campamento.</value></data>
-  <data name="Camp_Flash_Updated" xml:space="preserve"><value>Campamento actualizado correctamente.</value></data>
-  <data name="Camp_Flash_OptedIn" xml:space="preserve"><value>Inscrito en la temporada {0}.</value></data>
-  <data name="Camp_Flash_SeasonWithdrawn" xml:space="preserve"><value>Temporada retirada.</value></data>
-  <data name="Camp_Flash_SeasonFull" xml:space="preserve"><value>Temporada marcada como completa.</value></data>
-  <data name="Camp_Flash_NameRequired" xml:space="preserve"><value>El nombre no puede estar vacío.</value></data>
-  <data name="Camp_Flash_HistoricalNameAdded" xml:space="preserve"><value>Nombre histórico añadido.</value></data>
-  <data name="Camp_Flash_HistoricalNameRemoved" xml:space="preserve"><value>Nombre histórico eliminado.</value></data>
-  <data name="Camp_Flash_ImageRequired" xml:space="preserve"><value>Selecciona un archivo para subir.</value></data>
-  <data name="Camp_Flash_ImageUploaded" xml:space="preserve"><value>Imagen subida.</value></data>
-  <data name="Camp_Flash_ImageUploadFailed" xml:space="preserve"><value>No se pudo subir la imagen.</value></data>
-  <data name="Camp_Flash_ImageDeleted" xml:space="preserve"><value>Imagen eliminada.</value></data>
-  <data name="Camp_Flash_ImageOrderUpdated" xml:space="preserve"><value>Orden de imágenes actualizado.</value></data>
-  <data name="Camp_Flash_RequestWithdrawn" xml:space="preserve"><value>Tu solicitud pendiente se ha retirado.</value></data>
-  <data name="Camp_Flash_MembershipLeft" xml:space="preserve"><value>Has dejado este campamento para esta temporada.</value></data>
-  <data name="Camp_Flash_MembershipLeaveFailed" xml:space="preserve"><value>No se pudo abandonar este campamento.</value></data>
-  <data name="Camp_Flash_MembershipApproved" xml:space="preserve"><value>Membresía aprobada.</value></data>
-  <data name="Camp_Flash_RequestRejected" xml:space="preserve"><value>Solicitud rechazada.</value></data>
-  <data name="Camp_Flash_MemberRemoved" xml:space="preserve"><value>Miembro eliminado.</value></data>
-  <data name="Camp_Flash_EarlyEntryGranted" xml:space="preserve"><value>Entrada temprana concedida.</value></data>
-  <data name="Camp_Flash_EarlyEntryRevoked" xml:space="preserve"><value>Entrada temprana revocada.</value></data>
-  <data name="Camp_Flash_EarlyEntryCapReached" xml:space="preserve"><value>No se puede conceder la entrada temprana: se alcanzó el límite de plazas de este campamento.</value></data>
-  <data name="Camp_Flash_EarlyEntryActiveMembersOnly" xml:space="preserve"><value>Solo los miembros activos del campamento pueden tener entrada temprana.</value></data>
-  <data name="Camp_Flash_EarlyEntryAlreadyEntered" xml:space="preserve"><value>No se puede revocar la entrada temprana: este miembro ya ha entrado al evento, por lo que su plaza está utilizada.</value></data>
-  <data name="Camp_Flash_HumanRequired" xml:space="preserve"><value>Busca y selecciona primero un human.</value></data>
-  <data name="Camp_Flash_NoActiveSeason" xml:space="preserve"><value>No hay temporada activa para este campamento.</value></data>
-  <data name="Camp_Flash_HumanAdded" xml:space="preserve"><value>Human añadido al campamento.</value></data>
-  <data name="Camp_Flash_HumanAddFailed" xml:space="preserve"><value>No se pudo añadir el human al campamento.</value></data>
-  <data name="Camp_Flash_RoleAssignFailed" xml:space="preserve"><value>No se pudo asignar el rol.</value></data>
-  <data name="Camp_Flash_RoleAssigned" xml:space="preserve"><value>Rol asignado.</value></data>
-  <data name="Camp_Flash_RoleNotFound" xml:space="preserve"><value>No se encontró la definición del rol.</value></data>
-  <data name="Camp_Flash_RoleDeactivated" xml:space="preserve"><value>Ese rol está desactivado.</value></data>
-  <data name="Camp_Flash_RoleMemberNotFound" xml:space="preserve"><value>No se encontró el miembro del campamento.</value></data>
-  <data name="Camp_Flash_RoleActiveMembersOnly" xml:space="preserve"><value>Solo los miembros activos del campamento pueden tener roles.</value></data>
-  <data name="Camp_Flash_RoleMemberSeasonMismatch" xml:space="preserve"><value>El miembro no está en esta temporada.</value></data>
-  <data name="Camp_Flash_RoleSlotsFilled" xml:space="preserve"><value>Todas las plazas de este rol están cubiertas.</value></data>
-  <data name="Camp_Flash_RoleAlreadyHeld" xml:space="preserve"><value>Ese human ya tiene este rol.</value></data>
-  <data name="Camp_Flash_RoleSeasonNotFound" xml:space="preserve"><value>No se encontró la temporada.</value></data>
-  <data name="Camp_Flash_UnknownError" xml:space="preserve"><value>Error desconocido.</value></data>
-  <data name="Camp_Flash_RoleUnassigned" xml:space="preserve"><value>Rol desasignado.</value></data>
-  <data name="Camp_Flash_AssignmentNotFound" xml:space="preserve"><value>No se encontró la asignación.</value></data>
+  <data name="Camps_Flash_RegistrationClosed" xml:space="preserve"><value>El registro está cerrado actualmente.</value></data>
+  <data name="Camps_Flash_RegistrationPendingReview" xml:space="preserve"><value>Tu campamento se ha registrado y está pendiente de revisión.</value></data>
+  <data name="Camps_Flash_RegistrationFailed" xml:space="preserve"><value>No hemos podido registrar tu campamento ahora. Inténtalo de nuevo o contacta con un administrador si el problema persiste.</value></data>
+  <data name="Camps_Flash_NoSeason" xml:space="preserve"><value>No se encontró temporada para este campamento.</value></data>
+  <data name="Camps_Flash_UnknownHuman" xml:space="preserve"><value>(desconocido)</value></data>
+  <data name="Camps_Flash_UpdateFailed" xml:space="preserve"><value>No se pudo actualizar el campamento.</value></data>
+  <data name="Camps_Flash_Updated" xml:space="preserve"><value>Campamento actualizado correctamente.</value></data>
+  <data name="Camps_Flash_OptedIn" xml:space="preserve"><value>Inscrito en la temporada {0}.</value></data>
+  <data name="Camps_Flash_SeasonWithdrawn" xml:space="preserve"><value>Temporada retirada.</value></data>
+  <data name="Camps_Flash_SeasonFull" xml:space="preserve"><value>Temporada marcada como completa.</value></data>
+  <data name="Camps_Flash_NameRequired" xml:space="preserve"><value>El nombre no puede estar vacío.</value></data>
+  <data name="Camps_Flash_HistoricalNameAdded" xml:space="preserve"><value>Nombre histórico añadido.</value></data>
+  <data name="Camps_Flash_HistoricalNameRemoved" xml:space="preserve"><value>Nombre histórico eliminado.</value></data>
+  <data name="Camps_Flash_ImageRequired" xml:space="preserve"><value>Selecciona un archivo para subir.</value></data>
+  <data name="Camps_Flash_ImageUploaded" xml:space="preserve"><value>Imagen subida.</value></data>
+  <data name="Camps_Flash_ImageUploadFailed" xml:space="preserve"><value>No se pudo subir la imagen.</value></data>
+  <data name="Camps_Flash_ImageDeleted" xml:space="preserve"><value>Imagen eliminada.</value></data>
+  <data name="Camps_Flash_ImageOrderUpdated" xml:space="preserve"><value>Orden de imágenes actualizado.</value></data>
+  <data name="Camps_Flash_RequestWithdrawn" xml:space="preserve"><value>Tu solicitud pendiente se ha retirado.</value></data>
+  <data name="Camps_Flash_MembershipLeft" xml:space="preserve"><value>Has dejado este campamento para esta temporada.</value></data>
+  <data name="Camps_Flash_MembershipLeaveFailed" xml:space="preserve"><value>No se pudo abandonar este campamento.</value></data>
+  <data name="Camps_Flash_MembershipApproved" xml:space="preserve"><value>Membresía aprobada.</value></data>
+  <data name="Camps_Flash_RequestRejected" xml:space="preserve"><value>Solicitud rechazada.</value></data>
+  <data name="Camps_Flash_MemberRemoved" xml:space="preserve"><value>Miembro eliminado.</value></data>
+  <data name="Camps_Flash_EarlyEntryGranted" xml:space="preserve"><value>Entrada temprana concedida.</value></data>
+  <data name="Camps_Flash_EarlyEntryRevoked" xml:space="preserve"><value>Entrada temprana revocada.</value></data>
+  <data name="Camps_Flash_EarlyEntryCapReached" xml:space="preserve"><value>No se puede conceder la entrada temprana: se alcanzó el límite de plazas de este campamento.</value></data>
+  <data name="Camps_Flash_EarlyEntryActiveMembersOnly" xml:space="preserve"><value>Solo los miembros activos del campamento pueden tener entrada temprana.</value></data>
+  <data name="Camps_Flash_EarlyEntryAlreadyEntered" xml:space="preserve"><value>No se puede revocar la entrada temprana: este miembro ya ha entrado al evento, por lo que su plaza está utilizada.</value></data>
+  <data name="Camps_Flash_HumanRequired" xml:space="preserve"><value>Busca y selecciona primero un human.</value></data>
+  <data name="Camps_Flash_NoActiveSeason" xml:space="preserve"><value>No hay temporada activa para este campamento.</value></data>
+  <data name="Camps_Flash_HumanAdded" xml:space="preserve"><value>Human añadido al campamento.</value></data>
+  <data name="Camps_Flash_HumanAddFailed" xml:space="preserve"><value>No se pudo añadir el human al campamento.</value></data>
+  <data name="Camps_Flash_RoleAssignFailed" xml:space="preserve"><value>No se pudo asignar el rol.</value></data>
+  <data name="Camps_Flash_RoleAssigned" xml:space="preserve"><value>Rol asignado.</value></data>
+  <data name="Camps_Flash_RoleNotFound" xml:space="preserve"><value>No se encontró la definición del rol.</value></data>
+  <data name="Camps_Flash_RoleDeactivated" xml:space="preserve"><value>Ese rol está desactivado.</value></data>
+  <data name="Camps_Flash_RoleMemberNotFound" xml:space="preserve"><value>No se encontró el miembro del campamento.</value></data>
+  <data name="Camps_Flash_RoleActiveMembersOnly" xml:space="preserve"><value>Solo los miembros activos del campamento pueden tener roles.</value></data>
+  <data name="Camps_Flash_RoleMemberSeasonMismatch" xml:space="preserve"><value>El miembro no está en esta temporada.</value></data>
+  <data name="Camps_Flash_RoleSlotsFilled" xml:space="preserve"><value>Todas las plazas de este rol están cubiertas.</value></data>
+  <data name="Camps_Flash_RoleAlreadyHeld" xml:space="preserve"><value>Ese human ya tiene este rol.</value></data>
+  <data name="Camps_Flash_RoleSeasonNotFound" xml:space="preserve"><value>No se encontró la temporada.</value></data>
+  <data name="Camps_Flash_UnknownError" xml:space="preserve"><value>Error desconocido.</value></data>
+  <data name="Camps_Flash_RoleUnassigned" xml:space="preserve"><value>Rol desasignado.</value></data>
+  <data name="Camps_Flash_AssignmentNotFound" xml:space="preserve"><value>No se encontró la asignación.</value></data>
 </root>
