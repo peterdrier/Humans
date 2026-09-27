@@ -275,7 +275,7 @@ public class TicketTailorServiceTests
     public async Task GetEventSummaryAsync_ParsesEventResponse()
     {
         var handler = new RecordingHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.OK, new
+        var responseContent = handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             name = "Elsewhere 2026",
             total_holds = 0,
@@ -297,6 +297,7 @@ public class TicketTailorServiceTests
         var summary = await service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
 
         summary.EventName.Should().Be("Elsewhere 2026");
+        responseContent.WasDisposed.Should().BeTrue();
         summary.TotalCapacity.Should().Be(2000);
         summary.TicketsSold.Should().Be(96);
         summary.TicketsRemaining.Should().Be(1904);

@@ -35,11 +35,15 @@ internal sealed class RecordingHttpHandler : HttpMessageHandler
 
     public int RequestCount => Requests.Count;
 
-    public void EnqueueResponse(HttpStatusCode status, object? body) =>
+    public TrackingHttpContent EnqueueResponse(HttpStatusCode status, object? body)
+    {
+        var content = new TrackingHttpContent(JsonSerializer.Serialize(body));
         _responses.Enqueue(() => new HttpResponseMessage(status)
         {
-            Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json")
+            Content = content
         });
+        return content;
+    }
 
     public void EnqueueThrow(Exception exception) =>
         _responses.Enqueue(() => throw exception);
@@ -49,5 +53,16 @@ internal sealed class RecordingHttpHandler : HttpMessageHandler
         var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
         Requests.Add((request, body));
         return _responses.Dequeue()();
+    }
+}
+
+internal sealed class TrackingHttpContent(string content) : StringContent(content, Encoding.UTF8, "application/json")
+{
+    public bool WasDisposed { get; private set; }
+
+    protected override void Dispose(bool disposing)
+    {
+        WasDisposed = true;
+        base.Dispose(disposing);
     }
 }
