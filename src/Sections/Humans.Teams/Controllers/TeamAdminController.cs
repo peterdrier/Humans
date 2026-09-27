@@ -411,7 +411,7 @@ internal sealed class TeamAdminController(
             TeamName = team.Name,
             TeamSlug = team.Slug,
             ServiceAccountEmail = serviceAccountEmail,
-            Resources = resources.Select(r => new GoogleResourceViewModel
+            Resources = resources.OrderBy(r => r.ProvisionedAt).Select(r => new GoogleResourceViewModel
             {
                 Id = r.Id,
                 ResourceType = r.ResourceType switch

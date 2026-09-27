@@ -140,7 +140,7 @@ internal sealed class TeamController(
             RoleDefinitions = teamPage.RoleDefinitions
                 .Select(role => TeamRoleDefinitionViewModel.FromSnapshot(role, members))
                 .ToList(),
-            Resources = teamPage.Resources.Select(MapTeamResource).ToList(),
+            Resources = teamPage.Resources.OrderBy(r => r.ProvisionedAt).Select(MapTeamResource).ToList(),
             Members = members,
             ParentTeam = team.ParentTeam,
             ChildTeams = teamPage.ChildTeams,
@@ -743,7 +743,7 @@ internal sealed class TeamController(
     public async Task<IActionResult> GetTeamGoogleResources(Guid teamId, CancellationToken cancellationToken)
     {
         var resources = await teamResourceService.GetTeamResourcesAsync(teamId, cancellationToken);
-        var result = resources.Select(r => new
+        var result = resources.OrderBy(r => r.ProvisionedAt).Select(r => new
         {
             name = r.Name,
             type = r.ResourceType switch
