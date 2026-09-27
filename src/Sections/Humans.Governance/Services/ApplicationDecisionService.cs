@@ -80,8 +80,7 @@ internal sealed class ApplicationDecisionService(
 
         navBadge.Invalidate();
         notificationMeter.Invalidate();
-        foreach (var voterId in voterIds)
-            votingBadge.Invalidate(voterId);
+        await InvalidateVotingBadgesAsync(cancellationToken);
 
         await auditLogService.LogAsync(
             AuditAction.TierApplicationApproved,
@@ -154,8 +153,7 @@ internal sealed class ApplicationDecisionService(
 
         navBadge.Invalidate();
         notificationMeter.Invalidate();
-        foreach (var voterId in voterIds)
-            votingBadge.Invalidate(voterId);
+        await InvalidateVotingBadgesAsync(cancellationToken);
 
         await auditLogService.LogAsync(
             AuditAction.TierApplicationRejected,
@@ -289,6 +287,7 @@ internal sealed class ApplicationDecisionService(
 
         navBadge.Invalidate();
         notificationMeter.Invalidate();
+        await InvalidateVotingBadgesAsync(ct);
 
         logger.LogInformation(
             "User {UserId} submitted application {ApplicationId}",
@@ -312,6 +311,7 @@ internal sealed class ApplicationDecisionService(
 
         navBadge.Invalidate();
         notificationMeter.Invalidate();
+        await InvalidateVotingBadgesAsync(ct);
 
         metrics.RecordApplicationProcessed("withdrawn");
         logger.LogInformation(
@@ -567,6 +567,13 @@ internal sealed class ApplicationDecisionService(
             entry.AbsoluteExpirationRelativeToNow = BadgeCacheDuration;
             return await repository.GetUnvotedCountForBoardMemberAsync(boardMemberUserId, ct);
         });
+
+    private async Task InvalidateVotingBadgesAsync(CancellationToken ct)
+    {
+        var boardMemberIds = await roleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct);
+        foreach (var boardMemberId in boardMemberIds)
+            votingBadge.Invalidate(boardMemberId);
+    }
 
     public Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default) =>
         repository.GetAdminStatsAsync(ct);
