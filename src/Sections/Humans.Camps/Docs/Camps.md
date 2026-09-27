@@ -41,6 +41,8 @@ Per-year season data (name, blurbs, community info, placement). `EeSlotCount` (i
 
 Image metadata; files are stored on disk via the shared `IFileStorage` abstraction (key `uploads/camps/{campId}/{guid}{.ext}`, served as static files at `/uploads/camps/...`). Display order is tracked per camp.
 
+Uploaded display names are stored as a basename only and must fit the 256-character `CampImage.FileName` column; invalid names fail before a file or row is written.
+
 **Table:** `camp_images`
 
 ### CampHistoricalName
