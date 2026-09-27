@@ -138,11 +138,8 @@ internal sealed class TeamService(
 
     public async Task<TeamInfo?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
-        var normalizedSlug = slug.ToLowerInvariant();
         var teamsById = await LoadTeamsByIdAsync(cancellationToken);
-        return teamsById.Values.FirstOrDefault(t =>
-            string.Equals(t.Slug, normalizedSlug, StringComparison.Ordinal)
-            || (t.CustomSlug is not null && string.Equals(t.CustomSlug, normalizedSlug, StringComparison.Ordinal)));
+        return TeamSlugResolver.Find(teamsById, slug);
     }
 
     public async Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default) =>
