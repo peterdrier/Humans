@@ -25,7 +25,8 @@ public sealed class ProfileCardViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
-        var info = await userService.GetUserInfoAsync(userId);
+        var ct = HttpContext.RequestAborted;
+        var info = await userService.GetUserInfoAsync(userId, ct);
         if (info is null)
         {
             return Content(string.Empty);
@@ -42,11 +43,11 @@ public sealed class ProfileCardViewComponent(
             && Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId))
         {
             viewerUserId = viewerId;
-            canViewLegalName = await roleAssignmentService.IsUserBoardMemberAsync(viewerId);
+            canViewLegalName = await roleAssignmentService.IsUserBoardMemberAsync(viewerId, ct);
         }
 
         var contactFields = profile is not null
-            ? await contactFieldService.GetVisibleContactFieldsAsync(userId, viewerUserId)
+            ? await contactFieldService.GetVisibleContactFieldsAsync(userId, viewerUserId, ct)
             : [];
 
         // Get visible user emails based on access level
@@ -57,11 +58,11 @@ public sealed class ProfileCardViewComponent(
         }
         else
         {
-            accessLevel = await contactFieldService.GetViewerAccessLevelAsync(userId, viewerUserId);
+            accessLevel = await contactFieldService.GetViewerAccessLevelAsync(userId, viewerUserId, ct);
         }
-        var visibleEmails = await userEmailService.GetVisibleEmailsAsync(userId, accessLevel);
+        var visibleEmails = await userEmailService.GetVisibleEmailsAsync(userId, accessLevel, ct);
 
-        var teamsById = await teamService.GetTeamsAsync();
+        var teamsById = await teamService.GetTeamsAsync(ct);
         var displayableTeams = teamsById
             .Values
             .Where(t => t.IsActive
@@ -84,7 +85,7 @@ public sealed class ProfileCardViewComponent(
             })
             .ToList();
 
-        var membershipSnapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId);
+        var membershipSnapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
 
         var hasCustomPicture = profile?.HasCustomPicture == true;
         var pictureUrl = hasCustomPicture
@@ -148,7 +149,7 @@ public sealed class ProfileCardViewComponent(
             PreferredLanguage = info.PreferredLanguage,
             CanSendMessage = !isOwnProfile
                 && !visibleEmails.Any(e => e.Visibility >= ContactFieldVisibility.AllActiveProfiles)
-                && await commPrefService.AcceptsFacilitatedMessagesAsync(userId)
+                && await commPrefService.AcceptsFacilitatedMessagesAsync(userId, ct)
         };
 
         return View(model);
