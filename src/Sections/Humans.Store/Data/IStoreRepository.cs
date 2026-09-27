@@ -10,11 +10,6 @@ namespace Humans.Store.Data;
 /// <c>store_treasury_sync_state</c> ships unused — nothing here touches it.
 /// </summary>
 /// <remarks>
-/// Follows the §15b Singleton + <c>IDbContextFactory</c> pattern: every method
-/// opens its own short-lived <c>DbContext</c>, performs its work, and saves
-/// atomically within that context's lifetime.
-/// </remarks>
-/// <remarks>
 /// Keeps its prefix where the rest of the section's internals drop theirs
 /// (nobodies-collective/Humans#866 design §6a): it derives from
 /// <see cref="IRepository"/>, so it cannot itself be called <c>IRepository</c> —
@@ -70,7 +65,7 @@ internal interface IStoreRepository : IRepository
     /// Returns every <see cref="Order"/> whose <c>TeamId</c> is in
     /// <paramref name="teamIds"/> for the given <paramref name="year"/>, with
     /// <c>Lines</c> eager-loaded. Empty input returns an empty list without a
-    /// round-trip. Used by the admin summary cross-tab.
+    /// round-trip.
     /// </summary>
     Task<IReadOnlyList<Order>> GetOrdersForTeamsWithLinesAsync(
         IReadOnlyCollection<Guid> teamIds,
@@ -104,8 +99,8 @@ internal interface IStoreRepository : IRepository
     /// <summary>
     /// Returns the line plus its parent order's <see cref="Order.State"/> and
     /// <see cref="Order.CampSeasonId"/> and the product's
-    /// <see cref="Product.OrderableUntil"/> deadline. Used by RemoveLineAsync
-    /// to enforce the same gate as AddLine without three round trips.
+    /// <see cref="Product.OrderableUntil"/> deadline — everything the line-edit gate
+    /// needs, in one round trip.
     /// </summary>
     Task<LineContext?> GetLineWithOrderAndProductAsync(Guid lineId, CancellationToken ct = default);
 
@@ -146,8 +141,7 @@ internal interface IStoreRepository : IRepository
 
     /// <summary>
     /// Returns the issued invoice of every order in <paramref name="orderIds"/> that has one.
-    /// Empty input returns an empty list without a round-trip. Feeds the accounting export's
-    /// invoice number (<c>IStoreAccountingRead</c>).
+    /// Empty input returns an empty list without a round-trip.
     /// </summary>
     Task<IReadOnlyList<Invoice>> GetInvoicesForOrdersAsync(IReadOnlyCollection<Guid> orderIds, CancellationToken ct = default);
 

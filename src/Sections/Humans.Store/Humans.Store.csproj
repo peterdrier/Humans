@@ -32,8 +32,7 @@
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
-    <!-- StoreAdmin/CatalogEdit.cshtml renders <vc:audit-log>, which moved out of Humans.UI into
-         the AuditLog section in G5 lane 4b-2h (nobodies-collective/Humans#866). -->
+    <!-- StoreAdmin/CatalogEdit.cshtml renders <vc:audit-log>, owned by the AuditLog section. -->
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!--
       Checkout Session creation, webhook signature verification and payment
