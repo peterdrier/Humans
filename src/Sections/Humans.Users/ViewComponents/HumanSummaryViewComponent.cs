@@ -19,7 +19,8 @@ public sealed class HumanSummaryViewComponent(IUserServiceRead userService, ITea
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
-        var info = await userService.GetUserInfoAsync(userId);
+        var ct = HttpContext.RequestAborted;
+        var info = await userService.GetUserInfoAsync(userId, ct);
         if (info is not null)
             userId = info.Id; // team memberships below are keyed by the live id
         if (info is null)
@@ -47,7 +48,7 @@ public sealed class HumanSummaryViewComponent(IUserServiceRead userService, ITea
         }
 
         var profile = info.Profile;
-        var memberships = (await teamService.GetTeamsAsync())
+        var memberships = (await teamService.GetTeamsAsync(ct))
             .Values
             .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)
             .Select(t => new
