@@ -169,4 +169,4 @@ never in live code.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-08-25 | first doctor run | peterdrier/Humans#1520 |
-| 2 | 2026-09-27 | pending | pending |
+| 2 | 2026-09-27 | admin pages take the catalog year from the service; docs stop describing unbuilt payment paths as live | peterdrier/Humans#1829 |
