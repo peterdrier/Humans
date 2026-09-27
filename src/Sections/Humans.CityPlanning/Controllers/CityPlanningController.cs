@@ -139,11 +139,13 @@ internal sealed class CityPlanningController(
 
     [HttpPost("BarrioMap/Admin/UploadLimitZone")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(11 * 1024 * 1024)] // 10 MB GeoJSON plus multipart overhead; service enforces the file cap.
     public Task<IActionResult> UploadLimitZone(IFormFile? file, CancellationToken cancellationToken) =>
         UploadGeoJsonAsync(file, "Limit zone", cityPlanningService.UpdateLimitZoneFromUploadAsync, cancellationToken);
 
     [HttpPost("BarrioMap/Admin/UploadOfficialZones")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(11 * 1024 * 1024)] // 10 MB GeoJSON plus multipart overhead; service enforces the file cap.
     public Task<IActionResult> UploadOfficialZones(IFormFile? file, CancellationToken cancellationToken) =>
         UploadGeoJsonAsync(file, "Official zones", cityPlanningService.UpdateOfficialZonesFromUploadAsync, cancellationToken);
 
