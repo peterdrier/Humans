@@ -120,6 +120,10 @@ internal sealed class CalendarService(
             return CalendarEventMutationResult.Failed(ex.Message.StartsWith("Calendar_", StringComparison.Ordinal)
                 ? ex.Message : dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : ex.Message);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to create calendar event");
@@ -353,6 +357,10 @@ internal sealed class CalendarService(
             logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
             return CalendarEventMutationResult.Failed(ex.Message.StartsWith("Calendar_", StringComparison.Ordinal)
                 ? ex.Message : dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : ex.Message);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

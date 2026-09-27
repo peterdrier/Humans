@@ -243,6 +243,33 @@ public class CalendarServiceValidationTests
     }
 
     [HumansFact]
+    public async Task CreateEventWithResultAsync_AddCancellation_Propagates()
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        using var cancellation = new CancellationTokenSource();
+        repo.AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                await Task.FromCanceled(cancellation.Token);
+            });
+
+        var service = BuildService(repo);
+        var dto = new CreateCalendarEventDto(
+            "Canceled create", null, null, null,
+            OwningTeamId: Guid.NewGuid(),
+            StartUtc: Instant.FromUtc(2026, 5, 15, 17, 0),
+            EndUtc: Instant.FromUtc(2026, 5, 15, 18, 0),
+            IsAllDay: false,
+            RecurrenceRule: null,
+            RecurrenceTimezone: null);
+
+        var act = () => service.CreateEventWithResultAsync(dto, Guid.NewGuid(), cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task UpdateEventWithResultAsync_AuditThrowsAfterWrite_StillReturnsSuccess()
     {
         var repo = Substitute.For<ICalendarRepository>();

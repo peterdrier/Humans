@@ -125,6 +125,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Every `CalendarEvent` has a non-null `OwningTeamId` — a bare Guid naming a team, with no database FK constraint and no navigation property.
 - Only authenticated humans may create, edit, or delete events, or manage exceptions (enforced by `[Authorize]` on `CalendarController`).
 - Every mutating action (create / update / delete / cancel-occurrence / override-occurrence) writes an `AuditLogEntry` with the actor's user ID.
+- Create and update result wrappers preserve caller cancellation; they do not turn a canceled operation into an ordinary validation or persistence failure.
 - Title is required (non-null, non-empty).
 - Calendar form parse and fallback validation messages use `CalendarResource` in every supported culture.
 - The create form's date and 19:00–20:00 time defaults use the configured viewer zone through `IClock`, never the server-local date.
