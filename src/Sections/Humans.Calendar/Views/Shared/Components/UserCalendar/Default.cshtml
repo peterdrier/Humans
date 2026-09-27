@@ -2,22 +2,22 @@
 
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="fa-solid fa-calendar-days me-2"></i>Calendar Feed</span>
+        <span><i class="fa-solid fa-calendar-days me-2"></i>@Localizer["Calendar_UserFeedTitle"]</span>
         @if (!Model.LoadFailed)
         {
             <small class="text-muted">
-                @Model.Items.Count @(Model.Items.Count == 1 ? "item" : "items")
-                &middot; feed @(Model.HasFeedToken ? "provisioned" : "not provisioned")
+                @Model.Items.Count @(Model.Items.Count == 1 ? Localizer["Calendar_UserFeedItem"] : Localizer["Calendar_UserFeedItems"])
+                &middot; @Localizer[Model.HasFeedToken ? "Calendar_UserFeedProvisioned" : "Calendar_UserFeedNotProvisioned"]
             </small>
         }
     </div>
     @if (Model.LoadFailed)
     {
-        <div class="card-body text-danger">Failed to load calendar feed items.</div>
+        <div class="card-body text-danger">@Localizer["Calendar_UserFeedLoadFailed"]</div>
     }
     else if (Model.Items.Count == 0)
     {
-        <div class="card-body text-muted">No calendar items.</div>
+        <div class="card-body text-muted">@Localizer["Calendar_UserFeedEmpty"]</div>
     }
     else
     {
@@ -25,11 +25,11 @@
             <table class="table table-sm mb-0">
                 <thead>
                     <tr>
-                        <th>Source</th>
-                        <th>Summary</th>
-                        <th>Start</th>
-                        <th>End</th>
-                        <th>Location</th>
+                        <th>@Localizer["Calendar_UserFeedSource"]</th>
+                        <th>@Localizer["Calendar_UserFeedSummary"]</th>
+                        <th>@Localizer["Calendar_Start"]</th>
+                        <th>@Localizer["Calendar_UserFeedEnd"]</th>
+                        <th>@Localizer["Calendar_Location"]</th>
                     </tr>
                 </thead>
                 <tbody>
