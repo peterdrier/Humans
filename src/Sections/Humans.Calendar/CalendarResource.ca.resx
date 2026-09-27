@@ -140,14 +140,4 @@
   <data name="Calendar_IcalRegenerateConfirm" xml:space="preserve"><value>Això invalidarà l'URL actual. Continuar?</value></data>
   <data name="Calendar_IcalRegenerate" xml:space="preserve"><value>Regenerar l'URL</value></data>
   <data name="Calendar_IcalRegenerated" xml:space="preserve"><value>URL d'iCal regenerada.</value></data>
-  <data name="Calendar_UserFeedTitle" xml:space="preserve"><value>Canal de calendari</value></data>
-  <data name="Calendar_UserFeedItem" xml:space="preserve"><value>element</value></data>
-  <data name="Calendar_UserFeedItems" xml:space="preserve"><value>elements</value></data>
-  <data name="Calendar_UserFeedProvisioned" xml:space="preserve"><value>canal aprovisionat</value></data>
-  <data name="Calendar_UserFeedNotProvisioned" xml:space="preserve"><value>canal no aprovisionat</value></data>
-  <data name="Calendar_UserFeedLoadFailed" xml:space="preserve"><value>No s'han pogut carregar els elements del canal de calendari.</value></data>
-  <data name="Calendar_UserFeedEmpty" xml:space="preserve"><value>No hi ha elements de calendari.</value></data>
-  <data name="Calendar_UserFeedSource" xml:space="preserve"><value>Origen</value></data>
-  <data name="Calendar_UserFeedSummary" xml:space="preserve"><value>Resum</value></data>
-  <data name="Calendar_UserFeedEnd" xml:space="preserve"><value>Final</value></data>
 </root>

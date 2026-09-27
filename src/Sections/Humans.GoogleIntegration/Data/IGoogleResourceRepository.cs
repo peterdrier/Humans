@@ -28,7 +28,8 @@ internal interface IGoogleResourceRepository : IRepository
     Task<GoogleResource?> GetByIdAsync(Guid resourceId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all active resources for a team. Read-only.
+    /// Returns all active resources for a team, ordered by
+    /// <see cref="GoogleResource.ProvisionedAt"/>. Read-only.
     /// </summary>
     Task<IReadOnlyList<GoogleResource>> GetActiveByTeamIdAsync(Guid teamId, CancellationToken ct = default);
 

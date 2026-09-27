@@ -140,14 +140,4 @@
   <data name="Calendar_IcalRegenerateConfirm" xml:space="preserve"><value>Questo invaliderà l'URL attuale. Continuare?</value></data>
   <data name="Calendar_IcalRegenerate" xml:space="preserve"><value>Rigenera URL</value></data>
   <data name="Calendar_IcalRegenerated" xml:space="preserve"><value>URL iCal rigenerato.</value></data>
-  <data name="Calendar_UserFeedTitle" xml:space="preserve"><value>Feed del calendario</value></data>
-  <data name="Calendar_UserFeedItem" xml:space="preserve"><value>elemento</value></data>
-  <data name="Calendar_UserFeedItems" xml:space="preserve"><value>elementi</value></data>
-  <data name="Calendar_UserFeedProvisioned" xml:space="preserve"><value>feed predisposto</value></data>
-  <data name="Calendar_UserFeedNotProvisioned" xml:space="preserve"><value>feed non predisposto</value></data>
-  <data name="Calendar_UserFeedLoadFailed" xml:space="preserve"><value>Impossibile caricare gli elementi del feed del calendario.</value></data>
-  <data name="Calendar_UserFeedEmpty" xml:space="preserve"><value>Nessun elemento del calendario.</value></data>
-  <data name="Calendar_UserFeedSource" xml:space="preserve"><value>Origine</value></data>
-  <data name="Calendar_UserFeedSummary" xml:space="preserve"><value>Riepilogo</value></data>
-  <data name="Calendar_UserFeedEnd" xml:space="preserve"><value>Fine</value></data>
 </root>

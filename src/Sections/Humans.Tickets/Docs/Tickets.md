@@ -248,7 +248,7 @@ read/write through `ITicketRepository` / `ITicketTransferRepository`; no service
 **Architecture tests:**
 - `tests/Humans.Tickets.Tests/Architecture/TicketQueryArchitectureTests.cs` — sealed inner + decorator, the decorator implements `ITicketService` / `ITicketServiceRead` / `ITicketCacheInvalidator` and is the only implementation of the invalidator, and `ITicketServiceRead` exposes no entity types.
 - `tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs` — **the one that matters for the vendor swap**: only `Humans.Tickets` injects `ITicketVendorService`, its own `TicketVendorHealthCheck` included, and the port's implementations are the adapter's live/stub pair (`Humans.TicketTailor`) plus Tickets' own `CachingTicketVendorService` — the Tickets leaf still names none of the port's vocabulary.
-- `tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs` — pins the port in `Humans.Tickets.Contracts` (the `Humans.Tickets` assembly, not the leaf), no HTTP/vendor-SDK type in its signatures, and the two adapters in `Humans.TicketTailor.Services`.
+- `tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs` — pins the port in `Humans.Tickets.Contracts` (the `Humans.Tickets` assembly, not the leaf), no HTTP/vendor-SDK type in its signatures.
 - `tests/Humans.Integration.Tests/Controllers/TicketsPageRenderTests.cs` — render check: every admin page, the transfer wizard's copy in English and Spanish, the Shell access-matrix widget invoked by name, and the volunteer's `302 → /Account/AccessDenied`.
 
 ### Repositories
