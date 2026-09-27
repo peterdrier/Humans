@@ -588,7 +588,7 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/Users/Admin/{id}/Suspend`, `/Users/Admin/{id}/Unsuspend` | POST — suspend / unsuspend member |
 | `/Users/Admin/{id}/Reject` | POST — reject signup |
 | `/Users/Admin/{id}/Roles/Add` (GET/POST), `/Users/Admin/{id}/Roles/{roleId}/End` (POST) | Role management |
-| `/Users/Admin/Audience` | `AdminOnly` — audience-segmentation diagnostic (profile-completion × ticket-purchase) |
+| `/Users/Admin/Audience` | `AdminOnly` — audience-segmentation diagnostic (profile-completion × ticket-purchase); a cancelled request propagates rather than becoming an error redirect |
 | `/Users/Admin/{id}/Purge` | POST (`AdminOnly`, non-Production only) — purge a human |
 
 Admin-only flows for the section's cross-account hygiene (the `/Profile/Admin/*` routes pre-date `memory/architecture/no-admin-url-section.md` — not yet moved to `/<Section>/Admin/*`):

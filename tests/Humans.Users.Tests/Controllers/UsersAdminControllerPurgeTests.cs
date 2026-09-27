@@ -202,6 +202,19 @@ public class UsersAdminControllerPurgeTests
     }
 
     [HumansFact]
+    public async Task Audience_RequestAborted_PropagatesCancellation()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _audience.GetAudienceSegmentationAsync(Arg.Any<int?>(), aborted.Token)
+            .Returns(Task.FromException<AudienceSegmentation>(new OperationCanceledException(aborted.Token)));
+
+        var act = () => BuildController().Audience(2026, aborted.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task RevealIban_StoresTheIbanAndAuditsTheAdminAction()
     {
         var target = Guid.NewGuid();
