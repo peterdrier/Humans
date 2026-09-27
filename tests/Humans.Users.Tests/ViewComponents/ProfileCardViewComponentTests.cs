@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
+using Humans.Base.Enums;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
