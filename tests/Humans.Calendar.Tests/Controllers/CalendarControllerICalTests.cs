@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Base.Enums;
 using Humans.Calendar.Controllers;
 using Humans.Calendar.Models;
 using Humans.Calendar.Services;
@@ -113,6 +114,30 @@ public class CalendarControllerICalTests
         await _feedTokens.DidNotReceive().RotateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task Create_defaults_to_today_in_the_viewer_zone()
+    {
+        var teamId = Guid.NewGuid();
+        _teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
+        {
+            [teamId] = new(
+                teamId, "Calendar", null, "calendar",
+                IsActive: true, IsSystemTeam: false, SystemTeamType.None,
+                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Instant.MinValue, Members: [])
+        });
+
+        var result = await CreateController(Instant.FromUtc(2026, 5, 31, 23, 30))
+            .Create((Guid?)null, Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
+        model.StartLocal.Should().Be(new DateTime(2026, 6, 1, 19, 0, 0));
+        model.EndLocal.Should().Be(new DateTime(2026, 6, 1, 20, 0, 0));
+        model.StartDateLocal.Should().Be(new DateTime(2026, 6, 1));
+        model.EndDateLocal.Should().Be(new DateTime(2026, 6, 1));
+    }
+
     private void StubViewer() =>
         _users.GetUserInfoAsync(_viewer, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
@@ -127,7 +152,7 @@ public class CalendarControllerICalTests
             .Which.Model.Should().BeOfType<CalendarMonthViewModel>().Subject;
     }
 
-    private CalendarController CreateController()
+    private CalendarController CreateController(Instant? now = null)
     {
         var localizer = Substitute.For<IStringLocalizer<CalendarResource>>();
         localizer[Arg.Any<string>()].Returns(c => new LocalizedString((string)c[0], (string)c[0]));
@@ -146,7 +171,7 @@ public class CalendarControllerICalTests
             _calendarRead,
             _calendar,
             _teams,
-            new FakeClock(Instant.FromUtc(2026, 6, 1, 12, 0)),
+            new FakeClock(now ?? Instant.FromUtc(2026, 6, 1, 12, 0)),
             localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
