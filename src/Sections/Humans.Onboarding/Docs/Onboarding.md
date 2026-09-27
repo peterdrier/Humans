@@ -49,7 +49,7 @@ Multiple controllers serve this section:
 | `OnboardingReviewController` | `GET /OnboardingReview` | Review queue (`PolicyNames.ReviewQueueAccess`). Internal to `Humans.Onboarding`, routed by Shell's `SectionControllerFeatureProvider`; the policy stays in Shell's `AuthorizationPolicyExtensions`. |
 | `OnboardingReviewController` | `GET /OnboardingReview/{userId}` | Detail view. A merged-away id redirects to the survivor's route, so the Clear/Flag/Reject forms post the id the page shows. |
 | `OnboardingReviewController` | `POST /OnboardingReview/{userId}/Clear` | CC clear (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
-| `OnboardingReviewController` | `POST /OnboardingReview/BulkClear` | Bulk clear (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
+| `OnboardingReviewController` | `POST /OnboardingReview/BulkClear` | Bulk clear (`PolicyNames.ConsentCoordinatorBoardOrAdmin`); an aborted request propagates cancellation rather than showing a failure toast |
 | `OnboardingReviewController` | `POST /OnboardingReview/{userId}/Flag` | CC flag (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | `OnboardingReviewController` | `POST /OnboardingReview/{userId}/Reject` | CC reject (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | `OnboardingWidgetController` | `GET /OnboardingWidget` | The dispatcher. Reads `IOnboardingWidgetState.GetCurrentStepAsync` and redirects to the step; `Complete` → `/`. Every step page ends here rather than deciding what comes next. |
