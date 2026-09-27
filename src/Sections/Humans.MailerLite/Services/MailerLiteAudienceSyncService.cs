@@ -104,7 +104,7 @@ internal sealed class MailerLiteAudienceSyncService(
         // Single snapshot reused for diff + apply; per-write methods don't invalidate the subscriber cache.
         var subscribers = new List<MailerLiteSubscriber>();
         await foreach (var s in ml.ListSubscribersAsync(ct)) subscribers.Add(s);
-        var byEmail = subscribers.ToDictionary(s => NormalizeEmail(s.Email), s => s, StringComparer.Ordinal);
+        var byEmail = subscribers.ToDictionary(s => MailerLiteEmailNormalization.Normalize(s.Email), s => s, StringComparer.Ordinal);
         var currentGroupMemberIds = subscribers
             .Where(s => s.GroupIds.Contains(group.Id, StringComparer.Ordinal))
             .Select(s => s.Id)
@@ -117,7 +117,7 @@ internal sealed class MailerLiteAudienceSyncService(
 
         foreach (var (_, email) in userEmailMap)
         {
-            var norm = NormalizeEmail(email);
+            var norm = MailerLiteEmailNormalization.Normalize(email);
             if (!byEmail.TryGetValue(norm, out var sub))
             {
                 toBulkImport.Add(email);
@@ -236,7 +236,7 @@ internal sealed class MailerLiteAudienceSyncService(
     {
         var subscribers = new List<MailerLiteSubscriber>();
         await foreach (var s in ml.ListSubscribersAsync(ct)) subscribers.Add(s);
-        var byEmail = subscribers.ToDictionary(s => NormalizeEmail(s.Email), s => s, StringComparer.Ordinal);
+        var byEmail = subscribers.ToDictionary(s => MailerLiteEmailNormalization.Normalize(s.Email), s => s, StringComparer.Ordinal);
         var groups = await ml.ListGroupsAsync(ct);
         return new MlSnapshot(byEmail, groups);
     }
@@ -253,7 +253,7 @@ internal sealed class MailerLiteAudienceSyncService(
         int excluded = 0, inGroup = 0;
         foreach (var (_, email) in userEmailMap)
         {
-            if (!snapshot.ByEmail.TryGetValue(NormalizeEmail(email), out var sub)) continue;
+            if (!snapshot.ByEmail.TryGetValue(MailerLiteEmailNormalization.Normalize(email), out var sub)) continue;
             if (sub.IsSuppressed) excluded++;
             else if (group is not null && sub.GroupIds.Contains(group.Id, StringComparer.Ordinal)) inGroup++;
         }
@@ -268,9 +268,6 @@ internal sealed class MailerLiteAudienceSyncService(
             LastSyncAt: null,
             LastSyncSummary: null);
     }
-
-    private static string NormalizeEmail(string email) =>
-        email.Trim().ToLowerInvariant();
 
     private sealed record MlSnapshot(
         IReadOnlyDictionary<string, MailerLiteSubscriber> ByEmail,

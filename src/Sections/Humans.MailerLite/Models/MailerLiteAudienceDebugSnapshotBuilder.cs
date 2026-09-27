@@ -115,17 +115,17 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
 
         // §3/§4 set-diff by normalized email.
         var expectedByEmail = expected
-            .GroupBy(r => Normalize(r.Email), StringComparer.OrdinalIgnoreCase)
+            .GroupBy(r => MailerLiteEmailNormalization.Normalize(r.Email), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         var mlByEmail = currentlyInMl
-            .GroupBy(r => Normalize(r.Email), StringComparer.OrdinalIgnoreCase)
+            .GroupBy(r => MailerLiteEmailNormalization.Normalize(r.Email), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         var toAdd = expected
-            .Where(r => !mlByEmail.ContainsKey(Normalize(r.Email)))
+            .Where(r => !mlByEmail.ContainsKey(MailerLiteEmailNormalization.Normalize(r.Email)))
             .ToList();
         var toRemove = currentlyInMl
-            .Where(r => !expectedByEmail.ContainsKey(Normalize(r.Email)))
+            .Where(r => !expectedByEmail.ContainsKey(MailerLiteEmailNormalization.Normalize(r.Email)))
             .ToList();
 
         // §5 Non-primary — subscriber matches a verified UserEmail but the
@@ -220,8 +220,6 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
         // Fallback to identity column — matches IUserEmailService.GetNotificationTargetEmailsAsync semantics.
         return u.IdentityEmailColumn;
     }
-
-    private static string Normalize(string email) => email.Trim().ToLowerInvariant();
 
     internal sealed record DebugSnapshot(
         IReadOnlyList<DebugExpectedRow> Expected,
