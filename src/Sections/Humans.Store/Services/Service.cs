@@ -641,7 +641,7 @@ internal sealed class Service(
     }
 
     /// <summary>Returns the active event's catalog year, falling back to the current UTC year before it exists.</summary>
-    private async Task<int> GetCurrentEventYearAsync()
+    public async Task<int> GetCurrentEventYearAsync()
     {
         var activeEvent = await settingsService.GetActiveEventSettingsAsync();
         return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
