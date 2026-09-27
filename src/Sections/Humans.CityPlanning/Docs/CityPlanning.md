@@ -176,7 +176,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 
 - Saving a polygon creates a CampPolygonHistory entry with note `"Saved"`, or the note the client supplied — the bulk import sends `"Imported {timestamp}"`.
 - Restoring a historical version overwrites the current polygon with the restored version and appends a history entry for it (note: `"Restored from {timestamp}"`).
-- SignalR broadcasts `CampPolygonUpdated` to all connected clients after every save.
+- SignalR broadcasts `CampPolygonUpdated` to all connected clients after every save. Broadcast failures are logged without undoing a saved polygon; an aborted request instead propagates cancellation.
 
 ## Cross-Section Dependencies
 
