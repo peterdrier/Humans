@@ -480,17 +480,6 @@ internal sealed class Service(
         return order.Id;
     }
 
-    public async Task<OrderDto?> GetOrderForTeamAsync(Guid teamId, CancellationToken ct = default)
-    {
-        var year = await GetCurrentEventYearAsync();
-        var order = await repo.GetOrderForTeamAsync(teamId, year, ct);
-        if (order is null) return null;
-        var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
-        var productNames = await LoadProductNamesAsync(productIds, ct);
-        var currentPrices = await LoadCurrentPricesAsync(ct);
-        return await MapOrderAsync(order, productNames, currentPrices, ct);
-    }
-
     public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
     {
         if (qty <= 0)
