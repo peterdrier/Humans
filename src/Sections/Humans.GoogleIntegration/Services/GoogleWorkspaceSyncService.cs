@@ -1873,13 +1873,9 @@ internal sealed class GoogleWorkspaceSyncService(
 
     private static bool IsDirectManagedPermission(DrivePermission perm)
     {
-        if (!string.Equals(perm.Type, "user", StringComparison.OrdinalIgnoreCase))
+        if (!DrivePermissionRoleMapper.IsAnyUserPermission(perm))
             return false;
         if (string.Equals(perm.Role, "owner", StringComparison.OrdinalIgnoreCase))
-            return false;
-        if (string.IsNullOrEmpty(perm.EmailAddress))
-            return false;
-        if (perm.EmailAddress.EndsWith(".iam.gserviceaccount.com", StringComparison.OrdinalIgnoreCase))
             return false;
 
         // Issue nobodies-collective/Humans#945 — a permission with ANY
