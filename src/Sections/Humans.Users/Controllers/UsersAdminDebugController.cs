@@ -1,6 +1,7 @@
 using Humans.Users.Models;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
+using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
@@ -25,7 +26,7 @@ internal sealed class UsersAdminDebugController(IUserService userService) : Huma
                                string sort = "displayName", string dir = "asc",
                                CancellationToken ct = default)
     {
-        pageSize = Math.Clamp(pageSize, MinPageSize, MaxPageSize);
+        pageSize = pageSize.ClampPageSize(MinPageSize, MaxPageSize);
         if (page < 1) page = 1;
 
         var snapshot = await _userService.GetAllRawUserInfosAsync(ct);
