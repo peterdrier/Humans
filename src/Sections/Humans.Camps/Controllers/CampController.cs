@@ -343,7 +343,7 @@ internal sealed class CampController(
         await PopulateRegisterSeasonYearAsync();
         if ((int?)ViewData["SeasonYear"] == 0)
         {
-            SetError("Registration is currently closed.");
+            SetError(campsLocalizer["Camp_Flash_RegistrationClosed"].Value);
             return RedirectToAction(nameof(Index));
         }
 
@@ -375,7 +375,7 @@ internal sealed class CampController(
         var year = settings.OpenSeasons.OrderByDescending(y => y).FirstOrDefault();
         if (year == 0)
         {
-            SetError("Registration is currently closed.");
+            SetError(campsLocalizer["Camp_Flash_RegistrationClosed"].Value);
             return RedirectToAction(nameof(Index));
         }
 
@@ -402,7 +402,7 @@ internal sealed class CampController(
                 historicalNames,
                 year);
 
-            SetSuccess("Your camp has been registered and is pending review.");
+            SetSuccess(campsLocalizer["Camp_Flash_RegistrationPendingReview"].Value);
             return RedirectToAction(nameof(Details), new { slug = camp.Slug });
         }
         catch (InvalidOperationException ex)
@@ -416,7 +416,7 @@ internal sealed class CampController(
         catch (DbUpdateException ex)
         {
             logger.LogError(ex, "Camp registration failed with DB error for user {UserId} in year {Year}", user.Id, year);
-            ModelState.AddModelError(string.Empty, "We couldn't register your camp right now. Please try again, or contact an admin if the problem persists.");
+            ModelState.AddModelError(string.Empty, campsLocalizer["Camp_Flash_RegistrationFailed"].Value);
             await PopulateRegisterSeasonYearAsync();
             await PopulateRegistrationInfoAsync();
             return View(model);
@@ -436,7 +436,7 @@ internal sealed class CampController(
         var editData = await _campService.GetCampEditDataAsync(camp.Id, year);
         if (editData is null)
         {
-            SetError("No season found for this camp.");
+            SetError(campsLocalizer["Camp_Flash_NoSeason"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
@@ -458,7 +458,7 @@ internal sealed class CampController(
         var editData = await _campService.GetCampEditDataAsync(camp.Id, year);
         if (editData is null)
         {
-            SetError("No season found for this camp.");
+            SetError(campsLocalizer["Camp_Flash_NoSeason"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
@@ -514,7 +514,7 @@ internal sealed class CampController(
             .Select(m => new CampMemberPickerOption(
                 m.Id,
                 m.UserId,
-                users.TryGetValue(m.UserId, out var u) ? u.BurnerName : "(unknown)"))
+                users.TryGetValue(m.UserId, out var u) ? u.BurnerName : campsLocalizer["Camp_Flash_UnknownHuman"].Value))
             .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -606,12 +606,12 @@ internal sealed class CampController(
 
         if (!result.Succeeded)
         {
-            ModelState.AddModelError(string.Empty, result.ErrorMessage ?? "Camp update failed.");
+            ModelState.AddModelError(string.Empty, result.ErrorMessage ?? campsLocalizer["Camp_Flash_UpdateFailed"].Value);
             await PopulateEditReadOnlyFieldsAsync(model, camp);
             return View(model);
         }
 
-        SetSuccess("Camp updated successfully.");
+        SetSuccess(campsLocalizer["Camp_Flash_Updated"].Value);
         return RedirectToAction(nameof(Edit), new { slug });
     }
 
@@ -629,7 +629,7 @@ internal sealed class CampController(
         try
         {
             await _campService.OptInToSeasonAsync(camp.Id, year);
-            SetSuccess($"Opted in to season {year}.");
+            SetSuccess(campsLocalizer["Camp_Flash_OptedIn", year].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -654,7 +654,7 @@ internal sealed class CampController(
         try
         {
             await _campService.WithdrawSeasonAsync(camp.Id, seasonId);
-            SetSuccess("Season withdrawn.");
+            SetSuccess(campsLocalizer["Camp_Flash_SeasonWithdrawn"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -679,7 +679,7 @@ internal sealed class CampController(
         try
         {
             await _campService.SetSeasonStatusAsync(camp.Id, seasonId, CampSeasonStatus.Full);
-            SetSuccess("Season marked as full.");
+            SetSuccess(campsLocalizer["Camp_Flash_SeasonFull"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -704,14 +704,14 @@ internal sealed class CampController(
 
         if (string.IsNullOrWhiteSpace(name))
         {
-            SetError("Name cannot be empty.");
+            SetError(campsLocalizer["Camp_Flash_NameRequired"].Value);
             return RedirectToAction(nameof(Edit), new { slug });
         }
 
         try
         {
             await _campService.AddHistoricalNameAsync(camp.Id, name);
-            SetSuccess("Historical name added.");
+            SetSuccess(campsLocalizer["Camp_Flash_HistoricalNameAdded"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -734,7 +734,7 @@ internal sealed class CampController(
         try
         {
             await _campService.RemoveHistoricalNameAsync(camp.Id, nameId);
-            SetSuccess("Historical name removed.");
+            SetSuccess(campsLocalizer["Camp_Flash_HistoricalNameRemoved"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -758,7 +758,7 @@ internal sealed class CampController(
 
         if (file is null || file.Length == 0)
         {
-            SetError("Please select a file to upload.");
+            SetError(campsLocalizer["Camp_Flash_ImageRequired"].Value);
             return RedirectToAction(nameof(Edit), new { slug });
         }
 
@@ -771,11 +771,11 @@ internal sealed class CampController(
 
         if (result.Succeeded)
         {
-            SetSuccess("Image uploaded.");
+            SetSuccess(campsLocalizer["Camp_Flash_ImageUploaded"].Value);
         }
         else
         {
-            SetError(result.ErrorMessage ?? "Image upload failed.");
+            SetError(result.ErrorMessage ?? campsLocalizer["Camp_Flash_ImageUploadFailed"].Value);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
@@ -795,7 +795,7 @@ internal sealed class CampController(
         try
         {
             await _campService.DeleteImageAsync(camp.Id, imageId);
-            SetSuccess("Image deleted.");
+            SetSuccess(campsLocalizer["Camp_Flash_ImageDeleted"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -820,7 +820,7 @@ internal sealed class CampController(
         try
         {
             await _campService.ReorderImagesAsync(camp.Id, imageIds);
-            SetSuccess("Image order updated.");
+            SetSuccess(campsLocalizer["Camp_Flash_ImageOrderUpdated"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -873,7 +873,7 @@ internal sealed class CampController(
         try
         {
             await _campService.WithdrawCampMembershipRequestAsync(campMemberId, user.Id);
-            SetSuccess("Your pending request was withdrawn.");
+            SetSuccess(campsLocalizer["Camp_Flash_RequestWithdrawn"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -898,11 +898,11 @@ internal sealed class CampController(
         var result = await _campService.LeaveCampAsync(campMemberId, user.Id);
         if (result.Succeeded)
         {
-            SetSuccess("You have left this camp for this season.");
+            SetSuccess(campsLocalizer["Camp_Flash_MembershipLeft"].Value);
         }
         else
         {
-            SetError(result.ErrorMessage ?? "Could not leave this camp.");
+            SetError(result.ErrorMessage ?? campsLocalizer["Camp_Flash_MembershipLeaveFailed"].Value);
         }
 
         return RedirectToAction(nameof(Details), new { slug });
@@ -920,7 +920,7 @@ internal sealed class CampController(
         {
             // Cross-camp guard: ApproveCampMemberAsync rejects member ids outside camp.Id.
             await _campService.ApproveCampMemberAsync(camp.Id, campMemberId, user.Id);
-            SetSuccess("Membership approved.");
+            SetSuccess(campsLocalizer["Camp_Flash_MembershipApproved"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -942,7 +942,7 @@ internal sealed class CampController(
         try
         {
             await _campService.RejectCampMemberAsync(camp.Id, campMemberId, user.Id);
-            SetSuccess("Request rejected.");
+            SetSuccess(campsLocalizer["Camp_Flash_RequestRejected"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -964,7 +964,7 @@ internal sealed class CampController(
         try
         {
             await _campService.RemoveCampMemberAsync(camp.Id, campMemberId, user.Id);
-            SetSuccess("Member removed.");
+            SetSuccess(campsLocalizer["Camp_Flash_MemberRemoved"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -989,13 +989,13 @@ internal sealed class CampController(
 
         if (outcome == SetEarlyEntryOutcome.MemberNotFound) return NotFound();
         if (outcome == SetEarlyEntryOutcome.Success)
-            SetSuccess(granted ? "Early Entry granted." : "Early Entry revoked.");
+            SetSuccess(campsLocalizer[granted ? "Camp_Flash_EarlyEntryGranted" : "Camp_Flash_EarlyEntryRevoked"].Value);
         else if (outcome == SetEarlyEntryOutcome.SlotCapExceeded)
-            SetError("Cannot grant Early Entry: slot cap reached for this camp.");
+            SetError(campsLocalizer["Camp_Flash_EarlyEntryCapReached"].Value);
         else if (outcome == SetEarlyEntryOutcome.MemberNotActive)
-            SetError("Only Active camp members can hold Early Entry.");
+            SetError(campsLocalizer["Camp_Flash_EarlyEntryActiveMembersOnly"].Value);
         else if (outcome == SetEarlyEntryOutcome.MemberAlreadyEntered)
-            SetError("Cannot revoke Early Entry: this member has already entered the event, so their slot is used.");
+            SetError(campsLocalizer["Camp_Flash_EarlyEntryAlreadyEntered"].Value);
 
         return RedirectToAction(nameof(Members), new { slug });
     }
@@ -1012,16 +1012,16 @@ internal sealed class CampController(
         {
             var outcome = await _campService.AddCampMemberToActiveSeasonAsync(camp.Id, userId, user.Id, ct);
             if (outcome == AddCampMemberOutcome.InvalidUser)
-                SetError("Please search and select a human first.");
+                SetError(campsLocalizer["Camp_Flash_HumanRequired"].Value);
             else if (outcome == AddCampMemberOutcome.NoActiveSeason)
-                SetError("No active season for this camp.");
+                SetError(campsLocalizer["Camp_Flash_NoActiveSeason"].Value);
             else
-                SetSuccess("Human added to camp.");
+                SetSuccess(campsLocalizer["Camp_Flash_HumanAdded"].Value);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "AddMember failed for camp {CampSlug}, user {UserId}.", slug, userId);
-            SetError("Failed to add human to camp.");
+            SetError(campsLocalizer["Camp_Flash_HumanAddFailed"].Value);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -1056,7 +1056,7 @@ internal sealed class CampController(
 
         if (userId == Guid.Empty)
         {
-            SetError("Please search and select a human first.");
+            SetError(campsLocalizer["Camp_Flash_HumanRequired"].Value);
             return RedirectToAction(nameof(Members), new { slug });
         }
 
@@ -1069,7 +1069,7 @@ internal sealed class CampController(
         catch (Exception ex)
         {
             logger.LogError(ex, "AssignRoleByUser failed for camp {CampSlug}, user {UserId}.", slug, userId);
-            SetError("Failed to assign role.");
+            SetError(campsLocalizer["Camp_Flash_RoleAssignFailed"].Value);
             return RedirectToAction(nameof(Members), new { slug });
         }
 
@@ -1082,16 +1082,16 @@ internal sealed class CampController(
     {
         var message = outcome switch
         {
-            AssignCampRoleOutcome.Assigned => "Role assigned.",
-            AssignCampRoleOutcome.RoleNotFound => "Role definition not found.",
-            AssignCampRoleOutcome.RoleDeactivated => "That role is deactivated.",
-            AssignCampRoleOutcome.MemberNotFound => "Camp member not found.",
-            AssignCampRoleOutcome.MemberNotActive => "Only active camp members can hold roles.",
-            AssignCampRoleOutcome.MemberSeasonMismatch => "Member is not in this season.",
-            AssignCampRoleOutcome.SlotCapReached => "All slots for this role are filled.",
-            AssignCampRoleOutcome.AlreadyHoldsRole => "That human already holds this role.",
-            AssignCampRoleOutcome.SeasonNotFound => "Season not found.",
-            _ => "Unknown error.",
+            AssignCampRoleOutcome.Assigned => campsLocalizer["Camp_Flash_RoleAssigned"].Value,
+            AssignCampRoleOutcome.RoleNotFound => campsLocalizer["Camp_Flash_RoleNotFound"].Value,
+            AssignCampRoleOutcome.RoleDeactivated => campsLocalizer["Camp_Flash_RoleDeactivated"].Value,
+            AssignCampRoleOutcome.MemberNotFound => campsLocalizer["Camp_Flash_RoleMemberNotFound"].Value,
+            AssignCampRoleOutcome.MemberNotActive => campsLocalizer["Camp_Flash_RoleActiveMembersOnly"].Value,
+            AssignCampRoleOutcome.MemberSeasonMismatch => campsLocalizer["Camp_Flash_RoleMemberSeasonMismatch"].Value,
+            AssignCampRoleOutcome.SlotCapReached => campsLocalizer["Camp_Flash_RoleSlotsFilled"].Value,
+            AssignCampRoleOutcome.AlreadyHoldsRole => campsLocalizer["Camp_Flash_RoleAlreadyHeld"].Value,
+            AssignCampRoleOutcome.SeasonNotFound => campsLocalizer["Camp_Flash_RoleSeasonNotFound"].Value,
+            _ => campsLocalizer["Camp_Flash_UnknownError"].Value,
         };
 
         if (outcome == AssignCampRoleOutcome.Assigned)
@@ -1122,11 +1122,11 @@ internal sealed class CampController(
         var ok = await campRoleService.UnassignAsync(assignmentId, user.Id, ct);
         if (ok)
         {
-            SetSuccess("Role unassigned.");
+            SetSuccess(campsLocalizer["Camp_Flash_RoleUnassigned"].Value);
         }
         else
         {
-            SetError("Assignment not found.");
+            SetError(campsLocalizer["Camp_Flash_AssignmentNotFound"].Value);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
