@@ -228,6 +228,7 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
     [Authorize]
     [DisableCors]
     [HttpPost("favourites/{eventId:guid}")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddFavourite(Guid eventId, int? day)
     {
         var userId = GetCurrentUserId();
@@ -241,6 +242,7 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
     [Authorize]
     [DisableCors]
     [HttpDelete("favourites/{eventId:guid}")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveFavourite(Guid eventId, int? day)
     {
         var userId = GetCurrentUserId();

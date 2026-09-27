@@ -22,6 +22,7 @@ Event programming: submission, moderation, browsing, export, and preference mana
 - An **EventVenue** is a named on-site location available as a venue selection for events.
 - An **EventModerationAction** is an append-only audit record of a single moderation decision on an Event.
 - An **EventFavourite** records that a user has bookmarked an Event for their personal schedule.
+- Favourite mutations are same-origin, cookie-authenticated requests protected by an antiforgery token rendered with each favourite control.
 - An **EventPreference** stores a user's excluded category slugs as a JSON list.
 - **Recurring events** have `IsRecurring = true` and a comma-separated `RecurrenceDays` field encoding integer day offsets from gate-opening date.
 - Member-facing event duration labels use the shared `EventDurationFormatter` and `EventsResource` short-unit keys, so submission forms, browse results, and the dashboard card display the active culture consistently.

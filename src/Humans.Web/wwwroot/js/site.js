@@ -542,9 +542,8 @@ function showToast(message, type) {
 
 // Favourite hearts (Events): toggle the favourite in place — or remove the row
 // on My Schedule — via the JSON favourites API, so the action never reloads the
-// page and the user's filters/scroll survive. The JS contract is rendered by
-// Views/Shared/_FavouriteButton.cshtml. The API is same-origin + cookie-auth and
-// carries no antiforgery requirement.
+// page and the user's filters/scroll survive. The JS contract (including its
+// antiforgery token) is rendered by Views/Shared/_FavouriteButton.cshtml.
 (function () {
     function removeRow(btn) {
         // A whole-event unfavourite (empty data-day) deletes every occurrence
@@ -581,9 +580,13 @@ function showToast(message, type) {
         var url = '/api/events/favourites/' + encodeURIComponent(btn.getAttribute('data-event-id'));
         var day = btn.getAttribute('data-day');
         if (day !== null && day !== '') url += '?day=' + encodeURIComponent(day);
+        var token = btn.closest('form').querySelector('input[name="__RequestVerificationToken"]').value;
 
         btn.disabled = true;
-        fetch(url, { method: favourited ? 'DELETE' : 'POST' })
+        fetch(url, {
+            method: favourited ? 'DELETE' : 'POST',
+            headers: { RequestVerificationToken: token }
+        })
             .then(function (r) {
                 if (!r.ok) throw new Error(r.status);
                 if (btn.getAttribute('data-remove-row') === 'true') { removeRow(btn); return; }
