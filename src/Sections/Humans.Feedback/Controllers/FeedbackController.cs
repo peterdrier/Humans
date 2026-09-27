@@ -45,7 +45,7 @@ internal sealed class FeedbackController(
     [HttpGet("")]
     public async Task<IActionResult> Index(
         FeedbackStatus? status, FeedbackCategory? category, Guid? reporterUserId,
-        Guid? assignedTo, Guid? team, bool unassigned, Guid? selected)
+        Guid? assignedTo, Guid? team, bool unassigned, Guid? selected, CancellationToken ct)
     {
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
@@ -54,15 +54,16 @@ internal sealed class FeedbackController(
             status, category, reporterUserId,
             assignedToUserId: assignedTo,
             assignedToTeamId: team,
-            unassignedOnly: unassigned ? true : null);
+            unassignedOnly: unassigned ? true : null,
+            cancellationToken: ct);
 
-        var teamOptions = (await teamService.GetTeamsAsync()).Values
+        var teamOptions = (await teamService.GetTeamsAsync(ct)).Values
             .Where(t => t.IsActive)
             .OrderBy(t => t.Name, StringComparer.Ordinal)
             .ToList();
-        var assigneeOptions = await GetActiveAssigneeOptionsAsync();
+        var assigneeOptions = await GetActiveAssigneeOptionsAsync(ct);
 
-        var distinctReporters = await feedbackService.GetDistinctReportersAsync();
+        var distinctReporters = await feedbackService.GetDistinctReportersAsync(ct);
         var reporters = distinctReporters.Select(r => new ReporterDropdownItem
         {
             UserId = r.UserId,
