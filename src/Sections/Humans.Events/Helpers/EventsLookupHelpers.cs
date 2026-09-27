@@ -47,12 +47,12 @@ internal static class EventsLookupHelpers
     public static string? ResolveCampName(CampInfo? camp) => camp?.Active?.Name ?? camp?.Slug;
 
     public static async Task<Dictionary<Guid, UserInfo>> LoadSubmittersAsync(
-        IUserServiceRead users, IEnumerable<Guid> userIds)
+        IUserServiceRead users, IEnumerable<Guid> userIds, CancellationToken ct = default)
     {
         var result = new Dictionary<Guid, UserInfo>();
         foreach (var id in userIds)
         {
-            var info = await users.GetUserInfoAsync(id);
+            var info = await users.GetUserInfoAsync(id, ct);
             if (info != null) result[id] = info;
         }
         return result;
