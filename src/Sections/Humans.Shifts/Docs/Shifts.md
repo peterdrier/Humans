@@ -53,7 +53,7 @@ Aggregate-local navs: `Rota.Shifts`, `Rota.EventSettings`, `Rota.Tags`. Cross-do
 
 ### Shift
 
-Single work slot — `DayOffset + StartTime + Duration + IsAllDay`. Also: `MinVolunteers` (understaffed threshold for urgency scoring), `MaxVolunteers` (hard capacity ceiling), `AdminOnly` (hides shift from regular volunteers), `Description`. There is no `IsCancelled` column — shift cancellation flows through cascade on rota deletion or `ShiftSignup.Cancel`.
+Single work slot — `DayOffset + StartTime + Duration + IsAllDay`. Also: `MinVolunteers` (understaffed threshold for urgency scoring), `MaxVolunteers` (hard capacity ceiling), `AdminOnly` (hides shift from regular volunteers), `Description`. There is no `IsCancelled` column — deleting a rota or shift removes its signups, while `ShiftSignup.Cancel` is reserved for system cancellation paths that retain the shift.
 
 **Table:** `shifts`
 
@@ -68,7 +68,7 @@ Links User to Shift with state machine (Pending/Confirmed/Refused/Bailed/Cancell
 | Pending    | Confirm | Refuse | Bail | — | Cancel (system) |
 | Confirmed  | — | — | Bail | MarkNoShow | Remove (coordinator) / Cancel (system) |
 
-Other transitions throw `InvalidOperationException`. `Cancel` is system-only (rota/shift deletion, account deletion) and skips reviewer attribution.
+Other transitions throw `InvalidOperationException`. `Cancel` is system-only (for example, account deletion) and skips reviewer attribution.
 
 **Table:** `shift_signups`
 
@@ -235,7 +235,7 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 - Shift signup state machine (enforced by entity methods on `ShiftSignup`):
   - Pending → Confirm / Refuse / Bail / Cancel
   - Confirmed → Bail / MarkNoShow / Remove (Cancelled) / Cancel
-  - All other transitions throw `InvalidOperationException` at the entity layer; `ShiftSignupService.MarkNoShowAsync` additionally guards for a non-Confirmed signup at the service layer and returns `SignupResult.Fail` rather than letting the entity throw. NoShow is post-shift only (`now >= shift.GetAbsoluteEnd(es)`). Cancel is system-only (rota/shift deletion, account deletion).
+  - All other transitions throw `InvalidOperationException` at the entity layer; `ShiftSignupService.MarkNoShowAsync` additionally guards for a non-Confirmed signup at the service layer and returns `SignupResult.Fail` rather than letting the entity throw. NoShow is post-shift only (`now >= shift.GetAbsoluteEnd(es)`). Cancel is system-only (for example, account deletion); deleting its rota or shift removes the signup instead.
 - MaxVolunteers is a hard capacity ceiling. SignUp, Approve, Voluntell, and ApproveRange are blocked when the confirmed count reaches MaxVolunteers. Range signups skip full shifts; ApproveRange auto-refuses pending signups for shifts that have filled since the request was placed.
 - Rota visibility is controlled by `IsVisibleToVolunteers` (default: visible). Hidden rotas are only shown to privileged roles (Admin/NoInfoAdmin/VolunteerCoordinator/dept coordinator). Browse and Mine queries pass `includeHidden = isPrivileged`. The Hidden pill rendered on hidden rotas is therefore admin-only by virtue of the server-side filter (no separate role check).
 - Signup-list visibility on `/Shifts` is currently public to all authenticated viewers (temporary policy — see [feature 26](features/shift-signup-visibility.md)). The browse partials (`_EventRotaTable`, `_BuildStrikeRotaTable`) render avatar chips for everyone; pending signups appear faded with a dashed border and the localized "Pending" label in the hover popover. `includeSignups` is unconditionally true so the column has data; the `isPrivileged` computation is preserved so reverting visibility is a one-line flip in `ShiftsController`. Admin-side signup lists (`/Teams/{slug}/Shifts`) remain coordinator-gated via `IShiftManagementService.CanApproveSignupsAsync`.
@@ -304,7 +304,7 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 - Moving a rota to a different team writes an `AuditAction.RotaMovedToTeam` log entry and updates `Rota.TeamId` via a targeted update (only `TeamId` + `UpdatedAt` are marked modified).
 - Sending the team-wide coordinator message writes one `AuditAction.CoordinatorTeamRotasMessageSent` entry per dispatch — not one per recipient.
 - `GET /Shifts/Dashboard/VolunteerTracking/ExportXlsx` deliberately writes **no** audit entry, unlike every mutating action on `VolunteerTrackingController`: the grid carries burner names only — no legal names, no emails, no medical data. If the export is ever widened to carry PII, an audit entry must land in the same change.
-- Deleting a rota or shift is rejected if any signup is in Confirmed state. Pending signups on a deleted rota/shift are auto-Cancelled via the entity's `Cancel` method.
+- Deleting a rota or shift is rejected if any signup is in Confirmed state. Deleting an allowed rota or shift removes all of its signups together with it; it does not create cancelled historical signup rows for a removed shift.
 - When an account merge accepts, the section's three `IUserMerge` implementations re-FK its user-keyed rows from source to target: `ShiftSignupService` moves `ShiftSignup` rows (volunteer / enrolled-by / reviewed-by references), `ShiftManagementService` moves `VolunteerEventProfile` + `VolunteerTagPreference` (with conflict resolution since both are `(UserId)`-unique), `VolunteerTrackingService` moves `GeneralAvailability`. Called only by `AccountMergeService.AcceptAsync` (Users section) through the `IUserMerge` fan-out.
 
 ## Cross-Section Dependencies
