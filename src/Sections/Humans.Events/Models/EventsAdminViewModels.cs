@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Settings.Contracts;
 
 namespace Humans.Events.Models;
 
@@ -35,6 +36,9 @@ internal sealed class EventSettingsOptionViewModel
 {
     public Guid Id { get; set; }
     public string EventName { get; set; } = string.Empty;
+
+    internal static List<EventSettingsOptionViewModel> From(IReadOnlyList<EventSettingsInfo> options) =>
+        options.Select(e => new EventSettingsOptionViewModel { Id = e.Id, EventName = e.EventName }).ToList();
 }
 
 internal sealed class EventCategoryListViewModel

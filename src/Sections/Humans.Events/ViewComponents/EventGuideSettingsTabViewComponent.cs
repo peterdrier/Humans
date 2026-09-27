@@ -46,6 +46,6 @@ internal sealed class EventGuideSettingsTabViewComponent(IEventService guide) : 
     private async Task<List<EventSettingsOptionViewModel>> BuildEventSettingsOptionsAsync()
     {
         var options = await guide.GetEventSettingsOptionsAsync();
-        return options.Select(e => new EventSettingsOptionViewModel { Id = e.Id, EventName = e.EventName }).ToList();
+        return EventSettingsOptionViewModel.From(options);
     }
 }
