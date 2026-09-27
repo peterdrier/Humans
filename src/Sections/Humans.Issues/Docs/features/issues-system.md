@@ -40,7 +40,7 @@ Issues is the only in-app reporting path. Feedback (`src/Sections/Humans.Feedbac
 - Detail view shows full description, screenshot, reporter link with admin popover (handlers only), assignee, GitHub link, timestamps, due date, resolved-by
 - Handlers can update status (Triage / Open / InProgress / Resolved / WontFix / Duplicate), assignee, section, and GitHub issue number from the detail panel via auto-submitting selects
 - `Section` is editable in any non-terminal state — re-routing an issue is just changing its `Section` string
-- Nav badge on "Issues" link shows count of actionable items via the section's own `IssuesUserMenuViewComponent` chrome contribution; the per-viewer count comes from `IssuesService.GetActionableCountForViewerAsync`
+- Nav badge on "Issues" link shows count of actionable items via the section's own `IssuesUserMenuViewComponent` chrome contribution; the per-viewer count comes from `IssuesService.GetActionableCountForViewerAsync` with the request-abort token
 
 ### US-28.3: API Access for Claude Code
 

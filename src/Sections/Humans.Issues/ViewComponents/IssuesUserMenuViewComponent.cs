@@ -23,7 +23,8 @@ internal sealed class IssuesUserMenuViewComponent(IIssuesService issuesService) 
             .Select(c => c.Value)
             .ToList();
 
-        var count = await issuesService.GetActionableCountForViewerAsync(new IssueViewer(currentUserId, roles));
+        var count = await issuesService.GetActionableCountForViewerAsync(
+            new IssueViewer(currentUserId, roles), HttpContext.RequestAborted);
         return View(count);
     }
 }
