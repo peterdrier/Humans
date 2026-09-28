@@ -70,6 +70,9 @@ public class IbanFormatterTests
     [InlineData("iban ES91-2100-0418-4502-0005-1332.", "iban ES91****332.")]
     [InlineData("iban ES91 2100 0418 4502 0005 1332", "iban ES91****332")]
     [InlineData("ref FV24 ES9121000418450200051332", "ref FV24 ES91****332")]
+    [InlineData("iban ES91\t2100\t0418\t4502\t0005\t1332", "iban ES91****332")]
+    [InlineData("iban ES91 2100 0418\n4502 0005 1332\nthanks", "iban ES91****332\nthanks")]
+    [InlineData("iban ES91 2100 0418\r\n4502 0005 1332", "iban ES91****332")]
     [InlineData("ES9121000418450200051332 ES91 2100 0418 4502 0005 1332", "ES91****332 ES91****332")]
     public void MaskAllIn_MasksHumanFormattedIbans(string text, string expected)
     {

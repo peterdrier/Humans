@@ -49,7 +49,7 @@ public static partial class IbanFormatter
     {
         for (var end = candidate.Length; end > 4; end--)
         {
-            if (end < candidate.Length && !Separators.Contains(candidate[end])) continue;
+            if (end < candidate.Length && !IsSeparator(candidate[end])) continue;
             var compact = Compact(candidate[..end]);
             var unspaced = compact.Length == end;
             if ((unspaced && IbanShaped().IsMatch(compact)) || IbanValidator.IsValid(compact))
@@ -60,13 +60,15 @@ public static partial class IbanFormatter
 
     private static int FirstWordLength(string candidate)
     {
-        var separator = candidate.IndexOfAny(Separators.ToCharArray());
-        return separator < 0 ? candidate.Length : separator;
+        var length = 0;
+        while (length < candidate.Length && !IsSeparator(candidate[length])) length++;
+        return length;
     }
 
-    private const string Separators = " -   ";
+    // Any whitespace (spaces, NBSP, tabs, line breaks — however the text wrapped) or a hyphen.
+    private static bool IsSeparator(char c) => c == '-' || char.IsWhiteSpace(c);
 
-    private static string Compact(string s) => string.Concat(s.Where(c => !Separators.Contains(c)));
+    private static string Compact(string s) => string.Concat(s.Where(c => !IsSeparator(c)));
 
     // ISO 13616: 2 letters, 2 check digits, then 11–30 alphanumerics.
     [GeneratedRegex(@"^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$",
@@ -75,7 +77,7 @@ public static partial class IbanFormatter
 
     // The same shape in any case, with separators between characters. Word-bounded, so a candidate
     // never starts or ends inside a longer token such as a Holded doc id or a hash.
-    [GeneratedRegex(@"\b[A-Za-z]{2}[0-9]{2}(?:[    -]*[A-Za-z0-9]){11,30}\b",
+    [GeneratedRegex(@"\b[A-Za-z]{2}[0-9]{2}(?:[\s-]*[A-Za-z0-9]){11,30}\b",
         RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex IbanCandidate();
 }

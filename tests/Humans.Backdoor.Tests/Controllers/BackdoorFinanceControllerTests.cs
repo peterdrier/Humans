@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using System.Text.Json;
 using AwesomeAssertions;
+using Humans.Auth.Contracts;
 using Humans.Backdoor.Contracts;
 using Humans.Backdoor.Controllers;
 using Humans.Backdoor.Filters;
+using Humans.Backdoor.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Helpers;
 using Humans.Budget.Contracts;
@@ -11,9 +13,12 @@ using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -846,5 +851,53 @@ public class BackdoorFinanceControllerTests
         RunResultFilter(file);
         file.FileDownloadName.Should().Be("ES79****789.pdf");
         file.FileContents.Should().Equal(1, 2, 3);
+    }
+
+    /// <summary>The scrub above is called by hand; this proves MVC itself runs it. A real host,
+    /// the real key filter and a real HTTP GET: an IBAN planted in a note comes back masked
+    /// (peterdrier/Humans#1839).</summary>
+    [HumansFact]
+    public async Task Http_get_through_the_mvc_pipeline_masks_an_Iban_planted_in_a_note()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        SetFinanceAdmin(false);
+        _expenses.GetReviewQueueAsync(userId, false, Arg.Any<CancellationToken>())
+            .Returns([Report(submitterUserId: userId) with { Note = Tainted }]);
+        var keys = Substitute.For<IBackdoorApiKeyService>();
+        keys.ResolveOwnerAsync("key", Arg.Any<CancellationToken>()).Returns(userId);
+        var roles = Substitute.For<IRoleAssignmentService>();
+        roles.GetActiveForUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+
+        var builder = WebApplication.CreateSlimBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.Services.AddControllers()
+            .AddApplicationPart(typeof(BackdoorFinanceController).Assembly)
+            .ConfigureApplicationPartManager(apm =>
+            {
+                apm.FeatureProviders.Remove(apm.FeatureProviders.OfType<ControllerFeatureProvider>().Single());
+                apm.FeatureProviders.Add(new FinanceControllerOnly());
+            });
+        builder.Services.AddSingleton(keys).AddSingleton(roles).AddScoped<BackdoorApiKeyAuthFilter>()
+            .AddSingleton(_expenses).AddSingleton(_finance).AddSingleton(_budget).AddSingleton(_auth)
+            .AddSingleton(_users);
+        await using var app = builder.Build();
+        app.MapControllers();
+        await app.StartAsync(ct);
+
+        using var client = new HttpClient { BaseAddress = new Uri(app.Urls.Single()) };
+        client.DefaultRequestHeaders.Add(BackdoorApiKeyAuthFilter.ApiKeyHeaderName, "key");
+        var body = await client.GetStringAsync("/api/backdoor/finance/expense-reports", ct);
+        await app.StopAsync(ct);
+
+        body.Should().Contain(@"""note"":""see es79****789 or ES79****789""");
+        body.Should().NotContainEquivalentOf("2100 0813");
+        body.Should().NotContain("21000813610123456789");
+    }
+
+    private sealed class FinanceControllerOnly : ControllerFeatureProvider
+    {
+        protected override bool IsController(System.Reflection.TypeInfo typeInfo) =>
+            typeInfo.AsType() == typeof(BackdoorFinanceController);
     }
 }
