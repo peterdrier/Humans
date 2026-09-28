@@ -367,7 +367,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<int> CountFailedOutboxAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<Guid>> GetFailedOutboxReportIdsAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         // Only what a finance admin can actually act on. A report withdrawn after approval leaves
@@ -378,9 +378,12 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             .Where(r => r.Status == ExpenseReportStatus.Approved)
             .Select(r => r.Id);
         return await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
-            .CountAsync(e => e.FailedPermanently
+            .Where(e => e.FailedPermanently
                 && e.EventType == HoldedExpenseOutboxEventType.CreateIncomingDoc
-                && actionable.Contains(e.ExpenseReportId), ct);
+                && actionable.Contains(e.ExpenseReportId))
+            .Select(e => e.ExpenseReportId)
+            .Distinct()
+            .ToListAsync(ct);
     }
 
     public async Task<bool> RequeueOutboxForReportAsync(

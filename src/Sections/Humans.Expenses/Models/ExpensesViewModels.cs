@@ -192,9 +192,9 @@ internal sealed class ExpenseReviewViewModel
     /// <summary>Budget category id → department. Department-group categories are one per team, so
     /// the category name is the department; other groups show as "Group / Category".</summary>
     public required IReadOnlyDictionary<Guid, string> DepartmentNames { get; init; }
-    /// <summary>Pushes to Holded that were written off and need a finance admin to look at them.
-    /// Zero hides the banner.</summary>
-    public required int FailedHoldedPushCount { get; init; }
+    /// <summary>Reports whose Holded push was written off and need a finance admin to look at them.
+    /// Empty hides the banner and the Holded column.</summary>
+    public required IReadOnlySet<Guid> FailedHoldedPushReportIds { get; init; }
 
     /// <summary>Rows grouped for rendering: one table per status, in workflow order.</summary>
     public IEnumerable<IGrouping<ExpenseReportStatus, ExpenseReportDto>> ByStatus =>

@@ -102,8 +102,8 @@ internal interface IExpenseRepository : IRepository
     /// </summary>
     Task<HoldedExpenseOutboxEvent?> GetLatestOutboxForReportAsync(
         Guid reportId, CancellationToken ct = default);
-    /// <summary>Written-off events across all reports — the <c>/Expenses/Review</c> banner count.</summary>
-    Task<int> CountFailedOutboxAsync(CancellationToken ct = default);
+    /// <summary>Reports with a written-off push — the <c>/Expenses/Review</c> banner and flags.</summary>
+    Task<IReadOnlyList<Guid>> GetFailedOutboxReportIdsAsync(CancellationToken ct = default);
     /// <summary>
     /// Puts the report's failed or backing-off events back at the front of the drain: clears the
     /// write-off, the error, the backoff, and the retry budget. Returns false when the report has

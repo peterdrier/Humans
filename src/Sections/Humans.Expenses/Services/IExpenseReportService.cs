@@ -127,8 +127,8 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
     Task<ExpenseMutationResult> RequeueHoldedPushWithResultAsync(
         Guid reportId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Written-off Holded pushes across all reports — the /Expenses/Review banner count.</summary>
-    Task<int> CountFailedHoldedPushesAsync(CancellationToken ct = default);
+    /// <summary>Reports with a written-off Holded push — the /Expenses/Review banner and flags.</summary>
+    Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(CancellationToken ct = default);
 }
 
 internal sealed record ExpenseMutationResult(bool Succeeded, string? ErrorMessage)

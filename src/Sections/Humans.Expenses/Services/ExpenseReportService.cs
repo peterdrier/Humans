@@ -1173,8 +1173,8 @@ internal sealed class ExpenseReportService(
                 : ExpenseMutationResult.Failure("Could not reject the report. It may not be in a rejectable status.");
         }, "Error finance-rejecting expense report {ReportId}", "Rejection failed", reportId);
 
-    public Task<int> CountFailedHoldedPushesAsync(CancellationToken ct = default)
-        => repo.CountFailedOutboxAsync(ct);
+    public Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(CancellationToken ct = default)
+        => repo.GetFailedOutboxReportIdsAsync(ct);
 
     internal async Task<bool> RequeueHoldedPushAsync(
         Guid reportId, Guid actorUserId, CancellationToken ct = default)
