@@ -4,6 +4,7 @@ using Humans.Calendar.Controllers;
 using Humans.Calendar.Models;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
+using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
@@ -32,6 +33,7 @@ public class CalendarControllerICalTests
     private readonly ICalendarService _calendar = Substitute.For<ICalendarService>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
     private readonly InMemorySession _session = new();
+    private Instant _now = Instant.FromUtc(2026, 6, 1, 12, 0);
 
     private readonly Guid _viewer = Guid.NewGuid();
 
@@ -53,6 +55,27 @@ public class CalendarControllerICalTests
         var model = await IndexModelAsync();
 
         model.ViewerTimezoneLabel.Should().Be("America/Los_Angeles");
+    }
+
+    [HumansFact]
+    public async Task Create_defaults_to_the_browser_local_date()
+    {
+        _now = Instant.FromUtc(2026, 6, 1, 23, 0);
+        _session.SetString(DateTimeDisplayExtensions.SessionKey, "Asia/Tokyo");
+        var team = Guid.NewGuid();
+        _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>
+            {
+                [team] = new(team, "Team", null, "team", true, false, SystemTeamType.None,
+                    false, false, false, false, Instant.MinValue, [])
+            });
+
+        var result = await CreateController().Create((Guid?)null, Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
+        model.StartLocal.Should().Be(new DateTime(2026, 6, 2, 19, 0, 0));
+        model.EndDateLocal.Should().Be(new DateTime(2026, 6, 2));
     }
 
     [HumansFact]
@@ -160,7 +183,7 @@ public class CalendarControllerICalTests
             _calendarRead,
             _calendar,
             _teams,
-            new FakeClock(Instant.FromUtc(2026, 6, 1, 12, 0)),
+            new FakeClock(_now),
             localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
