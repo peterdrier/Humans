@@ -194,7 +194,17 @@ internal sealed class Service(
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         name = name.Trim();
 
-        var chart = await client.ListExpenseAccountsAsync(ct);
+        IReadOnlyList<HoldedExpenseAccountDto> chart;
+        try
+        {
+            chart = await client.ListExpenseAccountsAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to read the Holded expense chart while creating or linking account '{Name}'", name);
+            throw;
+        }
+
         var map = await repo.GetCategoryMapAsync(ct);
         var managed = await repo.GetManagedAccountsAsync(ct);
 
@@ -228,7 +238,17 @@ internal sealed class Service(
         var next = ExpenseAccountBlockStart;
         while (used.Contains(next)) next++;
 
-        var id = await client.CreateExpenseAccountAsync(next, name, ct);
+        string id;
+        try
+        {
+            id = await client.CreateExpenseAccountAsync(next, name, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to create Holded expense account {AccountNum} '{Name}'", next, name);
+            throw;
+        }
+
         await RegisterManagedAsync(next, id, name, managed, now, ct);
         await audit.LogAsync(AuditAction.HoldedExpenseAccountCreated, HoldedExpenseAccount, Guid.Empty,
             $"Created Holded expense account {next} '{name}'", "Finance");
