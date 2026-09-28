@@ -46,9 +46,9 @@ public interface IHoldedFinanceServiceRead
 
     /// <summary>Every generated SEPA transfer with its current booking state and the reason it
     /// cannot be booked, plus the one reason booking is off for the whole screen (missing
-    /// configuration) — the same rows <c>/Finance/Sepa</c> renders, including a live bank-feed
-    /// read; only the candidate-line/unmatched-movements halves that drive that page's own "book
-    /// this" button are dropped (peterdrier/Humans#1838).</summary>
+    /// configuration) — the same rows <c>/Finance/Sepa</c> renders; only the candidate-line/
+    /// unmatched-movements halves that drive that page's own "book this" button, which need a live
+    /// bank-feed read, are dropped (peterdrier/Humans#1838).</summary>
     Task<(IReadOnlyList<SepaPayoutTransferRow> Transfers, string? UnavailableReason)>
         GetSepaTransfersAsync(CancellationToken ct = default);
 }

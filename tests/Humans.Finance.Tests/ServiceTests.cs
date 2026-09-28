@@ -1977,7 +1977,7 @@ public class HoldedFinanceServiceTests
     /// <summary>Backdoor's <c>category-map</c> route (peterdrier/Humans#1838) reads this directly —
     /// same rows the connector page renders, not a second projection to drift from it.</summary>
     [HumansFact]
-    public async Task GetCategoryMap_MatchesConnectorOverviewsProjection()
+    public async Task GetCategoryMap_ProjectsCategoryAndGroupNames()
     {
         var live = Guid.NewGuid();
         ActiveYearWith((live, "Staff"));

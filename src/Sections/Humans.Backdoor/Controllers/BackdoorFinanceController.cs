@@ -218,7 +218,7 @@ internal sealed class BackdoorFinanceController(
         {
             lastSyncAt = syncInfo.LastSyncAt?.ToIso8601(),
             status = syncInfo.Status,
-            lastError = syncInfo.LastError,
+            lastError = syncInfo.LastError is null ? null : IbanFormatter.MaskAllIn(syncInfo.LastError),
             lastSyncedDocCount = syncInfo.LastSyncedDocCount,
             creditorBindingCount = syncInfo.CreditorBindingCount,
             unmatched = unmatched.Select(u => new
@@ -226,7 +226,7 @@ internal sealed class BackdoorFinanceController(
                 holdedDocId = u.HoldedDocId,
                 docNumber = u.DocNumber,
                 contactName = u.ContactName,
-                description = u.Description,
+                description = u.Description is null ? null : IbanFormatter.MaskAllIn(u.Description),
                 total = u.Total,
                 reason = u.Reason,
                 holdedUrl = u.HoldedUrl,
@@ -278,15 +278,16 @@ internal sealed class BackdoorFinanceController(
 
     // ─── Projections ────────────────────────────────────────────────────────────
 
-    /// <summary>The masked IBAN and the Holded timeline are only ever meaningful to the report's
-    /// submitter or a finance admin — the same audience <c>ExpensesController.Detail</c> shows them
-    /// to (peterdrier/Humans#1839, fixing M1). Everyone else who can pass the <c>View</c> check
-    /// (e.g. a category coordinator) gets these fields null.</summary>
+    /// <summary>The payee name, the masked IBAN, and the Holded timeline are only ever meaningful to
+    /// the report's submitter or a finance admin — the same audience <c>ExpensesController.Detail</c>
+    /// shows them to (peterdrier/Humans#1839, fixing M1). The Holded contact/supplier/doc ids are
+    /// finance-admin only, matching the same view's finance card. Everyone else who can pass the
+    /// <c>View</c> check (e.g. a category coordinator) gets these fields null.</summary>
     private static object ProjectReportSummary(
         ExpenseReportDto r, BudgetYearDetail? year, string? submitterName, ExpenseHoldedTimeline? timeline,
         bool isSubmitter, bool isFinanceAdmin)
     {
-        var showIban = isSubmitter || isFinanceAdmin;
+        var showPayee = isSubmitter || isFinanceAdmin;
         // Push half — finance-admin only. Nulled here rather than per-field below, so the
         // projection itself stays a single flat set of member accesses (HUM0031).
         var push = isFinanceAdmin ? timeline : null;
@@ -296,8 +297,8 @@ internal sealed class BackdoorFinanceController(
             status = r.Status.ToString(),
             submitterUserId = r.SubmitterUserId,
             submitterName = submitterName ?? "(unknown)",
-            payeeName = r.PayeeName,
-            payeeIbanMasked = showIban ? IbanFormatter.Mask(r.PayeeIban) : null,
+            payeeName = showPayee ? r.PayeeName : null,
+            payeeIbanMasked = showPayee ? IbanFormatter.Mask(r.PayeeIban) : null,
             budgetCategoryId = r.BudgetCategoryId,
             budgetCategoryName = CategoryName(year, r.BudgetCategoryId),
             budgetYear = year?.Year,
@@ -311,16 +312,16 @@ internal sealed class BackdoorFinanceController(
             approvedByUserId = r.ApprovedByUserId,
             lastRejectedAt = r.LastRejectedAt?.ToIso8601(),
             lastRejectedByUserId = r.LastRejectedByUserId,
-            lastRejectionReason = r.LastRejectionReason,
-            holdedContactId = r.HoldedContactId,
-            holdedSupplierAccountNum = r.HoldedSupplierAccountNum,
-            holdedDocIds = r.HoldedDocIds,
+            lastRejectionReason = r.LastRejectionReason is null ? null : IbanFormatter.MaskAllIn(r.LastRejectionReason),
+            holdedContactId = isFinanceAdmin ? r.HoldedContactId : null,
+            holdedSupplierAccountNum = isFinanceAdmin ? r.HoldedSupplierAccountNum : null,
+            holdedDocIds = isFinanceAdmin ? r.HoldedDocIds : null,
             syncState = push?.SyncState.ToString(),
             queuedAt = push?.QueuedAt?.ToIso8601(),
             settledAt = push?.SettledAt?.ToIso8601(),
             retryCount = push?.RetryCount,
             maxRetries = push?.MaxRetries,
-            lastError = push?.LastError,
+            lastError = push?.LastError is null ? null : IbanFormatter.MaskAllIn(push.LastError),
             nextRetryAt = push?.NextRetryAt?.ToIso8601(),
         };
     }
@@ -332,7 +333,7 @@ internal sealed class BackdoorFinanceController(
         ExpenseReportDto r, BudgetYearDetail? year, string? submitterName, ExpenseHoldedTimeline? timeline,
         bool isSubmitter, bool isFinanceAdmin)
     {
-        var showIban = isSubmitter || isFinanceAdmin;
+        var showPayee = isSubmitter || isFinanceAdmin;
         var push = isFinanceAdmin ? timeline : null;
         var payment = isSubmitter ? timeline : null;
         return new
@@ -341,8 +342,8 @@ internal sealed class BackdoorFinanceController(
             status = r.Status.ToString(),
             submitterUserId = r.SubmitterUserId,
             submitterName = submitterName ?? "(unknown)",
-            payeeName = r.PayeeName,
-            payeeIbanMasked = showIban ? IbanFormatter.Mask(r.PayeeIban) : null,
+            payeeName = showPayee ? r.PayeeName : null,
+            payeeIbanMasked = showPayee ? IbanFormatter.Mask(r.PayeeIban) : null,
             budgetCategoryId = r.BudgetCategoryId,
             budgetCategoryName = CategoryName(year, r.BudgetCategoryId),
             budgetYear = year?.Year,
@@ -356,16 +357,16 @@ internal sealed class BackdoorFinanceController(
             approvedByUserId = r.ApprovedByUserId,
             lastRejectedAt = r.LastRejectedAt?.ToIso8601(),
             lastRejectedByUserId = r.LastRejectedByUserId,
-            lastRejectionReason = r.LastRejectionReason,
-            holdedContactId = r.HoldedContactId,
-            holdedSupplierAccountNum = r.HoldedSupplierAccountNum,
-            holdedDocIds = r.HoldedDocIds,
+            lastRejectionReason = r.LastRejectionReason is null ? null : IbanFormatter.MaskAllIn(r.LastRejectionReason),
+            holdedContactId = isFinanceAdmin ? r.HoldedContactId : null,
+            holdedSupplierAccountNum = isFinanceAdmin ? r.HoldedSupplierAccountNum : null,
+            holdedDocIds = isFinanceAdmin ? r.HoldedDocIds : null,
             syncState = push?.SyncState.ToString(),
             queuedAt = push?.QueuedAt?.ToIso8601(),
             settledAt = push?.SettledAt?.ToIso8601(),
             retryCount = push?.RetryCount,
             maxRetries = push?.MaxRetries,
-            lastError = push?.LastError,
+            lastError = push?.LastError is null ? null : IbanFormatter.MaskAllIn(push.LastError),
             nextRetryAt = push?.NextRetryAt?.ToIso8601(),
             registeredInHolded = payment?.RegisteredInHolded,
             owedToMember = payment?.OwedToMember,
@@ -381,7 +382,7 @@ internal sealed class BackdoorFinanceController(
     private static object ProjectLine(ExpenseLineDto l) => new
     {
         id = l.Id,
-        description = l.Description,
+        description = IbanFormatter.MaskAllIn(l.Description),
         amount = l.Amount,
         lineType = l.LineType.ToString(),
         parentLineId = l.ParentLineId,
@@ -424,7 +425,7 @@ internal sealed class BackdoorFinanceController(
         debit = l.Debit,
         credit = l.Credit,
         type = l.Type,
-        description = l.Description,
+        description = l.Description is null ? null : IbanFormatter.MaskAllIn(l.Description),
     };
 
     /// <summary>Never null-forgiving on <see cref="HoldedContactInfo.Iban"/> — masked here, the one

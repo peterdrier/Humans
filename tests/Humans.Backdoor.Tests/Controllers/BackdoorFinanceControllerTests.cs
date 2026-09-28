@@ -209,6 +209,49 @@ public class BackdoorFinanceControllerTests
         json.Should().NotContain($@"""id"":""{submitted.Id}""");
     }
 
+    /// <summary>D3/M1 on the list route (peterdrier/Humans#1839, fixing m17): a coordinator's own
+    /// review queue never includes reports they submitted or a finance admin's, so this exercises
+    /// the "neither" row shape the detail test already covers.</summary>
+    [HumansFact]
+    public async Task ExpenseReports_NonSubmitterNonFinanceAdminRow_SeesNoPayeeIbanOrPush()
+    {
+        var userId = Guid.NewGuid();
+        SetPrincipal(userId);
+        SetFinanceAdmin(false);
+        var report = Report();
+        _expenses.GetReviewQueueAsync(userId, false, Arg.Any<CancellationToken>()).Returns([report]);
+
+        var result = await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken);
+
+        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        json.Should().Contain(@"""payeeName"":null");
+        json.Should().Contain(@"""payeeIbanMasked"":null");
+        json.Should().Contain(@"""syncState"":null");
+        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!, default);
+    }
+
+    /// <summary>The <c>year</c> query param (peterdrier/Humans#1839, m6) — untested until now.</summary>
+    [HumansFact]
+    public async Task ExpenseReports_YearFilter_ExcludesOtherYears()
+    {
+        var userId = Guid.NewGuid();
+        SetPrincipal(userId);
+        SetFinanceAdmin(true);
+        var report2026 = Report();
+        var report2025 = Report();
+        _expenses.GetReviewQueueAsync(userId, true, Arg.Any<CancellationToken>()).Returns([report2026, report2025]);
+        _budget.GetYearByIdAsync(report2026.BudgetYearId).Returns(
+            new BudgetYearDetail(report2026.BudgetYearId, "2026", "2026", BudgetYearStatus.Active, false, []));
+        _budget.GetYearByIdAsync(report2025.BudgetYearId).Returns(
+            new BudgetYearDetail(report2025.BudgetYearId, "2025", "2025", BudgetYearStatus.Closed, false, []));
+
+        var result = await _sut.ExpenseReports("2026", null, Xunit.TestContext.Current.CancellationToken);
+
+        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        json.Should().Contain($@"""id"":""{report2026.Id}""");
+        json.Should().NotContain($@"""id"":""{report2025.Id}""");
+    }
+
     // ─── expense-reports/{id} (detail) ──────────────────────────────────────────
 
     [HumansFact]
@@ -299,9 +342,10 @@ public class BackdoorFinanceControllerTests
     }
 
     /// <summary>The M1 scenario: a category coordinator's <c>View</c> succeeds on a different
-    /// ground, but they are neither the submitter nor a finance admin.</summary>
+    /// ground, but they are neither the submitter nor a finance admin — so they get none of the
+    /// payee name, IBAN, or Holded ids (peterdrier/Humans#1839, fixing M1).</summary>
     [HumansFact]
-    public async Task ExpenseReport_CoordinatorNeitherSubmitterNorFinanceAdmin_SeesNoTimelineOrIban()
+    public async Task ExpenseReport_CoordinatorNeitherSubmitterNorFinanceAdmin_SeesNoPayeeIbanOrTimeline()
     {
         SetPrincipal(Guid.NewGuid());
         SetFinanceAdmin(false);
@@ -312,11 +356,61 @@ public class BackdoorFinanceControllerTests
         var result = await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken);
 
         var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        json.Should().Contain(@"""payeeName"":null");
         json.Should().Contain(@"""payeeIbanMasked"":null");
+        json.Should().Contain(@"""holdedContactId"":null");
         json.Should().Contain(@"""syncState"":null");
         json.Should().Contain(@"""registeredInHolded"":null");
         // Nothing to show either half, so the report/timeline call is skipped outright.
         await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!, default);
+    }
+
+    /// <summary>The submitter half of M1: they see the payee name (it is their own reimbursement)
+    /// but not the finance-admin-only Holded ids.</summary>
+    [HumansFact]
+    public async Task ExpenseReport_Submitter_SeesPayeeNameButNotFinanceAdminOnlyHoldedIds()
+    {
+        var userId = Guid.NewGuid();
+        SetPrincipal(userId);
+        SetFinanceAdmin(false);
+        var report = Report(submitterUserId: userId);
+        _expenses.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        SetCanView(true, report);
+        _expenses.GetHoldedTimelineAsync(report, Arg.Any<CancellationToken>()).Returns(Timeline());
+
+        var result = await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        json.Should().Contain(@"""payeeName"":""Ana Torres""");
+        json.Should().Contain(@"""holdedContactId"":null");
+        json.Should().Contain(@"""holdedSupplierAccountNum"":null");
+        json.Should().Contain(@"""holdedDocIds"":null");
+    }
+
+    /// <summary>The finance-admin half of M1: they see everything, including the payee name and the
+    /// Holded ids the browser's finance card shows only them.</summary>
+    [HumansFact]
+    public async Task ExpenseReport_FinanceAdmin_SeesPayeeNameAndHoldedIds()
+    {
+        SetPrincipal(Guid.NewGuid());
+        SetFinanceAdmin(true);
+        var report = Report() with
+        {
+            HoldedContactId = "c-ana",
+            HoldedSupplierAccountNum = 40000060,
+            HoldedDocId = "d1",
+        };
+        _expenses.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        SetCanView(true, report);
+        _expenses.GetHoldedTimelineAsync(report, Arg.Any<CancellationToken>()).Returns(Timeline());
+
+        var result = await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        json.Should().Contain(@"""payeeName"":""Ana Torres""");
+        json.Should().Contain(@"""holdedContactId"":""c-ana""");
+        json.Should().Contain(@"""holdedSupplierAccountNum"":40000060");
+        json.Should().Contain(@"""holdedDocIds"":[""d1""]");
     }
 
     // ─── attachments ────────────────────────────────────────────────────────────
@@ -531,11 +625,9 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(true);
         var member = Guid.NewGuid();
         var generatedBy = Guid.NewGuid();
-        // Fed through the real masking function — proves the raw IBAN cannot leak through this row,
-        // rather than asserting against a hand-typed masked constant the raw form never touched
-        // (peterdrier/Humans#1839, m6).
-        const string rawIban = "ES7921000813610123456789";
-        var maskedIban = IbanFormatter.Mask(rawIban);
+        // The row already arrives masked from Finance (Backdoor never sees the raw IBAN for this
+        // route, so there is nothing to assert against here — peterdrier/Humans#1839, m16).
+        var maskedIban = IbanFormatter.Mask("ES7921000813610123456789");
         _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>()).Returns((
             (IReadOnlyList<SepaPayoutTransferRow>)
             [
@@ -550,7 +642,6 @@ public class BackdoorFinanceControllerTests
 
         var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
         json.Should().Contain($@"""ibanMasked"":""{maskedIban}""");
-        json.Should().NotContain(rawIban);
         json.Should().Contain(@"""holdedBankMovementId"":""mv-1""");
         json.Should().Contain(@"""supplierAccountNum"":40000060");
     }

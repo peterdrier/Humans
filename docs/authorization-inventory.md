@@ -287,6 +287,7 @@ Policy *names* are shared vocabulary in `PolicyNames` — nav items and cross-se
 | CityPlanning | `CityPlanningMapAdmin` |
 | Consent | `ConsentCoordinatorBoardOrAdmin` |
 | Events | `EventsAdminOrAdmin` |
+| Expenses | `ExpenseReportView` |
 | Finance | `FinanceAdminOrAdmin` |
 | Rideshare | `RideshareAdminOrAdmin` |
 | Shifts | `ShiftDashboardAccess`, `ShiftDepartmentManager`, `VolunteerTrackingWrite`, `PrivilegedSignupApprover`, `VolunteerManager`, `MedicalDataViewer` |
@@ -330,6 +331,7 @@ Each policy maps from the current authorization dialect(s) to a single canonical
 | `HumanAdminOnly` | HumanAdmin AND NOT (Admin OR Board) | `PolicyNames.HumanAdminOnly` (composite — `HumanAdminOnlyHandler`) |
 | `MedicalDataViewer` | Admin, NoInfoAdmin | `PolicyNames.MedicalDataViewer`, `ShiftRoleChecks.CanViewMedical` |
 | `RoleAssignmentManage` | (resource-based — the resource is the target role-name string) | `PolicyNames.RoleAssignmentManage` (wraps `RoleAssignmentOperationRequirement.Manage`, owned by `Humans.Auth` — `UsersAdminController.AddRole`/`EndRole` call `AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)` instead of passing the requirement object directly — see §6) |
+| `ExpenseReportView` | (resource-based — the resource is the expense report) | `PolicyNames.ExpenseReportView` (wraps `ExpenseReportOperationRequirement(ExpenseReportOperation.View)`, owned by Expenses — `BackdoorFinanceController` calls `AuthorizeAsync(User, report, PolicyNames.ExpenseReportView)` through the named policy instead of the requirement object directly, mirroring `RoleAssignmentManage` above; `ExpensesController` still authorizes the requirement directly — see §6, peterdrier/Humans#1838) |
 
 ### Notes on Policy Design
 
@@ -389,6 +391,7 @@ The only authorization files left in `src/Humans.Web/` are `Authorization/Author
 | `src/Sections/Humans.Users/Controllers/ProfileViewController.cs` | 213 | `AuthorizeAsync(User, PolicyNames.PrivilegedSignupApprover)` (drives `isPrivilegedApprover` — gates whether a non-own-profile viewer sees the "sent messages" panel on the profile page; admits coordinators or `PrivilegedSignupApprover` role) |
 | `src/Sections/Humans.Users/Controllers/UsersAdminController.cs` | 293 | `AuthorizeAsync(User, model.RoleName, PolicyNames.RoleAssignmentManage)` (AddRole — goes through the named policy rather than passing `RoleAssignmentOperationRequirement.Manage` directly; see §5) |
 | `src/Sections/Humans.Users/Controllers/UsersAdminController.cs` | 331 | `AuthorizeAsync(User, roleAssignment.RoleName, PolicyNames.RoleAssignmentManage)` (EndRole) |
+| `src/Sections/Humans.Backdoor/Controllers/BackdoorFinanceController.cs` | 240, 243 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` (finance-wide routes) and `AuthorizeAsync(User, report, PolicyNames.ExpenseReportView)` (report/attachment routes — named policy, same as `RoleAssignmentManage` above; peterdrier/Humans#1838) |
 | `src/Sections/Humans.Agent/Controllers/AgentController.cs` | 60 | `AuthorizeAsync(User, user.Id, [new AgentRateLimitRequirement()])` (requirement instantiated directly, no `PolicyNames` constant) |
 | `src/Sections/Humans.Settings/ViewComponents/SettingsTabComposition.cs` | 30 | `AuthorizeAsync(user, null, tab.Policy)` (filters the `/Settings` tabs sections contribute) |
 | `src/Sections/Humans.Settings/ViewComponents/EventSettingsTabViewComponent.cs` | 24 | `AuthorizeAsync(UserClaimsPrincipal, null, PolicyNames.AdminOnly)` (Event tab editable vs read-only) |
