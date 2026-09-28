@@ -33,7 +33,7 @@ public class CampControllerTests
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
 
     [HumansFact]
-    public void UploadImage_allows_five_valid_images_without_accepting_a_larger_request()
+    public void UploadImage_allows_one_valid_image_without_accepting_a_larger_request()
     {
         var limit = typeof(CampController).GetMethod(nameof(CampController.UploadImage))!
             .GetCustomAttribute<RequestSizeLimitAttribute>();
@@ -42,7 +42,7 @@ public class CampControllerTests
         typeof(RequestSizeLimitAttribute)
             .GetField("_bytes", BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(limit)
-            .Should().Be(55L * 1024 * 1024);
+            .Should().Be(11L * 1024 * 1024);
     }
 
     [HumansFact]

@@ -224,7 +224,6 @@ mechanical:
       - "src/Sections/*/Section.cs"
       - "src/Sections/*/Data/Repository.cs"
       - "src/Sections/*/Data/*Repository.cs"
-      - "src/Sections/*/Section.cs"
     update: prompt
     prompt: |
       Document current state only — no move/migration history, no "new this

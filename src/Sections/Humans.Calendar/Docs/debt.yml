@@ -3,7 +3,6 @@
 version: 1
 next_id: 7
 inbox:
-    review: panel
   - added: 2026-09-19
     id: CAL-4
     what: "Occurrence order is derived again at every layer: CalendarOccurrenceExpander.Expand sorts date-aware, CachingCalendarService re-sorts by a nullable instant so every all-day occurrence lands at the front of the window, and each consumer re-groups and re-sorts. Not user-visible today because every consumer re-derives it; the decorator keeps the sort only to interleave contributor items, and fixing it properly needs the viewer zone it does not have (finding 17, /section-doctor on Calendar 2026-09-19)."

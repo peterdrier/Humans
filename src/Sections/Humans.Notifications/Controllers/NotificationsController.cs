@@ -27,7 +27,7 @@ internal sealed class NotificationsController(
 
         var defaultActionLabel = localizer["Notification_DefaultActionLabel"].Value;
 
-        var meters = await meterProvider.GetMetersForUserAsync(User, HttpContext.RequestAborted);
+        var meters = await meterProvider.GetMetersForUserAsync(User);
 
         return View(new NotificationInboxViewModel
         {
@@ -58,7 +58,7 @@ internal sealed class NotificationsController(
 
         var defaultActionLabel = localizer["Notification_DefaultActionLabel"].Value;
 
-        var meters = await meterProvider.GetMetersForUserAsync(User, HttpContext.RequestAborted);
+        var meters = await meterProvider.GetMetersForUserAsync(User);
 
         return PartialView("_NotificationPopup", new NotificationPopupViewModel
         {

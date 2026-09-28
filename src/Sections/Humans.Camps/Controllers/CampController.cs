@@ -748,7 +748,7 @@ internal sealed class CampController(
     [Authorize]
     [HttpPost("{slug}/Images/Upload")]
     [ValidateAntiForgeryToken]
-    [RequestSizeLimit(55 * 1024 * 1024)] // Five 10 MB images plus multipart overhead; service enforces each image cap.
+    [RequestSizeLimit(11 * 1024 * 1024)] // One 10 MB image plus multipart overhead; service enforces the image cap.
     public async Task<IActionResult> UploadImage(string slug, IFormFile? file)
     {
         var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);

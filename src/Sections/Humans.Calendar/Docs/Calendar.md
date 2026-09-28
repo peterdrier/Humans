@@ -128,7 +128,6 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Create and update result wrappers preserve caller cancellation; they do not turn a canceled operation into an ordinary validation or persistence failure.
 - Title is required (non-null, non-empty).
 - Calendar form parse and fallback validation messages use `CalendarResource` in every supported culture.
-- The create form's date and 19:00–20:00 time defaults use the configured viewer zone through `IClock`, never the server-local date.
 - Timed events require `StartUtc <= EndUtc` and have no date fields. All-day writes require `StartDate < EndDateExclusive` and have no start/end instants.
 - Forms display inclusive end dates; `CalendarService.AllDayWindow` / `AllDayInclusiveEndDate` convert between inclusive and exclusive `LocalDate` values without a timezone.
 - Legacy all-day rows are projected to dates in the service using their original recurrence zone, or Madrid for one-off events. A null legacy end means one day. Legacy timed overrides of all-day events become covered dates. Saving the series converts its exceptions to date fields before clearing the old timezone; no bulk backfill is required.
