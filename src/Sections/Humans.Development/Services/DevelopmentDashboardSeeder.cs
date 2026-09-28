@@ -30,10 +30,10 @@ internal sealed record DashboardResetResult(
 /// </summary>
 [CrossSectionWrite("Dev teardown deletes the seeded teams and users.")]
 internal sealed class DevelopmentDashboardSeeder(
-    IShiftSeeding shiftManagementService,
+    IShiftSeeding shiftSeeding,
     ISettingsService settingsService,
     IEventSettingsSeeding eventSettingsSeeding,
-    IShiftSignupSeeding shiftSignupService,
+    IShiftSignupSeeding shiftSignupSeeding,
     ITeamService teamService,
     ITeamSeeding teamSeeding,
     IUserEmailService userEmailService,
@@ -115,9 +115,9 @@ internal sealed class DevelopmentDashboardSeeder(
         // Enable volunteer browsing so /Shifts/ and /Teams/{slug}/Shifts render
         // the seeded rotas side-by-side with /Shifts/Dashboard for QA comparisons.
         // On-demand creates the Shifts knobs row for the event above.
-        await shiftManagementService.SetShiftBrowsingOpenAsync(SeededEventId, isOpen: true);
+        await shiftSeeding.SetShiftBrowsingOpenAsync(SeededEventId, isOpen: true);
 
-        // Teams: create parents, then subteams. Goes through ITeamService so slug
+        // Teams: create parents, then subteams. Goes through ITeamSeeding so slug
         // generation, validation, and cache seeding match production.
         var teamsCreated = 0;
         var parentTeams = new Dictionary<string, TeamInfo>(StringComparer.Ordinal);
@@ -178,7 +178,7 @@ internal sealed class DevelopmentDashboardSeeder(
         var allRotas = new List<(SeededRota Rota, double ConfirmedRate)>();
         foreach (var (team, period, label, confirmedRate) in rotaConfigs)
         {
-            var rotaId = await shiftManagementService.CreateRotaAsync(new CreateRotaInput(
+            var rotaId = await shiftSeeding.CreateRotaAsync(new CreateRotaInput(
                 TeamId: team.Id,
                 EventSettingsId: SeededEventId,
                 Name: $"{team.Name} - {label}",
@@ -224,7 +224,7 @@ internal sealed class DevelopmentDashboardSeeder(
                 var duration = isAllDay
                     ? Duration.FromHours(24)
                     : Duration.FromHours(_rng.Next(2, 9));
-                var result = await shiftManagementService.CreateShiftAsync(new CreateShiftInput(
+                var result = await shiftSeeding.CreateShiftAsync(new CreateShiftInput(
                     rota.Id,
                     rota.TeamId,
                     null,
@@ -284,7 +284,7 @@ internal sealed class DevelopmentDashboardSeeder(
             users.Add(user);
         }
 
-        // Coordinators: 2 per parent team, routed via ITeamService.AddSeededMemberAsync so
+        // Coordinators: 2 per parent team, routed via ITeamSeeding.AddSeededMemberAsync so
         // we never touch TeamMembers directly. Infrastructure coords logged in 9 days ago
         // (stale) to drive the red chip on the dashboard.
         foreach (var parent in parentTeams.Values)
@@ -396,7 +396,7 @@ internal sealed class DevelopmentDashboardSeeder(
                 var user = candidates[_rng.Next(candidates.Count)];
                 var key = (shift.Id, user.Id);
                 if (!pickedSignups.Add(key)) continue;
-                var signup = await shiftSignupService.VoluntellAsync(
+                var signup = await shiftSignupSeeding.VoluntellAsync(
                     user.Id, shift.Id, users[0].Id);
                 if (signup.Success)
                     signupsCreated++;
@@ -408,7 +408,7 @@ internal sealed class DevelopmentDashboardSeeder(
                 var user = candidates[_rng.Next(candidates.Count)];
                 var key = (shift.Id, user.Id);
                 if (!pickedSignups.Add(key)) continue;
-                var signup = await shiftSignupService.SignUpAsync(user.Id, shift.Id);
+                var signup = await shiftSignupSeeding.SignUpAsync(user.Id, shift.Id);
                 if (signup.Success)
                     signupsCreated++;
             }
@@ -422,16 +422,16 @@ internal sealed class DevelopmentDashboardSeeder(
             var key = (shift.Id, user.Id);
             if (!pickedSignups.Add(key)) continue;
             var signup = i % 2 == 0
-                ? await shiftSignupService.VoluntellAsync(
+                ? await shiftSignupSeeding.VoluntellAsync(
                     user.Id, shift.Id, users[0].Id)
-                : await shiftSignupService.SignUpAsync(user.Id, shift.Id);
+                : await shiftSignupSeeding.SignUpAsync(user.Id, shift.Id);
             if (!signup.Success || signup.SignupId is null)
                 continue;
 
             var final = i % 2 == 0
-                ? await shiftSignupService.BailAsync(
+                ? await shiftSignupSeeding.BailAsync(
                     signup.SignupId.Value, user.Id, "Seeded for demo")
-                : await shiftSignupService.RefuseAsync(
+                : await shiftSignupSeeding.RefuseAsync(
                     signup.SignupId.Value, users[0].Id, "Seeded for demo");
             if (final.Success)
                 signupsCreated++;
@@ -460,7 +460,7 @@ internal sealed class DevelopmentDashboardSeeder(
     /// </summary>
     public async Task<DashboardResetResult> ResetAsync(CancellationToken cancellationToken)
     {
-        var eventsDeleted = await shiftManagementService.DeleteEventAsync(SeededEventId, cancellationToken);
+        var eventsDeleted = await shiftSeeding.DeleteEventAsync(SeededEventId, cancellationToken);
 
         // Settings owns "which event is active" (nobodies-collective/Humans#1631) and must
         // drop its own row too, or SeedAsync's AlreadySeeded check keeps firing forever.
@@ -471,7 +471,7 @@ internal sealed class DevelopmentDashboardSeeder(
 
         if (devUserIds.Count > 0)
         {
-            await shiftSignupService.DeleteAllForUsersAsync(devUserIds, cancellationToken);
+            await shiftSignupSeeding.DeleteAllForUsersAsync(devUserIds, cancellationToken);
         }
 
         var teamsDeleted = 0;
