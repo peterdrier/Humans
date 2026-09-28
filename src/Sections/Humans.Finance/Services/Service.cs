@@ -1106,27 +1106,19 @@ internal sealed class Service(
         TimeSpan.FromSeconds(1));
 
     /// <summary>The same rows and reason <see cref="GetSepaPayoutsAsync"/> computes — Backdoor's
-    /// read-only <c>sepa-transfers</c> route reuses the whole booking-state logic, live bank-feed
-    /// read included, and drops only the candidate-line/unmatched-movements halves that exist to
-    /// drive <c>/Finance/Sepa</c>'s own "book this" button (peterdrier/Humans#1838).</summary>
+    /// read-only <c>sepa-transfers</c> route reuses the booking-state logic short of the live
+    /// bank-feed read, which exists only to offer <c>/Finance/Sepa</c>'s own "book this" button and
+    /// whose candidate-line/unmatched-movements halves Backdoor never projects
+    /// (peterdrier/Humans#1838).</summary>
     public async Task<(IReadOnlyList<SepaPayoutTransferRow> Transfers, string? UnavailableReason)>
-        GetSepaTransfersAsync(CancellationToken ct = default)
-    {
-        var (rows, unavailable, _, _) = await GetSepaPayoutsAsync(ct);
-        return (rows, unavailable);
-    }
+        GetSepaTransfersAsync(CancellationToken ct = default) => await GetSepaPayoutRowsWithReasonsAsync(ct);
 
     public async Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason,
         IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError)>
         GetSepaPayoutsAsync(CancellationToken ct = default)
     {
-        var rows = await repo.GetSepaPayoutTransferRowsAsync(ct);
-        var unavailable = BookingUnavailableReason();
-        if (rows.Count == 0 || unavailable is not null) return (rows, unavailable, [], null);
-
-        // UserId is the one column the DB keeps unique, so this cannot throw.
-        var bindingByUser = (await repo.GetCreditorContactsAsync(ct)).ToDictionary(c => c.UserId);
-        var withReasons = rows.Select(r => r with { NotBookableReason = NotBookableReason(r) }).ToList();
+        var (withReasons, unavailable) = await GetSepaPayoutRowsWithReasonsAsync(ct);
+        if (withReasons.Count == 0 || unavailable is not null) return (withReasons, unavailable, [], null);
 
         IReadOnlyList<HoldedBankMovementDto> movements;
         try
@@ -1201,6 +1193,24 @@ internal sealed class Service(
                     : r)
                 .ToList(),
             null, unmatched, null);
+    }
+
+    /// <summary>The pre-feed half of <see cref="GetSepaPayoutsAsync"/>: every transfer row with its
+    /// <see cref="SepaPayoutTransferRow.NotBookableReason"/> filled in, no live Holded read. Its own
+    /// method so <see cref="GetSepaTransfersAsync"/> (Backdoor) can reuse it without the bank-feed
+    /// call, which exists only to offer <c>/Finance/Sepa</c>'s "book this" button
+    /// (peterdrier/Humans#1838).</summary>
+    private async Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason)>
+        GetSepaPayoutRowsWithReasonsAsync(CancellationToken ct)
+    {
+        var rows = await repo.GetSepaPayoutTransferRowsAsync(ct);
+        var unavailable = BookingUnavailableReason();
+        if (rows.Count == 0 || unavailable is not null) return (rows, unavailable);
+
+        // UserId is the one column the DB keeps unique, so this cannot throw.
+        var bindingByUser = (await repo.GetCreditorContactsAsync(ct)).ToDictionary(c => c.UserId);
+        var withReasons = rows.Select(r => r with { NotBookableReason = NotBookableReason(r) }).ToList();
+        return (withReasons, null);
 
         string? NotBookableReason(SepaPayoutTransferRow row)
         {

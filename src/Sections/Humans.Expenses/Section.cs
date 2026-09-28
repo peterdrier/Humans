@@ -47,8 +47,10 @@ public sealed class Section : ISection
         services.AddScoped<ExpensesEmails>();
         services.AddScoped<IEmailPreviewContributor, ExpensesEmailPreviews>();
 
-        // Resource-based handlers move into the section; the policies they satisfy stay in
-        // Shell's AuthorizationPolicyExtensions (design §8's asymmetry, §15 step 6).
+        // The resource-based handler lives here; ExpensesController authorizes against it directly.
+        // Its one named policy, ExpenseReportView (for Backdoor, peterdrier/Humans#1838), registers
+        // in this section's own SectionPolicies — the policy's consumer is external, but the
+        // handler's home is not, mirroring CampComplianceAccess (design §15 step 6).
         services.AddScoped<IAuthorizationHandler, ExpenseReportAuthorizationHandler>();
 
         // The section owns its badge colours rather than Base holding a literal row per section

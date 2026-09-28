@@ -5,6 +5,7 @@ using Humans.Backdoor.Contracts;
 using Humans.Backdoor.Controllers;
 using Humans.Backdoor.Filters;
 using Humans.Base.Authorization;
+using Humans.Base.Helpers;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
@@ -87,9 +88,13 @@ public class BackdoorFinanceControllerTests
         _auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.FinanceAdminOrAdmin)
             .Returns(isFinanceAdmin ? AuthorizationResult.Success() : AuthorizationResult.Failed());
 
-    private void SetCanView(bool canView) =>
+    /// <summary>Stubs the exact call <c>CanViewAsync</c> makes — the named policy, against this
+    /// report — rather than any requirement against any resource, so a test asserting 403 actually
+    /// proves the controller asked the right question (peterdrier/Humans#1839, m5).</summary>
+    private void SetCanView(bool canView, ExpenseReportDto report) =>
         _auth.AuthorizeAsync(
-                Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+                Arg.Any<ClaimsPrincipal>(), Arg.Is<object?>(o => ReferenceEquals(o, report)),
+                PolicyNames.ExpenseReportView)
             .Returns(canView ? AuthorizationResult.Success() : AuthorizationResult.Failed());
 
     private static ExpenseReportDto Report(
@@ -146,6 +151,26 @@ public class BackdoorFinanceControllerTests
 
         result.Should().BeOfType<OkObjectResult>();
         await _expenses.Received(1).GetReviewQueueAsync(userId, false, Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>D3: the list only ever carries push state, which the browser shows finance admins
+    /// only — a non-finance-admin submitter's own report shows the masked IBAN (submitter) but no
+    /// push fields, and the timeline is never even fetched.</summary>
+    [HumansFact]
+    public async Task ExpenseReports_NonFinanceAdminSubmitter_SeesNoPushStateAndSkipsTheTimelineFetch()
+    {
+        var userId = Guid.NewGuid();
+        SetPrincipal(userId);
+        SetFinanceAdmin(false);
+        var report = Report(submitterUserId: userId);
+        _expenses.GetReviewQueueAsync(userId, false, Arg.Any<CancellationToken>()).Returns([report]);
+
+        var result = await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken);
+
+        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        json.Should().Contain(@"""payeeIbanMasked"":""ES79****789""");
+        json.Should().Contain(@"""syncState"":null");
+        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!, default);
     }
 
     [HumansFact]
@@ -213,18 +238,23 @@ public class BackdoorFinanceControllerTests
         SetPrincipal(Guid.NewGuid());
         var report = Report();
         _expenses.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
-        SetCanView(false);
+        SetCanView(false, report);
 
         var result = await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
     }
 
+    /// <summary>D3 (peterdrier/Humans#1839, fixing M1): the timeline and masked IBAN are the
+    /// submitter/finance-admin split <c>ExpensesController.Detail</c> uses, not a blanket grant to
+    /// anyone whose <c>View</c> check passes.</summary>
     [HumansFact]
-    public async Task ExpenseReport_Viewable_ProjectsLinesAndThePaymentHalfOfTheTimeline()
+    public async Task ExpenseReport_Submitter_SeesThePaymentHalfNotThePushHalf()
     {
-        SetPrincipal(Guid.NewGuid());
-        var report = Report() with
+        var userId = Guid.NewGuid();
+        SetPrincipal(userId);
+        SetFinanceAdmin(false);
+        var report = Report(submitterUserId: userId) with
         {
             Lines =
             [
@@ -236,15 +266,57 @@ public class BackdoorFinanceControllerTests
             ],
         };
         _expenses.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
-        SetCanView(true);
+        SetCanView(true, report);
         _expenses.GetHoldedTimelineAsync(report, Arg.Any<CancellationToken>()).Returns(Timeline());
 
         var result = await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken);
 
         var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
         json.Should().Contain(@"""registeredInHolded"":true");
+        json.Should().Contain(@"""payeeIbanMasked"":""ES79****789""");
         json.Should().Contain(@"""description"":""Taxi""");
         json.Should().Contain(@"""lineType"":""Receipt""");
+        json.Should().Contain(@"""syncState"":null");
+    }
+
+    [HumansFact]
+    public async Task ExpenseReport_FinanceAdminNotSubmitter_SeesThePushHalfNotThePaymentHalf()
+    {
+        SetPrincipal(Guid.NewGuid());
+        SetFinanceAdmin(true);
+        var report = Report();
+        _expenses.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        SetCanView(true, report);
+        _expenses.GetHoldedTimelineAsync(report, Arg.Any<CancellationToken>()).Returns(Timeline());
+
+        var result = await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        json.Should().Contain(@"""syncState"":""Pushed""");
+        json.Should().Contain(@"""payeeIbanMasked"":""ES79****789""");
+        json.Should().Contain(@"""registeredInHolded"":null");
+        json.Should().Contain(@"""owedToMember"":null");
+    }
+
+    /// <summary>The M1 scenario: a category coordinator's <c>View</c> succeeds on a different
+    /// ground, but they are neither the submitter nor a finance admin.</summary>
+    [HumansFact]
+    public async Task ExpenseReport_CoordinatorNeitherSubmitterNorFinanceAdmin_SeesNoTimelineOrIban()
+    {
+        SetPrincipal(Guid.NewGuid());
+        SetFinanceAdmin(false);
+        var report = Report();
+        _expenses.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        SetCanView(true, report);
+
+        var result = await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        json.Should().Contain(@"""payeeIbanMasked"":null");
+        json.Should().Contain(@"""syncState"":null");
+        json.Should().Contain(@"""registeredInHolded"":null");
+        // Nothing to show either half, so the report/timeline call is skipped outright.
+        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!, default);
     }
 
     // ─── attachments ────────────────────────────────────────────────────────────
@@ -265,7 +337,7 @@ public class BackdoorFinanceControllerTests
         SetPrincipal(Guid.NewGuid());
         var report = Report();
         _expenses.GetReportOwningAttachmentAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(report);
-        SetCanView(false);
+        SetCanView(false, report);
 
         var result = await _sut.Attachment(report.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
@@ -279,7 +351,7 @@ public class BackdoorFinanceControllerTests
         var report = Report();
         var attachmentId = Guid.NewGuid();
         _expenses.GetReportOwningAttachmentAsync(attachmentId, Arg.Any<CancellationToken>()).Returns(report);
-        SetCanView(true);
+        SetCanView(true, report);
         _expenses.TryReadAttachmentAsync(report, attachmentId, Arg.Any<CancellationToken>())
             .Returns(new ExpenseAttachmentDownload([1, 2, 3], "application/pdf", "receipt.pdf"));
 
@@ -459,12 +531,17 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(true);
         var member = Guid.NewGuid();
         var generatedBy = Guid.NewGuid();
+        // Fed through the real masking function — proves the raw IBAN cannot leak through this row,
+        // rather than asserting against a hand-typed masked constant the raw form never touched
+        // (peterdrier/Humans#1839, m6).
+        const string rawIban = "ES7921000813610123456789";
+        var maskedIban = IbanFormatter.Mask(rawIban);
         _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>()).Returns((
             (IReadOnlyList<SepaPayoutTransferRow>)
             [
                 new SepaPayoutTransferRow(
                     Guid.NewGuid(), Guid.NewGuid(), "batch.xml", Instant.FromUtc(2026, 6, 1, 9, 0),
-                    generatedBy, member, 40000060, "c-ana", "Ana Torres", "ES79****789", 50m,
+                    generatedBy, member, 40000060, "c-ana", "Ana Torres", maskedIban, 50m,
                     null, null, "mv-1", null, null, null),
             ],
             (string?)null));
@@ -472,9 +549,9 @@ public class BackdoorFinanceControllerTests
         var result = await _sut.SepaTransfers(Xunit.TestContext.Current.CancellationToken);
 
         var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
-        json.Should().Contain(@"""ibanMasked"":""ES79****789""");
-        json.Should().NotContain("ES792100081361");
-        json.Should().Contain(@"""holdedPaymentRefs"":""mv-1""");
+        json.Should().Contain($@"""ibanMasked"":""{maskedIban}""");
+        json.Should().NotContain(rawIban);
+        json.Should().Contain(@"""holdedBankMovementId"":""mv-1""");
         json.Should().Contain(@"""supplierAccountNum"":40000060");
     }
 

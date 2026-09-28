@@ -64,9 +64,13 @@ internal sealed class BackdoorFinanceController(
         var rows = new List<object>(filtered.Count);
         foreach (var r in filtered)
         {
-            var timeline = await expenses.GetHoldedTimelineAsync(r, ct);
+            var isSubmitter = r.SubmitterUserId == userId;
+            // The list only carries push state, which the browser shows finance admins only
+            // (ExpensesController.Detail) — nothing to fetch for a submitter who isn't one.
+            var timeline = isFinanceAdmin ? await expenses.GetHoldedTimelineAsync(r, ct) : null;
             years.TryGetValue(r.BudgetYearId, out var yearDetail);
-            rows.Add(ProjectReportSummary(r, yearDetail, names.GetValueOrDefault(r.SubmitterUserId), timeline));
+            rows.Add(ProjectReportSummary(
+                r, yearDetail, names.GetValueOrDefault(r.SubmitterUserId), timeline, isSubmitter, isFinanceAdmin));
         }
 
         return Ok(rows);
@@ -78,7 +82,7 @@ internal sealed class BackdoorFinanceController(
     [HttpGet("expense-reports/{id:guid}")]
     public async Task<IActionResult> ExpenseReport(Guid id, CancellationToken ct)
     {
-        if (GetCurrentUserId() is null) return Unauthorized();
+        if (GetCurrentUserId() is not { } userId) return Unauthorized();
 
         var report = await expenses.GetAsync(id, ct);
         if (report is null) return NotFound();
@@ -87,9 +91,15 @@ internal sealed class BackdoorFinanceController(
         var years = await ResolveBudgetYearsAsync([report], ct);
         years.TryGetValue(report.BudgetYearId, out var yearDetail);
         var submitter = await FindUserInfoByIdAsync(report.SubmitterUserId, ct);
-        var timeline = await expenses.GetHoldedTimelineAsync(report, ct);
 
-        return Ok(ProjectReportDetail(report, yearDetail, submitter?.BurnerName, timeline));
+        var isSubmitter = report.SubmitterUserId == userId;
+        var isFinanceAdmin = await IsFinanceAdminAsync();
+        // The submitter reads the payment half of the timeline; the finance admin reads the push
+        // half — same split as ExpensesController.Detail. A viewer who is neither (e.g. a category
+        // coordinator, whose View passes on a different ground) gets neither.
+        var timeline = isSubmitter || isFinanceAdmin ? await expenses.GetHoldedTimelineAsync(report, ct) : null;
+
+        return Ok(ProjectReportDetail(report, yearDetail, submitter?.BurnerName, timeline, isSubmitter, isFinanceAdmin));
     }
 
     /// <summary>The stored bytes for one attachment, gated by the owning report's <c>View</c>
@@ -230,8 +240,7 @@ internal sealed class BackdoorFinanceController(
         (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
 
     private async Task<bool> CanViewAsync(ExpenseReportDto report) =>
-        (await authService.AuthorizeAsync(User, report,
-            new ExpenseReportOperationRequirement(ExpenseReportOperation.View))).Succeeded;
+        (await authService.AuthorizeAsync(User, report, PolicyNames.ExpenseReportView)).Succeeded;
 
     // ─── Shared lookups ─────────────────────────────────────────────────────────
 
@@ -269,83 +278,105 @@ internal sealed class BackdoorFinanceController(
 
     // ─── Projections ────────────────────────────────────────────────────────────
 
+    /// <summary>The masked IBAN and the Holded timeline are only ever meaningful to the report's
+    /// submitter or a finance admin — the same audience <c>ExpensesController.Detail</c> shows them
+    /// to (peterdrier/Humans#1839, fixing M1). Everyone else who can pass the <c>View</c> check
+    /// (e.g. a category coordinator) gets these fields null.</summary>
     private static object ProjectReportSummary(
-        ExpenseReportDto r, BudgetYearDetail? year, string? submitterName, ExpenseHoldedTimeline? timeline) => new
+        ExpenseReportDto r, BudgetYearDetail? year, string? submitterName, ExpenseHoldedTimeline? timeline,
+        bool isSubmitter, bool isFinanceAdmin)
     {
-        id = r.Id,
-        status = r.Status.ToString(),
-        submitterUserId = r.SubmitterUserId,
-        submitterName = submitterName ?? "(unknown)",
-        payeeName = r.PayeeName,
-        payeeIbanMasked = IbanFormatter.Mask(r.PayeeIban),
-        budgetCategoryId = r.BudgetCategoryId,
-        budgetCategoryName = CategoryName(year, r.BudgetCategoryId),
-        budgetYear = year?.Year,
-        total = r.Total,
-        maxAmount = r.MaxAmount,
-        payable = r.Payable,
-        submittedAt = r.SubmittedAt?.ToIso8601(),
-        coordinatorEndorsedAt = r.CoordinatorEndorsedAt?.ToIso8601(),
-        coordinatorEndorsedByUserId = r.CoordinatorEndorsedByUserId,
-        approvedAt = r.ApprovedAt?.ToIso8601(),
-        approvedByUserId = r.ApprovedByUserId,
-        lastRejectedAt = r.LastRejectedAt?.ToIso8601(),
-        lastRejectedByUserId = r.LastRejectedByUserId,
-        lastRejectionReason = r.LastRejectionReason,
-        holdedContactId = r.HoldedContactId,
-        holdedSupplierAccountNum = r.HoldedSupplierAccountNum,
-        holdedDocIds = r.HoldedDocIds,
-        syncState = timeline?.SyncState.ToString(),
-        queuedAt = timeline?.QueuedAt?.ToIso8601(),
-        settledAt = timeline?.SettledAt?.ToIso8601(),
-        retryCount = timeline?.RetryCount,
-        maxRetries = timeline?.MaxRetries,
-        lastError = timeline?.LastError,
-        nextRetryAt = timeline?.NextRetryAt?.ToIso8601(),
-    };
+        var showIban = isSubmitter || isFinanceAdmin;
+        // Push half — finance-admin only. Nulled here rather than per-field below, so the
+        // projection itself stays a single flat set of member accesses (HUM0031).
+        var push = isFinanceAdmin ? timeline : null;
+        return new
+        {
+            id = r.Id,
+            status = r.Status.ToString(),
+            submitterUserId = r.SubmitterUserId,
+            submitterName = submitterName ?? "(unknown)",
+            payeeName = r.PayeeName,
+            payeeIbanMasked = showIban ? IbanFormatter.Mask(r.PayeeIban) : null,
+            budgetCategoryId = r.BudgetCategoryId,
+            budgetCategoryName = CategoryName(year, r.BudgetCategoryId),
+            budgetYear = year?.Year,
+            total = r.Total,
+            maxAmount = r.MaxAmount,
+            payable = r.Payable,
+            submittedAt = r.SubmittedAt?.ToIso8601(),
+            coordinatorEndorsedAt = r.CoordinatorEndorsedAt?.ToIso8601(),
+            coordinatorEndorsedByUserId = r.CoordinatorEndorsedByUserId,
+            approvedAt = r.ApprovedAt?.ToIso8601(),
+            approvedByUserId = r.ApprovedByUserId,
+            lastRejectedAt = r.LastRejectedAt?.ToIso8601(),
+            lastRejectedByUserId = r.LastRejectedByUserId,
+            lastRejectionReason = r.LastRejectionReason,
+            holdedContactId = r.HoldedContactId,
+            holdedSupplierAccountNum = r.HoldedSupplierAccountNum,
+            holdedDocIds = r.HoldedDocIds,
+            syncState = push?.SyncState.ToString(),
+            queuedAt = push?.QueuedAt?.ToIso8601(),
+            settledAt = push?.SettledAt?.ToIso8601(),
+            retryCount = push?.RetryCount,
+            maxRetries = push?.MaxRetries,
+            lastError = push?.LastError,
+            nextRetryAt = push?.NextRetryAt?.ToIso8601(),
+        };
+    }
 
+    /// <summary>Same submitter/finance-admin split as <see cref="ProjectReportSummary"/>, plus the
+    /// detail-only payment half — submitter-only, mirroring <c>ExpensesController.Detail</c>'s
+    /// "Payment status" card.</summary>
     private static object ProjectReportDetail(
-        ExpenseReportDto r, BudgetYearDetail? year, string? submitterName, ExpenseHoldedTimeline? timeline) => new
+        ExpenseReportDto r, BudgetYearDetail? year, string? submitterName, ExpenseHoldedTimeline? timeline,
+        bool isSubmitter, bool isFinanceAdmin)
     {
-        id = r.Id,
-        status = r.Status.ToString(),
-        submitterUserId = r.SubmitterUserId,
-        submitterName = submitterName ?? "(unknown)",
-        payeeName = r.PayeeName,
-        payeeIbanMasked = IbanFormatter.Mask(r.PayeeIban),
-        budgetCategoryId = r.BudgetCategoryId,
-        budgetCategoryName = CategoryName(year, r.BudgetCategoryId),
-        budgetYear = year?.Year,
-        total = r.Total,
-        maxAmount = r.MaxAmount,
-        payable = r.Payable,
-        submittedAt = r.SubmittedAt?.ToIso8601(),
-        coordinatorEndorsedAt = r.CoordinatorEndorsedAt?.ToIso8601(),
-        coordinatorEndorsedByUserId = r.CoordinatorEndorsedByUserId,
-        approvedAt = r.ApprovedAt?.ToIso8601(),
-        approvedByUserId = r.ApprovedByUserId,
-        lastRejectedAt = r.LastRejectedAt?.ToIso8601(),
-        lastRejectedByUserId = r.LastRejectedByUserId,
-        lastRejectionReason = r.LastRejectionReason,
-        holdedContactId = r.HoldedContactId,
-        holdedSupplierAccountNum = r.HoldedSupplierAccountNum,
-        holdedDocIds = r.HoldedDocIds,
-        syncState = timeline?.SyncState.ToString(),
-        queuedAt = timeline?.QueuedAt?.ToIso8601(),
-        settledAt = timeline?.SettledAt?.ToIso8601(),
-        retryCount = timeline?.RetryCount,
-        maxRetries = timeline?.MaxRetries,
-        lastError = timeline?.LastError,
-        nextRetryAt = timeline?.NextRetryAt?.ToIso8601(),
-        registeredInHolded = timeline?.RegisteredInHolded,
-        owedToMember = timeline?.OwedToMember,
-        memberRegisteredTotal = timeline?.MemberRegisteredTotal,
-        otherAmount = timeline?.OtherAmount,
-        paid = timeline?.Paid,
-        paidOn = timeline?.PaidOn?.ToInvariantDate(),
-        totalPaid = timeline?.TotalPaid,
-        lines = r.Lines.OrderBy(l => l.SortOrder).Select(ProjectLine),
-    };
+        var showIban = isSubmitter || isFinanceAdmin;
+        var push = isFinanceAdmin ? timeline : null;
+        var payment = isSubmitter ? timeline : null;
+        return new
+        {
+            id = r.Id,
+            status = r.Status.ToString(),
+            submitterUserId = r.SubmitterUserId,
+            submitterName = submitterName ?? "(unknown)",
+            payeeName = r.PayeeName,
+            payeeIbanMasked = showIban ? IbanFormatter.Mask(r.PayeeIban) : null,
+            budgetCategoryId = r.BudgetCategoryId,
+            budgetCategoryName = CategoryName(year, r.BudgetCategoryId),
+            budgetYear = year?.Year,
+            total = r.Total,
+            maxAmount = r.MaxAmount,
+            payable = r.Payable,
+            submittedAt = r.SubmittedAt?.ToIso8601(),
+            coordinatorEndorsedAt = r.CoordinatorEndorsedAt?.ToIso8601(),
+            coordinatorEndorsedByUserId = r.CoordinatorEndorsedByUserId,
+            approvedAt = r.ApprovedAt?.ToIso8601(),
+            approvedByUserId = r.ApprovedByUserId,
+            lastRejectedAt = r.LastRejectedAt?.ToIso8601(),
+            lastRejectedByUserId = r.LastRejectedByUserId,
+            lastRejectionReason = r.LastRejectionReason,
+            holdedContactId = r.HoldedContactId,
+            holdedSupplierAccountNum = r.HoldedSupplierAccountNum,
+            holdedDocIds = r.HoldedDocIds,
+            syncState = push?.SyncState.ToString(),
+            queuedAt = push?.QueuedAt?.ToIso8601(),
+            settledAt = push?.SettledAt?.ToIso8601(),
+            retryCount = push?.RetryCount,
+            maxRetries = push?.MaxRetries,
+            lastError = push?.LastError,
+            nextRetryAt = push?.NextRetryAt?.ToIso8601(),
+            registeredInHolded = payment?.RegisteredInHolded,
+            owedToMember = payment?.OwedToMember,
+            memberRegisteredTotal = payment?.MemberRegisteredTotal,
+            otherAmount = payment?.OtherAmount,
+            paid = payment?.Paid,
+            paidOn = payment?.PaidOn?.ToInvariantDate(),
+            totalPaid = payment?.TotalPaid,
+            lines = r.Lines.OrderBy(l => l.SortOrder).Select(ProjectLine),
+        };
+    }
 
     private static object ProjectLine(ExpenseLineDto l) => new
     {
@@ -427,9 +458,7 @@ internal sealed class BackdoorFinanceController(
         amount = t.Amount,
         bookedAt = t.BookedAt?.ToIso8601(),
         bookedBy = t.BookedByUserId is { } id ? names.GetValueOrDefault(id, id.ToString()) : null,
-        // The transfer's current Holded booking reference — the column literally named
-        // HoldedPaymentRefs is a pre-#1185 leftover nothing writes any more (Finance.md).
-        holdedPaymentRefs = t.HoldedBankMovementId,
+        holdedBankMovementId = t.HoldedBankMovementId,
         notBookableReason = t.NotBookableReason,
     };
 }

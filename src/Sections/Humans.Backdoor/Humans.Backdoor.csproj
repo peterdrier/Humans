@@ -43,10 +43,10 @@
     <ProjectReference Include="..\Humans.Store\Humans.Store.csproj" />
     <ProjectReference Include="..\Humans.Surveys\Humans.Surveys.csproj" />
     <!--
-      Expense reports (peterdrier/Humans#1838): IExpenseReportServiceRead plus the public
-      ExpenseReportOperation(Requirement) pair, so this section can authorize the same way
-      ExpensesController does — imperative IAuthorizationService calls against the shared
-      resource-based handler, rather than re-deriving the actor matrix here.
+      Expense reports (peterdrier/Humans#1838, #1839): IExpenseReportServiceRead. Report/attachment
+      routes authorize via PolicyNames.ExpenseReportView — a named policy Expenses' own
+      SectionPolicies registers — so the ExpenseReportOperation/ExpenseReportOperationRequirement
+      pair and its handler stay internal there rather than becoming published surface here.
     -->
     <ProjectReference Include="..\Humans.Expenses\Humans.Expenses.csproj" />
     <!-- Creditor bindings, the category map and SEPA transfers — contracts leaf only, never

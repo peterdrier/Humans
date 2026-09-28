@@ -2866,11 +2866,13 @@ public class HoldedFinanceServiceTests
     }
 
     /// <summary>Backdoor's <c>sepa-transfers</c> route (peterdrier/Humans#1838) reuses
-    /// <see cref="Service.GetSepaPayoutsAsync"/>'s booking-state logic in full — same rows and
+    /// <see cref="Service.GetSepaPayoutsAsync"/>'s pre-feed booking-state logic — same rows and
     /// unavailable reason, minus the candidate-bank-line/unmatched-movements halves it renders only
-    /// on <c>/Finance/Sepa</c>.</summary>
+    /// on <c>/Finance/Sepa</c> — but skips the live Holded bank-feed read entirely (m2,
+    /// peterdrier/Humans#1839): every Backdoor poll would otherwise cost a live call nothing here
+    /// projects.</summary>
     [HumansFact]
-    public async Task GetSepaTransfers_ReturnsTheSameRowsAndReason()
+    public async Task GetSepaTransfers_ReturnsTheSameRowsAndReason_WithoutReadingTheBankFeed()
     {
         ConfigureSepa();
         SeedTransferRows();
@@ -2880,6 +2882,8 @@ public class HoldedFinanceServiceTests
 
         transfers.Should().ContainSingle();
         unavailable.Should().BeNull();
+        await _client.DidNotReceiveWithAnyArgs().ListBankMovementsAsync(
+            default!, default, default, default);
     }
 
     [HumansFact]

@@ -1,10 +1,10 @@
-namespace Humans.Expenses.Contracts;
+namespace Humans.Expenses.Authorization;
 
 /// <summary>
 /// Operations that can be performed on an expense report.
 /// Used with <see cref="ExpenseReportOperationRequirement"/>.
 /// </summary>
-public enum ExpenseReportOperation
+internal enum ExpenseReportOperation
 {
     View,
     Edit,
