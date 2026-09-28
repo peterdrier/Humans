@@ -86,6 +86,9 @@ internal static class SepaPaymentFileBuilder
                     new XElement(ns + "PmtInf",
                         new XElement(ns + "PmtInfId", request.PmtInfId),
                         new XElement(ns + "PmtMtd", "TRF"),
+                        // One debit per transfer, not one for the batch: each bank line then names
+                        // its own creditor account and the sweep can book it unattended.
+                        new XElement(ns + "BtchBookg", "false"),
                         new XElement(ns + "NbOfTxs", count),
                         new XElement(ns + "CtrlSum", controlSum),
                         new XElement(ns + "PmtTpInf",

@@ -75,7 +75,8 @@ internal sealed record SepaPayoutTransferRow(
     string? CandidateBankMovementId,
     LocalDate? CandidateBankMovementDate = null,
     decimal? CandidateBankMovementAmount = null,
-    string? CandidateBankMovementDescription = null)
+    string? CandidateBankMovementDescription = null,
+    SepaBatchLineVm? BatchLine = null)
 {
     /// <summary>Booked is exactly "has a <see cref="BookedAt"/>" — there is no status column.</summary>
     public bool IsBooked => BookedAt is not null;
@@ -90,6 +91,22 @@ internal sealed record SepaPayoutTransferRow(
     public bool CanBook =>
         !IsBooked && NotBookableReason is null && CandidateBankMovementId is { Length: > 0 };
 }
+
+/// <summary>One Sabadell line that looks like the bank debited a whole multi-transfer file at once —
+/// its amount is the file's total. Never booked by the sweep: a finance admin checks it and presses
+/// Process, which books every transfer in the file against it. Filled by <c>GetSepaPayoutsAsync</c>
+/// onto every row of that file; the repository always projects it null.</summary>
+/// <param name="QuotesFileReference">The line's text contains the file's id — the
+/// <c>MsgId</c>/<c>PmtInfId</c> the bank was sent — rather than matching on total and date alone.</param>
+/// <param name="NotProcessableReason">Why the file cannot be processed as it stands (a transfer in it
+/// cannot be booked), or null when it can.</param>
+internal sealed record SepaBatchLineVm(
+    string MovementId,
+    LocalDate Date,
+    decimal Amount,
+    string? Description,
+    bool QuotesFileReference,
+    string? NotProcessableReason);
 
 /// <summary>An outgoing Sabadell line the sweep could not book, with why — the page's
 /// "a human has to look at this" list (nobodies-collective/Humans#1185).</summary>
@@ -106,11 +123,15 @@ internal sealed record SepaBankMovementVm(
 internal sealed record SepaTransferVm(SepaPayoutTransferRow Row, string MemberName, string? BookedByName);
 
 /// <summary>One generated file and its transfers, as the screen groups them.</summary>
+/// <param name="BatchLine">The single bank line that debited this whole file, when there is one to
+/// process.</param>
 internal sealed record SepaPayoutFileVm(
+    Guid FileId,
     string FileName,
     Instant GeneratedAt,
     string GeneratedByName,
-    IReadOnlyList<SepaTransferVm> Transfers);
+    IReadOnlyList<SepaTransferVm> Transfers,
+    SepaBatchLineVm? BatchLine);
 
 /// <summary>The /Finance/Sepa page model.</summary>
 /// <param name="UnavailableReason">Set when booking is off for every row (missing configuration);

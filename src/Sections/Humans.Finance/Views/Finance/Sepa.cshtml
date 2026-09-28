@@ -83,6 +83,45 @@
                 @file.GeneratedAt.ToDateTime(madrid) by @file.GeneratedByName
             </span>
         </div>
+        @if (file.BatchLine is { } batch && Model.UnavailableReason is null)
+        {
+            <div class="card-body border-bottom">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div>
+                        <strong>The bank debited this whole file as one line:</strong>
+                        @batch.Date.ToInvariantDate() · @batch.Amount.ToEuro()
+                        <div class="font-monospace small">@batch.MovementId</div>
+                        <div class="text-muted small">@(batch.Description ?? "—")</div>
+                        <div class="small">
+                            @if (batch.QuotesFileReference)
+                            {
+                                <span class="badge text-bg-success">Line quotes this file's reference</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-warning">Matched on total and date only — check the line is this file</span>
+                            }
+                        </div>
+                        @if (batch.NotProcessableReason is { } notProcessable)
+                        {
+                            <div class="text-muted small mt-1">Cannot process: @notProcessable</div>
+                        }
+                    </div>
+                    @if (batch.NotProcessableReason is null)
+                    {
+                        <form asp-action="BookSepaFile" method="post"
+                              data-confirm="Process @file.FileName against Sabadell line @batch.MovementId (@batch.Amount.ToEuro())? This books every unbooked transfer in the file: real payments, and a journal entry for anything a member's documents do not cover.">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="fileId" value="@file.FileId" />
+                            <input type="hidden" name="bankMovementId" value="@batch.MovementId" />
+                            <button type="submit" class="btn btn-sm btn-primary text-nowrap">
+                                <i class="fa-solid fa-file-invoice-dollar me-1"></i>Process
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
         <table class="table table-hover mb-0 align-middle">
             <thead>
                 <tr>
@@ -150,6 +189,10 @@
                                 <div class="font-monospace">@t.Row.CandidateBankMovementId</div>
                                 <div>@(t.Row.CandidateBankMovementDescription ?? "—")</div>
                             </div>
+                        }
+                        else if (file.BatchLine is not null)
+                        {
+                            <span class="text-muted small">paid by the file's one bank line — Process above</span>
                         }
                         else
                         {
