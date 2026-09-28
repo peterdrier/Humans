@@ -12,7 +12,7 @@ Holded bookkeeping cleanup keeps turning up breaks that start in Humans: an expe
 - No or unknown `X-Api-Key` → 401 on every route.
 - An account with two bindings lists both; bindings without a `400000xx` appear in `unresolved`. Nothing picks a winner.
 - The attachment route returns the stored bytes with their content type and file name.
-- No response contains an unmasked IBAN.
+- No response contains an unmasked IBAN — not in any JSON string, not in an attachment's download filename. The attachment bytes themselves pass through untouched.
 
 **As a key owner without FinanceAdmin/Admin,** I see exactly what my `/Expenses` review queue would show me, and no more.
 

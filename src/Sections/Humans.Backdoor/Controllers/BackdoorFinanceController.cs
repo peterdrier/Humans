@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Humans.Backdoor.Filters;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
@@ -9,6 +11,9 @@ using Humans.Finance.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Humans.Backdoor.Controllers;
 
@@ -25,7 +30,8 @@ namespace Humans.Backdoor.Controllers;
 /// <see cref="BackdoorApiKeyAuthFilter"/> has already installed on <c>User</c>. GET only, nothing
 /// here writes to the DB or to Holded, and no raw IBAN ever leaves this controller —
 /// <see cref="ExpenseReportDto.PayeeIban"/> and <see cref="HoldedContactInfo.Iban"/> are masked
-/// here, same as every other place those types cross a section boundary.
+/// in the projections, and <see cref="OnResultExecuting"/> runs every other string any action
+/// emits through <see cref="IbanFormatter.MaskAllIn"/> on the way out.
 /// </remarks>
 [ApiController]
 [Route("api/backdoor/finance")]
@@ -35,7 +41,7 @@ internal sealed class BackdoorFinanceController(
     IHoldedFinanceServiceRead finance,
     IBudgetServiceRead budget,
     IAuthorizationService authService,
-    IUserServiceRead users) : ApiControllerBase(users)
+    IUserServiceRead users) : ApiControllerBase(users), IResultFilter
 {
     // ─── Expense reports ────────────────────────────────────────────────────────
 
@@ -218,7 +224,7 @@ internal sealed class BackdoorFinanceController(
         {
             lastSyncAt = syncInfo.LastSyncAt?.ToIso8601(),
             status = syncInfo.Status,
-            lastError = syncInfo.LastError is null ? null : IbanFormatter.MaskAllIn(syncInfo.LastError),
+            lastError = syncInfo.LastError,
             lastSyncedDocCount = syncInfo.LastSyncedDocCount,
             creditorBindingCount = syncInfo.CreditorBindingCount,
             unmatched = unmatched.Select(u => new
@@ -226,12 +232,58 @@ internal sealed class BackdoorFinanceController(
                 holdedDocId = u.HoldedDocId,
                 docNumber = u.DocNumber,
                 contactName = u.ContactName,
-                description = u.Description is null ? null : IbanFormatter.MaskAllIn(u.Description),
+                description = u.Description,
                 total = u.Total,
                 reason = u.Reason,
                 holdedUrl = u.HoldedUrl,
             }),
         });
+    }
+
+    // ─── IBAN scrub ─────────────────────────────────────────────────────────────
+
+    /// <summary>The one place free text is scrubbed: every string in every JSON body, and the
+    /// attachment's download filename, goes through <see cref="IbanFormatter.MaskAllIn"/> after
+    /// the action, so a field added later cannot forget to (peterdrier/Humans#1839). File bytes
+    /// are left alone.</summary>
+    public void OnResultExecuting(ResultExecutingContext context)
+    {
+        switch (context.Result)
+        {
+            case ObjectResult { Value: { } value } body:
+                var options = context.HttpContext.RequestServices
+                    .GetRequiredService<IOptions<JsonOptions>>().Value.JsonSerializerOptions;
+                var node = JsonSerializer.SerializeToNode(value, value.GetType(), options);
+                MaskIbans(node);
+                body.Value = node;
+                break;
+            case FileContentResult file:
+                file.FileDownloadName = IbanFormatter.MaskAllIn(file.FileDownloadName);
+                break;
+        }
+    }
+
+    public void OnResultExecuted(ResultExecutedContext context)
+    {
+    }
+
+    private static void MaskIbans(JsonNode? node)
+    {
+        switch (node)
+        {
+            case JsonObject obj:
+                foreach (var child in obj.Select(p => p.Value).ToList()) MaskIbans(child);
+                break;
+            case JsonArray array:
+                foreach (var child in array.ToList()) MaskIbans(child);
+                break;
+            // A Guid is never an IBAN, but a dashed one can pass as a spaced one by checksum luck.
+            case JsonValue value when value.GetValueKind() == JsonValueKind.String
+                && value.GetValue<string>() is var text && !Guid.TryParse(text, out _):
+                var masked = IbanFormatter.MaskAllIn(text);
+                if (!string.Equals(masked, text, StringComparison.Ordinal)) value.ReplaceWith(masked);
+                break;
+        }
     }
 
     // ─── Shared authorization ───────────────────────────────────────────────────
@@ -295,7 +347,7 @@ internal sealed class BackdoorFinanceController(
         {
             id = r.Id,
             status = r.Status.ToString(),
-            note = r.Note is null ? null : IbanFormatter.MaskAllIn(r.Note),
+            note = r.Note,
             submitterUserId = r.SubmitterUserId,
             submitterName = submitterName ?? "(unknown)",
             payeeName = showPayee ? r.PayeeName : null,
@@ -313,7 +365,7 @@ internal sealed class BackdoorFinanceController(
             approvedByUserId = r.ApprovedByUserId,
             lastRejectedAt = r.LastRejectedAt?.ToIso8601(),
             lastRejectedByUserId = r.LastRejectedByUserId,
-            lastRejectionReason = r.LastRejectionReason is null ? null : IbanFormatter.MaskAllIn(r.LastRejectionReason),
+            lastRejectionReason = r.LastRejectionReason,
             holdedContactId = isFinanceAdmin ? r.HoldedContactId : null,
             holdedSupplierAccountNum = isFinanceAdmin ? r.HoldedSupplierAccountNum : null,
             holdedDocIds = isFinanceAdmin ? r.HoldedDocIds : null,
@@ -322,7 +374,7 @@ internal sealed class BackdoorFinanceController(
             settledAt = push?.SettledAt?.ToIso8601(),
             retryCount = push?.RetryCount,
             maxRetries = push?.MaxRetries,
-            lastError = push?.LastError is null ? null : IbanFormatter.MaskAllIn(push.LastError),
+            lastError = push?.LastError,
             nextRetryAt = push?.NextRetryAt?.ToIso8601(),
         };
     }
@@ -341,7 +393,7 @@ internal sealed class BackdoorFinanceController(
         {
             id = r.Id,
             status = r.Status.ToString(),
-            note = r.Note is null ? null : IbanFormatter.MaskAllIn(r.Note),
+            note = r.Note,
             submitterUserId = r.SubmitterUserId,
             submitterName = submitterName ?? "(unknown)",
             payeeName = showPayee ? r.PayeeName : null,
@@ -359,7 +411,7 @@ internal sealed class BackdoorFinanceController(
             approvedByUserId = r.ApprovedByUserId,
             lastRejectedAt = r.LastRejectedAt?.ToIso8601(),
             lastRejectedByUserId = r.LastRejectedByUserId,
-            lastRejectionReason = r.LastRejectionReason is null ? null : IbanFormatter.MaskAllIn(r.LastRejectionReason),
+            lastRejectionReason = r.LastRejectionReason,
             holdedContactId = isFinanceAdmin ? r.HoldedContactId : null,
             holdedSupplierAccountNum = isFinanceAdmin ? r.HoldedSupplierAccountNum : null,
             holdedDocIds = isFinanceAdmin ? r.HoldedDocIds : null,
@@ -368,7 +420,7 @@ internal sealed class BackdoorFinanceController(
             settledAt = push?.SettledAt?.ToIso8601(),
             retryCount = push?.RetryCount,
             maxRetries = push?.MaxRetries,
-            lastError = push?.LastError is null ? null : IbanFormatter.MaskAllIn(push.LastError),
+            lastError = push?.LastError,
             nextRetryAt = push?.NextRetryAt?.ToIso8601(),
             registeredInHolded = payment?.RegisteredInHolded,
             owedToMember = payment?.OwedToMember,
@@ -384,7 +436,7 @@ internal sealed class BackdoorFinanceController(
     private static object ProjectLine(ExpenseLineDto l, bool isFinanceAdmin) => new
     {
         id = l.Id,
-        description = IbanFormatter.MaskAllIn(l.Description),
+        description = l.Description,
         amount = l.Amount,
         lineType = l.LineType.ToString(),
         parentLineId = l.ParentLineId,
@@ -427,7 +479,7 @@ internal sealed class BackdoorFinanceController(
         debit = l.Debit,
         credit = l.Credit,
         type = l.Type,
-        description = l.Description is null ? null : IbanFormatter.MaskAllIn(l.Description),
+        description = l.Description,
     };
 
     /// <summary>Never null-forgiving on <see cref="HoldedContactInfo.Iban"/> — masked here, the one

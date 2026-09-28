@@ -13,6 +13,11 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 
@@ -77,12 +82,28 @@ public class BackdoorFinanceControllerTests
 
     private void SetPrincipal(Guid? userId)
     {
-        var httpContext = new DefaultHttpContext();
+        var httpContext = new DefaultHttpContext
+        {
+            RequestServices = new ServiceCollection().AddSingleton(Options.Create(new JsonOptions())).BuildServiceProvider(),
+        };
         if (userId is { } id)
             httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, id.ToString())], BackdoorAuthentication.SchemeName));
         _sut.ControllerContext = new ControllerContext { HttpContext = httpContext };
     }
+
+    /// <summary>What the caller actually receives: the action's result after the controller's own
+    /// result filter — the IBAN scrub — has run over it.</summary>
+    private string Emitted(IActionResult result)
+    {
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        RunResultFilter(ok);
+        return JsonSerializer.Serialize(ok.Value);
+    }
+
+    private void RunResultFilter(IActionResult result) =>
+        _sut.OnResultExecuting(new ResultExecutingContext(
+            new ActionContext(_sut.HttpContext, new RouteData(), new ActionDescriptor()), [], result, _sut));
 
     private void SetFinanceAdmin(bool isFinanceAdmin) =>
         _auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.FinanceAdminOrAdmin)
@@ -167,7 +188,7 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken);
 
-        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var json = Emitted(result);
         json.Should().Contain(@"""payeeIbanMasked"":""ES79****789""");
         json.Should().Contain(@"""syncState"":null");
         await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!, default);
@@ -185,7 +206,7 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken);
 
-        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var json = Emitted(result);
         json.Should().Contain(@"""payeeIbanMasked"":""ES79****789""");
         json.Should().NotContain("ES7921000813610123456789");
         json.Should().NotContain("2345 6789");
@@ -206,7 +227,7 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.ExpenseReports("", "Approved", Xunit.TestContext.Current.CancellationToken);
 
-        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var json = Emitted(result);
         json.Should().Contain($@"""id"":""{approved.Id}""");
         json.Should().NotContain($@"""id"":""{submitted.Id}""");
     }
@@ -225,7 +246,7 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken);
 
-        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var json = Emitted(result);
         json.Should().Contain(@"""payeeName"":null");
         json.Should().Contain(@"""payeeIbanMasked"":null");
         json.Should().Contain(@"""syncState"":null");
@@ -249,7 +270,7 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.ExpenseReports("2026", null, Xunit.TestContext.Current.CancellationToken);
 
-        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var json = Emitted(result);
         json.Should().Contain($@"""id"":""{report2026.Id}""");
         json.Should().NotContain($@"""id"":""{report2025.Id}""");
     }
@@ -317,7 +338,7 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken);
 
-        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var json = Emitted(result);
         json.Should().Contain(@"""registeredInHolded"":true");
         json.Should().Contain(@"""payeeIbanMasked"":""ES79****789""");
         json.Should().Contain(@"""description"":""Taxi""");
@@ -338,7 +359,7 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken);
 
-        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var json = Emitted(result);
         json.Should().Contain(@"""syncState"":""Pushed""");
         json.Should().Contain(@"""payeeIbanMasked"":""ES79****789""");
         json.Should().Contain(@"""registeredInHolded"":null");
@@ -359,7 +380,7 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken);
 
-        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var json = Emitted(result);
         json.Should().Contain(@"""payeeName"":null");
         json.Should().Contain(@"""payeeIbanMasked"":null");
         json.Should().Contain(@"""holdedContactId"":null");
@@ -384,7 +405,7 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken);
 
-        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var json = Emitted(result);
         json.Should().Contain(@"""payeeName"":""Ana Torres""");
         json.Should().Contain(@"""holdedContactId"":null");
         json.Should().Contain(@"""holdedSupplierAccountNum"":null");
@@ -423,7 +444,7 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken);
 
-        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var json = Emitted(result);
         json.Should().Contain(@"""payeeName"":""Ana Torres""");
         json.Should().Contain(@"""holdedContactId"":""c-ana""");
         json.Should().Contain(@"""holdedSupplierAccountNum"":40000060");
@@ -523,8 +544,7 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.CreditorAccounts(Xunit.TestContext.Current.CancellationToken);
 
-        using var json = JsonDocument.Parse(JsonSerializer.Serialize(
-            result.Should().BeOfType<OkObjectResult>().Subject.Value));
+        using var json = JsonDocument.Parse(Emitted(result));
         var bindings = json.RootElement.GetProperty("accounts")[0].GetProperty("bindings");
         bindings.GetArrayLength().Should().Be(2);
         json.RootElement.GetProperty("unresolved").GetArrayLength().Should().Be(1);
@@ -566,7 +586,7 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.CreditorLedger(40000060, Xunit.TestContext.Current.CancellationToken);
 
-        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var json = Emitted(result);
         json.Should().Contain(@"""ibanMasked"":""ES79****789""");
         json.Should().NotContain("ES7921000813610123456789");
     }
@@ -607,7 +627,7 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.CategoryMap(Xunit.TestContext.Current.CancellationToken);
 
-        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var json = Emitted(result);
         json.Should().Contain(@"""categoryName"":""Staff""");
         json.Should().Contain(@"""holdedAccountNumber"":62900101");
         json.Should().Contain(@"""isActive"":true");
@@ -658,7 +678,7 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.SepaTransfers(Xunit.TestContext.Current.CancellationToken);
 
-        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var json = Emitted(result);
         json.Should().Contain($@"""ibanMasked"":""{maskedIban}""");
         json.Should().Contain(@"""holdedBankMovementId"":""mv-1""");
         json.Should().Contain(@"""supplierAccountNum"":40000060");
@@ -702,9 +722,129 @@ public class BackdoorFinanceControllerTests
 
         var result = await _sut.HoldedSync(Xunit.TestContext.Current.CancellationToken);
 
-        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var json = Emitted(result);
         json.Should().Contain(@"""status"":""Idle""");
         json.Should().Contain(@"""creditorBindingCount"":4");
         json.Should().Contain(@"""docNumber"":""F260001""");
+    }
+
+    // ─── IBAN scrub, every route ────────────────────────────────────────────────
+
+    private const string SpacedIban = "es79 2100 0813 6101 2345 6789";
+    private const string CompactIban = "ES7921000813610123456789";
+    private const string Tainted = "see " + SpacedIban + " or " + CompactIban;
+
+    /// <summary>peterdrier/Humans#1838's guarantee — no response carries an unmasked IBAN — held
+    /// for every string field of every route and for the download filename, not per field: an
+    /// IBAN planted in each one is masked on the way out (peterdrier/Humans#1839).</summary>
+    [HumansFact]
+    public async Task Every_route_masks_an_Iban_planted_in_every_string_it_emits()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        SetPrincipal(userId);
+        SetFinanceAdmin(true);
+        var attachmentId = Guid.NewGuid();
+        var report = Report(submitterUserId: userId) with
+        {
+            Note = Tainted,
+            PayeeName = Tainted,
+            LastRejectionReason = Tainted,
+            HoldedContactId = Tainted,
+            HoldedSupplierAccountNum = 40000060,
+            HoldedDocId = Tainted,
+            Lines =
+            [
+                LineWithHoldedDoc(Tainted) with
+                {
+                    Description = Tainted,
+                    Attachment = new ExpenseAttachmentDto
+                    {
+                        Id = attachmentId,
+                        OriginalFileName = CompactIban + ".pdf",
+                        Extension = ".pdf",
+                        ContentType = "application/pdf",
+                        SizeBytes = 3,
+                        UploadedByUserId = userId,
+                        UploadedAt = Instant.FromUtc(2026, 5, 1, 9, 0),
+                    },
+                },
+            ],
+        };
+        _expenses.GetReviewQueueAsync(userId, true, Arg.Any<CancellationToken>()).Returns([report]);
+        _expenses.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        SetCanView(true, report);
+        _expenses.GetHoldedTimelineAsync(report, Arg.Any<CancellationToken>())
+            .Returns(Timeline() with { LastError = Tainted });
+        _expenses.GetReportOwningAttachmentAsync(attachmentId, Arg.Any<CancellationToken>()).Returns(report);
+        _expenses.TryReadAttachmentAsync(report, attachmentId, Arg.Any<CancellationToken>())
+            .Returns(new ExpenseAttachmentDownload([1, 2, 3], "application/pdf", CompactIban + ".pdf"));
+        _finance.ListCreditorAccountsAsync(Arg.Any<CancellationToken>()).Returns((
+            (IReadOnlyList<HoldedCreditorAccountRow>)
+            [
+                new HoldedCreditorAccountRow(40000060, Tainted, -50m, 50m,
+                    [new CreditorContactBinding(userId, Tainted, 40000060, CreditorContactSource.Auto)], Tainted),
+            ],
+            (IReadOnlyList<CreditorContactBinding>)
+            [
+                new CreditorContactBinding(userId, Tainted, null, CreditorContactSource.Auto),
+            ]));
+        _finance.GetCreditorLedgerAsync(40000060, Arg.Any<CancellationToken>()).Returns(new HoldedCreditorLedger(
+            40000060, -50m, 50m,
+            [
+                new CreditorLedgerLine
+                {
+                    EntryNumber = 1,
+                    Line = 1,
+                    Date = Instant.FromUtc(2026, 5, 1, 9, 0),
+                    AccountNum = 40000060,
+                    Debit = 0m,
+                    Credit = 50m,
+                    Type = Tainted,
+                    Description = Tainted,
+                },
+            ],
+            new HoldedContactInfo(Tainted, Tainted, Tainted, Tainted, Tainted, CompactIban, Tainted, Tainted)));
+        _finance.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns([
+            new HoldedCategoryMapRow(Guid.NewGuid(), Tainted, Tainted, 62900101, Tainted, Tainted, true,
+                Instant.FromUtc(2026, 6, 1, 0, 0)),
+        ]);
+        _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>()).Returns((
+            (IReadOnlyList<SepaPayoutTransferRow>)
+            [
+                new SepaPayoutTransferRow(
+                    Guid.NewGuid(), Guid.NewGuid(), Tainted, Instant.FromUtc(2026, 6, 1, 9, 0),
+                    userId, userId, 40000060, Tainted, Tainted, Tainted, 50m,
+                    null, null, Tainted, null, Tainted, Tainted),
+            ],
+            (string?)Tainted));
+        _finance.GetDocSyncInfoAsync(Arg.Any<CancellationToken>()).Returns(
+            new HoldedDocSyncInfo(Instant.FromUtc(2026, 6, 1, 3, 0), Tainted, Tainted, 12, 4));
+        _finance.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([
+            new HoldedUnmatchedRow(Tainted, Tainted, Tainted, Tainted, 30m, Tainted, Tainted),
+        ]);
+
+        IActionResult[] results =
+        [
+            await _sut.ExpenseReports(null, null, ct),
+            await _sut.ExpenseReport(report.Id, ct),
+            await _sut.CreditorAccounts(ct),
+            await _sut.CreditorLedger(40000060, ct),
+            await _sut.CategoryMap(ct),
+            await _sut.SepaTransfers(ct),
+            await _sut.HoldedSync(ct),
+        ];
+        foreach (var result in results)
+        {
+            var emitted = Emitted(result);
+            emitted.Should().Contain("ES79****789");
+            emitted.Should().NotContainEquivalentOf("2100 0813");
+            emitted.Should().NotContain("21000813610123456789");
+        }
+
+        var file = (await _sut.Attachment(report.Id, attachmentId, ct)).Should().BeOfType<FileContentResult>().Subject;
+        RunResultFilter(file);
+        file.FileDownloadName.Should().Be("ES79****789.pdf");
+        file.FileContents.Should().Equal(1, 2, 3);
     }
 }
