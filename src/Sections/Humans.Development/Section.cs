@@ -27,8 +27,8 @@ namespace Humans.Development;
 /// </para>
 /// <para>
 /// Nothing else is registered here. The section owns no tables — no <c>AddSectionDbContext</c>
-/// call, no repository — and both controllers' authorization policies stay in Shell's
-/// <c>AuthorizationPolicyExtensions</c> (design §8).
+/// call, no repository — and no <c>ISectionPolicies</c>: every policy the controllers name is
+/// registered by its owner (Shell, Finance, Camps, Shifts).
 /// </para>
 /// </remarks>
 public sealed class Section : ISection
