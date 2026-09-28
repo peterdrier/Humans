@@ -150,4 +150,10 @@
   <data name="Expenses_Total" xml:space="preserve"><value>Total</value></data>
   <data name="Expenses_AddLine" xml:space="preserve"><value>Ajouter une ligne</value></data>
   <data name="Expenses_BackToReport" xml:space="preserve"><value>Retour au rapport</value></data>
+  <data name="Expenses_WhatAreYouAdding" xml:space="preserve"><value>Qu’ajoutez-vous ?</value></data>
+  <data name="Expenses_Preferred" xml:space="preserve"><value>préférée</value></data>
+  <data name="Expenses_Receipt" xml:space="preserve"><value>Reçu</value></data>
+  <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Une entreprise facture l’association pour le travail ou les biens. La facture doit être établie au nom de la NCA. C’est fortement préférable : l’association peut récupérer la TVA et économiser 21 %. Vous joindrez la facture, puis les reçus qui la justifient pour la personne qui approuve.</value></data>
+  <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Vous avez payé quelque chose vous-même et souhaitez être remboursé. Les reçus ne sont approuvés que dans certaines circonstances, généralement lorsqu’une facture n’était pas possible ou que le montant est faible.</value></data>
+  <data name="Expenses_Cancel" xml:space="preserve"><value>Annuler</value></data>
 </root>

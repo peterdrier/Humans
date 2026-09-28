@@ -150,4 +150,10 @@
   <data name="Expenses_Total" xml:space="preserve"><value>Totale</value></data>
   <data name="Expenses_AddLine" xml:space="preserve"><value>Aggiungi voce</value></data>
   <data name="Expenses_BackToReport" xml:space="preserve"><value>Torna al rapporto</value></data>
+  <data name="Expenses_WhatAreYouAdding" xml:space="preserve"><value>Cosa stai aggiungendo?</value></data>
+  <data name="Expenses_Preferred" xml:space="preserve"><value>preferita</value></data>
+  <data name="Expenses_Receipt" xml:space="preserve"><value>Ricevuta</value></data>
+  <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Un’azienda fattura all’associazione il lavoro o i beni. La fattura deve essere intestata alla NCA. È fortemente preferibile: l’associazione può recuperare l’IVA e risparmiare il 21%. Allegherai la fattura e poi le ricevute che la giustificano per chi approva.</value></data>
+  <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Hai pagato qualcosa di persona e desideri essere rimborsato. Le ricevute sono approvate solo in determinate circostanze, generalmente quando non era possibile una fattura o l’importo è piccolo.</value></data>
+  <data name="Expenses_Cancel" xml:space="preserve"><value>Annulla</value></data>
 </root>

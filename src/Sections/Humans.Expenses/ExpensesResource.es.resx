@@ -150,4 +150,10 @@
   <data name="Expenses_Total" xml:space="preserve"><value>Total</value></data>
   <data name="Expenses_AddLine" xml:space="preserve"><value>Añadir partida</value></data>
   <data name="Expenses_BackToReport" xml:space="preserve"><value>Volver al informe</value></data>
+  <data name="Expenses_WhatAreYouAdding" xml:space="preserve"><value>¿Qué estás añadiendo?</value></data>
+  <data name="Expenses_Preferred" xml:space="preserve"><value>preferida</value></data>
+  <data name="Expenses_Receipt" xml:space="preserve"><value>Recibo</value></data>
+  <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Una empresa (autónoma) factura a la asociación por el trabajo o los bienes. La factura debe estar emitida a nombre de la NCA. Es muy preferible: la asociación puede recuperar el IVA y ahorrar un 21 %. Adjuntarás la factura y después los recibos que la respaldan para que los revise la persona aprobadora.</value></data>
+  <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Pagaste algo personalmente y quieres que se te reembolse. Los recibos solo se aprueban en determinadas circunstancias, normalmente cuando no era posible una factura o el importe es pequeño.</value></data>
+  <data name="Expenses_Cancel" xml:space="preserve"><value>Cancelar</value></data>
 </root>

@@ -150,4 +150,10 @@
   <data name="Expenses_Total" xml:space="preserve"><value>Total</value></data>
   <data name="Expenses_AddLine" xml:space="preserve"><value>Afegeix partida</value></data>
   <data name="Expenses_BackToReport" xml:space="preserve"><value>Torna a l'informe</value></data>
+  <data name="Expenses_WhatAreYouAdding" xml:space="preserve"><value>Què esteu afegint?</value></data>
+  <data name="Expenses_Preferred" xml:space="preserve"><value>preferida</value></data>
+  <data name="Expenses_Receipt" xml:space="preserve"><value>Rebut</value></data>
+  <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Una empresa factura a l’associació per la feina o els béns. La factura ha d’anar a nom de la NCA. És molt preferible: l’associació pot recuperar l’IVA i estalviar un 21 %. Adjuntareu la factura i després els rebuts que la justifiquen perquè els revisi qui aprova.</value></data>
+  <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Heu pagat alguna cosa personalment i voleu que se us reemborsi. Els rebuts només s’aproven en determinades circumstàncies, normalment quan no era possible una factura o l’import és petit.</value></data>
+  <data name="Expenses_Cancel" xml:space="preserve"><value>Cancel·la</value></data>
 </root>

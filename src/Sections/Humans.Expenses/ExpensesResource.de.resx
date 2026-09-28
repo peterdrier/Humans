@@ -150,4 +150,10 @@
   <data name="Expenses_Total" xml:space="preserve"><value>Gesamt</value></data>
   <data name="Expenses_AddLine" xml:space="preserve"><value>Posten hinzufügen</value></data>
   <data name="Expenses_BackToReport" xml:space="preserve"><value>Zurück zum Bericht</value></data>
+  <data name="Expenses_WhatAreYouAdding" xml:space="preserve"><value>Was fügst du hinzu?</value></data>
+  <data name="Expenses_Preferred" xml:space="preserve"><value>bevorzugt</value></data>
+  <data name="Expenses_Receipt" xml:space="preserve"><value>Beleg</value></data>
+  <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Ein Unternehmen stellt der Vereinigung eine Rechnung für die Arbeit oder Waren. Die Rechnung muss auf die NCA ausgestellt sein. Das ist sehr bevorzugt: Die Vereinigung kann die Mehrwertsteuer zurückfordern und 21 % sparen. Du fügst die Rechnung und anschließend die zugehörigen Belege für die Prüfung hinzu.</value></data>
+  <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Du hast etwas selbst bezahlt und möchtest erstattet werden. Belege werden nur unter bestimmten Umständen genehmigt, meist wenn eine Rechnung nicht möglich war oder der Betrag gering ist.</value></data>
+  <data name="Expenses_Cancel" xml:space="preserve"><value>Abbrechen</value></data>
 </root>

@@ -150,4 +150,10 @@
   <data name="Expenses_Total" xml:space="preserve"><value>Total</value></data>
   <data name="Expenses_AddLine" xml:space="preserve"><value>Add line</value></data>
   <data name="Expenses_BackToReport" xml:space="preserve"><value>Back to report</value></data>
+  <data name="Expenses_WhatAreYouAdding" xml:space="preserve"><value>What are you adding?</value></data>
+  <data name="Expenses_Preferred" xml:space="preserve"><value>preferred</value></data>
+  <data name="Expenses_Receipt" xml:space="preserve"><value>Receipt</value></data>
+  <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>A business (ZZP / autónomo) invoices the association for the work or goods. The invoice must be made out to the NCA. Much preferred — the association can reclaim the VAT, saving 21%. You’ll attach the invoice, then the receipts behind it for the approver.</value></data>
+  <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>You paid for something yourself and want to be reimbursed. Receipts are only approved in certain circumstances — generally when an invoice wasn’t possible, or the amount is small.</value></data>
+  <data name="Expenses_Cancel" xml:space="preserve"><value>Cancel</value></data>
 </root>
