@@ -2,6 +2,7 @@ using Humans.Calendar.Services.Dtos;
 using Humans.Calendar.Services;
 using Humans.Teams.Contracts;
 using Humans.Base.Controllers;
+using Humans.Base.Extensions;
 using Humans.Calendar.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -448,7 +449,6 @@ internal sealed class CalendarController : HumansControllerBase
                 ? _localizer[result.ErrorMessage] : result.ErrorMessage ?? _localizer["Calendar_SaveFailed"]);
     }
 
-    // Org default for v1 (all volunteers in Spain). TODO: derive from browser/profile.
-    private static DateTimeZone GetViewerZone() =>
-        DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private DateTimeZone GetViewerZone() =>
+        HttpContext.Session.GetUserTimeZone("Europe/Madrid");
 }

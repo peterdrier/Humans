@@ -4,9 +4,11 @@ using Humans.Calendar.Controllers;
 using Humans.Calendar.Models;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
+using Humans.Base.Extensions;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
@@ -29,6 +31,7 @@ public class CalendarControllerICalTests
     private readonly ICalendarServiceRead _calendarRead = Substitute.For<ICalendarServiceRead>();
     private readonly ICalendarService _calendar = Substitute.For<ICalendarService>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
+    private readonly InMemorySession _session = new();
 
     private readonly Guid _viewer = Guid.NewGuid();
 
@@ -40,6 +43,16 @@ public class CalendarControllerICalTests
             .Returns(Array.Empty<CalendarOccurrence>());
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
+    }
+
+    [HumansFact]
+    public async Task Index_uses_the_browser_timezone_for_calendar_windows()
+    {
+        _session.SetString(DateTimeDisplayExtensions.SessionKey, "America/Los_Angeles");
+
+        var model = await IndexModelAsync();
+
+        model.ViewerTimezoneLabel.Should().Be("America/Los_Angeles");
     }
 
     [HumansFact]
@@ -139,6 +152,7 @@ public class CalendarControllerICalTests
         };
         http.Request.Scheme = "https";
         http.Request.Host = new HostString("humans.test");
+        http.Features.Set<ISessionFeature>(new TestSessionFeature(_session));
 
         return new CalendarController(
             _users,
@@ -152,5 +166,25 @@ public class CalendarControllerICalTests
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
         };
+    }
+
+    private sealed class InMemorySession : ISession
+    {
+        private readonly Dictionary<string, byte[]> _values = new(StringComparer.Ordinal);
+
+        public bool IsAvailable => true;
+        public string Id => "calendar-test";
+        public IEnumerable<string> Keys => _values.Keys;
+        public void Clear() => _values.Clear();
+        public Task CommitAsync(CancellationToken ct = default) => Task.CompletedTask;
+        public Task LoadAsync(CancellationToken ct = default) => Task.CompletedTask;
+        public void Remove(string key) => _values.Remove(key);
+        public void Set(string key, byte[] value) => _values[key] = value;
+        public bool TryGetValue(string key, out byte[] value) => _values.TryGetValue(key, out value!);
+    }
+
+    private sealed class TestSessionFeature(ISession session) : ISessionFeature
+    {
+        public ISession Session { get; set; } = session;
     }
 }
