@@ -1074,7 +1074,6 @@ public class SepaBankBookingTests
         new()
         {
             Id = id,
-            AccountId = "treasury-1",
             Date = date ?? LineDate,
             Amount = amount,
             Description = description,

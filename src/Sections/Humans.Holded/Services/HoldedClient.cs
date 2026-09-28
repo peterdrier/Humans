@@ -569,14 +569,13 @@ internal sealed class HoldedClient : IHoldedClient
             return items.Select(n => new HoldedBankMovementDto
             {
                 Id = ReadRequiredString(Prop(n, "id"), "id"),
-                AccountId = ReadRequiredString(Prop(n, "account"), "account"),
                 Date = ParseBankMovementDate(Prop(n, "date")?.GetValue<string>() ?? ""),
                 Amount = ReadRequiredDecimalV2(Prop(n, "amount"), "amount"),
                 Description = Prop(n, "description")?.GetValue<string>(),
                 // Never defaulted: "pending" is the one status the SEPA sweep reads as "nothing is
                 // tied to this line yet, it may be booked", so manufacturing it for an absent field
                 // would let a response shape change turn an already-settled line into a bookable
-                // one. Absent means unreadable, like 'id' and 'account' above. An unknown *present*
+                // one. Absent means unreadable, like 'id' above. An unknown *present*
                 // value needs no guard — anything but "pending" already fails closed.
                 Status = ReadRequiredString(Prop(n, "status"), "status").ToLowerInvariant(),
                 Origin = Prop(n, "origin")?.GetValue<string>(),

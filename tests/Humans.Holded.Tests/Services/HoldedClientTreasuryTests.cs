@@ -61,7 +61,6 @@ public class HoldedClientTreasuryTests
         movements.Should().HaveCount(1);
         var m = movements[0];
         m.Id.Should().Be("m1");
-        m.AccountId.Should().Be("tr-1");
         m.Date.Should().Be(new LocalDate(2026, 8, 18));
         m.Amount.Should().Be(-120.00m);
         m.Description.Should().Be("12345678 - NCA - Alice");
@@ -105,6 +104,26 @@ public class HoldedClientTreasuryTests
 
         movements.Should().ContainSingle();
         movements[0].Id.Should().Be("m2");
+    }
+
+    [HumansFact]
+    public async Task ListBankMovementsAsync_LineWithNoAccount_StillReads()
+    {
+        // The feed is already scoped to one account by its URL, and nothing reads a line's
+        // `account`. One Sabadell line without it failed every SEPA sweep (peterdrier/Humans#1853).
+        var json = """
+        {"items":[
+          {"id":"m1","date":"2026-08-18","amount":"-10.00","status":"pending"},
+          {"id":"m2","account":"tr-1","date":"2026-08-18","amount":"-20.00","status":"pending"}
+        ],"cursor":null,"has_more":false}
+        """;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var movements = await client.ListBankMovementsAsync(
+            "tr-1", new LocalDate(2026, 8, 1), new LocalDate(2026, 8, 31),
+            Xunit.TestContext.Current.CancellationToken);
+
+        movements.Select(m => m.Id).Should().Equal("m1", "m2");
     }
 
     [HumansFact]
