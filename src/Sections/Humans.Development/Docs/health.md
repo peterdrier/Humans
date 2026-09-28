@@ -131,4 +131,4 @@ Humans.Development/
 | Date | Branch | PR | Notes |
 |---|---|---|---|
 | 2026-08-24 | `section-doctor/2026-08-24T071255Z` | peterdrier/Humans#1480 | First doctor pass — target derived; Contracts README + Development.md doc drift fixed; mojibake em-dashes in DevPersonaSeeder.cs cleaned; `PascalToKebab` deduped across DevLoginController/DevPersonaSeeder. |
-| 2026-09-28 | `section-doctor/2026-09-28T011647Z` | pending | Comments and docs that named absent tests, Shell-owned policies and retired interfaces made true; dependency list kept in one place; guest and no-name persona invariants pinned; RoleNames read from one list. |
+| 2026-09-28 | `section-doctor/2026-09-28T011647Z` | peterdrier/Humans#1832 | Comments and docs that named absent tests, Shell-owned policies and retired interfaces made true; dependency list kept in one place; guest and no-name persona invariants pinned; RoleNames read from one list. |
