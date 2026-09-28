@@ -182,4 +182,6 @@
   <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>Worum ging es?</value></data>
   <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>z. B. Material aus dem Baumarkt</value></data>
   <data name="Expenses_Done" xml:space="preserve"><value>Fertig</value></data>
+  <data name="Expenses_FailedHoldedPushSingular" xml:space="preserve"><value>genehmigter Bericht konnte nicht vollständig an Holded übertragen werden. Öffne den Bericht, um den Fehler, einen möglichen Zahlbetrag und die erneute Einreihung zu sehen.</value></data>
+  <data name="Expenses_FailedHoldedPushPlural" xml:space="preserve"><value>genehmigte Berichte konnten nicht vollständig an Holded übertragen werden. Öffne einen Bericht, um den Fehler, einen möglichen Zahlbetrag und die erneute Einreihung zu sehen.</value></data>
 </root>

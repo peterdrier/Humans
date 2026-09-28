@@ -182,4 +182,6 @@
   <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>What was it?</value></data>
   <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>e.g. Materials from the hardware store</value></data>
   <data name="Expenses_Done" xml:space="preserve"><value>Done</value></data>
+  <data name="Expenses_FailedHoldedPushSingular" xml:space="preserve"><value>approved report failed to finish pushing to Holded. Open the report to see the error, whether a payable was created, and to re-queue the push.</value></data>
+  <data name="Expenses_FailedHoldedPushPlural" xml:space="preserve"><value>approved reports failed to finish pushing to Holded. Open a report to see the error, whether a payable was created, and to re-queue the push.</value></data>
 </root>

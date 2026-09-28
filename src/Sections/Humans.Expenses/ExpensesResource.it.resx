@@ -182,4 +182,6 @@
   <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>Cos’era?</value></data>
   <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>ad es. materiali dal ferramenta</value></data>
   <data name="Expenses_Done" xml:space="preserve"><value>Fatto</value></data>
+  <data name="Expenses_FailedHoldedPushSingular" xml:space="preserve"><value>rapporto approvato non ha completato l’invio a Holded. Apri il rapporto per vedere l’errore, se è stato creato un importo pagabile e per reinserire l’invio in coda.</value></data>
+  <data name="Expenses_FailedHoldedPushPlural" xml:space="preserve"><value>rapporti approvati non hanno completato l’invio a Holded. Apri un rapporto per vedere l’errore, se è stato creato un importo pagabile e per reinserire l’invio in coda.</value></data>
 </root>
