@@ -9,7 +9,6 @@ using Humans.Tickets.Contracts;
 using Humans.Base.Constants;
 using Humans.Shifts.Domain;
 using Humans.Settings.Contracts;
-using Humans.Shifts.Helpers;
 using Humans.Base.Enums;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -1004,7 +1003,7 @@ internal sealed class ShiftManagementService(
                 shift.IsEarlyEntry),
             ToRotaInfo(shift.Rota),
             departmentName,
-            es.DateForOffset(shift.DayOffset),
+            es.GateOpeningDate.PlusDays(shift.DayOffset),
             shift.GetShiftPeriod(es),
             shift.GetAbsoluteStart(es),
             shift.GetAbsoluteEnd(es),
@@ -1113,7 +1112,7 @@ internal sealed class ShiftManagementService(
 
         foreach (var dayOffset in dayOffsets)
         {
-            var dayDate = es.DateForOffset(dayOffset);
+            var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
             var dateLabel = dayDate.ToWeekdayDayMonth();
@@ -1240,7 +1239,7 @@ internal sealed class ShiftManagementService(
             {
                 if (fromDate is not null || toDate is not null)
                 {
-                    var shiftDate = es.DateForOffset(shift.DayOffset);
+                    var shiftDate = es.GateOpeningDate.PlusDays(shift.DayOffset);
                     if (fromDate is { } from && shiftDate < from) continue;
                     if (toDate is { } to && shiftDate > to) continue;
                 }
@@ -1773,7 +1772,7 @@ internal sealed class ShiftManagementService(
         var results = new List<DailyDepartmentStaffing>(dayOffsets.Count);
         foreach (var dayOffset in dayOffsets)
         {
-            var dayDate = es.DateForOffset(dayOffset);
+            var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
             var dateLabel = dayDate.ToWeekdayDayMonth();
@@ -1835,7 +1834,7 @@ internal sealed class ShiftManagementService(
         var days = dayOffsets
             .Select(off =>
             {
-                var date = es.DateForOffset(off);
+                var date = es.GateOpeningDate.PlusDays(off);
                 var label = date.ToWeekdayDayMonth();
                 var dayPeriod = off < 0 ? ShiftPeriod.Build : off <= es.EventEndOffset ? ShiftPeriod.Event : ShiftPeriod.Strike;
                 return new CoverageHeatmapDay(off, date, label, dayPeriod);

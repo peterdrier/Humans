@@ -274,6 +274,10 @@ namespace Humans.Users.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasFilter("\"IsVerified\" = true");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("user_emails", (string)null);

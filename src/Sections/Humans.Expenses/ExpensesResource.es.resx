@@ -182,8 +182,6 @@
   <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>¿Qué era?</value></data>
   <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>p. ej., materiales de la ferretería</value></data>
   <data name="Expenses_Done" xml:space="preserve"><value>Hecho</value></data>
-  <data name="Expenses_FailedHoldedPushSingular" xml:space="preserve"><value>informe aprobado no terminó de enviarse a Holded. Abre el informe para ver el error, si se creó un importe pagadero y volver a poner el envío en cola.</value></data>
-  <data name="Expenses_FailedHoldedPushPlural" xml:space="preserve"><value>informes aprobados no terminaron de enviarse a Holded. Abre un informe para ver el error, si se creó un importe pagadero y volver a poner el envío en cola.</value></data>
   <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nuevo informe de gastos</value></data>
   <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Selecciona una categoría —</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(opcional, máx. 500 caracteres)</value></data>

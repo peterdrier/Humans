@@ -65,6 +65,11 @@ internal sealed class UserEmailConfiguration : IEntityTypeConfiguration<UserEmai
 
         builder.HasIndex(e => e.UserId);
 
+        // Unique index on verified emails (case-insensitive) to prevent email squatting
+        builder.HasIndex(e => e.Email)
+            .IsUnique()
+            .HasFilter("\"IsVerified\" = true");
+
         // The "exactly one verified IsPrimary per user" invariant is service-
         // enforced inside UserEmailService.EnsurePrimaryInvariantAsync — no DB
         // partial unique index per memory/architecture/db-enforcement-minimal.md.

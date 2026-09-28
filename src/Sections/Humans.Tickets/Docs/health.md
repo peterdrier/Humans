@@ -84,8 +84,8 @@ The layout these shapes imply:
 
 ## Seams
 
-- **Event label on the stub** comes from Settings' active-event read model, cached once per
-  request by the `TicketStub` view. A missing active event uses a localized generic label.
+- **Event label on the stub** is a constant (`"Elsewhere 2026 · Admit One"`, `TicketStub`
+  view); the design reserves sourcing it from the active event. Not built.
 - **`VendorStepsJson`** column is dormant by design until prod soak; the drop is a scheduled
   follow-up, not this section's to do ad hoc.
 ## Deliberately not done

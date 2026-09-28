@@ -23,9 +23,9 @@
     <div class="alert alert-danger">
         <i class="fa-solid fa-triangle-exclamation me-2"></i>
         <strong>@Model.FailedHoldedPushCount</strong>
-        @(Model.FailedHoldedPushCount == 1
-            ? Localizer["Expenses_FailedHoldedPushSingular"]
-            : Localizer["Expenses_FailedHoldedPushPlural"])
+        approved @(Model.FailedHoldedPushCount == 1 ? "report" : "reports")
+        failed to finish pushing to Holded. Open the report to see the error, whether a payable was
+        created, and to re-queue the push.
     </div>
 }
 

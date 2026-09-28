@@ -182,8 +182,6 @@
   <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>De quoi s’agissait-il ?</value></data>
   <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>ex. matériel de la quincaillerie</value></data>
   <data name="Expenses_Done" xml:space="preserve"><value>Terminé</value></data>
-  <data name="Expenses_FailedHoldedPushSingular" xml:space="preserve"><value>rapport approuvé n’a pas pu être envoyé entièrement à Holded. Ouvrez le rapport pour voir l’erreur, si un montant payable a été créé et pour remettre l’envoi en file.</value></data>
-  <data name="Expenses_FailedHoldedPushPlural" xml:space="preserve"><value>rapports approuvés n’ont pas pu être envoyés entièrement à Holded. Ouvrez un rapport pour voir l’erreur, si un montant payable a été créé et pour remettre l’envoi en file.</value></data>
   <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nouveau rapport de dépenses</value></data>
   <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Sélectionnez une catégorie —</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(facultatif, 500 caractères max.)</value></data>
