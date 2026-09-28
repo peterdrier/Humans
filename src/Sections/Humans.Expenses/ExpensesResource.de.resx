@@ -156,4 +156,20 @@
   <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Ein Unternehmen stellt der Vereinigung eine Rechnung für die Arbeit oder Waren. Die Rechnung muss auf die NCA ausgestellt sein. Das ist sehr bevorzugt: Die Vereinigung kann die Mehrwertsteuer zurückfordern und 21 % sparen. Du fügst die Rechnung und anschließend die zugehörigen Belege für die Prüfung hinzu.</value></data>
   <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Du hast etwas selbst bezahlt und möchtest erstattet werden. Belege werden nur unter bestimmten Umständen genehmigt, meist wenn eine Rechnung nicht möglich war oder der Betrag gering ist.</value></data>
   <data name="Expenses_Cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="Expenses_AddInvoice" xml:space="preserve"><value>Rechnung hinzufügen</value></data>
+  <data name="Expenses_AddReceipt" xml:space="preserve"><value>Beleg hinzufügen</value></data>
+  <data name="Expenses_InvoiceAddDescription" xml:space="preserve"><value>Die Rechnung des Unternehmens, ausgestellt auf die NCA. Nach dem Speichern fügst du die zugehörigen Belege hinzu, damit die prüfende Person sieht, was der Rechnungsbetrag abdeckt.</value></data>
+  <data name="Expenses_ReceiptAddDescription" xml:space="preserve"><value>Etwas, das du selbst bezahlt hast und erstattet bekommen möchtest. Beschreibe es, gib den Betrag ein und füge ein Foto oder PDF des Belegs bei.</value></data>
+  <data name="Expenses_InvoicePurpose" xml:space="preserve"><value>Wofür ist die Rechnung?</value></data>
+  <data name="Expenses_ReceiptPurpose" xml:space="preserve"><value>Was hast du gekauft?</value></data>
+  <data name="Expenses_InvoicePlaceholder" xml:space="preserve"><value>z. B. Arbeit des Aufbau-Teams, Rechnung 2026-042</value></data>
+  <data name="Expenses_ReceiptPlaceholder" xml:space="preserve"><value>z. B. Holz für die Schattenkonstruktion</value></data>
+  <data name="Expenses_AmountEur" xml:space="preserve"><value>Betrag (EUR)</value></data>
+  <data name="Expenses_InvoiceFile" xml:space="preserve"><value>Die Rechnung (PDF oder Foto)</value></data>
+  <data name="Expenses_ReceiptFile" xml:space="preserve"><value>Der Beleg (Foto oder PDF)</value></data>
+  <data name="Expenses_SaveAndAddReceipts" xml:space="preserve"><value>Speichern und Belege hinzufügen</value></data>
+  <data name="Expenses_SaveReceipt" xml:space="preserve"><value>Beleg speichern</value></data>
+  <data name="Expenses_NotAnInvoice" xml:space="preserve"><value>Keine Rechnung?</value></data>
+  <data name="Expenses_NotAReceipt" xml:space="preserve"><value>Kein Beleg?</value></data>
+  <data name="Expenses_ChangeType" xml:space="preserve"><value>Typ ändern</value></data>
 </root>

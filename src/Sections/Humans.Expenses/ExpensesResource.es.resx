@@ -156,4 +156,20 @@
   <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Una empresa (autónoma) factura a la asociación por el trabajo o los bienes. La factura debe estar emitida a nombre de la NCA. Es muy preferible: la asociación puede recuperar el IVA y ahorrar un 21 %. Adjuntarás la factura y después los recibos que la respaldan para que los revise la persona aprobadora.</value></data>
   <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Pagaste algo personalmente y quieres que se te reembolse. Los recibos solo se aprueban en determinadas circunstancias, normalmente cuando no era posible una factura o el importe es pequeño.</value></data>
   <data name="Expenses_Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Expenses_AddInvoice" xml:space="preserve"><value>Añadir factura</value></data>
+  <data name="Expenses_AddReceipt" xml:space="preserve"><value>Añadir recibo</value></data>
+  <data name="Expenses_InvoiceAddDescription" xml:space="preserve"><value>La factura de la empresa, emitida a nombre de la NCA. Después de guardarla añadirás los recibos que la respaldan para que la persona aprobadora vea qué cubre el importe facturado.</value></data>
+  <data name="Expenses_ReceiptAddDescription" xml:space="preserve"><value>Algo que pagaste personalmente y quieres que se te reembolse. Descríbelo, introduce el importe y adjunta una foto o PDF del recibo.</value></data>
+  <data name="Expenses_InvoicePurpose" xml:space="preserve"><value>¿Para qué es la factura?</value></data>
+  <data name="Expenses_ReceiptPurpose" xml:space="preserve"><value>¿Qué compraste?</value></data>
+  <data name="Expenses_InvoicePlaceholder" xml:space="preserve"><value>p. ej., mano de obra del equipo de montaje, factura 2026-042</value></data>
+  <data name="Expenses_ReceiptPlaceholder" xml:space="preserve"><value>p. ej., madera para la estructura de sombra</value></data>
+  <data name="Expenses_AmountEur" xml:space="preserve"><value>Importe (EUR)</value></data>
+  <data name="Expenses_InvoiceFile" xml:space="preserve"><value>La factura (PDF o foto)</value></data>
+  <data name="Expenses_ReceiptFile" xml:space="preserve"><value>El recibo (foto o PDF)</value></data>
+  <data name="Expenses_SaveAndAddReceipts" xml:space="preserve"><value>Guardar y añadir recibos</value></data>
+  <data name="Expenses_SaveReceipt" xml:space="preserve"><value>Guardar recibo</value></data>
+  <data name="Expenses_NotAnInvoice" xml:space="preserve"><value>¿No es una factura?</value></data>
+  <data name="Expenses_NotAReceipt" xml:space="preserve"><value>¿No es un recibo?</value></data>
+  <data name="Expenses_ChangeType" xml:space="preserve"><value>Cambiar tipo</value></data>
 </root>

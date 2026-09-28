@@ -156,4 +156,20 @@
   <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Une entreprise facture l’association pour le travail ou les biens. La facture doit être établie au nom de la NCA. C’est fortement préférable : l’association peut récupérer la TVA et économiser 21 %. Vous joindrez la facture, puis les reçus qui la justifient pour la personne qui approuve.</value></data>
   <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Vous avez payé quelque chose vous-même et souhaitez être remboursé. Les reçus ne sont approuvés que dans certaines circonstances, généralement lorsqu’une facture n’était pas possible ou que le montant est faible.</value></data>
   <data name="Expenses_Cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="Expenses_AddInvoice" xml:space="preserve"><value>Ajouter une facture</value></data>
+  <data name="Expenses_AddReceipt" xml:space="preserve"><value>Ajouter un reçu</value></data>
+  <data name="Expenses_InvoiceAddDescription" xml:space="preserve"><value>La facture de l’entreprise, établie au nom de la NCA. Après l’enregistrement, vous ajouterez les reçus qui la justifient afin que la personne qui approuve voie ce que couvre le montant facturé.</value></data>
+  <data name="Expenses_ReceiptAddDescription" xml:space="preserve"><value>Quelque chose que vous avez payé vous-même et souhaitez vous faire rembourser. Décrivez-le, saisissez le montant et joignez une photo ou un PDF du reçu.</value></data>
+  <data name="Expenses_InvoicePurpose" xml:space="preserve"><value>À quoi correspond la facture ?</value></data>
+  <data name="Expenses_ReceiptPurpose" xml:space="preserve"><value>Qu’avez-vous acheté ?</value></data>
+  <data name="Expenses_InvoicePlaceholder" xml:space="preserve"><value>ex. main-d’œuvre de l’équipe de montage, facture 2026-042</value></data>
+  <data name="Expenses_ReceiptPlaceholder" xml:space="preserve"><value>ex. bois pour la structure d’ombrage</value></data>
+  <data name="Expenses_AmountEur" xml:space="preserve"><value>Montant (EUR)</value></data>
+  <data name="Expenses_InvoiceFile" xml:space="preserve"><value>La facture (PDF ou photo)</value></data>
+  <data name="Expenses_ReceiptFile" xml:space="preserve"><value>Le reçu (photo ou PDF)</value></data>
+  <data name="Expenses_SaveAndAddReceipts" xml:space="preserve"><value>Enregistrer et ajouter des reçus</value></data>
+  <data name="Expenses_SaveReceipt" xml:space="preserve"><value>Enregistrer le reçu</value></data>
+  <data name="Expenses_NotAnInvoice" xml:space="preserve"><value>Ce n’est pas une facture ?</value></data>
+  <data name="Expenses_NotAReceipt" xml:space="preserve"><value>Ce n’est pas un reçu ?</value></data>
+  <data name="Expenses_ChangeType" xml:space="preserve"><value>Changer de type</value></data>
 </root>

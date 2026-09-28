@@ -156,4 +156,20 @@
   <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Una empresa factura a l’associació per la feina o els béns. La factura ha d’anar a nom de la NCA. És molt preferible: l’associació pot recuperar l’IVA i estalviar un 21 %. Adjuntareu la factura i després els rebuts que la justifiquen perquè els revisi qui aprova.</value></data>
   <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Heu pagat alguna cosa personalment i voleu que se us reemborsi. Els rebuts només s’aproven en determinades circumstàncies, normalment quan no era possible una factura o l’import és petit.</value></data>
   <data name="Expenses_Cancel" xml:space="preserve"><value>Cancel·la</value></data>
+  <data name="Expenses_AddInvoice" xml:space="preserve"><value>Afegeix factura</value></data>
+  <data name="Expenses_AddReceipt" xml:space="preserve"><value>Afegeix rebut</value></data>
+  <data name="Expenses_InvoiceAddDescription" xml:space="preserve"><value>La factura de l’empresa, emesa a nom de la NCA. Després de desar-la afegireu els rebuts que la justifiquen perquè qui aprova pugui veure què cobreix l’import facturat.</value></data>
+  <data name="Expenses_ReceiptAddDescription" xml:space="preserve"><value>Alguna cosa que heu pagat personalment i voleu que se us reemborsi. Descriviu-la, introduïu l’import i adjunteu una foto o PDF del rebut.</value></data>
+  <data name="Expenses_InvoicePurpose" xml:space="preserve"><value>Per a què és la factura?</value></data>
+  <data name="Expenses_ReceiptPurpose" xml:space="preserve"><value>Què heu comprat?</value></data>
+  <data name="Expenses_InvoicePlaceholder" xml:space="preserve"><value>p. ex., mà d’obra de l’equip de muntatge, factura 2026-042</value></data>
+  <data name="Expenses_ReceiptPlaceholder" xml:space="preserve"><value>p. ex., fusta per a l’estructura d’ombra</value></data>
+  <data name="Expenses_AmountEur" xml:space="preserve"><value>Import (EUR)</value></data>
+  <data name="Expenses_InvoiceFile" xml:space="preserve"><value>La factura (PDF o foto)</value></data>
+  <data name="Expenses_ReceiptFile" xml:space="preserve"><value>El rebut (foto o PDF)</value></data>
+  <data name="Expenses_SaveAndAddReceipts" xml:space="preserve"><value>Desa i afegeix rebuts</value></data>
+  <data name="Expenses_SaveReceipt" xml:space="preserve"><value>Desa el rebut</value></data>
+  <data name="Expenses_NotAnInvoice" xml:space="preserve"><value>No és una factura?</value></data>
+  <data name="Expenses_NotAReceipt" xml:space="preserve"><value>No és un rebut?</value></data>
+  <data name="Expenses_ChangeType" xml:space="preserve"><value>Canvia el tipus</value></data>
 </root>
