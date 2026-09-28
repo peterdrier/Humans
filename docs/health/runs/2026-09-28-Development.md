@@ -24,7 +24,7 @@ Development is a dev-only consumer section: it owns no tables, and its controlle
 11. The section csproj and tests csproj reasoning comments were stale (interfaces, leaf list, `Users.md` path, "both test classes").
 12. Off-section docs misdescribed Development: `docs/seed-data.md`, `service-data-access-map.md`, and Budget's `IBudgetDemoSeeder` and `Section.cs` calling `/dev/seed/budget` Shell's.
 13. CENTRAL-12 listed `DevelopmentDashboardSeeder` as carrying EF `EventSettings`; it uses `EventSettingsInfo`.
-14. `SeedBudget` and `SeedCampRoles` redirect to `/Admin`, not back to `/dev/seed` where their buttons live.
+14. `SeedBudget` and `SeedCampRoles` redirect to `/Admin`, not back to `/dev/seed` where their buttons live. Peter: keep `/Admin`.
 
 ## Debt verified
 
@@ -48,7 +48,7 @@ The section ledger `Docs/debt.yml` has no rows, so there was nothing to verify t
 - Tests F5 (exclusion provider covered only by integration tests), F6 (no-localizer and writes-via-services unpinned by design), F7 (calendar invariant pinned as a side assertion): noted, no change.
 - Freshness #6 (`ITeamServiceRead` wording): optional.
 - `DevelopmentDashboardSeeder`'s `ISettingsService` dependency: Settings has no narrower read interface for `GetEventSettingsByIdAsync`.
-- 14: UX behaviour, left for Peter.
+- 14: Peter ruled keep `/Admin`.
 
 ## Retro
 
@@ -62,7 +62,7 @@ The section ledger `Docs/debt.yml` has no rows, so there was nothing to verify t
 
 ## Needs Peter
 
-- [ ] 14 — redirect seed POSTs back to `/dev/seed` instead of `/Admin`?
+- [x] 14 — redirect seed POSTs back to `/dev/seed` instead of `/Admin`?
 
 ## File coverage
 
