@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Opt-in: `dotnet test` skips this project unless HUMANS_INTEGRATION_TESTS=1. It still builds. -->
+  <PropertyGroup Condition="'$(HUMANS_INTEGRATION_TESTS)' != '1'">
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\Humans.Web\Humans.Web.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />

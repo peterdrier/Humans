@@ -33,8 +33,8 @@ public sealed class HumansTestDatabase : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
-        // Local-only suite: in CI/cloud every fact is skip-marked by the gate, so
-        // starting the container would only fail the run for tests that never execute.
+        // Opt-in suite: unless HUMANS_INTEGRATION_TESTS=1 every fact is skip-marked by
+        // the gate, so starting the container would only fail the run for tests that never execute.
         if (IntegrationTestGate.SkipReason is not null)
             return;
 
