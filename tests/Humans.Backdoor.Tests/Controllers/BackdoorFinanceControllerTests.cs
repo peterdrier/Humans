@@ -179,7 +179,7 @@ public class BackdoorFinanceControllerTests
         var userId = Guid.NewGuid();
         SetPrincipal(userId);
         SetFinanceAdmin(true);
-        var report = Report(submitterUserId: userId) with { Note = "Van hire, refund to ES7921000813610123456789" };
+        var report = Report(submitterUserId: userId) with { Note = "Van hire, refund to ES79 2100 0813 6101 2345 6789" };
         _expenses.GetReviewQueueAsync(userId, true, Arg.Any<CancellationToken>()).Returns([report]);
         _expenses.GetHoldedTimelineAsync(report, Arg.Any<CancellationToken>()).Returns(Timeline());
 
@@ -188,6 +188,7 @@ public class BackdoorFinanceControllerTests
         var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
         json.Should().Contain(@"""payeeIbanMasked"":""ES79****789""");
         json.Should().NotContain("ES7921000813610123456789");
+        json.Should().NotContain("2345 6789");
         json.Should().Contain(@"""syncState"":""Pushed""");
         json.Should().Contain($@"""id"":""{report.Id}""");
         json.Should().Contain(@"""note"":""Van hire, refund to ES79****789""");
@@ -393,8 +394,13 @@ public class BackdoorFinanceControllerTests
 
     private static ExpenseLineDto LineWithHoldedDoc(string docId) => new()
     {
-        Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Taxi",
-        Amount = 20m, LineType = ExpenseLineType.Receipt, SortOrder = 0, HoldedDocId = docId,
+        Id = Guid.NewGuid(),
+        ExpenseReportId = Guid.NewGuid(),
+        Description = "Taxi",
+        Amount = 20m,
+        LineType = ExpenseLineType.Receipt,
+        SortOrder = 0,
+        HoldedDocId = docId,
     };
 
     /// <summary>The finance-admin half of M1: they see everything, including the payee name and the
