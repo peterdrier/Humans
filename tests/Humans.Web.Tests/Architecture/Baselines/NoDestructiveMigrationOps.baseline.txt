@@ -159,3 +159,10 @@ src/Sections/Humans.Workgroups/Data/Migrations/20260916163259_DropWorkgroupDorma
 # inside peterdrier/Humans#1760 on Peter's instruction to finish the ownership move there rather
 # than leave the cross-section write behind as debt.
 src/Sections/Humans.Users/Data/Migrations/20260920195114_DropUserICalToken.cs:DropColumn(name=ICalToken,table=users)#1
+
+# Users: the filtered unique `IX_user_emails_Email` index on `user_emails`. The index enforced
+# one verified email per row, a restriction no longer declared by UserEmailConfiguration.
+# Evidence: indexes hold no persisted member data; the matching configuration was removed in
+# ea750158e, and the EF-generated migration only removes that obsolete index.
+# Approval: Peter, 2026-09-28 — authored ea750158e, "Drop verified email unique index".
+src/Sections/Humans.Users/Data/Migrations/20260928061445_DropVerifiedEmailUniqueIndex.cs:DropIndex(name=IX_user_emails_Email,table=user_emails)#1
