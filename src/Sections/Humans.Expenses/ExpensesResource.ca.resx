@@ -172,4 +172,14 @@
   <data name="Expenses_NotAnInvoice" xml:space="preserve"><value>No és una factura?</value></data>
   <data name="Expenses_NotAReceipt" xml:space="preserve"><value>No és un rebut?</value></data>
   <data name="Expenses_ChangeType" xml:space="preserve"><value>Canvia el tipus</value></data>
+  <data name="Expenses_ReceiptsBehindInvoice" xml:space="preserve"><value>Rebuts associats a la factura</value></data>
+  <data name="Expenses_ReceiptsBehindIt" xml:space="preserve"><value>Rebuts associats</value></data>
+  <data name="Expenses_ProofAmountOf" xml:space="preserve"><value>{0} de {1}</value></data>
+  <data name="Expenses_NoProofsYet" xml:space="preserve"><value>Encara no n’hi ha cap. Afegiu els rebuts que mostren què cobreix l’import facturat; es revisen amb l’informe però no s’envien al sistema comptable.</value></data>
+  <data name="Expenses_AddReceiptFile" xml:space="preserve"><value>afegeix el fitxer del rebut</value></data>
+  <data name="Expenses_RemoveReceiptConfirm" xml:space="preserve"><value>Voleu suprimir aquest rebut?</value></data>
+  <data name="Expenses_Remove" xml:space="preserve"><value>Suprimeix</value></data>
+  <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>Què era?</value></data>
+  <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>p. ex., materials de la ferreteria</value></data>
+  <data name="Expenses_Done" xml:space="preserve"><value>Fet</value></data>
 </root>

@@ -172,4 +172,14 @@
   <data name="Expenses_NotAnInvoice" xml:space="preserve"><value>Non è una fattura?</value></data>
   <data name="Expenses_NotAReceipt" xml:space="preserve"><value>Non è una ricevuta?</value></data>
   <data name="Expenses_ChangeType" xml:space="preserve"><value>Cambia tipo</value></data>
+  <data name="Expenses_ReceiptsBehindInvoice" xml:space="preserve"><value>Ricevute associate alla fattura</value></data>
+  <data name="Expenses_ReceiptsBehindIt" xml:space="preserve"><value>Ricevute associate</value></data>
+  <data name="Expenses_ProofAmountOf" xml:space="preserve"><value>{0} di {1}</value></data>
+  <data name="Expenses_NoProofsYet" xml:space="preserve"><value>Non ce ne sono ancora. Aggiungi le ricevute che mostrano cosa copre l’importo fatturato; vengono controllate con il rapporto ma non inviate al sistema contabile.</value></data>
+  <data name="Expenses_AddReceiptFile" xml:space="preserve"><value>aggiungi il file della ricevuta</value></data>
+  <data name="Expenses_RemoveReceiptConfirm" xml:space="preserve"><value>Rimuovere questa ricevuta?</value></data>
+  <data name="Expenses_Remove" xml:space="preserve"><value>Rimuovi</value></data>
+  <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>Cos’era?</value></data>
+  <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>ad es. materiali dal ferramenta</value></data>
+  <data name="Expenses_Done" xml:space="preserve"><value>Fatto</value></data>
 </root>

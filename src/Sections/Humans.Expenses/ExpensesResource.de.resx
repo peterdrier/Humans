@@ -172,4 +172,14 @@
   <data name="Expenses_NotAnInvoice" xml:space="preserve"><value>Keine Rechnung?</value></data>
   <data name="Expenses_NotAReceipt" xml:space="preserve"><value>Kein Beleg?</value></data>
   <data name="Expenses_ChangeType" xml:space="preserve"><value>Typ ändern</value></data>
+  <data name="Expenses_ReceiptsBehindInvoice" xml:space="preserve"><value>Belege hinter der Rechnung</value></data>
+  <data name="Expenses_ReceiptsBehindIt" xml:space="preserve"><value>Belege dazu</value></data>
+  <data name="Expenses_ProofAmountOf" xml:space="preserve"><value>{0} von {1}</value></data>
+  <data name="Expenses_NoProofsYet" xml:space="preserve"><value>Noch keine. Füge die Belege hinzu, die zeigen, was der Rechnungsbetrag abdeckt — sie werden mit dem Bericht geprüft, aber nicht an das Buchhaltungssystem gesendet.</value></data>
+  <data name="Expenses_AddReceiptFile" xml:space="preserve"><value>Belegdatei hinzufügen</value></data>
+  <data name="Expenses_RemoveReceiptConfirm" xml:space="preserve"><value>Diesen Beleg entfernen?</value></data>
+  <data name="Expenses_Remove" xml:space="preserve"><value>Entfernen</value></data>
+  <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>Worum ging es?</value></data>
+  <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>z. B. Material aus dem Baumarkt</value></data>
+  <data name="Expenses_Done" xml:space="preserve"><value>Fertig</value></data>
 </root>
