@@ -159,7 +159,18 @@ internal sealed class HoldedClient : IHoldedClient
             HttpMethod.Post, $"/api/v2/purchases/{documentId}/approve")
         { Content = new ByteArrayContent([]) };
         AttachAuth(req);
-        using var resp = await SendAsync(req, ct);
+        try
+        {
+            using var resp = await SendAsync(req, ct);
+        }
+        // The goal state already holds. A retried push re-approves the docs an earlier attempt
+        // approved, and the single-GET's approved_at did not stop it in production — without this
+        // the retry writes the whole push off.
+        catch (HoldedPermanentException ex) when (ex.StatusCode == 400
+            && ex.ResponseBody?.Contains("Document already approved", StringComparison.Ordinal) == true)
+        {
+            _logger.LogInformation("Holded purchase document {DocumentId} was already approved", documentId);
+        }
     }
 
     public async Task<string> PayPurchaseDocumentAsync(

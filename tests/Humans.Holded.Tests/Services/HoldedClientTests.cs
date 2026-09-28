@@ -110,6 +110,31 @@ public class HoldedClientTests
     }
 
     [HumansFact]
+    public async Task ApprovePurchaseDocumentAsync_AlreadyApproved_ReturnsNormally()
+    {
+        // Holded's production reply to re-approving a doc a retried push already approved.
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.BadRequest,
+            """{"type":"https:\/\/api.holded.com\/problems\/bad-request","title":"Bad request","status":400,"detail":"Document already approved"}"""));
+        var client = Make(handler);
+
+        var act = async () => await client.ApprovePurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [HumansFact]
+    public async Task ApprovePurchaseDocumentAsync_OtherBadRequest_StillThrows()
+    {
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.BadRequest,
+            """{"status":400,"detail":"Document has no lines"}"""));
+        var client = Make(handler);
+
+        var act = async () => await client.ApprovePurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansFact]
     public async Task PermanentFailure_MasksAnIbanEchoedBackInTheResponseBody()
     {
         // The message becomes the outbox LastError, the audit description and the finance-admin
