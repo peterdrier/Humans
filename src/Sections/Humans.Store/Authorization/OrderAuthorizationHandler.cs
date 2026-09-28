@@ -85,12 +85,7 @@ internal sealed class OrderAuthorizationHandler(
                     continue;
                 }
                 if (!resource.IsTeamOrder) continue; // camp orders are view-only for TeamsAdmin
-                // Team orders are non-billable — never Pay/EditCounterparty.
-                if (IsTeamBillingBlocked(req))
-                    continue;
-                // Line edits require an Open order, matching the coordinator path and the
-                // Service guard ("Cannot add/remove lines from an issued order").
-                if (IsLineEdit(req) && (!IsOpenOrCreate(resource) || pastDeadline))
+                if (!CanManageNonStoreAdminOrder(req, resource, pastDeadline, canDelete: true))
                     continue;
                 context.Succeed(req);
             }
@@ -127,21 +122,8 @@ internal sealed class OrderAuthorizationHandler(
 
         foreach (var req in pending)
         {
-            // Team orders never allow EditCounterparty or Pay regardless of role.
-            if (resource.IsTeamOrder && IsTeamBillingBlocked(req))
+            if (!CanManageNonStoreAdminOrder(req, resource, pastDeadline, canDelete: false))
                 continue;
-
-            // Delete and IssueInvoice are admin-only; camp leads and team coordinators get neither.
-            if (IsStoreAdminOnly(req)) continue;
-
-            if (IsMutating(req) && !IsOpenOrCreate(resource))
-            {
-                continue;
-            }
-            if (IsLineEdit(req) && pastDeadline)
-            {
-                continue;
-            }
             context.Succeed(req);
         }
     }
@@ -205,6 +187,18 @@ internal sealed class OrderAuthorizationHandler(
     private static bool IsMutating(OrderOperationRequirement requirement)
         => IsLineEdit(requirement)
             || requirement == OrderOperationRequirement.EditCounterparty;
+
+    private static bool CanManageNonStoreAdminOrder(
+        OrderOperationRequirement requirement,
+        StoreOrderAuthorizationResource resource,
+        bool pastDeadline,
+        bool canDelete)
+    {
+        if (resource.IsTeamOrder && IsTeamBillingBlocked(requirement)) return false;
+        if (!canDelete && IsStoreAdminOnly(requirement)) return false;
+        if (IsMutating(requirement) && !IsOpenOrCreate(resource)) return false;
+        return !IsLineEdit(requirement) || !pastDeadline;
+    }
 
     private static bool IsOpenOrCreate(StoreOrderAuthorizationResource resource)
         => resource.State is null or OrderState.Open;
