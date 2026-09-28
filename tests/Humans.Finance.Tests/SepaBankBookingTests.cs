@@ -1088,7 +1088,9 @@ public class SepaBankBookingTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
             Batch.Skip(1).Select(t => new HoldedCreditorContact
             {
-                UserId = t.User, HoldedContactId = "c1", SupplierAccountNum = t.Account,
+                UserId = t.User,
+                HoldedContactId = "c1",
+                SupplierAccountNum = t.Account,
                 Source = CreditorContactSource.Auto,
             }).ToList());
 
@@ -1144,7 +1146,9 @@ public class SepaBankBookingTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
             Batch.Take(3).Select(t => new HoldedCreditorContact
             {
-                UserId = t.User, HoldedContactId = "c1", SupplierAccountNum = t.Account,
+                UserId = t.User,
+                HoldedContactId = "c1",
+                SupplierAccountNum = t.Account,
                 Source = CreditorContactSource.Auto,
             }).ToList());
 
