@@ -169,7 +169,7 @@ internal sealed class HoldedClient : IHoldedClient
         catch (HoldedPermanentException ex) when (ex.StatusCode == 400
             && ex.ResponseBody?.Contains("Document already approved", StringComparison.Ordinal) == true)
         {
-            _logger.LogInformation("Holded purchase document {DocumentId} was already approved", documentId);
+            _logger.LogWarning("Holded purchase document {DocumentId} was already approved — treated as success", documentId);
         }
     }
 

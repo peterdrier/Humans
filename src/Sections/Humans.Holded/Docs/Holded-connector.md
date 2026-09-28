@@ -27,7 +27,8 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   never logged. Jobs and pages no-op cleanly when it is unset (PR-preview / local dev).
 - Errors are classified at the client boundary: `HoldedTransientException` (5xx, network,
   timeout, persistent 429) is retry-eligible; `HoldedPermanentException` (other 4xx, unreadable
-  page bodies) is not.
+  page bodies) is not. One carve-out: `ApprovePurchaseDocumentAsync` treats Holded's 400 "Document
+  already approved" as success (logged at Warning), so a retried push does not write itself off.
 - Every call is metered into the singleton `IHoldedCallLog` (in-memory queue) with its
   `X-RateLimit-*` headers; the Holded section drains it to `holded_api_calls`. The plan-tier
   budget (~2,000 calls/month) is the real allowance — `GET /usage`'s `limit` is Holded's
