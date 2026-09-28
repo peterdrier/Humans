@@ -1093,6 +1093,34 @@ public class ServiceTests
     }
 
     [HumansFact]
+    public async Task CreateStripeCheckoutSessionAsync_rejects_while_a_payment_is_pending()
+    {
+        // A captured-but-uncleared mandate does not count as paid, so the balance still
+        // looks open — the pending row alone must stop a second payment.
+        var order = MakeOrderDto(balanceEur: 50m) with
+        {
+            Payments =
+            [
+                new OrderPaymentDto(30m, PaymentMethod.Stripe, PaymentStatus.Pending, "pi_pending", null, Instant.FromUtc(2026, 5, 1, 0, 0), null)
+            ]
+        };
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+
+        var act = () => _service.CreateStripeCheckoutSessionAsync(order, 20m, "https://humans.test/order", TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("A payment on this order is pending settlement*");
+        await _stripeService.DidNotReceive().CreateCheckoutSessionAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<decimal>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string?>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task CreateStripeCheckoutSessionAsync_rejects_amount_above_balance()
     {
         var order = MakeOrderDto(balanceEur: 10m);

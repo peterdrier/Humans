@@ -129,4 +129,68 @@
   <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>Ein Ablehnungsgrund ist erforderlich.</value></data>
   <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>Die Prüfwarteschlange konnte nicht geladen werden.</value></data>
   <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Ungültige Genehmigungsdaten.</value></data>
+  <!-- Submitter expense-edit page -->
+  <data name="Expenses_EditReport" xml:space="preserve"><value>Ausgabenbericht bearbeiten</value></data>
+  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Brotkrümelnavigation</value></data>
+  <data name="Expenses_Edit" xml:space="preserve"><value>Bearbeiten</value></data>
+  <data name="Expenses_ReportHeader" xml:space="preserve"><value>Berichtskopf</value></data>
+  <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Budgetkategorie</value></data>
+  <data name="Expenses_CategoryChangeWarning" xml:space="preserve"><value>Eine Änderung der Kategorie nach dem Einreichen erfordert ein Zurückziehen und erneutes Einreichen.</value></data>
+  <data name="Expenses_Optional" xml:space="preserve"><value>(optional)</value></data>
+  <data name="Expenses_SaveHeader" xml:space="preserve"><value>Kopf speichern</value></data>
+  <data name="Expenses_ExpenseLines" xml:space="preserve"><value>Ausgabenposten</value></data>
+  <data name="Expenses_NoLinesYet" xml:space="preserve"><value>Noch keine Posten. Füge unten deine erste Quittung oder Rechnung hinzu.</value></data>
+  <data name="Expenses_Mileage" xml:space="preserve"><value>Kilometerpauschale</value></data>
+  <data name="Expenses_PerDiem" xml:space="preserve"><value>Tagegeld</value></data>
+  <data name="Expenses_Invoice" xml:space="preserve"><value>Rechnung</value></data>
+  <data name="Expenses_ProofCountSingular" xml:space="preserve"><value>1 Beleg dazu</value></data>
+  <data name="Expenses_ProofCountPlural" xml:space="preserve"><value>{0} Belege dazu</value></data>
+  <data name="Expenses_ReceiptAttached" xml:space="preserve"><value>Beleg angehängt</value></data>
+  <data name="Expenses_NeedsReceipt" xml:space="preserve"><value>Beleg erforderlich</value></data>
+  <data name="Expenses_Total" xml:space="preserve"><value>Gesamt</value></data>
+  <data name="Expenses_AddLine" xml:space="preserve"><value>Posten hinzufügen</value></data>
+  <data name="Expenses_BackToReport" xml:space="preserve"><value>Zurück zum Bericht</value></data>
+  <data name="Expenses_WhatAreYouAdding" xml:space="preserve"><value>Was fügst du hinzu?</value></data>
+  <data name="Expenses_Preferred" xml:space="preserve"><value>bevorzugt</value></data>
+  <data name="Expenses_Receipt" xml:space="preserve"><value>Beleg</value></data>
+  <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Ein Unternehmen stellt der Vereinigung eine Rechnung für die Arbeit oder Waren. Die Rechnung muss auf die NCA ausgestellt sein. Das ist sehr bevorzugt: Die Vereinigung kann die Mehrwertsteuer zurückfordern und 21 % sparen. Du fügst die Rechnung und anschließend die zugehörigen Belege für die Prüfung hinzu.</value></data>
+  <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Du hast etwas selbst bezahlt und möchtest erstattet werden. Belege werden nur unter bestimmten Umständen genehmigt, meist wenn eine Rechnung nicht möglich war oder der Betrag gering ist.</value></data>
+  <data name="Expenses_Cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="Expenses_AddInvoice" xml:space="preserve"><value>Rechnung hinzufügen</value></data>
+  <data name="Expenses_AddReceipt" xml:space="preserve"><value>Beleg hinzufügen</value></data>
+  <data name="Expenses_InvoiceAddDescription" xml:space="preserve"><value>Die Rechnung des Unternehmens, ausgestellt auf die NCA. Nach dem Speichern fügst du die zugehörigen Belege hinzu, damit die prüfende Person sieht, was der Rechnungsbetrag abdeckt.</value></data>
+  <data name="Expenses_ReceiptAddDescription" xml:space="preserve"><value>Etwas, das du selbst bezahlt hast und erstattet bekommen möchtest. Beschreibe es, gib den Betrag ein und füge ein Foto oder PDF des Belegs bei.</value></data>
+  <data name="Expenses_InvoicePurpose" xml:space="preserve"><value>Wofür ist die Rechnung?</value></data>
+  <data name="Expenses_ReceiptPurpose" xml:space="preserve"><value>Was hast du gekauft?</value></data>
+  <data name="Expenses_InvoicePlaceholder" xml:space="preserve"><value>z. B. Arbeit des Aufbau-Teams, Rechnung 2026-042</value></data>
+  <data name="Expenses_ReceiptPlaceholder" xml:space="preserve"><value>z. B. Holz für die Schattenkonstruktion</value></data>
+  <data name="Expenses_AmountEur" xml:space="preserve"><value>Betrag (EUR)</value></data>
+  <data name="Expenses_InvoiceFile" xml:space="preserve"><value>Die Rechnung (PDF oder Foto)</value></data>
+  <data name="Expenses_ReceiptFile" xml:space="preserve"><value>Der Beleg (Foto oder PDF)</value></data>
+  <data name="Expenses_SaveAndAddReceipts" xml:space="preserve"><value>Speichern und Belege hinzufügen</value></data>
+  <data name="Expenses_SaveReceipt" xml:space="preserve"><value>Beleg speichern</value></data>
+  <data name="Expenses_NotAnInvoice" xml:space="preserve"><value>Keine Rechnung?</value></data>
+  <data name="Expenses_NotAReceipt" xml:space="preserve"><value>Kein Beleg?</value></data>
+  <data name="Expenses_ChangeType" xml:space="preserve"><value>Typ ändern</value></data>
+  <data name="Expenses_ReceiptsBehindInvoice" xml:space="preserve"><value>Belege hinter der Rechnung</value></data>
+  <data name="Expenses_ReceiptsBehindIt" xml:space="preserve"><value>Belege dazu</value></data>
+  <data name="Expenses_ProofAmountOf" xml:space="preserve"><value>{0} von {1}</value></data>
+  <data name="Expenses_NoProofsYet" xml:space="preserve"><value>Noch keine. Füge die Belege hinzu, die zeigen, was der Rechnungsbetrag abdeckt — sie werden mit dem Bericht geprüft, aber nicht an das Buchhaltungssystem gesendet.</value></data>
+  <data name="Expenses_AddReceiptFile" xml:space="preserve"><value>Belegdatei hinzufügen</value></data>
+  <data name="Expenses_RemoveReceiptConfirm" xml:space="preserve"><value>Diesen Beleg entfernen?</value></data>
+  <data name="Expenses_Remove" xml:space="preserve"><value>Entfernen</value></data>
+  <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>Worum ging es?</value></data>
+  <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>z. B. Material aus dem Baumarkt</value></data>
+  <data name="Expenses_Done" xml:space="preserve"><value>Fertig</value></data>
+  <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Neuer Ausgabenbericht</value></data>
+  <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Kategorie auswählen —</value></data>
+  <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(optional, max. 500 Zeichen)</value></data>
+  <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Beschreibe die Ausgabe…</value></data>
+  <data name="Expenses_CreateDraft" xml:space="preserve"><value>Entwurf erstellen</value></data>
+  <data name="Expenses_HowItWorks" xml:space="preserve"><value>So funktioniert es</value></data>
+  <data name="Expenses_HowItWorksStep1" xml:space="preserve"><value>Erstelle einen Entwurf und füge Ausgabenposten mit Beträgen hinzu.</value></data>
+  <data name="Expenses_HowItWorksStep2" xml:space="preserve"><value>Füge jedem Posten einen Beleg oder eine Rechnung bei.</value></data>
+  <data name="Expenses_HowItWorksStep3" xml:space="preserve"><value>Hinterlege deine Zahlungs-IBAN, falls noch nicht geschehen.</value></data>
+  <data name="Expenses_HowItWorksStep4" xml:space="preserve"><value>Reiche den Bericht zur Prüfung durch Koordination oder FinanceAdmin ein.</value></data>
+  <data name="Expenses_HowItWorksStep5" xml:space="preserve"><value>Nach der Genehmigung erhältst du eine SEPA-Überweisung.</value></data>
 </root>

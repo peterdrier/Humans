@@ -1,6 +1,6 @@
 @model Humans.Budget.Models.CoordinatorCategoryDetailViewModel
 @{
-    ViewData["Title"] = $"Budget - {Model.Category.Name}";
+    ViewData["Title"] = Localizer["Budget_TitleYear", Model.Category.Name].Value;
     var category = Model.Category;
     var group = category.BudgetGroup;
     var lineItemTotal = category.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount);
@@ -9,9 +9,9 @@
     var vatProjections = VatProjection.ForLineItems(category.LineItems);
 }
 
-<nav aria-label="breadcrumb" class="mb-3">
+<nav aria-label="@Localizer["Budget_BreadcrumbNavigation"]" class="mb-3">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">Budget</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Budget_Title"]</a></li>
         @if (group is not null)
         {
             <li class="breadcrumb-item">@group.Name</li>
@@ -24,11 +24,11 @@
     <h1 class="mb-0">@category.Name</h1>
     @if (Model.CanEdit)
     {
-        <span class="badge bg-success fs-6">Editable</span>
+        <span class="badge bg-success fs-6">@Localizer["Budget_CategoryEditable"]</span>
     }
     else
     {
-        <span class="badge bg-secondary fs-6">Read-only</span>
+        <span class="badge bg-secondary fs-6">@Localizer["Budget_CategoryReadOnly"]</span>
     }
 </div>
 
@@ -36,9 +36,9 @@
 <div class="alert alert-warning d-flex align-items-center" role="alert">
     <i class="fa-solid fa-triangle-exclamation fa-lg me-2"></i>
     <div>
-        <strong>All amounts on this page include VAT / IVA.</strong>
-        Enter the gross figure you will actually pay or receive — the full amount including IVA. <strong>Do not subtract VAT.</strong>
-        The "VAT %" field only records the rate so the IVA portion can be broken out for projections; it does <em>not</em> add VAT on top of the amount you enter.
+        <strong>@Localizer["Budget_VatGuidanceIntro"]</strong>
+        @Localizer["Budget_VatGuidanceBody"] <strong>@Localizer["Budget_VatGuidanceWarning"]</strong>
+        @Localizer["Budget_VatGuidanceRate"]
     </div>
 </div>
 
@@ -46,7 +46,7 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Allocated <span class="text-muted">(incl. VAT/IVA)</span></h6>
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_TotalAllocated"] <span class="text-muted">@Localizer["Budget_IncludingVat"]</span></h6>
                 <h3 class="card-title mb-0">@category.AllocatedAmount.ToEuro()</h3>
             </div>
         </div>
@@ -54,7 +54,7 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Detailed in Line Items</h6>
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_DetailedInLineItems"]</h6>
                 <h3 class="card-title mb-0">@lineItemTotal.ToEuro()</h3>
             </div>
         </div>
@@ -62,7 +62,7 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Unallocated</h6>
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_Unallocated"]</h6>
                 <h3 class="card-title mb-0 @(unallocated < 0 ? "text-danger" : "")">
                     @unallocated.ToEuro()
                 </h3>
@@ -77,7 +77,7 @@
     var barClass = pct > 100 ? "bg-danger" : pct > 80 ? "bg-warning" : "bg-success";
     <div class="mb-4">
         <div class="d-flex justify-content-between mb-1">
-            <small class="text-muted">Budget utilization</small>
+            <small class="text-muted">@Localizer["Budget_Utilization"]</small>
             <small class="text-muted">@pct.ToString("N0")%</small>
         </div>
         <div class="progress" style="height: 8px;">
@@ -88,8 +88,8 @@
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Line Items</span>
-        <span class="badge bg-secondary">@category.LineItems.Count items</span>
+        <span>@Localizer["Budget_LineItems"]</span>
+        <span class="badge bg-secondary">@Localizer["Budget_ItemCount", category.LineItems.Count]</span>
     </div>
     @if (category.LineItems.Any())
     {
@@ -97,15 +97,15 @@
             <table class="table table-sm table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>Description</th>
-                        <th class="text-end">Amount <small class="text-muted fw-normal">(incl. VAT/IVA)</small></th>
-                        <th>VAT</th>
-                        <th>Responsible Team</th>
-                        <th>Notes</th>
-                        <th>Expected Date</th>
+                        <th>@Localizer["Budget_Description"]</th>
+                        <th class="text-end">@Localizer["Budget_ColAmount"] <small class="text-muted fw-normal">@Localizer["Budget_IncludingVat"]</small></th>
+                        <th>@Localizer["Budget_Vat"]</th>
+                        <th>@Localizer["Budget_ResponsibleTeam"]</th>
+                        <th>@Localizer["Budget_Notes"]</th>
+                        <th>@Localizer["Budget_ExpectedDate"]</th>
                         @if (Model.CanEdit)
                         {
-                            <th class="text-end" style="min-width: 120px;">Actions</th>
+                            <th class="text-end" style="min-width: 120px;">@Localizer["Budget_Actions"]</th>
                         }
                     </tr>
                 </thead>
@@ -119,11 +119,11 @@
                                 @item.Description
                                 @if (item.IsAutoGenerated)
                                 {
-                                    <span class="badge bg-secondary ms-1" title="Auto-generated from ticket sales data">Auto</span>
+                                    <span class="badge bg-secondary ms-1" title="@Localizer["Budget_AutoGeneratedTitle"]">@Localizer["Budget_Auto"]</span>
                                 }
                                 @if (item.IsCashflowOnly)
                                 {
-                                    <span class="badge bg-info ms-1" title="Cashflow only — excluded from budget totals">Cashflow</span>
+                                    <span class="badge bg-info ms-1" title="@Localizer["Budget_CashflowOnlyTitle"]">@Localizer["Budget_CashflowOnly"]</span>
                                 }
                             </td>
                             <td class="text-end @amountClass">@item.Amount.ToEuro()</td>
@@ -149,7 +149,7 @@
                                     <form asp-action="DeleteLineItem" asp-route-id="@item.Id" method="post" class="d-inline">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="budgetCategoryId" value="@category.Id" />
-                                        <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Delete this line item?">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="@Localizer["Budget_DeleteLineItemConfirm"]">
                                             <i class="fa-solid fa-trash"></i>
                                         </button>
                                     </form>
@@ -164,15 +164,15 @@
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="budgetCategoryId" value="@category.Id" />
                                         <div class="col-md-2">
-                                            <label class="form-label form-label-sm">Description</label>
+                                            <label class="form-label form-label-sm">@Localizer["Budget_Description"]</label>
                                             <input type="text" name="description" class="form-control form-control-sm" value="@item.Description" required />
                                         </div>
                                         <div class="col-md-2">
-                                            <label class="form-label form-label-sm">Amount (&euro;, incl. VAT/IVA)</label>
+                                            <label class="form-label form-label-sm">@Localizer["Budget_ColAmount"] @Localizer["Budget_IncludingVat"]</label>
                                             <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="@item.Amount" required />
                                         </div>
                                         <div class="col-md-1">
-                                            <label class="form-label form-label-sm">VAT %</label>
+                                            <label class="form-label form-label-sm">@Localizer["Budget_Vat"] %</label>
                                             <select name="vatRate" class="form-select form-select-sm">
                                                 @foreach (var rate in new[] { 0, 10, 21 })
                                                 {
@@ -188,9 +188,9 @@
                                             </select>
                                         </div>
                                         <div class="col-md-2">
-                                            <label class="form-label form-label-sm">Responsible Team</label>
+                                            <label class="form-label form-label-sm">@Localizer["Budget_ResponsibleTeam"]</label>
                                             <select name="responsibleTeamId" class="form-select form-select-sm">
-                                                <option value="">None</option>
+                                                <option value="">@Localizer["Budget_None"]</option>
                                                 @foreach (var team in Model.Teams)
                                                 {
                                                     if (item.ResponsibleTeamId == team.Id)
@@ -205,15 +205,15 @@
                                             </select>
                                         </div>
                                         <div class="col-md-2">
-                                            <label class="form-label form-label-sm">Notes</label>
+                                            <label class="form-label form-label-sm">@Localizer["Budget_Notes"]</label>
                                             <input type="text" name="notes" class="form-control form-control-sm" value="@item.Notes" />
                                         </div>
                                         <div class="col-md-2">
-                                            <label class="form-label form-label-sm">Expected Date</label>
+                                            <label class="form-label form-label-sm">@Localizer["Budget_ExpectedDate"]</label>
                                             <input type="date" name="expectedDate" class="form-control form-control-sm" value="@item.ExpectedDate.ToInvariantDate()" />
                                         </div>
                                         <div class="col-md-1">
-                                            <button type="submit" class="btn btn-primary btn-sm w-100">Save</button>
+                                            <button type="submit" class="btn btn-primary btn-sm w-100">@Localizer["Budget_Save"]</button>
                                         </div>
                                     </form>
                                 </td>
@@ -229,31 +229,31 @@
         <div class="card-body text-center text-muted py-4">
             @if (Model.CanEdit)
             {
-                <text>No line items yet. Add one below to detail your department's budget.</text>
+                <text>@Localizer["Budget_NoLineItemsEditable"]</text>
             }
             else
             {
-                <text>No line items yet.</text>
+                <text>@Localizer["Budget_NoLineItems"]</text>
             }
         </div>
     }
     @if (Model.CanEdit)
     {
         <div class="card-footer bg-light">
-            <h6 class="mb-2">Add Line Item</h6>
+            <h6 class="mb-2">@Localizer["Budget_AddLineItem"]</h6>
             <form asp-action="CreateLineItem" method="post" class="row g-2 align-items-end">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="budgetCategoryId" value="@category.Id" />
                 <div class="col-md-2">
-                    <label class="form-label form-label-sm">Description</label>
+                    <label class="form-label form-label-sm">@Localizer["Budget_Description"]</label>
                     <input type="text" name="description" class="form-control form-control-sm" required />
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label form-label-sm">Amount (&euro;, incl. VAT/IVA)</label>
+                    <label class="form-label form-label-sm">@Localizer["Budget_ColAmount"] @Localizer["Budget_IncludingVat"]</label>
                     <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="0" required />
                 </div>
                 <div class="col-md-1">
-                    <label class="form-label form-label-sm">VAT %</label>
+                    <label class="form-label form-label-sm">@Localizer["Budget_Vat"] %</label>
                     <select name="vatRate" class="form-select form-select-sm">
                         <option value="0" selected>0%</option>
                         <option value="10">10%</option>
@@ -261,9 +261,9 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label form-label-sm">Responsible Team</label>
+                    <label class="form-label form-label-sm">@Localizer["Budget_ResponsibleTeam"]</label>
                     <select name="responsibleTeamId" class="form-select form-select-sm">
-                        <option value="">None</option>
+                        <option value="">@Localizer["Budget_None"]</option>
                         @foreach (var team in Model.Teams)
                         {
                             if (category.TeamId == team.Id)
@@ -278,16 +278,16 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label form-label-sm">Notes</label>
+                    <label class="form-label form-label-sm">@Localizer["Budget_Notes"]</label>
                     <input type="text" name="notes" class="form-control form-control-sm" />
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label form-label-sm">Expected Date</label>
+                    <label class="form-label form-label-sm">@Localizer["Budget_ExpectedDate"]</label>
                     <input type="date" name="expectedDate" class="form-control form-control-sm" />
                 </div>
                 <div class="col-md-1">
                     <button type="submit" class="btn btn-primary btn-sm w-100">
-                        <i class="fa-solid fa-plus me-1"></i>Add
+                        <i class="fa-solid fa-plus me-1"></i>@Localizer["Budget_Add"]
                     </button>
                 </div>
             </form>
@@ -299,17 +299,17 @@
 {
     <div class="card mt-4">
         <div class="card-header">
-            <i class="fa-solid fa-receipt me-1"></i>VAT Projections
+            <i class="fa-solid fa-receipt me-1"></i>@Localizer["Budget_VatProjections"]
         </div>
         <div class="table-responsive">
             <table class="table table-sm mb-0">
                 <thead>
                     <tr>
-                        <th>Source</th>
-                        <th class="text-end">VAT Amount</th>
-                        <th>Rate</th>
-                        <th>Direction</th>
-                        <th>Settlement Date</th>
+                        <th>@Localizer["Budget_Source"]</th>
+                        <th class="text-end">@Localizer["Budget_VatAmount"]</th>
+                        <th>@Localizer["Budget_Rate"]</th>
+                        <th>@Localizer["Budget_Direction"]</th>
+                        <th>@Localizer["Budget_SettlementDate"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -318,7 +318,7 @@
                         <tr class="fst-italic text-muted">
                             <td>
                                 <i class="fa-solid fa-receipt me-1"></i>
-                                VAT on @vat.SourceDescription
+                                @Localizer["Budget_VatOn", vat.SourceDescription]
                             </td>
                             <td class="text-end @(vat.IsExpense ? "text-danger" : "text-success")">
                                 @(vat.IsExpense ? "-" : "+")@vat.VatAmount.ToEuro()
@@ -327,11 +327,11 @@
                             <td>
                                 @if (vat.IsExpense)
                                 {
-                                    <span class="badge bg-danger">VAT Liability</span>
+                                    <span class="badge bg-danger">@Localizer["Budget_VatLiability"]</span>
                                 }
                                 else
                                 {
-                                    <span class="badge bg-success">VAT Credit</span>
+                                    <span class="badge bg-success">@Localizer["Budget_VatCredit"]</span>
                                 }
                             </td>
                             <td>@vat.SettlementDate.ToDate()</td>
@@ -345,7 +345,7 @@
 
 <div class="mt-3">
     <a asp-action="Index" class="btn btn-outline-secondary">
-        <i class="fa-solid fa-arrow-left me-1"></i>Back to Budget
+        <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Budget_BackToBudget"]
     </a>
 </div>
 

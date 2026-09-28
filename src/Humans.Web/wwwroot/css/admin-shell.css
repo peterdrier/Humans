@@ -195,7 +195,7 @@ body.admin-shell .main {
 
 body.admin-shell .crumb {
     font-family: var(--h-font-body);
-    font-size: 0.78rem;
+    font-size: 0.85rem;
     color: var(--h-sepia);
     display: flex;
     align-items: center;
@@ -377,11 +377,10 @@ body.admin-shell .stat .delta.bad {
 
 /* ── Cards ────────────────────────────────────────────────────────────── */
 
+/* background/border/border-radius/box-shadow now match site.css's global .card (W-a)
+   at the same values (--h-bg-card resolves to --h-warm-white) — only the admin-specific
+   spacing and overflow clip stay here. */
 body.admin-shell .card {
-    background: var(--h-warm-white);
-    border: 1px solid var(--h-border);
-    border-radius: var(--h-radius-lg);
-    box-shadow: var(--h-shadow-sm);
     margin-bottom: 22px;
     overflow: hidden;
 }

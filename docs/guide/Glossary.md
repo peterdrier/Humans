@@ -14,6 +14,12 @@ narrower roles scoped to their section. See [Admin](Admin.md).
 A voting human with governance rights (assemblies, elections). Requires an
 application and a Board vote. 2-year term. See [Governance](Governance.md).
 
+## Assembly vote
+
+A binding recorded vote of Asociados on a motion. The electorate is frozen
+when it opens and the tally remains embargoed until close. See
+[Governance](Governance.md).
+
 ## Barrio
 
 A camp — the collective's word for a self-organizing themed community that

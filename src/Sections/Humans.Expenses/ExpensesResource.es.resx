@@ -129,4 +129,68 @@
   <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>Se requiere un motivo de rechazo.</value></data>
   <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>No se pudo cargar la cola de revisión.</value></data>
   <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Datos de aprobación no válidos.</value></data>
+  <!-- Submitter expense-edit page -->
+  <data name="Expenses_EditReport" xml:space="preserve"><value>Editar informe de gastos</value></data>
+  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Migas de pan</value></data>
+  <data name="Expenses_Edit" xml:space="preserve"><value>Editar</value></data>
+  <data name="Expenses_ReportHeader" xml:space="preserve"><value>Cabecera del informe</value></data>
+  <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Categoría presupuestaria</value></data>
+  <data name="Expenses_CategoryChangeWarning" xml:space="preserve"><value>Cambiar la categoría tras enviarlo requiere retirar y volver a presentar el informe.</value></data>
+  <data name="Expenses_Optional" xml:space="preserve"><value>(opcional)</value></data>
+  <data name="Expenses_SaveHeader" xml:space="preserve"><value>Guardar cabecera</value></data>
+  <data name="Expenses_ExpenseLines" xml:space="preserve"><value>Partidas de gastos</value></data>
+  <data name="Expenses_NoLinesYet" xml:space="preserve"><value>Aún no hay partidas. Añade abajo tu primer recibo o factura.</value></data>
+  <data name="Expenses_Mileage" xml:space="preserve"><value>Kilometraje</value></data>
+  <data name="Expenses_PerDiem" xml:space="preserve"><value>Dieta</value></data>
+  <data name="Expenses_Invoice" xml:space="preserve"><value>Factura</value></data>
+  <data name="Expenses_ProofCountSingular" xml:space="preserve"><value>1 recibo asociado</value></data>
+  <data name="Expenses_ProofCountPlural" xml:space="preserve"><value>{0} recibos asociados</value></data>
+  <data name="Expenses_ReceiptAttached" xml:space="preserve"><value>Recibo adjunto</value></data>
+  <data name="Expenses_NeedsReceipt" xml:space="preserve"><value>Falta recibo</value></data>
+  <data name="Expenses_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Expenses_AddLine" xml:space="preserve"><value>Añadir partida</value></data>
+  <data name="Expenses_BackToReport" xml:space="preserve"><value>Volver al informe</value></data>
+  <data name="Expenses_WhatAreYouAdding" xml:space="preserve"><value>¿Qué estás añadiendo?</value></data>
+  <data name="Expenses_Preferred" xml:space="preserve"><value>preferida</value></data>
+  <data name="Expenses_Receipt" xml:space="preserve"><value>Recibo</value></data>
+  <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Una empresa (autónoma) factura a la asociación por el trabajo o los bienes. La factura debe estar emitida a nombre de la NCA. Es muy preferible: la asociación puede recuperar el IVA y ahorrar un 21 %. Adjuntarás la factura y después los recibos que la respaldan para que los revise la persona aprobadora.</value></data>
+  <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Pagaste algo personalmente y quieres que se te reembolse. Los recibos solo se aprueban en determinadas circunstancias, normalmente cuando no era posible una factura o el importe es pequeño.</value></data>
+  <data name="Expenses_Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Expenses_AddInvoice" xml:space="preserve"><value>Añadir factura</value></data>
+  <data name="Expenses_AddReceipt" xml:space="preserve"><value>Añadir recibo</value></data>
+  <data name="Expenses_InvoiceAddDescription" xml:space="preserve"><value>La factura de la empresa, emitida a nombre de la NCA. Después de guardarla añadirás los recibos que la respaldan para que la persona aprobadora vea qué cubre el importe facturado.</value></data>
+  <data name="Expenses_ReceiptAddDescription" xml:space="preserve"><value>Algo que pagaste personalmente y quieres que se te reembolse. Descríbelo, introduce el importe y adjunta una foto o PDF del recibo.</value></data>
+  <data name="Expenses_InvoicePurpose" xml:space="preserve"><value>¿Para qué es la factura?</value></data>
+  <data name="Expenses_ReceiptPurpose" xml:space="preserve"><value>¿Qué compraste?</value></data>
+  <data name="Expenses_InvoicePlaceholder" xml:space="preserve"><value>p. ej., mano de obra del equipo de montaje, factura 2026-042</value></data>
+  <data name="Expenses_ReceiptPlaceholder" xml:space="preserve"><value>p. ej., madera para la estructura de sombra</value></data>
+  <data name="Expenses_AmountEur" xml:space="preserve"><value>Importe (EUR)</value></data>
+  <data name="Expenses_InvoiceFile" xml:space="preserve"><value>La factura (PDF o foto)</value></data>
+  <data name="Expenses_ReceiptFile" xml:space="preserve"><value>El recibo (foto o PDF)</value></data>
+  <data name="Expenses_SaveAndAddReceipts" xml:space="preserve"><value>Guardar y añadir recibos</value></data>
+  <data name="Expenses_SaveReceipt" xml:space="preserve"><value>Guardar recibo</value></data>
+  <data name="Expenses_NotAnInvoice" xml:space="preserve"><value>¿No es una factura?</value></data>
+  <data name="Expenses_NotAReceipt" xml:space="preserve"><value>¿No es un recibo?</value></data>
+  <data name="Expenses_ChangeType" xml:space="preserve"><value>Cambiar tipo</value></data>
+  <data name="Expenses_ReceiptsBehindInvoice" xml:space="preserve"><value>Recibos tras la factura</value></data>
+  <data name="Expenses_ReceiptsBehindIt" xml:space="preserve"><value>Recibos asociados</value></data>
+  <data name="Expenses_ProofAmountOf" xml:space="preserve"><value>{0} de {1}</value></data>
+  <data name="Expenses_NoProofsYet" xml:space="preserve"><value>Aún no hay ninguno. Añade los recibos que muestran qué cubre el importe facturado; se revisan con el informe, pero no se envían al sistema de contabilidad.</value></data>
+  <data name="Expenses_AddReceiptFile" xml:space="preserve"><value>añadir el archivo del recibo</value></data>
+  <data name="Expenses_RemoveReceiptConfirm" xml:space="preserve"><value>¿Eliminar este recibo?</value></data>
+  <data name="Expenses_Remove" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>¿Qué era?</value></data>
+  <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>p. ej., materiales de la ferretería</value></data>
+  <data name="Expenses_Done" xml:space="preserve"><value>Hecho</value></data>
+  <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nuevo informe de gastos</value></data>
+  <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Selecciona una categoría —</value></data>
+  <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(opcional, máx. 500 caracteres)</value></data>
+  <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Describe el gasto…</value></data>
+  <data name="Expenses_CreateDraft" xml:space="preserve"><value>Crear borrador</value></data>
+  <data name="Expenses_HowItWorks" xml:space="preserve"><value>Cómo funciona</value></data>
+  <data name="Expenses_HowItWorksStep1" xml:space="preserve"><value>Crea un borrador y añade partidas de gastos con importes.</value></data>
+  <data name="Expenses_HowItWorksStep2" xml:space="preserve"><value>Adjunta un recibo o factura a cada partida.</value></data>
+  <data name="Expenses_HowItWorksStep3" xml:space="preserve"><value>Configura tu IBAN de pago si aún no lo has hecho.</value></data>
+  <data name="Expenses_HowItWorksStep4" xml:space="preserve"><value>Envía el informe para revisión de coordinación o FinanceAdmin.</value></data>
+  <data name="Expenses_HowItWorksStep5" xml:space="preserve"><value>Tras aprobarse recibirás una transferencia SEPA.</value></data>
 </root>

@@ -129,4 +129,68 @@
   <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>Un motif de rejet est requis.</value></data>
   <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>Impossible de charger la file de révision.</value></data>
   <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Données d'approbation non valides.</value></data>
+  <!-- Submitter expense-edit page -->
+  <data name="Expenses_EditReport" xml:space="preserve"><value>Modifier le rapport de dépenses</value></data>
+  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
+  <data name="Expenses_Edit" xml:space="preserve"><value>Modifier</value></data>
+  <data name="Expenses_ReportHeader" xml:space="preserve"><value>En-tête du rapport</value></data>
+  <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Catégorie budgétaire</value></data>
+  <data name="Expenses_CategoryChangeWarning" xml:space="preserve"><value>Changer de catégorie après l’envoi exige de retirer puis de soumettre à nouveau le rapport.</value></data>
+  <data name="Expenses_Optional" xml:space="preserve"><value>(facultatif)</value></data>
+  <data name="Expenses_SaveHeader" xml:space="preserve"><value>Enregistrer l’en-tête</value></data>
+  <data name="Expenses_ExpenseLines" xml:space="preserve"><value>Lignes de dépenses</value></data>
+  <data name="Expenses_NoLinesYet" xml:space="preserve"><value>Aucune ligne pour le moment. Ajoutez ci-dessous votre premier reçu ou facture.</value></data>
+  <data name="Expenses_Mileage" xml:space="preserve"><value>Indemnité kilométrique</value></data>
+  <data name="Expenses_PerDiem" xml:space="preserve"><value>Indemnité journalière</value></data>
+  <data name="Expenses_Invoice" xml:space="preserve"><value>Facture</value></data>
+  <data name="Expenses_ProofCountSingular" xml:space="preserve"><value>1 reçu associé</value></data>
+  <data name="Expenses_ProofCountPlural" xml:space="preserve"><value>{0} reçus associés</value></data>
+  <data name="Expenses_ReceiptAttached" xml:space="preserve"><value>Reçu joint</value></data>
+  <data name="Expenses_NeedsReceipt" xml:space="preserve"><value>Reçu requis</value></data>
+  <data name="Expenses_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Expenses_AddLine" xml:space="preserve"><value>Ajouter une ligne</value></data>
+  <data name="Expenses_BackToReport" xml:space="preserve"><value>Retour au rapport</value></data>
+  <data name="Expenses_WhatAreYouAdding" xml:space="preserve"><value>Qu’ajoutez-vous ?</value></data>
+  <data name="Expenses_Preferred" xml:space="preserve"><value>préférée</value></data>
+  <data name="Expenses_Receipt" xml:space="preserve"><value>Reçu</value></data>
+  <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Une entreprise facture l’association pour le travail ou les biens. La facture doit être établie au nom de la NCA. C’est fortement préférable : l’association peut récupérer la TVA et économiser 21 %. Vous joindrez la facture, puis les reçus qui la justifient pour la personne qui approuve.</value></data>
+  <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Vous avez payé quelque chose vous-même et souhaitez être remboursé. Les reçus ne sont approuvés que dans certaines circonstances, généralement lorsqu’une facture n’était pas possible ou que le montant est faible.</value></data>
+  <data name="Expenses_Cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="Expenses_AddInvoice" xml:space="preserve"><value>Ajouter une facture</value></data>
+  <data name="Expenses_AddReceipt" xml:space="preserve"><value>Ajouter un reçu</value></data>
+  <data name="Expenses_InvoiceAddDescription" xml:space="preserve"><value>La facture de l’entreprise, établie au nom de la NCA. Après l’enregistrement, vous ajouterez les reçus qui la justifient afin que la personne qui approuve voie ce que couvre le montant facturé.</value></data>
+  <data name="Expenses_ReceiptAddDescription" xml:space="preserve"><value>Quelque chose que vous avez payé vous-même et souhaitez vous faire rembourser. Décrivez-le, saisissez le montant et joignez une photo ou un PDF du reçu.</value></data>
+  <data name="Expenses_InvoicePurpose" xml:space="preserve"><value>À quoi correspond la facture ?</value></data>
+  <data name="Expenses_ReceiptPurpose" xml:space="preserve"><value>Qu’avez-vous acheté ?</value></data>
+  <data name="Expenses_InvoicePlaceholder" xml:space="preserve"><value>ex. main-d’œuvre de l’équipe de montage, facture 2026-042</value></data>
+  <data name="Expenses_ReceiptPlaceholder" xml:space="preserve"><value>ex. bois pour la structure d’ombrage</value></data>
+  <data name="Expenses_AmountEur" xml:space="preserve"><value>Montant (EUR)</value></data>
+  <data name="Expenses_InvoiceFile" xml:space="preserve"><value>La facture (PDF ou photo)</value></data>
+  <data name="Expenses_ReceiptFile" xml:space="preserve"><value>Le reçu (photo ou PDF)</value></data>
+  <data name="Expenses_SaveAndAddReceipts" xml:space="preserve"><value>Enregistrer et ajouter des reçus</value></data>
+  <data name="Expenses_SaveReceipt" xml:space="preserve"><value>Enregistrer le reçu</value></data>
+  <data name="Expenses_NotAnInvoice" xml:space="preserve"><value>Ce n’est pas une facture ?</value></data>
+  <data name="Expenses_NotAReceipt" xml:space="preserve"><value>Ce n’est pas un reçu ?</value></data>
+  <data name="Expenses_ChangeType" xml:space="preserve"><value>Changer de type</value></data>
+  <data name="Expenses_ReceiptsBehindInvoice" xml:space="preserve"><value>Reçus associés à la facture</value></data>
+  <data name="Expenses_ReceiptsBehindIt" xml:space="preserve"><value>Reçus associés</value></data>
+  <data name="Expenses_ProofAmountOf" xml:space="preserve"><value>{0} sur {1}</value></data>
+  <data name="Expenses_NoProofsYet" xml:space="preserve"><value>Aucun pour le moment. Ajoutez les reçus qui montrent ce que couvre le montant facturé ; ils sont vérifiés avec le rapport mais ne sont pas envoyés au système comptable.</value></data>
+  <data name="Expenses_AddReceiptFile" xml:space="preserve"><value>ajouter le fichier du reçu</value></data>
+  <data name="Expenses_RemoveReceiptConfirm" xml:space="preserve"><value>Supprimer ce reçu ?</value></data>
+  <data name="Expenses_Remove" xml:space="preserve"><value>Supprimer</value></data>
+  <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>De quoi s’agissait-il ?</value></data>
+  <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>ex. matériel de la quincaillerie</value></data>
+  <data name="Expenses_Done" xml:space="preserve"><value>Terminé</value></data>
+  <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nouveau rapport de dépenses</value></data>
+  <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Sélectionnez une catégorie —</value></data>
+  <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(facultatif, 500 caractères max.)</value></data>
+  <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Décrivez la dépense…</value></data>
+  <data name="Expenses_CreateDraft" xml:space="preserve"><value>Créer un brouillon</value></data>
+  <data name="Expenses_HowItWorks" xml:space="preserve"><value>Fonctionnement</value></data>
+  <data name="Expenses_HowItWorksStep1" xml:space="preserve"><value>Créez un brouillon et ajoutez des lignes de dépenses avec leurs montants.</value></data>
+  <data name="Expenses_HowItWorksStep2" xml:space="preserve"><value>Joignez un reçu ou une facture à chaque ligne.</value></data>
+  <data name="Expenses_HowItWorksStep3" xml:space="preserve"><value>Renseignez votre IBAN de paiement si ce n’est pas déjà fait.</value></data>
+  <data name="Expenses_HowItWorksStep4" xml:space="preserve"><value>Soumettez le rapport pour examen par la coordination ou FinanceAdmin.</value></data>
+  <data name="Expenses_HowItWorksStep5" xml:space="preserve"><value>Après approbation, vous recevrez un virement SEPA.</value></data>
 </root>

@@ -109,6 +109,34 @@ public class OrderAuthorizationHandlerTests
     public Task CampLead_can_add_line_before_deadline_on_camp_order() =>
         AssertLeadOutcome(FutureDeadline, expectAllowed: true);
 
+    [HumansTheory]
+    [InlineData(RoleNames.Admin)]
+    [InlineData(RoleNames.StoreAdmin)]
+    [InlineData(RoleNames.FinanceAdmin)]
+    public async Task Store_admins_are_denied_billing_operations_on_team_order(string role)
+    {
+        // Team orders are non-billable at every privilege level.
+        await AssertOutcome(role, MakeOrder(team: true), OrderOperationRequirement.Pay, expectAllowed: false);
+        await AssertOutcome(role, MakeOrder(team: true), OrderOperationRequirement.EditCounterparty, expectAllowed: false);
+        await AssertOutcome(role, MakeOrder(team: true), OrderOperationRequirement.IssueInvoice, expectAllowed: false);
+    }
+
+    [HumansFact]
+    public Task StoreAdmin_can_issue_invoice_on_camp_order() =>
+        AssertOutcome(RoleNames.StoreAdmin, MakeOrder(team: false), OrderOperationRequirement.IssueInvoice, expectAllowed: true);
+
+    [HumansFact]
+    public Task CampLead_cannot_issue_invoice_on_own_camp_order() =>
+        AssertLeadOperation(OrderOperationRequirement.IssueInvoice, expectAllowed: false);
+
+    [HumansFact]
+    public Task CampLead_cannot_delete_own_camp_order() =>
+        AssertLeadOperation(OrderOperationRequirement.Delete, expectAllowed: false);
+
+    [HumansFact]
+    public Task CampLead_can_pay_own_camp_order() =>
+        AssertLeadOperation(OrderOperationRequirement.Pay, expectAllowed: true);
+
     private async Task AssertOutcome(
         string role,
         object resource,
@@ -138,6 +166,24 @@ public class OrderAuthorizationHandlerTests
             [OrderOperationRequirement.AddLine],
             Principal(role: null, userId),
             new OrderLineContext(order, deadline));
+
+        await _handler.HandleAsync(context);
+
+        Assert.Equal(expectAllowed, context.HasSucceeded);
+    }
+
+    private async Task AssertLeadOperation(OrderOperationRequirement requirement, bool expectAllowed)
+    {
+        var userId = Guid.NewGuid();
+        var order = MakeOrder(team: false);
+        var seasonId = order.CampSeasonId!.Value;
+        var camp = MakeCampInfo(Guid.NewGuid(), seasonId, userId);
+        _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
+            .Returns(camp.Seasons[0]);
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([camp]);
+
+        var context = new AuthorizationHandlerContext([requirement], Principal(role: null, userId), order);
 
         await _handler.HandleAsync(context);
 

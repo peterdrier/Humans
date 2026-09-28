@@ -2,7 +2,7 @@
   src/Sections/Humans.Store/**
 -->
 <!-- freshness:flag-on-change
-  Store catalog editing, order lifecycle, ordering deadline gate, invoice issuance, treasury sync matching, Stripe checkout, and resource-based authorization — review when Store services/entities/controllers/auth handlers change.
+  Store catalog editing, order lifecycle, ordering deadline gate, invoice issuance, Stripe checkout, and resource-based authorization — review when Store services/entities/controllers/auth handlers change.
 -->
 
 # Store
@@ -21,6 +21,7 @@ Store Admin and Finance Admin look after the catalogue, keep an eye on orders, a
 - **Add / edit a product** (`/Store/Admin/Catalog/Edit`) — product form: name, description, price, VAT, optional deposit, ordering deadline, Holded revenue account (Store Admin)
 - **Summary report** (`/Store/Admin/Summary`) — totals by camp and by product for a year (Store Admin, Finance Admin, Admin)
 - **Stripe payments** (`/Store/Admin/Payments`) — reconcile card payments against the ledger and record any that weren't picked up automatically (Store Admin, Finance Admin, Admin)
+- **Order years** (`/Store/Admin/OrderYears`) — give legacy orders with no recorded year their year, resolved from their camp season (Store Admin, Finance Admin, Admin)
 
 ## Ordering for your camp (camp leads)
 
@@ -46,7 +47,7 @@ From your order's detail page, use **Pay** to pay by card — the payment is rec
 
 ## As a Board member / Admin (Store Admin)
 
-The tasks below need the **Store Admin**, **Finance Admin**, or **Admin** role. Within the Store, a Store Admin can do everything a Finance Admin can.
+The tasks below need the **Store Admin**, **Finance Admin**, or **Admin** role. Within the Store, a Store Admin can do everything a Finance Admin can. All of these pages are reached from the Store section of the admin sidebar.
 
 ### Manage the catalogue
 
@@ -77,6 +78,10 @@ yet, nothing is sent to Holded and you're told exactly what to fix.
 
 > **Heads up:** the Finance order-review screen (entering manual payments by hand) isn't switched
 > on yet.
+
+### Order years
+
+`/Store/Admin/OrderYears` lists legacy orders left with no year recorded. Confirming the repair resolves each one's year from its camp season and saves it; rows whose camp season no longer exists stay listed but unchanged.
 
 ## Related sections
 

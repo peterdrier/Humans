@@ -435,6 +435,12 @@ internal sealed class Service(
             throw new InvalidOperationException(
                 $"Order {orderId} has been invoiced; an invoiced order cannot be deleted.");
 
+        // Payments cascade on delete, and a paid-in-full or pending-only order reads zero-balance —
+        // any payment row, whatever its status, is a money record that must outlive the order.
+        if (order.Payments.Count > 0)
+            throw new InvalidOperationException(
+                $"Order {orderId} has payments recorded; an order with payments cannot be deleted.");
+
         var currentPrices = await LoadCurrentPricesAsync(ct);
         var balance = BalanceCalculator.Compute(order, currentPrices).BalanceEur;
         if (balance != 0m)
@@ -478,17 +484,6 @@ internal sealed class Service(
             $"Created store order for team '{team.Name}' ({year})",
             actorUserId);
         return order.Id;
-    }
-
-    public async Task<OrderDto?> GetOrderForTeamAsync(Guid teamId, CancellationToken ct = default)
-    {
-        var year = await GetCurrentEventYearAsync();
-        var order = await repo.GetOrderForTeamAsync(teamId, year, ct);
-        if (order is null) return null;
-        var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
-        var productNames = await LoadProductNamesAsync(productIds, ct);
-        var currentPrices = await LoadCurrentPricesAsync(ct);
-        return await MapOrderAsync(order, productNames, currentPrices, ct);
     }
 
     public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
@@ -652,7 +647,7 @@ internal sealed class Service(
     }
 
     /// <summary>Returns the active event's catalog year, falling back to the current UTC year before it exists.</summary>
-    private async Task<int> GetCurrentEventYearAsync()
+    public async Task<int> GetCurrentEventYearAsync()
     {
         var activeEvent = await settingsService.GetActiveEventSettingsAsync();
         return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;

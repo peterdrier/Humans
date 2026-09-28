@@ -318,10 +318,6 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
-  - added: 2026-09-18
-    id: CENTRAL-55
-    what: "docs/guide/Glossary.md has no entry for assembly vote, the Governance lane that landed 2026-09-14 (peterdrier/Humans#1649), so the guide's own vocabulary page omits a term the Governance guide page now uses throughout. The file is shared guide input rather than section-owned (/section-doctor on Governance 2026-09-18)."
-    review: light
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-09-10
     id: CENTRAL-35
@@ -336,11 +332,6 @@ inbox:
     id: CENTRAL-34
     what: "The Holded ledger mirror holds member-identifiable data that no GDPR export reaches. Finance binds a member to a 400000xx creditor account (HoldedCreditorContact.UserId -> SupplierAccountNum); Humans.Holded then mirrors that account's HoldedAccount.Name (Holded's contact name, i.e. the member's) and every HoldedLedgerLine on it, free-text Description included, and /Holded/Accounts/{n} renders both. Finance's ContributeForUserAsync exports only the binding itself and SEPA payouts, so an Article 15 export omits the member's mirrored reimbursement history. Deciding the fix means deciding what belongs in the slice, whether Holded gains a contributor (it holds no UserId, so Gdpr or Finance must pass the account number) and the retention basis for refusing erasure — the mirror is re-derivable from Holded, so the Codigo de Comercio Art. 30 argument Finance uses for payout files may not transfer. Spans Holded, Finance and Gdpr and adds public surface whichever way it goes, so it is Peter's call. Found by /section-doctor on Holded 2026-09-03, from a Codex review finding on peterdrier/Humans#1583; the docs there previously asserted 'no user-scoped data -> no GDPR contributor' and have been corrected to state the gap."
     review: panel
-  - added: 2026-08-28
-    id: CENTRAL-32
-    what: "docs/architecture/freshness-catalog.yml has no Settings entry — add one covering src/Sections/Humans.Settings/** and src/Sections/Humans.Settings.Contracts/** (finding 14, /section-doctor on Settings 2026-08-28). Merged 2026-09-20: a verbatim duplicate of this item (added 2026-09-06) was removed from this inbox."
-    review: light
-    root: CENTRAL-57
   - added: 2026-08-27
     id: CENTRAL-27
     what: "The GDPR export document's JSON serialization lives twice, byte-identically: GuestDataController (Humans.Gdpr) and ProfileController (Humans.Users) each carry a private ExportJsonOptions and a private BuildExportPayload. Key stability across re-downloads is an invariant Gdpr owns, enforced by copies nothing keeps in step. The fix spans both sections and adds public surface either way — a shared serializer on Humans.Gdpr.Contracts, or a method on IGdprService — so it is Peter's call. Found by /section-doctor on Gdpr 2026-08-27 (finding 2 of docs/health/runs/2026-08-27-Gdpr.md); routed here rather than to Gdpr's section ledger on a review finding on peterdrier/Humans#1540, because no single section owns the fix."
@@ -468,11 +459,6 @@ inbox:
   - added: 2026-09-10
     id: CENTRAL-39
     what: "docs/architecture/dependency-graph.md classes Backdoor as a crosscut and omits its edges to the sections it serves (Agent, Feedback, Issues.Contracts, Surveys). It is a leaf, not a crosscut: nothing references it back (finding 16, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
-    review: light
-    root: CENTRAL-57
-  - added: 2026-09-10
-    id: CENTRAL-40
-    what: "docs/architecture/freshness-catalog.yml has no Backdoor entry; add one covering src/Sections/Humans.Backdoor/** and tests/Humans.Backdoor.Tests/** (finding 17, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light
     root: CENTRAL-57
   - added: 2026-09-11

@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using System.Security.Claims;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Store.Controllers;
 using Microsoft.AspNetCore.Authorization;
@@ -19,7 +18,7 @@ public sealed class StoreAdminControllerTests
     [InlineData(RoleNames.StoreAdmin, true)]
     [InlineData(RoleNames.FinanceAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
-    public async Task Order_year_actions_enforce_store_admin_access(string? role, bool allowed)
+    public async Task Admin_controller_admits_only_store_admin_roles(string? role, bool allowed)
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -37,17 +36,6 @@ public sealed class StoreAdminControllerTests
             .AuthorizeAsync(user, resource: null, policy);
 
         result.Succeeded.Should().Be(allowed);
-    }
-
-    [HumansFact]
-    public void Controller_requires_store_admin_policy()
-    {
-        var attribute = typeof(StoreAdminController)
-            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
-            .Cast<AuthorizeAttribute>()
-            .Single();
-
-        attribute.Policy.Should().Be(PolicyNames.StoreCatalogAdmin);
     }
 
     [HumansFact]
