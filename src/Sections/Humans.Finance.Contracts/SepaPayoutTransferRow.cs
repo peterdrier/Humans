@@ -31,7 +31,8 @@ public sealed record SepaPayoutTransferRow(
     string? CandidateBankMovementId,
     LocalDate? CandidateBankMovementDate = null,
     decimal? CandidateBankMovementAmount = null,
-    string? CandidateBankMovementDescription = null)
+    string? CandidateBankMovementDescription = null,
+    SepaBatchLineVm? BatchLine = null)
 {
     /// <summary>Booked is exactly "has a <see cref="BookedAt"/>" — there is no status column.</summary>
     public bool IsBooked => BookedAt is not null;
@@ -46,3 +47,19 @@ public sealed record SepaPayoutTransferRow(
     public bool CanBook =>
         !IsBooked && NotBookableReason is null && CandidateBankMovementId is { Length: > 0 };
 }
+
+/// <summary>One Sabadell line that looks like the bank debited a whole multi-transfer file at once —
+/// its amount is the file's total. Never booked by the sweep: a finance admin checks it and presses
+/// Process, which books every transfer in the file against it. Filled by <c>GetSepaPayoutsAsync</c>
+/// onto every row of that file; the repository always projects it null.</summary>
+/// <param name="QuotesFileReference">The line's text contains the file's id — the
+/// <c>MsgId</c>/<c>PmtInfId</c> the bank was sent — rather than matching on total and date alone.</param>
+/// <param name="NotProcessableReason">Why the file cannot be processed as it stands (a transfer in it
+/// cannot be booked), or null when it can.</param>
+public sealed record SepaBatchLineVm(
+    string MovementId,
+    LocalDate Date,
+    decimal Amount,
+    string? Description,
+    bool QuotesFileReference,
+    string? NotProcessableReason);

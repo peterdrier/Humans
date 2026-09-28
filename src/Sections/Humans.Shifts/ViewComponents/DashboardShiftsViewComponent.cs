@@ -36,6 +36,10 @@ public sealed class DashboardShiftsViewComponent(
         {
             activeEvent = await burnSettings.GetActiveAsync(ct);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load active event for the dashboard shifts card");
@@ -43,21 +47,25 @@ public sealed class DashboardShiftsViewComponent(
 
         var isShiftBrowsingOpen = activeEvent is not null && activeEvent.IsShiftBrowsingOpen;
         var urgentShifts = isShiftBrowsingOpen
-            ? await UrgentShiftsAsync(activeEvent!.Id)
+            ? await UrgentShiftsAsync(activeEvent!.Id, ct)
             : [];
         var (nextShifts, pendingCount) = isShiftBrowsingOpen
-            ? await NextShiftsAsync(userId, activeEvent!.Id)
+            ? await NextShiftsAsync(userId, activeEvent!.Id, ct)
             : ((IReadOnlyList<DashboardShiftSignup>)[], 0);
 
         return View(new DashboardShiftsViewModel(
             userId, isVolunteerMember, isShiftBrowsingOpen, urgentShifts, nextShifts, pendingCount));
     }
 
-    private async Task<IReadOnlyList<UrgentShiftInfo>> UrgentShiftsAsync(Guid eventSettingsId)
+    private async Task<IReadOnlyList<UrgentShiftInfo>> UrgentShiftsAsync(Guid eventSettingsId, CancellationToken ct)
     {
         try
         {
             return await shiftMgmt.GetUrgentShiftsAsync(eventSettingsId, limit: 3);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -67,12 +75,12 @@ public sealed class DashboardShiftsViewComponent(
     }
 
     private async Task<(IReadOnlyList<DashboardShiftSignup> NextShifts, int PendingCount)> NextShiftsAsync(
-        Guid userId, Guid eventSettingsId)
+        Guid userId, Guid eventSettingsId, CancellationToken ct)
     {
         try
         {
             var now = clock.GetCurrentInstant();
-            var userView = await shiftView.GetUserAsync(userId);
+            var userView = await shiftView.GetUserAsync(userId, ct);
             var userSignups = userView.Signups.Where(s => s.EventSettingsId == eventSettingsId).ToList();
             var pendingCount = userSignups
                 .Where(s => s.Status == SignupStatus.Pending)
@@ -81,7 +89,7 @@ public sealed class DashboardShiftsViewComponent(
                 .Count();
 
             var confirmedSignups = userSignups.Where(s => s.Status == SignupStatus.Confirmed).ToList();
-            var teamsById = await teamService.GetTeamsAsync();
+            var teamsById = await teamService.GetTeamsAsync(ct);
 
             var nextShifts = confirmedSignups
                 .Where(s => s.AbsoluteEnd > now)
@@ -95,6 +103,10 @@ public sealed class DashboardShiftsViewComponent(
                 .ToList();
 
             return (nextShifts, pendingCount);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

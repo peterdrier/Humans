@@ -39,7 +39,7 @@ internal interface ICalendarService : IApplicationService
     // to render a form field is a caller doing the service's job.
     Task<CalendarEventMutationResult> CreateEventWithResultAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default);
 
-    Task<CalendarEventMutationResult> UpdateEventWithResultAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default);
+    Task<CalendarEventMutationResult> UpdateEventWithResultAsync(Guid id, CreateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default);
 
     Task DeleteEventAsync(Guid id, Guid deletedByUserId, CancellationToken ct = default);
 

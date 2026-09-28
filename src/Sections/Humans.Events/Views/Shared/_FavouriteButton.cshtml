@@ -15,17 +15,20 @@
     var stateClass = !Model.RemoveRow && Model.IsFavourited ? "btn-danger" : "btn-outline-danger";
     var favourited = Model.IsFavourited.ToString().ToLowerInvariant();
 }
-<button type="button"
-        class="btn btn-sm js-favourite-toggle @stateClass"
-        data-event-id="@Model.EventId"
-        data-day="@Model.DayOffset"
-        data-favourited="@favourited"
-        data-title-add="@addTitle"
-        data-title-remove="@removeTitle"
-        data-error="@Model.ErrorMessage"
-        data-remove-row="@(Model.RemoveRow ? "true" : null)"
-        data-favourite-confirm="@Model.ConfirmMessage"
-        aria-pressed="@(Model.RemoveRow ? null : favourited)"
-        title="@title" aria-label="@title">
-    <i class="fa-solid @(Model.RemoveRow ? "fa-heart-crack" : "fa-heart")" aria-hidden="true"></i>
-</button>
+<form class="d-inline">
+    @Html.AntiForgeryToken()
+    <button type="button"
+            class="btn btn-sm js-favourite-toggle @stateClass"
+            data-event-id="@Model.EventId"
+            data-day="@Model.DayOffset"
+            data-favourited="@favourited"
+            data-title-add="@addTitle"
+            data-title-remove="@removeTitle"
+            data-error="@Model.ErrorMessage"
+            data-remove-row="@(Model.RemoveRow ? "true" : null)"
+            data-favourite-confirm="@Model.ConfirmMessage"
+            aria-pressed="@(Model.RemoveRow ? null : favourited)"
+            title="@title" aria-label="@title">
+        <i class="fa-solid @(Model.RemoveRow ? "fa-heart-crack" : "fa-heart")" aria-hidden="true"></i>
+    </button>
+</form>

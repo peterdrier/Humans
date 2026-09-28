@@ -47,12 +47,12 @@ internal static class EventsLookupHelpers
     public static string? ResolveCampName(CampInfo? camp) => camp?.Active?.Name ?? camp?.Slug;
 
     public static async Task<Dictionary<Guid, UserInfo>> LoadSubmittersAsync(
-        IUserServiceRead users, IEnumerable<Guid> userIds)
+        IUserServiceRead users, IEnumerable<Guid> userIds, CancellationToken ct = default)
     {
         var result = new Dictionary<Guid, UserInfo>();
         foreach (var id in userIds)
         {
-            var info = await users.GetUserInfoAsync(id);
+            var info = await users.GetUserInfoAsync(id, ct);
             if (info != null) result[id] = info;
         }
         return result;
@@ -60,17 +60,17 @@ internal static class EventsLookupHelpers
 
     /// <summary>The burn the guide is configured for, or null when the guide is not configured.</summary>
     public static async Task<EventSettingsInfo?> LoadBurnSettingsAsync(
-        IEventService guide, EventGuideSettingsView? guideSettings)
+        IEventService guide, EventGuideSettingsView? guideSettings, CancellationToken ct = default)
     {
         if (guideSettings == null) return null;
-        return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
+        return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct);
     }
 
     public static async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(
-        ICampServiceRead camps, int? year)
+        ICampServiceRead camps, int? year, CancellationToken ct = default)
     {
         if (year is null) return [];
-        var list = await camps.GetCampsForYearAsync(year.Value);
+        var list = await camps.GetCampsForYearAsync(year.Value, ct);
         return list.ToDictionary(c => c.Id);
     }
 }

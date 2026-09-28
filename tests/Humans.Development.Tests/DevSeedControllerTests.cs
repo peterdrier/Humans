@@ -16,7 +16,7 @@ using Humans.Users.Contracts;
 namespace Humans.Development.Tests;
 
 /// <summary>
-/// Covers <c>Shifts.md</c> invariant line 239:
+/// Covers the <c>Shifts.md</c> invariant:
 /// "DevelopmentDashboardSeeder and its POST /dev/seed/dashboard endpoint are
 /// gated to IWebHostEnvironment.IsDevelopment() AND the DevAuth:Enabled setting.
 /// QA, preview, and production environments cannot invoke it regardless of role."
@@ -84,7 +84,8 @@ public class DevSeedControllerTests
     [HumansFact]
     public void Index_DevSeedGateOpen_RendersSeedPage()
     {
-        // Staging with DevAuth on is QA / a preview: the nav's "Development" link must land here.
+        // Staging with DevAuth on is QA / a preview: the page answers there by URL, though the
+        // admin nav shows its link only on Development.
         _environment.EnvironmentName.Returns("Staging");
         SetDevAuthEnabled(true);
         var ctrl = BuildSut();

@@ -753,7 +753,11 @@ internal sealed class EventsController(
         try
         {
             using var reader = new StreamReader(file.OpenReadStream(), System.Text.Encoding.UTF8);
-            rows = BulkEventCsvParser.Parse(await reader.ReadToEndAsync());
+            rows = BulkEventCsvParser.Parse(await reader.ReadToEndAsync(HttpContext.RequestAborted));
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

@@ -8,8 +8,6 @@ namespace Humans.Holded.Contracts;
 public sealed record HoldedBankMovementDto
 {
     public required string Id { get; init; }
-    /// <summary>`account` — the treasury account id the line belongs to.</summary>
-    public required string AccountId { get; init; }
     /// <summary>Booking date, Europe/Madrid. A <c>LocalDate</c> rather than the <c>Instant</c> the
     /// ledger DTOs carry: this date is fed straight back into a posting date
     /// (<see cref="IHoldedClient.PayPurchaseDocumentAsync"/> takes a <c>LocalDate</c>), and a

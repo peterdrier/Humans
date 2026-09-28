@@ -1,5 +1,3 @@
-using Humans.Base.Attributes;
-using Humans.CityPlanning.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
@@ -12,11 +10,9 @@ namespace Humans.Camps.Controllers;
 [Authorize(Policy = PolicyNames.CampAdminOrAdmin)]
 [Route("Barrios/Admin")]
 [Route("Camps/Admin")]
-[CrossSectionWrite("Camp admin edits the camp's city-planning registration.")]
 internal sealed class CampAdminController(
     ICampService campService,
     ICampRoleService campRoleService,
-    ICityPlanningService cityPlanningService,
     CampAdminPageBuilder campAdminPageBuilder,
     CampCsvExportBuilder campCsvExportBuilder,
     IUserServiceRead userService,
@@ -213,23 +209,6 @@ internal sealed class CampAdminController(
             SetError("Failed to export barrios.");
             return RedirectToAction(nameof(Index));
         }
-    }
-
-    [HttpPost("UpdateRegistrationInfo")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateRegistrationInfo([FromForm] string? registrationInfo)
-    {
-        try
-        {
-            await cityPlanningService.UpdateRegistrationInfoAsync(registrationInfo);
-            SetSuccess("Registration info updated.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to update registration info");
-            SetError("Failed to update registration info.");
-        }
-        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost("Delete")]

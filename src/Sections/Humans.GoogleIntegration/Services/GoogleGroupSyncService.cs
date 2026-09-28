@@ -633,6 +633,7 @@ internal sealed class GoogleGroupSyncService(
                     _options.Domain));
             })
             .Where(x => x.Email is not null)
+            .OrderBy(x => x.Resource.ProvisionedAt)
             .GroupBy(x => x.Email!, StringComparer.OrdinalIgnoreCase)
             .ToList();
 

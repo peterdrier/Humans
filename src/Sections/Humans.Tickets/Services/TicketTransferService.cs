@@ -547,13 +547,13 @@ internal sealed class TicketTransferService(
         {
             await SafeSendAsync(request.Id, "transfer-requested (sender)", () =>
                 emailService.SendAsync(emailMessages.TicketTransferRequested(
-                    senderEmail, senderName, request.ReceiverLegalName, ticketLabel, culture: null), ct));
+                    senderEmail, senderName, request.ReceiverLegalName, ticketLabel, culture: null), ct), ct);
         }
 
         await SafeSendAsync(request.Id, "transfer-requested (team)", () =>
             emailService.SendAsync(emailMessages.TicketTransferTeamNotification(
                 senderName, request.ReceiverLegalName, request.ReceiverEmail,
-                ticketLabel, request.SenderReason, reviewUrl), ct));
+                ticketLabel, request.SenderReason, reviewUrl), ct), ct);
     }
 
     private async Task NotifyDecisionAsync(
@@ -570,7 +570,7 @@ internal sealed class TicketTransferService(
             await SafeSendAsync(request.Id, "transfer-decision (sender)", () =>
                 emailService.SendAsync(emailMessages.TicketTransferDecision(
                     senderEmail, senderName, successful, ticketLabel,
-                    request.ReceiverLegalName, reason, culture: null), ct));
+                    request.ReceiverLegalName, reason, culture: null), ct), ct);
         }
 
         if (!string.IsNullOrWhiteSpace(request.ReceiverEmail))
@@ -578,15 +578,19 @@ internal sealed class TicketTransferService(
             await SafeSendAsync(request.Id, "transfer-decision (receiver)", () =>
                 emailService.SendAsync(emailMessages.TicketTransferDecision(
                     request.ReceiverEmail, request.ReceiverLegalName, successful, ticketLabel,
-                    request.ReceiverLegalName, reason, culture: null), ct));
+                    request.ReceiverLegalName, reason, culture: null), ct), ct);
         }
     }
 
-    private async Task SafeSendAsync(Guid transferId, string what, Func<Task> send)
+    private async Task SafeSendAsync(Guid transferId, string what, Func<Task> send, CancellationToken ct)
     {
         try
         {
             await send();
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -601,6 +605,10 @@ internal sealed class TicketTransferService(
         {
             return await ResolveSenderAsync(senderUserId, ct);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to resolve sender {SenderUserId} for transfer {TransferId} notifications",
@@ -614,6 +622,10 @@ internal sealed class TicketTransferService(
         try
         {
             return await ticketRepo.GetAttendeeByIdAsync(attendeeId, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

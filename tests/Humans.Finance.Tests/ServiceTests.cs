@@ -2504,7 +2504,7 @@ public class HoldedFinanceServiceTests
             {
                 new()
                 {
-                    Id = BookableMovementId, AccountId = "treasury-1", Date = BankLineDate,
+                    Id = BookableMovementId, Date = BankLineDate,
                     Amount = amount, Description = description, Status = status,
                 },
             });

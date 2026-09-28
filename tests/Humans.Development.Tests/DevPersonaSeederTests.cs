@@ -21,11 +21,10 @@ using NSubstitute;
 namespace Humans.Development.Tests;
 
 /// <summary>
-/// Covers the #867 persona repair: dev personas hold governance roles but never signed
-/// the required legal documents, so the nightly SuspendNonCompliantMembersJob suspended
-/// them once a document's grace period lapsed, and the create-only seeder could never
-/// bring them back. EnsureActiveAsync must submit missing consents through the canonical
-/// consent path and lift a consent suspension, on every dev sign-in, idempotently.
+/// Covers the #867 persona repair invariant: personas hold governance roles, and the
+/// nightly SuspendNonCompliantMembersJob suspends them otherwise, so EnsureActiveAsync
+/// must submit missing consents through the canonical consent path and lift a consent
+/// suspension, on every dev sign-in, idempotently.
 /// </summary>
 public class DevPersonaSeederTests
 {
@@ -203,8 +202,7 @@ public class DevPersonaSeederTests
     [HumansFact]
     public async Task EnsurePersonaAsync_ExistingPersona_RunsActiveRepair()
     {
-        // The pre-#867 seeder early-returned for existing personas, so a persona that
-        // drifted non-Active could never recover. The existing-persona path must repair.
+        // An existing persona that drifted non-Active is repaired on the existing-persona path.
         var userId = DevPersonaSeeder.PersonaGuid("board");
         _userManager.FindByIdAsync(userId.ToString())
             .Returns(new User { Id = userId, DisplayName = "Dev Board" });
@@ -224,5 +222,40 @@ public class DevPersonaSeederTests
         await _consents.Received(1).SubmitConsentAsync(
             userId, Arg.Any<Guid>(), true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _humanLifecycle.Received(1).RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureFreshGuestAsync_EachCall_MintsANewProfilelessUser()
+    {
+        // Parallel testers must never share one guest account.
+        var created = new List<User>();
+        _userManager.CreateAsync(Arg.Do<User>(created.Add)).Returns(IdentityResult.Success);
+        var sut = BuildSut();
+
+        var first = await sut.EnsureFreshGuestAsync("Guest (No Profile)");
+        var second = await sut.EnsureFreshGuestAsync("Guest (No Profile)");
+
+        first.Should().NotBe(second);
+        created.Select(u => u.Id).Should().Equal(first, second);
+        await _profileEditor.DidNotReceive().SaveProfileAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResetLegalNamesAsync_BlanksLegalNamesAndKeepsBurnerName()
+    {
+        // The no-name persona must hit the onboarding name gate (#812) on every sign-in.
+        var userId = DevPersonaSeeder.PersonaGuid("no-name");
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(NamedUserInfo(userId, UserState.Active)));
+
+        await BuildSut().ResetLegalNamesAsync(userId);
+
+        await _profileEditor.Received(1).SaveProfileAsync(
+            userId,
+            "Dev Board",
+            Arg.Is<ProfileSaveRequest>(r =>
+                r.BurnerName == "Dev Board" && r.FirstName.Length == 0 && r.LastName.Length == 0),
+            Arg.Any<CancellationToken>());
     }
 }

@@ -453,6 +453,24 @@ public sealed class ExpenseReportServiceTests
         result.ErrorMessage.Should().Contain("Unsupported file type");
     }
 
+    [HumansFact]
+    public async Task AttachFileToLineWithResultAsync_ReturnsFailure_WhenFilenameExceedsStorageLimit()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, false, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+        await using var stream = new MemoryStream([1, 2, 3]);
+
+        var result = await _sut.AttachFileToLineWithResultAsync(
+            id, submitter, false, lineId, new string('a', 252) + ".pdf", "application/pdf", stream,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("255 characters or fewer");
+        await _fileStorage.DidNotReceive().SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansTheory]
     [Xunit.InlineData("receipt.exe", "application/octet-stream", 3, "Unsupported file type")]
     [Xunit.InlineData("receipt.pdf", "application/pdf", 0, "Please select a file")]

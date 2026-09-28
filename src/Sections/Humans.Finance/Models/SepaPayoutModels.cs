@@ -63,11 +63,15 @@ internal sealed record SepaBankMovementVm(
 internal sealed record SepaTransferVm(SepaPayoutTransferRow Row, string MemberName, string? BookedByName);
 
 /// <summary>One generated file and its transfers, as the screen groups them.</summary>
+/// <param name="BatchLine">The single bank line that debited this whole file, when there is one to
+/// process.</param>
 internal sealed record SepaPayoutFileVm(
+    Guid FileId,
     string FileName,
     Instant GeneratedAt,
     string GeneratedByName,
-    IReadOnlyList<SepaTransferVm> Transfers);
+    IReadOnlyList<SepaTransferVm> Transfers,
+    SepaBatchLineVm? BatchLine);
 
 /// <summary>The /Finance/Sepa page model.</summary>
 /// <param name="UnavailableReason">Set when booking is off for every row (missing configuration);

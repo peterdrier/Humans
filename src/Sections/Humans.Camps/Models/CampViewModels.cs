@@ -249,7 +249,6 @@ internal sealed class CampAdminViewModel
     public int ActiveCamps { get; set; }
     public Dictionary<int, NodaTime.LocalDate?> NameLockDates { get; set; } = new();
     public List<CampSummaryRowViewModel> AllCampSummaries { get; set; } = [];
-    public string? RegistrationInfo { get; set; }
     /// <summary>
     /// True when at least one <c>CampSpecialRole</c> value (other than
     /// <c>None</c>) does not yet have a <c>CampRoleDefinition</c> row. The

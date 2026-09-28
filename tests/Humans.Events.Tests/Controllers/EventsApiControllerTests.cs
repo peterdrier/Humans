@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Reflection;
 using AwesomeAssertions;
 using Humans.Camps.Contracts;
 using Humans.Events.Contracts;
@@ -76,6 +77,23 @@ public class EventsApiControllerTests
         var dto = await SingleResultAsync();
 
         dto.Host.Should().Be("Camp Host");
+    }
+
+    [HumansFact]
+    public void FavouriteMutations_RequireAntiforgeryValidation()
+    {
+        var actions = new[]
+        {
+            nameof(EventsApiController.AddFavourite),
+            nameof(EventsApiController.RemoveFavourite)
+        };
+
+        foreach (var action in actions)
+        {
+            var method = typeof(EventsApiController).GetMethod(action);
+            method.Should().NotBeNull();
+            method!.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull();
+        }
     }
 
     private void StubApprovedEvents(params ApprovedEventView[] events) =>

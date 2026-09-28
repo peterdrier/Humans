@@ -4,6 +4,8 @@ using Humans.GoogleIntegration.Models;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.ViewComponents;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using NodaTime;
 using NSubstitute;
@@ -16,6 +18,31 @@ namespace Humans.GoogleIntegration.Tests;
 /// </summary>
 public sealed class GoogleSyncSettingsTabViewComponentTests
 {
+    [HumansFact]
+    public async Task InvokeAsync_RequestAborted_PropagatesCancellation()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        var settings = Substitute.For<ISyncSettingsService>();
+        settings.GetAllAsync(aborted.Token)
+            .Returns(Task.FromException<IReadOnlyList<SyncServiceSettingsInfo>>(
+                new OperationCanceledException(aborted.Token)));
+        var sut = new GoogleSyncSettingsTabViewComponent(settings, Substitute.For<IUserServiceRead>())
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext
+                {
+                    HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token }
+                }
+            }
+        };
+
+        var act = () => sut.InvokeAsync();
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [HumansFact]
     public async Task InvokeAsync_MapsEachServiceWithItsFormattedNameAndUpdater()
     {

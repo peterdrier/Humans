@@ -283,7 +283,7 @@ internal sealed class CalendarController : HumansControllerBase
             return View(form);
         }
 
-        var result = await _calendar.UpdateEventWithResultAsync(id, new UpdateCalendarEventDto(
+        var result = await _calendar.UpdateEventWithResultAsync(id, new CreateCalendarEventDto(
             form.Title, form.Description, form.Location, form.LocationUrl,
             form.OwningTeamId, start, end, form.IsAllDay,
             form.IsRecurring ? form.RecurrenceRule : null,

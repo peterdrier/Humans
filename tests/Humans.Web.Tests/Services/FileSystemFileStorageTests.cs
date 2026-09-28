@@ -84,6 +84,23 @@ public class FileSystemFileStorageTests : IDisposable
     }
 
     [HumansFact]
+    public async Task SaveAsync_LeavesNoTempFilesWhenTheCopyIsCancelled()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        using var content = new MemoryStream([1, 2, 3]);
+
+        var act = () => _store.SaveAsync(
+            "uploads/profile-pictures/cancelled.jpg", content, cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        var dir = new DirectoryInfo(Path.Combine(_wwwroot, "uploads", "profile-pictures"));
+        dir.GetFiles("*.tmp").Should().BeEmpty(
+            because: "a cancelled copy creates no recoverable upload and must not leak its temp file");
+    }
+
+    [HumansFact]
     public async Task TryReadAsync_MissingFile_ReturnsNull()
     {
         var bytes = await _store.TryReadAsync("uploads/profile-pictures/does-not-exist.jpg", Xunit.TestContext.Current.CancellationToken);

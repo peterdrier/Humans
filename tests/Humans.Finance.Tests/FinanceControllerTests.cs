@@ -384,6 +384,19 @@ public class FinanceControllerTests
         await _connector.Received(1).BookSepaTransferAsync(transferId, "mov-1", Ana);
     }
 
+    [HumansFact]
+    public async Task BookSepaFile_PassesTheFileAndMovementIdThrough()
+    {
+        var fileId = Guid.NewGuid();
+        _connector.BookSepaFileAsync(fileId, "mov-batch", Ana)
+            .Returns(new SepaBookingResult(true, "Booked."));
+        var controller = MakeControllerWithHttpContext(Ana);
+
+        await controller.BookSepaFile(fileId, "mov-batch");
+
+        await _connector.Received(1).BookSepaFileAsync(fileId, "mov-batch", Ana);
+    }
+
     private static Instant Stamp(int day) => Instant.FromUtc(2026, 8, day, 9, 0);
 
     private static SepaPayoutTransferRow Transfer(

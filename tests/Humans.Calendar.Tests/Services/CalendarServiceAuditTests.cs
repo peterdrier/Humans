@@ -76,7 +76,7 @@ public class CalendarServiceAuditTests
 
         var result = await CreateSut().UpdateEventWithResultAsync(
             id,
-            new UpdateCalendarEventDto(
+            new CreateCalendarEventDto(
                 "Planning moved", null, null, null, newTeamId,
                 Instant.FromUtc(2026, 6, 1, 10, 0), Instant.FromUtc(2026, 6, 1, 11, 0),
                 false, null, null),

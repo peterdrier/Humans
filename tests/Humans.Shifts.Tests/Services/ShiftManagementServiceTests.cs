@@ -1072,7 +1072,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task DeleteRotaAsync_WithOnlyPendingSignups_CancelsThemAndDeletes()
+    public async Task DeleteRotaAsync_WithOnlyPendingSignups_DeletesThemWithTheRota()
     {
         // Arrange: rota with two Pending signups (no Confirmed)
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);

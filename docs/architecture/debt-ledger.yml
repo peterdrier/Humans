@@ -127,8 +127,8 @@ themes:
       (RoleAssignment — stays); 15 cross-section merge/lifecycle or
       intra-section sibling signals that must stay (Consent, ActiveTeams,
       UserInfo, RoleAssignmentClaims, ShiftAuthorization, NavBadge,
-      NotificationMeter, VotingBadge, EarlyEntry, ShiftView, LegalDocument [EF
-      interceptor], Ticket, CampInfo [CampRoleService sibling], IssuesBadge,
+      NotificationMeter, VotingBadge, EarlyEntry, ShiftView, LegalDocument [direct
+      service-side InvalidateAll()], Ticket, CampInfo [CampRoleService sibling], IssuesBadge,
       CampLeadJoinRequestsBadge); 1 speculative future hook with no live caller
       (IEventViewInvalidator — kept for open issue #719; delete-vs-keep is
       Peter's call). None are sweep-mechanical. The HUM0028 ratchet correctly
@@ -325,7 +325,7 @@ inbox:
     review: panel
   - added: 2026-09-12
     id: CENTRAL-47
-    what: "docs/sections/G5-SECTION-TEMPLATE.md:1037 step 6 still tells a new section that authorization policies stay in Shell's AuthorizationPolicyExtensions; ISectionPolicies superseded that (nobodies-collective/Humans#1076) and the sections with their own policies now register them themselves. Shell's own AuthorizationPolicyExtensions class doc says the new rule while :22 still cites \"design §15 step 6's asymmetry\" for the old one. The template is what new sections are built from, so it manufactures the drift. These Section.cs files also cite \"design §8\" for this, which is design-rules.md's Table Ownership Map — the intended source is the G5 split-design spec §8: Humans.Development:34, Humans.Debug:20, Humans.Issues:42, Humans.Expenses:51, Humans.Containers:27, Humans.Budget:54. Checked and NOT stale: Humans.Camps:78 and Humans.Users:136 (/section-doctor on Cantina 2026-09-12)."
+    what: "docs/sections/G5-SECTION-TEMPLATE.md:1037 step 6 still tells a new section that authorization policies stay in Shell's AuthorizationPolicyExtensions; ISectionPolicies superseded that (nobodies-collective/Humans#1076) and the sections with their own policies now register them themselves. Shell's own AuthorizationPolicyExtensions class doc says the new rule while :22 still cites \"design §15 step 6's asymmetry\" for the old one. The template is what new sections are built from, so it manufactures the drift. These Section.cs files also cite \"design §8\" for this, which is design-rules.md's Table Ownership Map — the intended source is the G5 split-design spec §8: Humans.Debug:20, Humans.Issues:42, Humans.Expenses:51, Humans.Containers:27, Humans.Budget:54. Checked and NOT stale: Humans.Camps:78 and Humans.Users:136 (/section-doctor on Cantina 2026-09-12)."
     review: panel
     root: CENTRAL-57
   - added: 2026-09-03
@@ -370,7 +370,7 @@ inbox:
   # grandfathered-hum0024-nav-strip).
   - added: 2026-08-07
     id: CENTRAL-12
-    what: "Shifts section's own Web layer (ShiftAdminController, ShiftsController, VolunteerTrackingController, ShiftViewModels.cs, ShiftAdminPageBuilder, ShiftBrowsePageBuilder, ShiftDashboardPageBuilder, ShiftBrowseMapper, ShiftFilterResolver, ShiftSignupBucketer, ShiftVolunteerSearchBuilder, DevelopmentDashboardSeeder, ShiftSignupsViewComponent) carries the EF EventSettings entity as a view-model/builder field on read-only display paths — should be BurnSettingsInfo per nobodies-collective/Humans#809's acceptance criteria. Distinct from the write/edit path (EventSettingsFormMapper), which legitimately keeps the entity. ~10 interconnected files forming one section's own display pipeline — warrants its own dedicated section-scoped PR rather than folding into #809's cross-section batch (found while working nobodies-collective/Humans#809)"
+    what: "Shifts section's own Web layer (ShiftAdminController, ShiftsController, VolunteerTrackingController, ShiftViewModels.cs, ShiftAdminPageBuilder, ShiftBrowsePageBuilder, ShiftDashboardPageBuilder, ShiftBrowseMapper, ShiftFilterResolver, ShiftSignupBucketer, ShiftVolunteerSearchBuilder, ShiftSignupsViewComponent) carries the EF EventSettings entity as a view-model/builder field on read-only display paths — should be BurnSettingsInfo per nobodies-collective/Humans#809's acceptance criteria. Distinct from the write/edit path (EventSettingsFormMapper), which legitimately keeps the entity. ~10 interconnected files forming one section's own display pipeline — warrants its own dedicated section-scoped PR rather than folding into #809's cross-section batch (found while working nobodies-collective/Humans#809)"
     review: panel
   - added: 2026-09-20
     id: CENTRAL-62
@@ -388,10 +388,6 @@ inbox:
     id: CENTRAL-11
     what: "GitHubGuideContentSource.GetMarkdownAsync / ListMarkdownStemsAsync accept a CancellationToken they never forward — Octokit's GetRawContentByRef / GetAllContentsByRef expose no CT overload. Read-only so harmless, but the signature promises something it cannot deliver (found while auditing nobodies-collective/Humans#950)"
     review: light
-  - added: 2026-08-07
-    id: CENTRAL-13
-    what: "ShiftManagementService.DeleteRotaAsync / DeleteShiftAsync call signup.Cancel(clock, ...) on pending signups that can never be persisted: the rota/shift is read AsNoTracking through IShiftManagementRepository, and DeleteRotaCascadeAsync / DeleteShiftCascadeAsync then RemoveRange those same rows from their own context. The loop is dead — decide whether pending signups should be Cancelled-then-kept for audit history or simply deleted, then make the code say so (found while closing the mutation-coverage gaps in nobodies-collective/Humans#705; Stryker reports the two statements as equivalent mutants)"
-    review: panel
   - added: 2026-08-02
     id: CENTRAL-8
     what: "Humans.Integration.Tests is timeout-flaky under parallel load — each of the 14 test classes owns an IClassFixture<HumansWebApplicationFactory> that starts its own Testcontainers Postgres, and with no maxParallelThreads cap several tests land at 26-29s against HumansFact's 30s default (DetailedHealthEndpoint_ReturnsJsonWithStatus, Volunteer_cannot_create_order_against_someone_elses_camp_season, UnprivilegedUser_AdminPostToOtherUserEmails_ReturnsForbid observed timing out). Measured ~1-in-3 failure rate on unmodified origin/main. Fix is a shared collection fixture or a maxParallelThreads cap, not longer timeouts (found while verifying nobodies-collective#925)"
@@ -436,10 +432,6 @@ inbox:
     review: panel
     status: needs-detail
     blocked_on: "A measured cold-cache timing against a stated budget; no threshold is named, so nothing can be shown fixed."
-  - added: 2026-08-21
-    id: CENTRAL-23
-    what: "TicketTailor re-sync can resurrect erased ticket PII. GDPR erasure (nobodies-collective/Humans#853) tombstones BuyerName/BuyerEmail/AttendeeName/AttendeeEmail and nulls MatchedUserId in our copy of the vendor's data (Humans.Tickets/Data/TicketRepository.EraseUserPiiAsync), but the vendor still holds the real record. The next TicketTailor sync re-reads it and can write the real name and email straight back over the tombstone, silently undoing the erasure with no signal that it happened. Fixing it properly means either a per-order erased flag the sync respects (needs a column) or deleting the vendor-side record; both are larger than #853 and the first is a schema change."
-    review: panel
   - added: 2026-08-23
     id: CENTRAL-24
     what: "HumansControllerBase.SetError service-locates ILoggerFactory off HttpContext.RequestServices while SetSuccess and SetInfo resolve nothing. The original symptom is gone — the lookup is null-conditional (HttpContext?.RequestServices?.GetService), so it no longer throws in a controller unit test — but the asymmetry and the service-location remain, and injecting the logger would remove both. No test scaffolding rides on it: Onboarding's controller tests set ControllerContext and ctrl.Url because RedirectToAction resolves IUrlHelperFactory, which injection here would not change. Base's, so it has no section ledger. Found by /section-doctor on Onboarding 2026-08-23; symptom re-verified and corrected, test-scaffolding claim struck, 2026-09-13."
@@ -463,16 +455,6 @@ inbox:
     id: CENTRAL-31
     what: "docs/architecture/design-rules.md:340 says contributors \"read through their own IDbContextFactory<TContext>\" and names AgentService as an example; AgentRepository takes a scoped AgentDbContext by injection. The conclusion (sequential is no longer a correctness requirement) is right; the stated mechanism is not — the accurate invariant is that no two contributors share a context instance (finding 25, /section-doctor on Gdpr 2026-08-27)."
     review: panel
-    root: CENTRAL-57
-  - added: 2026-09-10
-    id: CENTRAL-36
-    what: ".claude/skills/test-site/SKILL.md names /Profile/Emails and /Profile/Privacy; the live routes are /Profile/Me/Emails and /Profile/Me/Privacy (finding 19, /section-doctor on Consent 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
-    review: light
-    root: CENTRAL-57
-  - added: 2026-09-10
-    id: CENTRAL-37
-    what: "The HUM0028 theme's caller-map note above says the LegalDocument cache invalidation runs via an EF interceptor; it has been direct service-side InvalidateAll() calls since nobodies-collective/Humans#751 (finding 19, /section-doctor on Consent 2026-08-31; swept in by /section-doctor on Rideshare 2026-09-10)."
-    review: light
     root: CENTRAL-57
   - added: 2026-09-10
     id: CENTRAL-39
@@ -500,11 +482,6 @@ inbox:
     id: CENTRAL-50
     what: "src/Sections/Humans.EarlyEntry has no .Contracts leaf, so every consumer — Gate among them — takes a ProjectReference on the whole section and sees all of it rather than a contracts surface. Cross-cutting: it wants one carve-out decision, not a fix per consumer (finding 14, /section-doctor on Gate 2026-08-31; swept in by /section-doctor on Issues 2026-09-14)."
     review: panel
-  - added: 2026-09-14
-    id: CENTRAL-52
-    what: "docs/architecture/section-conformance.yml's seeding notes record \"no Docs/ in Settings or TicketTailor\" as a pre-existing detector hit; both sections carry Docs/<Section>.md now. The file is read-only to a section-doctor run, so it is recorded here rather than edited (finding 25, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
-    review: light
-    root: CENTRAL-57
   - added: 2026-09-14
     id: CENTRAL-54
     what: "The *Invalidator family (IEarlyEntryInvalidator, IEventViewInvalidator, …, all [Grandfathered(\"HUM0028\")]) makes every cross-section cache flush a caller's job, so a contributor that forgets to call one leaves stale data (findings 1 and 12, /section-doctor on EarlyEntry 2026-09-05, each of which is such a gap). Peter 2026-09-14, ruling finding 1: 'coming up with a better way than invalidators is a todo for the winter' — design the replacement (owning decorator absorbs invalidation), don't keep ratcheting call sites."

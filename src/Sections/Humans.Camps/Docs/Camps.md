@@ -41,6 +41,8 @@ Per-year season data (name, blurbs, community info, placement). `EeSlotCount` (i
 
 Image metadata; files are stored on disk via the shared `IFileStorage` abstraction (key `uploads/camps/{campId}/{guid}{.ext}`, served as static files at `/uploads/camps/...`). Display order is tracked per camp.
 
+Uploaded display names are stored as a basename only and must fit the 256-character `CampImage.FileName` column; invalid names fail before a file or row is written.
+
 **Table:** `camp_images`
 
 ### CampHistoricalName
@@ -164,7 +166,7 @@ Four controllers serve this section. The MVC URL surface is dual-routed under `/
 | `/Camps/Admin/Roles/{slug}` | `CampAdminController.RolesDrillDown` | Cross-camp roster for one role definition (issue nobodies-collective/Humans#740): per-camp-season assignees with name + Google email and a `mailto:` to the derived group email; year-picker drop-down. CampAdmin only. |
 | `/Camps/Admin/Compliance` | `CampComplianceController` | Read-only role-staffing matrix: rows = active barrios (Active/Full) for the year, columns = active role definitions, cells = assignee avatars + a dashed placeholder per unfilled required slot. Gated by `CampComplianceAccess` (CampAdmin/Admin **or** any team/sub-team coordinator), broader than the CampAdmin-only management surface. |
 | `/Camps/Admin/Export` | `CampAdminController` | CSV export |
-| `/Camps/Admin/{Approve,Reject,OpenSeason,CloseSeason,SetNameLockDate,Reactivate,UpdateRegistrationInfo,Delete}/...` | `CampAdminController` | Season lifecycle actions (`OpenSeason`/`CloseSeason` are posted to from `/Settings#barrios` and redirect back to that tab; the rest stay `/Camps/Admin`-only and redirect to `/Camps/Admin`) |
+| `/Camps/Admin/{Approve,Reject,OpenSeason,CloseSeason,SetNameLockDate,Reactivate,Delete}/...` | `CampAdminController` | Season lifecycle actions (`OpenSeason`/`CloseSeason` are posted to from `/Settings#barrios` and redirect back to that tab; the rest stay `/Camps/Admin`-only and redirect to `/Camps/Admin`) |
 | `/api/camps/{year}` | `CampApiController` | Year directory JSON |
 | `/api/camps/{year}/placement` | `CampApiController` | Placement-data JSON |
 | `/Camps/{slug}/Members/{campMemberId}/EarlyEntry` | `CampController` | Grant / revoke EE on a camp member |
@@ -191,7 +193,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - **`Full` is informational only — it does not gate join requests.** It tells visitors the camp currently looks full; `RequestCampMembershipAsync` still matches `Active` **or** `Full` for the public year, because Humans doesn't yet know everyone who is actually in the camp (Peter, 2026-08-20). Don't reintroduce a block here — that reading of the issue was explicitly overridden.
 - Only camp leads or CampAdmin can edit a camp.
 - **Lead-facing mutations are camp-scoped.** Ids arriving from a form (seasonId, imageId, nameId) are proven to belong to the slug-resolved camp in `CampService` (`UpdateSeasonAsync`, `WithdrawSeasonAsync`, `ChangeSeasonNameAsync`, `DeleteImageAsync`, `RemoveHistoricalNameAsync`, `SetSeasonStatusAsync` all take a `scopedCampId` and throw on mismatch) — a lead of camp A cannot mutate camp B by crafting an id.
-- Camp images are stored on disk via the shared `IFileStorage` abstraction (key prefix `uploads/camps/{campId}/`); metadata and display order are tracked per camp.
+- Camp images are stored on disk via the shared `IFileStorage` abstraction (key prefix `uploads/camps/{campId}/`); metadata and display order are tracked per camp. The upload route permits 11 MB for one 10 MB image plus multipart overhead; the service enforces the image cap.
 - **Name-lock + historical-name auto-log:** renaming a season (`ChangeSeasonNameAsync`) is rejected once the season's `NameLockDate` has passed (today ≥ `NameLockDate`). Before the lock date, a rename auto-records the *old* name as a `CampHistoricalName` with `Source = NameChange` and writes a `CampNameChanged` audit entry.
 - Camp settings control which year is shown publicly and which seasons accept registrations.
 - Resource-based authorization per design-rules §11: `CampAuthorizationHandler` + `CampOperationRequirement` gate all admin writes.
@@ -243,7 +245,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Active leads appear in the camp's active-members list automatically, tagged with an `IsLead` flag. They do not need a `CampMember` row to be shown as part of the camp.
 - When a CampMember is removed (Leave / Withdraw / Remove paths set `RemovedAt`), `ICampService` calls `ICampRoleService.RemoveAllForMemberAsync` before the soft-delete to clear any role assignments held by that member.
 - When a lead uses the "add active member" shortcut at `/Camps/{slug}/Members/Add`, `ICampService.AddCampMemberToActiveSeasonAsync` creates `CampMember(Status=Active)` directly and writes a `CampMemberAddedByLead` audit entry.
-- Assigning a per-camp role writes a `CampRoleAssigned` audit entry and sends a best-effort `CampRoleAssigned` notification to the assignee. Unassign writes `CampRoleUnassigned` and does **not** notify.
+- Assigning a per-camp role writes a `CampRoleAssigned` audit entry and sends a best-effort `CampRoleAssigned` notification to the assignee. Delivery failures are logged, while caller cancellation propagates. Unassign writes `CampRoleUnassigned` and does **not** notify.
 - Definition CRUD (`CampRoleDefinitionCreated` / `Updated` / `Deactivated` / `Reactivated`) writes audit entries; ordering is `repo.Add` then `SaveChangesAsync` then `auditLog.LogAsync`.
 - When an account merge accepts, `ICampService.ReassignAsync` folds the source's whole camp footprint onto the target: each source `CampMember` is re-pointed to the target (its `CampRoleAssignment` rows ride along on the unchanged `CampMemberId`); when the target already holds a live (`Pending`/`Active`) membership for the same season, the source member's roles are folded onto the target's member (target wins on `IX_camp_role_assignments_unique` collision, `HasEarlyEntry` is OR-ed in) and the now-empty source member is dropped. `Removed` source members always re-point. Because Camp Lead is now a `CampRoleAssignment`, leads move too. The per-user early-entry cache is evicted for both source and target after the fold. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 - Granting / revoking EE writes `CampEarlyEntryGranted` / `CampEarlyEntryRevoked` audit entries. Idempotent set writes no audit row.
@@ -265,6 +267,10 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - **Early Entry contributor:** the `CachingCampService` decorator implements `IEarlyEntryProvider` — emits one grant per Active `HasEarlyEntry` member (entry date = `EventSettings.EarlyEntryStartOffset` resolved against `GateOpeningDate`, read via `ISettingsService`; no grants emitted while the offset is unset, source = "Camp: {name}"). `SetEarlyEntryAsync` and the member-removal cascade evict the per-user EE cache via `IEarlyEntryInvalidator`.
 
 ## Architecture
+
+`MyCampsViewComponent` owns the private profile-page membership list. Its settings and
+per-year camp reads receive `HttpContext.RequestAborted`; operational failures still hide
+the advisory component, while a disconnected request propagates cancellation.
 
 **Owning services:** `CampService`, `CampContactService`, `CampRoleService`
 **Owned tables:**

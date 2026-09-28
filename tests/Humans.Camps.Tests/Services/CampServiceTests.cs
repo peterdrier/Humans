@@ -1517,6 +1517,22 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
+    public async Task UploadImageAsync_RejectsOverlongFilenameBeforeWriting()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        var fileName = new string('a', 253) + ".jpg";
+
+        var result = await _service.UploadImageAsync(
+            camp.Id, Stream.Null, fileName, "image/jpeg", 1,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("256 characters or fewer");
+        (await CampsDb.CampImages.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task RemoveHistoricalNameAsync_WrongCamp_Throws()
     {
         await SeedSettingsAsync();

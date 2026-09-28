@@ -101,7 +101,7 @@ Admin sub-pages hosted on `CityPlanningController` under `/CityPlanning/BarrioMa
 | `POST /CityPlanning/BarrioMap/Admin/OpenContainerPlacement` | Open container placement phase |
 | `POST /CityPlanning/BarrioMap/Admin/CloseContainerPlacement` | Close container placement phase |
 | `POST /CityPlanning/BarrioMap/Admin/UpdatePlacementDates` | Set informational open/close datetimes (redirects to `/Settings#city-planning`) |
-| `POST /CityPlanning/BarrioMap/Admin/UpdateRegistrationInfo` | Set the barrio registration page's markdown (redirects to `/Settings#city-planning`) |
+| `POST /CityPlanning/BarrioMap/Admin/UpdateRegistrationInfo` | Set the barrio registration page's markdown from its sole editor (redirects to `/Settings#city-planning`) |
 | `POST /CityPlanning/BarrioMap/Admin/UploadLimitZone` | Upload limit zone GeoJSON |
 | `GET /CityPlanning/BarrioMap/Admin/DownloadLimitZone` | Download limit zone GeoJSON |
 | `POST /CityPlanning/BarrioMap/Admin/DeleteLimitZone` | Delete limit zone |
@@ -176,7 +176,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 
 - Saving a polygon creates a CampPolygonHistory entry with note `"Saved"`, or the note the client supplied — the bulk import sends `"Imported {timestamp}"`.
 - Restoring a historical version overwrites the current polygon with the restored version and appends a history entry for it (note: `"Restored from {timestamp}"`).
-- SignalR broadcasts `CampPolygonUpdated` to all connected clients after every save.
+- SignalR broadcasts `CampPolygonUpdated` to all connected clients after every save. Broadcast failures are logged without undoing a saved polygon; an aborted request instead propagates cancellation.
 
 ## Cross-Section Dependencies
 
@@ -198,7 +198,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - **Decorator decision — no caching decorator.** Admin-facing, low-traffic (same rationale as Governance / User / Feedback).
 - **Read/write interface split.** `ICityPlanningServiceRead` (`GetSettingsAsync`, `GetRegistrationInfoAsync`, `IsCityPlanningTeamMemberAsync`) is the cross-section read surface. External sections inject `ICityPlanningServiceRead`; `ICityPlanningService : ICityPlanningServiceRead` adds writes. `ContainerAuthorizationHandler` and `ContainerController` inject `ICityPlanningServiceRead` — not `ICityPlanningService`. The service exposes no display-name read; `CityPlanningHub` resolves the burner name directly via `IUserServiceRead.GetUserInfoAsync`, and lives at `Services/CityPlanningHub.cs` in this section — `internal`, mapped by the section's own `SectionEndpoints : ISectionEndpoints` rather than by Shell's `MapHub<T>` on the concrete type. See `memory/architecture/section-read-write-split.md`.
 - **Save/restore return type.** `SaveCampPolygonAsync` and `RestoreCampPolygonVersionAsync` return `CampPolygonSaveResult(GeoJson, AreaSqm)`, a DTO — keeping EF entities inside the service boundary.
-- **Upload pipeline.** `UpdateLimitZoneFromUploadAsync` / `UpdateOfficialZonesFromUploadAsync` accept `IFormFile?` directly — file read, size limit and JSON validation all live in the service — and return `GeoJsonUploadResult`. `UpdatePlacementDatesAsync` accepts raw `string?` date inputs, parses them internally, and returns `PlacementDateUpdateResult`; the `LocalDateTime` parse logic and `DateFormattingExtensions` are not the controller's.
+- **Upload pipeline.** `UpdateLimitZoneFromUploadAsync` / `UpdateOfficialZonesFromUploadAsync` accept `IFormFile?` directly — file read, 10 MB size limit and JSON validation all live in the service — and return `GeoJsonUploadResult`. Their routes, and the placement-image API route, allow 11 MB to cover multipart overhead without allowing the server default to buffer a larger upload. `UpdatePlacementDatesAsync` accepts raw `string?` date inputs, parses them internally, and returns `PlacementDateUpdateResult`; the `LocalDateTime` parse logic and `DateFormattingExtensions` are not the controller's.
 - **No year-keyed settings read on `ICityPlanningRepository`.** All settings access routes through `GetOrCreateSettingsAsync`, which creates the row with `IsPlacementOpen = false` when absent.
 - **`UpdatePlacementDatesAsync` is off the contract.** It lives only on the concrete `CityPlanningService`, which the controller injects; it is on neither `ICityPlanningService` nor `ICityPlanningServiceRead`.
 - **Cross-section reads** route through `ICampServiceRead`, `ITeamServiceRead`, and `IUserServiceRead`. History rows carry no cross-domain navigation: `CampPolygonHistories` stores `ModifiedByUserId` only, and the service resolves names through a batched `IUserServiceRead.GetUserInfosAsync` lookup.

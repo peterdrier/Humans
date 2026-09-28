@@ -220,7 +220,7 @@ public class SurveyServiceTests
                     null,
                     L("Fire risk"),
                     L("Fire risk forecast table"),
-                    Upload: new SurveyImageUpload(content, "image/png", "fire-risk.png", 3)),
+                    Upload: new SurveyImageUpload(content, "image/png", "C:\\uploads\\fire-risk.png", 3)),
             ]);
 
         await CreateService().CreateAsync(
@@ -233,9 +233,34 @@ public class SurveyServiceTests
         var image = saved.InformationImages.Should().ContainSingle().Subject;
         image.StoragePath.Should().StartWith($"uploads/surveys/{captured.Id}/{questionId}/");
         image.StoragePath.Should().EndWith(".png");
+        image.FileName.Should().Be("fire-risk.png");
         image.Label.Resolve("en", "en").Should().Be("Fire risk");
         await _fileStorage.Received(1).SaveAsync(
             image.StoragePath, content, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_an_information_image_filename_over_256_characters()
+    {
+        await using var content = new MemoryStream([1, 2, 3]);
+        var information = new QuestionInput(
+            Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
+            L("Conditions"), L("Context"), false, null, null,
+            LocalizedText.Empty, LocalizedText.Empty, null, [],
+            InformationImages:
+            [
+                new InformationImageInput(
+                    null, L("Fire risk"), L("Fire risk forecast table"),
+                    Upload: new SurveyImageUpload(content, "image/png", new string('a', 253) + ".png", 3)),
+            ]);
+
+        var act = () => CreateService().CreateAsync(
+            Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*256 characters or fewer*");
+        await _fileStorage.DidNotReceive().SaveAsync(
+            Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1337,6 +1362,31 @@ public class SurveyServiceTests
         result.EmailsQueued.Should().Be(1);
         result.Failed.Should().Be(1);
         await _repo.Received(1).UpdateInvitationStatusAsync(
+            Arg.Any<Guid>(), EmailOutboxStatus.Failed, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SendInvitesAsync_propagates_cancellation_without_marking_the_invitation_failed()
+    {
+        var teamId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(TeamWith(teamId, userId));
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [userId] = "u@example.org" });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), aborted.Token)
+            .Returns(Task.FromCanceled(aborted.Token));
+
+        var act = () => CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), aborted.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _repo.DidNotReceive().UpdateInvitationStatusAsync(
             Arg.Any<Guid>(), EmailOutboxStatus.Failed, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 

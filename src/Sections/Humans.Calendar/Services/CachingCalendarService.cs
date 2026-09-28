@@ -136,7 +136,7 @@ internal sealed class CachingCalendarService(
     }
 
     public async Task<CalendarEventMutationResult> UpdateEventWithResultAsync(
-        Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
+        Guid id, CreateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
     {
         var result = await WithInner(inner => inner.UpdateEventWithResultAsync(id, dto, updatedByUserId, ct));
         if (result.Succeeded)

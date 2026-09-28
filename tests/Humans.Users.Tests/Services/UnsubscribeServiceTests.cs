@@ -122,6 +122,23 @@ public class UnsubscribeServiceTests
     }
 
     [HumansFact]
+    public async Task ValidateTokenAsync_ReturnsInvalid_ForLegacyTokenWithMalformedUserId()
+    {
+        _preferenceService.ValidateUnsubscribeToken(Arg.Any<string>())
+            .Returns((TokenValidationStatus.Invalid, Guid.Empty, MessageCategory.Marketing));
+
+        var protector = _dataProtection
+            .CreateProtector("CampaignUnsubscribe")
+            .ToTimeLimitedDataProtector();
+        var token = protector.Protect("not-a-guid", TimeSpan.FromDays(90));
+
+        var result = await _service.ValidateTokenAsync(token, Xunit.TestContext.Current.CancellationToken);
+
+        result.IsValid.Should().BeFalse();
+        result.IsExpired.Should().BeFalse();
+    }
+
+    [HumansFact]
     public async Task ValidateTokenAsync_ReturnsInvalid_WhenUserMissingForValidNewToken()
     {
         var userId = Guid.NewGuid();

@@ -26,10 +26,11 @@ public sealed class CommunicationPreferencesPanelViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, bool readOnly = false)
     {
-        var prefs = await commPrefService.GetPreferencesReadOnlyAsync(userId);
+        var ct = HttpContext.RequestAborted;
+        var prefs = await commPrefService.GetPreferencesReadOnlyAsync(userId, ct);
         var prefsByCategory = prefs.ToDictionary(p => p.Category);
 
-        var hasTicketOrder = (await ticketQueryService.GetUserTicketHoldingsAsync(userId))
+        var hasTicketOrder = (await ticketQueryService.GetUserTicketHoldingsAsync(userId, ct))
             .HasTicketAttendeeMatch;
 
         var categories = new List<CategoryPreferenceItem>();

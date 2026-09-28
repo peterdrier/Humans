@@ -194,6 +194,7 @@ internal sealed class ProfileController(
 
     [HttpPost("Me/Edit")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(21 * 1024 * 1024)] // 20 MB picture plus multipart overhead; upload validation enforces the file cap.
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
         // Tag catalog not posted back — repopulate up front so validation-failure rerenders the picker.
@@ -543,7 +544,7 @@ internal sealed class ProfileController(
         }
 
         using var uploadStream = new MemoryStream();
-        await upload.CopyToAsync(uploadStream);
+        await upload.CopyToAsync(uploadStream, HttpContext.RequestAborted);
         var result = ResizeProfilePicture(uploadStream.ToArray());
         if (result is null)
         {
@@ -894,6 +895,10 @@ internal sealed class ProfileController(
             var fileName = $"nobodies-profiles-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
 
             return File(bytes, "application/json", fileName);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

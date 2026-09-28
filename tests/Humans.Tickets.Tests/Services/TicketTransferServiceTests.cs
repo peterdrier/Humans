@@ -181,6 +181,22 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansFact]
+    public async Task CreateRequest_PropagatesRequestCancellation_WhenEmailSendIsCancelled()
+    {
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), aborted.Token)
+            .Returns(_ => Task.FromCanceled(aborted.Token));
+
+        var act = () => _service.CreateRequestAsync(
+            new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, aborted.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _transferRepo.Received(1).AddAsync(Arg.Any<TicketTransferRequest>(), aborted.Token);
+    }
+
+    [HumansFact]
     public async Task CreateRequest_Throws_WhenReceiverIsSender()
     {
         var act = () => _service.CreateRequestAsync(

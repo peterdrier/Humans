@@ -127,7 +127,7 @@ No one reads audit entries anonymously. The `/AuditLog` dashboard is gated to Bo
 
 ### `<vc:audit-log>` — the render path for other sections
 
-A section that wants to *show* audit history emits `<vc:audit-log>` with a predicate; it never reads audit itself. The component owns the read (`IAuditViewerService`) and the render.
+A section that wants to *show* audit history emits `<vc:audit-log>` with a predicate; it never reads audit itself. The component owns the read (`IAuditViewerService`) and the render; it propagates a cancelled host request instead of logging it as a failed empty history.
 
 - **Predicates** (first match wins): `entity-ids` (several ids of one `entity-type`, one query each, merged newest-first, capped at `limit`); otherwise `entity-type` / `entity-id` / `user-id` / `actions`. `since` drops anything older, applied after the read.
 - **Layouts** (`layout`): `line` (default) is the narrative one-line-per-entry list; `table` is When · Actor · Action · Subject · Description · Target, subsettable via `columns`; `activity` is the dashboard feed (bubble · action · description · timestamp) the admin `AdminActivityCard` renders. The Google-specific `sync` layout and its `resource-id` / `google-sync-only` predicates left with the sync wing in nobodies-collective/Humans#1083 — GoogleIntegration's own `<vc:google-sync-log>` renders that grid now.

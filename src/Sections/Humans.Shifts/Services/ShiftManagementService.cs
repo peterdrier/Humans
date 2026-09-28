@@ -289,15 +289,6 @@ internal sealed class ShiftManagementService(
             throw new InvalidOperationException(
                 $"Cannot delete — {confirmedCount} humans have confirmed signups. Bail or reassign them first.");
 
-        // Cancel pending signups before cascade delete (ShiftSignup→Shift FK is Restrict).
-        foreach (var shift in rota.Shifts)
-        {
-            foreach (var signup in shift.ShiftSignups.Where(d => d.Status == SignupStatus.Pending).ToList())
-            {
-                signup.Cancel(clock, "Rota deleted");
-            }
-        }
-
         // Snapshot user-ids pre-delete so cache eviction works after cascade.
         var affectedUserIds = rota.Shifts
             .SelectMany(s => s.ShiftSignups)
@@ -741,11 +732,6 @@ internal sealed class ShiftManagementService(
         if (confirmedCount > 0)
             throw new InvalidOperationException(
                 $"Cannot delete — {confirmedCount} humans have confirmed signups. Bail or reassign them first.");
-
-        foreach (var signup in shift.ShiftSignups.Where(d => d.Status == SignupStatus.Pending))
-        {
-            signup.Cancel(clock, "Shift deleted");
-        }
 
         var rotaId = shift.RotaId;
         var affectedUserIds = shift.ShiftSignups.Select(d => d.UserId).Distinct().ToList();

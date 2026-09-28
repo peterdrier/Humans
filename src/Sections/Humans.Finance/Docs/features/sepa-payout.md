@@ -197,13 +197,55 @@ never ages out of its own re-check. The floor (90 days plus the 2-day generation
 *matching*, which takes no row generated outside the feed window anyway. A booking the sweep refuses
 is logged at Warning. One bad line or one Holded exception never aborts the rest of the run.
 
+## One bank line for a whole file — Process
+
+The file asks for one debit per transfer (`BtchBookg` false, below), but a bank may still debit a
+multi-transfer file as a single line — the first Sabadell test showed one €100 line for a 10/20/30/40
+file, with no creditor account in its text. The per-transfer matcher cannot pair that line with
+anything, so it is matched to the **file** instead, and only a human books it.
+
+`GetSepaPayoutsAsync` pairs an outgoing line with a file when (`BatchLineRefusal`):
+
+- the file holds at least two transfers, and the line's amount is **exactly** their total;
+- the line is `pending` in Holded, dated no earlier than the file's first payable day, and the file
+  is inside the feed window;
+- every transfer in the file is unbooked, or booked against **this** line (a Process that stopped
+  part-way); no transfer of another file carries the line;
+- the line's text does not name one transfer's account and amount — that is the transfer's own line;
+- it is the only file that line fits, and the only line that fits that file.
+
+A paired line renders on the file's card with its date, amount, id and text, and a badge saying
+whether the text quotes the file's id (`MsgId`/`PmtInfId`) or it matched on total and date only. The
+file's rows say "paid by the file's one bank line". A transfer in the file that cannot be booked
+(unbound, rebound) is named instead of the button. An ambiguous line stays in the "needs a human"
+panel with the reason.
+
+**Process** (`POST /Finance/Sepa/BookFile` → `BookSepaFileAsync`, behind the same booking gate):
+
+1. Re-reads the feed and re-runs the pairing, and the two ambiguity checks — the posted ids are never
+   trusted.
+2. Checks every unbooked transfer's binding **before** posting anything.
+3. Books each unbooked transfer as a single booking would (live balance, tag resume, FIFO documents,
+   journal remainder, dated the line, persisted before anything else), skipping only the
+   per-transfer pairing and the reconcile. Each is audited as one of N transfers on that line.
+4. Reconciles the line **once**, against every document and entry the run posted, and stamps
+   `ReconciledAt` on every row of the file — audited `RECONCILED` per transfer. A run that resumed a
+   part-processed file, or whose entry ref is unconfirmed, cannot name all of the line's postings,
+   so it stamps only if Holded then reads the line `reconciled`; otherwise the rows stay
+   reconcile-pending and the sweep's re-check picks them up.
+
+A refusal part-way (Holded refuses a posting, a balance falls short) stops the run: transfers already
+booked stay booked against the line, the failing one is audited as usual, and pressing Process again
+books only the rest. The sweep never books a line for a whole file.
+
 ## The file
 
 Root `Document` / `CstmrCdtTrfInitn` in `urn:iso:std:iso:20022:tech:xsd:pain.001.001.09`, UTF-8,
 one `PmtInf`, one `CdtTrfTxInf` per recipient.
 
 - `GrpHdr`: `MsgId`, `CreDtTm`, `NbOfTxs`, `CtrlSum`, `InitgPty` (name + presenter id).
-- `PmtInf`: `PmtInfId`, `PmtMtd` `TRF`, `NbOfTxs`, `CtrlSum`, `SvcLvl/Cd` `SEPA`, `ReqdExctnDt`
+- `PmtInf`: `PmtInfId`, `PmtMtd` `TRF`, `BtchBookg` `false` (one debit per transfer — Norma 34-14's
+  "indicador de apunte en cuenta" — so each bank line names its own creditor account), `NbOfTxs`, `CtrlSum`, `SvcLvl/Cd` `SEPA`, `ReqdExctnDt`
   (generation date, Europe/Madrid), `Dbtr/Nm`, `DbtrAcct` IBAN, `DbtrAgt` (BIC when configured).
 - `CdtTrfTxInf`: `EndToEndId`, `InstdAmt Ccy="EUR"`, `Cdtr/Nm`, `CdtrAcct` IBAN, one
   `RmtInf/Ustrd` — `"<account> - NCA - <creditor name>"`, carrying **this transfer's own** creditor
@@ -282,7 +324,10 @@ dated the bank line, the reconcile ladder and its fallback, and the sweep's own 
 ways a booking could over-post or over-claim: a second booking racing the first, a resume from a
 click-dated legacy posting, a resume that cannot close the gap, the tagged credit leg on the bank
 account, a failed row save, and what `/Finance/Sepa` shows (the candidate line, the "needs a human"
-reasons, the unreadable feed, and a stale row that no longer blocks a newer one).
+reasons, the unreadable feed, and a stale row that no longer blocks a newer one) — plus the
+one-line-for-a-file Process: the file card's line and reference badge, two files of one total, an
+unprocessable file, every transfer booked and the line reconciled once, a wrong total, a bad binding
+refused before any posting, a resumed file, and the sweep leaving the line alone.
 `FinanceControllerTests.cs` covers the posted-cap parsing: unparseable or non-positive refuses
 before the service is called, a valid cap is parsed invariantly and passed through — the SEPA
 screen's file grouping, the "needs a human" panel, and the bank-feed-unreadable banner.

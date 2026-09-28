@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Humans.Backdoor.Filters;
 using Humans.Base.Controllers;
+using Humans.Base.Extensions;
 using Humans.Feedback.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
@@ -37,7 +38,7 @@ internal sealed class BackdoorFeedbackController(
         [FromQuery] int limit = 50)
     {
         var reports = await feedback.GetFeedbackListAsync(
-            status, category, limit: Math.Clamp(limit, 1, MaxLimit));
+            status, category, limit: limit.ClampPageSize(max: MaxLimit));
         return Ok(reports.Select(MapSummary));
     }
 

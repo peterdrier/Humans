@@ -16,8 +16,9 @@ internal sealed class EventGuideSettingsTabViewComponent(IEventService guide) : 
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        var existing = await guide.GetGuideSettingsAsync();
-        var eventSettingsOptions = await BuildEventSettingsOptionsAsync();
+        var ct = ViewComponentContext.ViewContext?.HttpContext?.RequestAborted ?? default;
+        var existing = await guide.GetGuideSettingsAsync(ct);
+        var eventSettingsOptions = await BuildEventSettingsOptionsAsync(ct);
 
         if (existing == null)
         {
@@ -28,7 +29,7 @@ internal sealed class EventGuideSettingsTabViewComponent(IEventService guide) : 
             });
         }
 
-        var eventSettings = await guide.GetEventSettingsByIdAsync(existing.EventSettingsId);
+        var eventSettings = await guide.GetEventSettingsByIdAsync(existing.EventSettingsId, ct);
         var tz = GetTimeZone(eventSettings);
         return View(new GuideSettingsViewModel
         {
@@ -43,9 +44,9 @@ internal sealed class EventGuideSettingsTabViewComponent(IEventService guide) : 
         });
     }
 
-    private async Task<List<EventSettingsOptionViewModel>> BuildEventSettingsOptionsAsync()
+    private async Task<List<EventSettingsOptionViewModel>> BuildEventSettingsOptionsAsync(CancellationToken ct)
     {
-        var options = await guide.GetEventSettingsOptionsAsync();
+        var options = await guide.GetEventSettingsOptionsAsync(ct);
         return EventSettingsOptionViewModel.From(options);
     }
 }

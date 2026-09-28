@@ -1,6 +1,8 @@
 using AwesomeAssertions;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.ViewComponents;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -27,6 +29,10 @@ public class DietaryMissingBannerViewComponentTests
             _shiftMgmt,
             _userRead,
             NullLogger<DietaryMissingBannerViewComponent>.Instance);
+        _sut.ViewComponentContext = new ViewComponentContext
+        {
+            ViewContext = new ViewContext { HttpContext = new DefaultHttpContext() }
+        };
     }
 
     private static UserInfo UserInfoWith(Guid userId, string? dietary) => UserInfoFactory.Create(
@@ -79,5 +85,25 @@ public class DietaryMissingBannerViewComponentTests
 
         result.Should().BeOfType<ContentViewComponentResult>()
               .Which.Content.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task RequestAborted_PropagatesCancellation()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _sut.ViewComponentContext = new ViewComponentContext
+        {
+            ViewContext = new ViewContext
+            {
+                HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token }
+            }
+        };
+        _shiftMgmt.HasQualifyingCantinaSignupAsync(Arg.Any<Guid>(), aborted.Token)
+            .Returns(Task.FromException<bool>(new OperationCanceledException(aborted.Token)));
+
+        var act = () => _sut.InvokeAsync(Guid.NewGuid());
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 }

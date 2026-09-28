@@ -11,8 +11,8 @@ using Humans.Users.Contracts;
 namespace Humans.Development.Controllers;
 
 // The two redirects below name "Index"/"Admin" as literals rather than
-// nameof(AdminController.Index): AdminController is Shell's and a section cannot name it
-// (step 5). AdminNavTreeRoutingTests walks the admin table against the running app.
+// nameof(AdminController.Index): AdminController is Shell's and a section cannot name it.
+// AdminNavTreeRoutingTests walks the admin table against the running app.
 [Authorize]
 [Route("dev/seed")]
 internal sealed class DevSeedController(

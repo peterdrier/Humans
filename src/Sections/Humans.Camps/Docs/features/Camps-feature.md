@@ -484,7 +484,6 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | `POST /Camps/Admin/CloseSeason/{year}` | Close season |
 | `POST /Camps/Admin/SetNameLockDate` | Set name lock date |
 | `GET /Camps/Admin/Export` | Export camps CSV |
-| `POST /Camps/Admin/UpdateRegistrationInfo` | Update the registration-info banner shown on the registration form |
 | `POST /Camps/Admin/Delete` | Delete camp (Admin only; campId as form field) |
 | `POST /Camps/Admin/Reactivate/{seasonId}` | CampAdmin reactivates a Full season to Active |
 | `POST /Camps/Admin/SetCampSeasonEeSlotCount/{seasonId}` | Set a season's Early Entry slot cap |

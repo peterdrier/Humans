@@ -23,7 +23,7 @@ internal sealed class MyWorkgroupsViewComponent(IWorkgroupService workgroups, IC
         if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             return Content(string.Empty);
 
-        var mine = await workgroups.GetForMemberAsync(userId);
+        var mine = await workgroups.GetForMemberAsync(userId, HttpContext.RequestAborted);
         return View(new MyWorkgroupsViewModel(mine, clock.GetCurrentInstant()));
     }
 }

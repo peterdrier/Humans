@@ -175,4 +175,24 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         result.Should().BeOfType<OkObjectResult>();
         (await CityPlanningDb.CampPolygons.SingleAsync(ct)).GeoJson.Should().Be(Square);
     }
+
+    [HumansFact]
+    public async Task SaveCampPolygon_CancelledBroadcast_PropagatesCancellationAfterSave()
+    {
+        using var cancellation = new CancellationTokenSource();
+        _allClients.SendCoreAsync(default!, default!, cancellation.Token)
+            .ReturnsForAnyArgs(_ => CancelBroadcastAsync(cancellation));
+
+        var act = () => CreateController(RoleNames.CampAdmin).SaveCampPolygon(
+            _campSeasonId, new SaveCampPolygonRequest(Square, 10), cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        (await CityPlanningDb.CampPolygons.SingleAsync(Xunit.TestContext.Current.CancellationToken)).GeoJson.Should().Be(Square);
+    }
+
+    private static async Task CancelBroadcastAsync(CancellationTokenSource cancellation)
+    {
+        await cancellation.CancelAsync();
+        throw new OperationCanceledException(cancellation.Token);
+    }
 }

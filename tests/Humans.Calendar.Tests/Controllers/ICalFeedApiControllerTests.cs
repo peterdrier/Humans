@@ -53,4 +53,17 @@ public class ICalFeedApiControllerTests
         result.Should().BeOfType<StatusCodeResult>()
             .Which.StatusCode.Should().Be(500);
     }
+
+    [HumansFact]
+    public async Task GetFeed_CancelledRequest_PropagatesCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        _feed.GetFeedIcsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), cancellation.Token)
+            .Returns<string?>(_ => throw new OperationCanceledException(cancellation.Token));
+
+        var act = () => CreateController().GetFeed(Guid.NewGuid(), Guid.NewGuid(), cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
 }

@@ -51,7 +51,7 @@ public record GoogleResourceSnapshot(
 public interface ITeamResourceService : IApplicationService
 {
     /// <summary>
-    /// Gets all active Google resources linked to a single team, ordered by provision time.
+    /// Gets all active Google resources linked to a single team.
     /// </summary>
     Task<IReadOnlyList<GoogleResourceSnapshot>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default);
 

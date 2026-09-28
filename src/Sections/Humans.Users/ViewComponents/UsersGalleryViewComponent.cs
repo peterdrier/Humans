@@ -27,7 +27,7 @@ internal sealed class UsersGalleryViewComponent(IUserServiceRead userService) : 
         if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
             return Content(string.Empty);
 
-        var info = await userService.GetUserInfoAsync(currentUserId);
+        var info = await userService.GetUserInfoAsync(currentUserId, HttpContext.RequestAborted);
         var displayName = string.IsNullOrEmpty(info?.BurnerName) ? "Current user" : info.BurnerName;
         var sample = new ProfileSummaryViewModel
         {

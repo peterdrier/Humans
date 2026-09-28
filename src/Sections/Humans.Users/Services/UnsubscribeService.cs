@@ -33,11 +33,10 @@ internal sealed class UnsubscribeService(
             .CreateProtector("CampaignUnsubscribe")
             .ToTimeLimitedDataProtector();
 
-        Guid userId;
+        string userIdString;
         try
         {
-            var userIdString = protector.Unprotect(token);
-            userId = Guid.Parse(userIdString);
+            userIdString = protector.Unprotect(token);
         }
         catch (CryptographicException ex)
         {
@@ -48,6 +47,9 @@ internal sealed class UnsubscribeService(
             logger.LogDebug(ex, "Legacy unsubscribe token failed to unprotect");
             return UnsubscribeTokenResult.Invalid();
         }
+
+        if (!Guid.TryParse(userIdString, out var userId))
+            return UnsubscribeTokenResult.Invalid();
 
         var legacyInfo = await userService.GetUserInfoAsync(userId, ct);
         if (legacyInfo is null)

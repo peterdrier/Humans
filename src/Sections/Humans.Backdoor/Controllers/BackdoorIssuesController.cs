@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text.Json.Serialization;
 using Humans.Backdoor.Filters;
 using Humans.Base.Controllers;
+using Humans.Base.Extensions;
 using Humans.Issues.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
@@ -58,7 +59,7 @@ internal sealed class BackdoorIssuesController(
             ReporterUserId: reporter,
             AssigneeUserId: assignee,
             SearchText: string.IsNullOrWhiteSpace(search) ? null : search,
-            Limit: Math.Clamp(limit, 1, MaxLimit));
+            Limit: limit.ClampPageSize(max: MaxLimit));
 
         var rows = await issues.GetIssueListAsync(filter, Viewer);
 

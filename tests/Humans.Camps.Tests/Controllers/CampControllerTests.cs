@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Reflection;
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
@@ -30,6 +31,19 @@ public class CampControllerTests
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<CampsResource> _campsLocalizer = Substitute.For<IStringLocalizer<CampsResource>>();
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
+
+    [HumansFact]
+    public void UploadImage_allows_one_valid_image_without_accepting_a_larger_request()
+    {
+        var limit = typeof(CampController).GetMethod(nameof(CampController.UploadImage))!
+            .GetCustomAttribute<RequestSizeLimitAttribute>();
+
+        limit.Should().NotBeNull();
+        typeof(RequestSizeLimitAttribute)
+            .GetField("_bytes", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(limit)
+            .Should().Be(11L * 1024 * 1024);
+    }
 
     [HumansFact]
     public async Task Index_BuildsPublicDirectory_FromCachedCampInfoRead()

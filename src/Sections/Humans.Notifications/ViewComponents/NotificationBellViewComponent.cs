@@ -18,7 +18,8 @@ internal sealed class NotificationBellViewComponent(INotificationInboxService no
         if (userId is null)
             return View(new NotificationBadgeViewModel());
 
-        var (actionableCount, informationalCount) = await notificationInboxService.GetUnreadBadgeCountsAsync(userId.Value);
+        var (actionableCount, informationalCount) = await notificationInboxService.GetUnreadBadgeCountsAsync(
+            userId.Value, HttpContext.RequestAborted);
 
         return View(new NotificationBadgeViewModel
         {

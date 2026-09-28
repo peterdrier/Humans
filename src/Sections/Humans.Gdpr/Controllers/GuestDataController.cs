@@ -50,6 +50,10 @@ internal sealed class GuestDataController(
 
             return File(bytes, "application/json", fileName);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to export data for user {UserId}", user.Id);

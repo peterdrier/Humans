@@ -28,14 +28,14 @@ internal sealed class EventsExportController(
     public IActionResult Index() => View();
 
     [HttpGet("Csv")]
-    public async Task<IActionResult> DownloadCsv()
+    public async Task<IActionResult> DownloadCsv(CancellationToken ct)
     {
-        var (events, settings) = await guide.GetApprovedEventsForExportAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guide, settings);
+        var (events, settings) = await guide.GetApprovedEventsForExportAsync(ct);
+        var eventSettings = await LoadBurnSettingsAsync(guide, settings, ct);
         var tz = GetTimeZone(eventSettings);
-        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year, ct);
         var submitters = await LoadSubmittersAsync(
-            UserService, events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct());
+            UserService, events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct(), ct);
 
         var rows = new List<object?[]>();
         foreach (var e in events.OrderBy(e => e.StartAt))
@@ -83,13 +83,13 @@ internal sealed class EventsExportController(
     }
 
     [HttpGet("PrintGuide")]
-    public async Task<IActionResult> PrintGuide()
+    public async Task<IActionResult> PrintGuide(CancellationToken ct)
     {
-        var (events, settings) = await guide.GetApprovedEventsForExportAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guide, settings);
+        var (events, settings) = await guide.GetApprovedEventsForExportAsync(ct);
+        var eventSettings = await LoadBurnSettingsAsync(guide, settings, ct);
         var tz = GetTimeZone(eventSettings);
         var maxSlots = settings?.MaxPrintSlots;
-        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year, ct);
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
         var allOccurrences = new List<PrintGuideEntry>();

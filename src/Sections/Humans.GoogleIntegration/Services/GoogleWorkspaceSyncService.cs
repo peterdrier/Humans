@@ -1032,7 +1032,10 @@ internal sealed class GoogleWorkspaceSyncService(
         }
 
         var activeResources = await resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
-        var existingGroup = activeResources.FirstOrDefault(r => r.ResourceType == GoogleResourceType.Group);
+        var existingGroup = activeResources
+            .Where(r => r.ResourceType == GoogleResourceType.Group)
+            .OrderBy(r => r.ProvisionedAt)
+            .FirstOrDefault();
 
         if (team.GoogleGroupPrefix is null)
         {

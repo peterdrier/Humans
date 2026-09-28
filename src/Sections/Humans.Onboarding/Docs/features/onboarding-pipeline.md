@@ -200,7 +200,7 @@ The **name gate** backstops the dispatcher app-wide: `NameRequiredFilter` (a glo
 
 ### Persistent banner
 
-`OnboardingProgressBannerViewComponent` is rendered from the layout. It calls `GetCurrentStepAsync` on every page (suppressed on widget pages themselves to avoid the "you're already here" footgun). Errors are swallowed so a transient query failure never breaks a layout render.
+`OnboardingProgressBannerViewComponent` is rendered from the layout. It calls `GetCurrentStepAsync` on every page with the request-abort token (suppressed on widget pages themselves to avoid the "you're already here" footgun). Operational errors are swallowed so a transient query failure never breaks a layout render; a matching request cancellation propagates normally.
 
 ### Signup auto-confirm
 

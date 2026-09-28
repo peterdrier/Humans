@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <!--
-    FrameworkReference, unlike Humans.Cantina.Tests and like Humans.Scanner.Tests: both test
+    FrameworkReference, unlike Humans.Cantina.Tests and like Humans.Scanner.Tests: the test
     classes name ASP.NET types. DevSeedControllerTests constructs the controller and builds a
     DefaultHttpContext; DevPersonaSeederTests substitutes UserManager<User> (Identity). Take
     the reference because a test names one, not because the section is Sdk.Razor
