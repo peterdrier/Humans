@@ -12,7 +12,7 @@ import {
  * Admin shell coverage (#604) — verifies the sidebar-driven /Admin surface.
  *
  * Source-of-truth for the group/item map is every section's
- * src/Sections/*/SectionAdminNav.cs, merged by AdminNavComposition. Per-item
+ * src/Sections/{Section}/SectionAdminNav.cs, merged by AdminNavComposition. Per-item
  * policies determine which roles see which items; only role-based-policy items
  * are asserted here (no environment-gated Development items, no
  * requirement-based policies such as ShiftDepartmentManager or
