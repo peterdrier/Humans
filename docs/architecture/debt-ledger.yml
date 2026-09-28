@@ -318,14 +318,6 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
-  - added: 2026-09-21
-    id: CENTRAL-63
-    what: "docs/architecture/design-rules.md §8 still describes the pre-cutover Settings world: it says settings_event 'has no readers yet', that every section reads the app-wide values off the Shifts-owned event_settings row via IBurnSettingsService, and that the table is populated by an operator screen at /Settings/Admin/Carry. The cutover (nobodies-collective/Humans#1630, nobodies-collective/Humans#1631) repointed every reader at settings_event, deleted the carry screen and made /Settings/Admin POST-only. The same paragraph's key list also omits Workgroups:RootDriveFolderId, the third system_settings key. Central regulations, not a section file (/section-doctor on Settings 2026-09-21)."
-    review: light
-  - added: 2026-09-21
-    id: CENTRAL-64
-    what: "docs/architecture/service-data-access-map.md's table-ownership table carries the same stale Settings claim as CENTRAL-63: 'settings_event has no consumers yet — it is populated by /Settings/Admin/Carry and read by nothing until the sections are pointed at it'. Both halves are false since nobodies-collective/Humans#1630 and nobodies-collective/Humans#1631. The row above it, 'EventSettings | Shifts | ShiftRepository', is now the Shifts-local knobs row only and reads as if it were still the app-wide one. Central doc, not a section file (/section-doctor on Settings 2026-09-21)."
-    review: light
   - added: 2026-09-18
     id: CENTRAL-55
     what: "docs/guide/Glossary.md has no entry for assembly vote, the Governance lane that landed 2026-09-14 (peterdrier/Humans#1649), so the guide's own vocabulary page omits a term the Governance guide page now uses throughout. The file is shared guide input rather than section-owned (/section-doctor on Governance 2026-09-18)."
