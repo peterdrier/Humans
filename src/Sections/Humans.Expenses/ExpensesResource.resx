@@ -129,4 +129,25 @@
   <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>A rejection reason is required.</value></data>
   <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>Failed to load the review queue.</value></data>
   <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Invalid approval input.</value></data>
+  <!-- Submitter expense-edit page -->
+  <data name="Expenses_EditReport" xml:space="preserve"><value>Edit Expense Report</value></data>
+  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
+  <data name="Expenses_Edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="Expenses_ReportHeader" xml:space="preserve"><value>Report header</value></data>
+  <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Budget Category</value></data>
+  <data name="Expenses_CategoryChangeWarning" xml:space="preserve"><value>Changing the category after submission requires a withdraw and re-file.</value></data>
+  <data name="Expenses_Optional" xml:space="preserve"><value>(optional)</value></data>
+  <data name="Expenses_SaveHeader" xml:space="preserve"><value>Save Header</value></data>
+  <data name="Expenses_ExpenseLines" xml:space="preserve"><value>Expense lines</value></data>
+  <data name="Expenses_NoLinesYet" xml:space="preserve"><value>No lines yet. Add your first receipt or invoice below.</value></data>
+  <data name="Expenses_Mileage" xml:space="preserve"><value>Mileage</value></data>
+  <data name="Expenses_PerDiem" xml:space="preserve"><value>Per diem</value></data>
+  <data name="Expenses_Invoice" xml:space="preserve"><value>Invoice</value></data>
+  <data name="Expenses_ProofCountSingular" xml:space="preserve"><value>1 receipt behind it</value></data>
+  <data name="Expenses_ProofCountPlural" xml:space="preserve"><value>{0} receipts behind it</value></data>
+  <data name="Expenses_ReceiptAttached" xml:space="preserve"><value>Receipt attached</value></data>
+  <data name="Expenses_NeedsReceipt" xml:space="preserve"><value>Needs receipt</value></data>
+  <data name="Expenses_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Expenses_AddLine" xml:space="preserve"><value>Add line</value></data>
+  <data name="Expenses_BackToReport" xml:space="preserve"><value>Back to report</value></data>
 </root>

@@ -129,4 +129,25 @@
   <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>Se requiere un motivo de rechazo.</value></data>
   <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>No se pudo cargar la cola de revisión.</value></data>
   <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Datos de aprobación no válidos.</value></data>
+  <!-- Submitter expense-edit page -->
+  <data name="Expenses_EditReport" xml:space="preserve"><value>Editar informe de gastos</value></data>
+  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Migas de pan</value></data>
+  <data name="Expenses_Edit" xml:space="preserve"><value>Editar</value></data>
+  <data name="Expenses_ReportHeader" xml:space="preserve"><value>Cabecera del informe</value></data>
+  <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Categoría presupuestaria</value></data>
+  <data name="Expenses_CategoryChangeWarning" xml:space="preserve"><value>Cambiar la categoría tras enviarlo requiere retirar y volver a presentar el informe.</value></data>
+  <data name="Expenses_Optional" xml:space="preserve"><value>(opcional)</value></data>
+  <data name="Expenses_SaveHeader" xml:space="preserve"><value>Guardar cabecera</value></data>
+  <data name="Expenses_ExpenseLines" xml:space="preserve"><value>Partidas de gastos</value></data>
+  <data name="Expenses_NoLinesYet" xml:space="preserve"><value>Aún no hay partidas. Añade abajo tu primer recibo o factura.</value></data>
+  <data name="Expenses_Mileage" xml:space="preserve"><value>Kilometraje</value></data>
+  <data name="Expenses_PerDiem" xml:space="preserve"><value>Dieta</value></data>
+  <data name="Expenses_Invoice" xml:space="preserve"><value>Factura</value></data>
+  <data name="Expenses_ProofCountSingular" xml:space="preserve"><value>1 recibo asociado</value></data>
+  <data name="Expenses_ProofCountPlural" xml:space="preserve"><value>{0} recibos asociados</value></data>
+  <data name="Expenses_ReceiptAttached" xml:space="preserve"><value>Recibo adjunto</value></data>
+  <data name="Expenses_NeedsReceipt" xml:space="preserve"><value>Falta recibo</value></data>
+  <data name="Expenses_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Expenses_AddLine" xml:space="preserve"><value>Añadir partida</value></data>
+  <data name="Expenses_BackToReport" xml:space="preserve"><value>Volver al informe</value></data>
 </root>

@@ -129,4 +129,25 @@
   <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>È richiesto un motivo del rifiuto.</value></data>
   <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>Impossibile caricare la coda di revisione.</value></data>
   <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Dati di approvazione non validi.</value></data>
+  <!-- Submitter expense-edit page -->
+  <data name="Expenses_EditReport" xml:space="preserve"><value>Modifica rapporto spese</value></data>
+  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Percorso di navigazione</value></data>
+  <data name="Expenses_Edit" xml:space="preserve"><value>Modifica</value></data>
+  <data name="Expenses_ReportHeader" xml:space="preserve"><value>Intestazione del rapporto</value></data>
+  <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Categoria di budget</value></data>
+  <data name="Expenses_CategoryChangeWarning" xml:space="preserve"><value>Modificare la categoria dopo l'invio richiede il ritiro e un nuovo invio del rapporto.</value></data>
+  <data name="Expenses_Optional" xml:space="preserve"><value>(facoltativo)</value></data>
+  <data name="Expenses_SaveHeader" xml:space="preserve"><value>Salva intestazione</value></data>
+  <data name="Expenses_ExpenseLines" xml:space="preserve"><value>Voci di spesa</value></data>
+  <data name="Expenses_NoLinesYet" xml:space="preserve"><value>Non ci sono ancora voci. Aggiungi qui sotto la prima ricevuta o fattura.</value></data>
+  <data name="Expenses_Mileage" xml:space="preserve"><value>Chilometraggio</value></data>
+  <data name="Expenses_PerDiem" xml:space="preserve"><value>Indennità giornaliera</value></data>
+  <data name="Expenses_Invoice" xml:space="preserve"><value>Fattura</value></data>
+  <data name="Expenses_ProofCountSingular" xml:space="preserve"><value>1 ricevuta associata</value></data>
+  <data name="Expenses_ProofCountPlural" xml:space="preserve"><value>{0} ricevute associate</value></data>
+  <data name="Expenses_ReceiptAttached" xml:space="preserve"><value>Ricevuta allegata</value></data>
+  <data name="Expenses_NeedsReceipt" xml:space="preserve"><value>Ricevuta necessaria</value></data>
+  <data name="Expenses_Total" xml:space="preserve"><value>Totale</value></data>
+  <data name="Expenses_AddLine" xml:space="preserve"><value>Aggiungi voce</value></data>
+  <data name="Expenses_BackToReport" xml:space="preserve"><value>Torna al rapporto</value></data>
 </root>

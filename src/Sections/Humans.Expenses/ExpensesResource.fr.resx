@@ -129,4 +129,25 @@
   <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>Un motif de rejet est requis.</value></data>
   <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>Impossible de charger la file de révision.</value></data>
   <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Données d'approbation non valides.</value></data>
+  <!-- Submitter expense-edit page -->
+  <data name="Expenses_EditReport" xml:space="preserve"><value>Modifier le rapport de dépenses</value></data>
+  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
+  <data name="Expenses_Edit" xml:space="preserve"><value>Modifier</value></data>
+  <data name="Expenses_ReportHeader" xml:space="preserve"><value>En-tête du rapport</value></data>
+  <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Catégorie budgétaire</value></data>
+  <data name="Expenses_CategoryChangeWarning" xml:space="preserve"><value>Changer de catégorie après l’envoi exige de retirer puis de soumettre à nouveau le rapport.</value></data>
+  <data name="Expenses_Optional" xml:space="preserve"><value>(facultatif)</value></data>
+  <data name="Expenses_SaveHeader" xml:space="preserve"><value>Enregistrer l’en-tête</value></data>
+  <data name="Expenses_ExpenseLines" xml:space="preserve"><value>Lignes de dépenses</value></data>
+  <data name="Expenses_NoLinesYet" xml:space="preserve"><value>Aucune ligne pour le moment. Ajoutez ci-dessous votre premier reçu ou facture.</value></data>
+  <data name="Expenses_Mileage" xml:space="preserve"><value>Indemnité kilométrique</value></data>
+  <data name="Expenses_PerDiem" xml:space="preserve"><value>Indemnité journalière</value></data>
+  <data name="Expenses_Invoice" xml:space="preserve"><value>Facture</value></data>
+  <data name="Expenses_ProofCountSingular" xml:space="preserve"><value>1 reçu associé</value></data>
+  <data name="Expenses_ProofCountPlural" xml:space="preserve"><value>{0} reçus associés</value></data>
+  <data name="Expenses_ReceiptAttached" xml:space="preserve"><value>Reçu joint</value></data>
+  <data name="Expenses_NeedsReceipt" xml:space="preserve"><value>Reçu requis</value></data>
+  <data name="Expenses_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Expenses_AddLine" xml:space="preserve"><value>Ajouter une ligne</value></data>
+  <data name="Expenses_BackToReport" xml:space="preserve"><value>Retour au rapport</value></data>
 </root>

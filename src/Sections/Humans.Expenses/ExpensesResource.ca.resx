@@ -129,4 +129,25 @@
   <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>Cal un motiu de rebuig.</value></data>
   <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>No s'ha pogut carregar la cua de revisió.</value></data>
   <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Dades d'aprovació no vàlides.</value></data>
+  <!-- Submitter expense-edit page -->
+  <data name="Expenses_EditReport" xml:space="preserve"><value>Edita l'informe de despeses</value></data>
+  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Fil d'Ariadna</value></data>
+  <data name="Expenses_Edit" xml:space="preserve"><value>Edita</value></data>
+  <data name="Expenses_ReportHeader" xml:space="preserve"><value>Capçalera de l'informe</value></data>
+  <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Categoria pressupostària</value></data>
+  <data name="Expenses_CategoryChangeWarning" xml:space="preserve"><value>Canviar la categoria després de presentar-lo requereix retirar i tornar a presentar l'informe.</value></data>
+  <data name="Expenses_Optional" xml:space="preserve"><value>(opcional)</value></data>
+  <data name="Expenses_SaveHeader" xml:space="preserve"><value>Desa la capçalera</value></data>
+  <data name="Expenses_ExpenseLines" xml:space="preserve"><value>Partides de despesa</value></data>
+  <data name="Expenses_NoLinesYet" xml:space="preserve"><value>Encara no hi ha partides. Afegeix a sota el primer rebut o factura.</value></data>
+  <data name="Expenses_Mileage" xml:space="preserve"><value>Quilometratge</value></data>
+  <data name="Expenses_PerDiem" xml:space="preserve"><value>Dieta</value></data>
+  <data name="Expenses_Invoice" xml:space="preserve"><value>Factura</value></data>
+  <data name="Expenses_ProofCountSingular" xml:space="preserve"><value>1 rebut associat</value></data>
+  <data name="Expenses_ProofCountPlural" xml:space="preserve"><value>{0} rebuts associats</value></data>
+  <data name="Expenses_ReceiptAttached" xml:space="preserve"><value>Rebut adjunt</value></data>
+  <data name="Expenses_NeedsReceipt" xml:space="preserve"><value>Cal rebut</value></data>
+  <data name="Expenses_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Expenses_AddLine" xml:space="preserve"><value>Afegeix partida</value></data>
+  <data name="Expenses_BackToReport" xml:space="preserve"><value>Torna a l'informe</value></data>
 </root>

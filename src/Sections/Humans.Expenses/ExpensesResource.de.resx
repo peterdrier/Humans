@@ -129,4 +129,25 @@
   <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>Ein Ablehnungsgrund ist erforderlich.</value></data>
   <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>Die Prüfwarteschlange konnte nicht geladen werden.</value></data>
   <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Ungültige Genehmigungsdaten.</value></data>
+  <!-- Submitter expense-edit page -->
+  <data name="Expenses_EditReport" xml:space="preserve"><value>Ausgabenbericht bearbeiten</value></data>
+  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Brotkrümelnavigation</value></data>
+  <data name="Expenses_Edit" xml:space="preserve"><value>Bearbeiten</value></data>
+  <data name="Expenses_ReportHeader" xml:space="preserve"><value>Berichtskopf</value></data>
+  <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Budgetkategorie</value></data>
+  <data name="Expenses_CategoryChangeWarning" xml:space="preserve"><value>Eine Änderung der Kategorie nach dem Einreichen erfordert ein Zurückziehen und erneutes Einreichen.</value></data>
+  <data name="Expenses_Optional" xml:space="preserve"><value>(optional)</value></data>
+  <data name="Expenses_SaveHeader" xml:space="preserve"><value>Kopf speichern</value></data>
+  <data name="Expenses_ExpenseLines" xml:space="preserve"><value>Ausgabenposten</value></data>
+  <data name="Expenses_NoLinesYet" xml:space="preserve"><value>Noch keine Posten. Füge unten deine erste Quittung oder Rechnung hinzu.</value></data>
+  <data name="Expenses_Mileage" xml:space="preserve"><value>Kilometerpauschale</value></data>
+  <data name="Expenses_PerDiem" xml:space="preserve"><value>Tagegeld</value></data>
+  <data name="Expenses_Invoice" xml:space="preserve"><value>Rechnung</value></data>
+  <data name="Expenses_ProofCountSingular" xml:space="preserve"><value>1 Beleg dazu</value></data>
+  <data name="Expenses_ProofCountPlural" xml:space="preserve"><value>{0} Belege dazu</value></data>
+  <data name="Expenses_ReceiptAttached" xml:space="preserve"><value>Beleg angehängt</value></data>
+  <data name="Expenses_NeedsReceipt" xml:space="preserve"><value>Beleg erforderlich</value></data>
+  <data name="Expenses_Total" xml:space="preserve"><value>Gesamt</value></data>
+  <data name="Expenses_AddLine" xml:space="preserve"><value>Posten hinzufügen</value></data>
+  <data name="Expenses_BackToReport" xml:space="preserve"><value>Zurück zum Bericht</value></data>
 </root>
