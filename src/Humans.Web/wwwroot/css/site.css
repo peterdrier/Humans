@@ -193,16 +193,37 @@ h5, .h5 { font-size: 1.1rem; }
 }
 
 /* Links strip: the flexible middle column between the brand and the right
-   cluster. Desktop: fits inline. <900px: becomes a horizontally scrolling
-   strip with a mask-image edge fade (site.js scrolls the active link into
-   view, and fixed-positions an open dropdown's menu, on load). */
+   cluster. At every width it scrolls horizontally when the links don't fit
+   (site.js adds .is-overflowing for the edge fade, scrolls the active link
+   into view, and fixed-positions an open dropdown's menu). <900px it also
+   drops to its own full-width row. */
 .navbar-links {
     flex: 1 1 auto;
     min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.navbar-links::-webkit-scrollbar {
+    display: none;
+}
+
+.navbar-links.is-overflowing {
+    -webkit-mask-image: linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent);
+    mask-image: linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent);
+}
+
+/* site.js sets this while a strip dropdown is open: the mask would hide the menu. */
+.navbar-links.dropdown-open {
+    -webkit-mask-image: none;
+    mask-image: none;
 }
 
 .navbar .navbar-nav {
     flex-direction: row;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 4px;
 }
@@ -276,27 +297,8 @@ h5, .h5 { font-size: 1.1rem; }
     color: var(--h-gold) !important;
 }
 
-/* <900px: no hamburger, ever — the links strip scrolls horizontally instead,
-   with a two-sided mask-image edge fade. Scrollbar hidden; touch/drag panning
-   is native (site.js scrolls the active link into view on load). */
+/* <900px: no hamburger, ever — the scrolling links strip drops to its own row. */
 @media (max-width: 899.98px) {
-    .navbar-links {
-        overflow-x: auto;
-        overflow-y: hidden;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-        -webkit-mask-image: linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent);
-        mask-image: linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent);
-    }
-
-    .navbar-links::-webkit-scrollbar {
-        display: none;
-    }
-
-    .navbar .navbar-nav {
-        flex-wrap: nowrap;
-    }
-
     /* The strip gets its own full-width row under the brand/right-cluster bar. */
     .navbar {
         height: auto;
@@ -313,12 +315,6 @@ h5, .h5 { font-size: 1.1rem; }
     .navbar > .navbar-links {
         order: 3;
         flex: 0 0 100%;
-    }
-
-    /* site.js sets this while a strip dropdown is open: the mask would hide the menu. */
-    .navbar-links.dropdown-open {
-        -webkit-mask-image: none;
-        mask-image: none;
     }
 }
 

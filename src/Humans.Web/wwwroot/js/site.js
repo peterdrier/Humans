@@ -531,6 +531,17 @@ function showToast(message, type) {
     var scroller = document.querySelector('.navbar-links');
     if (!scroller) return;
 
+    // Edge fade only when the links actually overflow the strip.
+    function updateOverflow() {
+        scroller.classList.toggle('is-overflowing', scroller.scrollWidth > scroller.clientWidth + 1);
+    }
+    updateOverflow();
+    if (window.ResizeObserver) {
+        new ResizeObserver(updateOverflow).observe(scroller);
+    } else {
+        window.addEventListener('resize', updateOverflow);
+    }
+
     var active = scroller.querySelector('.nav-link.active');
     if (active) {
         var prevBehavior = scroller.style.scrollBehavior;
