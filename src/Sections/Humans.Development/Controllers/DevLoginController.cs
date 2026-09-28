@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text;
 using Humans.Base.Configuration;
 using Humans.Auth.Contracts;
@@ -211,13 +210,7 @@ internal sealed class DevLoginController(
             new("city-planning", "City Planning Team")
         };
 
-        var roles = typeof(RoleNames)
-            .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
-            .Where(f => f.IsLiteral && !f.IsInitOnly && f.FieldType == typeof(string))
-            .Select(f => (string)f.GetRawConstantValue()!)
-            .OrderBy(r => r, StringComparer.Ordinal);
-
-        foreach (var role in roles)
+        foreach (var role in DevPersonaSeeder.RoleNameValues.OrderBy(r => r, StringComparer.Ordinal))
         {
             list.Add(new(DevPersonaSeeder.PascalToKebab(role), PascalToDisplay(role)));
         }

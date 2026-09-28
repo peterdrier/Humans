@@ -694,12 +694,19 @@ internal sealed class DevPersonaSeeder(
         if (string.Equals(slug, "volunteer", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        return typeof(RoleNames)
-            .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.FlattenHierarchy)
-            .Where(f => f.IsLiteral && !f.IsInitOnly && f.FieldType == typeof(string))
-            .Select(f => (string)f.GetRawConstantValue()!)
+        return RoleNameValues
             .FirstOrDefault(r => string.Equals(PascalToKebab(r), slug, StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>
+    /// Every <see cref="RoleNames"/> constant. <c>DevLoginController</c> builds one persona per
+    /// entry and <see cref="RoleNameFromSlug"/> reverses the slug, so both read this one list.
+    /// </summary>
+    internal static IReadOnlyList<string> RoleNameValues { get; } = typeof(RoleNames)
+        .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.FlattenHierarchy)
+        .Where(f => f.IsLiteral && !f.IsInitOnly && f.FieldType == typeof(string))
+        .Select(f => (string)f.GetRawConstantValue()!)
+        .ToList();
 
     /// <summary>
     /// Persona slug in kebab-case. Shared with <c>DevLoginController</c> so the persona
