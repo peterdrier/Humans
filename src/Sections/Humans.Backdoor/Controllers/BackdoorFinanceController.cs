@@ -377,11 +377,11 @@ internal sealed class BackdoorFinanceController(
             paid = payment?.Paid,
             paidOn = payment?.PaidOn?.ToInvariantDate(),
             totalPaid = payment?.TotalPaid,
-            lines = r.Lines.OrderBy(l => l.SortOrder).Select(ProjectLine),
+            lines = r.Lines.OrderBy(l => l.SortOrder).Select(l => ProjectLine(l, isFinanceAdmin)),
         };
     }
 
-    private static object ProjectLine(ExpenseLineDto l) => new
+    private static object ProjectLine(ExpenseLineDto l, bool isFinanceAdmin) => new
     {
         id = l.Id,
         description = IbanFormatter.MaskAllIn(l.Description),
@@ -389,7 +389,7 @@ internal sealed class BackdoorFinanceController(
         lineType = l.LineType.ToString(),
         parentLineId = l.ParentLineId,
         sortOrder = l.SortOrder,
-        holdedDocId = l.HoldedDocId,
+        holdedDocId = isFinanceAdmin ? l.HoldedDocId : null,
         attachment = l.Attachment is { } a ? new
         {
             id = a.Id,

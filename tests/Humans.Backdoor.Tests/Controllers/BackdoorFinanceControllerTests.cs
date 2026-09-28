@@ -376,7 +376,7 @@ public class BackdoorFinanceControllerTests
         var userId = Guid.NewGuid();
         SetPrincipal(userId);
         SetFinanceAdmin(false);
-        var report = Report(submitterUserId: userId);
+        var report = Report(submitterUserId: userId) with { Lines = [LineWithHoldedDoc("d1")] };
         _expenses.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
         SetCanView(true, report);
         _expenses.GetHoldedTimelineAsync(report, Arg.Any<CancellationToken>()).Returns(Timeline());
@@ -388,7 +388,14 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""holdedContactId"":null");
         json.Should().Contain(@"""holdedSupplierAccountNum"":null");
         json.Should().Contain(@"""holdedDocIds"":null");
+        json.Should().Contain(@"""holdedDocId"":null");
     }
+
+    private static ExpenseLineDto LineWithHoldedDoc(string docId) => new()
+    {
+        Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Taxi",
+        Amount = 20m, LineType = ExpenseLineType.Receipt, SortOrder = 0, HoldedDocId = docId,
+    };
 
     /// <summary>The finance-admin half of M1: they see everything, including the payee name and the
     /// Holded ids the browser's finance card shows only them.</summary>
@@ -402,6 +409,7 @@ public class BackdoorFinanceControllerTests
             HoldedContactId = "c-ana",
             HoldedSupplierAccountNum = 40000060,
             HoldedDocId = "d1",
+            Lines = [LineWithHoldedDoc("d2")],
         };
         _expenses.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
         SetCanView(true, report);
@@ -414,6 +422,7 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""holdedContactId"":""c-ana""");
         json.Should().Contain(@"""holdedSupplierAccountNum"":40000060");
         json.Should().Contain(@"""holdedDocIds"":[""d1""]");
+        json.Should().Contain(@"""holdedDocId"":""d2""");
     }
 
     // ─── attachments ────────────────────────────────────────────────────────────
