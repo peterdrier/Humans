@@ -295,6 +295,7 @@ internal sealed class BackdoorFinanceController(
         {
             id = r.Id,
             status = r.Status.ToString(),
+            note = r.Note is null ? null : IbanFormatter.MaskAllIn(r.Note),
             submitterUserId = r.SubmitterUserId,
             submitterName = submitterName ?? "(unknown)",
             payeeName = showPayee ? r.PayeeName : null,
@@ -340,6 +341,7 @@ internal sealed class BackdoorFinanceController(
         {
             id = r.Id,
             status = r.Status.ToString(),
+            note = r.Note is null ? null : IbanFormatter.MaskAllIn(r.Note),
             submitterUserId = r.SubmitterUserId,
             submitterName = submitterName ?? "(unknown)",
             payeeName = showPayee ? r.PayeeName : null,
@@ -407,14 +409,14 @@ internal sealed class BackdoorFinanceController(
 
     private static object ProjectCreditorAccount(
         HoldedCreditorAccountRow a, IReadOnlyDictionary<Guid, string> names) => new
-    {
-        supplierAccountNum = a.SupplierAccountNum,
-        name = a.Name,
-        balance = a.Balance,
-        owedToMember = a.OwedToMember,
-        ibanMasked = a.IbanMasked,
-        bindings = a.Bindings.Select(b => ProjectBinding(b, names)),
-    };
+        {
+            supplierAccountNum = a.SupplierAccountNum,
+            name = a.Name,
+            balance = a.Balance,
+            owedToMember = a.OwedToMember,
+            ibanMasked = a.IbanMasked,
+            bindings = a.Bindings.Select(b => ProjectBinding(b, names)),
+        };
 
     private static object ProjectLedgerLine(CreditorLedgerLine l) => new
     {
@@ -444,22 +446,24 @@ internal sealed class BackdoorFinanceController(
 
     private static object ProjectSepaTransfer(
         SepaPayoutTransferRow t, IReadOnlyDictionary<Guid, string> names) => new
-    {
-        transferId = t.TransferId,
-        fileId = t.FileId,
-        fileName = t.FileName,
-        generatedAt = t.GeneratedAt.ToIso8601(),
-        generatedBy = names.GetValueOrDefault(t.GeneratedByUserId, t.GeneratedByUserId.ToString()),
-        userId = t.UserId,
-        memberName = names.GetValueOrDefault(t.UserId, t.UserId.ToString()),
-        supplierAccountNum = t.SupplierAccountNum,
-        holdedContactId = t.HoldedContactId,
-        creditorName = t.CreditorName,
-        ibanMasked = t.IbanMasked,
-        amount = t.Amount,
-        bookedAt = t.BookedAt?.ToIso8601(),
-        bookedBy = t.BookedByUserId is { } id ? names.GetValueOrDefault(id, id.ToString()) : null,
-        holdedBankMovementId = t.HoldedBankMovementId,
-        notBookableReason = t.NotBookableReason,
-    };
+        {
+            transferId = t.TransferId,
+            fileId = t.FileId,
+            fileName = t.FileName,
+            generatedAt = t.GeneratedAt.ToIso8601(),
+            generatedBy = names.GetValueOrDefault(t.GeneratedByUserId, t.GeneratedByUserId.ToString()),
+            userId = t.UserId,
+            memberName = names.GetValueOrDefault(t.UserId, t.UserId.ToString()),
+            supplierAccountNum = t.SupplierAccountNum,
+            holdedContactId = t.HoldedContactId,
+            creditorName = t.CreditorName,
+            ibanMasked = t.IbanMasked,
+            amount = t.Amount,
+            bookedAt = t.BookedAt?.ToIso8601(),
+            bookedBy = t.BookedByUserId is { } id ? names.GetValueOrDefault(id, id.ToString()) : null,
+            holdedBankMovementId = t.HoldedBankMovementId,
+            reconciledAt = t.ReconciledAt?.ToIso8601(),
+            reconcilePending = t.ReconcilePending,
+            notBookableReason = t.NotBookableReason,
+        };
 }

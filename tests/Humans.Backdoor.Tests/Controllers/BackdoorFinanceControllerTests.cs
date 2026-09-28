@@ -100,20 +100,20 @@ public class BackdoorFinanceControllerTests
     private static ExpenseReportDto Report(
         Guid? id = null, Guid? submitterUserId = null, string iban = "ES7921000813610123456789",
         ExpenseReportStatus status = ExpenseReportStatus.Submitted, decimal total = 100m) => new()
-    {
-        Id = id ?? Guid.NewGuid(),
-        SubmitterUserId = submitterUserId ?? Guid.NewGuid(),
-        BudgetCategoryId = Guid.NewGuid(),
-        BudgetYearId = Guid.NewGuid(),
-        Status = status,
-        PayeeName = "Ana Torres",
-        PayeeIban = iban,
-        Total = total,
-        SubmittedAt = Instant.FromUtc(2026, 5, 1, 9, 0),
-        CreatedAt = Instant.FromUtc(2026, 4, 30, 9, 0),
-        UpdatedAt = Instant.FromUtc(2026, 5, 1, 9, 0),
-        Lines = [],
-    };
+        {
+            Id = id ?? Guid.NewGuid(),
+            SubmitterUserId = submitterUserId ?? Guid.NewGuid(),
+            BudgetCategoryId = Guid.NewGuid(),
+            BudgetYearId = Guid.NewGuid(),
+            Status = status,
+            PayeeName = "Ana Torres",
+            PayeeIban = iban,
+            Total = total,
+            SubmittedAt = Instant.FromUtc(2026, 5, 1, 9, 0),
+            CreatedAt = Instant.FromUtc(2026, 4, 30, 9, 0),
+            UpdatedAt = Instant.FromUtc(2026, 5, 1, 9, 0),
+            Lines = [],
+        };
 
     private static ExpenseHoldedTimeline Timeline() => new()
     {
@@ -179,7 +179,7 @@ public class BackdoorFinanceControllerTests
         var userId = Guid.NewGuid();
         SetPrincipal(userId);
         SetFinanceAdmin(true);
-        var report = Report(submitterUserId: userId, iban: "ES7921000813610123456789");
+        var report = Report(submitterUserId: userId) with { Note = "Van hire, refund to ES7921000813610123456789" };
         _expenses.GetReviewQueueAsync(userId, true, Arg.Any<CancellationToken>()).Returns([report]);
         _expenses.GetHoldedTimelineAsync(report, Arg.Any<CancellationToken>()).Returns(Timeline());
 
@@ -190,6 +190,7 @@ public class BackdoorFinanceControllerTests
         json.Should().NotContain("ES7921000813610123456789");
         json.Should().Contain(@"""syncState"":""Pushed""");
         json.Should().Contain($@"""id"":""{report.Id}""");
+        json.Should().Contain(@"""note"":""Van hire, refund to ES79****789""");
     }
 
     [HumansFact]
@@ -299,6 +300,7 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(false);
         var report = Report(submitterUserId: userId) with
         {
+            Note = "Taxi to the site",
             Lines =
             [
                 new ExpenseLineDto
@@ -320,6 +322,7 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""description"":""Taxi""");
         json.Should().Contain(@"""lineType"":""Receipt""");
         json.Should().Contain(@"""syncState"":null");
+        json.Should().Contain(@"""note"":""Taxi to the site""");
     }
 
     [HumansFact]
@@ -634,7 +637,7 @@ public class BackdoorFinanceControllerTests
                 new SepaPayoutTransferRow(
                     Guid.NewGuid(), Guid.NewGuid(), "batch.xml", Instant.FromUtc(2026, 6, 1, 9, 0),
                     generatedBy, member, 40000060, "c-ana", "Ana Torres", maskedIban, 50m,
-                    null, null, "mv-1", null, null, null),
+                    Instant.FromUtc(2026, 6, 2, 9, 0), generatedBy, "mv-1", null, null, null),
             ],
             (string?)null));
 
@@ -644,6 +647,8 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain($@"""ibanMasked"":""{maskedIban}""");
         json.Should().Contain(@"""holdedBankMovementId"":""mv-1""");
         json.Should().Contain(@"""supplierAccountNum"":40000060");
+        json.Should().Contain(@"""reconciledAt"":null");
+        json.Should().Contain(@"""reconcilePending"":true");
     }
 
     // ─── holded-sync ────────────────────────────────────────────────────────────
