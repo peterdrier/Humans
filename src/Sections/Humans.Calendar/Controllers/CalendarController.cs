@@ -190,7 +190,8 @@ internal sealed class CalendarController : HumansControllerBase
         var teams = await GetSelectableTeamsAsync(ct);
         if (teams.Count == 0) return NotFound(); // no usable teams to own an event
 
-        var today = _clock.GetCurrentInstant().InZone(GetViewerZone()).Date.ToDateTimeUnspecified();
+        var zone = GetViewerZone();
+        var today = _clock.GetCurrentInstant().InZone(zone).Date.ToDateTimeUnspecified();
 
         return View(new CalendarEventFormViewModel
         {
@@ -199,6 +200,7 @@ internal sealed class CalendarController : HumansControllerBase
             EndLocal = today.AddHours(20),
             StartDateLocal = today,
             EndDateLocal = today,
+            RecurrenceTimezone = zone.Id,
             TeamOptions = teams,
         });
     }

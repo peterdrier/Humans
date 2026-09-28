@@ -58,7 +58,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task Create_defaults_to_the_browser_local_date()
+    public async Task Create_defaults_to_the_browser_local_date_and_zone()
     {
         _now = Instant.FromUtc(2026, 6, 1, 23, 0);
         _session.SetString(DateTimeDisplayExtensions.SessionKey, "Asia/Tokyo");
@@ -76,6 +76,7 @@ public class CalendarControllerICalTests
             .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
         model.StartLocal.Should().Be(new DateTime(2026, 6, 2, 19, 0, 0));
         model.EndDateLocal.Should().Be(new DateTime(2026, 6, 2));
+        model.RecurrenceTimezone.Should().Be("Asia/Tokyo");
     }
 
     [HumansFact]
