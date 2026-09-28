@@ -349,12 +349,14 @@ builder.Services.AddRateLimiter(options =>
             return RateLimitPartition.GetNoLimiter(string.Empty);
         }
 
+        // Signed-in humans get a higher per-user budget; anonymous traffic stays at 100/min per IP.
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
         return RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            partitionKey: userId ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
-                PermitLimit = 100,
+                PermitLimit = userId is null ? 100 : 300,
                 Window = TimeSpan.FromMinutes(1)
             });
     });
