@@ -204,6 +204,7 @@ Stored as string via `HasConversion<string>()`.
 - `/Finance/CashFlow` view aggregates line items by time period (weekly/monthly) and shows running net.
 - `budget_audit_logs` is append-only per §12.
 - Resource-based authorization per design-rules §11: `BudgetAuthorizationHandler` + `BudgetOperationRequirement` gate all coordinator writes against a `BudgetCategory` resource, denying restricted groups, ticketing groups, and archived years for non-finance users.
+- The coordinator-facing category detail at `/Budget/Category/{id}` uses `BudgetResource` for every label, action, guidance message, tooltip, confirmation, and accessibility label in all supported cultures.
 
 ## Negative Access Rules
 
