@@ -228,6 +228,8 @@ These controllers serve this section.
 | `GovernanceVotesController` | `GET /Governance/Votes` — every vote, Open first (authenticated) | `GET /Governance/Votes/{id}` — text, stats, and the ballot form for roster members | `POST /Governance/Votes/{id}/Ballot` — cast or change | `GET /Governance/Votes/{id}/Results` and `.../Results.csv` — the stored result (Closed only) |
 | `GovernanceVotesAdminController` | `GET /Governance/Votes/Admin` — all votes, all states (BoardOrAdmin) | `GET/POST /Governance/Votes/Admin/Create`, `.../Admin/{id}/Edit`, `POST .../Admin/{id}/Delete` — drafting (BoardOrAdmin) | `POST .../Admin/{id}/{Open,Stop,Extend,Cancel}` and `GET .../Admin/{id}/Peek` — lifecycle (AdminOnly) | `GET .../Admin/{id}/Ballots` — per-member ballots, Closed only, audited (BoardOrAdmin) |
 
+The member dashboard's Applications tile links to `/Governance/Applications` and uses the section's **My Applications** label; the generic Governance navigation label consistently links to `/Governance`.
+
 `OnboardingReviewController` also owns the Consent Coordinator review queue (`GET /OnboardingReview`, `POST /OnboardingReview/{id}/Clear`, etc.) — those routes belong to the Onboarding section, not Governance.
 
 `/Governance` renders the `ChromeSlots.GovernanceDashboard` chrome slot (`src/Humans.Base/Interfaces/ISectionChrome.cs`) — other sections contribute tiles by implementing `ISectionChrome` against that slot name; Governance names none of them and renders whatever components register. Workgroups is the first contributor (its "Active workgroups" tile). The alternative considered was a dedicated `ISectionDashboardTiles` seam; the existing chrome-slot mechanism already covered the need, so a new slot name was used instead of a new interface.
