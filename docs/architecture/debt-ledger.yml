@@ -501,11 +501,6 @@ inbox:
     what: "src/Sections/Humans.EarlyEntry has no .Contracts leaf, so every consumer — Gate among them — takes a ProjectReference on the whole section and sees all of it rather than a contracts surface. Cross-cutting: it wants one carve-out decision, not a fix per consumer (finding 14, /section-doctor on Gate 2026-08-31; swept in by /section-doctor on Issues 2026-09-14)."
     review: panel
   - added: 2026-09-14
-    id: CENTRAL-51
-    what: "docs/architecture/freshness-catalog.yml's service-data-access-map entry triggers on src/Sections/*/Services/** and Data/*Repository.cs but not src/Sections/*/Section.cs, so a registration-only change never marks the map dirty (finding 13, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
-    review: light
-    root: CENTRAL-57
-  - added: 2026-09-14
     id: CENTRAL-52
     what: "docs/architecture/section-conformance.yml's seeding notes record \"no Docs/ in Settings or TicketTailor\" as a pre-existing detector hit; both sections carry Docs/<Section>.md now. The file is read-only to a section-doctor run, so it is recorded here rather than edited (finding 25, /section-doctor on TicketTailor 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
     review: light
