@@ -3,8 +3,10 @@ using AwesomeAssertions;
 using Humans.Users.Contracts;
 using Humans.Users.ViewComponents;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using NSubstitute;
 
 namespace Humans.Users.Tests.ViewComponents;
