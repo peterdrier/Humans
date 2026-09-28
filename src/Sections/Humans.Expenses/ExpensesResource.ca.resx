@@ -184,4 +184,15 @@
   <data name="Expenses_Done" xml:space="preserve"><value>Fet</value></data>
   <data name="Expenses_FailedHoldedPushSingular" xml:space="preserve"><value>informe aprovat no ha acabat d’enviar-se a Holded. Obriu l’informe per veure l’error, si s’ha creat un import pagable i per tornar a posar l’enviament a la cua.</value></data>
   <data name="Expenses_FailedHoldedPushPlural" xml:space="preserve"><value>informes aprovats no han acabat d’enviar-se a Holded. Obriu un informe per veure l’error, si s’ha creat un import pagable i per tornar a posar l’enviament a la cua.</value></data>
+  <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nou informe de despeses</value></data>
+  <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Seleccioneu una categoria —</value></data>
+  <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(opcional, màx. 500 caràcters)</value></data>
+  <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Descriviu la despesa…</value></data>
+  <data name="Expenses_CreateDraft" xml:space="preserve"><value>Crea un esborrany</value></data>
+  <data name="Expenses_HowItWorks" xml:space="preserve"><value>Com funciona</value></data>
+  <data name="Expenses_HowItWorksStep1" xml:space="preserve"><value>Creeu un esborrany i afegiu partides de despesa amb imports.</value></data>
+  <data name="Expenses_HowItWorksStep2" xml:space="preserve"><value>Adjunteu un rebut o factura a cada partida.</value></data>
+  <data name="Expenses_HowItWorksStep3" xml:space="preserve"><value>Configureu el vostre IBAN de pagament si encara no ho heu fet.</value></data>
+  <data name="Expenses_HowItWorksStep4" xml:space="preserve"><value>Envieu l’informe a revisió de coordinació o FinanceAdmin.</value></data>
+  <data name="Expenses_HowItWorksStep5" xml:space="preserve"><value>Després de l’aprovació rebreu una transferència SEPA.</value></data>
 </root>

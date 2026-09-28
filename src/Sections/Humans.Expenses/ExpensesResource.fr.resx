@@ -184,4 +184,15 @@
   <data name="Expenses_Done" xml:space="preserve"><value>Terminé</value></data>
   <data name="Expenses_FailedHoldedPushSingular" xml:space="preserve"><value>rapport approuvé n’a pas pu être envoyé entièrement à Holded. Ouvrez le rapport pour voir l’erreur, si un montant payable a été créé et pour remettre l’envoi en file.</value></data>
   <data name="Expenses_FailedHoldedPushPlural" xml:space="preserve"><value>rapports approuvés n’ont pas pu être envoyés entièrement à Holded. Ouvrez un rapport pour voir l’erreur, si un montant payable a été créé et pour remettre l’envoi en file.</value></data>
+  <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nouveau rapport de dépenses</value></data>
+  <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Sélectionnez une catégorie —</value></data>
+  <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(facultatif, 500 caractères max.)</value></data>
+  <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Décrivez la dépense…</value></data>
+  <data name="Expenses_CreateDraft" xml:space="preserve"><value>Créer un brouillon</value></data>
+  <data name="Expenses_HowItWorks" xml:space="preserve"><value>Fonctionnement</value></data>
+  <data name="Expenses_HowItWorksStep1" xml:space="preserve"><value>Créez un brouillon et ajoutez des lignes de dépenses avec leurs montants.</value></data>
+  <data name="Expenses_HowItWorksStep2" xml:space="preserve"><value>Joignez un reçu ou une facture à chaque ligne.</value></data>
+  <data name="Expenses_HowItWorksStep3" xml:space="preserve"><value>Renseignez votre IBAN de paiement si ce n’est pas déjà fait.</value></data>
+  <data name="Expenses_HowItWorksStep4" xml:space="preserve"><value>Soumettez le rapport pour examen par la coordination ou FinanceAdmin.</value></data>
+  <data name="Expenses_HowItWorksStep5" xml:space="preserve"><value>Après approbation, vous recevrez un virement SEPA.</value></data>
 </root>

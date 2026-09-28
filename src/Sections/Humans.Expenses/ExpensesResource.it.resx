@@ -184,4 +184,15 @@
   <data name="Expenses_Done" xml:space="preserve"><value>Fatto</value></data>
   <data name="Expenses_FailedHoldedPushSingular" xml:space="preserve"><value>rapporto approvato non ha completato l’invio a Holded. Apri il rapporto per vedere l’errore, se è stato creato un importo pagabile e per reinserire l’invio in coda.</value></data>
   <data name="Expenses_FailedHoldedPushPlural" xml:space="preserve"><value>rapporti approvati non hanno completato l’invio a Holded. Apri un rapporto per vedere l’errore, se è stato creato un importo pagabile e per reinserire l’invio in coda.</value></data>
+  <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nuovo rapporto spese</value></data>
+  <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Seleziona una categoria —</value></data>
+  <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(facoltativo, max 500 caratteri)</value></data>
+  <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Descrivi la spesa…</value></data>
+  <data name="Expenses_CreateDraft" xml:space="preserve"><value>Crea bozza</value></data>
+  <data name="Expenses_HowItWorks" xml:space="preserve"><value>Come funziona</value></data>
+  <data name="Expenses_HowItWorksStep1" xml:space="preserve"><value>Crea una bozza e aggiungi voci di spesa con gli importi.</value></data>
+  <data name="Expenses_HowItWorksStep2" xml:space="preserve"><value>Allega una ricevuta o fattura a ogni voce.</value></data>
+  <data name="Expenses_HowItWorksStep3" xml:space="preserve"><value>Imposta il tuo IBAN di pagamento se non l’hai già fatto.</value></data>
+  <data name="Expenses_HowItWorksStep4" xml:space="preserve"><value>Invia il rapporto alla revisione di coordinamento o FinanceAdmin.</value></data>
+  <data name="Expenses_HowItWorksStep5" xml:space="preserve"><value>Dopo l’approvazione riceverai un bonifico SEPA.</value></data>
 </root>

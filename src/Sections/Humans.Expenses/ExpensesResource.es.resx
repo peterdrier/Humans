@@ -184,4 +184,15 @@
   <data name="Expenses_Done" xml:space="preserve"><value>Hecho</value></data>
   <data name="Expenses_FailedHoldedPushSingular" xml:space="preserve"><value>informe aprobado no terminó de enviarse a Holded. Abre el informe para ver el error, si se creó un importe pagadero y volver a poner el envío en cola.</value></data>
   <data name="Expenses_FailedHoldedPushPlural" xml:space="preserve"><value>informes aprobados no terminaron de enviarse a Holded. Abre un informe para ver el error, si se creó un importe pagadero y volver a poner el envío en cola.</value></data>
+  <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nuevo informe de gastos</value></data>
+  <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Selecciona una categoría —</value></data>
+  <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(opcional, máx. 500 caracteres)</value></data>
+  <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Describe el gasto…</value></data>
+  <data name="Expenses_CreateDraft" xml:space="preserve"><value>Crear borrador</value></data>
+  <data name="Expenses_HowItWorks" xml:space="preserve"><value>Cómo funciona</value></data>
+  <data name="Expenses_HowItWorksStep1" xml:space="preserve"><value>Crea un borrador y añade partidas de gastos con importes.</value></data>
+  <data name="Expenses_HowItWorksStep2" xml:space="preserve"><value>Adjunta un recibo o factura a cada partida.</value></data>
+  <data name="Expenses_HowItWorksStep3" xml:space="preserve"><value>Configura tu IBAN de pago si aún no lo has hecho.</value></data>
+  <data name="Expenses_HowItWorksStep4" xml:space="preserve"><value>Envía el informe para revisión de coordinación o FinanceAdmin.</value></data>
+  <data name="Expenses_HowItWorksStep5" xml:space="preserve"><value>Tras aprobarse recibirás una transferencia SEPA.</value></data>
 </root>

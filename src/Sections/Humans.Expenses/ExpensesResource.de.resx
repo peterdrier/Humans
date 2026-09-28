@@ -184,4 +184,15 @@
   <data name="Expenses_Done" xml:space="preserve"><value>Fertig</value></data>
   <data name="Expenses_FailedHoldedPushSingular" xml:space="preserve"><value>genehmigter Bericht konnte nicht vollständig an Holded übertragen werden. Öffne den Bericht, um den Fehler, einen möglichen Zahlbetrag und die erneute Einreihung zu sehen.</value></data>
   <data name="Expenses_FailedHoldedPushPlural" xml:space="preserve"><value>genehmigte Berichte konnten nicht vollständig an Holded übertragen werden. Öffne einen Bericht, um den Fehler, einen möglichen Zahlbetrag und die erneute Einreihung zu sehen.</value></data>
+  <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Neuer Ausgabenbericht</value></data>
+  <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Kategorie auswählen —</value></data>
+  <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(optional, max. 500 Zeichen)</value></data>
+  <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Beschreibe die Ausgabe…</value></data>
+  <data name="Expenses_CreateDraft" xml:space="preserve"><value>Entwurf erstellen</value></data>
+  <data name="Expenses_HowItWorks" xml:space="preserve"><value>So funktioniert es</value></data>
+  <data name="Expenses_HowItWorksStep1" xml:space="preserve"><value>Erstelle einen Entwurf und füge Ausgabenposten mit Beträgen hinzu.</value></data>
+  <data name="Expenses_HowItWorksStep2" xml:space="preserve"><value>Füge jedem Posten einen Beleg oder eine Rechnung bei.</value></data>
+  <data name="Expenses_HowItWorksStep3" xml:space="preserve"><value>Hinterlege deine Zahlungs-IBAN, falls noch nicht geschehen.</value></data>
+  <data name="Expenses_HowItWorksStep4" xml:space="preserve"><value>Reiche den Bericht zur Prüfung durch Koordination oder FinanceAdmin ein.</value></data>
+  <data name="Expenses_HowItWorksStep5" xml:space="preserve"><value>Nach der Genehmigung erhältst du eine SEPA-Überweisung.</value></data>
 </root>

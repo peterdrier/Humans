@@ -118,6 +118,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 
 The submitter-facing `/Expenses/{id}/Edit` and `/Expenses/{id}/Lines/New` views use `ExpensesResource` for every label, status, action, confirmation, explanatory message, and accessibility label in all supported cultures.
 The `/Expenses/Review` Holded-push warning uses singular and plural `ExpensesResource` messages in all supported cultures.
+The submitter-facing `/Expenses/New` form uses `ExpensesResource` for all labels, actions, placeholder text, guidance, and accessibility labels in all supported cultures.
 
 ## Actors & Roles
 

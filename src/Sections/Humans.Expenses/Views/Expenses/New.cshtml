@@ -1,16 +1,16 @@
 @model Humans.Expenses.Models.ExpenseNewViewModel
 @{
-    ViewData["Title"] = "New Expense Report";
+    ViewData["Title"] = Localizer["Expenses_NewExpenseReport"].Value;
 }
 
-<nav aria-label="breadcrumb" class="mb-3">
+<nav aria-label="@Localizer["Expenses_BreadcrumbNavigation"]" class="mb-3">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">My Expense Reports</a></li>
-        <li class="breadcrumb-item active" aria-current="page">New Report</li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Expenses_MyReportsTitle"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Expenses_NewReport"]</li>
     </ol>
 </nav>
 
-<h1 class="mb-4">New Expense Report</h1>
+<h1 class="mb-4">@Localizer["Expenses_NewExpenseReport"]</h1>
 
 
 <div class="row">
@@ -34,9 +34,9 @@
                     </div>
 
                     <div class="mb-3">
-                        <label asp-for="BudgetCategoryId" class="form-label">Budget Category <span class="text-danger">*</span></label>
+                        <label asp-for="BudgetCategoryId" class="form-label">@Localizer["Expenses_BudgetCategory"] <span class="text-danger">*</span></label>
                         <select asp-for="BudgetCategoryId" class="form-select" required>
-                            <option value="">— Select a category —</option>
+                            <option value="">@Localizer["Expenses_SelectCategory"]</option>
                             @foreach (var c in Model.Categories)
                             {
                                 <option value="@c.Id">@c.DisplayName</option>
@@ -46,14 +46,14 @@
                     </div>
 
                     <div class="mb-3">
-                        <label asp-for="Note" class="form-label">Subject <small class="text-muted">(optional, max 500 chars)</small></label>
-                        <textarea asp-for="Note" class="form-control" rows="3" maxlength="500" placeholder="Describe the expense…"></textarea>
+                        <label asp-for="Note" class="form-label">@Localizer["Expenses_ColSubject"] <small class="text-muted">@Localizer["Expenses_OptionalMaxChars"]</small></label>
+                        <textarea asp-for="Note" class="form-control" rows="3" maxlength="500" placeholder="@Localizer["Expenses_SubjectPlaceholder"]"></textarea>
                         <span asp-validation-for="Note" class="text-danger small"></span>
                     </div>
 
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">Create Draft</button>
-                        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">@Localizer["Expenses_CreateDraft"]</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["Expenses_Cancel"]</a>
                     </div>
                 </form>
             </div>
@@ -62,13 +62,13 @@
     <div class="col-md-5">
         <div class="card bg-light">
             <div class="card-body">
-                <h6 class="card-title">How it works</h6>
+                <h6 class="card-title">@Localizer["Expenses_HowItWorks"]</h6>
                 <ol class="small text-muted mb-0">
-                    <li>Create a draft and add expense lines with amounts.</li>
-                    <li>Attach a receipt or invoice to each line.</li>
-                    <li>Set your payment IBAN if you haven't already.</li>
-                    <li>Submit for coordinator / FinanceAdmin review.</li>
-                    <li>On approval you receive a SEPA bank transfer.</li>
+                    <li>@Localizer["Expenses_HowItWorksStep1"]</li>
+                    <li>@Localizer["Expenses_HowItWorksStep2"]</li>
+                    <li>@Localizer["Expenses_HowItWorksStep3"]</li>
+                    <li>@Localizer["Expenses_HowItWorksStep4"]</li>
+                    <li>@Localizer["Expenses_HowItWorksStep5"]</li>
                 </ol>
             </div>
         </div>
