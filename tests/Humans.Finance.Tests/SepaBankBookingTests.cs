@@ -1082,6 +1082,26 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
+    public async Task ATransferWithALineOfItsOwn_TheFileIsNotOffered_AndProcessRefuses()
+    {
+        // The bank debited per transfer after all; a €100 line on the same feed is another payment.
+        SeedBatch();
+        SeedMovements(
+            Movement(BatchMovementId, -100m, "TRANSFERENCIAS SEPA"),
+            Movement("mov-own", -10m, "TRANSF 40000011 - NCA - ANA RUIZ"));
+
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+        var result = await MakeService().BookSepaFileAsync(BatchFileId, BatchMovementId, Guid.NewGuid());
+
+        rows.Should().OnlyContain(r => r.BatchLine == null);
+        rows.Single(r => r.TransferId == Batch[0].Id).CandidateBankMovementId.Should().Be("mov-own");
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("has a Sabadell line of its own");
+        await AssertNothingPosted();
+    }
+
+    [HumansFact]
     public async Task Page_FileWithAnUnboundTransfer_SaysWhyItCannotBeProcessed()
     {
         SeedBatch();

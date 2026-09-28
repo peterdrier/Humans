@@ -1146,7 +1146,7 @@ internal sealed class Service(
         // booked rows, and has to stay processable to finish.
         var batchLines = movements
             .Where(NeedsAMatch)
-            .Select(m => (Movement: m, Files: BatchFiles(withReasons, m)))
+            .Select(m => (Movement: m, Files: BatchFiles(withReasons, m, movements)))
             .ToList();
         // Every line a file fits counts against it, ambiguous or not — as Process's rival check does.
         var batchClaimants = batchLines
@@ -1418,15 +1418,15 @@ internal sealed class Service(
                 + "reload /Finance/Sepa.");
 
         // ── The pairing, re-validated here — the posted ids are never trusted.
-        if (BatchLineRefusal(file, movement, rows) is { } refusal)
+        if (BatchLineRefusal(file, movement, rows, feed) is { } refusal)
             return new SepaBookingResult(false, refusal);
-        var files = BatchFiles(rows, movement);
+        var files = BatchFiles(rows, movement, feed);
         if (files.Count > 1)
             return new SepaBookingResult(false,
                 $"{files.Count} payout files total {Euros(Math.Abs(movement.Amount))} — Humans cannot tell "
                 + "which one that Sabadell line paid; settle it in Holded by hand. Nothing was posted.");
         var rivals = feed.Count(x => !string.Equals(x.Id, movement.Id, StringComparison.Ordinal)
-                                     && NeedsAMatch(x) && BatchLineRefusal(file, x, rows) is null);
+                                     && NeedsAMatch(x) && BatchLineRefusal(file, x, rows, feed) is null);
         if (rivals > 0)
             return new SepaBookingResult(false,
                 $"{rivals + 1} Sabadell lines could each be this file's debit — Humans cannot tell which "
@@ -1996,9 +1996,11 @@ internal sealed class Service(
 
     /// <summary>The files whose whole total <paramref name="m"/> could be the one debit of. More than
     /// one is ambiguous and waits for a human.</summary>
-    private List<Guid> BatchFiles(IReadOnlyList<SepaPayoutTransferRow> rows, HoldedBankMovementDto m) =>
+    private List<Guid> BatchFiles(
+        IReadOnlyList<SepaPayoutTransferRow> rows, HoldedBankMovementDto m,
+        IReadOnlyList<HoldedBankMovementDto> feed) =>
         rows.GroupBy(r => r.FileId)
-            .Where(g => BatchLineRefusal(g.ToList(), m, rows) is null)
+            .Where(g => BatchLineRefusal(g.ToList(), m, rows, feed) is null)
             .Select(g => g.Key)
             .ToList();
 
@@ -2008,7 +2010,7 @@ internal sealed class Service(
     /// the file's total, exactly: nothing is ever split by guesswork.</summary>
     private string? BatchLineRefusal(
         IReadOnlyList<SepaPayoutTransferRow> file, HoldedBankMovementDto m,
-        IReadOnlyList<SepaPayoutTransferRow> rows)
+        IReadOnlyList<SepaPayoutTransferRow> rows, IReadOnlyList<HoldedBankMovementDto> feed)
     {
         var total = file.Sum(r => r.Amount);
         if (file.Count < 2)
@@ -2039,6 +2041,14 @@ internal sealed class Service(
             && UnbookedMatches(rows, account, Math.Abs(m.Amount), m.Date).Count > 0)
             return "That Sabadell line names a single transfer — book it on that transfer's row. "
                    + "Nothing was posted.";
+        // And the mirror: a transfer of this file with a line of its own was not debited as part of
+        // one total, so a total-sized line is some other payment.
+        if (feed.Any(x => NeedsAMatch(x)
+                          && !rows.Any(r => string.Equals(r.HoldedBankMovementId, x.Id, StringComparison.Ordinal))
+                          && RemittanceAccountNum(x.Description) is { } own
+                          && UnbookedMatches(file, own, Math.Abs(x.Amount), x.Date).Count > 0))
+            return "A transfer in that file has a Sabadell line of its own — book the transfers on their "
+                   + "rows. Nothing was posted.";
         return null;
     }
 
