@@ -38,4 +38,17 @@ public interface IHoldedFinanceServiceRead
     /// <summary>Per-account statement: balance plus every journal line the Holded mirror holds for the
     /// account — no window of its own, so the span is whatever the last sync swept. Null when none.</summary>
     Task<HoldedCreditorLedger?> GetCreditorLedgerAsync(int supplierAccountNum, CancellationToken ct = default);
+
+    /// <summary>Every live <c>holded_category_map</c> row, active and archived — what each budget
+    /// category is actually booked to today. Same projection <c>/Finance/Holded</c> renders
+    /// (peterdrier/Humans#1838).</summary>
+    Task<IReadOnlyList<HoldedCategoryMapRow>> GetCategoryMapAsync(CancellationToken ct = default);
+
+    /// <summary>Every generated SEPA transfer with its current booking state and the reason it
+    /// cannot be booked, plus the one reason booking is off for the whole screen (missing
+    /// configuration) — the same rows <c>/Finance/Sepa</c> renders, including a live bank-feed
+    /// read; only the candidate-line/unmatched-movements halves that drive that page's own "book
+    /// this" button are dropped (peterdrier/Humans#1838).</summary>
+    Task<(IReadOnlyList<SepaPayoutTransferRow> Transfers, string? UnavailableReason)>
+        GetSepaTransfersAsync(CancellationToken ct = default);
 }

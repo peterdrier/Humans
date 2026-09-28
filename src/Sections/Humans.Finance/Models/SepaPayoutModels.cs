@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using NodaTime;
 
 namespace Humans.Finance.Models;
@@ -45,50 +46,6 @@ internal sealed record SepaPayoutResult(string? FileName, string? Xml, string? E
 internal sealed record SepaPayoutSettings(decimal MaxPerTransfer, string? UnavailableReason)
 {
     public bool IsAvailable => UnavailableReason is null;
-}
-
-/// <summary>
-/// One credit transfer flattened with the file it belongs to, for <c>/Finance/Sepa</c>. The file's
-/// XML is deliberately absent — the screen lists hundreds of rows and never renders the document.
-/// </summary>
-/// <param name="NotBookableReason">Why this transfer cannot be booked into Holded, or null when it
-/// can. The repository projects it null; <c>GetSepaPayoutsAsync</c> fills it in.</param>
-/// <param name="CandidateBankMovementId">The Sabadell line that matches this transfer, filled in by
-/// <c>GetSepaPayoutsAsync</c>; the repository always projects it null.</param>
-internal sealed record SepaPayoutTransferRow(
-    Guid TransferId,
-    Guid FileId,
-    string FileName,
-    Instant GeneratedAt,
-    Guid GeneratedByUserId,
-    Guid UserId,
-    int SupplierAccountNum,
-    string? HoldedContactId,
-    string CreditorName,
-    string IbanMasked,
-    decimal Amount,
-    Instant? BookedAt,
-    Guid? BookedByUserId,
-    string? HoldedBankMovementId,
-    Instant? ReconciledAt,
-    string? NotBookableReason,
-    string? CandidateBankMovementId,
-    LocalDate? CandidateBankMovementDate = null,
-    decimal? CandidateBankMovementAmount = null,
-    string? CandidateBankMovementDescription = null)
-{
-    /// <summary>Booked is exactly "has a <see cref="BookedAt"/>" — there is no status column.</summary>
-    public bool IsBooked => BookedAt is not null;
-
-    /// <summary>Booked, against a known bank line, and Holded has not been told they match yet.</summary>
-    public bool ReconcilePending =>
-        IsBooked && HoldedBankMovementId is { Length: > 0 } && ReconciledAt is null;
-
-    /// <summary>A bank line was found for this transfer and everything else checks out. The three
-    /// <c>CandidateBankMovement*</c> fields describe that line, so the treasurer can recognise it
-    /// before clicking Book; they are filled together with the id and are null without it.</summary>
-    public bool CanBook =>
-        !IsBooked && NotBookableReason is null && CandidateBankMovementId is { Length: > 0 };
 }
 
 /// <summary>An outgoing Sabadell line the sweep could not book, with why — the page's

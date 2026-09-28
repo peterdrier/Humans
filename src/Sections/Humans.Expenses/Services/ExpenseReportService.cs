@@ -40,7 +40,7 @@ internal sealed class ExpenseReportService(
     IClock clock,
     ILogger<ExpenseReportService> logger,
     IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportService,
-        IExpenseReportBackgroundProcessor, IUserDataContributor
+        IExpenseReportServiceRead, IExpenseReportBackgroundProcessor, IUserDataContributor
 {
     internal const string ExpenseReports = "ExpenseReports";
     internal const string ExpenseAuditLog = "ExpenseAuditLog";

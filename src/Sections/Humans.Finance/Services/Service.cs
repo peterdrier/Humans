@@ -338,17 +338,44 @@ internal sealed class Service(
         return map.FirstOrDefault(m => m.IsActive && m.BudgetCategoryId == budgetCategoryId)?.HoldedAccountId;
     }
 
+    /// <summary>Every live category-map row with its category/group names resolved from the active
+    /// budget year — shared by <see cref="GetConnectorOverviewAsync"/> and the public
+    /// <see cref="GetCategoryMapAsync"/> (peterdrier/Humans#1838).</summary>
+    private async Task<IReadOnlyList<HoldedCategoryMapRow>> BuildCategoryMapAsync(CancellationToken ct)
+    {
+        var map = await repo.GetCategoryMapAsync(ct);
+        var year = await budget.GetActiveYearAsync();
+        var categories = year is null
+            ? new Dictionary<Guid, (string Name, string Group)>()
+            : year.Groups
+                .SelectMany(g => g.Categories.Select(c => (c.Id, Name: c.Name, Group: g.Name)))
+                .ToDictionary(c => c.Id, c => (c.Name, c.Group));
+
+        return map.Select(m => new HoldedCategoryMapRow(
+            m.BudgetCategoryId,
+            categories.TryGetValue(m.BudgetCategoryId, out var c) ? c.Name : null,
+            categories.TryGetValue(m.BudgetCategoryId, out var g) ? g.Group : null,
+            m.HoldedAccountNumber,
+            m.HoldedAccountId,
+            m.Tag,
+            m.IsActive,
+            m.UpdatedAt)).ToList();
+    }
+
+    public Task<IReadOnlyList<HoldedCategoryMapRow>> GetCategoryMapAsync(CancellationToken ct = default) =>
+        BuildCategoryMapAsync(ct);
+
     // ─── Connector overview (/Finance/Holded) ─────────────────────────────────────
 
     public async Task<HoldedConnectorVm> GetConnectorOverviewAsync(CancellationToken ct = default)
     {
         var state = await repo.GetOrCreateDocSyncStateAsync(ct);
         var bindings = await repo.GetCreditorContactsAsync(ct);
-        var map = await repo.GetCategoryMapAsync(ct);
+        var categoryMap = await BuildCategoryMapAsync(ct);
         var docs = await repo.GetAllDocsAsync(ct);
 
         // Category names come from the active budget year, the same source the provisioning plan
-        // uses. A map row or doc pointing outside it keeps a null name rather than a lookup per row.
+        // uses. A doc pointing outside it keeps a null name rather than a lookup per row.
         var year = await budget.GetActiveYearAsync();
         var categories = year is null
             ? new Dictionary<Guid, (string Name, string Group)>()
@@ -376,15 +403,7 @@ internal sealed class Service(
                 // Dropping it left an Error row unable to say when the failure actually happened.
                 state.StatusChangedAt),
             bindings.Count,
-            map.Select(m => new HoldedCategoryMapVm(
-                m.BudgetCategoryId,
-                NameOf(m.BudgetCategoryId),
-                categories.TryGetValue(m.BudgetCategoryId, out var g) ? g.Group : null,
-                m.HoldedAccountNumber,
-                m.HoldedAccountId,
-                m.Tag,
-                m.IsActive,
-                m.UpdatedAt)).ToList(),
+            categoryMap,
             docs.Select(d => new HoldedDocVm(
                 d.HoldedDocId,
                 d.DocNumber,
@@ -1085,6 +1104,17 @@ internal sealed class Service(
     private static readonly Regex RemittanceAccount = new(
         @"(?<acct>\d{8})\s*-\s*NCA\s*-", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(1));
+
+    /// <summary>The same rows and reason <see cref="GetSepaPayoutsAsync"/> computes — Backdoor's
+    /// read-only <c>sepa-transfers</c> route reuses the whole booking-state logic, live bank-feed
+    /// read included, and drops only the candidate-line/unmatched-movements halves that exist to
+    /// drive <c>/Finance/Sepa</c>'s own "book this" button (peterdrier/Humans#1838).</summary>
+    public async Task<(IReadOnlyList<SepaPayoutTransferRow> Transfers, string? UnavailableReason)>
+        GetSepaTransfersAsync(CancellationToken ct = default)
+    {
+        var (rows, unavailable, _, _) = await GetSepaPayoutsAsync(ct);
+        return (rows, unavailable);
+    }
 
     public async Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason,
         IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError)>

@@ -5,7 +5,6 @@ using Humans.Finance.Contracts;
 using Humans.Base.Helpers;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
-using Humans.Expenses.Authorization;
 using Humans.Expenses.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

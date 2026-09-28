@@ -286,7 +286,7 @@ No Tickets dependency: the cash-flow view that had one is Budget's. Budget never
 
 **Status:** (A) — own project (`src/Sections/Humans.Finance` + `src/Sections/Humans.Finance.Contracts`), own service, owned repository, own `FinanceDbContext`.
 
-**Owning service:** `Service` (`Humans.Finance.Services`), exposed as `IHoldedFinanceService` from the contracts leaf. `IHoldedFinanceServiceRead` carries the read-only subset for cross-section callers (`BudgetAdminController`, `Expenses.ExpensesController`); the write-capable `ExpenseReportService`, `Holded.HoldedNightlySync` and `Holded.HoldedController` are `[CrossSectionWrite]` and inject the full `IHoldedFinanceService` instead.
+**Owning service:** `Service` (`Humans.Finance.Services`), exposed as `IHoldedFinanceService` from the contracts leaf. `IHoldedFinanceServiceRead` carries the read-only subset for cross-section callers (`BudgetAdminController`, `Expenses.ExpensesController`, `Backdoor.BackdoorFinanceController`); the write-capable `ExpenseReportService`, `Holded.HoldedNightlySync` and `Holded.HoldedController` are `[CrossSectionWrite]` and inject the full `IHoldedFinanceService` instead.
 **Pure matcher:** `HoldedMatcher` (static, no dependencies)
 **Pure file builder:** `SepaPaymentFileBuilder` with `SepaSchema` and `SepaText` (no IO, no clock, no configuration)
 **Owned repository:** `IHoldedRepository` / `Repository` (`Humans.Finance.Data`) — tables under [Owned repository](#owned-repository)
@@ -298,7 +298,9 @@ No Tickets dependency: the cash-flow view that had one is Budget's. Budget never
 
 | Read interface | Methods | Notes |
 |---|---|---|
-| `IHoldedFinanceServiceRead` | [`IHoldedFinanceServiceRead.cs`](../../Humans.Finance.Contracts/IHoldedFinanceServiceRead.cs) | Consumed by `BudgetAdminController` (actuals) and `ExpensesController` (creditor status, ledger, account list). `IHoldedFinanceService` inherits it and adds the writes. |
+| `IHoldedFinanceServiceRead` | [`IHoldedFinanceServiceRead.cs`](../../Humans.Finance.Contracts/IHoldedFinanceServiceRead.cs) | Consumed by `BudgetAdminController` (actuals), `ExpensesController` (creditor status, ledger, account list) and `Backdoor.BackdoorFinanceController` (peterdrier/Humans#1838: the same account/ledger reads, plus `GetCategoryMapAsync` and `GetSepaTransfersAsync` below). `IHoldedFinanceService` inherits it and adds the writes. |
+
+`GetCategoryMapAsync` and `GetSepaTransfersAsync` (added for peterdrier/Humans#1838) expose, read-only, exactly what `/Finance/Holded`'s category-map table and `/Finance/Sepa` already render: `GetCategoryMapAsync` returns the same `HoldedCategoryMapRow` projection `GetConnectorOverviewAsync` builds (both share one private helper, so the two views cannot drift), and `GetSepaTransfersAsync` returns what `GetSepaPayoutsAsync` computes — live bank-feed read included — minus the candidate-bank-line and unmatched-movement halves that exist only to drive that page's own "book this" button. Both DTOs (`HoldedCategoryMapRow`, `SepaPayoutTransferRow`) live in the contracts leaf now, not this section's `Models/`.
 
 **Controllers.** `/Finance` is served by two controllers under one route prefix: this section's `FinanceController` — the Holded, creditor and SEPA-payout surface, the routing table above — and `Humans.Budget.Controllers.BudgetAdminController`, Budget CRUD under the same `[Route("Finance")]`. See [`Budget.md`](../../Humans.Budget/Docs/Budget.md) for the Budget side.
 

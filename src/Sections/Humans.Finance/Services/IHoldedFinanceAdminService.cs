@@ -1,5 +1,6 @@
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
+using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 
 namespace Humans.Finance.Services;

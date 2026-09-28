@@ -27,11 +27,11 @@
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
-      The six sections whose machine surface Backdoor serves. Each is reached only through
+      The sections whose machine surface Backdoor serves. Each is reached only through
       the public interface in its Contracts/ folder (Agent, Feedback, Notifications, Store,
-      Surveys) or its contracts leaf (Issues) — HUM0034 keeps everything else in those
-      assemblies internal, so the reference cannot widen past the published surface.
-      Acyclic by construction:
+      Surveys, Expenses) or its contracts leaf (Issues, Finance) — HUM0034 keeps everything
+      else in those assemblies internal, so the reference cannot widen past the published
+      surface. Acyclic by construction:
       nothing references Backdoor. Debug is absent — /api/backdoor/logs reads
       InMemoryLogSink, which is Base's; so is Humans.Issues itself, since every Issues type
       named here resolves from the contracts leaf.
@@ -42,6 +42,18 @@
     <ProjectReference Include="..\Humans.Notifications\Humans.Notifications.csproj" />
     <ProjectReference Include="..\Humans.Store\Humans.Store.csproj" />
     <ProjectReference Include="..\Humans.Surveys\Humans.Surveys.csproj" />
+    <!--
+      Expense reports (peterdrier/Humans#1838): IExpenseReportServiceRead plus the public
+      ExpenseReportOperation(Requirement) pair, so this section can authorize the same way
+      ExpensesController does — imperative IAuthorizationService calls against the shared
+      resource-based handler, rather than re-deriving the actor matrix here.
+    -->
+    <ProjectReference Include="..\Humans.Expenses\Humans.Expenses.csproj" />
+    <!-- Creditor bindings, the category map and SEPA transfers — contracts leaf only, never
+         Humans.Finance itself (memory/architecture/section-project-cycle-fix.md). -->
+    <ProjectReference Include="..\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
+    <!-- The budget year label (e.g. "2026") a report is booked to, for the year filter/field. -->
+    <ProjectReference Include="..\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
