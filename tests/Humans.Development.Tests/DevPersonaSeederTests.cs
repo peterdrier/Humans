@@ -223,4 +223,39 @@ public class DevPersonaSeederTests
             userId, Arg.Any<Guid>(), true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _humanLifecycle.Received(1).RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>());
     }
+
+    [HumansFact]
+    public async Task EnsureFreshGuestAsync_EachCall_MintsANewProfilelessUser()
+    {
+        // Parallel testers must never share one guest account.
+        var created = new List<User>();
+        _userManager.CreateAsync(Arg.Do<User>(created.Add)).Returns(IdentityResult.Success);
+        var sut = BuildSut();
+
+        var first = await sut.EnsureFreshGuestAsync("Guest (No Profile)");
+        var second = await sut.EnsureFreshGuestAsync("Guest (No Profile)");
+
+        first.Should().NotBe(second);
+        created.Select(u => u.Id).Should().Equal(first, second);
+        await _profileEditor.DidNotReceive().SaveProfileAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResetLegalNamesAsync_BlanksLegalNamesAndKeepsBurnerName()
+    {
+        // The no-name persona must hit the onboarding name gate (#812) on every sign-in.
+        var userId = DevPersonaSeeder.PersonaGuid("no-name");
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(NamedUserInfo(userId, UserState.Active)));
+
+        await BuildSut().ResetLegalNamesAsync(userId);
+
+        await _profileEditor.Received(1).SaveProfileAsync(
+            userId,
+            "Dev Board",
+            Arg.Is<ProfileSaveRequest>(r =>
+                r.BurnerName == "Dev Board" && r.FirstName.Length == 0 && r.LastName.Length == 0),
+            Arg.Any<CancellationToken>());
+    }
 }
