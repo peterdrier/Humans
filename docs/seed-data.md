@@ -37,13 +37,13 @@
 | Endpoint | Policy | Seeder | What it does |
 |---|---|---|---|
 | `/dev/seed/budget` | `FinanceAdminOrAdmin` | `IBudgetDemoSeeder` | Demo budget year with teams, categories, and line items |
-| `/dev/seed/camp-roles` | `CampAdminOrAdmin` | `DevelopmentCampRoleSeeder` | Camp role definitions and assignments |
+| `/dev/seed/camp-roles` | `CampAdminOrAdmin` | `DevelopmentCampRoleSeeder` | The five system camp-role definitions |
 | `/dev/seed/dashboard` | `ShiftDashboardAccess` | `DevelopmentDashboardSeeder` | Teams, humans, shifts, and signups behind the shift dashboard |
 | `/dev/seed/dashboard/reset` | `AdminOnly` | `DevelopmentDashboardSeeder` | Deletes the dashboard demo rows, then reseeds |
 
 `DevPersonaSeeder` (Development) is the other runtime seeder: `GET /dev/login/{persona}` (behind the same `DevAuth:Enabled` + non-production gate) calls it to ensure the persona's User, Profile, emails, roles, and dev fixtures (system-team memberships, test department, barrio camp/lead, city-planning team) through the owning sections' services before signing in.
 
-The two dashboard endpoints are stricter than the rest: they additionally require `ASPNETCORE_ENVIRONMENT=Development`, so they never run on QA or preview. Their buttons are on `Views/ShiftDashboard/Index.cshtml`.
+The two dashboard endpoints are stricter than the rest: they additionally require `ASPNETCORE_ENVIRONMENT=Development`, so they never run on QA or preview. Their buttons are on `Views/ShiftDashboard/Index.cshtml`; the budget and camp-role buttons are on the `GET /dev/seed` page.
 
 The budget and camp-role endpoints are reached from the admin sidebar's **Dev** group (Development's `SectionAdminNav.cs`), whose two items carry `EnvironmentGate: env => !env.IsProduction()` — so they render on local and QA but never in production.
 

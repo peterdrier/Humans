@@ -47,7 +47,7 @@ public sealed class Section : ISection, IIssueQueueOwner
             sp.GetRequiredService<IBudgetServiceRead>(),
             sp.GetRequiredService<ILogger<TicketingBudgetSyncJob>>()));
 
-        // Shell's /dev/seed/budget action drives this through the contracts leaf rather than
+        // Development's /dev/seed/budget action drives this through the contracts leaf rather than
         // resolving the concrete seeder, which is what keeps Budget's fifteen write methods
         // off the leaf.
         services.AddScoped<IBudgetDemoSeeder, DevelopmentBudgetSeeder>();

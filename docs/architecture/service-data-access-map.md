@@ -447,11 +447,11 @@ repositories directly, bypassing the service layer.
 ### Controllers
 
 None. Every write (`User`/`Profile`/`UserEmail`,
-system-team membership, dev barrio camp/season/lead via `ICampService` /
-`ICampRoleService`, city-planning team, role assignments, contact fields)
+system-team membership, dev barrio camp/season/lead via `ICampSeeding` /
+`ICampRoleSeeding`, city-planning team, role assignments, contact fields)
 goes through the owning section's service interface per design-rules §2c.
 `DevLoginController` injects `UserManager<User>`,
-`SignInManager<User>`, `IUserEmailService`, and `DevPersonaSeeder`
+`SignInManager<User>`, `IUserEmailService`, `IRoleAssignmentService`, and `DevPersonaSeeder`
 (`src/Sections/Humans.Development/Services/DevPersonaSeeder.cs`, which
 itself owns no DbContext). `AdminController`'s direct DB reads go behind
 `IAdminDatabaseDiagnosticsService`. All web
