@@ -12,6 +12,7 @@ using NodaTime;
 using NSubstitute;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
+using Humans.Base.Constants;
 using Humans.Governance.Services;
 using Humans.Base.Enums;
 using MemberApplication = Humans.Governance.Domain.Application;
@@ -78,6 +79,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _userService = Substitute.For<IUserService>();
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        _roleAssignmentService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
 
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -191,6 +194,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     public async Task SubmitAsync_InvalidatesNavBadgeAndNotificationMeter()
     {
         var userId = Guid.NewGuid();
+        var boardMemberId = Guid.NewGuid();
+        _roleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([boardMemberId]));
 
         var result = await _service.SubmitAsync(
             userId, MembershipTier.Colaborador, "Motivation",
@@ -199,6 +205,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.Success.Should().BeTrue();
         _navBadge.Received().Invalidate();
         _notificationMeter.Received().Invalidate();
+        _votingBadge.Received().Invalidate(boardMemberId);
     }
 
     // --- Withdraw flow ---
@@ -207,6 +214,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     public async Task WithdrawAsync_SubmittedApplication_SetsWithdrawn()
     {
         var userId = Guid.NewGuid();
+        var boardMemberId = Guid.NewGuid();
+        _roleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([boardMemberId]));
         var app = await SeedSubmittedApplicationAsync(userId);
 
         var result = await _service.WithdrawAsync(app.Id, userId, Xunit.TestContext.Current.CancellationToken);
@@ -216,6 +226,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var updated = await GovernanceDb.Applications.FirstAsync(a => a.Id == app.Id, Xunit.TestContext.Current.CancellationToken);
         updated.Status.Should().Be(ApplicationStatus.Withdrawn);
         _metrics.Received().RecordApplicationProcessed("withdrawn");
+        _votingBadge.Received().Invalidate(boardMemberId);
     }
 
     [HumansFact]
@@ -374,6 +385,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
         var voter1 = Guid.NewGuid();
         var voter2 = Guid.NewGuid();
+        var nonVoter = Guid.NewGuid();
+        _roleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([voter1, voter2, nonVoter]));
         await GovernanceDb.BoardVotes.AddRangeAsync(
             new BoardVote
             {
@@ -397,6 +411,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         _votingBadge.Received().Invalidate(voter1);
         _votingBadge.Received().Invalidate(voter2);
+        _votingBadge.Received().Invalidate(nonVoter);
     }
 
     [HumansFact]
