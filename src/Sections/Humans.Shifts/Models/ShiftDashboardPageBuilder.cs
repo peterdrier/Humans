@@ -1,5 +1,6 @@
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
+using Humans.Shifts.Helpers;
 using NodaTime;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
@@ -79,7 +80,7 @@ internal sealed class ShiftDashboardPageBuilder(
     {
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId) ?? DateTimeZone.Utc;
         var todayLocal = clock.GetCurrentInstant().InZone(tz).Date;
-        var firstBuildDay = eventSettings.GateOpeningDate.PlusDays(eventSettings.BuildStartOffset);
+        var firstBuildDay = eventSettings.DateForOffset(eventSettings.BuildStartOffset);
         var daysToBuild = Period.Between(todayLocal, firstBuildDay, PeriodUnits.Days).Days;
 
         return new BuildDayCountdown(

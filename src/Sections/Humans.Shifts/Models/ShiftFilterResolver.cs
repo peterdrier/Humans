@@ -1,4 +1,5 @@
 using Humans.Shifts.Contracts;
+using Humans.Shifts.Helpers;
 using NodaTime;
 
 namespace Humans.Shifts.Models;
@@ -26,16 +27,16 @@ internal static class ShiftFilterResolver
         period switch
         {
             ShiftPeriod.Build => (
-                es.GateOpeningDate.PlusDays(es.BuildStartOffset),
-                es.GateOpeningDate.PlusDays(-1)),
+                es.DateForOffset(es.BuildStartOffset),
+                es.DateForOffset(-1)),
             ShiftPeriod.Event => (
-                es.GateOpeningDate,
-                es.GateOpeningDate.PlusDays(es.EventEndOffset)),
+                es.DateForOffset(0),
+                es.DateForOffset(es.EventEndOffset)),
             ShiftPeriod.Strike => (
-                es.GateOpeningDate.PlusDays(es.EventEndOffset + 1),
-                es.GateOpeningDate.PlusDays(es.StrikeEndOffset)),
+                es.DateForOffset(es.EventEndOffset + 1),
+                es.DateForOffset(es.StrikeEndOffset)),
             _ => (
-                es.GateOpeningDate.PlusDays(es.BuildStartOffset),
-                es.GateOpeningDate.PlusDays(es.StrikeEndOffset))
+                es.DateForOffset(es.BuildStartOffset),
+                es.DateForOffset(es.StrikeEndOffset))
         };
 }

@@ -3,6 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
+using Humans.Shifts.Helpers;
 using Humans.Base.Controllers;
 using Humans.Base.Authorization;
 using Humans.Shifts.Models;
@@ -134,8 +135,8 @@ internal sealed class VolunteerTrackingController(
         if (period == ShiftPeriod.Build && subPeriod.HasValue)
         {
             var (startOffset, endExclusive) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, eventSettings);
-            rangeStart = eventSettings.GateOpeningDate.PlusDays(startOffset);
-            rangeEnd = eventSettings.GateOpeningDate.PlusDays(endExclusive - 1);
+            rangeStart = eventSettings.DateForOffset(startOffset);
+            rangeEnd = eventSettings.DateForOffset(endExclusive - 1);
         }
         else if (period.HasValue)
         {
@@ -147,8 +148,8 @@ internal sealed class VolunteerTrackingController(
         }
         else
         {
-            rangeStart = eventSettings.GateOpeningDate.PlusDays(eventSettings.BuildStartOffset);
-            rangeEnd = eventSettings.GateOpeningDate.PlusDays(eventSettings.StrikeEndOffset);
+            rangeStart = eventSettings.DateForOffset(eventSettings.BuildStartOffset);
+            rangeEnd = eventSettings.DateForOffset(eventSettings.StrikeEndOffset);
         }
         // Guard against a hand-crafted URL with endDate before startDate (the form's HTML5
         // validation would block this, but the action is reachable directly).
