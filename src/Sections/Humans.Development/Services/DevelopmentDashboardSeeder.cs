@@ -92,7 +92,7 @@ internal sealed class DevelopmentDashboardSeeder(
         var now = clock.GetCurrentInstant();
         var todayUtc = now.InUtc().Date;
 
-        // Settings mints event ids and owns "active" now (nobodies-collective/Humans#1631) —
+        // Settings mints event ids and owns "active" (nobodies-collective/Humans#1631) —
         // deactivates whatever else is active so ours becomes the one GetActiveEventSettingsAsync
         // resolves.
         await eventSettingsSeeding.CreateActiveEventAsync(new EventSettingsInfo(
@@ -196,8 +196,8 @@ internal sealed class DevelopmentDashboardSeeder(
         // All-day rotas (Build/Strike) get distinct offsets - duplicate same-date all-day
         // shifts surface as duplicate dropdown options in the range-signup form and
         // confuse the confirmation modal's overlap math.
-        // A local row, not the Shift entity: Shift is internal to Humans.Shifts since its
-        // G5 move, and the seeder only needs what it reads back off CreateShiftAsync.
+        // A local row, not the Shift entity: Shift is internal to Humans.Shifts, and the
+        // seeder only needs what it reads back off CreateShiftAsync.
         var shifts = new List<(SeededShift Shift, double ConfirmedRate)>();
         foreach (var (rota, rate) in allRotas)
         {
@@ -247,9 +247,8 @@ internal sealed class DevelopmentDashboardSeeder(
         }
 
         // Users: keep the cohort small (~120) - large enough to show activity, small enough to keep the dev seed fast.
-        // Users are an Identity-framework concern; we create them via UserManager, the
-        // standard pattern for framework-owned types. Passwords are intentionally omitted
-        // - these accounts are never logged into; they exist purely as dashboard data.
+        // Passwords are intentionally omitted - these accounts are never logged into; they
+        // exist purely as dashboard data.
         var totalUsers = 120;
 
         var users = new List<User>();
@@ -467,7 +466,6 @@ internal sealed class DevelopmentDashboardSeeder(
         // drop its own row too, or SeedAsync's AlreadySeeded check keeps firing forever.
         await eventSettingsSeeding.DeleteEventAsync(SeededEventId, cancellationToken);
 
-        // Dev users - match the seed marker on UserEmails.
         var devUserIds = await userEmailService.GetUserIdsByEmailPrefixAndSuffixAsync(
             DevUserEmailPrefix, DevUserEmailSuffix, cancellationToken);
 
@@ -523,8 +521,7 @@ internal sealed class DevelopmentDashboardSeeder(
 
     /// <summary>
     /// The four fields the seeder reads back off a created shift when it fans signups
-    /// out over it. Replaces the <c>Shift</c> entity, which turned internal to
-    /// <c>Humans.Shifts</c> at that section's G5 (nobodies-collective/Humans#866).
+    /// out over it.
     /// </summary>
     private sealed record SeededShift(Guid Id, Guid RotaId, int DayOffset, int MaxVolunteers);
 }

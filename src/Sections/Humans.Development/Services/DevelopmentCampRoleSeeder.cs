@@ -4,8 +4,8 @@ namespace Humans.Development.Services;
 
 internal sealed class DevelopmentCampRoleSeeder(ICampRoleSeeding campRoleSeeding)
 {
-    // The section's CreateCampRoleDefinitionInput turned internal at Camps' G5; the leaf takes
-    // the fields instead, so the fixture is a local shape (Finance's "own the boundary type").
+    // A local shape because Camps' CreateCampRoleDefinitionInput is internal; the leaf takes
+    // the fields.
     private sealed record Seed(string Name, string Slug, int SlotCount, int MinimumRequired, int SortOrder);
 
     private static readonly Seed[] Seeds =

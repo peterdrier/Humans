@@ -21,11 +21,10 @@ using NSubstitute;
 namespace Humans.Development.Tests;
 
 /// <summary>
-/// Covers the #867 persona repair: dev personas hold governance roles but never signed
-/// the required legal documents, so the nightly SuspendNonCompliantMembersJob suspended
-/// them once a document's grace period lapsed, and the create-only seeder could never
-/// bring them back. EnsureActiveAsync must submit missing consents through the canonical
-/// consent path and lift a consent suspension, on every dev sign-in, idempotently.
+/// Covers the #867 persona repair invariant: personas hold governance roles, and the
+/// nightly SuspendNonCompliantMembersJob suspends them otherwise, so EnsureActiveAsync
+/// must submit missing consents through the canonical consent path and lift a consent
+/// suspension, on every dev sign-in, idempotently.
 /// </summary>
 public class DevPersonaSeederTests
 {
@@ -203,8 +202,7 @@ public class DevPersonaSeederTests
     [HumansFact]
     public async Task EnsurePersonaAsync_ExistingPersona_RunsActiveRepair()
     {
-        // The pre-#867 seeder early-returned for existing personas, so a persona that
-        // drifted non-Active could never recover. The existing-persona path must repair.
+        // An existing persona that drifted non-Active is repaired on the existing-persona path.
         var userId = DevPersonaSeeder.PersonaGuid("board");
         _userManager.FindByIdAsync(userId.ToString())
             .Returns(new User { Id = userId, DisplayName = "Dev Board" });

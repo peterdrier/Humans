@@ -20,8 +20,7 @@ using NodaTime;
 namespace Humans.Development.Services;
 
 /// <summary>
-/// Dev-only persona seeding helper. Owns the writes that
-/// <c>DevLoginController</c> used to do directly against the DbContext.
+/// Dev-only persona seeding helper. Owns the dev persona writes.
 ///
 /// Cross-section writes (User, Profile, UserEmail) flow through the owning
 /// section's services per design-rules §2c
@@ -29,7 +28,7 @@ namespace Humans.Development.Services;
 /// <see cref="IProfileEditorService"/> / <see cref="IUserEmailService"/>). All dev fixtures (system-team
 /// memberships, dev test department, dev barrio camp/season/lead, city-planning
 /// team, role assignments, sample contact fields) also go through section
-/// ownership services, so this seeder no longer depends on DbContext writes.
+/// ownership services.
 /// </summary>
 [CrossSectionWrite("Dev seeding creates teams, memberships and profiles.")]
 internal sealed class DevPersonaSeeder(
@@ -94,7 +93,6 @@ internal sealed class DevPersonaSeeder(
         var firstName = nameParts[0];
         var lastName = nameParts.Length > 1 ? nameParts[1] : displayNameSuffix;
 
-        // Determine role assignments
         var isCoordinatorPersona = string.Equals(slug, "coordinator", StringComparison.OrdinalIgnoreCase);
         var roleName = isCoordinatorPersona ? null : RoleNameFromSlug(slug);
         var roles = roleName is not null ? new[] { roleName } : Array.Empty<string>();
@@ -116,7 +114,6 @@ internal sealed class DevPersonaSeeder(
             return id;
         }
 
-        // Seed primary verified UserEmail via the canonical service path.
         await userEmailService.AddVerifiedEmailAsync(id, email);
 
         // Seed the Profile via the canonical service path. SaveProfileAsync
@@ -158,7 +155,6 @@ internal sealed class DevPersonaSeeder(
                 id);
         }
 
-        // Seed sample contact fields through the profile service.
         await contactFieldService.SaveContactFieldsAsync(
             profileId,
             [
@@ -215,9 +211,8 @@ internal sealed class DevPersonaSeeder(
 
     /// <summary>
     /// Restores a persona to <see cref="UserState.Active"/> on every dev sign-in. Personas
-    /// hold governance roles but historically never signed the required legal documents, so
-    /// the nightly <c>SuspendNonCompliantMembersJob</c> suspended them once a document's
-    /// grace period lapsed, and the create-only seeder could never bring them back (#867).
+    /// hold governance roles, so without the required consents the nightly
+    /// <c>SuspendNonCompliantMembersJob</c> suspends them once a grace period lapses (#867).
     /// Submits any missing required consents through the canonical consent path (whose
     /// completion also lifts a consent suspension), then lifts any remaining consent
     /// suspension for the no-longer-missing-anything case. Idempotent.
@@ -542,8 +537,6 @@ internal sealed class DevPersonaSeeder(
         }
 
         // Adds an Active CampMember (idempotent) + the Camp Lead role assignment.
-        // AssignCampRoleOutcome is internal to Humans.Camps now; the leaf verb is idempotent
-        // and the seeder only ever logged the non-Assigned case.
         await campSeeding.AddMemberAndAssignRoleInActiveSeasonAsync(
             camp.Id, leadDefId.Value, leadUserId, leadUserId);
         return true;

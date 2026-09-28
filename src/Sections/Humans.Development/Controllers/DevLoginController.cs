@@ -26,9 +26,8 @@ internal sealed class DevLoginController(
     ILogger<DevLoginController> logger) : Controller
 {
     // Rendered by the section's own Views/Shared/_DevLoginPanel.cshtml, which Shell's
-    // /Account/Login pulls in by name across application parts. It used to be public because
-    // Shell's view named the type directly; the markup moved instead (step 3b), so the persona
-    // list never leaves the section.
+    // /Account/Login pulls in by name across application parts. The list is internal, so it
+    // never leaves the section.
     internal static IReadOnlyList<DevPersonaInfo> AllPersonas { get; } = BuildPersonaList();
 
     /// <summary>
@@ -150,8 +149,8 @@ internal sealed class DevLoginController(
 
     private IActionResult RedirectToLocalOrHome(string? returnUrl) =>
         Url.IsLocalUrl(returnUrl)
-            // "Index" as a literal: HomeController is Shell's and a section cannot name it
-            // (step 5). Covered by DevelopmentPageRenderTests, which follows the redirect.
+            // "Index" as a literal: HomeController is Shell's and a section cannot name it.
+            // Covered by DevelopmentPageRenderTests, which follows the redirect.
             ? LocalRedirect(returnUrl)
             : RedirectToAction("Index", "Home");
 
@@ -179,8 +178,6 @@ internal sealed class DevLoginController(
         logger.LogWarning("DEV LOGIN: signed in as fresh guest {Id}", user.Id);
         return RedirectToLocalOrHome(returnUrl);
     }
-
-    // --- Static helpers ---
 
     /// <summary>
     /// Whether this host may hand out an Admin session through dev login. QA runs Staging with
