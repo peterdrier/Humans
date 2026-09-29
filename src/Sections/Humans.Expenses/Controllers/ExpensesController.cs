@@ -354,7 +354,9 @@ internal sealed class ExpensesController(
 
         if (!result.Succeeded)
         {
-            SetError(result.ErrorMessage is null ? "Failed to add line" : $"Failed to add line: {result.ErrorMessage}");
+            SetError(result.ErrorMessage is null
+                ? localizer["Expenses_Flash_AddLineFailed"]
+                : $"Failed to add line: {result.ErrorMessage}");
             return BackToForm();
         }
 
