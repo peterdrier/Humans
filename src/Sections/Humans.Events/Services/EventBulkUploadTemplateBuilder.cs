@@ -104,6 +104,9 @@ internal static class EventBulkUploadTemplateBuilder
                 }
                 csv.WriteRecords(records);
             },
+            // Round-trip data file, not a spreadsheet report: injection escaping
+            // would prepend apostrophes that come back as data on re-upload,
+            // dirtying rows the user never touched.
             config => config.InjectionOptions = InjectionOptions.None);
     }
 

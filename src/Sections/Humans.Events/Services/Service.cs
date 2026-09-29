@@ -287,9 +287,87 @@ internal sealed class EventService(
         if (errors.Count > 0)
             return new BulkImportResult(errors, 0, 0);
 
-        return await EventBulkImporter.ImportAsync(
-            campId, submitterUserId, rows, categories, existingEvents, gateOpeningDate, eventEndOffset, timeZone,
-            clock, UpdateAndResubmitAsync, (guideEvent, token) => SubmitEventAsync(guideEvent, null, token), ct);
+        var created = 0;
+        var updated = 0;
+        foreach (var row in rows)
+        {
+            var category = categories.First(c => string.Equals(c.Name, row.Category, StringComparison.OrdinalIgnoreCase));
+            var date = NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Value;
+            var time = DateFormattingExtensions.TimeOfDayPattern.Parse(row.StartTime).Value;
+            var startAt = (date + time).InZoneLeniently(timeZone).ToInstant();
+            var recurrenceOffsets = row.IsRecurring && !string.IsNullOrEmpty(row.RecurrenceDays)
+                ? EventRecurrenceDays.DisplayDaysToOffsets(row.RecurrenceDays, gateOpeningDate, eventEndOffset)
+                : null;
+
+            if (row.Id.HasValue)
+            {
+                var existing = existingEvents.First(e => e.Id == row.Id.Value);
+
+                // Compare recurrence by day-name set, not the raw offset string, so a
+                // lossless round-trip ("0" ⇄ "Mon") isn't mistaken for an edit and the
+                // event isn't needlessly re-queued for moderation.
+                var existingDays = existing.IsRecurring && !string.IsNullOrEmpty(existing.RecurrenceDays)
+                    ? EventRecurrenceDays.OffsetsToDisplayDays(existing.RecurrenceDays, gateOpeningDate)
+                    : string.Empty;
+                var rowDays = row.IsRecurring ? row.RecurrenceDays ?? string.Empty : string.Empty;
+
+                var changed =
+                    !string.Equals(existing.Title, row.Title, StringComparison.Ordinal) ||
+                    !string.Equals(existing.Description, row.Description, StringComparison.Ordinal) ||
+                    existing.CategoryId != category.Id ||
+                    existing.StartAt != startAt ||
+                    existing.DurationMinutes != row.DurationMinutes ||
+                    !string.Equals(existing.LocationNote ?? string.Empty, row.LocationNote ?? string.Empty, StringComparison.Ordinal) ||
+                    !string.Equals(existing.Host ?? string.Empty, row.Host ?? string.Empty, StringComparison.Ordinal) ||
+                    existing.IsRecurring != row.IsRecurring ||
+                    !EventRecurrenceDays.SameDays(existingDays, rowDays) ||
+                    existing.PriorityRank != row.PriorityRank;
+
+                if (!changed) continue;
+
+                existing.Title = row.Title;
+                existing.Description = row.Description;
+                existing.CategoryId = category.Id;
+                existing.StartAt = startAt;
+                existing.DurationMinutes = row.DurationMinutes;
+                existing.LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote;
+                existing.Host = string.IsNullOrEmpty(row.Host) ? null : row.Host;
+                existing.IsRecurring = row.IsRecurring;
+                existing.RecurrenceDays = row.IsRecurring ? recurrenceOffsets : null;
+                existing.PriorityRank = row.PriorityRank;
+
+                // One path for every existing status: UpdateAndResubmitAsync keeps a
+                // Pending event Pending, re-queues an Approved one, and submits a
+                // Draft/Rejected/ResubmitRequested one. (Withdrawn is rejected in
+                // validation, so it never reaches here.)
+                await UpdateAndResubmitAsync(existing, ct);
+                updated++;
+            }
+            else
+            {
+                var newEvent = new Event
+                {
+                    Id = Guid.NewGuid(),
+                    CampId = campId,
+                    SubmitterUserId = submitterUserId,
+                    CategoryId = category.Id,
+                    Title = row.Title,
+                    Description = row.Description,
+                    LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote,
+                    Host = string.IsNullOrEmpty(row.Host) ? null : row.Host,
+                    StartAt = startAt,
+                    DurationMinutes = row.DurationMinutes,
+                    IsRecurring = row.IsRecurring,
+                    RecurrenceDays = recurrenceOffsets,
+                    PriorityRank = row.PriorityRank
+                };
+                newEvent.Submit(clock);
+                await SubmitEventAsync(newEvent, lifecycleActionUrl: null, ct);
+                created++;
+            }
+        }
+
+        return new BulkImportResult([], created, updated);
     }
 
     public async Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default)

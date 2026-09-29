@@ -69,7 +69,8 @@ internal static class BulkEventCsvParser
                 else errors.Add($"Row {fileRow}: PriorityRank is not an integer.");
             }
 
-            if (!bool.TryParse(record.IsRecurring, out var isRecurring))
+            var isRecurring = false;
+            if (!string.IsNullOrWhiteSpace(record.IsRecurring) && !bool.TryParse(record.IsRecurring, out isRecurring))
                 errors.Add($"Row {fileRow}: IsRecurring must be true or false.");
 
             rows.Add(new BulkCsvRow(

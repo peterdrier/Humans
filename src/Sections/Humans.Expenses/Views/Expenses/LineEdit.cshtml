@@ -25,7 +25,7 @@
             <div class="card-header">
                 <strong>
                     @(line.LineType == ExpenseLineType.Invoice ? Localizer["Expenses_Invoice"]
-                        : isProof ? Localizer["Expenses_ReceiptsBehindInvoice"]
+                        : isProof ? Localizer["Expenses_ReceiptBehindInvoice"]
                         : line.LineType == ExpenseLineType.Receipt ? Localizer["Expenses_Receipt"]
                         : line.LineType == ExpenseLineType.Mileage ? Localizer["Expenses_Mileage"]
                         : Localizer["Expenses_PerDiem"])
@@ -49,10 +49,10 @@
                             <input type="text" name="Description" value="@line.Description" class="form-control" maxlength="500" required />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Amount (EUR) <span class="text-danger">*</span></label>
+                            <label class="form-label">@Localizer["Expenses_AmountEur"] <span class="text-danger">*</span></label>
                             <input type="number" name="Amount" value="@line.Amount.ToString("F2")" class="form-control" step="0.01" min="0.01" required style="max-width:200px;" />
                         </div>
-                        <button type="submit" class="btn btn-primary">@Localizer["Expenses_SaveHeader"]</button>
+                        <button type="submit" class="btn btn-primary">@Localizer["Expenses_Save"]</button>
                     </form>
                 }
                 else
@@ -122,7 +122,7 @@
             }
             else
             {
-                <a asp-action="Edit" asp-route-id="@r.Id" class="btn btn-outline-secondary">Back to report</a>
+                <a asp-action="Edit" asp-route-id="@r.Id" class="btn btn-outline-secondary">@Localizer["Expenses_BackToReport"]</a>
                 @if (line.LineType == ExpenseLineType.Invoice)
                 {
                     <a asp-action="LineProofs" asp-route-id="@r.Id" asp-route-lineId="@line.Id" class="btn btn-outline-primary">@Localizer["Expenses_ReceiptsBehindThisInvoice"]</a>

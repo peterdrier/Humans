@@ -55,6 +55,17 @@ public sealed class BulkEventCsvParserTests
     }
 
     [HumansFact]
+    public void Parse_BlankRecurringFlag_IsNotRecurring()
+    {
+        var csv = $"{Header}\n,Camp,,Title,Desc,Workshop,2026-07-08,09:30,60,,,,,1\n";
+
+        var rows = BulkEventCsvParser.Parse(csv);
+
+        rows.Should().ContainSingle();
+        rows[0].IsRecurring.Should().BeFalse();
+    }
+
+    [HumansFact]
     public void Parse_ColumnsInAnyOrder_MatchedByHeaderName()
     {
         var csv = "Title,Category,Date,StartTime,DurationMinutes,IsRecurring,PriorityRank,Description\n" +
