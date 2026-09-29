@@ -53,6 +53,19 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
+    public async Task GetTeamDirectoryAsync_DelegatesToTheInnerService()
+    {
+        var userId = Guid.NewGuid();
+        var expected = new TeamDirectoryResult(true, false, [], [], [], []);
+        _innerTeamService.GetTeamDirectoryAsync(userId, Arg.Any<CancellationToken>()).Returns(expected);
+
+        var result = await _service.GetTeamDirectoryAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeSameAs(expected);
+        await _innerTeamService.Received(1).GetTeamDirectoryAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task IsUserCoordinatorOfTeamAsync_InactiveDirectCoordinator_ReturnsFalse()
     {
         var user = SeedUser();
