@@ -472,6 +472,10 @@ internal sealed class CampaignService(
                     BuildCampaignCodeRequest(campaign, user, recipientEmail, code.Code, grant.Id)),
                     ct);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex,
@@ -499,6 +503,10 @@ internal sealed class CampaignService(
                 grantedUserIds,
                 body: "Check your email for your campaign code.",
                 cancellationToken: ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -636,6 +644,10 @@ internal sealed class CampaignService(
                         grant.CampaignReplyToAddress,
                         user, recipientEmail, grant.CodeString, grant.GrantId, campaignId)),
                     ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
