@@ -241,6 +241,19 @@ public class BackdoorApiKeyServiceTests
         await _repository.DidNotReceiveWithAnyArgs().RotateAsync(default, default, default, default!, default);
     }
 
+    [HumansFact]
+    public async Task Rotate_refuses_when_the_owner_is_suspended()
+    {
+        var key = ExistingKey();
+        MakeEligible(key.UserId, admin: true, state: UserState.Suspended);
+        _repository.GetByIdAsync(key.Id, Arg.Any<CancellationToken>()).Returns(key);
+
+        var result = await _sut.RotateAsync(key.Id, _actor);
+
+        result.Succeeded.Should().BeFalse();
+        await _repository.DidNotReceiveWithAnyArgs().RotateAsync(default, default, default, default!, default);
+    }
+
     // ==========================================================================
     // Resolve
     // ==========================================================================

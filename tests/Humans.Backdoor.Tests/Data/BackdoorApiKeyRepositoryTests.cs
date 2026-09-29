@@ -78,6 +78,27 @@ public sealed class BackdoorApiKeyRepositoryTests : IDisposable
             .KeyHash.Should().Be(replacement.KeyHash);
     }
 
+    [HumansFact]
+    public async Task RotateAsync_on_a_revoked_or_missing_key_writes_neither_row()
+    {
+        var revoked = Key("revoked");
+        var firstRevokedAt = Instant.FromUtc(2026, 9, 21, 6, 0);
+        var firstRevokedBy = Guid.NewGuid();
+        revoked.RevokedAt = firstRevokedAt;
+        revoked.RevokedByUserId = firstRevokedBy;
+        _db.ApiKeys.Add(revoked);
+        await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        (await _repository.RotateAsync(revoked.Id, Guid.NewGuid(), firstRevokedAt.Plus(Duration.FromHours(1)), Key("replacement"), Xunit.TestContext.Current.CancellationToken))
+            .Should().BeFalse();
+        (await _repository.RotateAsync(Guid.NewGuid(), Guid.NewGuid(), firstRevokedAt, Key("orphan"), Xunit.TestContext.Current.CancellationToken))
+            .Should().BeFalse();
+
+        var rows = await _db.ApiKeys.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        rows.Should().ContainSingle().Which.Should().Match<BackdoorApiKey>(
+            key => key.Id == revoked.Id && key.RevokedAt == firstRevokedAt && key.RevokedByUserId == firstRevokedBy);
+    }
+
     private static BackdoorApiKey Key(string suffix) => new()
     {
         Id = Guid.NewGuid(),
