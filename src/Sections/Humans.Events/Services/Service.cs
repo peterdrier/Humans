@@ -553,6 +553,10 @@ internal sealed class EventService(
             if (row.PriorityRank is { } rank && (rank < 1 || rank > 100))
                 rowErrors.Add("PriorityRank must be between 1 and 100.");
 
+            if (row.IsRecurring && !string.IsNullOrWhiteSpace(row.RecurrenceDays)
+                && !EventRecurrenceDays.HasOnlyDisplayDays(row.RecurrenceDays))
+                rowErrors.Add("RecurrenceDays must contain only Mon Tue Wed Thu Fri Sat Sun.");
+
             if (row.Id.HasValue)
             {
                 if (duplicateIds.Contains(row.Id.Value))

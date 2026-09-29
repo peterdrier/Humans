@@ -474,6 +474,23 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
+    public async Task BulkImportAsync_InvalidRecurrenceDay_ReturnsErrorsAndWritesNothing()
+    {
+        var campId = Guid.NewGuid();
+        _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true });
+
+        var result = await _service.BulkImportAsync(
+            campId, Guid.NewGuid(), [Row(isRecurring: true, recurrenceDays: "Mon Funday")],
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeTrue();
+        result.Errors.Should().ContainSingle(error =>
+            error.Errors.Contains("RecurrenceDays must contain only Mon Tue Wed Thu Fri Sat Sun."));
+        _repo.Events.Should().BeEmpty();
+        _repo.SaveChangesCount.Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task BulkImportAsync_DuplicateExistingId_ReturnsErrorsAndWritesNothing()
     {
         var campId = Guid.NewGuid();

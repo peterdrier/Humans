@@ -45,6 +45,16 @@ public sealed class BulkEventCsvParserTests
     }
 
     [HumansFact]
+    public void Parse_InvalidRecurringFlag_IsAnError()
+    {
+        var csv = $"{Header}\n,Camp,,Title,Desc,Workshop,2026-07-08,09:30,60,,,sometimes,,1\n";
+
+        var act = () => BulkEventCsvParser.Parse(csv);
+
+        act.Should().Throw<FormatException>().WithMessage("*IsRecurring must be true or false*");
+    }
+
+    [HumansFact]
     public void Parse_ColumnsInAnyOrder_MatchedByHeaderName()
     {
         var csv = "Title,Category,Date,StartTime,DurationMinutes,IsRecurring,PriorityRank,Description\n" +
@@ -227,6 +237,14 @@ public sealed class EventRecurrenceDaysTests
 
         EventRecurrenceDays.DisplayDaysToOffsets("Mon", gate, 0).Should().Be("0");
         EventRecurrenceDays.DisplayDaysToOffsets("Tue", gate, 0).Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData("Mon Wed Fri", true)]
+    [InlineData("Mon Funday", false)]
+    public void HasOnlyDisplayDays_RecognizesTheCsvDayVocabulary(string days, bool expected)
+    {
+        EventRecurrenceDays.HasOnlyDisplayDays(days).Should().Be(expected);
     }
 
     [HumansTheory]
