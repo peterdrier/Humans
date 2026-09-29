@@ -163,6 +163,18 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     }
 
     [HumansFact]
+    public async Task SaveCampPolygon_InvalidGeoJson_ReturnsBadRequestWithoutSaving()
+    {
+        var result = await CreateController(RoleNames.CampAdmin).SaveCampPolygon(
+            _campSeasonId, new SaveCampPolygonRequest("not json", 10),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<BadRequestObjectResult>()
+            .Which.Value.Should().Be("Invalid GeoJSON.");
+        (await CityPlanningDb.CampPolygons.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task SaveCampPolygon_BroadcastFails_TheSaveStandsAndTheCallerGetsOk()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;

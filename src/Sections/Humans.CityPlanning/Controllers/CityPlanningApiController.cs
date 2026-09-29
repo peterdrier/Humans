@@ -94,15 +94,18 @@ internal sealed class CityPlanningApiController(
             return Forbid();
         }
 
-        if (string.IsNullOrWhiteSpace(request.GeoJson) || !IsValidJson(request.GeoJson))
+        CampPolygonSaveResult saved;
+        try
+        {
+            saved = await cityPlanningService.SaveCampPolygonAsync(
+                campSeasonId, request.GeoJson, request.AreaSqm, userId,
+                note: request.Note ?? "Saved",
+                cancellationToken: cancellationToken);
+        }
+        catch (ArgumentException)
         {
             return BadRequest("Invalid GeoJSON.");
         }
-
-        var saved = await cityPlanningService.SaveCampPolygonAsync(
-            campSeasonId, request.GeoJson, request.AreaSqm, userId,
-            note: request.Note ?? "Saved",
-            cancellationToken: cancellationToken);
 
         return await BroadcastAndReturnAsync(campSeasonId, saved, cancellationToken);
     }
@@ -337,19 +340,6 @@ internal sealed class CityPlanningApiController(
 
         await containerService.ClearPlacementAsync(id, year, CurrentUserId(), cancellationToken);
         return NoContent();
-    }
-
-    private static bool IsValidJson(string value)
-    {
-        try
-        {
-            JsonDocument.Parse(value).Dispose();
-            return true;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
     }
 
     private static bool IsValidContainerPlacementGeoJson(string json)
