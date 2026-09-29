@@ -286,7 +286,7 @@ internal sealed class EventService(
         var categories = await repo.GetActiveCategoriesAsync(ct);
         var existingEvents = await repo.GetCampSubmissionsAsync(campId, ct);
 
-        var errors = ValidateBulkRows(rows, categories, existingEvents);
+        var errors = EventBulkImportValidator.ValidateRows(rows, categories, existingEvents);
         if (errors.Count > 0)
             return new BulkImportResult(errors, 0, 0);
 
@@ -495,82 +495,6 @@ internal sealed class EventService(
             // would prepend apostrophes that come back as data on re-upload,
             // dirtying rows the user never touched.
             config => config.InjectionOptions = InjectionOptions.None);
-    }
-
-    private static List<BulkImportRowError> ValidateBulkRows(
-        IReadOnlyList<BulkCsvRow> rows,
-        IReadOnlyList<EventCategory> categories,
-        IReadOnlyList<Event> existingEvents)
-    {
-        var errors = new List<BulkImportRowError>();
-        var duplicateIds = rows
-            .Where(row => row.Id.HasValue)
-            .GroupBy(row => row.Id!.Value)
-            .Where(group => group.Count() > 1)
-            .Select(group => group.Key)
-            .ToHashSet();
-        foreach (var row in rows)
-        {
-            var rowErrors = new List<string>();
-
-            if (string.IsNullOrWhiteSpace(row.Title)) rowErrors.Add("Title is required.");
-            else if (row.Title.Length > 80) rowErrors.Add("Title must be 80 characters or fewer.");
-
-            if (string.IsNullOrWhiteSpace(row.Description)) rowErrors.Add("Description is required.");
-            else if (row.Description.Length > 450) rowErrors.Add("Description must be 450 characters or fewer.");
-
-            if (row.LocationNote?.Length > 120) rowErrors.Add("LocationNote must be 120 characters or fewer.");
-            if (row.Host?.Length > 40) rowErrors.Add("Host must be 40 characters or fewer.");
-
-            if (string.IsNullOrWhiteSpace(row.Category))
-            {
-                rowErrors.Add("Category is required.");
-            }
-            else
-            {
-                var matchingCategories = categories
-                    .Where(c => string.Equals(c.Name, row.Category, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-                if (matchingCategories.Count == 0)
-                    rowErrors.Add($"Category '{row.Category}' is not a valid active category.");
-                else if (matchingCategories.Count > 1)
-                    rowErrors.Add($"Category '{row.Category}' matches more than one active category.");
-            }
-
-            if (string.IsNullOrWhiteSpace(row.Date)) rowErrors.Add("Date is required.");
-            else if (!NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Success)
-                rowErrors.Add("Date must be in yyyy-MM-dd format.");
-
-            if (string.IsNullOrWhiteSpace(row.StartTime)) rowErrors.Add("StartTime is required.");
-            else if (!DateFormattingExtensions.TimeOfDayPattern.Parse(row.StartTime).Success)
-                rowErrors.Add("StartTime must be in HH:mm format.");
-
-            if (row.DurationMinutes < 15 || row.DurationMinutes > 480)
-                rowErrors.Add("DurationMinutes must be between 15 and 480.");
-            else if (row.DurationMinutes % 15 != 0)
-                rowErrors.Add("DurationMinutes must be a multiple of 15.");
-
-            if (row.PriorityRank is { } rank && (rank < 1 || rank > 100))
-                rowErrors.Add("PriorityRank must be between 1 and 100.");
-
-            if (row.IsRecurring && !string.IsNullOrWhiteSpace(row.RecurrenceDays)
-                && !EventRecurrenceDays.HasOnlyDisplayDays(row.RecurrenceDays))
-                rowErrors.Add("RecurrenceDays must contain only Mon Tue Wed Thu Fri Sat Sun.");
-
-            if (row.Id.HasValue)
-            {
-                if (duplicateIds.Contains(row.Id.Value))
-                    rowErrors.Add($"Event {row.Id.Value} appears more than once in the upload.");
-                else if (existingEvents.FirstOrDefault(e => e.Id == row.Id.Value) is not { } existing)
-                    rowErrors.Add($"Event {row.Id.Value} not found for this barrio.");
-                else if (existing.Status == EventStatus.Withdrawn)
-                    rowErrors.Add("Withdrawn events cannot be updated via bulk upload.");
-            }
-
-            if (rowErrors.Count > 0)
-                errors.Add(new BulkImportRowError(row.RowNumber, row.Title, rowErrors));
-        }
-        return errors;
     }
 
     public async Task<IReadOnlyList<ApprovedEventView>> GetApprovedEventsAsync(
