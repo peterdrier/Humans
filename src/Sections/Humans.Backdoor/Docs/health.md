@@ -188,4 +188,4 @@ Essential complexity and settled decisions, so later runs stop re-litigating the
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-09-03 | First doctoring: unclamped `?limit=` reaching SQL, a dead project reference, and the untested feedback controller | peterdrier/Humans#1586 |
-| section-doctor | 2026-09-29 | Store and Surveys machine controllers shed an unused user service; filter wiring pinned on every machine controller; drift from the finance, store and notifications additions cleared | pending |
+| section-doctor | 2026-09-29 | Store and Surveys machine controllers shed an unused user service; filter wiring pinned on every machine controller; drift from the finance, store and notifications additions cleared | peterdrier/Humans#1860 |
