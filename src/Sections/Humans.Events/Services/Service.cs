@@ -1,7 +1,4 @@
-using System.Globalization;
 using System.Text.Json;
-using CsvHelper.Configuration;
-using Humans.Base.Csv;
 using Humans.Events.Services.Dtos;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
@@ -387,114 +384,7 @@ internal sealed class EventService(
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
         LocalDate? gateDate = eventSettings?.GateOpeningDate;
-
-        var categoryNames = string.Join(", ", categories.Select(c => c.Name));
-
-        string[] banner =
-        [
-            " ─────────────────────────────────────────────────────────────────────────────",
-            " ELSEWHERE EVENT GUIDE — Bulk Upload Template",
-            " ─────────────────────────────────────────────────────────────────────────────",
-            "",
-            " HOW TO USE",
-            "   1. Fill in new rows leaving Id blank — a new event will be created.",
-            "   2. Existing rows already have an Id filled in. You may edit their fields,",
-            "      but DO NOT change or delete the Id — that is how we match the event.",
-            "      Changing an Id will cause the upload to fail.",
-            "   3. To leave an existing event unchanged, keep its row as-is.",
-            "      Events not present in the CSV are left untouched.",
-            "   4. Save as CSV (UTF-8) before uploading. Columns may be in any order and",
-            "      extra columns are ignored — match the column names, not the layout.",
-            "      In Excel:   File → Save As → CSV UTF-8 (Comma delimited)",
-            "      In Numbers: File → Export To → CSV",
-            "",
-            " FIELDS",
-            "   Id             Leave empty for new events. Do not edit for existing ones.",
-            "   Barrio         Informational only — shows which camp this file belongs to. Ignored on upload.",
-            "   Status         Informational only — shows the current event status. Ignored on upload.",
-            "                  If you upload a row without changing any fields, the status is kept as-is.",
-            "                  If you edit fields on an existing event, it will be re-queued for moderation.",
-            "   Category       Must match exactly one of the valid categories listed below.",
-            "   Date           Format: yyyy-MM-dd  (e.g. 2026-07-08)",
-            "   StartTime      Format: HH:mm       (e.g. 09:30)",
-            "   DurationMinutes  Integer, 15–480, in 15-minute increments (e.g. 15, 30, 45, 60, 90, 120...).",
-            "   IsRecurring    true or false.",
-            "   RecurrenceDays  Only used when IsRecurring is true.",
-            "                  Space-separated day names: Mon Tue Wed Thu Fri Sat Sun",
-            "                  Example: Mon Wed Fri means the event repeats on those days.",
-            "",
-            " VALID CATEGORIES",
-            $"   {categoryNames}",
-            "",
-            " ─────────────────────────────────────────────────────────────────────────────",
-        ];
-
-        var nonWithdrawn = campEvents
-            .Where(e => e.Status != EventStatus.Withdrawn)
-            .OrderByDescending(e => e.SubmittedAt)
-            .ToList();
-
-        var records = new List<BulkEventCsvRecord>();
-        foreach (var e in nonWithdrawn)
-        {
-            var localDt = ToLocalDateTime(e.StartAt, tz);
-            var recDays = e.IsRecurring && !string.IsNullOrEmpty(e.RecurrenceDays) && gateDate.HasValue
-                ? EventRecurrenceDays.OffsetsToDisplayDays(e.RecurrenceDays, gateDate.Value)
-                : string.Empty;
-
-            records.Add(new BulkEventCsvRecord
-            {
-                Id = e.Id.ToString("D", CultureInfo.InvariantCulture),
-                Barrio = campName,
-                Status = e.Status.ToString(),
-                Title = e.Title,
-                Description = e.Description,
-                Category = e.CategoryName,
-                Date = localDt.ToInvariantDate(),
-                StartTime = localDt.ToInvariantTime(),
-                DurationMinutes = e.DurationMinutes.ToString(CultureInfo.InvariantCulture),
-                LocationNote = e.LocationNote ?? string.Empty,
-                Host = e.Host ?? string.Empty,
-                IsRecurring = e.IsRecurring ? "true" : "false",
-                RecurrenceDays = recDays,
-                PriorityRank = e.PriorityRank?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            });
-        }
-
-        if (nonWithdrawn.Count == 0)
-        {
-            var exampleDate = gateDate.HasValue
-                ? gateDate.Value.ToInvariantDate()
-                : clock.GetCurrentInstant().InZone(tz ?? DateTimeZone.Utc).Date.ToInvariantDate();
-            records.Add(new BulkEventCsvRecord
-            {
-                Barrio = campName,
-                Title = "Example Event",
-                Description = "Describe your event here.",
-                Category = categories.FirstOrDefault()?.Name ?? "Workshop",
-                Date = exampleDate,
-                StartTime = "12:00",
-                DurationMinutes = "60",
-                IsRecurring = "false",
-                PriorityRank = "1",
-            });
-        }
-
-        return HumansCsv.WriteBytes(
-            csv =>
-            {
-                csv.Context.RegisterClassMap<BulkEventCsvRecordMap>();
-                foreach (var line in banner)
-                {
-                    csv.WriteComment(line);
-                    csv.NextRecord();
-                }
-                csv.WriteRecords(records);
-            },
-            // Round-trip data file, not a spreadsheet report: injection escaping
-            // would prepend apostrophes that come back as data on re-upload,
-            // dirtying rows the user never touched.
-            config => config.InjectionOptions = InjectionOptions.None);
+        return EventBulkUploadTemplateBuilder.Build(campName, campEvents, categories, tz, gateDate, clock);
     }
 
     public async Task<IReadOnlyList<ApprovedEventView>> GetApprovedEventsAsync(
@@ -699,9 +589,6 @@ internal sealed class EventService(
         }
         return localDateTime.InZoneLeniently(tz).ToInstant();
     }
-
-    private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)
-        => tz == null ? instant.ToDateTimeUtc() : instant.InZone(tz).ToDateTimeUnspecified();
 
     // Nothing public to contribute to the community calendar yet.
     public Task<IReadOnlyList<CalendarFeedItem>> GetPublicItemsForWindowAsync(Instant from, Instant to, CancellationToken ct) =>
