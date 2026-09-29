@@ -31,6 +31,9 @@ public class BackdoorIssuesControllerTests
 
     public BackdoorIssuesControllerTests()
     {
+        // GetUserInfosAsync never returns null; an unstubbed ValueTask would.
+        _users.GetUserInfosAsync(default!, default)
+            .ReturnsForAnyArgs(new Dictionary<Guid, UserInfo>());
         _sut = new BackdoorIssuesController(_issues, _users, NullLogger<BackdoorIssuesController>.Instance)
         {
             // What BackdoorApiKeyAuthFilter installs once it has resolved the key.
