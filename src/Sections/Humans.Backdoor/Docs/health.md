@@ -102,18 +102,18 @@ Stated so a violation is recognisable; paths are relative to `src/Sections/Human
   most one row can match a hash: the unique index at
   `Data/Configurations/BackdoorApiKeyConfiguration.cs:17`.
 - The database never holds a plaintext key: issue and rotate persist only the hash and a
-  12-character prefix (`Services/BackdoorApiKeyService.cs:165`), and resolution looks up by hash
-  (`Services/BackdoorApiKeyService.cs:120`).
+  12-character prefix (`Services/BackdoorApiKeyService.cs:166`), and resolution looks up by hash
+  (`Services/BackdoorApiKeyService.cs:121`).
 - A key authenticates only while its owner is **both** in Admin or Board **and** in
-  `UserState.Active` — the one test at `Services/BackdoorApiKeyService.cs:142`, applied at issue
-  (`Services/BackdoorApiKeyService.cs:47`), at rotate (`Services/BackdoorApiKeyService.cs:87`)
-  and on every request (`Services/BackdoorApiKeyService.cs:123`). Failing it refuses the key and
+  `UserState.Active` — the one test at `Services/BackdoorApiKeyService.cs:143`, applied at issue
+  (`Services/BackdoorApiKeyService.cs:48`), at rotate (`Services/BackdoorApiKeyService.cs:88`)
+  and on every request (`Services/BackdoorApiKeyService.cs:124`). Failing it refuses the key and
   never revokes it.
 - A rotate revokes the old row and inserts its replacement in one save, or writes neither —
   `Data/BackdoorApiKeyRepository.cs:51`.
 - Issue and revoke each write one audit entry naming the key and its owner
-  (`Services/BackdoorApiKeyService.cs:172`); a rotate is a revoke entry followed by an issue
-  entry (`Services/BackdoorApiKeyService.cs:96`).
+  (`Services/BackdoorApiKeyService.cs:174`); a rotate is a revoke entry followed by an issue
+  entry (`Services/BackdoorApiKeyService.cs:97`).
 - Every issue and feedback write passes the key owner as the acting user
   (`Controllers/BackdoorIssuesController.cs:34`, `Controllers/BackdoorFeedbackController.cs:32`).
 - An issue is read, commented on and patched as its holder — id and roles — through the viewer
@@ -124,7 +124,7 @@ Stated so a violation is recognisable; paths are relative to `src/Sections/Human
   (`Controllers/BackdoorFinanceController.cs:291`, `Controllers/BackdoorFinanceController.cs:294`);
   a refusal is a 403.
 - No raw IBAN leaves the finance surface: every JSON string and every download filename is
-  scrubbed after the action (`Controllers/BackdoorFinanceController.cs:249`).
+  scrubbed after the action (`Controllers/BackdoorFinanceController.cs:248`).
 - A key-authed principal skips the Shell's onboarding gates rather than being redirected to HTML
   (`src/Humans.Web/Authorization/MembershipRequiredFilter.cs:84`,
   `src/Humans.Web/Authorization/NameRequiredFilter.cs:72`).
@@ -188,3 +188,4 @@ Essential complexity and settled decisions, so later runs stop re-litigating the
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-09-03 | First doctoring: unclamped `?limit=` reaching SQL, a dead project reference, and the untested feedback controller | peterdrier/Humans#1586 |
+| section-doctor | 2026-09-29 | Store and Surveys machine controllers shed an unused user service; filter wiring pinned on every machine controller; drift from the finance, store and notifications additions cleared | pending |
