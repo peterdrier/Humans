@@ -270,7 +270,9 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 `MyCampsViewComponent` owns the private profile-page membership list. Its settings and
 per-year camp reads receive `HttpContext.RequestAborted`; operational failures still hide
-the advisory component, while a disconnected request propagates cancellation.
+ the advisory component, while a disconnected request propagates cancellation. CampAdmin's
+ role-definition mutations likewise propagate a disconnected request rather than report it
+ as a failed admin action.
 
 **Owning services:** `CampService`, `CampContactService`, `CampRoleService`
 **Owned tables:**

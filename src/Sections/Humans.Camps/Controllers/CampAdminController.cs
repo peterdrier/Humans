@@ -324,6 +324,10 @@ internal sealed class CampAdminController(
             ModelState.AddModelError(string.Empty, ex.Message);
             return View("RoleForm", form);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "CreateRole failed.");
@@ -383,6 +387,10 @@ internal sealed class CampAdminController(
             ModelState.AddModelError(string.Empty, ex.Message);
             return View("RoleForm", form);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "EditRole failed for {RoleId}.", id);
@@ -403,6 +411,10 @@ internal sealed class CampAdminController(
             var ok = await campRoleService.DeactivateDefinitionAsync(id, user.Id, ct);
             if (!ok) return NotFound();
             SetSuccess("Camp role deactivated.");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -425,6 +437,10 @@ internal sealed class CampAdminController(
             if (!ok) return NotFound();
             SetSuccess("Camp role reactivated.");
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "ReactivateRole failed for {RoleId}.", id);
@@ -444,6 +460,10 @@ internal sealed class CampAdminController(
         {
             var definitionsCreated = await campRoleService.SeedSystemRolesAsync(user.Id, ct);
             SetSuccess($"System roles: {definitionsCreated} created.");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
