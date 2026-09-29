@@ -194,7 +194,10 @@ jobs:
           fi
           echo "Changed files in delta:"
           echo "$files"
-          if echo "$files" | grep -qvE '(^docs/|\.md$)'; then
+          # The review prompt is markdown but steers every later review, so a
+          # change to it always gets reviewed.
+          if echo "$files" | grep -qvE '(^docs/|\.md$)' \
+            || echo "$files" | grep -qxF '.claude/claude-review-prompt.md'; then
             echo "Non-docs files present; running review."
             echo "skip=false" >> "$GITHUB_OUTPUT"
           else
