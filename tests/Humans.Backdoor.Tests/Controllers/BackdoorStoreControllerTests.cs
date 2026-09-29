@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Backdoor.Controllers;
 using Humans.Backdoor.Filters;
 using Humans.Store.Contracts;
-using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NSubstitute;
@@ -21,7 +20,7 @@ public class BackdoorStoreControllerTests
     private readonly BackdoorStoreController _sut;
 
     public BackdoorStoreControllerTests() =>
-        _sut = new BackdoorStoreController(_store, Substitute.For<IUserServiceRead>());
+        _sut = new BackdoorStoreController(_store);
 
     [HumansFact]
     public void Every_route_hangs_off_the_api_key_filter()

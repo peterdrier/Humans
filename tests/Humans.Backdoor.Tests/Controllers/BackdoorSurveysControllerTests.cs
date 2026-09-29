@@ -2,7 +2,6 @@ using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Backdoor.Controllers;
 using Humans.Surveys.Contracts;
-using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NSubstitute;
@@ -22,7 +21,7 @@ public class BackdoorSurveysControllerTests
     private readonly BackdoorSurveysController _sut;
 
     public BackdoorSurveysControllerTests() =>
-        _sut = new BackdoorSurveysController(_surveys, Substitute.For<IUserServiceRead>());
+        _sut = new BackdoorSurveysController(_surveys);
 
     private static SurveyExportQuestion Choice(Guid id, string prompt, params (string Value, string Label)[] opts) =>
         new(id, prompt, SurveyQuestionType.MultiChoice, [.. opts.Select(o => new SurveyExportOption(o.Value, o.Label))]);

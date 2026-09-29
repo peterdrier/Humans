@@ -1,8 +1,6 @@
 using Humans.Backdoor.Filters;
-using Humans.Base.Controllers;
 using Humans.Base.Extensions;
 using Humans.Store.Contracts;
-using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Backdoor.Controllers;
@@ -20,8 +18,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/store")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
-internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserServiceRead users)
-    : ApiControllerBase(users)
+internal sealed class BackdoorStoreController(IStoreAccountingRead store) : ControllerBase
 {
     /// <summary>One object per order line of <paramref name="year"/>, camp and team orders both.</summary>
     [HttpGet("order-lines")]
