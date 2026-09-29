@@ -1,19 +1,19 @@
 @model Humans.Expenses.Models.ExpenseIbanViewModel
 @{
-    ViewData["Title"] = "Payment IBAN";
+    ViewData["Title"] = Localizer["Expenses_PaymentIban"].Value;
 }
 
-<nav aria-label="breadcrumb" class="mb-3">
+<nav aria-label="@Localizer["Expenses_BreadcrumbNavigation"]" class="mb-3">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">My Expense Reports</a></li>
-        <li class="breadcrumb-item"><a asp-action="Detail" asp-route-id="@Model.ReportId">Report</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Payment IBAN</li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Expenses_MyReportsTitle"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Detail" asp-route-id="@Model.ReportId">@Localizer["Expenses_ColReport"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Expenses_PaymentIban"]</li>
     </ol>
 </nav>
 
 <div class="row">
     <div class="col-md-6">
-        <h1 class="mb-1">Payment IBAN</h1>
+        <h1 class="mb-1">@Localizer["Expenses_PaymentIban"]</h1>
         @* An admin setting this for somebody else is editing that member's profile, not their own —
            say whose account it is before they type an account number into it. *@
         @if (Model.MemberName is { } member)
@@ -24,7 +24,7 @@
         }
         else
         {
-            <p class="text-muted mb-4">Your IBAN is used to process reimbursement transfers via SEPA. It is never shown to other humans.</p>
+            <p class="text-muted mb-4">@Localizer["Expenses_IbanPrivacy"]</p>
         }
 
 
@@ -33,7 +33,7 @@
                 @if (Model.HasIban)
                 {
                     <p class="mb-3">
-                        Current IBAN: <span class="font-monospace fw-semibold">@Model.MaskedIban</span>
+                        @Localizer["Expenses_CurrentIban"]: <span class="font-monospace fw-semibold">@Model.MaskedIban</span>
                     </p>
                 }
 
@@ -45,8 +45,8 @@
                     <div class="mb-3">
                         <label asp-for="Iban" class="form-label">
                             @(Model.HasIban && Model.CanRemoveIban
-                                ? "New IBAN (or leave empty to remove)"
-                                : Model.HasIban ? "New IBAN" : "IBAN")
+                                ? Localizer["Expenses_NewIbanOrRemove"]
+                                : Model.HasIban ? Localizer["Expenses_NewIban"] : Localizer["Expenses_Iban"])
                         </label>
                         <input asp-for="Iban" class="form-control font-monospace"
                                placeholder="e.g. ES7921000813610123456789"
@@ -64,19 +64,19 @@
                             }
                             else if (Model.CanRemoveIban)
                             {
-                                <text>Enter your full IBAN without spaces. Leave empty to remove.</text>
+                                @Localizer["Expenses_IbanEnterOrRemove"]
                             }
                             else
                             {
-                                <text>Enter your full IBAN without spaces.</text>
+                                @Localizer["Expenses_IbanEnter"]
                             }
                         </div>
                         <span asp-validation-for="Iban" class="text-danger small"></span>
                     </div>
 
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">Save</button>
-                        <a asp-action="Detail" asp-route-id="@Model.ReportId" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">@Localizer["Expenses_SaveHeader"]</button>
+                        <a asp-action="Detail" asp-route-id="@Model.ReportId" class="btn btn-outline-secondary">@Localizer["Expenses_Cancel"]</a>
                     </div>
                 </form>
             </div>
@@ -90,7 +90,7 @@
             }
             else
             {
-                <text>Your IBAN is stored securely and only accessible to FinanceAdmin in the context of your expense reports.</text>
+                @Localizer["Expenses_IbanStored"]
             }
         </div>
     </div>
