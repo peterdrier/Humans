@@ -455,6 +455,25 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
+    public async Task BulkImportAsync_AmbiguousCategory_ReturnsErrorsAndWritesNothing()
+    {
+        var campId = Guid.NewGuid();
+        _repo.Categories.AddRange(
+            new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop-a", IsActive = true },
+            new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop-b", IsActive = true });
+
+        var result = await _service.BulkImportAsync(
+            campId, Guid.NewGuid(), [Row()],
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeTrue();
+        result.Errors.Should().ContainSingle(error =>
+            error.Errors.Contains("Category 'Workshop' matches more than one active category."));
+        _repo.Events.Should().BeEmpty();
+        _repo.SaveChangesCount.Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task BulkImportAsync_DuplicateExistingId_ReturnsErrorsAndWritesNothing()
     {
         var campId = Guid.NewGuid();

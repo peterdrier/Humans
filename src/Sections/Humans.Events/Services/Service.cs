@@ -522,9 +522,20 @@ internal sealed class EventService(
             if (row.LocationNote?.Length > 120) rowErrors.Add("LocationNote must be 120 characters or fewer.");
             if (row.Host?.Length > 40) rowErrors.Add("Host must be 40 characters or fewer.");
 
-            if (string.IsNullOrWhiteSpace(row.Category)) rowErrors.Add("Category is required.");
-            else if (!categories.Any(c => string.Equals(c.Name, row.Category, StringComparison.OrdinalIgnoreCase)))
-                rowErrors.Add($"Category '{row.Category}' is not a valid active category.");
+            if (string.IsNullOrWhiteSpace(row.Category))
+            {
+                rowErrors.Add("Category is required.");
+            }
+            else
+            {
+                var matchingCategories = categories
+                    .Where(c => string.Equals(c.Name, row.Category, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                if (matchingCategories.Count == 0)
+                    rowErrors.Add($"Category '{row.Category}' is not a valid active category.");
+                else if (matchingCategories.Count > 1)
+                    rowErrors.Add($"Category '{row.Category}' matches more than one active category.");
+            }
 
             if (string.IsNullOrWhiteSpace(row.Date)) rowErrors.Add("Date is required.");
             else if (!NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Success)
