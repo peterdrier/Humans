@@ -562,29 +562,13 @@
 
 @if (Model.IncomeSlices.Any() || Model.ExpenseSlices.Any())
 {
+    <partial name="_BudgetChartSupport" />
+
     <script>
-    if (typeof Chart === 'undefined') {
-        var s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
-        s.integrity = 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ';
-        s.crossOrigin = 'anonymous';
-        s.onload = function() { renderFinanceCharts(); };
-        document.head.appendChild(s);
-    } else {
-        document.addEventListener('DOMContentLoaded', function() { renderFinanceCharts(); });
-    }
 
     function renderFinanceCharts() {
-        var incomeColors = [
-            '#198754', '#20c997', '#0dcaf0', '#0d6efd', '#6f42c1',
-            '#d63384', '#ffc107', '#fd7e14', '#6610f2', '#adb5bd',
-            '#495057', '#e83e8c', '#17a2b8', '#28a745', '#007bff'
-        ];
-        var expenseColors = [
-            '#dc3545', '#fd7e14', '#ffc107', '#e83e8c', '#6f42c1',
-            '#0d6efd', '#0dcaf0', '#20c997', '#198754', '#adb5bd',
-            '#495057', '#d63384', '#17a2b8', '#6610f2', '#28a745'
-        ];
+        var incomeColors = window.HumansBudgetCharts.incomeColors();
+        var expenseColors = window.HumansBudgetCharts.expenseColors();
         var tooltipCallback = {
             label: function(ctx) {
                 return ctx.label + ': \u20ac' + ctx.raw.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -610,7 +594,7 @@
                         data: incomeData,
                         backgroundColor: incomeColors.slice(0, incomeData.length),
                         borderWidth: 2,
-                        borderColor: '#fff'
+                        borderColor: window.HumansBudgetCharts.surfaceColor()
                     }]
                 },
                 options: {
@@ -631,7 +615,7 @@
                         data: expenseData,
                         backgroundColor: expenseColors.slice(0, expenseData.length),
                         borderWidth: 2,
-                        borderColor: '#fff'
+                        borderColor: window.HumansBudgetCharts.surfaceColor()
                     }]
                 },
                 options: {
@@ -642,6 +626,6 @@
             });
         }
     }
+    window.HumansBudgetCharts.load(renderFinanceCharts);
     </script>
 }
-
