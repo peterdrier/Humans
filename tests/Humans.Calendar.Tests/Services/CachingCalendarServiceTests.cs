@@ -155,6 +155,29 @@ public sealed class CachingCalendarServiceTests
     }
 
     [HumansFact]
+    public async Task GetOccurrencesInWindowAsync_OrdersContributedItemsBeforeLaterAllDayEvents()
+    {
+        var allDay = BuildInfo(title: "All-day", start: null, end: null) with
+        {
+            IsAllDay = true,
+            StartUtc = null,
+            EndUtc = null,
+            StartDate = new LocalDate(2026, 6, 6),
+            EndDateExclusive = new LocalDate(2026, 6, 7),
+        };
+        _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([allDay]);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var item = MakeItem("Workgroups", Instant.FromUtc(2026, 6, 5, 14, 0));
+        var sut = CreateSut(new FakeContributor(item));
+
+        var results = await sut.GetOccurrencesInWindowAsync(
+            Instant.FromUtc(2026, 6, 1, 0, 0), Instant.FromUtc(2026, 6, 30, 0, 0),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        results.Select(r => r.Title).Should().Equal(item.Summary, "All-day");
+    }
+
+    [HumansFact]
     public async Task GetOccurrencesInWindowAsync_PassesRequestedWindowToContributor()
     {
         _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([]);

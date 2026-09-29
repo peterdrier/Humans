@@ -11,15 +11,16 @@ namespace Humans.Calendar.Services;
 /// <summary>Pure date or instant recurrence expansion over the cached event projection.</summary>
 internal static class CalendarOccurrenceExpander
 {
+    private static readonly DateTimeZone ViewerZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
     public static IReadOnlyList<CalendarOccurrence> Expand(
         IReadOnlyList<CalendarEventInfo> events, Instant from, Instant to,
         IReadOnlyDictionary<Guid, string> teamNamesById, ILogger logger)
     {
         var results = new List<CalendarOccurrence>();
         // Calendar currently uses the organisation's viewer zone. Dates themselves never convert.
-        var viewerZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-        var fromDate = from.InZone(viewerZone).Date;
-        var toLocal = to.InZone(viewerZone).LocalDateTime;
+        var fromDate = from.InZone(ViewerZone).Date;
+        var toLocal = to.InZone(ViewerZone).LocalDateTime;
         var toDate = toLocal.TimeOfDay == LocalTime.Midnight ? toLocal.Date : toLocal.Date.PlusDays(1);
         foreach (var ev in events)
         {
@@ -113,9 +114,18 @@ internal static class CalendarOccurrenceExpander
                 if (OverlapsWindow(result, from, to, fromDate, toDate)) results.Add(result);
             }
         }
-        return results.OrderBy(o => o.StartDate ?? o.OccurrenceStartUtc!.Value.InZone(viewerZone).Date)
-            .ThenBy(o => o.OccurrenceStartUtc).ToList();
+        return OrderForDisplay(results);
     }
+
+    /// <summary>
+    /// Orders calendar-owned and contributed occurrences by the same organization-local date.
+    /// Contributed items are timed, while all-day Calendar items deliberately have no instant.
+    /// </summary>
+    internal static IReadOnlyList<CalendarOccurrence> OrderForDisplay(
+        IEnumerable<CalendarOccurrence> occurrences) => occurrences
+        .OrderBy(o => o.StartDate ?? o.OccurrenceStartUtc!.Value.InZone(ViewerZone).Date)
+        .ThenBy(o => o.OccurrenceStartUtc)
+        .ToList();
 
     private static CalendarOccurrence ApplyOverride(CalendarOccurrence occurrence, CalendarEventExceptionInfo ex)
     {

@@ -40,7 +40,7 @@ internal sealed class CachingCalendarService(
         if (teamId is null)
             occurrences.AddRange(await FanOutContributorItemsAsync(from, to, ct));
 
-        return occurrences.OrderBy(o => o.OccurrenceStartUtc).ToList();
+        return CalendarOccurrenceExpander.OrderForDisplay(occurrences);
     }
 
     /// <summary>
