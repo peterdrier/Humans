@@ -216,6 +216,24 @@ public sealed class CachingCalendarServiceTests
     }
 
     [HumansFact]
+    public async Task GetOccurrencesInWindowAsync_PropagatesRequestCancellationFromContributor()
+    {
+        _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([]);
+        var contributor = Substitute.For<ICalendarFeedContributor>();
+        contributor.GetPublicItemsForWindowAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromCanceled<IReadOnlyList<CalendarFeedItem>>((CancellationToken)call[2]!));
+        var sut = CreateSut(contributor);
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        var act = () => sut.GetOccurrencesInWindowAsync(
+            Instant.FromUtc(2026, 6, 1, 0, 0), Instant.FromUtc(2026, 6, 30, 0, 0),
+            ct: cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task GetOccurrencesInWindowAsync_TeamFilterExcludesContributorItems()
     {
         var teamId = Guid.NewGuid();

@@ -64,6 +64,10 @@ internal sealed class CachingCalendarService(
             {
                 contributed = await contributor.GetPublicItemsForWindowAsync(from, to, ct);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogWarning(ex,
