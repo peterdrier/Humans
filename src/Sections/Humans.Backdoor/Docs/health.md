@@ -84,9 +84,6 @@ The structural rules the layout has to keep:
 - **The project references exactly the assemblies its types come from.** Backdoor is a leaf that
   reaches the sections it serves; every one of those references is load-bearing or it is not
   there.
-- **A controller takes only what it uses.** A machine controller that reads no user data takes
-  no user service and sits on `ControllerBase`; the base class that exists to resolve users is
-  for controllers that resolve users.
 - **A request-shaping default that can never fire is not a safety net.** S2 guarantees a
   principal before any S3–S9 body runs; a controller that also carries a fallback for its
   absence is describing a state the filter forbids.
@@ -188,4 +185,4 @@ Essential complexity and settled decisions, so later runs stop re-litigating the
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-09-03 | First doctoring: unclamped `?limit=` reaching SQL, a dead project reference, and the untested feedback controller | peterdrier/Humans#1586 |
-| section-doctor | 2026-09-29 | Store and Surveys machine controllers shed an unused user service; filter wiring pinned on every machine controller; drift from the finance, store and notifications additions cleared | peterdrier/Humans#1860 |
+| section-doctor | 2026-09-29 | Filter wiring pinned on every machine controller; drift from the finance, store and notifications additions cleared | peterdrier/Humans#1860 |

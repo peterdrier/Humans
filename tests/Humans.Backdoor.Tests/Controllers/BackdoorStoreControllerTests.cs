@@ -2,6 +2,7 @@ using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Backdoor.Controllers;
 using Humans.Store.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NSubstitute;
@@ -19,7 +20,7 @@ public class BackdoorStoreControllerTests
     private readonly BackdoorStoreController _sut;
 
     public BackdoorStoreControllerTests() =>
-        _sut = new BackdoorStoreController(_store);
+        _sut = new BackdoorStoreController(_store, Substitute.For<IUserServiceRead>());
 
     [HumansFact]
     public async Task OrderLines_without_a_year_is_a_BadRequest()

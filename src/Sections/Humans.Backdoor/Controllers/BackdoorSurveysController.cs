@@ -2,7 +2,9 @@ using System.Globalization;
 using System.Text;
 using Humans.Backdoor.Filters;
 using Humans.Base.Extensions;
+using Humans.Base.Controllers;
 using Humans.Surveys.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
@@ -21,7 +23,8 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/surveys")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
-internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys) : ControllerBase
+internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUserServiceRead users)
+    : ApiControllerBase(users)
 {
     private const int DefaultLimit = 100;
     private const int MaxLimit = 1000;
