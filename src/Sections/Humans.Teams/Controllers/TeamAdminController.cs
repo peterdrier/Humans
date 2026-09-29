@@ -124,7 +124,6 @@ internal sealed class TeamAdminController(
                 return new TeamMemberViewModel
                 {
                     UserId = m.UserId,
-                    DisplayName = m.DisplayName,
                     Email = m.Email ?? "",
                     Role = m.Role,
                     JoinedAt = m.JoinedAt.ToDateTimeUtc(),
