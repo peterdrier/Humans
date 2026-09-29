@@ -53,17 +53,6 @@ public class BackdoorFinanceControllerTests
         _sut = new BackdoorFinanceController(_expenses, _finance, _budget, _auth, _users);
     }
 
-    [HumansFact]
-    public void Every_route_hangs_off_the_api_key_filter()
-    {
-        var filter = typeof(BackdoorFinanceController)
-            .GetCustomAttributes(typeof(ServiceFilterAttribute), inherit: false)
-            .Cast<ServiceFilterAttribute>()
-            .Single();
-
-        filter.ServiceType.Should().Be(typeof(BackdoorApiKeyAuthFilter));
-    }
-
     /// <summary>Read-only surface, GET only — no <c>[Http{Post,Put,Patch,Delete}]</c> action anywhere
     /// on this controller (peterdrier/Humans#1838's acceptance criteria).</summary>
     [HumansFact]

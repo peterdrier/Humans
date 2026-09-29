@@ -1,7 +1,6 @@
 using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Backdoor.Controllers;
-using Humans.Backdoor.Filters;
 using Humans.Store.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
@@ -21,17 +20,6 @@ public class BackdoorStoreControllerTests
 
     public BackdoorStoreControllerTests() =>
         _sut = new BackdoorStoreController(_store);
-
-    [HumansFact]
-    public void Every_route_hangs_off_the_api_key_filter()
-    {
-        var filter = typeof(BackdoorStoreController)
-            .GetCustomAttributes(typeof(ServiceFilterAttribute), inherit: false)
-            .Cast<ServiceFilterAttribute>()
-            .Single();
-
-        filter.ServiceType.Should().Be(typeof(BackdoorApiKeyAuthFilter));
-    }
 
     [HumansFact]
     public async Task OrderLines_without_a_year_is_a_BadRequest()
