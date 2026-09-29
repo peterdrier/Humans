@@ -23,7 +23,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 
 - A **Backdoor API key** is a credential issued to a *person*, not a service. Its plaintext exists only at the moment of issue; the database keeps a SHA-256 hash and a 12-character display prefix.
 - **Issue / rotate / revoke** are the whole lifecycle. There is no "read the key back" — a lost key is rotated.
-- The **machine surface** is the eight read/write APIs Backdoor owns. Each is a thin orchestrator over another section's public contracts interface; Backdoor owns no domain data beyond its keys.
+- The **machine surface** is the key-authed APIs Backdoor owns. Each is a thin orchestrator over another section's public contracts interface; Backdoor owns no domain data beyond its keys.
 
 ## Data Model
 
@@ -39,7 +39,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | DisplayPrefix | string(16) | First 12 characters of the plaintext, so a human can tell their rows apart |
 | Label | string(100) | Free text — what the key is for |
 | CreatedAt | Instant | |
-| CreatedByUserId | Guid | The admin who allocated it |
+| CreatedByUserId | Guid? | The admin who allocated it; nulled on that admin's erasure |
 | LastUsedAt | Instant? | Stamped on every successful resolve |
 | RevokedAt | Instant? | Null means active |
 | RevokedByUserId | Guid? | |
@@ -82,9 +82,9 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 
 ## Invariants
 
-- A key resolves to exactly one human, and that human is installed as the request principal — `ClaimTypes.NameIdentifier` plus one `ClaimTypes.Role` claim per active role assignment — so every write records a real actor and every log line is enriched with them. The Issues queue read consults those role claims to scope its result (see below), and the Notifications read passes the whole principal on so its meters are role-gated the same way the bell is; Agent, Feedback, Logs, Store, and Surveys reads do not. Finance's routes authorize imperatively: each action calls `IAuthorizationService.AuthorizeAsync` against the installed principal — `PolicyNames.FinanceAdminOrAdmin` for the five finance-wide routes, and `PolicyNames.ExpenseReportView` (a named policy Expenses' own `SectionPolicies` registers, wrapping its internal `ExpenseReportOperationRequirement(View)`/handler) for a single report or attachment — the same check `ExpensesController` uses, not a bespoke Backdoor check (peterdrier/Humans#1838).
+- A key resolves to exactly one human, and that human is installed as the request principal — `ClaimTypes.NameIdentifier` plus one `ClaimTypes.Role` claim per active role assignment — so every write records a real actor and every log line is enriched with them. The Issues queue read consults those role claims to scope its result (see below), and the Notifications read passes the whole principal on so its meters are role-gated the same way the bell is; Agent, Feedback, Logs, Store, and Surveys reads do not. Finance's routes authorize imperatively: each action calls `IAuthorizationService.AuthorizeAsync` against the installed principal — `PolicyNames.FinanceAdminOrAdmin` for the finance-wide routes (creditor accounts, ledger, category map, SEPA transfers, Holded sync), and `PolicyNames.ExpenseReportView` (a named policy Expenses' own `SectionPolicies` registers, wrapping its internal `ExpenseReportOperationRequirement(View)`/handler) for a single report or attachment — the same check `ExpensesController` uses, not a bespoke Backdoor check (peterdrier/Humans#1838).
 - Every `/api/backdoor/issues/*` route is fetched as the key's owner — id, roles and admin flag — so a Board-only key lists the Board-only queue, and an issue whose id it happens to hold but whose queue would not list it is a 404 to read, to comment on and to patch. Issues enforces that itself, on the same `IssueSectionRouting.CanHandle` the browser reads, so a key reaches exactly as far as its holder does in the browser.
-- `/api/backdoor/finance/expense-reports` lists exactly the key owner's `/Expenses/Review` queue (`GetReviewQueueAsync(ownerId, isFinanceAdmin)`, narrowed by `year`/`status`). A report or attachment the owner's `View` check refuses is a 403, not a 404 — unlike Issues, a machine caller here is told a resource exists but is denied, since the five finance-wide routes already disclose that much.
+- `/api/backdoor/finance/expense-reports` lists exactly the key owner's `/Expenses/Review` queue (`GetReviewQueueAsync(ownerId, isFinanceAdmin)`, narrowed by `year`/`status`). A report or attachment the owner's `View` check refuses is a 403, not a 404 — unlike Issues, a machine caller here is told a resource exists but is denied, since the finance-wide routes already disclose that much.
 - The database never holds a plaintext key. `BackdoorApiKeyService` hashes on the way in and compares hashes on the way out.
 - A key only works for a full Admin or a Board member **whose account state is `Active`** — checked at issue, at rotation, **and on every authentication**. A role that expires, is revoked, or is swept by account deletion stops the key working on the next request, and so does suspension, which moves `users.State` while deliberately leaving role assignments standing. The row is refused, not revoked, so restoring the role or lifting the suspension restores the key. The admin page shows such a key as **Disabled** and withholds Rotate, since rotation applies the same test.
 - Issue and revoke both write an audit entry naming the key and its owner (`BackdoorApiKeyIssued` / `BackdoorApiKeyRevoked`); a rotation is recorded as a revoke followed by an issue.
@@ -122,10 +122,10 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - **Finance**: reads creditor accounts, ledgers, the category map and SEPA transfers via `IHoldedFinanceServiceRead` (`Humans.Finance.Contracts`). `FinanceAdminOrAdmin`-gated — peterdrier/Humans#1838.
 - **Budget**: `IBudgetServiceRead.GetYearByIdAsync` for the budget-year label (e.g. "2026") an expense report is booked to, for the year filter/field — peterdrier/Humans#1838.
 - **Notifications**: reads the key owner's unread inbox and meters via `INotificationInboxRead` (`Humans.Notifications/Contracts`, not the contracts leaf: Backdoor is its only consumer). Rows are the owner's own; meters follow the owner's roles.
-- **Auth**: `IRoleAssignmentService.IsUserAdminAsync` / `IsUserBoardMemberAsync` for key eligibility, and `GetActiveUserIdsInRoleAsync` for the admin page's recipient list — narrowed there to active accounts, so the dropdown never offers someone the service would refuse and each listed key shows whether it still authenticates.
+- **Auth**: `IRoleAssignmentService.IsUserAdminAsync` / `IsUserBoardMemberAsync` for key eligibility, `GetActiveForUserAsync` for the owner's role claims installed by `BackdoorApiKeyAuthFilter`, and `GetActiveUserIdsInRoleAsync` for the admin page's recipient list — narrowed there to active accounts, so the dropdown never offers someone the service would refuse and each listed key shows whether it still authenticates.
 - **AuditLog**: `IAuditLogService.LogAsync` for the key lifecycle.
 - **Gdpr**: `IUserDataContributor` — `backdoor_api_keys` is user-keyed, so the section owes an Article 15 slice (`BackdoorApiKeyService.BackdoorApiKeys`, hash excluded) and an Article 17 erasure.
-- **Users**: `IUserServiceRead.GetUserInfoAsync` for the account-state half of key eligibility and `GetUserInfosAsync` for display names on the admin page and on the API's issue/feedback projections; `IUserMerge` to fold an eliminated account's keys onto the survivor.
+- **Users**: `IUserServiceRead.GetUserInfoAsync` for the account-state half of key eligibility and `GetUserInfosAsync` for display names on the admin page and on the API's issue, agent and finance projections (the finance report detail reads its one submitter through `GetUserInfoAsync`); `IUserMerge` to fold an eliminated account's keys onto the survivor.
 - **Base**: `InMemoryLogSink` behind `/api/backdoor/logs`.
 
 No section depends on Backdoor. It is a leaf, and deliberately so — the fan-in would otherwise be a cycle. The Shell reads one constant from it, `BackdoorAuthentication.SchemeName`, so its onboarding gates can tell a machine request from a browsing session.
