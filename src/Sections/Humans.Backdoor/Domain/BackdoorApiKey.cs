@@ -9,9 +9,9 @@ namespace Humans.Backdoor.Domain;
 /// apart in the admin list.
 /// </summary>
 /// <remarks>
-/// Rows are append-only in spirit: revocation stamps <see cref="RevokedAt"/> rather than
-/// deleting, and rotation revokes the old row and inserts a new one, so who held a key when
-/// stays answerable after the fact.
+/// Revocation stamps <see cref="RevokedAt"/> rather than deleting and rotation inserts a
+/// new row, so who held a key when stays answerable; a row is deleted only when its owner is
+/// erased.
 /// </remarks>
 internal sealed class BackdoorApiKey
 {

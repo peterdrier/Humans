@@ -116,7 +116,7 @@ public class BackdoorFinanceControllerTests
 
     /// <summary>Stubs the exact call <c>CanViewAsync</c> makes — the named policy, against this
     /// report — rather than any requirement against any resource, so a test asserting 403 actually
-    /// proves the controller asked the right question (peterdrier/Humans#1839, m5).</summary>
+    /// proves the controller asked the right question (peterdrier/Humans#1839).</summary>
     private void SetCanView(bool canView, ExpenseReportDto report) =>
         _auth.AuthorizeAsync(
                 Arg.Any<ClaimsPrincipal>(), Arg.Is<object?>(o => ReferenceEquals(o, report)),
@@ -179,7 +179,7 @@ public class BackdoorFinanceControllerTests
         await _expenses.Received(1).GetReviewQueueAsync(userId, false, Arg.Any<CancellationToken>());
     }
 
-    /// <summary>D3: the list only ever carries push state, which the browser shows finance admins
+    /// <summary>The list only ever carries push state, which the browser shows finance admins
     /// only — a non-finance-admin submitter's own report shows the masked IBAN (submitter) but no
     /// push fields, and the timeline is never even fetched.</summary>
     [HumansFact]
@@ -237,7 +237,7 @@ public class BackdoorFinanceControllerTests
         json.Should().NotContain($@"""id"":""{submitted.Id}""");
     }
 
-    /// <summary>D3/M1 on the list route (peterdrier/Humans#1839, fixing m17): a coordinator's own
+    /// <summary>On the list route (peterdrier/Humans#1839), a coordinator's own
     /// review queue never includes reports they submitted or a finance admin's, so this exercises
     /// the "neither" row shape the detail test already covers.</summary>
     [HumansFact]
@@ -258,7 +258,7 @@ public class BackdoorFinanceControllerTests
         await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!, default);
     }
 
-    /// <summary>The <c>year</c> query param (peterdrier/Humans#1839, m6) — untested until now.</summary>
+    /// <summary>The <c>year</c> query param (peterdrier/Humans#1839).</summary>
     [HumansFact]
     public async Task ExpenseReports_YearFilter_ExcludesOtherYears()
     {
@@ -316,7 +316,7 @@ public class BackdoorFinanceControllerTests
         result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
     }
 
-    /// <summary>D3 (peterdrier/Humans#1839, fixing M1): the timeline and masked IBAN are the
+    /// <summary>The timeline and masked IBAN (peterdrier/Humans#1839) are the
     /// submitter/finance-admin split <c>ExpensesController.Detail</c> uses, not a blanket grant to
     /// anyone whose <c>View</c> check passes.</summary>
     [HumansFact]
@@ -371,9 +371,9 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""owedToMember"":null");
     }
 
-    /// <summary>The M1 scenario: a category coordinator's <c>View</c> succeeds on a different
+    /// <summary>A category coordinator's <c>View</c> succeeds on a different
     /// ground, but they are neither the submitter nor a finance admin — so they get none of the
-    /// payee name, IBAN, or Holded ids (peterdrier/Humans#1839, fixing M1).</summary>
+    /// payee name, IBAN, or Holded ids (peterdrier/Humans#1839).</summary>
     [HumansFact]
     public async Task ExpenseReport_CoordinatorNeitherSubmitterNorFinanceAdmin_SeesNoPayeeIbanOrTimeline()
     {
@@ -395,7 +395,7 @@ public class BackdoorFinanceControllerTests
         await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!, default);
     }
 
-    /// <summary>The submitter half of M1: they see the payee name (it is their own reimbursement)
+    /// <summary>The submitter half: they see the payee name (it is their own reimbursement)
     /// but not the finance-admin-only Holded ids.</summary>
     [HumansFact]
     public async Task ExpenseReport_Submitter_SeesPayeeNameButNotFinanceAdminOnlyHoldedIds()
@@ -429,7 +429,7 @@ public class BackdoorFinanceControllerTests
         HoldedDocId = docId,
     };
 
-    /// <summary>The finance-admin half of M1: they see everything, including the payee name and the
+    /// <summary>The finance-admin half: they see everything, including the payee name and the
     /// Holded ids the browser's finance card shows only them.</summary>
     [HumansFact]
     public async Task ExpenseReport_FinanceAdmin_SeesPayeeNameAndHoldedIds()
@@ -669,7 +669,7 @@ public class BackdoorFinanceControllerTests
         var member = Guid.NewGuid();
         var generatedBy = Guid.NewGuid();
         // The row already arrives masked from Finance (Backdoor never sees the raw IBAN for this
-        // route, so there is nothing to assert against here — peterdrier/Humans#1839, m16).
+        // route, so there is nothing to assert against here — peterdrier/Humans#1839).
         var maskedIban = IbanFormatter.Mask("ES7921000813610123456789");
         _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>()).Returns((
             (IReadOnlyList<SepaPayoutTransferRow>)

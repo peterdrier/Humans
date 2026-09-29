@@ -161,8 +161,8 @@ public class BackdoorFeedbackControllerTests
     }
 
     /// <summary>
-    /// A rejected move is not a missing report — every patch endpoint here used to answer 404
-    /// to both, which told the caller to stop retrying something that was merely refused.
+    /// A rejected move is not a missing report — a refusal is 422 so the caller can tell refused
+    /// from missing rather than stop retrying something that was merely refused.
     /// </summary>
     [HumansFact]
     public async Task UpdateStatus_returns_422_when_the_service_rejects_the_move()
@@ -195,7 +195,7 @@ public class BackdoorFeedbackControllerTests
     }
 
     /// <summary>
-    /// The raw query value used to reach a SQL <c>LIMIT</c> — the repository's list query ends
+    /// The raw query value would reach a SQL <c>LIMIT</c> — the repository's list query ends
     /// in <c>.Take(limit)</c> over rows carrying their whole message thread. The controller
     /// clamps, like the section's other list endpoints.
     /// </summary>

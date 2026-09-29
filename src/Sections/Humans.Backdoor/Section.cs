@@ -16,8 +16,8 @@ namespace Humans.Backdoor;
 /// <c>/api/backdoor/*</c> controller hangs off.
 /// </summary>
 /// <remarks>
-/// The seven machine controllers need no registration of their own — Shell discovers them
-/// as application parts. Nothing here touches the six served sections: Backdoor reaches
+/// The machine controllers need no registration of their own — Shell discovers them
+/// as application parts. Nothing here touches the served sections: Backdoor reaches
 /// them only through the contracts interfaces their own <c>Section.cs</c> files register.
 /// </remarks>
 public sealed class Section : ISection

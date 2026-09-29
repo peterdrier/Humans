@@ -20,8 +20,7 @@ namespace Humans.Backdoor.Controllers;
 /// <summary>
 /// Read-only Backdoor export of expense reports, creditor bindings, the category map and SEPA
 /// transfers, for the agent doing the books who needs Humans' side of a Holded break
-/// (peterdrier/Humans#1838). Same pattern as <see cref="BackdoorStoreController"/>
-/// (peterdrier/Humans#1719): every action reuses an <c>*ServiceRead</c> method, sorts and formats.
+/// (peterdrier/Humans#1838). Every action reuses an <c>*ServiceRead</c> method, sorts and formats.
 /// </summary>
 /// <remarks>
 /// Unlike Store, a key here does not read everything its owner's role permits without a check —
@@ -332,7 +331,7 @@ internal sealed class BackdoorFinanceController(
 
     /// <summary>The payee name, the masked IBAN, and the Holded timeline are only ever meaningful to
     /// the report's submitter or a finance admin — the same audience <c>ExpensesController.Detail</c>
-    /// shows them to (peterdrier/Humans#1839, fixing M1). The Holded contact/supplier/doc ids are
+    /// shows them to (peterdrier/Humans#1839). The Holded contact/supplier/doc ids are
     /// finance-admin only, matching the same view's finance card. Everyone else who can pass the
     /// <c>View</c> check (e.g. a category coordinator) gets these fields null.</summary>
     private static object ProjectReportSummary(
