@@ -193,4 +193,18 @@
   <data name="Expenses_HowItWorksStep3" xml:space="preserve"><value>Set your payment IBAN if you haven’t already.</value></data>
   <data name="Expenses_HowItWorksStep4" xml:space="preserve"><value>Submit for coordinator / FinanceAdmin review.</value></data>
   <data name="Expenses_HowItWorksStep5" xml:space="preserve"><value>On approval you receive a SEPA bank transfer.</value></data>
+  <data name="Expenses_BackToInvoiceReceipts" xml:space="preserve"><value>Back to invoice receipts</value></data>
+  <data name="Expenses_Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Expenses_EditLine" xml:space="preserve"><value>Edit line</value></data>
+  <data name="Expenses_FileRequiredBeforeSubmit" xml:space="preserve"><value>Required before the report can be submitted.</value></data>
+  <data name="Expenses_Line" xml:space="preserve"><value>Line</value></data>
+  <data name="Expenses_NoFileAttached" xml:space="preserve"><value>No file attached.</value></data>
+  <data name="Expenses_ReceiptsBehindThisInvoice" xml:space="preserve"><value>Receipts behind this invoice</value></data>
+  <data name="Expenses_RemoveFile" xml:space="preserve"><value>Remove file</value></data>
+  <data name="Expenses_RemoveFileConfirm" xml:space="preserve"><value>Remove this file? You'll need to upload another before submitting.</value></data>
+  <data name="Expenses_RemoveInvoiceConfirm" xml:space="preserve"><value>Remove this invoice and all the receipts behind it?</value></data>
+  <data name="Expenses_RemoveLine" xml:space="preserve"><value>Remove line</value></data>
+  <data name="Expenses_RemoveLineConfirm" xml:space="preserve"><value>Remove this line and its file?</value></data>
+  <data name="Expenses_TravelLineReadOnly" xml:space="preserve"><value>Travel lines are computed from their inputs and cannot be edited. Remove the line from the report and add it again to change it.</value></data>
+  <data name="Expenses_Upload" xml:space="preserve"><value>Upload</value></data>
 </root>
