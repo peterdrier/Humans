@@ -154,6 +154,7 @@ The submitter-facing `/Expenses/New` form uses `ExpensesResource` for all labels
 - `HoldedExpenseOutboxJob` drains the `holded_expense_outbox_events` in order. A transient error increments `RetryCount` and sets `NextRetryAt` to `now + 2^(RetryCount+1)` minutes, so the event is held back rather than re-hitting Holded every minute; the tenth failure, and any permanent error, sets `FailedPermanently`. A written-off event is never silently dropped — it shows on `/Expenses/Review` as a banner listing each affected report (and a flagged "Holded" column in its table) and on `/Expenses/{id}` as the Holded sync card, where a finance admin re-queues it.
 - Attachment uploads are stamped on `ExpenseAttachment.HoldedUploadedAt`, so a re-run after a partial failure or a re-queue resumes rather than adding a second copy of every earlier file to the same Holded document.
 - Adding a line returns its validation message for a correctable input error, but never exposes an unexpected persistence exception to the submitter; the controller renders the localized generic failure instead.
+- Attachment-removal failures likewise log the exception but show the submitter a localized generic error.
 - The drain does nothing at all when no `HOLDED_API_KEY_V2` is configured (`IHoldedClient.IsConfigured`): every call would 401, which is a permanent error, so draining would write off the whole queue. The sync card reports that state as "Not configured" rather than "Queued".
 - Holded API request bodies are the only code path that may contain a raw IBAN (not masked).
 

@@ -516,7 +516,7 @@ internal sealed class ExpensesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error removing attachment from line {LineId} on report {ReportId}", lineId, id);
-            SetError($"Failed to remove attachment: {ex.Message}");
+            SetError(localizer["Expenses_Flash_RemoveAttachmentFailed"]);
         }
         return RedirectToAction(nameof(LineEdit), new { id, lineId });
     }
