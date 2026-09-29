@@ -455,6 +455,27 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
+    public async Task BulkImportAsync_DuplicateExistingId_ReturnsErrorsAndWritesNothing()
+    {
+        var campId = Guid.NewGuid();
+        var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.Add(category);
+        var existing = ExistingEvent(campId, category.Id, EventStatus.Approved);
+        _repo.Events.Add(existing);
+
+        var result = await _service.BulkImportAsync(
+            campId, Guid.NewGuid(),
+            [Row(id: existing.Id, title: "First", rowNumber: 2), Row(id: existing.Id, title: "Second", rowNumber: 3)],
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeTrue();
+        result.Errors.Should().HaveCount(2)
+            .And.OnlyContain(error => error.Errors.Contains($"Event {existing.Id} appears more than once in the upload."));
+        existing.Title.Should().Be("My Event");
+        _repo.SaveChangesCount.Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task BulkImportAsync_NewRow_CreatesPendingEvent()
     {
         var campId = Guid.NewGuid();

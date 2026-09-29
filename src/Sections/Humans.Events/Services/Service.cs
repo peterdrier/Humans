@@ -503,6 +503,12 @@ internal sealed class EventService(
         IReadOnlyList<Event> existingEvents)
     {
         var errors = new List<BulkImportRowError>();
+        var duplicateIds = rows
+            .Where(row => row.Id.HasValue)
+            .GroupBy(row => row.Id!.Value)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet();
         foreach (var row in rows)
         {
             var rowErrors = new List<string>();
@@ -538,8 +544,9 @@ internal sealed class EventService(
 
             if (row.Id.HasValue)
             {
-                var existing = existingEvents.FirstOrDefault(e => e.Id == row.Id.Value);
-                if (existing == null)
+                if (duplicateIds.Contains(row.Id.Value))
+                    rowErrors.Add($"Event {row.Id.Value} appears more than once in the upload.");
+                else if (existingEvents.FirstOrDefault(e => e.Id == row.Id.Value) is not { } existing)
                     rowErrors.Add($"Event {row.Id.Value} not found for this barrio.");
                 else if (existing.Status == EventStatus.Withdrawn)
                     rowErrors.Add("Withdrawn events cannot be updated via bulk upload.");
