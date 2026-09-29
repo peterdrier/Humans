@@ -182,7 +182,7 @@ internal sealed class TeamAdminController(
             ParentDepartmentName = parentDepartmentName,
             ParentDepartmentSlug = parentDepartmentSlug,
             IsSensitive = team.IsSensitive,
-            ActorDisplayName = user.BurnerName
+            ActorUserId = user.Id
         };
 
         return View(viewModel);

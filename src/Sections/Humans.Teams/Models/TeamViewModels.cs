@@ -294,9 +294,9 @@ internal sealed class TeamMembersViewModel
     public bool IsSensitive { get; set; }
 
     /// <summary>
-    /// The current actor's display name (for audit preview in sensitive team modal).
+    /// The current actor (for audit preview in sensitive team modal).
     /// </summary>
-    public string? ActorDisplayName { get; set; }
+    public Guid ActorUserId { get; set; }
 }
 
 internal sealed class ResourceAccessViewModel
