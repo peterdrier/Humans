@@ -1,3 +1,4 @@
+using System.Buffers.Text;
 using System.Security.Cryptography;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
@@ -88,7 +89,7 @@ internal sealed class BackdoorApiKeyService(
             return BackdoorKeyIssueResult.Failed(
                 "The key's owner is no longer a full Admin or a Board member with an active account.");
 
-        var plaintext = KeyPrefix + Base64UrlEncode(RandomNumberGenerator.GetBytes(KeyEntropyBytes));
+        var plaintext = NewPlaintext();
         var replacement = NewKey(key.UserId, key.Label, actorUserId, plaintext);
         if (!await repository.RotateAsync(keyId, actorUserId, clock.GetCurrentInstant(), replacement, ct))
             return BackdoorKeyIssueResult.Failed("That key no longer exists or is already revoked.");
@@ -150,7 +151,7 @@ internal sealed class BackdoorApiKeyService(
     private async Task<string> PersistNewKeyAsync(
         Guid ownerUserId, string label, Guid actorUserId, CancellationToken ct)
     {
-        var plaintext = KeyPrefix + Base64UrlEncode(RandomNumberGenerator.GetBytes(KeyEntropyBytes));
+        var plaintext = NewPlaintext();
         var key = NewKey(ownerUserId, label, actorUserId, plaintext);
 
         await repository.AddAsync(key, ct);
@@ -182,8 +183,8 @@ internal sealed class BackdoorApiKeyService(
     private static string Hash(string plaintext) =>
         Convert.ToHexStringLower(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(plaintext)));
 
-    private static string Base64UrlEncode(byte[] bytes) =>
-        Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    private static string NewPlaintext() =>
+        KeyPrefix + Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(KeyEntropyBytes));
 
     // ── User-data fan-outs (design-rules §8a) ───────────────────────────────
     // backdoor_api_keys is user-keyed, so the section owes Article 15, Article 17 and the
