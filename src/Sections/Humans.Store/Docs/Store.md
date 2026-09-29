@@ -15,7 +15,7 @@ Per-camp catalog ordering, multi-method payments, and consolidated Holded factur
 - A **Store Product** is a catalog item available to Camp Leads and department coordinators in a given event year (price, VAT rate, optional deposit, ordering deadline). Products are created and edited by StoreAdmin.
 - A **Store Order** is owned by exactly one counterparty — either a `CampSeason` (billable, full lifecycle Open → InvoiceIssued, at most one order per camp season — and a camp season is itself one camp's one year) **or** a `Team` (non-billable, department-level only, stays `Open` indefinitely, one order per team per year). The "exactly one" invariant is service-enforced, not DB-enforced. Both kinds reuse the same `Product` catalog and the `OrderableUntil` deadline gate.
 - A **Store Order Line** is a line on an order that snapshots the product's price, VAT, and deposit at the time the line was added — later catalog edits never mutate existing lines.
-- A **Store Payment** is a payment against a camp order, recorded with one of three methods (`Stripe`, `BankTransfer`, `Manual`) and a `Status` (`Paid` / `Pending` / `Failed`) reflecting what Stripe has confirmed about the money — a captured debit mandate is `Pending`, not `Paid`. Only `Paid` rows count toward the order balance. Negative amounts represent refunds. Team orders never have payments.
+- A **Store Payment** is a payment against a camp order, recorded with one of five methods (`Stripe`, `BankTransfer`, `Manual`, `DepositReturn`, `Refund`) and a `Status` (`Paid` / `Pending` / `Failed`) reflecting what Stripe has confirmed about the money — a captured debit mandate is `Pending`, not `Paid`. Only `Paid` rows count toward the order balance. A `DepositReturn` (positive) credits a returned deposit back to the order; a `Refund` (negative) books money sent back to the camp. A negative balance is an overage owed to the camp. Team orders never have payments.
 - A **Store Invoice** is the consolidated Holded factura issued for a camp order. One invoice per order, written once at issuance. Team orders never receive invoices.
 - A **Store Treasury Sync State** is the singleton cursor row a treasury-sync job would use to track its last successful Holded poll. The table ships; no such job exists and no code reads or writes the row.
 
@@ -97,7 +97,8 @@ A camp's order against a season.
 | Id | Guid | PK |
 | OrderId | Guid | FK to store_orders, cascade delete |
 | AmountEur | numeric(12,2) | Signed — negative = refund |
-| Method | PaymentMethod (int) | Stripe / BankTransfer / Manual |
+| Method | PaymentMethod (int) | Stripe / BankTransfer / Manual / DepositReturn / Refund. Being retired for `MethodName`; still the column every reader uses. |
+| MethodName | PaymentMethod? (string(50)) | String-stored twin of `Method`. Every insert writes both; rows that predate it stay null until `/Store/Admin/PaymentMethods` copies them. |
 | Status | PaymentStatus (string) | Paid / Pending / Failed. Defaults to Paid (entity initializer; the column carries no default). Only Paid counts toward balance. |
 | StripePaymentIntentId | string(200)? | Unique when present (filtered unique index) |
 | ExternalRef | string(200)? | e.g. Holded treasury entry id |
@@ -154,9 +155,11 @@ Stored as int via `HasConversion<int>()`.
 |-------|-----|-------------|
 | Stripe | 0 | From the Stripe webhook |
 | BankTransfer | 1 | Reserved for treasury sync; no code writes this value today (treasury sync is not built) |
-| Manual | 2 | Reserved for manual entry by FinanceAdmin; no code writes this value today (manual entry is not built) |
+| Manual | 2 | Reserved; no code writes this value |
+| DepositReturn | 3 | Store admin credits a returned deposit (full or partial) to the order. Stored positive. |
+| Refund | 4 | Store admin books money sent back by hand from the Stripe dashboard. Stored negative. |
 
-Stored as int via `HasConversion<int>()`.
+Stored as int via `HasConversion<int>()` in `Method`, and as a string in `MethodName` — the int column is being retired: once every row has `MethodName`, readers switch to it and `Method` is dropped.
 
 ### PaymentStatus
 
@@ -177,12 +180,15 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - `/Store/Admin/Catalog/Edit[/{id}]` — Create / edit product.
 - `/Store/Admin/Catalog/Save` — POST save product.
 - `/Store/Admin/Catalog/Deactivate/{id}` — POST soft-deactivate product.
+- `/Store/Order/{id}/RecordPayment` — POST: Store admin records a `DepositReturn` or `Refund` against a camp order, in any state. The admin enters a positive amount; a refund is stored negative. No cap — a camp may have overpaid; amounts are sanity-checked before money is sent. The form renders on the order page for Store admins only.
 - `/Store/Order/{id}/IssueInvoice` — POST: Store admin issues the order's Holded factura. The button lives on the order page, next to Delete, and renders only for an `Open` camp order with at least one line. Order-action success and fallback failure notices use the viewer's Store resource culture.
 - `/Store/Admin/Summary` — FinanceAdmin/StoreAdmin/Admin aggregate report: by-counterparty (with Type column distinguishing Camp / Team), by-item (sums lines from both camp and team orders for supplier aggregation), counterparties × products cross-tab for a given year. **Totals use effective pricing** — Open orders are repriced to the live catalog (matching the order-page behavior), InvoiceIssued orders use their frozen snapshots. Reuses `PolicyNames.StoreCatalogAdmin`.
 - `/Store/Admin/Payments` — FinanceAdmin/StoreAdmin/Admin Stripe payment reconciliation screen: webhook/checkout health banner, every Store Checkout Session matched to its order with a status (Recorded / Missing / Unmatched / Unpaid), and orphan recorded payments. Reuses `PolicyNames.StoreCatalogAdmin`. Linked from the Store-admin button group on `/Store` and the admin sidebar (**Store → Store payments**).
 - `/Store/Admin/Payments/RecordMissing` — POST: records every paid, order-matched, not-yet-recorded session via the idempotent `RecordStripePaymentAsync` path.
 - `/Store/Admin/OrderYears` — review every legacy order whose stored year is zero, including rows whose camp season can no longer be resolved.
 - `/Store/Admin/OrderYears/Repair` — POST: after explicit confirmation, rescan and repair every resolvable row; each save emits `StoreOrderYearBackfilled` with the operator as actor.
+- `/Store/Admin/PaymentMethods` — review every payment whose string `MethodName` is still null (int → string method migration).
+- `/Store/Admin/PaymentMethods/Repair` — POST: after explicit confirmation, rescan and copy `Method` into `MethodName` on each listed row; each emits `StorePaymentMethodBackfilled` with the operator as actor.
 - `/Store/StripeWebhook` — anonymous endpoint for Stripe checkout-session events (`StoreStripeWebhookController`).
 
 ## Actors & Roles
@@ -191,7 +197,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 |-------|--------------|
 | Camp Lead | View / create orders for camp-seasons they lead. Add and remove lines while order is Open and the product's `OrderableUntil` has not passed. Edit counterparty fields while Open. Initiate Stripe checkout to pay. |
 | Coordinator (department) | View / create the single team order for departments (top-level teams) they coordinate, scoped to the active event year. Add and remove lines while the product's `OrderableUntil` has not passed. No pay, no counterparty edit, no invoice — team orders are non-billable. |
-| StoreAdmin | **Store-domain superset** (per `memory/code/admin-role-superset.md`): catalog CRUD, view all orders, issue invoices, reconcile Stripe payments (`/Store/Admin/Payments`). Equivalent to FinanceAdmin within the Store section. EditCounterparty/Pay remain denied on team orders even for admins. |
+| StoreAdmin | **Store-domain superset** (per `memory/code/admin-role-superset.md`): catalog CRUD, view all orders, issue invoices, record deposit returns and refunds, reconcile Stripe payments (`/Store/Admin/Payments`). Equivalent to FinanceAdmin within the Store section. EditCounterparty/Pay remain denied on team orders even for admins. |
 | TeamsAdmin | **View any order** (camp or team) and **manage team orders only** (Create for any department, not only the ones they coordinate; AddLine / RemoveLine while `Open`; Delete any state). Camp orders are view-only. Never Pay / EditCounterparty (team orders are non-billable). Additive — a TeamsAdmin who is also a camp lead keeps camp-edit rights through the lead path. |
 | FinanceAdmin, Admin | All Camp Lead and StoreAdmin capabilities. Issue invoice from the order page. View `/Store/Admin/Summary` and `/Store/Admin/Payments`. Reconcile missing Stripe payments. EditCounterparty/Pay remain denied on team orders. |
 
@@ -208,6 +214,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - Counterparty fields (`CounterpartyName`, `CounterpartyVatId`, `CounterpartyAddress`, `CounterpartyCountryCode`, `CounterpartyEmail`) are editable only while the order is `Open` (Camp Lead) or by FinanceAdmin/Admin always.
 - Line snapshots (`UnitPriceSnapshot`, `VatRateSnapshot`, `DepositAmountSnapshot`) are written at add-time and never recomputed. **Effective pricing differs by order state (#816):** an `Open` order is a live running tab — `BalanceCalculator.Compute` reprices its lines to the *current* catalog price for the event year (falling back to the snapshot when the product is absent from the catalog), so catalog edits DO propagate to Open orders. An `InvoiceIssued` order is frozen and always reads each line's add-time snapshot.
 - Payments may be recorded regardless of order state — payments do not freeze on issuance.
+- **Deposit returns and refunds are Store-admin ledger entries** (`RecordAdminPaymentAsync`). Only `DepositReturn` and `Refund` are accepted there; the amount must be positive and a `Refund` is stored negated. Both land `Paid` with the admin as `RecordedByUserId`. No amount cap. Money-out itself stays in the Stripe dashboard ([`refunds-manual-via-dashboard`](../../../../memory/architecture/refunds-manual-via-dashboard.md)).
 - **Spanish VAT applies to every order regardless of buyer country** — all goods are physically handed over on-site in Spain, so place of supply is Spain and there is no B2B reverse-charge path. VAT comes solely from the per-product `VatRatePercent` snapshot; `CounterpartyCountryCode` is stored for the factura but never consulted for tax.
 - **Deposits are VAT-free** (refundable security deposits / fianzas are not subject to VAT): `BalanceCalculator.Compute` adds deposit amounts without applying VAT, and the issued Holded invoice renders each deposit as a separate `tax = 0` line.
 - Issuing an invoice is idempotent: re-issuing an order that already has `IssuedInvoiceId` set (or already in `InvoiceIssued`) throws and does NOT call Holded.
@@ -238,11 +245,12 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - An order holding any payment row — `Paid`, `Pending` or `Failed` — **cannot** be deleted, by anyone.
 - A camp lead, department coordinator or TeamsAdmin **cannot** issue an invoice — `IssueInvoice` is Store-admin only.
 - A team order **cannot** be invoiced, by anyone, including admins.
+- Anyone other than StoreAdmin/FinanceAdmin/Admin **cannot** record a deposit return or refund; nobody can on a team order.
 
 ## Triggers
 
 **Live:**
-- Order create, legacy-year repair, line add/remove, counterparty edit, and Stripe payment record emit audit log entries via `IAuditLogService` (`StoreOrderCreated`, `StoreOrderYearBackfilled`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`, `StorePaymentRecorded`). Async-payment transitions emit `StorePaymentSettled` (Pending → Paid), `StorePaymentFailed` (Pending → Failed), and `StorePaymentExpired` (orphan Pending removed on session expiry), all with the `StripeWebhook` job actor.
+- Order create, legacy-year repair, payment-method repair, line add/remove, counterparty edit, Stripe payment record, and admin deposit-return / refund record emit audit log entries via `IAuditLogService` (`StoreOrderCreated`, `StoreOrderYearBackfilled`, `StorePaymentMethodBackfilled`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`, `StorePaymentRecorded`). Async-payment transitions emit `StorePaymentSettled` (Pending → Paid), `StorePaymentFailed` (Pending → Failed), and `StorePaymentExpired` (orphan Pending removed on session expiry), all with the `StripeWebhook` job actor.
 - Product create, update, and deactivate emit `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated`. A product update that changes the unit price additionally emits a dedicated, queryable `StoreProductPriceChanged` entry (#816); the order page surfaces these for an order's products since it was created and the catalog edit page shows per-product price history — both through `<vc:audit-log>`, never a Store-side audit read.
 - The Stripe webhook controller (`StoreStripeWebhookController`) verifies the request signature via `IStripeService.ParseStoreCheckoutEvent` and dispatches to `Service.HandleStripeCheckoutWebhookEventAsync`, which handles all four `checkout.session.*` events (completed + the async-payment state machine above). Idempotent on `StripePaymentIntentId`.
 - `/Store/Admin/Payments/RecordMissing` reconciles Stripe → ledger on demand (admin-triggered), recording missing paid sessions via the same idempotent path and emitting one `StorePaymentsReconciled` summary audit entry (with the human actor) plus the per-payment `StorePaymentRecorded` entries. The webhook and this admin action both write Stripe payments; the webhook is the only automatic writer.
@@ -250,7 +258,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - `IssueInvoiceAsync` (nobodies-collective/Humans#1029) — upserts the Holded `client` contact for an identified counterparty, creates the v2 sales document with per-line revenue accounts, approves it, reads it back, and writes `store_invoices` (both payloads) + the frozen order in one save. Emits `StoreInvoiceIssued` against `StoreInvoice`, cross-referenced to the order.
 
 **Not built:**
-- Manual payment entry by FinanceAdmin, and the `/Store/Admin/Orders` ledger it would live on. No service member, endpoint, or view exists.
+- Bank-transfer / cash entry (`BankTransfer`, `Manual`) and the `/Store/Admin/Orders` ledger. No service member, endpoint, or view exists.
 - Treasury sync. No job exists; `store_treasury_sync_state` and its entity ship, but nothing reads or writes them (`Docs/debt.yml` STORE-2).
 
 ## Cross-Section Dependencies
@@ -268,7 +276,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 The Store section uses `IStripeService` (`Humans.Stripe.Contracts`; internal impl in `src/Sections/Humans.Stripe/Services/StripeService.cs` — see [Stripe.md](../../Humans.Stripe/Docs/Stripe.md)).
 
-- `STRIPE_STORE_KEY` — `checkout_session:write` (Write ⊇ Read, so it also creates Checkout Sessions **and** lists/reads them for reconciliation via `ListStoreCheckoutSessionsAsync`). Each session is created with `humans_store_order_id` stamped on **both** the session metadata and the PaymentIntent metadata, plus a legible description, so payments are matchable from the dashboard, receipts, and PI search. Refunds, payouts, and chargebacks remain manual via the Stripe dashboard; recording a refund as a negative `Payment` row needs FinanceAdmin manual payment entry, which is not built (see Triggers above).
+- `STRIPE_STORE_KEY` — `checkout_session:write` (Write ⊇ Read, so it also creates Checkout Sessions **and** lists/reads them for reconciliation via `ListStoreCheckoutSessionsAsync`). Each session is created with `humans_store_order_id` stamped on **both** the session metadata and the PaymentIntent metadata, plus a legible description, so payments are matchable from the dashboard, receipts, and PI search. Refunds, payouts, and chargebacks remain manual via the Stripe dashboard; a refund issued there is booked as a negative `Refund` payment via `/Store/Order/{id}/RecordPayment`.
 - `STRIPE_STORE_WEBHOOK_SECRET` — signing secret for `StoreStripeWebhookController`. Set manually in QA/prod; auto-provisioned at boot in PR-preview envs via `StoreWebhookRegistrationService` (requires `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY`).
 - Webhook events subscribed and handled: `checkout.session.completed` (records Paid or Pending by `payment_status`), `checkout.session.async_payment_succeeded` (Pending → Paid), `checkout.session.async_payment_failed` (Pending → Failed), `checkout.session.expired` (orphan-Pending cleanup) — the async-payment state machine (nobodies-collective/Humans#638).
 - Boot-time `StripeStartupSmokeService` validates each key with one low-risk read (Checkout.Sessions.list for Store key). Positive-confirmation only — cannot detect over-granted scopes.
@@ -298,4 +306,4 @@ Acountax's call and change without a deploy:
 | `Store:DepositLiabilityAccountNum` | unset | Holded chart number of the refundable-deposit (fianzas) liability account. Unset refuses issuance of any order carrying a deposit. |
 | `Store:SimplifiedInvoiceThresholdEur` | `400` | Order total at or below which a counterparty-less order may issue as a *factura simplificada*. Spanish law allows €400 generally / €3,000 for retail-type B2C; the conservative figure is the default until Acountax rules. |
 
-Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, Stripe payment recording, and Holded invoice issuance are live. Manual payment entry, treasury sync, and the Orders admin view are unbuilt — no code for them exists. See [`Store-feature.md`](features/Store-feature.md).
+Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, Stripe payment recording, deposit-return / refund recording, and Holded invoice issuance are live. Bank-transfer / cash entry, treasury sync, and the Orders admin view are unbuilt — no code for them exists. See [`Store-feature.md`](features/Store-feature.md).

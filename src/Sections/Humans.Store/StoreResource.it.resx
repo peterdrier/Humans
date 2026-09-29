@@ -77,4 +77,14 @@
   <data name="Store_LineRemoved" xml:space="preserve"><value>Riga rimossa.</value></data>
   <data name="Store_UpdateCounterpartyFailed" xml:space="preserve"><value>Impossibile aggiornare la controparte.</value></data>
   <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Controparte aggiornata.</value></data>
+  <data name="Store_PaymentRecorded" xml:space="preserve"><value>Registrato.</value></data>
+  <data name="Store_Overpaid" xml:space="preserve"><value>{0} pagato in eccesso — da restituire al campo.</value></data>
+  <data name="Store_RecordPaymentHeading" xml:space="preserve"><value>Registra restituzione cauzione o rimborso</value></data>
+  <data name="Store_RecordPaymentType" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Store_Method_DepositReturn" xml:space="preserve"><value>Restituzione cauzione (accredito sull'ordine)</value></data>
+  <data name="Store_Method_Refund" xml:space="preserve"><value>Rimborso (denaro restituito da Stripe)</value></data>
+  <data name="Store_RecordPaymentAmount" xml:space="preserve"><value>Importo (EUR)</value></data>
+  <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Riferimento (es. id del rimborso Stripe)</value></data>
+  <data name="Store_RecordPaymentNotes" xml:space="preserve"><value>Note</value></data>
+  <data name="Store_RecordPaymentSubmit" xml:space="preserve"><value>Registra</value></data>
 </root>

@@ -1,4 +1,7 @@
 
+using Humans.Store.Domain;
+using NodaTime;
+
 namespace Humans.Store.Services;
 
 internal sealed record MutationResult(bool Succeeded, string? ErrorMessage)
@@ -36,6 +39,13 @@ internal sealed record OrderYearRepairRow(
     Guid? CampSeasonId,
     string? CampName,
     int? ResolvedYear);
+
+internal sealed record PaymentMethodRepairRow(
+    Guid PaymentId,
+    Guid OrderId,
+    PaymentMethod Method,
+    decimal AmountEur,
+    Instant ReceivedAt);
 
 internal sealed record OrderYearRepairReport(IReadOnlyList<OrderYearRepairRow> Rows)
 {

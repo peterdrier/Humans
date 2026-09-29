@@ -119,7 +119,23 @@ public class OrderAuthorizationHandlerTests
         await AssertOutcome(role, MakeOrder(team: true), OrderOperationRequirement.Pay, expectAllowed: false);
         await AssertOutcome(role, MakeOrder(team: true), OrderOperationRequirement.EditCounterparty, expectAllowed: false);
         await AssertOutcome(role, MakeOrder(team: true), OrderOperationRequirement.IssueInvoice, expectAllowed: false);
+        await AssertOutcome(role, MakeOrder(team: true), OrderOperationRequirement.RecordPayment, expectAllowed: false);
     }
+
+    [HumansTheory]
+    [InlineData(RoleNames.Admin)]
+    [InlineData(RoleNames.StoreAdmin)]
+    [InlineData(RoleNames.FinanceAdmin)]
+    public Task Store_admins_can_record_payment_on_camp_order(string role) =>
+        AssertOutcome(role, MakeOrder(team: false), OrderOperationRequirement.RecordPayment, expectAllowed: true);
+
+    [HumansFact]
+    public Task CampLead_cannot_record_payment_on_own_camp_order() =>
+        AssertLeadOperation(OrderOperationRequirement.RecordPayment, expectAllowed: false);
+
+    [HumansFact]
+    public Task TeamsAdmin_cannot_record_payment_on_camp_order() =>
+        AssertOutcome(RoleNames.TeamsAdmin, MakeOrder(team: false), OrderOperationRequirement.RecordPayment, expectAllowed: false);
 
     [HumansFact]
     public Task StoreAdmin_can_issue_invoice_on_camp_order() =>

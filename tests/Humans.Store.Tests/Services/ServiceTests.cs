@@ -1168,8 +1168,93 @@ public class ServiceTests
                 p.AmountEur == 42.50m &&
                 p.Method == PaymentMethod.Stripe &&
                 p.StripePaymentIntentId == paymentIntentId &&
+                p.MethodName == PaymentMethod.Stripe &&
                 p.RecordedByUserId == null),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(PaymentMethod.DepositReturn), 150.00, 150.00)]
+    [InlineData(nameof(PaymentMethod.Refund), 80.00, -80.00)]
+    public async Task RecordAdminPaymentAsync_stores_deposit_return_positive_and_refund_negative(
+        string methodName, decimal entered, decimal stored)
+    {
+        var method = Enum.Parse<PaymentMethod>(methodName);
+        var orderId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(new Order { Id = orderId, CampSeasonId = Guid.NewGuid(), State = OrderState.InvoiceIssued });
+
+        await _service.RecordAdminPaymentAsync(orderId, method, entered, " re_123 ", "2 of 3 fences back", actor, TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).AddPaymentAsync(
+            Arg.Is<Payment>(p =>
+                p.OrderId == orderId &&
+                p.AmountEur == stored &&
+                p.Method == method &&
+                p.MethodName == method &&
+                p.Status == PaymentStatus.Paid &&
+                p.ExternalRef == "re_123" &&
+                p.Notes == "2 of 3 fences back" &&
+                p.RecordedByUserId == actor),
+            Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StorePaymentRecorded, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            actor, orderId, Arg.Any<string>());
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(PaymentMethod.Stripe))]
+    [InlineData(nameof(PaymentMethod.Manual))]
+    public async Task RecordAdminPaymentAsync_rejects_other_methods(string methodName)
+    {
+        var method = Enum.Parse<PaymentMethod>(methodName);
+        var act = () => _service.RecordAdminPaymentAsync(Guid.NewGuid(), method, 10m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public async Task RecordAdminPaymentAsync_rejects_non_positive_amount(decimal amount)
+    {
+        var act = () => _service.RecordAdminPaymentAsync(Guid.NewGuid(), PaymentMethod.Refund, amount, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RepairPaymentMethodNamesAsync_copies_int_method_and_audits_each_row()
+    {
+        var actor = Guid.NewGuid();
+        var stripe = new Payment { Id = Guid.NewGuid(), OrderId = Guid.NewGuid(), Method = PaymentMethod.Stripe };
+        var refund = new Payment { Id = Guid.NewGuid(), OrderId = Guid.NewGuid(), Method = PaymentMethod.Refund };
+        _repo.GetPaymentsMissingMethodNameAsync(Arg.Any<CancellationToken>()).Returns([stripe, refund]);
+
+        var repaired = await _service.RepairPaymentMethodNamesAsync(actor, TestContext.Current.CancellationToken);
+
+        repaired.Should().Be(2);
+        await _repo.Received(1).SetPaymentMethodNameAsync(stripe.Id, PaymentMethod.Stripe, Arg.Any<CancellationToken>());
+        await _repo.Received(1).SetPaymentMethodNameAsync(refund.Id, PaymentMethod.Refund, Arg.Any<CancellationToken>());
+        await _audit.Received(2).LogAsync(
+            AuditAction.StorePaymentMethodBackfilled, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            actor, Arg.Any<Guid?>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task RecordAdminPaymentAsync_rejects_team_order()
+    {
+        var orderId = Guid.NewGuid();
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(new Order { Id = orderId, TeamId = Guid.NewGuid() });
+
+        var act = () => _service.RecordAdminPaymentAsync(orderId, PaymentMethod.DepositReturn, 10m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Team orders are non-billable.");
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

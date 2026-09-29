@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Store. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 5
+next_id: 6
 inbox:
   - added: 2026-08-25
     id: STORE-2
@@ -14,4 +14,8 @@ inbox:
   - added: 2026-09-27
     id: STORE-4
     what: "Views/Store/Order.cshtml — the camp lead's and coordinator's order page — renders its title, headings, table headers, form labels, buttons, confirm prompts and alerts as hardcoded English, while Views/Store/Index.cshtml goes through the StoreResource localizer. The page is not admin-only, so the localization exemption does not cover it; every string needs a StoreResource key in every supported culture. Found by /section-doctor on Store 2026-09-27."
+    review: panel
+  - added: 2026-09-29
+    id: STORE-5
+    what: "Store persists enums as ints — store_orders.State (OrderState), store_payments.Method (PaymentMethod) and store_treasury_sync_state.SyncStatus (TreasurySyncStatus) — against the string-storage rule. Method is mid-migration: a string MethodName twin is dual-written and /Store/Admin/PaymentMethods fills old rows; once it reports none left, switch readers to MethodName and drop Method (destructive — needs Peter's per-case approval). State and SyncStatus need the same add-column / dual-write / repair-screen path. Found while adding deposit returns and refunds, 2026-09-29."
     review: panel

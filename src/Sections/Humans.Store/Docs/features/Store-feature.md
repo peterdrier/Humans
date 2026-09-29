@@ -14,7 +14,7 @@ The Store section lets Camp Leads order infrastructure-as-a-service items from t
 
 This is fundamentally **camp data** with provenance recording (per `memory/architecture/provenance-fks-not-user-scoped.md`): order lines, payments, and invoices belong to the `CampSeason`, not to the lead who clicked the button. The `AddedByUserId` / `RecordedByUserId` / `IssuedByUserId` columns are audit/provenance only — deleting a user does not delete the order data.
 
-Refunds, payouts, and chargebacks remain Stripe-dashboard-manual (per `memory/architecture/refunds-manual-via-dashboard.md`). Humans only does the bookkeeping side: a refund issued in Stripe gets recorded as a negative `Payment` row by the Treasurer.
+Refunds, payouts, and chargebacks remain Stripe-dashboard-manual (per `memory/architecture/refunds-manual-via-dashboard.md`). Humans only does the bookkeeping side: a returned deposit is credited to the order as a `DepositReturn` payment, and a refund issued in Stripe is recorded as a negative `Refund` payment, both by a Store admin.
 
 The section invariant doc is [`Store.md`](../Store.md).
 
@@ -59,16 +59,18 @@ The section invariant doc is [`Store.md`](../Store.md).
 - Pay is allowed regardless of order state (payments continue after invoice issuance — see `OrderOperationRequirement.Pay`).
 - Webhook errors are logged but the controller returns 200 to prevent Stripe retry storms; signature failures return 400.
 
-### US-30.4: Record a Manual Payment (Treasurer)
+### US-30.4: Record Deposit Returns and Refunds (Store admin)
 
-**As** a `FinanceAdmin`, **I want** to record bank transfers, cash receipts, and Stripe-dashboard refunds against an order, **so that** the order's balance reflects every euro that has actually moved.
+**As** a Store admin, **I want** to credit returned deposits to a camp's order and book the refunds I send from the Stripe dashboard, **so that** every camp's balance shows what we owe them before any money goes out.
 
 **Acceptance Criteria:**
-- POST to `/Store/Order/{id}/RecordPayment` with amount (signed — negatives are refunds), method (`BankTransfer` | `Manual`), optional external reference (e.g. Holded treasury entry id), and optional notes.
-- Inserts a `Payment` row with `RecordedByUserId = actorUserId`, `Method` as supplied. `Stripe` method is reserved for the webhook path and rejected here.
-- Allowed in any order state (refunds frequently happen post-issuance).
-- Audit-logged with the actor.
-- *Note: not yet implemented (Phase 5) — no service member, and no `/Store/Order/{id}/RecordPayment` endpoint. (The implemented `/Store/Admin/Payments` Stripe reconciliation screen is US-30.3-adjacent and separate from this per-order manual path.)*
+- POST to `/Store/Order/{id}/RecordPayment` with a positive amount, method (`DepositReturn` | `Refund`), optional external reference (e.g. Stripe refund id), and optional notes.
+- Step 1, `DepositReturn`: stored positive, so a paid-up order goes negative — the overage owed to the camp. Partial returns are just smaller amounts.
+- Step 2, `Refund`: stored negative after the money is sent from the Stripe dashboard, bringing the order back to zero.
+- Inserts a `Paid` `Payment` row with `RecordedByUserId = actorUserId`. Any other method is rejected. No amount cap — a camp may have overpaid.
+- Store admins only; never on a team order. Allowed in any order state (deposits come back after issuance).
+- Audit-logged (`StorePaymentRecorded`) with the actor.
+- *Bank-transfer / cash entry (`BankTransfer`, `Manual`) is not built.*
 
 ### US-30.5: Issue the Consolidated Factura (Treasurer)
 

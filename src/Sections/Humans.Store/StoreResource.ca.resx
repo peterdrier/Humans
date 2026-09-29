@@ -77,4 +77,14 @@
   <data name="Store_LineRemoved" xml:space="preserve"><value>Línia eliminada.</value></data>
   <data name="Store_UpdateCounterpartyFailed" xml:space="preserve"><value>No s'ha pogut actualitzar la contrapart.</value></data>
   <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Contrapart actualitzada.</value></data>
+  <data name="Store_PaymentRecorded" xml:space="preserve"><value>Registrat.</value></data>
+  <data name="Store_Overpaid" xml:space="preserve"><value>{0} pagat de més — s'ha de retornar al campament.</value></data>
+  <data name="Store_RecordPaymentHeading" xml:space="preserve"><value>Registrar devolució de fiança o reemborsament</value></data>
+  <data name="Store_RecordPaymentType" xml:space="preserve"><value>Tipus</value></data>
+  <data name="Store_Method_DepositReturn" xml:space="preserve"><value>Devolució de fiança (abonament a la comanda)</value></data>
+  <data name="Store_Method_Refund" xml:space="preserve"><value>Reemborsament (diners retornats des de Stripe)</value></data>
+  <data name="Store_RecordPaymentAmount" xml:space="preserve"><value>Import (EUR)</value></data>
+  <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Referència (p. ex. id del reemborsament a Stripe)</value></data>
+  <data name="Store_RecordPaymentNotes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Store_RecordPaymentSubmit" xml:space="preserve"><value>Registrar</value></data>
 </root>

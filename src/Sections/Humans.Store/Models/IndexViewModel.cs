@@ -34,6 +34,10 @@ internal sealed class OrderViewModel
     /// admin, order still Open, at least one line. Surfaces the Issue invoice button.</summary>
     public bool CanIssueInvoice { get; init; }
 
+    /// <summary>True when the current user is a Store admin on a camp order. Surfaces the
+    /// deposit-return / refund form.</summary>
+    public bool CanRecordPayment { get; init; }
+
     /// <summary>
     /// Line ids whose Remove button renders, resolved per line against the order authorization
     /// handler in the controller: past the product's order deadline only Store admins qualify.
@@ -44,10 +48,12 @@ internal sealed class OrderViewModel
         OrderPageData pageData,
         bool canDelete,
         bool canIssueInvoice,
+        bool canRecordPayment,
         IReadOnlyList<ProductDto> catalog,
         IReadOnlyCollection<Guid> removableLineIds) => new()
         {
             CanIssueInvoice = canIssueInvoice,
+            CanRecordPayment = canRecordPayment,
             Order = pageData.Order,
             Catalog = catalog,
             CounterpartyDisplayName = pageData.CounterpartyDisplayName,

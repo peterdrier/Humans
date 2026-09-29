@@ -77,4 +77,14 @@
   <data name="Store_LineRemoved" xml:space="preserve"><value>Línea eliminada.</value></data>
   <data name="Store_UpdateCounterpartyFailed" xml:space="preserve"><value>No se pudo actualizar la contraparte.</value></data>
   <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Contraparte actualizada.</value></data>
+  <data name="Store_PaymentRecorded" xml:space="preserve"><value>Registrado.</value></data>
+  <data name="Store_Overpaid" xml:space="preserve"><value>{0} pagado de más — se debe devolver al campamento.</value></data>
+  <data name="Store_RecordPaymentHeading" xml:space="preserve"><value>Registrar devolución de fianza o reembolso</value></data>
+  <data name="Store_RecordPaymentType" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Store_Method_DepositReturn" xml:space="preserve"><value>Devolución de fianza (abono al pedido)</value></data>
+  <data name="Store_Method_Refund" xml:space="preserve"><value>Reembolso (dinero devuelto desde Stripe)</value></data>
+  <data name="Store_RecordPaymentAmount" xml:space="preserve"><value>Importe (EUR)</value></data>
+  <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Referencia (p. ej. id del reembolso en Stripe)</value></data>
+  <data name="Store_RecordPaymentNotes" xml:space="preserve"><value>Notas</value></data>
+  <data name="Store_RecordPaymentSubmit" xml:space="preserve"><value>Registrar</value></data>
 </root>

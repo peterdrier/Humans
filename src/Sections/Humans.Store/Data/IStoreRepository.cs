@@ -122,6 +122,13 @@ internal interface IStoreRepository : IRepository
     /// </summary>
     Task UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus status, CancellationToken ct = default);
 
+    /// <summary>Every payment whose string <see cref="Payment.MethodName"/> is still unset. Feeds
+    /// the operator review screen for the int → string method migration.</summary>
+    Task<IReadOnlyList<Payment>> GetPaymentsMissingMethodNameAsync(CancellationToken ct = default);
+
+    /// <summary>Sets <see cref="Payment.MethodName"/> on the payment with the given id.</summary>
+    Task SetPaymentMethodNameAsync(Guid paymentId, PaymentMethod methodName, CancellationToken ct = default);
+
     /// <summary>
     /// Hard-deletes the payment with the given id. Used only by the <c>checkout.session.expired</c>
     /// cleanup of an orphan <see cref="PaymentStatus.Pending"/> row; the service enforces the

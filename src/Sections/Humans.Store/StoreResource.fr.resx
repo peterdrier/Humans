@@ -77,4 +77,14 @@
   <data name="Store_LineRemoved" xml:space="preserve"><value>Ligne supprimée.</value></data>
   <data name="Store_UpdateCounterpartyFailed" xml:space="preserve"><value>Impossible de mettre à jour la contrepartie.</value></data>
   <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Contrepartie mise à jour.</value></data>
+  <data name="Store_PaymentRecorded" xml:space="preserve"><value>Enregistré.</value></data>
+  <data name="Store_Overpaid" xml:space="preserve"><value>{0} payé en trop — à rembourser au camp.</value></data>
+  <data name="Store_RecordPaymentHeading" xml:space="preserve"><value>Enregistrer un retour de caution ou un remboursement</value></data>
+  <data name="Store_RecordPaymentType" xml:space="preserve"><value>Type</value></data>
+  <data name="Store_Method_DepositReturn" xml:space="preserve"><value>Retour de caution (crédit sur la commande)</value></data>
+  <data name="Store_Method_Refund" xml:space="preserve"><value>Remboursement (argent renvoyé depuis Stripe)</value></data>
+  <data name="Store_RecordPaymentAmount" xml:space="preserve"><value>Montant (EUR)</value></data>
+  <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Référence (ex. id du remboursement Stripe)</value></data>
+  <data name="Store_RecordPaymentNotes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Store_RecordPaymentSubmit" xml:space="preserve"><value>Enregistrer</value></data>
 </root>

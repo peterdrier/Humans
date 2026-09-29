@@ -122,8 +122,8 @@ left at year zero the page says so and nothing else in the section depends on it
 An unbuilt seam is carried in the docs and, where a shipped migration forces it, in the schema —
 never in live code.
 
-- **Manual payment entry** (FinanceAdmin records a bank transfer or a refund as a negative
-  amount). No code.
+- **Bank-transfer / cash entry** (FinanceAdmin records money received outside Stripe). No code.
+  Deposit returns and refunds are built (`/Store/Order/{id}/RecordPayment`).
 - **Treasury sync** (a recurring job matching Holded bank entries to orders). The
   `store_treasury_sync_state` table, its entity and its EF configuration ship because the
   migration shipped; no code reads or writes them. The matching key it was designed around

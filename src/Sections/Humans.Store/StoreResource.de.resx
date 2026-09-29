@@ -77,4 +77,14 @@
   <data name="Store_LineRemoved" xml:space="preserve"><value>Position entfernt.</value></data>
   <data name="Store_UpdateCounterpartyFailed" xml:space="preserve"><value>Gegenpartei konnte nicht aktualisiert werden.</value></data>
   <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Gegenpartei aktualisiert.</value></data>
+  <data name="Store_PaymentRecorded" xml:space="preserve"><value>Erfasst.</value></data>
+  <data name="Store_Overpaid" xml:space="preserve"><value>{0} zu viel bezahlt — wird dem Camp zurückerstattet.</value></data>
+  <data name="Store_RecordPaymentHeading" xml:space="preserve"><value>Kautionsrückgabe oder Erstattung erfassen</value></data>
+  <data name="Store_RecordPaymentType" xml:space="preserve"><value>Art</value></data>
+  <data name="Store_Method_DepositReturn" xml:space="preserve"><value>Kautionsrückgabe (Gutschrift auf die Bestellung)</value></data>
+  <data name="Store_Method_Refund" xml:space="preserve"><value>Erstattung (Geld über Stripe zurückgezahlt)</value></data>
+  <data name="Store_RecordPaymentAmount" xml:space="preserve"><value>Betrag (EUR)</value></data>
+  <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Referenz (z. B. Stripe-Erstattungs-ID)</value></data>
+  <data name="Store_RecordPaymentNotes" xml:space="preserve"><value>Notizen</value></data>
+  <data name="Store_RecordPaymentSubmit" xml:space="preserve"><value>Erfassen</value></data>
 </root>

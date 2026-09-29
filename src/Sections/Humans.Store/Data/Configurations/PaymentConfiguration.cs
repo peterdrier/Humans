@@ -12,6 +12,9 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         b.HasKey(x => x.Id);
         b.Property(x => x.AmountEur).HasColumnType("numeric(12,2)");
         b.Property(x => x.Method).HasConversion<int>();
+        b.Property(x => x.MethodName)
+            .HasConversion<string>()
+            .HasMaxLength(50);
         // Stored as string. The column default served the AddStorePaymentStatus migration
         // (existing pre-async rows landed on Paid without a data backfill); EF-side it was the
         // enum-zero sentinel trap (HasDefaultValue on the CLR default), so it was dropped after

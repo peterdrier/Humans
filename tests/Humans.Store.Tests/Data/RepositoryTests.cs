@@ -48,6 +48,21 @@ public sealed class RepositoryTests
     }
 
     [HumansFact]
+    public async Task Payments_missing_method_name_are_listed_until_set()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var legacyId = Guid.NewGuid();
+        await _repo.AddPaymentAsync(new Payment { Id = legacyId, OrderId = Guid.NewGuid(), AmountEur = 10m, Method = PaymentMethod.Stripe }, ct);
+        await _repo.AddPaymentAsync(new Payment { Id = Guid.NewGuid(), OrderId = Guid.NewGuid(), AmountEur = 5m, Method = PaymentMethod.Refund, MethodName = PaymentMethod.Refund }, ct);
+
+        (await _repo.GetPaymentsMissingMethodNameAsync(ct)).Select(p => p.Id).Should().Equal(legacyId);
+
+        await _repo.SetPaymentMethodNameAsync(legacyId, PaymentMethod.Stripe, ct);
+
+        (await _repo.GetPaymentsMissingMethodNameAsync(ct)).Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task GetActiveProductsForYearAsync_filters_by_year_and_active_flag()
     {
         await _repo.AddProductAsync(MakeProduct(year: 2026, isActive: true, name: "A"), Xunit.TestContext.Current.CancellationToken);

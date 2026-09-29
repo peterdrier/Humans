@@ -332,4 +332,7 @@ public enum AuditAction
     // A human used the shared email composer's "Send to me" button (peterdrier/Humans#1793):
     // one composer_self_test outbox row queued to their own address. Entity is the human.
     EmailComposerSelfTestSent,
+
+    // A Store admin's repair run copied a legacy payment's int Method into its string MethodName column.
+    StorePaymentMethodBackfilled,
 }

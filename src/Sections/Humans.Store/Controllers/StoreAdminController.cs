@@ -74,6 +74,28 @@ internal sealed class StoreAdminController(
         return RedirectToAction(nameof(OrderYears));
     }
 
+    [HttpGet("PaymentMethods")]
+    public async Task<IActionResult> PaymentMethods(CancellationToken ct)
+    {
+        var rows = await storeService.GetPaymentMethodRepairRowsAsync(ct);
+        return View(rows);
+    }
+
+    [HttpPost("PaymentMethods/Repair")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RepairPaymentMethods(CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var repaired = await storeService.RepairPaymentMethodNamesAsync(user.Id, ct);
+        if (repaired == 0)
+            SetInfo("No payments need their method copied.");
+        else
+            SetSuccess($"Copied the method on {repaired} payment(s).");
+        return RedirectToAction(nameof(PaymentMethods));
+    }
+
     [HttpPost("Payments/RecordMissing")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RecordMissingPayments(CancellationToken ct)

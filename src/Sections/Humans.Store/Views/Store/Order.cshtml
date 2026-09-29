@@ -278,7 +278,11 @@ else
             <div class="alert alert-warning">Stripe checkout is not configured for this environment.</div>
         }
     }
-    else if (order.BalanceEur <= 0)
+    else if (order.BalanceEur < 0)
+    {
+        <p class="text-muted">@Localizer["Store_Overpaid", (-order.BalanceEur).ToEuro()]</p>
+    }
+    else if (order.BalanceEur == 0)
     {
         <p class="text-muted">No outstanding balance.</p>
     }
@@ -289,6 +293,36 @@ else
     else
     {
         <p class="text-muted">Payments are recorded by the finance team.</p>
+    }
+
+    @if (Model.CanRecordPayment)
+    {
+        <h2 class="h5 mb-3 mt-4">@Localizer["Store_RecordPaymentHeading"]</h2>
+        <form asp-action="RecordPayment" asp-route-id="@order.Id" method="post" class="row g-2 mb-3 align-items-end">
+            @Html.AntiForgeryToken()
+            <div class="col-md-3">
+                <label class="form-label">@Localizer["Store_RecordPaymentType"]</label>
+                <select name="method" class="form-select" required>
+                    <option value="@PaymentMethod.DepositReturn">@Localizer["Store_Method_DepositReturn"]</option>
+                    <option value="@PaymentMethod.Refund">@Localizer["Store_Method_Refund"]</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">@Localizer["Store_RecordPaymentAmount"]</label>
+                <input type="number" name="amountEur" class="form-control" min="0.01" step="0.01" required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">@Localizer["Store_RecordPaymentRef"]</label>
+                <input type="text" name="externalRef" class="form-control" maxlength="200" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">@Localizer["Store_RecordPaymentNotes"]</label>
+                <input type="text" name="notes" class="form-control" maxlength="1000" />
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-outline-primary w-100">@Localizer["Store_RecordPaymentSubmit"]</button>
+            </div>
+        </form>
     }
 
     <h2 class="h4 mb-3 mt-4">
