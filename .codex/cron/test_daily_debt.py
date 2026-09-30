@@ -75,6 +75,10 @@ if args[:2] == ["login", "status"]:
     sys.exit()
 assert args[:2] == ["app-server", "--stdio"]
 assert args[args.index("--enable") + 1] == "goals"
+helper_config = [args[i + 1] for i, arg in enumerate(args) if arg == "-c"]
+assert "agents.enabled=true" in helper_config
+assert 'agents.default_subagent_model="gpt-6-luna"' in helper_config
+assert 'agents.default_subagent_reasoning_effort="medium"' in helper_config
 thread = "fixture-thread"
 started = 0
 objective = None

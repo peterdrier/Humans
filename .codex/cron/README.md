@@ -95,8 +95,11 @@ runs too. Override in `debt-runner.env` if you want the nightly job on a
 different model/effort than the default. Existing installations with an
 explicit model override must update it to adopt the new default.
 
-The nightly prompt permits optional `gpt-6-luna` helpers for bounded discovery,
-localization preparation, and mechanical edits. The coordinator reviews their
+The runner enables subagents and pins `agents.default_subagent_model` to
+`gpt-6-luna` and `agents.default_subagent_reasoning_effort` to `medium` on its
+app-server process, independently of the coordinator's model and local config.
+The nightly prompt permits these helpers for bounded discovery, localization
+preparation, and mechanical edits. The coordinator reviews their
 work and owns validation and commits; helpers never run builds/tests or Git
 mutations. Small tasks stay with the coordinator, and unavailable delegation
 falls back to direct work.

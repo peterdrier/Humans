@@ -210,8 +210,9 @@ justify briefing and reviewing it. Delegation is optional, never a quota.
   already-decided mechanical correction to explicitly assigned files.
 - Give a narrow brief with paths, the exact correction, relevant repo rules,
   expected output, and the work deadline. Use a fresh context (`fork_turns:
-  "none"`) and explicitly select `gpt-6-luna` with medium reasoning; do not
-  inherit the coordinator's model or copy the whole session for a small task.
+  "none"`); the runner configures helpers to use `gpt-6-luna` with medium
+  reasoning. Do not override that routing or copy the whole session for a
+  small task; model/effort parameters are not required on the spawn tool.
 - Prefer read-only helpers. For edits, assign disjoint files (including tests
   and resx files) and do not edit those files concurrently. Start with at most
   two helpers; do tiny tasks directly rather than spawning per string/file.
