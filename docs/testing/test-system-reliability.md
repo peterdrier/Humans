@@ -38,7 +38,7 @@ Before turning anything on in CI, the existing failure backlog gets fixed. Bucke
 
 Skipping a failure with a tracking issue attached is not an alternative to fixing it; that just moves the backlog somewhere less visible. The act of triage will surface the actual root causes (Hangfire is the prime suspect; container race is second). P1 stays blocked on P0 — turning CI green is non-negotiable.
 
-**Definition of done:** `dotnet test tests/Humans.Integration.Tests` returns 0 failures on `origin/main` HEAD. P0 issue closes.
+**Definition of done:** `HUMANS_INTEGRATION_TESTS=1 dotnet test tests/Humans.Integration.Tests` returns 0 failures on `origin/main` HEAD. P0 issue closes.
 
 ### P1 — Turn integration tests on in CI
 **Value: high · Effort: small · Risk: low. Depends on P0.**
