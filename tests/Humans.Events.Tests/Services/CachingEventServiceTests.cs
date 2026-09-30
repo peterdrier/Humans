@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Base.Extensions;
 using Humans.Events.Contracts;
+using Humans.Events.Domain;
 using Humans.Events.Services;
 using Humans.Events.Services.Dtos;
 using Humans.Settings.Contracts;
@@ -150,6 +151,73 @@ public sealed class CachingEventServiceTests
         await _inner.Received(1).EraseForUserAsync(before.SubmitterUserId, Arg.Any<CancellationToken>());
         (await _service.GetApprovedEventByIdAsync(before.Id, TestContext.Current.CancellationToken))!
             .Host.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData("mutation", false)]
+    [InlineData("mutation", true)]
+    [InlineData("category", false)]
+    [InlineData("category", true)]
+    [InlineData("events", false)]
+    [InlineData("events", true)]
+    public async Task FailedCategoryUpdate_ReloadsLookupAndFlattenedEventFields(string stage, bool cancelled)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var before = Approved("Sunset Yoga");
+        var category = new EventCategoryManageInfo(before.CategoryId, "Music", "music", false, 1, true, 1);
+        _inner.GetAllCategoriesAsync(ct).Returns<IReadOnlyList<EventCategoryManageInfo>>([category]);
+        SeedApproved(before);
+        (await _service.GetApprovedEventByIdAsync(before.Id, ct))!.CategoryIsSensitive.Should().BeFalse();
+        (await _service.GetCategoryAsync(category.Id, ct))!.IsSensitive.Should().BeFalse();
+
+        var after = before with { CategoryIsSensitive = true };
+        var updatedCategory = category with { IsSensitive = true };
+        _inner.GetAllCategoriesAsync(ct).Returns<IReadOnlyList<EventCategoryManageInfo>>([updatedCategory]);
+        SeedApproved(after);
+        Exception failure = cancelled
+            ? new OperationCanceledException(ct)
+            : new InvalidOperationException("Post-write dependency failed");
+        var edit = new EventCategory { Id = category.Id, Name = "Music", Slug = "music", IsSensitive = true };
+        switch (stage)
+        {
+            case "mutation":
+                _inner.UpdateCategoryAsync(edit, ct).Returns(Task.FromException(failure));
+                break;
+            case "category":
+                _inner.GetAllCategoriesAsync(ct).Returns(Task.FromException<IReadOnlyList<EventCategoryManageInfo>>(failure));
+                break;
+            default:
+                _inner.GetApprovedEventsAsync(null, null, null, null, Arg.Any<IReadOnlyList<string>>(), ct)
+                    .Returns(Task.FromException<IReadOnlyList<ApprovedEventView>>(failure));
+                break;
+        }
+
+        Func<Task> update = () => _service.UpdateCategoryAsync(edit, ct);
+        (await update.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
+
+        // Recover the dependency; both slices must reload rather than serving the old projection.
+        _inner.GetAllCategoriesAsync(ct).Returns<IReadOnlyList<EventCategoryManageInfo>>([updatedCategory]);
+        SeedApproved(after);
+        (await _service.GetApprovedEventByIdAsync(before.Id, ct))!.CategoryIsSensitive.Should().BeTrue();
+        (await _service.GetCategoryAsync(category.Id, ct))!.IsSensitive.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task FailedCategoryDelete_ReloadsTheRemovedLookup()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var category = new EventCategoryManageInfo(Guid.NewGuid(), "Music", "music", false, 1, true, 0);
+        _inner.GetAllCategoriesAsync(ct).Returns<IReadOnlyList<EventCategoryManageInfo>>([category]);
+        SeedApproved();
+        (await _service.GetCategoryAsync(category.Id, ct)).Should().NotBeNull();
+
+        _inner.GetAllCategoriesAsync(ct).Returns<IReadOnlyList<EventCategoryManageInfo>>([]);
+        var failure = new InvalidOperationException("Post-write dependency failed");
+        _inner.DeleteCategoryAsync(category.Id, ct).Returns(Task.FromException<(bool deleted, int linkedCount)>(failure));
+        Func<Task> delete = () => _service.DeleteCategoryAsync(category.Id, ct);
+        (await delete.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+
+        (await _service.GetCategoryAsync(category.Id, ct)).Should().BeNull();
     }
 
     private static ApprovedEventView Approved(string title, string description = "Anything at all") => new(
