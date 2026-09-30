@@ -210,4 +210,10 @@
   <data name="Expenses_Flash_RemoveAttachmentFailed" xml:space="preserve"><value>No se pudo eliminar el archivo adjunto.</value></data>
   <data name="Expenses_Save" xml:space="preserve"><value>Guardar</value></data>
   <data name="Expenses_ReceiptBehindInvoice" xml:space="preserve"><value>Recibo de la factura</value></data>
+  <data name="Expenses_Iban_ReportNotFound" xml:space="preserve"><value>Informe no encontrado.</value></data>
+  <data name="Expenses_Iban_InvalidFormat" xml:space="preserve"><value>Formato de IBAN no válido.</value></data>
+  <data name="Expenses_Iban_RequiredForPendingReport" xml:space="preserve"><value>Este informe está pendiente de pago y necesita un IBAN. Sustitúyelo en lugar de eliminarlo.</value></data>
+  <data name="Expenses_Iban_SaveFailed" xml:space="preserve"><value>No se pudo guardar el IBAN.</value></data>
+  <data name="Expenses_Iban_Removed" xml:space="preserve"><value>IBAN eliminado.</value></data>
+  <data name="Expenses_Iban_Saved" xml:space="preserve"><value>IBAN guardado.</value></data>
 </root>

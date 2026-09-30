@@ -1253,7 +1253,7 @@ public sealed class ExpenseReportServiceTests
         var result = await _sut.SaveSubmitterIbanWithResultAsync(reportId, submitter, "ES91 2100 0418 4502 0005 1332", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
-        result.Message.Should().Be("IBAN saved.");
+        result.MessageKey.Should().Be("Expenses_Iban_Saved");
         await AuditLog.Received(1).LogAsync(
             AuditAction.IbanSet,
             AuditEntityTypes.Profile,
@@ -1277,7 +1277,7 @@ public sealed class ExpenseReportServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.IsValidationError.Should().BeTrue();
-        result.Message.Should().Be("Invalid IBAN format.");
+        result.MessageKey.Should().Be("Expenses_Iban_InvalidFormat");
     }
 
     // ─────────────────── Acting on a member's behalf ─────────────────────────
@@ -1660,7 +1660,7 @@ public sealed class ExpenseReportServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.IsValidationError.Should().BeTrue();
-        result.Message.Should().Contain("needs an IBAN");
+        result.MessageKey.Should().Be("Expenses_Iban_RequiredForPendingReport");
         // Neither half of the change lands — profile and snapshot stay in agreement.
         await _userService.DidNotReceive().SetProfileIbanAsync(
             Arg.Any<Guid>(), null, Arg.Any<CancellationToken>());

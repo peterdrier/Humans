@@ -210,4 +210,10 @@
   <data name="Expenses_Flash_RemoveAttachmentFailed" xml:space="preserve"><value>No s'ha pogut eliminar el fitxer adjunt.</value></data>
   <data name="Expenses_Save" xml:space="preserve"><value>Desa</value></data>
   <data name="Expenses_ReceiptBehindInvoice" xml:space="preserve"><value>Rebut de la factura</value></data>
+  <data name="Expenses_Iban_ReportNotFound" xml:space="preserve"><value>Informe no trobat.</value></data>
+  <data name="Expenses_Iban_InvalidFormat" xml:space="preserve"><value>Format d’IBAN no vàlid.</value></data>
+  <data name="Expenses_Iban_RequiredForPendingReport" xml:space="preserve"><value>Aquest informe està pendent de pagament i necessita un IBAN. Substitueix-lo en lloc d’eliminar-lo.</value></data>
+  <data name="Expenses_Iban_SaveFailed" xml:space="preserve"><value>No s’ha pogut desar l’IBAN.</value></data>
+  <data name="Expenses_Iban_Removed" xml:space="preserve"><value>IBAN eliminat.</value></data>
+  <data name="Expenses_Iban_Saved" xml:space="preserve"><value>IBAN desat.</value></data>
 </root>

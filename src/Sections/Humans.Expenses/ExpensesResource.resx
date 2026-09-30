@@ -223,4 +223,10 @@
   <data name="Expenses_Flash_RemoveAttachmentFailed" xml:space="preserve"><value>Failed to remove attachment.</value></data>
   <data name="Expenses_Save" xml:space="preserve"><value>Save</value></data>
   <data name="Expenses_ReceiptBehindInvoice" xml:space="preserve"><value>Receipt behind the invoice</value></data>
+  <data name="Expenses_Iban_ReportNotFound" xml:space="preserve"><value>Report not found.</value></data>
+  <data name="Expenses_Iban_InvalidFormat" xml:space="preserve"><value>Invalid IBAN format.</value></data>
+  <data name="Expenses_Iban_RequiredForPendingReport" xml:space="preserve"><value>This report is awaiting payment and needs an IBAN. Replace it instead of removing it.</value></data>
+  <data name="Expenses_Iban_SaveFailed" xml:space="preserve"><value>Failed to save IBAN.</value></data>
+  <data name="Expenses_Iban_Removed" xml:space="preserve"><value>IBAN removed.</value></data>
+  <data name="Expenses_Iban_Saved" xml:space="preserve"><value>IBAN saved.</value></data>
 </root>

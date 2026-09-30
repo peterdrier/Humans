@@ -548,14 +548,14 @@ internal sealed class ExpensesController(
             id, user.Id, model.Iban);
         if (result.Succeeded)
         {
-            SetSuccess(result.Message);
+            SetSuccess(localizer[result.MessageKey]);
             return RedirectToAction(nameof(Detail), new { id });
         }
 
         if (result.IsValidationError)
-            ModelState.AddModelError(nameof(model.Iban), result.Message);
+            ModelState.AddModelError(nameof(model.Iban), localizer[result.MessageKey]);
         else
-            SetError(result.Message);
+            SetError(localizer[result.MessageKey]);
 
         var iban = await GetIbanViewAsync(report.SubmitterUserId);
         model.ReportId = id;

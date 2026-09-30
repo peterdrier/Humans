@@ -210,4 +210,10 @@
   <data name="Expenses_Flash_RemoveAttachmentFailed" xml:space="preserve"><value>Impossible de supprimer la pièce jointe.</value></data>
   <data name="Expenses_Save" xml:space="preserve"><value>Enregistrer</value></data>
   <data name="Expenses_ReceiptBehindInvoice" xml:space="preserve"><value>Reçu de la facture</value></data>
+  <data name="Expenses_Iban_ReportNotFound" xml:space="preserve"><value>Note de frais introuvable.</value></data>
+  <data name="Expenses_Iban_InvalidFormat" xml:space="preserve"><value>Format IBAN invalide.</value></data>
+  <data name="Expenses_Iban_RequiredForPendingReport" xml:space="preserve"><value>Cette note de frais est en attente de paiement et nécessite un IBAN. Remplace-le au lieu de le supprimer.</value></data>
+  <data name="Expenses_Iban_SaveFailed" xml:space="preserve"><value>Impossible d’enregistrer l’IBAN.</value></data>
+  <data name="Expenses_Iban_Removed" xml:space="preserve"><value>IBAN supprimé.</value></data>
+  <data name="Expenses_Iban_Saved" xml:space="preserve"><value>IBAN enregistré.</value></data>
 </root>

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
+using Humans.Base.Constants;
 using Humans.Expenses.Authorization;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Controllers;
@@ -11,6 +12,7 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -104,6 +106,61 @@ public sealed class ExpensesControllerTests
             operations.Should().BeEmpty("withdrawal retains its ownership check");
         else
             operations.Should().Contain(expectedOperation);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true, false, "Expenses_Iban_Saved", "IBAN guardado.")]
+    [Xunit.InlineData(false, true, "Expenses_Iban_InvalidFormat", "Formato de IBAN no válido.")]
+    [Xunit.InlineData(false, false, "Expenses_Iban_SaveFailed", "No se pudo guardar el IBAN.")]
+    public async Task IbanPost_LocalizesSuccessValidationAndFailureMessages(
+        bool succeeded, bool validationError, string messageKey, string translated)
+    {
+        var actorId = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
+        var reports = Substitute.For<IExpenseReportService>();
+        reports.GetAsync(reportId).Returns(new ExpenseReportDto
+        {
+            Id = reportId, SubmitterUserId = actorId, BudgetCategoryId = Guid.NewGuid(),
+            BudgetYearId = Guid.NewGuid(), Status = ExpenseReportStatus.Draft,
+            PayeeName = "Submitter", PayeeIban = "", Total = 0,
+            CreatedAt = default, UpdatedAt = default, Lines = []
+        });
+        reports.SaveSubmitterIbanWithResultAsync(reportId, actorId, Arg.Any<string?>())
+            .Returns(new ExpenseIbanSaveResult(succeeded, validationError, messageKey));
+        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+        localizer[messageKey].Returns(new LocalizedString(messageKey, translated));
+        var context = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        var controller = new ExpensesController(users, reports,
+            Substitute.For<IBudgetServiceRead>(), Substitute.For<IHoldedFinanceServiceRead>(),
+            Substitute.For<IAuthorizationService>(), NullLogger<ExpensesController>.Instance, localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = context },
+            TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())
+        };
+
+        var result = await controller.Iban(reportId, new ExpenseIbanViewModel());
+
+        if (succeeded)
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.TempData[TempDataKeys.SuccessMessage].Should().Be(translated);
+        }
+        else
+        {
+            result.Should().BeOfType<ViewResult>();
+            if (validationError)
+                controller.ModelState[nameof(ExpenseIbanViewModel.Iban)]!.Errors.Should()
+                    .ContainSingle().Which.ErrorMessage.Should().Be(translated);
+            else
+                controller.TempData[TempDataKeys.ErrorMessage].Should().Be(translated);
+        }
     }
 
     private static Task<IActionResult> InvokeAsync(ExpensesController controller, string action, Guid id) =>

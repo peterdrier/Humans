@@ -210,4 +210,10 @@
   <data name="Expenses_Flash_RemoveAttachmentFailed" xml:space="preserve"><value>Impossibile rimuovere l'allegato.</value></data>
   <data name="Expenses_Save" xml:space="preserve"><value>Salva</value></data>
   <data name="Expenses_ReceiptBehindInvoice" xml:space="preserve"><value>Ricevuta della fattura</value></data>
+  <data name="Expenses_Iban_ReportNotFound" xml:space="preserve"><value>Rendiconto non trovato.</value></data>
+  <data name="Expenses_Iban_InvalidFormat" xml:space="preserve"><value>Formato IBAN non valido.</value></data>
+  <data name="Expenses_Iban_RequiredForPendingReport" xml:space="preserve"><value>Questo rendiconto è in attesa di pagamento e richiede un IBAN. Sostituiscilo invece di rimuoverlo.</value></data>
+  <data name="Expenses_Iban_SaveFailed" xml:space="preserve"><value>Impossibile salvare l’IBAN.</value></data>
+  <data name="Expenses_Iban_Removed" xml:space="preserve"><value>IBAN rimosso.</value></data>
+  <data name="Expenses_Iban_Saved" xml:space="preserve"><value>IBAN salvato.</value></data>
 </root>

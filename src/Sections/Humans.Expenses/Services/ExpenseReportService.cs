@@ -832,13 +832,13 @@ internal sealed class ExpenseReportService(
     {
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null)
-            return IbanFailure("Report not found.", isValidationError: false);
+            return IbanFailure("Expenses_Iban_ReportNotFound", isValidationError: false);
         var submitterUserId = report.SubmitterUserId;
 
         var ibanValue = string.IsNullOrWhiteSpace(iban) ? null : iban.Trim();
 
         if (ibanValue is not null && !IbanValidator.IsValid(ibanValue))
-            return IbanFailure("Invalid IBAN format.", isValidationError: true);
+            return IbanFailure("Expenses_Iban_InvalidFormat", isValidationError: true);
 
         var normalized = ibanValue is null ? null : IbanValidator.Normalize(ibanValue);
 
@@ -850,14 +850,14 @@ internal sealed class ExpenseReportService(
         var snapshotIsLive = IsPendingApproval(report.Status);
         if (normalized is null && snapshotIsLive)
             return IbanFailure(
-                "This report is awaiting payment and needs an IBAN. Replace it instead of removing it.",
+                "Expenses_Iban_RequiredForPendingReport",
                 isValidationError: true);
 
         try
         {
             var saved = await userService.SetProfileIbanAsync(submitterUserId, normalized, ct);
             if (!saved)
-                return IbanFailure("Failed to save IBAN.", isValidationError: false);
+                return IbanFailure("Expenses_Iban_SaveFailed", isValidationError: false);
 
             if (snapshotIsLive)
                 await RefreshPayeeIbanSnapshotAsync(report, actorUserId, normalized!, ct);
@@ -883,17 +883,17 @@ internal sealed class ExpenseReportService(
             return new ExpenseIbanSaveResult(
                 Succeeded: true,
                 IsValidationError: false,
-                Message: normalized is null ? "IBAN removed." : "IBAN saved.");
+                MessageKey: normalized is null ? "Expenses_Iban_Removed" : "Expenses_Iban_Saved");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error setting IBAN for user {UserId}", submitterUserId);
-            return IbanFailure("Failed to save IBAN.", isValidationError: false);
+            return IbanFailure("Expenses_Iban_SaveFailed", isValidationError: false);
         }
     }
 
-    private static ExpenseIbanSaveResult IbanFailure(string message, bool isValidationError) =>
-        new(Succeeded: false, IsValidationError: isValidationError, Message: message);
+    private static ExpenseIbanSaveResult IbanFailure(string messageKey, bool isValidationError) =>
+        new(Succeeded: false, IsValidationError: isValidationError, MessageKey: messageKey);
 
     /// <summary>
     /// Submitted but not yet approved — the window where a report is real enough to have a payee

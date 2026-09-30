@@ -145,7 +145,8 @@ internal sealed record ExpenseAddLineResult(bool Succeeded, string? ErrorMessage
 /// <summary>An uploaded file passed through to the service untouched.</summary>
 internal sealed record ExpenseFileUpload(string FileName, string ContentType, Stream Content);
 
+/// <summary>IBAN mutation outcome; the controller resolves MessageKey in ExpensesResource.</summary>
 internal sealed record ExpenseIbanSaveResult(
     bool Succeeded,
     bool IsValidationError,
-    string Message);
+    string MessageKey);
