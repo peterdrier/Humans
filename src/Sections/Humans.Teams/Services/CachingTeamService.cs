@@ -53,22 +53,18 @@ internal sealed class CachingTeamService(
     /// </summary>
     private readonly ConcurrentDictionary<Guid, HashSet<Guid>> _teamIdsByUserId = new();
 
-    public async Task<TeamWithGroupResult> CreateTeamWithGoogleGroupAsync(
+    public Task<TeamWithGroupResult> CreateTeamWithGoogleGroupAsync(
         string name,
         string? description,
         bool requiresApproval,
         Guid? parentTeamId = null,
         string? googleGroupPrefix = null,
         bool isHidden = false,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.CreateTeamWithGoogleGroupAsync(
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.CreateTeamWithGoogleGroupAsync(
             name, description, requiresApproval, parentTeamId, googleGroupPrefix, isHidden, cancellationToken));
-        InvalidateTeamsCache();
-        return result;
-    }
 
-    public async Task<TeamWithGroupResult> UpdateTeamWithGoogleGroupAsync(
+    public Task<TeamWithGroupResult> UpdateTeamWithGoogleGroupAsync(
         Guid teamId,
         string name,
         string? description,
@@ -82,30 +78,22 @@ internal sealed class CachingTeamService(
         bool? isSensitive = null,
         bool? isPromotedToDirectory = null,
         bool? earlyEntryEnabled = null,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.UpdateTeamWithGoogleGroupAsync(
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.UpdateTeamWithGoogleGroupAsync(
             teamId, name, description, requiresApproval, isActive, parentTeamId,
             googleGroupPrefix, customSlug, hasBudget, isHidden, isSensitive,
             isPromotedToDirectory, earlyEntryEnabled, cancellationToken));
-        InvalidateTeamsCache();
-        return result;
-    }
 
-    public async Task<Team> CreateTeamAsync(
+    public Task<Team> CreateTeamAsync(
         string name,
         string? description,
         bool requiresApproval,
         Guid? parentTeamId = null,
         string? googleGroupPrefix = null,
         bool isHidden = false,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.CreateTeamAsync(
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.CreateTeamAsync(
             name, description, requiresApproval, parentTeamId, googleGroupPrefix, isHidden, cancellationToken));
-        InvalidateTeamsCache();
-        return result;
-    }
 
     public Task<Team?> GetTeamEntityBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetTeamEntityBySlugAsync(slug, cancellationToken));
@@ -432,7 +420,7 @@ internal sealed class CachingTeamService(
         return result;
     }
 
-    public async Task<Team> UpdateTeamAsync(
+    public Task<Team> UpdateTeamAsync(
         Guid teamId,
         string name,
         string? description,
@@ -446,15 +434,11 @@ internal sealed class CachingTeamService(
         bool? isSensitive = null,
         bool? isPromotedToDirectory = null,
         bool? earlyEntryEnabled = null,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.UpdateTeamAsync(
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.UpdateTeamAsync(
             teamId, name, description, requiresApproval, isActive, parentTeamId,
             googleGroupPrefix, customSlug, hasBudget, isHidden, isSensitive,
             isPromotedToDirectory, earlyEntryEnabled, cancellationToken));
-        InvalidateTeamsCache();
-        return result;
-    }
 
     // Early-entry grants: no TeamInfo-cache impact; the inner service owns EE
     // invalidation. Pure pass-throughs.
@@ -471,69 +455,42 @@ internal sealed class CachingTeamService(
     public Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
         => WithInner(inner => inner.RemoveEarlyEntryGrantAsync(teamId, grantId, actorUserId, ct));
 
-    public async Task DeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.DeleteTeamAsync(teamId, cancellationToken));
-        InvalidateTeamsCache();
-    }
+    public Task DeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.DeleteTeamAsync(teamId, cancellationToken));
 
-    public async Task<TeamJoinOutcome> JoinTeamAsync(
+    public Task<TeamJoinOutcome> JoinTeamAsync(
         Guid teamId,
         Guid userId,
         string? message,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.JoinTeamAsync(teamId, userId, message, cancellationToken));
-        // Invalidates so the next read of TeamInfo picks up the new membership
-        // or pending-request row.
-        InvalidateTeamsCache();
-        return result;
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.JoinTeamAsync(teamId, userId, message, cancellationToken));
 
-    public async Task<bool> LeaveTeamAsync(
+    public Task<bool> LeaveTeamAsync(
         Guid teamId,
         Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.LeaveTeamAsync(teamId, userId, cancellationToken));
-        InvalidateTeamsCache();
-        return result;
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.LeaveTeamAsync(teamId, userId, cancellationToken));
 
-    public async Task WithdrawJoinRequestAsync(
+    public Task WithdrawJoinRequestAsync(
         Guid requestId,
         Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.WithdrawJoinRequestAsync(requestId, userId, cancellationToken));
-        // Invalidates so the next read of TeamInfo.PendingRequestCount drops the
-        // withdrawn pending row.
-        InvalidateTeamsCache();
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.WithdrawJoinRequestAsync(requestId, userId, cancellationToken));
 
-    public async Task<TeamMember> ApproveJoinRequestAsync(
+    public Task<TeamMember> ApproveJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
         string? notes,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.ApproveJoinRequestAsync(
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.ApproveJoinRequestAsync(
             requestId, approverUserId, notes, cancellationToken));
-        InvalidateTeamsCache();
-        return result;
-    }
 
-    public async Task RejectJoinRequestAsync(
+    public Task RejectJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
         string reason,
-        CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.RejectJoinRequestAsync(requestId, approverUserId, reason, cancellationToken));
-        // Invalidates so the next read of TeamInfo.PendingRequestCount drops the
-        // rejected pending row.
-        InvalidateTeamsCache();
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.RejectJoinRequestAsync(requestId, approverUserId, reason, cancellationToken));
 
     public Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForTeamAsync(
         Guid teamId,
@@ -555,16 +512,13 @@ internal sealed class CachingTeamService(
         return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, teamId, userId);
     }
 
-    public async Task RemoveMemberAsync(
+    public Task RemoveMemberAsync(
         Guid teamId,
         Guid userId,
         Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.RemoveMemberAsync(
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.RemoveMemberAsync(
             teamId, userId, actorUserId, cancellationToken));
-        InvalidateTeamsCache();
-    }
 
     public async Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
@@ -587,16 +541,11 @@ internal sealed class CachingTeamService(
         return result;
     }
 
-    public async Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
+    public Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
         Guid teamId,
         string? prefix,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.SetGoogleGroupPrefixAsync(teamId, prefix, cancellationToken));
-        if (result.Updated)
-            InvalidateTeamsCache();
-        return result;
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.SetGoogleGroupPrefixAsync(teamId, prefix, cancellationToken), static result => result.Updated);
 
     public Task<AdminTeamListResult> GetAdminTeamListAsync(
         int page,
@@ -611,50 +560,35 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetRosterAsync(priority, status, period, cancellationToken));
 
-    public async Task<TeamMember> AddMemberToTeamAsync(
+    public Task<TeamMember> AddMemberToTeamAsync(
         Guid teamId,
         Guid targetUserId,
         Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.AddMemberToTeamAsync(
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.AddMemberToTeamAsync(
             teamId, targetUserId, actorUserId, cancellationToken));
-        InvalidateTeamsCache();
-        return result;
-    }
 
-    public async Task SetMemberRoleAsync(
+    public Task SetMemberRoleAsync(
         Guid teamId,
         Guid userId,
         TeamMemberRole role,
         Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.SetMemberRoleAsync(teamId, userId, role, actorUserId, cancellationToken));
-        InvalidateTeamsCache();
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.SetMemberRoleAsync(teamId, userId, role, actorUserId, cancellationToken));
 
-    public async Task<TeamPageUpdateResult> UpdateTeamPageContentAsync(
+    public Task<TeamPageUpdateResult> UpdateTeamPageContentAsync(
         Guid teamId,
         string? pageContent,
         IReadOnlyList<TeamPageCallToActionInput> callsToAction,
         bool isPublicPage,
         bool showCoordinatorsOnPublicPage,
         Guid updatedByUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.UpdateTeamPageContentAsync(
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.UpdateTeamPageContentAsync(
             teamId, pageContent, callsToAction, isPublicPage,
-            showCoordinatorsOnPublicPage, updatedByUserId, cancellationToken));
-        if (result.Succeeded)
-        {
-            InvalidateTeamsCache();
-        }
+            showCoordinatorsOnPublicPage, updatedByUserId, cancellationToken), static result => result.Succeeded);
 
-        return result;
-    }
-
-    public async Task<TeamRoleDefinition> CreateRoleDefinitionAsync(
+    public Task<TeamRoleDefinition> CreateRoleDefinitionAsync(
         Guid teamId,
         string name,
         string? description,
@@ -665,16 +599,12 @@ internal sealed class CachingTeamService(
         Guid actorUserId,
         bool isPublic = true,
         int? estimatedHours = null,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.CreateRoleDefinitionAsync(
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.CreateRoleDefinitionAsync(
             teamId, name, description, slotCount, priorities, sortOrder,
             period, actorUserId, isPublic, estimatedHours, cancellationToken));
-        InvalidateTeamsCache();
-        return result;
-    }
 
-    public async Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(
+    public Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId,
         string name,
         string? description,
@@ -687,34 +617,23 @@ internal sealed class CachingTeamService(
         bool isPublic = true,
         bool canToggleManagement = true,
         int? estimatedHours = null,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.UpdateRoleDefinitionAsync(
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.UpdateRoleDefinitionAsync(
             roleDefinitionId, name, description, slotCount, priorities, sortOrder,
             isManagement, period, actorUserId, isPublic, canToggleManagement, estimatedHours, cancellationToken));
-        InvalidateTeamsCache();
-        return result;
-    }
 
-    public async Task DeleteRoleDefinitionAsync(
+    public Task DeleteRoleDefinitionAsync(
         Guid roleDefinitionId,
         Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.DeleteRoleDefinitionAsync(roleDefinitionId, actorUserId, cancellationToken));
-        InvalidateTeamsCache();
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.DeleteRoleDefinitionAsync(roleDefinitionId, actorUserId, cancellationToken));
 
-    public async Task<TeamRoleManagementToggleResult> ToggleRoleIsManagementAsync(
+    public Task<TeamRoleManagementToggleResult> ToggleRoleIsManagementAsync(
         Guid roleDefinitionId,
         Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.ToggleRoleIsManagementAsync(
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.ToggleRoleIsManagementAsync(
             roleDefinitionId, actorUserId, cancellationToken));
-        InvalidateTeamsCache();
-        return result;
-    }
 
     public async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
         Guid teamId,
@@ -729,28 +648,21 @@ internal sealed class CachingTeamService(
         return team.RoleDefinitions;
     }
 
-    public async Task<TeamRoleAssignment> AssignToRoleAsync(
+    public Task<TeamRoleAssignment> AssignToRoleAsync(
         Guid roleDefinitionId,
         Guid targetUserId,
         Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.AssignToRoleAsync(
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.AssignToRoleAsync(
             roleDefinitionId, targetUserId, actorUserId, cancellationToken));
-        InvalidateTeamsCache();
-        return result;
-    }
 
-    public async Task UnassignFromRoleAsync(
+    public Task UnassignFromRoleAsync(
         Guid roleDefinitionId,
         Guid teamMemberId,
         Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.UnassignFromRoleAsync(
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.UnassignFromRoleAsync(
             roleDefinitionId, teamMemberId, actorUserId, cancellationToken));
-        InvalidateTeamsCache();
-    }
 
     public async Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(
         Guid userId,
@@ -856,28 +768,19 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken) =>
         AddSeededMemberAsync(teamId, userId, role, joinedAt, cancellationToken);
 
-    public async Task<TeamMember> AddSeededMemberAsync(
+    public Task<TeamMember> AddSeededMemberAsync(
         Guid teamId,
         Guid userId,
         TeamMemberRole role,
         Instant joinedAt,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.AddSeededMemberAsync(
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.AddSeededMemberAsync(
             teamId, userId, role, joinedAt, cancellationToken));
-        InvalidateTeamsCache();
-        return result;
-    }
 
-    public async Task<bool> PermanentlyDeleteTeamAsync(
+    public Task<bool> PermanentlyDeleteTeamAsync(
         Guid teamId,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.PermanentlyDeleteTeamAsync(teamId, cancellationToken));
-        if (result)
-            InvalidateTeamsCache();
-        return result;
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.PermanentlyDeleteTeamAsync(teamId, cancellationToken), static result => result);
 
     public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
         Guid userId,
@@ -935,43 +838,28 @@ internal sealed class CachingTeamService(
     /// </summary>
     private void InvalidateTeamsCache() => Clear();
 
-    public async Task<int> RevokeAllMembershipsAsync(
+    public Task<int> RevokeAllMembershipsAsync(
         Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.RevokeAllMembershipsAsync(userId, cancellationToken));
-        if (result > 0)
-            RemoveMemberFromAllTeamsCache(userId);
-        return result;
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.RevokeAllMembershipsAsync(userId, cancellationToken), static result => result > 0);
 
     public Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetActiveMembershipsForRoleReconciliationAsync(cancellationToken));
 
-    public async Task<int> ApplyMemberRoleChangesAsync(
+    public Task<int> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.ApplyMemberRoleChangesAsync(changes, cancellationToken));
-        if (result > 0)
-            InvalidateTeamsCache();
-        return result;
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.ApplyMemberRoleChangesAsync(changes, cancellationToken), static result => result > 0);
 
-    public async Task<bool> ApplySystemTeamMembershipDeltaAsync(
+    public Task<bool> ApplySystemTeamMembershipDeltaAsync(
         Guid teamId,
         IReadOnlyCollection<Guid> userIdsToAdd,
         IReadOnlyCollection<Guid> userIdsToRemove,
         Instant now,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.ApplySystemTeamMembershipDeltaAsync(
-            teamId, userIdsToAdd, userIdsToRemove, now, cancellationToken));
-        if (result)
-            InvalidateTeamsCache();
-        return result;
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.ApplySystemTeamMembershipDeltaAsync(
+            teamId, userIdsToAdd, userIdsToRemove, now, cancellationToken), static result => result);
 
     public async Task ReassignAsync(
         Guid mergedFromUserId,
@@ -980,9 +868,15 @@ internal sealed class CachingTeamService(
         Instant now,
         CancellationToken ct)
     {
-        await WithInnerMerge(inner => inner.ReassignAsync(
-            mergedFromUserId, mergedToUserId, actorUserId, now, ct));
-        InvalidateTeamsCache();
+        try
+        {
+            await WithInnerMerge(inner => inner.ReassignAsync(
+                mergedFromUserId, mergedToUserId, actorUserId, now, ct));
+        }
+        finally
+        {
+            InvalidateTeamsCache();
+        }
     }
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsByIdAsync(CancellationToken ct)
@@ -1019,6 +913,38 @@ internal sealed class CachingTeamService(
                 var set = _teamIdsByUserId.GetOrAdd(member.UserId, static _ => new HashSet<Guid>());
                 set.Add(team.Id);
             }
+        }
+    }
+
+    // A write can commit before later audit/provisioning work fails. An exception must
+    // evict the read model too; a completed no-op keeps its existing invalidation policy.
+    private async Task<TResult> MutateAsync<TResult>(
+        Func<ITeamManagementService, Task<TResult>> action,
+        Func<TResult, bool>? changed = null)
+    {
+        var invalidate = true;
+        try
+        {
+            var result = await WithInner(action);
+            invalidate = changed?.Invoke(result) ?? true;
+            return result;
+        }
+        finally
+        {
+            if (invalidate)
+                InvalidateTeamsCache();
+        }
+    }
+
+    private async Task MutateAsync(Func<ITeamManagementService, Task> action)
+    {
+        try
+        {
+            await WithInner(action);
+        }
+        finally
+        {
+            InvalidateTeamsCache();
         }
     }
 

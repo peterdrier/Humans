@@ -431,6 +431,79 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         _service.BulkInvalidations.Should().BeGreaterThan(before);
     }
 
+    [HumansTheory]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public async Task FailedMembershipWrite_RebuildsTeamAndUserIndexes(bool joining, bool cancelled)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var team = SeedTeam("Alpha");
+        var user = SeedUser("Coordinator");
+        var member = joining ? null : SeedTeamMember(team.Id, user.Id);
+        await SaveAllAsync(ct);
+        await _service.GetUserTeamMembershipsAsync(user.Id, ct);
+        (await _service.IsUserCoordinatorOfTeamAsync(team.Id, user.Id, ct)).Should().BeFalse();
+
+        Exception failure = cancelled
+            ? new OperationCanceledException(ct)
+            : new InvalidOperationException("Post-write dependency failed");
+        async Task PersistThenFail()
+        {
+            if (member is null)
+                SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
+            else
+                member.Role = TeamMemberRole.Coordinator;
+            await SaveAllAsync(ct);
+            throw failure;
+        }
+
+        Func<Task> write;
+        if (joining)
+        {
+            _innerTeamService.JoinTeamAsync(team.Id, user.Id, null, ct)
+                .Returns(async _ => { await PersistThenFail(); return default!; });
+            write = () => _service.JoinTeamAsync(team.Id, user.Id, null, ct);
+        }
+        else
+        {
+            _innerTeamService.SetMemberRoleAsync(team.Id, user.Id, TeamMemberRole.Coordinator, user.Id, ct)
+                .Returns(_ => PersistThenFail());
+            write = () => _service.SetMemberRoleAsync(team.Id, user.Id, TeamMemberRole.Coordinator, user.Id, ct);
+        }
+
+        (await write.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
+        (await _service.IsUserCoordinatorOfTeamAsync(team.Id, user.Id, ct)).Should().BeTrue();
+        var memberships = await _service.GetUserTeamMembershipsAsync(user.Id, ct);
+        memberships.Should().ContainSingle().Which.Role.Should().Be(TeamMemberRole.Coordinator);
+    }
+
+    [HumansFact]
+    public async Task FailedRevocation_RemovesCachedCoordinatorAccessAndMembership()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var team = SeedTeam("Alpha");
+        var user = SeedUser("Former coordinator");
+        var member = SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
+        await SaveAllAsync(ct);
+        (await _service.IsUserCoordinatorOfTeamAsync(team.Id, user.Id, ct)).Should().BeTrue();
+        (await _service.GetUserTeamMembershipsAsync(user.Id, ct)).Should().ContainSingle();
+
+        var failure = new InvalidOperationException("Post-write dependency failed");
+        _innerTeamService.RevokeAllMembershipsAsync(user.Id, ct).Returns(async _ =>
+        {
+            TeamsDb.TeamMembers.Remove(member);
+            await SaveAllAsync(ct);
+            return await Task.FromException<int>(failure);
+        });
+
+        Func<Task> revoke = () => _service.RevokeAllMembershipsAsync(user.Id, ct);
+        (await revoke.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        (await _service.IsUserCoordinatorOfTeamAsync(team.Id, user.Id, ct)).Should().BeFalse();
+        (await _service.GetUserTeamMembershipsAsync(user.Id, ct)).Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task WarmAllAsync_PopulatesTeamInfoPendingRequestCount()
     {
