@@ -143,7 +143,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 
 ## process/
 
-- [`nightly-debt-timed-goal`](process/nightly-debt-timed-goal.md) — Nightly debt work prioritizes production-code fixes, uses tests only to support fixes, uses the full timed goal, and publishes one PR.
+- [`nightly-debt-timed-goal`](process/nightly-debt-timed-goal.md) — Nightly debt work batches simple corrections, prioritizes production fixes, uses the full timed goal, and publishes one PR.
 
 - [`about-page-license-attribution`](process/about-page-license-attribution.md) — After any NuGet package update, add new package versions + licenses to `Views/About/Index.cshtml`.
 - [`after-prod-merge-reset`](process/after-prod-merge-reset.md) — After a PR merges to `nobodies-collective/Humans`, reset origin's `main` to `upstream/main` and force-with-lease push.

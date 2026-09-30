@@ -1,6 +1,6 @@
 ---
 name: Nightly debt runs use the whole work window
-description: Nightly debt work prioritizes production-code fixes, uses tests only to support fixes, uses the full timed goal, and publishes one PR.
+description: Nightly debt work batches simple corrections, prioritizes production fixes, uses the full timed goal, and publishes one PR.
 ---
 
 Work actively for the full configured window, then finish the current task
@@ -23,6 +23,9 @@ candidates. Counts describe the result; they never determine when to stop.
 **Production work first:** Standalone coverage, controller-policy pins, test
 scaffolding, and test cleanup are never sweep objectives. Add or update focused
 tests when a production-code fix warrants them, as part of that fix; prefer
-existing coverage when sufficient. Never weaken checks. Run scoped validation
-per change and the full non-integration suite once in the final wrapper gate,
+existing coverage when sufficient. Never weaken checks. Batch simple, verified
+instances of the same correction into one coherent commit; validate all affected sections and applicable rung
+checks once per completed batch. Keep complex or approval-dependent changes
+separate. Freeze membership before editing and stop adding candidates at the
+deadline. Run the full non-integration suite once in the final wrapper gate,
 not repeatedly per commit. Test-only work cannot qualify a run for publication.
