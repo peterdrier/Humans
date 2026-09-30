@@ -29,10 +29,10 @@ internal sealed class CommunityFaqReader(
 
     internal sealed record IndexEntry(string Topic, string Title, string? LastUpdated, string Summary, string Keywords);
 
-    public async Task<IReadOnlyList<IndexEntry>> ListTopicsAsync(CancellationToken cancellationToken)
+    public async Task<(IReadOnlyList<IndexEntry> Entries, bool IsComplete)> ListTopicsAsync(CancellationToken cancellationToken)
     {
         if (cache.TryGetValue<IReadOnlyList<IndexEntry>>(IndexCacheKey, out var cached) && cached is not null)
-            return cached;
+            return (cached, true);
 
         IReadOnlyList<string> stems;
         try
@@ -42,20 +42,25 @@ internal sealed class CommunityFaqReader(
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Failed to list community KB folder {Folder}; returning empty index", FolderPath);
-            return [];
+            return ([], false);
         }
 
         var entries = new List<IndexEntry>();
+        var isComplete = true;
         foreach (var stem in stems.OrderBy(s => s, StringComparer.OrdinalIgnoreCase))
         {
             var body = await ReadRawAsync(stem, cancellationToken);
-            if (body is null) continue;
+            if (body is null)
+            {
+                isComplete = false;
+                continue;
+            }
             entries.Add(ParseIndexEntry(stem, body));
         }
 
         IReadOnlyList<IndexEntry> result = entries;
-        cache.Set(IndexCacheKey, result, HoldForever);
-        return result;
+        if (isComplete) cache.Set(IndexCacheKey, result, HoldForever);
+        return (result, isComplete);
     }
 
     public async Task<string?> ReadAsync(string topic, CancellationToken cancellationToken)
@@ -67,7 +72,7 @@ internal sealed class CommunityFaqReader(
         // are case-sensitive, so we must fetch with the canonical stem, not the caller's
         // (mirrors AgentSectionDocReader). This also restricts reads to known topics and
         // bounds the cache key space.
-        var known = await ListTopicsAsync(cancellationToken);
+        var (known, _) = await ListTopicsAsync(cancellationToken);
         var canonical = known.FirstOrDefault(e => string.Equals(e.Topic, topic, StringComparison.OrdinalIgnoreCase))?.Topic;
         if (canonical is null) return null;
 
@@ -77,9 +82,10 @@ internal sealed class CommunityFaqReader(
     /// <summary>
     /// Force-refreshes the corpus from GitHub and swaps it into the cache: re-lists the folder,
     /// re-fetches every file (bypassing the cache), and overwrites the per-file + index entries.
-    /// On a listing failure the existing cache is left intact (no blow-away).
+    /// On any fetch/listing failure the existing snapshot is left intact. Returns whether
+    /// a complete replacement was published.
     /// </summary>
-    public async Task ReloadAsync(CancellationToken cancellationToken)
+    public async Task<bool> ReloadAsync(CancellationToken cancellationToken)
     {
         IReadOnlyList<string> stems;
         try
@@ -89,10 +95,11 @@ internal sealed class CommunityFaqReader(
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Community KB reload: listing {Folder} failed; keeping existing cache", FolderPath);
-            return;
+            return false;
         }
 
         var entries = new List<IndexEntry>();
+        var documents = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var stem in stems.OrderBy(s => s, StringComparer.OrdinalIgnoreCase))
         {
             string body;
@@ -102,14 +109,18 @@ internal sealed class CommunityFaqReader(
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                logger.LogWarning(ex, "Community KB reload: fetch failed for {Stem}; skipping", stem);
-                continue;
+                logger.LogWarning(ex, "Community KB reload: fetch failed for {Stem}; keeping existing cache", stem);
+                return false;
             }
-            cache.Set(DocCacheKeyPrefix + stem, body, HoldForever);
+            documents.Add(stem, body);
             entries.Add(ParseIndexEntry(stem, body));
         }
 
+        // Stage every document before changing any cached body or index.
+        foreach (var (stem, body) in documents)
+            cache.Set(DocCacheKeyPrefix + stem, body, HoldForever);
         cache.Set(IndexCacheKey, (IReadOnlyList<IndexEntry>)entries, HoldForever);
+        return true;
     }
 
     private async Task<string?> ReadRawAsync(string stem, CancellationToken cancellationToken)

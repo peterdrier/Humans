@@ -57,8 +57,10 @@ internal sealed class AdminAgentController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ReloadKnowledgeBase(CancellationToken ct)
     {
-        await preload.ReloadAllAsync(ct);
-        SetSuccess("Knowledge base reloaded from GitHub.");
+        if (await preload.ReloadAllAsync(ct))
+            SetSuccess("Knowledge base reloaded from GitHub.");
+        else
+            SetError("Knowledge base reload failed. The previous cached preload corpus was kept.");
         return RedirectToAction(nameof(Status));
     }
 

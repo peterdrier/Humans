@@ -44,8 +44,10 @@ This knowledge is community-sourced and **not 100% accurate** — the agent must
 
 Mirror `AgentSectionDocReader` (same folder, same registration/interface shape — follow whatever that reader does exactly; do not invent new surface). Responsibilities:
 
-- **`ListTopicsAsync()`** — dynamic directory listing of `docs/community-kb/` via the Octokit path used by `GitHubLegalDocumentConnector`. Returns the set of topic keys (filename without `.md`) plus, for each, a parsed **index entry**: the `# H1` title, the `Last updated:` date, and the first non-empty paragraph of `## Overview` (fallback: just the H1). Held in RAM with **no expiration** (key prefix `community-kb:index`) — populated by the startup warm-up, refreshed only on restart.
+- **`ListTopicsAsync()`** — dynamic directory listing of `docs/community-kb/` via the Octokit path used by `GitHubLegalDocumentConnector`. Returns the set of topic keys (filename without `.md`) plus, for each, a parsed **index entry**: the `# H1` title, the `Last updated:` date, and the first non-empty paragraph of `## Overview` (fallback: just the H1). Returns completeness alongside the entries internally. Complete indexes are held in RAM with **no expiration** (key prefix `community-kb:index`); incomplete results are not cached, so failed files are retried. Startup warms the index; restart or admin reload refreshes it.
 - **`ReadAsync(topic)`** — validate `topic` against `[A-Za-z0-9\-_]+` (path-traversal guard, like `AgentFeatureSpecReader`) **and** against the discovered topic set; fetch `docs/community-kb/{topic}.md` via `IGuideContentSource.GetMarkdownAsync`; cache per file with **no expiration** (key prefix `community-kb:`). Returns the raw markdown.
+
+A reload fetches every document before replacing any cached body or index. Any fetch failure keeps the previous snapshot. The preload builder likewise caches only a complete section/FAQ index, and keeps its previous corpus if the FAQ reload fails.
 
 No DbContext, no cross-section call. Pure GitHub-backed infrastructure service.
 

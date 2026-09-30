@@ -67,7 +67,7 @@ internal sealed class AgentToolDispatcher(
                             ? new AnthropicToolResult(call.Id, CommunityFaqReader.WrapWithProvenance(body), IsError: false)
                             : UnknownKey(call.Id,
                                 string.Create(CultureInfo.InvariantCulture, $"Unknown community FAQ topic: {topic}."),
-                                (await community.ListTopicsAsync(cancellationToken)).Select(e => e.Topic));
+                                (await community.ListTopicsAsync(cancellationToken)).Entries.Select(e => e.Topic));
                     }
                 case AgentToolNames.GetAuditHistory:
                     {
