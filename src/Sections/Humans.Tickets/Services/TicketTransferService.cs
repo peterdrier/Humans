@@ -35,8 +35,10 @@ internal sealed class TicketTransferService(
 
     // Hold the gate from the status read through the vendor outcome and local decision.
     // Fixed stripes bound memory and coordinate separate service instances on this single server.
+    // A Process holds the gate through two TicketTailor calls (90s client timeout each), so waiters
+    // must outlast that rather than the 60s TrackedLock default.
     private static readonly TrackedLock[] DecisionLocks = Enumerable.Range(0, 32)
-        .Select(i => new TrackedLock($"TicketTransfer.Decision[{i}]"))
+        .Select(i => new TrackedLock($"TicketTransfer.Decision[{i}]", timeout: TimeSpan.FromMinutes(5)))
         .ToArray();
 
     private static TrackedLock DecisionLockFor(Guid requestId) =>
