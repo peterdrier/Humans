@@ -43,6 +43,10 @@ internal sealed class SurveyPreviewEmailService(
         {
             await emailService.SendAsync(message, ct);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(

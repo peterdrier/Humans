@@ -62,8 +62,12 @@ public sealed class SurveyPreviewEmailServiceTests
             Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task SendToUserAsync_uses_invitation_template_without_creating_an_invitation()
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, true)]
+    [Xunit.InlineData(true, false)]
+    public async Task SendToUserAsync_uses_invitation_template_without_creating_an_invitation(
+        bool queueCancelled, bool callerCancelled)
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -101,10 +105,29 @@ public sealed class SurveyPreviewEmailServiceTests
             previewTokens,
             NullLogger<SurveyPreviewEmailService>.Instance);
 
-        var destination = await sut.SendToUserAsync(
-            surveyId, userId, Xunit.TestContext.Current.CancellationToken);
-
-        destination.Should().Be("tester@example.com");
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            Xunit.TestContext.Current.CancellationToken);
+        var exception = new OperationCanceledException(cancellation.Token);
+        if (queueCancelled)
+            emailService.SendAsync(Arg.Any<EmailMessage>(), cancellation.Token).Returns(async _ =>
+            {
+                if (callerCancelled) await cancellation.CancelAsync();
+                await Task.FromException(exception);
+            });
+        var action = () => sut.SendToUserAsync(surveyId, userId, cancellation.Token);
+        if (callerCancelled)
+        {
+            var thrown = await action.Should().ThrowAsync<OperationCanceledException>();
+            thrown.Which.Should().BeSameAs(exception);
+        }
+        else if (queueCancelled)
+        {
+            var thrown = await action.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("The survey preview email could not be queued.");
+            thrown.Which.InnerException.Should().BeSameAs(exception);
+        }
+        else
+            (await action()).Should().Be("tester@example.com");
         // The token now travels inside the built body's answer link, so read it back from there.
         var sent = emailService.ReceivedCalls()
             .Single(c => string.Equals(c.GetMethodInfo().Name, nameof(IEmailService.SendAsync), StringComparison.Ordinal))

@@ -211,6 +211,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
   `SurveysEmails.SurveyInvitation` + `IEmailService.SendAsync`. Its seven-day signed token has a
   distinct Data Protection purpose, retains the recipient's resolved culture, and redirects
   `/Survey/Answer` to the protected preview route; no `SurveyInvitation` row is created.
+  An aborted preview-email request preserves cancellation rather than logging or wrapping it as
+  a queue failure; dependency cancellation without an aborted caller remains a queue failure.
 - **Invitation copy is optional, localized, and sanitized Markdown.** Authors may replace the initial
   invitation subject and message, while Humans retains the greeting, survey-title heading, generated
   answer-link button, sign-off, template key, and System routing policy. Blank custom fields preserve
