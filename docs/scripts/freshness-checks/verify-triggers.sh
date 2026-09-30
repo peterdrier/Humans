@@ -31,6 +31,8 @@
 # then a summary line:
 #   SUMMARY repaired=<n> unresolved=<n> docs_forced_dirty=<n>
 # followed by one line per doc carrying >=1 UNRESOLVED trigger:
+# Failed target searches or file replacements remain UNRESOLVED; only
+# successful writes (or proposed --check repairs) count as REPAIRED.
 #   FORCE-DIRTY <doc>
 # Phase 4 unions FORCE-DIRTY docs into its dirty list regardless of whether
 # anything in the diff window matches — an unresolved dead trigger means the
@@ -76,14 +78,14 @@ resolve_target() {
       suffix="${glob#"$prefix"}"
       seg="${prefix%/}"; seg="${seg##*/}"
       [ -z "$seg" ] && return
-      hits=$(find src -type d -name "$seg" -not -path '*/obj/*' -not -path '*/bin/*' 2>/dev/null)
+      hits=$(find src -type d -name "$seg" -not -path '*/obj/*' -not -path '*/bin/*' 2>/dev/null) || return
       n=$(printf '%s\n' "$hits" | sed '/^$/d' | wc -l)
       [ "$n" -ne 1 ] && return
       echo "${hits}/${suffix}"
       ;;
     *)
       base="${glob##*/}"
-      hits=$(find src -name "$base" -not -path '*/obj/*' -not -path '*/bin/*' 2>/dev/null)
+      hits=$(find src -name "$base" -not -path '*/obj/*' -not -path '*/bin/*' 2>/dev/null) || return
       n=$(printf '%s\n' "$hits" | sed '/^$/d' | wc -l)
       [ "$n" -ne 1 ] && return
       echo "$hits"
@@ -112,7 +114,9 @@ repair_line() {
       }
       print line
     }
-  ' "$file" > "$file.verify-triggers.tmp" && mv "$file.verify-triggers.tmp" "$file"
+  ' "$file" > "$file.verify-triggers.tmp" && mv "$file.verify-triggers.tmp" "$file" && return 0
+  rm -f "$file.verify-triggers.tmp"
+  return 1
 }
 
 repaired=0
@@ -130,13 +134,10 @@ for f in $(editorial_docs); do
   while IFS= read -r glob; do
     [ -z "$glob" ] && continue
     if trigger_is_dead "$glob"; then
-      target=$(resolve_target "$glob")
-      if [ -n "$target" ]; then
+      if target=$(resolve_target "$glob") && [ -n "$target" ] &&
+          { [ "$MODE" = "check" ] || repair_line "$f" "$glob" "$target"; }; then
         echo "REPAIRED $f | $glob -> $target"
         repaired=$((repaired + 1))
-        if [ "$MODE" = "repair" ]; then
-          repair_line "$f" "$glob" "$target"
-        fi
       else
         echo "UNRESOLVED $f | $glob"
         unresolved=$((unresolved + 1))

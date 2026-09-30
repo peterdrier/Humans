@@ -23,6 +23,7 @@
 #   8. trigger_is_dead (the function test 7 relies on) is proven in BOTH
 #      directions with synthetic input, not just whatever today's real docs
 #      happen to contain (nobodies-collective/Humans#1021).
+#   9. Trigger repairs report failures truthfully and continue to later docs.
 #
 # Test 7 exists because a dead trigger glob is SILENT: it makes a doc look
 # *clean* rather than *unchecked*, so the doc drops out of the sweep's dirty
@@ -307,6 +308,58 @@ else
 fi
 
 echo ""
+# ─── Test 9: Failed trigger repairs remain dirty ────────────────────────
+if python3 - "$SCRIPT_DIR/verify-triggers.sh" <<'PYTEST'
+from pathlib import Path
+import tempfile, shutil, subprocess, os
+import sys
+script=Path(sys.argv[1]).resolve()
+def case(mode, failure=None):
+    with tempfile.TemporaryDirectory() as tmp:
+        p=Path(tmp)
+        (p/'docs/architecture').mkdir(parents=True)
+        (p/'src/new').mkdir(parents=True)
+        (p/'src/new/Thing.cs').write_text('target')
+        (p/'src/new/Other.cs').write_text('target')
+        (p/'docs/architecture/freshness-catalog.yml').write_text('editorial_trees:\n  - docs/one.md\n  - docs/two.md\nignore:\n  - ignored/**\n')
+        original='<!-- freshness:triggers\n  src/old/Thing.cs\n-->\n'
+        (p/'docs/one.md').write_text(original)
+        (p/'docs/two.md').write_text(original.replace('Thing','Other'))
+        env=os.environ.copy()
+        if failure:
+            (p/'bin').mkdir()
+            real=shutil.which(failure)
+            # Fail only first doc, or return a plausible partial target with error.
+            code=(f'#!/bin/bash\nif [[ "$*" == *one.md* ]]; then exit 42; fi\nexec {real} "$@"\n' if failure=='mv' else
+                  f'#!/bin/bash\nif [[ "$*" == *"-v old="*Thing* ]]; then printf partial; exit 42; fi\nexec {real} "$@"\n' if failure=='awk' else
+                  f'#!/bin/bash\n{real} "$@"\nexit 42\n')
+            tool=p/'bin'/failure;tool.write_text(code);tool.chmod(0o755)
+            env['PATH']=str(p/'bin')+':'+env['PATH']
+        result=subprocess.run(['bash',str(script)]+(['--check'] if mode=='check' else []),cwd=p,env=env,text=True,capture_output=True)
+        assert result.returncode==0,result
+        if failure:
+            assert 'UNRESOLVED docs/one.md' in result.stdout,result.stdout
+            assert 'FORCE-DIRTY docs/one.md' in result.stdout,result.stdout
+            assert (p/'docs/one.md').read_text()==original
+            assert 'REPAIRED docs/one.md' not in result.stdout,result.stdout
+            if failure!='find':
+                assert 'REPAIRED docs/two.md' in result.stdout,result.stdout
+                assert 'repaired=1 unresolved=1 docs_forced_dirty=1' in result.stdout,result.stdout
+            assert not list((p/'docs').glob('*.tmp'))
+        else:
+            assert 'repaired=2 unresolved=0 docs_forced_dirty=0' in result.stdout,result.stdout
+            assert (p/'docs/one.md').read_text()==(original if mode=='check' else original.replace('old','new'))
+        print('PASS',mode,failure or 'normal')
+for args in [('repair',None),('check',None),('repair','mv'),('repair','awk'),('repair','find')]:case(*args)
+PYTEST
+then
+  echo "PASS [test 9]: repair and preview succeed; failed writes/searches stay dirty"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 9]: trigger repair failure handling"
+  FAIL=$((FAIL+1))
+fi
+
 echo "═══ Summary ═══"
 echo "Passed: $PASS"
 echo "Failed: $FAIL"

@@ -3,7 +3,7 @@
   src/Sections/Humans.Shifts/Data/Configurations/VolunteerEventProfileConfiguration.cs
   src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
   src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
-  src/Humans.Web/ViewComponents/ThingsToDoViewComponent.cs
+  src/Humans.Base/ViewComponents/ThingsToDoViewComponent.cs
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Shifts/Views/Shared/_VolunteerProfileBadges.cshtml
 -->
