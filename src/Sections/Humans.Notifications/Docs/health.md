@@ -125,4 +125,4 @@ Specified or known, not built; reserved, not ranked:
 | Run | Date | Headline | PR |
 |-----|------|----------|----|
 | 1 | 2026-08-26 | DI-cycle story corrected; doc names brought in line with the code | peterdrier/Humans#1527 |
-| 2 | 2026-09-30 | One row shape; inbox reads stop loading co-recipients | pending |
+| 2 | 2026-09-30 | One row shape; inbox reads stop loading co-recipients | peterdrier/Humans#1866 |
