@@ -1163,10 +1163,12 @@ public sealed class ExpenseReportServiceTests
         var result = await sut.SubmitWithResultAsync(id, submitter, false, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().BeNull("the controller has a localized fallback for unexpected faults");
         logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error,
             because: "a dependency fault (even one thrown as InvalidOperationException) is not a validation rejection");
         var error = logger.Entries.Single(e => e.Level == LogLevel.Error);
-        error.Exception.Should().BeOfType<InvalidOperationException>();
+        error.Exception.Should().BeOfType<InvalidOperationException>()
+            .Which.Message.Should().Be("IUserService: profile cache not initialized");
         logger.Entries.Should().NotContain(e => e.Level == LogLevel.Warning);
     }
 

@@ -278,7 +278,9 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Edit), new { id });
         }
 
-        SetError($"{localizer["Expenses_Flash_ReportUpdateFailed"]} {result.ErrorMessage}");
+        SetError(result.ErrorMessage is null
+            ? localizer["Expenses_Flash_ReportUpdateFailed"]
+            : $"{localizer["Expenses_Flash_ReportUpdateFailed"]} {result.ErrorMessage}");
         await PopulateEditModelAsync(model, report);
         return View(model);
     }

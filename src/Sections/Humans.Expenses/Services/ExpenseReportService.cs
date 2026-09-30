@@ -973,7 +973,7 @@ internal sealed class ExpenseReportService(
         {
             return await mutation();
         }
-        catch (ExpenseValidationException ex)
+        catch (Exception ex) when (ex is ExpenseValidationException or UnauthorizedAccessException)
         {
             // Expected, user-driven rejection — log at Warning with no stack trace so it doesn't
             // pollute the Error log, but keep the caller's structured identifiers (report/line IDs)
@@ -986,9 +986,9 @@ internal sealed class ExpenseReportService(
         catch (Exception ex)
         {
             logger.LogError(ex, logMessage, logArgs);
-            return ExpenseMutationResult.Failure(exceptionPrefix is null
-                ? ex.Message
-                : $"{exceptionPrefix}: {ex.Message}");
+            // Unexpected diagnostics belong in the log; controllers supply the
+            // localized fallback for a failed mutation with no validation detail.
+            return new ExpenseMutationResult(Succeeded: false, ErrorMessage: null);
         }
     }
 
