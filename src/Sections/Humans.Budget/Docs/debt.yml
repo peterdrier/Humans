@@ -4,10 +4,6 @@ version: 1
 next_id: 9
 inbox:
   - added: 2026-08-30
-    id: BUDGET-1
-    what: "Member-facing Budget views hardcode English UI strings throughout (Views/Budget/Index.cshtml, Views/Budget/CategoryDetail.cshtml, Views/Budget/Summary.cshtml) instead of resx keys in all six cultures — violates the localization surface rule; found by section-doctor prose thread. Backfill decision is Peter's (see 2026-08-30 run file Needs-Peter)."
-    review: panel
-  - added: 2026-08-30
     id: BUDGET-2
     what: "Chart styling/loader duplicated across Views/BudgetAdmin/YearDetail.cshtml (hardcoded hex palette + '#fff') and Views/Budget/Summary.cshtml (CSS variables), each loading Chart.js separately — one source for palette and loader would end the drift; found by section-doctor comments thread."
     review: panel
