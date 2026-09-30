@@ -3,6 +3,7 @@ using Humans.Base.Configuration;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Health;
 using Humans.GoogleIntegration.Services;
+using Humans.GoogleIntegration.Services.Workspace;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -14,6 +15,30 @@ namespace Humans.GoogleIntegration.Tests;
 
 public sealed class GoogleCredentiallessProductionTests
 {
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Cancelled_activity_reads_stop_before_credential_initialization(bool resolvePerson)
+    {
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        var client = new GoogleDriveActivityClient(Options.Create(new GoogleWorkspaceSettings()),
+            NullLogger<GoogleDriveActivityClient>.Instance);
+        Func<Task> read = async () =>
+        {
+            if (resolvePerson)
+                await client.TryResolvePersonEmailAsync("people/123", cancelled.Token);
+            else
+            {
+                await foreach (var activity in client.QueryActivityAsync("item", "2026-09-30T00:00:00Z", cancelled.Token))
+                    throw new InvalidOperationException("Cancelled query returned an activity.");
+            }
+        };
+
+        var thrown = await read.Should().ThrowAsync<OperationCanceledException>();
+        thrown.Which.CancellationToken.Should().Be(cancelled.Token);
+    }
+
     [HumansFact]
     public void Registration_InProductionWithoutCredentials_UsesStubSyncService()
     {
