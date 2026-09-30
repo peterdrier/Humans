@@ -50,7 +50,7 @@ internal sealed class BackdoorFinanceController(
     public async Task<IActionResult> ExpenseReports(
         [FromQuery] string? year, [FromQuery] string? status, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } userId) return Unauthorized();
+        var userId = GetCurrentUserId()!.Value;
 
         var isFinanceAdmin = await IsFinanceAdminAsync();
         var reports = await expenses.GetReviewQueueAsync(userId, isFinanceAdmin, ct);
@@ -87,7 +87,7 @@ internal sealed class BackdoorFinanceController(
     [HttpGet("expense-reports/{id:guid}")]
     public async Task<IActionResult> ExpenseReport(Guid id, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } userId) return Unauthorized();
+        var userId = GetCurrentUserId()!.Value;
 
         var report = await expenses.GetAsync(id, ct);
         if (report is null) return NotFound();
@@ -112,8 +112,6 @@ internal sealed class BackdoorFinanceController(
     [HttpGet("expense-reports/{id:guid}/attachments/{attachmentId:guid}")]
     public async Task<IActionResult> Attachment(Guid id, Guid attachmentId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is null) return Unauthorized();
-
         var owningReport = await expenses.GetReportOwningAttachmentAsync(attachmentId, ct);
         if (owningReport is null || owningReport.Id != id) return NotFound();
         if (!await CanViewAsync(owningReport)) return StatusCode(StatusCodes.Status403Forbidden);
@@ -130,7 +128,6 @@ internal sealed class BackdoorFinanceController(
     [HttpGet("creditor-accounts")]
     public async Task<IActionResult> CreditorAccounts(CancellationToken ct)
     {
-        if (GetCurrentUserId() is null) return Unauthorized();
         if (!await IsFinanceAdminAsync()) return StatusCode(StatusCodes.Status403Forbidden);
 
         var (accounts, unresolved) = await finance.ListCreditorAccountsAsync(ct);
@@ -150,7 +147,6 @@ internal sealed class BackdoorFinanceController(
     [HttpGet("creditor-accounts/{num:int}/ledger")]
     public async Task<IActionResult> CreditorLedger(int num, CancellationToken ct)
     {
-        if (GetCurrentUserId() is null) return Unauthorized();
         if (!await IsFinanceAdminAsync()) return StatusCode(StatusCodes.Status403Forbidden);
 
         var ledger = await finance.GetCreditorLedgerAsync(num, ct);
@@ -172,7 +168,6 @@ internal sealed class BackdoorFinanceController(
     [HttpGet("category-map")]
     public async Task<IActionResult> CategoryMap(CancellationToken ct)
     {
-        if (GetCurrentUserId() is null) return Unauthorized();
         if (!await IsFinanceAdminAsync()) return StatusCode(StatusCodes.Status403Forbidden);
 
         var rows = await finance.GetCategoryMapAsync(ct);
@@ -191,7 +186,6 @@ internal sealed class BackdoorFinanceController(
     [HttpGet("sepa-transfers")]
     public async Task<IActionResult> SepaTransfers(CancellationToken ct)
     {
-        if (GetCurrentUserId() is null) return Unauthorized();
         if (!await IsFinanceAdminAsync()) return StatusCode(StatusCodes.Status403Forbidden);
 
         var (transfers, unavailableReason) = await finance.GetSepaTransfersAsync(ct);
@@ -213,7 +207,6 @@ internal sealed class BackdoorFinanceController(
     [HttpGet("holded-sync")]
     public async Task<IActionResult> HoldedSync(CancellationToken ct)
     {
-        if (GetCurrentUserId() is null) return Unauthorized();
         if (!await IsFinanceAdminAsync()) return StatusCode(StatusCodes.Status403Forbidden);
 
         var syncInfo = await finance.GetDocSyncInfoAsync(ct);

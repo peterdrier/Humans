@@ -25,17 +25,6 @@ public class BackdoorNotificationsControllerTests
         _sut = new BackdoorNotificationsController(_inbox, Substitute.For<IUserServiceRead>());
 
     [HumansFact]
-    public async Task Get_without_a_principal_is_Unauthorized_and_reads_nothing()
-    {
-        _sut.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
-
-        var result = await _sut.Get(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<UnauthorizedResult>();
-        await _inbox.DidNotReceiveWithAnyArgs().GetUnreadInboxAsync(default!, default);
-    }
-
-    [HumansFact]
     public async Task Get_projects_rows_and_meters_for_the_keys_owner()
     {
         var userId = Guid.NewGuid();

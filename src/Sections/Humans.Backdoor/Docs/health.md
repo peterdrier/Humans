@@ -115,13 +115,13 @@ Stated so a violation is recognisable; paths are relative to `src/Sections/Human
   (`Controllers/BackdoorIssuesController.cs:34`, `Controllers/BackdoorFeedbackController.cs:32`).
 - An issue is read, commented on and patched as its holder — id and roles — through the viewer
   Issues scopes by (`Controllers/BackdoorIssuesController.cs:42`); the notification inbox is read
-  for the installed principal (`Controllers/BackdoorNotificationsController.cs:30`).
+  for the installed principal (`Controllers/BackdoorNotificationsController.cs:28`).
 - Finance-wide routes pass `FinanceAdminOrAdmin` and report routes pass Expenses' own
   `ExpenseReportView` policy, both through `IAuthorizationService`
-  (`Controllers/BackdoorFinanceController.cs:291`, `Controllers/BackdoorFinanceController.cs:294`);
+  (`Controllers/BackdoorFinanceController.cs:284`, `Controllers/BackdoorFinanceController.cs:287`);
   a refusal is a 403.
 - No raw IBAN leaves the finance surface: every JSON string and every download filename is
-  scrubbed after the action (`Controllers/BackdoorFinanceController.cs:248`).
+  scrubbed after the action (`Controllers/BackdoorFinanceController.cs:241`).
 - A key-authed principal skips the Shell's onboarding gates rather than being redirected to HTML
   (`src/Humans.Web/Authorization/MembershipRequiredFilter.cs:84`,
   `src/Humans.Web/Authorization/NameRequiredFilter.cs:72`).

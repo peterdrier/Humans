@@ -144,17 +144,6 @@ public class BackdoorFinanceControllerTests
     // ─── expense-reports (list) ─────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task ExpenseReports_NoKey_IsUnauthorized()
-    {
-        SetPrincipal(null);
-
-        var result = await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<UnauthorizedResult>();
-        await _expenses.DidNotReceiveWithAnyArgs().GetReviewQueueAsync(default, default, default);
-    }
-
-    [HumansFact]
     public async Task ExpenseReports_NonFinanceAdmin_SeesOnlyTheirOwnReviewQueue()
     {
         var userId = Guid.NewGuid();
@@ -270,16 +259,6 @@ public class BackdoorFinanceControllerTests
     }
 
     // ─── expense-reports/{id} (detail) ──────────────────────────────────────────
-
-    [HumansFact]
-    public async Task ExpenseReport_NoKey_IsUnauthorized()
-    {
-        SetPrincipal(null);
-
-        var result = await _sut.ExpenseReport(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<UnauthorizedResult>();
-    }
 
     [HumansFact]
     public async Task ExpenseReport_UnknownId_IsNotFound()
@@ -449,16 +428,6 @@ public class BackdoorFinanceControllerTests
     // ─── attachments ────────────────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task Attachment_NoKey_IsUnauthorized()
-    {
-        SetPrincipal(null);
-
-        var result = await _sut.Attachment(Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<UnauthorizedResult>();
-    }
-
-    [HumansFact]
     public async Task Attachment_OutsideTheKeyOwnersView_IsForbidden()
     {
         SetPrincipal(Guid.NewGuid());
@@ -491,16 +460,6 @@ public class BackdoorFinanceControllerTests
     }
 
     // ─── creditor-accounts ──────────────────────────────────────────────────────
-
-    [HumansFact]
-    public async Task CreditorAccounts_NoKey_IsUnauthorized()
-    {
-        SetPrincipal(null);
-
-        var result = await _sut.CreditorAccounts(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<UnauthorizedResult>();
-    }
 
     [HumansFact]
     public async Task CreditorAccounts_NonFinanceAdmin_IsForbidden()
@@ -548,16 +507,6 @@ public class BackdoorFinanceControllerTests
     // ─── creditor-accounts/{num}/ledger ─────────────────────────────────────────
 
     [HumansFact]
-    public async Task CreditorLedger_NoKey_IsUnauthorized()
-    {
-        SetPrincipal(null);
-
-        var result = await _sut.CreditorLedger(40000060, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<UnauthorizedResult>();
-    }
-
-    [HumansFact]
     public async Task CreditorLedger_NonFinanceAdmin_IsForbidden()
     {
         SetPrincipal(Guid.NewGuid());
@@ -586,16 +535,6 @@ public class BackdoorFinanceControllerTests
     }
 
     // ─── category-map ───────────────────────────────────────────────────────────
-
-    [HumansFact]
-    public async Task CategoryMap_NoKey_IsUnauthorized()
-    {
-        SetPrincipal(null);
-
-        var result = await _sut.CategoryMap(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<UnauthorizedResult>();
-    }
 
     [HumansFact]
     public async Task CategoryMap_NonFinanceAdmin_IsForbidden()
@@ -628,16 +567,6 @@ public class BackdoorFinanceControllerTests
     }
 
     // ─── sepa-transfers ─────────────────────────────────────────────────────────
-
-    [HumansFact]
-    public async Task SepaTransfers_NoKey_IsUnauthorized()
-    {
-        SetPrincipal(null);
-
-        var result = await _sut.SepaTransfers(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<UnauthorizedResult>();
-    }
 
     [HumansFact]
     public async Task SepaTransfers_NonFinanceAdmin_IsForbidden()
@@ -681,16 +610,6 @@ public class BackdoorFinanceControllerTests
     }
 
     // ─── holded-sync ────────────────────────────────────────────────────────────
-
-    [HumansFact]
-    public async Task HoldedSync_NoKey_IsUnauthorized()
-    {
-        SetPrincipal(null);
-
-        var result = await _sut.HoldedSync(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<UnauthorizedResult>();
-    }
 
     [HumansFact]
     public async Task HoldedSync_NonFinanceAdmin_IsForbidden()
