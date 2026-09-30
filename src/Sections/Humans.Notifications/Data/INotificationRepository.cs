@@ -18,7 +18,7 @@ namespace Humans.Notifications.Data;
 /// </para>
 /// <para>
 /// Read methods never <c>.Include</c> cross-domain navigation properties.
-/// Callers resolve recipient and resolver display names via
+/// Callers look up the resolver's display name via
 /// <c>IUserServiceRead.GetUserInfosAsync</c> and stitch them in memory.
 /// </para>
 /// </remarks>
@@ -203,7 +203,6 @@ internal interface INotificationRepository : IRepository
     Task<int> ReassignRecipientsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
-        Instant updatedAt,
         CancellationToken ct = default);
 }
 

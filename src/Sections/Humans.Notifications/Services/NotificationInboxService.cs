@@ -36,7 +36,7 @@ internal sealed class NotificationInboxService(
         var recipients = await repo.GetInboxAsync(
             userId, search, parsedFilter, effectiveTab, cutoff, ct);
 
-        var displayNames = await LoadDisplayNamesAsync(recipients, ct);
+        var displayNames = await LoadResolverNamesAsync(recipients, ct);
 
         var needsAttention = new List<NotificationRowDto>();
         var informational = new List<NotificationRowDto>();
@@ -72,7 +72,7 @@ internal sealed class NotificationInboxService(
     {
         var recipients = await repo.GetPopupAsync(userId, ct);
 
-        var displayNames = await LoadDisplayNamesAsync(recipients, ct);
+        var displayNames = await LoadResolverNamesAsync(recipients, ct);
 
         var actionable = new List<NotificationRowDto>();
         var informational = new List<NotificationRowDto>();
@@ -274,7 +274,7 @@ internal sealed class NotificationInboxService(
         return (parsedFilter, parsedTab);
     }
 
-    private async Task<IReadOnlyDictionary<Guid, string>> LoadDisplayNamesAsync(
+    private async Task<IReadOnlyDictionary<Guid, string>> LoadResolverNamesAsync(
         IReadOnlyList<NotificationRecipient> recipients, CancellationToken ct)
     {
         var userIds = new HashSet<Guid>();
@@ -282,8 +282,6 @@ internal sealed class NotificationInboxService(
         {
             if (nr.Notification.ResolvedByUserId is { } resolverId)
                 userIds.Add(resolverId);
-            foreach (var r in nr.Notification.Recipients)
-                userIds.Add(r.UserId);
         }
 
         if (userIds.Count == 0)

@@ -117,7 +117,7 @@ internal sealed class NotificationService(
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
-        => repo.ReassignRecipientsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        => repo.ReassignRecipientsToUserAsync(sourceUserId, targetUserId, ct);
 
     public void InvalidateBadgeCachesForUsers(IEnumerable<Guid> userIds) =>
         InvalidateBadgeCaches(userIds);

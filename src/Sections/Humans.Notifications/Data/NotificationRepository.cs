@@ -332,8 +332,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
         var query = ctx.NotificationRecipients
             .Where(nr => nr.UserId == userId)
             .Include(nr => nr.Notification)
-                .ThenInclude(n => n.Recipients)
-            .AsNoTrackingWithIdentityResolution();
+            .AsNoTracking();
 
         if (tab == NotificationInboxTab.Unread)
         {
@@ -394,8 +393,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
         return await ctx.NotificationRecipients
             .Where(nr => nr.UserId == userId && nr.Notification.ResolvedAt == null)
             .Include(nr => nr.Notification)
-                .ThenInclude(n => n.Recipients)
-            .AsNoTrackingWithIdentityResolution()
+            .AsNoTracking()
             .ToListAsync(ct);
     }
 
@@ -465,8 +463,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
     }
 
     public async Task<int> ReassignRecipientsToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default)
+        Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 

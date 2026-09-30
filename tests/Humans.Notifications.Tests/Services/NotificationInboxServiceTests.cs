@@ -134,6 +134,37 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetInboxAsync_NamesTheResolver_AndLooksUpNoOtherUser()
+    {
+        var resolverId = Guid.NewGuid();
+        var notification = await CreateNotification(
+            resolvedAt: _clock.GetCurrentInstant(), resolvedByUserId: resolverId);
+        _dbContext.NotificationRecipients.Add(new NotificationRecipient
+        {
+            NotificationId = notification.Id,
+            UserId = Guid.NewGuid(),
+        });
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
+            {
+                [resolverId] = new(
+                    resolverId, "Resolver", false, "en", null, Instant.FromUnixTimeSeconds(0),
+                    null, null, null, null, null, false, false, null, null, null,
+                    null, null, null, [], [], [], null, []),
+            }));
+
+        var result = await _service.GetInboxAsync(
+            _userId, search: null, filter: "resolved", tab: "all",
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Resolved.Should().ContainSingle().Which.ResolvedByName.Should().Be("Resolver");
+        await _userService.Received(1).GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(resolverId)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ResolveAsync_ReturnsNotFoundForMissingNotification()
     {
         var result = await _service.ResolveAsync(Guid.NewGuid(), _userId, Xunit.TestContext.Current.CancellationToken);
