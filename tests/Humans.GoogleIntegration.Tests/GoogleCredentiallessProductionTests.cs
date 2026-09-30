@@ -59,6 +59,20 @@ public sealed class GoogleCredentiallessProductionTests
     }
 
     [HumansFact]
+    public async Task Cancelled_health_check_does_not_report_a_credential_failure()
+    {
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        var check = new GoogleWorkspaceHealthCheck(
+            Options.Create(new GoogleWorkspaceSettings { ServiceAccountKeyJson = "{}" }),
+            NullLogger<GoogleWorkspaceHealthCheck>.Instance);
+        var read = () => check.CheckHealthAsync(new HealthCheckContext(), cancelled.Token);
+
+        var thrown = await read.Should().ThrowAsync<OperationCanceledException>();
+        thrown.Which.CancellationToken.Should().Be(cancelled.Token);
+    }
+
+    [HumansFact]
     public async Task HealthCheck_WithoutCredentials_IsDegraded()
     {
         var check = new GoogleWorkspaceHealthCheck(

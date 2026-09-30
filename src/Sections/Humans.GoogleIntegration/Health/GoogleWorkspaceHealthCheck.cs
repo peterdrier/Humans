@@ -1,5 +1,5 @@
 using Google.Apis.CloudIdentity.v1;
-using Google.Apis.Auth.OAuth2;
+using Humans.GoogleIntegration.Services.Workspace;
 using Google.Apis.Services;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
@@ -29,8 +29,10 @@ internal sealed class GoogleWorkspaceHealthCheck(
 
         try
         {
-            var credential = await GetCredentialAsync(cancellationToken);
-            var cloudIdentityService = new CloudIdentityService(new BaseClientService.Initializer
+            cancellationToken.ThrowIfCancellationRequested();
+            var credential = await GoogleCredentialLoader.LoadScopedAsync(
+                _settings, cancellationToken, CloudIdentityService.Scope.CloudIdentityGroupsReadonly);
+            using var cloudIdentityService = new CloudIdentityService(new BaseClientService.Initializer
             {
                 HttpClientInitializer = credential,
                 ApplicationName = "Humans Health Check"
@@ -65,7 +67,7 @@ internal sealed class GoogleWorkspaceHealthCheck(
                 $"Service account key file not found: {_settings.ServiceAccountKeyPath}",
                 ex);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Google Workspace health check failed");
             return HealthCheckResult.Unhealthy(
@@ -74,23 +76,4 @@ internal sealed class GoogleWorkspaceHealthCheck(
         }
     }
 
-    private async Task<GoogleCredential> GetCredentialAsync(CancellationToken cancellationToken)
-    {
-        GoogleCredential credential;
-
-        if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyJson))
-        {
-            using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(_settings.ServiceAccountKeyJson));
-            credential = (await CredentialFactory.FromStreamAsync<ServiceAccountCredential>(stream, cancellationToken)
-                .ConfigureAwait(false)).ToGoogleCredential();
-        }
-        else
-        {
-            await using var stream = File.OpenRead(_settings.ServiceAccountKeyPath);
-            credential = (await CredentialFactory.FromStreamAsync<ServiceAccountCredential>(stream, cancellationToken)
-                .ConfigureAwait(false)).ToGoogleCredential();
-        }
-
-        return credential.CreateScoped(CloudIdentityService.Scope.CloudIdentityGroupsReadonly);
-    }
 }
