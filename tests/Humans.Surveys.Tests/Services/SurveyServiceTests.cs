@@ -1468,6 +1468,57 @@ public class SurveyServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
+    [HumansTheory]
+    [InlineData("es", "Spanish title")]
+    [InlineData("it", "English title")]
+    [InlineData("unsupported", "English title")]
+    [InlineData(null, "English title")]
+    public async Task SendDueRemindersAsync_ResolvesTitleForEachRecipient(
+        string? preferredCulture, string expectedTitle)
+    {
+        var now = _clock.GetCurrentInstant();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        survey.Title = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["en"] = "English title", ["es"] = "Spanish title", ["de"] = "German title"
+        });
+        var firstUser = Guid.NewGuid();
+        var secondUser = Guid.NewGuid();
+        var invitations = new List<SurveyInvitation>
+        {
+            new() { Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = firstUser,
+                SentAt = now - Duration.FromDays(8), LatestEmailStatus = EmailOutboxStatus.Sent },
+            new() { Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = secondUser,
+                SentAt = now - Duration.FromDays(8), LatestEmailStatus = EmailOutboxStatus.Sent }
+        };
+        _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(invitations);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [firstUser] = "first@example.org", [secondUser] = "second@example.org" });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
+            {
+                [firstUser] = UserInfoWithName(firstUser, "First") with { PreferredLanguage = preferredCulture! },
+                [secondUser] = UserInfoWithName(secondUser, "Second") with { PreferredLanguage = "de" }
+            }));
+
+        (await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken)).Should().Be(2);
+
+        var messages = _emailService.ReceivedCalls().Select(call => call.GetArguments()[0])
+            .OfType<EmailMessage>().ToList();
+        messages.Should().HaveCount(2);
+        var first = messages.Single(m => string.Equals(m.RecipientEmail, "first@example.org", StringComparison.Ordinal));
+        first.Subject.Should().Be("Reminder: " + expectedTitle);
+        first.HtmlBody.Should().Contain(expectedTitle);
+        var second = messages.Single(m => string.Equals(m.RecipientEmail, "second@example.org", StringComparison.Ordinal));
+        second.Subject.Should().Be("Reminder: German title");
+        second.HtmlBody.Should().Contain("German title");
+        await _repo.Received(1).GetByIdAsync(survey.Id, Arg.Any<CancellationToken>());
+        foreach (var invitation in invitations)
+            await _repo.Received(1).SetReminderSentAsync(invitation.Id, now, Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task SendDueRemindersAsync_skips_an_Open_survey_that_is_past_its_ClosesAt()
     {

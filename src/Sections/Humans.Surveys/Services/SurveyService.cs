@@ -829,7 +829,7 @@ internal sealed class SurveyService(
         // re-checked here rather than in the query: Open alone is not answerable, and reminding
         // someone about a survey past its ClosesAt sends them to the Closed page — and spends their
         // one ReminderSentAt stamp doing it.
-        var surveys = new Dictionary<Guid, (string Title, string DefaultCulture, bool Answerable)>();
+        var surveys = new Dictionary<Guid, (LocalizedText Title, string DefaultCulture, bool Answerable)>();
 
         var reminded = 0;
         foreach (var inv in due)
@@ -858,7 +858,7 @@ internal sealed class SurveyService(
                 var survey = await repo.GetByIdAsync(inv.SurveyId, ct);
                 if (survey is null) continue;
                 meta = (
-                    survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture),
+                    survey.Title,
                     survey.DefaultCulture,
                     SurveyWizardFlow.IsAnswerable(survey.Status, survey.OpensAt, survey.ClosesAt, now));
                 surveys[inv.SurveyId] = meta;
@@ -866,10 +866,14 @@ internal sealed class SurveyService(
 
             if (!meta.Answerable) continue;
 
-            var culture = users.TryGetValue(inv.UserId, out var user) ? user.PreferredLanguage : meta.DefaultCulture;
+            var preferredCulture = users.TryGetValue(inv.UserId, out var user) ? user.PreferredLanguage : null;
+            var culture = preferredCulture.IsSupportedCultureCode()
+                ? preferredCulture!
+                : meta.DefaultCulture;
             var name = user?.BurnerName ?? string.Empty;
             var token = tokenProvider.Create(inv.Id);
-            var msg = emailMessages.SurveyReminder(email, name, meta.Title, token, culture);
+            var title = meta.Title.Resolve(culture, meta.DefaultCulture);
+            var msg = emailMessages.SurveyReminder(email, name, title, token, culture);
 
             // Per-invitee guard (mirrors SendInvitesAsync): one transport failure must not abort the
             // sweep. ReminderSentAt stays unstamped on failure so the next daily run retries.
