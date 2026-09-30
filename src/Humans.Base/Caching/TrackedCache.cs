@@ -158,11 +158,25 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// Replace an entry by reloading via <see cref="LoadRowAsync"/>. If the
     /// loader returns null (row was deleted), the entry is tombstoned via
     /// <see cref="DeleteKey"/>. The replacement primitive for warmed caches
-    /// that have a per-key loader.
+    /// that have a per-key loader. A failed reload evicts the old value and
+    /// marks warmed caches cold so the next read retries from source.
     /// </summary>
     public async Task<TValue?> ReplaceAsync(TKey key, CancellationToken ct = default)
     {
-        var loaded = await LoadRowAsync(key, ct).ConfigureAwait(false);
+        TValue? loaded;
+        try
+        {
+            loaded = await LoadRowAsync(key, ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            // A committed write may have changed or created this row. Retry from
+            // source on the next read, even when the key was never cached.
+            if (_warmOnStartup) _warmedUp = false;
+            Invalidate(key);
+            throw;
+        }
+
         if (loaded is not null) Set(key, loaded);
         else DeleteKey(key);
         return loaded;

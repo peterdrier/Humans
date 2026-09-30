@@ -210,6 +210,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 - **Merge-request state is derived from the tombstone.** A `Pending` `AccountMergeRequest` whose two accounts are already merged into each other (`source.MergedToUserId == request.TargetUserId` or the inverse) is moot and is closed on sight — this is the cleanup mechanism for half-done rows, not a data migration. A side merged into some unrelated third account is a different conflict and is refused rather than silently closed.
 - **No merge status beyond `Pending` / `Accepted` / `Rejected`.** Dismiss reuses `Rejected`; a request auto-closed by a completed merge becomes `Accepted` with a note (`CloseRequestsForPairAsync`). Request rows are never deleted, so GDPR export and audit history stay intact.
 
+- A failed or cancelled `UserInfo` cache reload evicts the affected user and marks the cache cold before propagating the failure; the next read reloads from source rather than retaining stale fields or omitting a newly created human.
+
 ## Negative Access Rules
 
 - Controllers (other than `AccountController` / the Development section's `DevLoginController` / the ASP.NET Identity framework surface) **cannot** inject `UserManager<User>` or `SignInManager<User>`. They go through `IUserService`.

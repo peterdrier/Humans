@@ -134,6 +134,8 @@ Three controllers serve this section.
 - When a new document version is published, existing consents for the old version become stale and re-consent is required.
 - Per-user reads on `consent_records` chain-follow merge tombstones via the resolved record's `UserInfo.AllUserIds` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge, DB triggers (`prevent_consent_record_update`, `prevent_consent_record_delete`) make any rewrite physically impossible.
 
+- A failed or cancelled inline consent-cache reload evicts the affected user's cached consent set before propagating the failure; the next read reloads the committed consent state.
+
 ## Negative Access Rules
 
 - Regular humans **cannot** manage legal documents or document versions.
