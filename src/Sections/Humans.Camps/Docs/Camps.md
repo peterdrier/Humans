@@ -19,6 +19,8 @@ Themed community camps (Barrios) with per-year season registrations, leads, imag
 - A **Camp Member** is a human's post-hoc, per-season affiliation with a camp. The app does **not** admit humans to a camp — each camp runs its own process. A CampMember row exists so the app knows who belongs to which camp for per-camp roles (e.g. LNT lead), Early Entry allocations, and notifications. Status: Pending → Active → Removed. `Removed` is a soft-delete tombstone so re-requesting creates a new row.
 - The member-facing My Camps card and directory heading render their titles and active/pending membership badges through `CampsResource` in every supported culture.
 - The public/member camp roles card renders its role/lead heading and vacancy count through `CampsResource` in every supported culture.
+- Public current- and past-season detail cards render community/culture labels and enum values through the existing Camps and shared resources in every supported culture.
+- Public season links, carousel controls, participation counts, and the signed-in membership card use localized resources, including pending/active messages and withdrawal/leave confirmations.
 - A **Camp Role Definition** is a CampAdmin-managed catalogue row describing a per-camp role with a slot count, compliance threshold (`MinimumRequired`), and sort order. `MinimumRequired = 0` means the role is optional and not tracked in the compliance report; `MinimumRequired ≥ 1` means the compliance report tracks it with that threshold. The catalogue ships empty — CampAdmin creates every definition. Soft-deleted via `DeactivatedAt` so historical assignments survive removal from the active catalogue.
 - A **Camp Role Assignment** is a per-season binding of a `CampMember` to a `CampRoleDefinition`. "Camp Lead" and "Workshop Lead" **are** `CampRoleDefinition` rows (special, `SpecialRole != None`); lead authority is resolved entirely from `CampRoleAssignment`.
 - **Camp Settings** is a singleton controlling which seasons accept new registrations. The public year is no longer stored here — it resolves from Settings' active event (falling back to the clock year when no event is active).
@@ -270,7 +272,9 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 `MyCampsViewComponent` owns the private profile-page membership list. Its settings and
 per-year camp reads receive `HttpContext.RequestAborted`; operational failures still hide
-the advisory component, while a disconnected request propagates cancellation.
+the advisory component, while a disconnected request propagates cancellation. CampAdmin's
+role-definition mutations and camp-management member mutations likewise propagate a
+disconnected request rather than report it as a failed admin action.
 
 **Owning services:** `CampService`, `CampContactService`, `CampRoleService`
 **Owned tables:**

@@ -1,0 +1,42 @@
+<script>
+(function () {
+    if (window.HumansBudgetCharts) return;
+
+    var cssValue = function (name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    };
+    var palette = function (prefix) {
+        return Array.from({ length: 15 }, function (_, index) {
+            return cssValue(prefix + (index + 1));
+        });
+    };
+    var callbacks = [];
+    var loading = false;
+    var load = function (callback) {
+        if (typeof Chart !== 'undefined') {
+            callback();
+            return;
+        }
+
+        callbacks.push(callback);
+        if (loading) return;
+        loading = true;
+
+        var script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
+        script.integrity = 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ';
+        script.crossOrigin = 'anonymous';
+        script.onload = function () {
+            callbacks.splice(0).forEach(function (ready) { ready(); });
+        };
+        document.head.appendChild(script);
+    };
+
+    window.HumansBudgetCharts = {
+        incomeColors: function () { return palette('--h-chart-cat-'); },
+        expenseColors: function () { return palette('--h-chart-exp-'); },
+        surfaceColor: function () { return cssValue('--h-bg-elevated'); },
+        load: load
+    };
+})();
+</script>

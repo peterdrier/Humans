@@ -263,4 +263,19 @@
   <data name="Camps_Flash_UnknownError" xml:space="preserve"><value>Unbekannter Fehler.</value></data>
   <data name="Camps_Flash_RoleUnassigned" xml:space="preserve"><value>Rollenzuweisung aufgehoben.</value></data>
   <data name="Camps_Flash_AssignmentNotFound" xml:space="preserve"><value>Zuweisung nicht gefunden.</value></data>
+  <data name="Camps_Details_Breadcrumb" xml:space="preserve"><value>Navigationspfad</value></data>
+  <data name="Camps_Details_Slide" xml:space="preserve"><value>Folie {0}</value></data>
+  <data name="Camps_Details_Previous" xml:space="preserve"><value>Zurück</value></data>
+  <data name="Camps_Details_Next" xml:space="preserve"><value>Weiter</value></data>
+  <data name="Camps_Details_SeasonLink" xml:space="preserve"><value>Saisonseite für {0} ansehen</value></data>
+  <data name="Camps_Details_MyMembership" xml:space="preserve"><value>Meine Mitgliedschaft</value></data>
+  <data name="Camps_Details_MembershipHelp" xml:space="preserve"><value>Damit trittst du dem Camp nicht bei. Tritt zuerst über das eigene Verfahren des Camps bei und informiere dann Humans, um Zugang zu Camp-Rollen, Early-Entry-Zuteilungen und Benachrichtigungen zu erhalten.</value></data>
+  <data name="Camps_Details_FullSeason" xml:space="preserve"><value>Dieses Camp meldet sich für {0} als voll — du kannst trotzdem einen Beitritt beantragen.</value></data>
+  <data name="Camps_Details_RequestJoin" xml:space="preserve"><value>Beitritt für {0} beantragen</value></data>
+  <data name="Camps_Details_PendingApproval" xml:space="preserve"><value>Wartet auf die Freigabe der Camp-Leitung für {0}.</value></data>
+  <data name="Camps_Details_WithdrawConfirm" xml:space="preserve"><value>Deinen offenen Antrag zurückziehen?</value></data>
+  <data name="Camps_Details_WithdrawRequest" xml:space="preserve"><value>Antrag zurückziehen</value></data>
+  <data name="Camps_Details_ActiveMembership" xml:space="preserve"><value>Du bist für {0} Mitglied.</value></data>
+  <data name="Camps_Details_LeaveConfirm" xml:space="preserve"><value>Dieses Camp für diese Saison verlassen?</value></data>
+  <data name="Camps_Details_LeaveCamp" xml:space="preserve"><value>Camp verlassen</value></data>
 </root>

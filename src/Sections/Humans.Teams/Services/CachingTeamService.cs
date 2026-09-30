@@ -186,16 +186,7 @@ internal sealed class CachingTeamService(
     public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
         Guid? userId,
         CancellationToken cancellationToken = default)
-    {
-        var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
-        return await TeamDirectoryBuilder.BuildAsync(
-            teamsById,
-            roleAssignmentService,
-            userId,
-            cancellationToken);
-    }
+        => await WithInner(inner => inner.GetTeamDirectoryAsync(userId, cancellationToken));
 
     public async Task<TeamDetailResult?> GetTeamDetailAsync(
         string slug,

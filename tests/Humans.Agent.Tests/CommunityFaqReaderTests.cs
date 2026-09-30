@@ -1,3 +1,4 @@
+using NSubstitute;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Agent.Services.Preload;
@@ -15,12 +16,62 @@ public class CommunityFaqReaderTests
         "# General & Community — NCA\nLast updated: 2026-02-01 · windows merged through 2026-02-01\n\n## Overview\nWhat the NCA is and how to join.\n\n## FAQ\n**Q?**\nA.";
 
     [HumansFact]
+    public async Task CancelledFetch_PropagatesInsteadOfReturningAMiss()
+    {
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        var source = Substitute.For<IGuideContentSource>();
+        source.ListMarkdownStemsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Task.FromCanceled<IReadOnlyList<string>>(cancelled.Token));
+        var reader = new CommunityFaqReader(source, new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<CommunityFaqReader>.Instance);
+
+        var read = () => reader.ListTopicsAsync(cancelled.Token);
+
+        var thrown = await read.Should().ThrowAsync<OperationCanceledException>();
+        thrown.Which.CancellationToken.Should().Be(cancelled.Token);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancelledDocumentFetch_DoesNotCacheAnIncompleteTopicIndex(bool reload)
+    {
+        using var cancelled = new CancellationTokenSource();
+        var source = Substitute.For<IGuideContentSource>();
+        source.ListMarkdownStemsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<string>>(["topic"]));
+        source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Original"));
+        var reader = new CommunityFaqReader(source, new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<CommunityFaqReader>.Instance);
+        if (reload) await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await cancelled.CancelAsync();
+                cancelled.Token.ThrowIfCancellationRequested();
+                return string.Empty;
+            });
+        Func<Task> read = async () =>
+        {
+            if (reload) await reader.ReloadAsync(cancelled.Token);
+            else await reader.ListTopicsAsync(cancelled.Token);
+        };
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Restored"));
+        var (topics, _) = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        topics.Should().ContainSingle().Which.Title.Should().Be(reload ? "Original" : "Restored");
+    }
+
+    [HumansFact]
     public async Task ListTopicsAsync_parses_title_date_and_overview_summary()
     {
         var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };
         var reader = MakeReader(source);
 
-        var entries = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        var (entries, _) = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
 
         entries.Should().ContainSingle();
         var e = entries[0];
@@ -36,7 +87,7 @@ public class CommunityFaqReaderTests
         var source = new FakeSource { Files = { ["bare"] = "# Bare Title\n\nNo overview here." } };
         var reader = MakeReader(source);
 
-        var entries = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        var (entries, _) = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
 
         entries[0].Summary.Should().Be("Bare Title");
     }
@@ -54,7 +105,7 @@ public class CommunityFaqReaderTests
         var source = new FakeSource { Files = { ["lnt"] = body } };
         var reader = MakeReader(source);
 
-        var entries = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        var (entries, _) = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
 
         entries[0].Keywords.Should().Be("toilets, TAP, PMS, urinals, vulva urinals, VIPee, Octopee, grey water");
         // The Overview paragraph remains the Summary, separate from keywords.
@@ -67,7 +118,7 @@ public class CommunityFaqReaderTests
         var source = new FakeSource { Files = { ["bare"] = "# Bare Title\n\n## Overview\nNo keywords here." } };
         var reader = MakeReader(source);
 
-        var entries = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        var (entries, _) = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
 
         entries[0].Keywords.Should().BeEmpty();
     }
@@ -147,7 +198,7 @@ public class CommunityFaqReaderTests
         var body = await reader.ReadAsync("FAQ-general", TestContext.Current.CancellationToken);
         body.Should().Contain("Fresh content.");
 
-        var entries = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        var (entries, _) = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
         entries[0].Title.Should().Be("New Title");
 
         source.RawFetches["FAQ-general"].Should().Be(2); // one initial list, one reload
@@ -158,7 +209,7 @@ public class CommunityFaqReaderTests
     {
         var reader = MakeReader(new FakeSource()); // no files
 
-        var entries = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        var (entries, _) = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
 
         entries.Should().BeEmpty();
     }
@@ -177,12 +228,48 @@ public class CommunityFaqReaderTests
         source.RawFetches.Should().NotContainKey("faq-general"); // no case-mismatched fetch/404
     }
 
+    [HumansFact]
+    public async Task Partial_topic_index_retries_failed_documents_instead_of_holding_the_miss_forever()
+    {
+        var source = new FakeSource { Files = { ["a"] = "# A", ["b"] = "# B" }, FailingStem = "b" };
+        var reader = MakeReader(source);
+
+        var (partial, complete) = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        partial.Should().ContainSingle().Which.Topic.Should().Be("a");
+        complete.Should().BeFalse();
+        source.FailingStem = null;
+        var (recovered, recoveredComplete) = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        recovered.Select(entry => entry.Topic).Should().Equal("a", "b");
+        recoveredComplete.Should().BeTrue();
+        source.RawFetches["a"].Should().Be(1, "successful documents can be reused during recovery");
+    }
+
+    [HumansFact]
+    public async Task Failed_reload_preserves_both_the_index_and_previously_cached_bodies()
+    {
+        var source = new FakeSource { Files = { ["a"] = "# Original A", ["b"] = "# Original B" } };
+        var reader = MakeReader(source);
+        var (original, _) = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        source.Files["a"] = "# Updated A";
+        source.FailingStem = "b";
+
+        await reader.ReloadAsync(TestContext.Current.CancellationToken);
+
+        var (afterFailure, _) = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        afterFailure.Should().BeSameAs(original);
+        (await reader.ReadAsync("a", TestContext.Current.CancellationToken)).Should().Be("# Original A");
+        source.FailingStem = null;
+        await reader.ReloadAsync(TestContext.Current.CancellationToken);
+        (await reader.ReadAsync("a", TestContext.Current.CancellationToken)).Should().Be("# Updated A");
+    }
+
     private static CommunityFaqReader MakeReader(FakeSource source) =>
         new(source, new MemoryCache(new MemoryCacheOptions()),
             NullLogger<CommunityFaqReader>.Instance);
 
     private sealed class FakeSource : IGuideContentSource
     {
+        public string? FailingStem { get; set; }
         public Dictionary<string, string> Files { get; } = new(StringComparer.Ordinal);
         public Dictionary<string, int> RawFetches { get; } = new(StringComparer.Ordinal);
 
@@ -191,6 +278,7 @@ public class CommunityFaqReaderTests
 
         public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default)
         {
+            if (string.Equals(fileStem, FailingStem, StringComparison.Ordinal)) throw new IOException("temporary outage");
             if (!Files.TryGetValue(fileStem, out var body))
                 throw new NotFoundException("missing", System.Net.HttpStatusCode.NotFound);
             RawFetches[fileStem] = RawFetches.GetValueOrDefault(fileStem) + 1;

@@ -7,9 +7,10 @@
 @{
     ViewData["Title"] = Model.Name;
     var isCityPlanningMember = ViewBag.IsCityPlanningTeamMember as bool? ?? false;
+    var membershipYear = Model.Membership.OpenSeasonYear?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Camps_Details_Breadcrumb"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
@@ -33,7 +34,7 @@
                         @for (var i = 0; i < Model.ImageUrls.Count; i++)
                         {
                             <button type="button" data-bs-target="#campCarousel" data-bs-slide-to="@i"
-                                    class="@(i == 0 ? "active" : "")" aria-label="Slide @(i + 1)"></button>
+                                    class="@(i == 0 ? "active" : "")" aria-label="@Localizer["Camps_Details_Slide", i + 1]"></button>
                         }
                     </div>
                     <div class="carousel-inner">
@@ -46,11 +47,11 @@
                     </div>
                     <button class="carousel-control-prev" type="button" data-bs-target="#campCarousel" data-bs-slide="prev">
                         <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                        <span class="visually-hidden">Previous</span>
+                        <span class="visually-hidden">@Localizer["Camps_Details_Previous"]</span>
                     </button>
                     <button class="carousel-control-next" type="button" data-bs-target="#campCarousel" data-bs-slide="next">
                         <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                        <span class="visually-hidden">Next</span>
+                        <span class="visually-hidden">@Localizer["Camps_Details_Next"]</span>
                     </button>
                 </div>
             }
@@ -64,7 +65,7 @@
                 {
                     <p class="mb-1">
                         <a asp-action="SeasonDetails" asp-route-slug="@Model.Slug" asp-route-year="@Model.CurrentSeason.Year" class="link-secondary">
-                            View @Model.CurrentSeason.Year season page
+                            @Localizer["Camps_Details_SeasonLink", Model.CurrentSeason.Year]
                         </a>
                     </p>
                 }
@@ -110,7 +111,7 @@
             @* Blurb *@
             <div class="card mb-4">
                 <div class="card-header">
-                    <i class="fa-solid fa-pen-fancy me-1"></i> About
+                    <i class="fa-solid fa-pen-fancy me-1"></i> @SharedLocalizer["Nav_About"]
                 </div>
                 <div class="card-body">
                     @Html.SanitizedMarkdown(season.BlurbLong)
@@ -120,25 +121,25 @@
             @* Community info *@
             <div class="card mb-4">
                 <div class="card-header">
-                    <i class="fa-solid fa-users me-1"></i> Community
+                    <i class="fa-solid fa-users me-1"></i> @Localizer["Camp_CommunityHeading"]
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
                             <dl>
-                                <dt>Languages</dt>
+                                <dt>@Localizer["Camp_LanguagesLabel"]</dt>
                                 <dd>@season.Languages</dd>
-                                <dt>Accepting Humans</dt>
-                                <dd>@season.AcceptingMembers</dd>
-                                <dt>Kids Welcome</dt>
-                                <dd>@season.KidsWelcome</dd>
+                                <dt>@Localizer["Camp_AcceptingMembersLabel"]</dt>
+                                <dd>@SharedLocalizer.EnumDisplay(season.AcceptingMembers)</dd>
+                                <dt>@Localizer["Camp_KidsWelcomeLabel"]</dt>
+                                <dd>@SharedLocalizer.EnumDisplay(season.KidsWelcome)</dd>
                                 @if (season.KidsWelcome != YesNoMaybe.No)
                                 {
-                                    <dt>Kids Visiting</dt>
-                                    <dd>@season.KidsVisiting</dd>
+                                    <dt>@Localizer["Camp_KidsVisitingLabel"]</dt>
+                                    <dd>@SharedLocalizer.EnumDisplay(season.KidsVisiting)</dd>
                                     @if (!string.IsNullOrEmpty(season.KidsAreaDescription))
                                     {
-                                        <dt>Kids Area</dt>
+                                        <dt>@Localizer["Camp_KidsAreaDescriptionLabel"]</dt>
                                         <dd>@Html.SanitizedMarkdown(season.KidsAreaDescription)</dd>
                                     }
                                 }
@@ -146,9 +147,9 @@
                         </div>
                         <div class="col-md-6">
                             <dl>
-                                <dt>Adult Playspace</dt>
-                                <dd>@season.AdultPlayspace</dd>
-                                <dt>Expected Humans</dt>
+                                <dt>@Localizer["Camp_AdultPlayspaceLabel"]</dt>
+                                <dd>@SharedLocalizer.EnumDisplay(season.AdultPlayspace)</dd>
+                                <dt>@Localizer["Camp_MemberCountLabel"]</dt>
                                 <dd>@season.MemberCount</dd>
                             </dl>
                         </div>
@@ -161,13 +162,13 @@
             {
                 <div class="card mb-4">
                     <div class="card-header">
-                        <i class="fa-solid fa-heart-pulse me-1"></i> Vibes
+                        <i class="fa-solid fa-heart-pulse me-1"></i> @Localizer["Camp_VibesLabel"]
                     </div>
                     <div class="card-body">
                         <div class="d-flex flex-wrap gap-2">
                             @foreach (var vibe in season.Vibes)
                             {
-                                <span class="badge bg-secondary fs-6">@vibe</span>
+                                <span class="badge bg-secondary fs-6">@Localizer.EnumDisplay(vibe)</span>
                             }
                         </div>
                     </div>
@@ -179,15 +180,15 @@
             {
                 <div class="card mb-4">
                     <div class="card-header">
-                        <i class="fa-solid fa-masks-theater me-1"></i> Culture & Events
+                        <i class="fa-solid fa-masks-theater me-1"></i> @Localizer["Camp_CultureHeading"]
                     </div>
                     <div class="card-body">
                         <dl>
-                            <dt>Performance Space</dt>
-                            <dd>@season.HasPerformanceSpace</dd>
+                            <dt>@Localizer["Camp_PerformanceSpaceLabel"]</dt>
+                            <dd>@SharedLocalizer.EnumDisplay(season.HasPerformanceSpace)</dd>
                             @if (!string.IsNullOrEmpty(season.PerformanceTypes))
                             {
-                                <dt>Performance Types</dt>
+                                <dt>@Localizer["Camp_PerformanceTypesLabel"]</dt>
                                 <dd>@season.PerformanceTypes</dd>
                             }
                         </dl>
@@ -332,7 +333,7 @@
             <div class="card mb-4">
                 <div class="card-body text-center">
                     <i class="fa-solid fa-fire fa-2x text-warning mb-2"></i>
-                    <h5>@Model.TimesAtNowhere year@(Model.TimesAtNowhere != 1 ? "s" : "") participating</h5>
+                    <h5>@Localizer["Camp_TimesParticipatingLabel"]: @Model.TimesAtNowhere</h5>
                 </div>
             </div>
         }
@@ -345,11 +346,11 @@
         {
             <div class="card mb-4">
                 <div class="card-header">
-                    <i class="fa-solid fa-campground me-1"></i> My membership
+                    <i class="fa-solid fa-campground me-1"></i> @Localizer["Camps_Details_MyMembership"]
                 </div>
                 <div class="card-body">
                     <p class="small text-muted mb-2">
-                        This does <strong>not</strong> join you to the camp. Join through the camp's own process first, then tell Humans so you get access to any per-camp roles, Early Entry allocations, and notifications.
+                        @Localizer["Camps_Details_MembershipHelp"]
                     </p>
                     @switch (Model.Membership.Status)
                     {
@@ -371,13 +372,13 @@
                                 {
                                     <div class="alert alert-secondary py-2 mb-2">
                                         <i class="fa-solid fa-circle-info me-1"></i>
-                                        This camp says it's full for @Model.Membership.OpenSeasonYear — you can still request to join.
+                                        @Localizer["Camps_Details_FullSeason", membershipYear]
                                     </div>
                                 }
                                 <form asp-controller="Camp" asp-action="RequestMembership" asp-route-slug="@Model.Slug" method="post">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="btn btn-outline-primary w-100">
-                                        <i class="fa-solid fa-hand me-1"></i> Request to join for @Model.Membership.OpenSeasonYear
+                                        <i class="fa-solid fa-hand me-1"></i> @Localizer["Camps_Details_RequestJoin", membershipYear]
                                     </button>
                                 </form>
                             }
@@ -385,12 +386,12 @@
                         case CampMemberStatusSummaryView.Pending:
                             <div class="d-grid gap-2">
                                 <div class="alert alert-warning py-2 mb-0">
-                                    <i class="fa-solid fa-hourglass-half me-1"></i> Pending lead approval for @Model.Membership.OpenSeasonYear.
+                                    <i class="fa-solid fa-hourglass-half me-1"></i> @Localizer["Camps_Details_PendingApproval", membershipYear]
                                 </div>
                                 <form asp-controller="Camp" asp-action="WithdrawMembershipRequest" asp-route-slug="@Model.Slug" asp-route-campMemberId="@Model.Membership.CampMemberId" method="post">
                                     @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-outline-secondary w-100" data-confirm="Withdraw your pending request?">
-                                        <i class="fa-solid fa-xmark me-1"></i> Withdraw request
+                                    <button type="submit" class="btn btn-outline-secondary w-100" data-confirm="@Localizer["Camps_Details_WithdrawConfirm"]">
+                                        <i class="fa-solid fa-xmark me-1"></i> @Localizer["Camps_Details_WithdrawRequest"]
                                     </button>
                                 </form>
                             </div>
@@ -398,12 +399,12 @@
                         case CampMemberStatusSummaryView.Active:
                             <div class="d-grid gap-2">
                                 <div class="alert alert-success py-2 mb-0">
-                                    <i class="fa-solid fa-check me-1"></i> You are a member for @Model.Membership.OpenSeasonYear.
+                                    <i class="fa-solid fa-check me-1"></i> @Localizer["Camps_Details_ActiveMembership", membershipYear]
                                 </div>
                                 <form asp-controller="Camp" asp-action="LeaveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@Model.Membership.CampMemberId" method="post">
                                     @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-outline-warning w-100" data-confirm="Leave this camp for this season?">
-                                        <i class="fa-solid fa-right-from-bracket me-1"></i> Leave camp
+                                    <button type="submit" class="btn btn-outline-warning w-100" data-confirm="@Localizer["Camps_Details_LeaveConfirm"]">
+                                        <i class="fa-solid fa-right-from-bracket me-1"></i> @Localizer["Camps_Details_LeaveCamp"]
                                     </button>
                                 </form>
                             </div>

@@ -79,7 +79,8 @@ codex login status   # expect a signed-in result
 #    push and PR creation. Do this as the same user the timer will run as.
 gh auth status || gh auth login
 
-# 4. codex on PATH and authenticated (whatever `codex login` your install needs)
+# 4. codex CLI 0.159.2 or newer on PATH and authenticated
+#    (whatever `codex login` your install needs)
 codex --version
 ```
 
@@ -87,12 +88,25 @@ The clone at `~/.humans-debt-runner/clone` is disposable — the script hard
 resets it to `origin/main` and cleans untracked files on every run. If you
 ever need to nuke it, just delete the directory and redo step 1.
 
-`CODEX_MODEL`/`CODEX_EFFORT` are pinned explicitly (default `gpt-5.6-terra`
+`CODEX_MODEL`/`CODEX_EFFORT` are pinned explicitly (default `gpt-6.1-sol`
 / `medium`) rather than left to inherit whatever the interactive `codex`
 config on this machine happens to be set to — otherwise changing Peter's
 own day-to-day model preference would silently change what the nightly job
 runs too. Override in `debt-runner.env` if you want the nightly job on a
-different model/effort than the default.
+different model/effort than the default. Existing installations with an
+explicit model override must update it to adopt the new default.
+
+Codex CLI **0.159.2 or newer is required**. The helper routing below was
+verified with 0.159.2; older CLI configuration schemas are unsupported.
+
+The runner enables subagents and pins `agents.default_subagent_model` to
+`gpt-6-luna` and `agents.default_subagent_reasoning_effort` to `medium` on its
+app-server process, independently of the coordinator's model and local config.
+The nightly prompt permits these helpers for bounded discovery, localization
+preparation, and mechanical edits. The coordinator reviews their
+work and owns validation and commits; helpers never run builds/tests or Git
+mutations. Small tasks stay with the coordinator, and unavailable delegation
+falls back to direct work.
 
 ## Installing the systemd timer (Linux)
 
@@ -156,11 +170,29 @@ throwaway Git repositories; no integration tests or remote publication):
 python3 .codex/cron/test_daily_debt.py
 ```
 
+## Spend comment
+
+After creating a PR (including drafts and recovered publications), the wrapper
+posts the Codex spend skill's report. It records explicit cleanup and gate-repair
+session IDs, with a separate breakdown for each root and its linked subagents.
+The estimate uses Standard API list rates; it is not subscription billing.
+Reporting failures are logged and never block publishing validated fixes.
+
+Install the Codex `spend` skill from
+[`peterdrier/skills`](https://github.com/peterdrier/skills/tree/main/plugins/pd-codex/skills/spend)
+into `${CODEX_HOME:-~/.codex}/skills/spend`, using the Skill Installer with repo
+`peterdrier/skills` and path `plugins/pd-codex/skills/spend`. For a plugin install
+or another location, set `SPEND_SCRIPT` to its `scripts/spend.py` path.
+A missing calculator is reported visibly in the PR comment.
+
 ## Logs
 
 - File log: `$LOG_DIR/debt-YYYY-MM-DD.log` (default
   `~/.humans-debt-runner/logs/`), one file per calendar day, appended across
   runs. Ends with a one-line `SUMMARY ...` you can `grep` across days.
+- Session IDs: `$LOG_DIR/sessions-YYYY-MM-DD.jsonl`; spend comment body:
+  `$LOG_DIR/spend-YYYY-MM-DD.md`. Kept outside the disposable clone for
+  publication retries.
 - Journal (systemd path only): `journalctl --user -u humans-debt.service`.
 - Logs older than `LOG_RETENTION_DAYS` (default 30) are pruned at the start
   of each run.

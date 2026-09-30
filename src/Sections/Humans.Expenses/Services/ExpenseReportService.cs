@@ -450,10 +450,15 @@ internal sealed class ExpenseReportService(
             logger.LogWarning("Error adding line to report {ReportId}: {Reason}", reportId, ex.Message);
             return new ExpenseAddLineResult(false, ex.Message, null);
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning("Error adding line to report {ReportId}: {Reason}", reportId, ex.Message);
+            return new ExpenseAddLineResult(false, ex.Message, null);
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error adding line to report {ReportId}", reportId);
-            return new ExpenseAddLineResult(false, ex.Message, null);
+            return new ExpenseAddLineResult(false, null, null);
         }
     }
 

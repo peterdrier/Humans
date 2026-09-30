@@ -107,6 +107,28 @@ public class CampControllerTests
     }
 
     [HumansFact]
+    public async Task AddMember_PropagatesRequestCancellation()
+    {
+        var actorId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<CampInfo?>(camp));
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(actorId)));
+        _authorization.AuthorizeAsync(
+                Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        _camps.AddCampMemberToActiveSeasonAsync(camp.Id, Arg.Any<Guid>(), actorId, cancellation.Token)
+            .Returns(Task.FromCanceled<AddCampMemberOutcome>(cancellation.Token));
+
+        var act = () => BuildController(actorId).AddMember(camp.Slug, Guid.NewGuid(), cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task Index_RoleLeadPublicCamp_IsPinnedBeforeAlphabeticalCamps()
     {
         var userId = Guid.NewGuid();

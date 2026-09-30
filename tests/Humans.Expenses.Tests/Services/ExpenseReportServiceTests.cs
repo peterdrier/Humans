@@ -535,6 +535,7 @@ public sealed class ExpenseReportServiceTests
             id, submitter, false, "Supplies", 25m, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().BeNull("unexpected persistence failures must not expose implementation details");
         logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error);
         var error = logger.Entries.Single(e => e.Level == LogLevel.Error);
         error.Exception.Should().BeOfType<InvalidOperationException>()

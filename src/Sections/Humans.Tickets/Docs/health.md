@@ -95,9 +95,9 @@ The layout these shapes imply:
 - No read-through cache on the dashboard stats; on-demand staleness during sync is accepted.
 - No pagination-free admin lists: orders, attendees and who-hasn't-bought are the one place the
   dataset is large enough that paging buys something.
-- No concurrency tokens on the transfer request (`no-concurrency-tokens`). The state machine
-  re-checks status on entry, which rejects a stale second submit but not two overlapping `Decide`
-  POSTs that both read Pending; that gap is recorded in `Docs/debt.yml`, not closed here.
+- No concurrency tokens on the transfer request (`no-concurrency-tokens`). Decisions use a shared
+  in-process gate and re-read status after acquiring it, so overlapping submissions cannot both
+  enter the vendor flow. The gate remains held until the outcome, audit and notifications finish.
 - No per-environment toggle for the automated transfer path; it is always offered.
 - No separate Attendee aggregate root: `TicketTransferRequest` references the attendee with no
   inverse collection on purpose.

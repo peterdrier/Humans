@@ -115,6 +115,11 @@ A `VoidSucceededIssueFailed` request (ticket voided, reissue pending) accepts on
 **Mark successful** — Cancel/Reject/Process are blocked so the already-voided seat can't be stranded or
 double-voided.
 
+Cancel, Reject, Approve, Process and Retry share a single-server decision gate across service instances.
+Each reloads the request inside the gate and holds it until the vendor outcome and local decision are
+recorded. A waiting duplicate therefore sees the decided status before it can call the vendor. Retry
+waits without request cancellation because the original ticket has already been voided.
+
 Triggers: `Submit` (Sender), `Cancel` (Sender, only on own Pending), `Reject`/`Approve` (manual mark
 successful) / `Process` (automated void+reissue) / `Retry` (reissue from the held seat) (admin).
 

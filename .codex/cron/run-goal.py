@@ -24,7 +24,10 @@ def run(prompt_file, report_file, deadline):
     # attached to the thread for every native goal continuation.
     dangerous = os.environ.get("CODEX_DANGEROUS", "1") == "1"
     proc = subprocess.Popen(
-        ["codex", "app-server", "--stdio", "--enable", "goals"],
+        ["codex", "app-server", "--stdio", "--enable", "goals",
+         "-c", "agents.enabled=true",
+         "-c", 'agents.default_subagent_model="gpt-6-luna"',
+         "-c", 'agents.default_subagent_reasoning_effort="medium"'],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1,
     )
     thread_id = None
@@ -65,13 +68,20 @@ def run(prompt_file, report_file, deadline):
                 send("initialized", {})
                 send("thread/start", {
                     "cwd": os.environ["WORK_DIR"],
-                    "model": os.environ.get("CODEX_MODEL", "gpt-5.6-terra"),
+                    "model": os.environ.get("CODEX_MODEL", "gpt-6.1-sol"),
                     "approvalPolicy": "never",
                     "sandbox": "danger-full-access" if dangerous else "workspace-write",
                     "config": {"model_reasoning_effort": os.environ.get("CODEX_EFFORT", "medium")},
                 }, 2)
             elif event.get("id") == 2:
                 thread_id = event["result"]["thread"]["id"]
+                manifest = os.environ.get("DEBT_SESSION_MANIFEST")
+                if manifest:
+                    try:
+                        with Path(manifest).open("a") as sessions:
+                            sessions.write(json.dumps({"thread_id": thread_id}) + "\n")
+                    except OSError as error:
+                        print(f"WARNING: could not record spend session: {error}", flush=True)
                 send("thread/goal/set", {"threadId": thread_id, "objective": objective}, 3)
             elif event.get("id") == 3:
                 goal_status = event["result"]["goal"]["status"]

@@ -8,10 +8,6 @@ inbox:
     what: "Every mutation on the section exists twice: an internal XxxAsync that throws ExpenseValidationException and a public XxxWithResultAsync that catches it and returns a result object. Services/ExpenseReportService.cs carries both halves for each transition, so a caller can reach the throwing form and a reader has to check which one a call site took. One shape per transition would delete the wrapper layer, but the choice of which shape survives changes IExpenseReportService's surface. Found by /section-doctor on Expenses 2026-08-26."
     review: panel
   - added: 2026-08-26
-    id: EXP-2
-    what: "Controllers/ExpensesController.cs repeats the same load-and-authorize preamble in nearly every action that takes a report id: RequireCurrentUserAsync, GetAsync(id), NotFound, AllowsAsync(op), Forbid. A private helper returning (IActionResult? Failure, ExpenseReportDto? Report, UserInfo? User) collapses the preamble at each site, at the cost of a null-forgiving operator at every one — which is the reason this run did not strike it. Found by /section-doctor on Expenses 2026-08-26."
-    review: panel
-  - added: 2026-08-26
     id: EXP-3
     what: "Services/ExpenseReportService.cs is the section's maxClassLoc and its only large class. It holds the report state machine, the Holded outbox drain and its backoff, the Holded purchase-document conversation (ProcessHoldedCreateAsync, the section's longest method), and the GDPR export contributor. The Holded conversation is a cohesive concern with its own failure model and would split out without touching the state machine. Found by /section-doctor on Expenses 2026-08-26."
     review: panel
@@ -21,5 +17,5 @@ inbox:
     review: panel
   - added: 2026-09-26
     id: EXP-5
-    what: "Member-facing Expenses pages render hardcoded English. Edit, LineEdit, LineProofs, NewLine and NewLineChoice never go through the localizer, and Detail, Iban and New only in places, while Index and Review are localized — so a Spanish-speaking member filing a claim sees a mixed-language flow. Every string needs an Expenses_ key in all six cultures (AGENTS.md, Hit every surface). Found by /section-doctor on Expenses 2026-09-26."
+    what: "Member-facing Expenses service and model validation errors, including IBAN mutation result messages, still return hardcoded English. Views and controller-owned mutation flash text now use the six-culture section resources; service-provided details retain their existing English representation. Remaining localization from EXP-5, verified during the daily debt sweep 2026-09-30."
     review: panel

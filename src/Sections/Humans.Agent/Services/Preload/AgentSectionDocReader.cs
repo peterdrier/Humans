@@ -60,7 +60,7 @@ internal sealed class AgentSectionDocReader(
                 canonicalKey, $"{FolderPath}, {SectionProjectFolder(canonicalKey)}");
             return null;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex,
                 "Failed to fetch agent section guide {Section} from GitHub; returning null", canonicalKey);

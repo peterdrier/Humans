@@ -10,64 +10,79 @@ name: claude-review
 # between the two repos:
 #
 #   peterdrier/Humans
-#     Trigger: pull_request for same-repo PRs (collaborator pushed branch
-#              directly to peterdrier/Humans), pull_request_target for
-#              fork PRs from trusted authors (OWNER/MEMBER/COLLABORATOR
-#              per GitHub's author_association). Random external forks
-#              are skipped — pull_request_target with a checkout of
-#              attacker-controlled code would be a "pwn-request" hole.
-#     Auth:    OIDC → claude[bot] App token on pull_request (default);
-#              workflow GITHUB_TOKEN on pull_request_target (see #713
-#              below).
+#     Trigger: pull_request_target for same-repo PRs and for fork PRs from
+#              trusted authors (OWNER/MEMBER/COLLABORATOR per GitHub's
+#              author_association). Random external forks are skipped.
 #
 #   nobodies-collective/Humans
 #     Trigger: pull_request_target, only when the head is peterdrier/Humans
-#              (the QA-promotion path). Random external forks are skipped —
-#              same pwn-request reason.
-#     Auth:    Workflow GITHUB_TOKEN. Anthropic's OIDC → App-token exchange
-#              currently 401s on pull_request_target events
-#              (anthropics/claude-code-action#713); passing github_token
-#              tells the action to skip OIDC and post as github-actions[bot].
-#     Checkout: base ref (default), per the action's docs/security.md —
-#               do NOT check out the PR head into the workspace root.
+#              (the QA-promotion path). Random external forks are skipped.
+#
+#   Auth (both): workflow GITHUB_TOKEN; comments post as github-actions[bot].
+#     Anthropic's OIDC → App-token exchange 401s on pull_request_target
+#     (anthropics/claude-code-action#713) and passing github_token skips it,
+#     so the job needs no `id-token: write`.
+#
+# Why never `pull_request` (2026-09-30): on `pull_request` GitHub takes the
+# whole workflow file from the PR head, and same-repo branch PRs get
+# secrets. Any pushed branch — including an agent's, steered by whatever it
+# last read — could rewrite these steps or the prompt, exfiltrate
+# CLAUDE_CODE_OAUTH_TOKEN, or tell the reviewer to find nothing.
+# pull_request_target and issue_comment both run this file from the base
+# branch, so nothing a PR contains changes what this job does.
+#
+# Trust boundary: the workspace is the BASE branch on every trigger
+# (actions/checkout's default for both events; with a `prompt:` the action
+# runs in agent mode and does not check out the PR head). So the review
+# prompt (.claude/claude-review-prompt.md, read by the `review-prompt`
+# step), the tool allow-list below, and the rule documents the reviewer
+# reads all come from base. The PR enters only as data: `gh pr diff`, and
+# `git show <sha>:<path>` on the commits the `fetch-pr` step fetches.
+# Nothing from the PR executes. Do NOT add build/test/install steps, do NOT
+# check out the PR head, and keep the prompt out of any PR-supplied path.
+# The prompt also declares all PR content untrusted and makes a steering
+# attempt a finding.
 #
 # Run cadence:
 #   Auto: on PR open (non-draft) and draft → ready_for_review. 'synchronize'
 #         (every push) is intentionally OFF — review-every-push burns budget
 #         and re-flags suppressed findings churns reviewer attention. Enable
-#         by adding 'synchronize' to both trigger 'types' if quota allows.
+#         by adding 'synchronize' to the trigger 'types' if quota allows.
 #   On-demand: any OWNER/MEMBER/COLLABORATOR posting a comment starting with
 #              `/review` on the PR triggers a fresh run. The docs-only skip
 #              does NOT apply to comment-triggered runs (explicit ask wins).
+#   Docs-only: the `review` job reports as SKIPPED, not passed — a green
+#              check next to no review would read as review signal.
 #   Dependabot: PRs opened by dependabot[bot] are skipped (actor guard in the
 #               `if:` below). Dependabot-triggered runs use the isolated
 #               Dependabot secret store, so CLAUDE_CODE_OAUTH_TOKEN is empty
 #               and the action fails fast — a spurious red check on every bump.
+#
+# What a green check means: the review ran, nothing more. It passes whether
+# or not findings were posted, and "no issues found" can mean the reviewer
+# missed them. It gates nothing; findings are triaged per
+# memory/process/review-finding-triage.md.
+#
+# Model: pinned in `claude_args` so a change in the action's default never
+# silently changes review quality or cost. Opus-class matches what the
+# unpinned default ran before the pin. The `run-report` step logs turns and
+# the SDK's API-equivalent cost per run — measure before changing the pin.
 #
 # Reviewer tools: Read/Grep/Glob inside the checkout plus the read-only
 # `gh` and `git show` sub-commands in `claude_args` below. The file tools
 # are deliberately NOT in the allow-list: Claude Code permits them within
 # the working directory without a rule, and a bare `Read` rule would lift
 # that fence and let the reviewer read /proc/self/environ (the OAuth token)
-# or the runner's temp files. The prompt still tells the reviewer to use
-# them — `gh pr diff` truncates on a large PR, so without Read a big PR
-# gets a green check and no review. Nothing here can write: the workspace
-# is read-only to the reviewer and no build or test step runs.
+# or the runner's temp files. Nothing here can write: the workspace is
+# read-only to the reviewer and no build or test step runs.
 #
-# Tool failures: the `tool-failures` step after the action prints every
-# permission denial and errored tool result from the SDK execution file,
-# so a review that did nothing is diagnosable from the run log without
-# `show_full_output`.
+# Run report: the `run-report` step after the action prints turns, cost,
+# every permission denial and every errored tool result from the SDK
+# execution file, so a review that did nothing is diagnosable from the run
+# log without `show_full_output`.
 #
 # Concurrency: per-PR group with cancel-in-progress. A new push or `/review`
 # during an in-flight review cancels the stale run instead of stacking.
-#
-# Why pull_request_target stays safe: the pwn-request hole only opens if
-# you `actions/checkout` the PR head and execute code from it (build,
-# test, install). This workflow checks out the BASE ref (default for
-# pull_request_target) and reads the PR diff via the GitHub API through
-# the action — fork code never runs locally. Do NOT add build/test steps
-# to this job.
 #
 # Setup (one-time, per repo):
 #   1. `claude setup-token` locally → copy the OAuth token.
@@ -76,33 +91,34 @@ name: claude-review
 #   3. Token is valid ~1 year; rotate by re-running setup-token.
 
 on:
-  pull_request:
-    types: [opened, ready_for_review]
+  # Never add `pull_request` here — see "Why never `pull_request`" above.
   pull_request_target:
     types: [opened, ready_for_review]
   issue_comment:
     types: [created]
-  # Note: do NOT use trigger-level paths-ignore here. For pull_request /
-  # pull_request_target, GitHub evaluates path filters against the PR's
-  # cumulative diff vs base, not the push delta — and a filtered-out
-  # trigger reports as a missing check rather than a passing one. The
-  # docs-only skip is enforced by the `skip-if-docs-only` step below,
-  # which compares base...head via the compare API.
+  # Note: do NOT use trigger-level paths-ignore here. For pull_request_target,
+  # GitHub evaluates path filters against the PR's cumulative diff vs base,
+  # not the push delta — and a filtered-out trigger reports as a missing
+  # check rather than a skipped one. The docs-only skip is enforced by the
+  # `skip-if-docs-only` step below, which compares base...head via the
+  # compare API.
 
 concurrency:
-  # Include event_name so pull_request, pull_request_target, and issue_comment
-  # events get separate slots per PR. Workflow-level concurrency is evaluated
-  # BEFORE job-level `if:`, so without this split, every PR comment (which
-  # queues an issue_comment run that then skips) would cancel an in-flight
-  # review via cancel-in-progress. Trade-off: a `/review` comment posted
-  # while a pull_request review is still running won't cancel that review —
-  # both run to completion. Cancel-in-progress still consolidates repeats
-  # within the same event type.
+  # Include event_name so pull_request_target and issue_comment events get
+  # separate slots per PR. Workflow-level concurrency is evaluated BEFORE
+  # job-level `if:`, so without this split, every PR comment (which queues
+  # an issue_comment run that then skips) would cancel an in-flight review
+  # via cancel-in-progress. Trade-off: a `/review` comment posted while an
+  # automatic review is still running won't cancel that review — both run
+  # to completion. Cancel-in-progress still consolidates repeats within the
+  # same event type.
   group: claude-review-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
-  review:
+  # Resolves the PR and decides whether to review it. A separate job so a
+  # docs-only skip shows `review` as skipped rather than passed.
+  preflight:
     if: |
       (github.event_name == 'issue_comment'
         && github.event.issue.pull_request != null
@@ -110,39 +126,30 @@ jobs:
         && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
                     github.event.comment.author_association))
       ||
-      (github.event.pull_request.draft == false
+      (github.event_name == 'pull_request_target'
+        && github.event.pull_request.draft == false
         && github.actor != 'dependabot[bot]'
         && (
-        (github.event_name == 'pull_request'
-          && github.repository == 'peterdrier/Humans'
-          && github.event.pull_request.head.repo.full_name == github.repository)
+        (github.repository == 'peterdrier/Humans'
+          && (github.event.pull_request.head.repo.full_name == github.repository
+            || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
+                        github.event.pull_request.author_association)))
         ||
-        (github.event_name == 'pull_request_target'
-          && github.repository == 'peterdrier/Humans'
-          && github.event.pull_request.head.repo.full_name != github.repository
-          && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
-                      github.event.pull_request.author_association))
-        ||
-        (github.event_name == 'pull_request_target'
-          && github.repository == 'nobodies-collective/Humans'
+        (github.repository == 'nobodies-collective/Humans'
           && github.event.pull_request.head.repo.full_name == 'peterdrier/Humans')
       ))
     runs-on: ubuntu-latest
-    # A full review runs ~5 minutes; without this the job inherits the
-    # 360-minute default and a hung action burns an afternoon of runner time.
-    timeout-minutes: 20
+    timeout-minutes: 5
     permissions:
       contents: read
-      pull-requests: write
-      id-token: write
+      pull-requests: read
+    outputs:
+      number: ${{ steps.pr.outputs.number }}
+      head_sha: ${{ steps.pr.outputs.head_sha }}
+      base_sha: ${{ steps.pr.outputs.base_sha }}
+      base_ref: ${{ steps.pr.outputs.base_ref }}
+      skip: ${{ steps.guard.outputs.skip }}
     steps:
-      - uses: actions/checkout@v7
-        with:
-          # Deep enough for `git show <base-sha>:<file>` against the PR's
-          # base and head (both are parents of the merge ref); the reviewer
-          # reads the diff through the GitHub API, not local history.
-          fetch-depth: 10
-
       # Resolve the PR under review once, for every trigger, and hand the
       # result to the action's prompt. Without it the reviewer spends ~8
       # turns on `gh pr list` / `gh pr view` / `gh api pulls/N` working out
@@ -187,7 +194,10 @@ jobs:
           fi
           echo "Changed files in delta:"
           echo "$files"
-          if echo "$files" | grep -qvE '(^docs/|\.md$)'; then
+          # The review prompt is markdown but steers every later review, so a
+          # change to it always gets reviewed.
+          if echo "$files" | grep -qvE '(^docs/|\.md$)' \
+            || echo "$files" | grep -qxF '.claude/claude-review-prompt.md'; then
             echo "Non-docs files present; running review."
             echo "skip=false" >> "$GITHUB_OUTPUT"
           else
@@ -195,272 +205,85 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
+  review:
+    needs: preflight
+    if: needs.preflight.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    # A full review runs ~5 minutes; without this the job inherits the
+    # 360-minute default and a hung action burns an afternoon of runner time.
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # The base branch — see "Trust boundary" in the header. Never add a
+      # `ref:` pointing at the PR head.
+      - uses: actions/checkout@v7
+
+      # Brings the PR's head and base commits into the object store so the
+      # reviewer can `git show <sha>:<path>` any changed file. Objects only:
+      # nothing is checked out, so no PR file lands in the workspace.
+      - name: fetch-pr
+        env:
+          BASE: ${{ needs.preflight.outputs.base_sha }}
+          HEAD: ${{ needs.preflight.outputs.head_sha }}
+        run: git fetch --no-tags --depth=1 origin "$BASE" "$HEAD"
+
+      # Read from the base checkout, so the prompt is whatever base says.
+      - name: review-prompt
+        id: prompt
+        run: |
+          set -euo pipefail
+          delim="PROMPT_$(openssl rand -hex 16)"
+          {
+            echo "body<<$delim"
+            cat .claude/claude-review-prompt.md
+            echo "$delim"
+          } >> "$GITHUB_OUTPUT"
+
       - id: claude
-        if: steps.guard.outputs.skip != 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # On pull_request_target, skip OIDC (see #713 above) by handing the
-          # action the workflow token directly. Empty on pull_request → action
-          # falls back to OIDC and posts as claude[bot].
-          github_token: ${{ github.event_name == 'pull_request_target' && secrets.GITHUB_TOKEN || '' }}
+          # Skips the OIDC exchange (see #713 in the header).
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           prompt: |
             Review this pull request for the Nobodies Humans codebase.
 
-              Repo:     ${{ github.repository }}
-              PR:       #${{ steps.pr.outputs.number }}
-              Head SHA: ${{ steps.pr.outputs.head_sha }}
-              Base:     ${{ steps.pr.outputs.base_ref }} @ ${{ steps.pr.outputs.base_sha }}
+              Repo:      ${{ github.repository }}
+              Owner:     ${{ github.event.repository.owner.login }}
+              Repo name: ${{ github.event.repository.name }}
+              PR:        #${{ needs.preflight.outputs.number }}
+              Head SHA:  ${{ needs.preflight.outputs.head_sha }}
+              Base:      ${{ needs.preflight.outputs.base_ref }} @ ${{ needs.preflight.outputs.base_sha }}
 
             That is the PR under review. Do NOT run `gh pr list` or
             `gh pr view` to work out which PR it is, and do not look up the
             head SHA — it is above, and it is the SHA the summary comment
             must cite. Get the diff with
-            `gh pr diff ${{ steps.pr.outputs.number }} --repo ${{ github.repository }}`.
+            `gh pr diff ${{ needs.preflight.outputs.number }} --repo ${{ github.repository }}`.
 
-            ## Shell rules
-
-            The workspace is write-blocked and the tool allow-list is
-            matched per sub-command, so a Bash call that chains commands is
-            rejected whole. Do not use `&&` or `;`, and do not redirect
-            output (`>`) — /tmp and the workspace are both blocked, so
-            saving the diff to a file cannot work and only costs a turn.
-            Read `gh pr diff` output straight from the tool result.
-
-            ## Reading the code
-
-            Read, Grep and Glob are available and you are expected to use
-            them. A finding is worth far more when you have read the
-            surrounding file than when you have only seen its diff hunk, and
-            the rule documents listed below can only be reached this way.
-
-            What the working tree holds depends on the trigger, and this run's
-            trigger is `${{ github.event_name }}`:
-
-            - `pull_request` — the tree is the PR's merge ref: the code as it
-              will look once merged. Read/Grep/Glob show you the change
-              itself. Use them to read a changed file in full, find the other
-              callers of a symbol, or check whether a pattern already exists
-              elsewhere.
-            - `pull_request_target` (fork PR) or `issue_comment` (a `/review`
-              comment) — the tree is the base or default branch, NOT the PR's
-              code. Use Read/Grep/Glob for the rule documents and for existing
-              code you are comparing against, but never to read a file the PR
-              changed: you would be reading main's version and reviewing the
-              wrong text. The change itself comes from `gh pr diff` and the
-              GitHub API only.
-
-            `gh pr diff` output is truncated on a large PR, and a truncated
-            diff is not a reviewed PR. On a `pull_request` run, if the diff
-            looks cut off, get the file list with
-            `gh pr diff <n> --name-only` and Read the changed files directly —
-            on any PR over a few hundred lines that is the reliable path, not
-            a fallback. On the other two triggers you cannot do that, so
-            review what you can see and say plainly in the summary that
-            coverage was partial. Never post a review that silently rests on
-            a diff you know was truncated.
-
-            Anchor your review on the project's own rule documents (read them
-            from the checkout):
-              - CLAUDE.md
-              - memory/INDEX.md (atomic project rules; fetch ONLY the
-                atoms whose description matches the change under review —
-                do not read the whole atom set)
-              - docs/architecture/code-review-rules.md
-              - docs/architecture/design-rules.md
-
-            Do NOT read docs/sections/, src/Sections/*/Docs/ or docs/features/
-            as part of this review. Section invariants and feature specs are reviewed
-            separately by /section-align on demand; including them here
-            burns budget and produces cross-document nits this workflow
-            should not gate on.
-
-            Cover correctness, security, and the project's design/coding
-            rules (services own their data, no cross-service DB access,
-            NodaTime, append-only ConsentRecord, no concurrency tokens,
-            etc.). Do not flag stylistic nits. Do not flag doc-only
-            concerns (typos in markdown, missing doc cross-links, etc.) —
-            those are out of scope for this reviewer.
-
-            ## Budget
-
-            Aim for ≤30 turns of analysis before you start posting
-            findings. If you reach 60 turns of analysis still not having
-            posted anything, STOP analyzing, post the findings you have,
-            and include in the summary `WARN — review was budget-truncated,
-            partial coverage only.` The hard `--max-turns 100` ceiling is
-            a crash backstop, not a target — never spend it all on
-            analysis.
-
-            ## Severity floor
-
-            Post only P0 (BLOCK — bug, security, rule violation), P1
-            (WARN — likely-wrong or risky), and P2 (WARN — concrete fix
-            suggested, ≥80% confidence) findings. P3 stylistic nits,
-            preference-level commentary, and "consider also..." asides
-            are forbidden. No upper cap on count — if you find 12 valid
-            P0/P1/P2 findings, post all 12.
-
-            Prefix bodies with `BLOCK —` for P0 and `WARN —` for P1/P2,
-            then the rule reference, what's wrong, and the fix.
-
-            ## Existing thread state — fetch BEFORE deciding what to flag
-
-            This PR may already have been reviewed — a repeat `/review`
-            comment, or a re-open after work landed. To avoid re-flagging
-            findings that were already raised, fetch the existing review
-            threads FIRST and build a deny-list. Then run your review pass.
-            Then filter findings against the deny-list before posting.
-
-            Use GraphQL — the REST `/pulls/{N}/comments` endpoint does NOT
-            expose `isResolved`, so it cannot tell you which threads have
-            been resolved via the GitHub UI:
-
-              gh api graphql \
-                -F owner='${{ github.event.repository.owner.login }}' \
-                -F repo='${{ github.event.repository.name }}' \
-                -F pr=${{ steps.pr.outputs.number }} \
-                -f query='
-                  query($owner: String!, $repo: String!, $pr: Int!) {
-                    repository(owner: $owner, name: $repo) {
-                      pullRequest(number: $pr) {
-                        reviewThreads(first: 100) {
-                          nodes {
-                            isResolved
-                            isOutdated
-                            path
-                            line
-                            comments(first: 50) {
-                              nodes { author { login } body }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                '
-
-            For each thread node in the response, classify as
-            **suppressed** if EITHER:
-
-            - **Resolved** (`isResolved == true` — the GitHub UI "Resolve
-              conversation" button was clicked).
-            - **Declined / not-doing**: any reply in the thread's `comments`
-              chain contains "not doing", "declined", "out of scope",
-              "won't fix", "wontfix", "leaving as-is", "leaving as is",
-              "Peter authorized", "by design", "intentional", "no change",
-              "skip", or similar accepted-as-is language. The deviation
-              is sanctioned.
-
-            Include OUTDATED threads (`isOutdated == true`) in the
-            deny-list — across pushes, line numbers shift and GitHub
-            marks the original thread outdated, but the underlying issue
-            is the same. Do not re-flag.
-
-            For each suppressed thread, extract a **finding identity**
-            and match a new finding against the deny-list using ALL of:
-
-            1. **Rule reference** — the atom path (e.g.
-               `memory/code/...`), doc anchor, or rule citation quoted in
-               the suppressed thread's first comment. The new finding
-               cites the same rule.
-            2. **Finding category** — what's wrong in plain terms
-               (e.g. "cross-service DB write", "missing authorization
-               handler", "EF type leaking into Application layer"). The
-               new finding describes the same category.
-            3. **Site identity** — at least ONE of:
-               - same file path, OR
-               - same symbol / method / type / endpoint name quoted in
-                 the bodies (handles refactors that move the same
-                 violation to a sibling file), OR
-               - the suppressed thread's offending code snippet
-                 substantially overlaps the new finding's code snippet.
-
-            Suppress the new finding ONLY if (1) AND (2) AND (3) all
-            match. Same rule + same category on a DIFFERENT site is a
-            legitimately new finding — post it. Two distinct violations
-            of the same rule on the same PR are both valid, even if one
-            was declined.
-
-            ## How to post the review (STRICT)
-
-            Do ALL of your analysis before posting anything. Do every
-            review pass — atom rules, code-review-rules, design-rules —
-            entirely in your head / scratch reasoning, NOT as posted
-            comments. (Section invariants and feature specs are out of
-            scope per the reading-list block above; do not include them
-            in the analysis pass.)
-
-            Findings post in TWO channels:
-
-            1. **Inline review comments** (the default — use this for
-               anything tied to a specific file + line). Post each
-               finding via
-               `mcp__github_inline_comment__create_inline_comment` with
-               `confirmed: true` so the comment posts immediately rather
-               than buffering. These create review threads that carry
-               GitHub's `isResolved` flag, which downstream tooling and
-               reviewers rely on to track which findings have been
-               addressed.
-
-               Body format: start with `BLOCK — <one-line title>` or
-               `WARN — <one-line title>`, then the rule reference
-               (atom path or doc anchor), then what's wrong, then the
-               suggested fix. Use a ```suggestion``` block when the fix
-               is a drop-in line replacement. One inline comment per
-               finding — do NOT batch multiple findings into one comment.
-
-            2. **Top-level summary** via `gh pr comment`. Posted EXACTLY
-               ONCE per run, AFTER all inline comments. Posting more
-               than one top-level summary comment is forbidden — no
-               "interim" summaries, no "round 1 / round 2", no extra
-               comments after the final one.
-
-            ## What the summary comment must say (and must NOT say)
-
-            The summary MUST reference the head commit SHA. Three formats:
-
-            - No findings: post EXACTLY
-              `Reviewed commit <sha> — no issues found.`
-              and nothing else. Do not list what was checked, do not list
-              "Clean" areas, do not enumerate rules that passed.
-
-            - Inline findings only (the typical case): post EXACTLY
-              `Reviewed commit <sha>. <N> inline finding(s) posted.`
-              where N is the count of inline comments you posted. Do NOT
-              re-list the inline findings in the summary — inline is the
-              source of truth.
-
-            - Cross-cutting findings (architecture, missing files,
-              repo-wide concerns that don't attach to one line): include
-              them in the summary AFTER the count line, prefixed
-              `BLOCK —` / `WARN —` with the same rule-ref / what's wrong
-              / fix structure as inline. Use this channel sparingly —
-              prefer attaching findings to a representative line when
-              one exists.
-
-            Rationale: a reviewer wants to know what's broken, where, and
-            be able to mark each finding "resolved" once fixed. Inline
-            threads support that workflow; a wall of findings in a
-            top-level comment doesn't, because top-level comments have no
-            `isResolved` flag. Listing clean areas is noise that buries
-            real findings.
+            ${{ steps.prompt.outputs.body }}
           claude_args: |
+            --model claude-opus-5-5
             --max-turns 100
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr checks:*),Bash(gh api:*),Bash(git show:*)"
 
-      # Surface what went wrong without a full debug log. The action writes
+      # Surface what happened without a full debug log. The action writes
       # every SDK message to claude-execution-output.json; the result message
-      # carries permission_denials (tool name + input) and each tool_result
-      # carries is_error. Inputs are truncated so PR content does not flood
-      # the log. Informational only — it never fails the job.
-      - name: tool-failures
+      # carries turns, cost and permission_denials (tool name + input), and
+      # each tool_result carries is_error. Inputs are truncated so PR content
+      # does not flood the log. Informational only — it never fails the job.
+      - name: run-report
         if: always() && steps.claude.outputs.execution_file != ''
         env:
           FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
           set -uo pipefail
           [ -f "$FILE" ] || { echo "No execution file at $FILE"; exit 0; }
+          echo "== run =="
+          jq -r '.[] | select(.type=="result")
+                 | "turns=\(.num_turns) cost_usd=\(.total_cost_usd) duration_s=\((.duration_ms // 0) / 1000 | floor) is_error=\(.is_error)"' "$FILE"
           echo "== permission denials =="
           jq -r '.[] | select(.type=="result") | .permission_denials[]?
                  | "DENIED \(.tool_name): \(.tool_input | tostring | .[0:200])"' "$FILE"

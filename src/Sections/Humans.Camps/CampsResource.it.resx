@@ -263,4 +263,19 @@
   <data name="Camps_Flash_UnknownError" xml:space="preserve"><value>Errore sconosciuto.</value></data>
   <data name="Camps_Flash_RoleUnassigned" xml:space="preserve"><value>Ruolo rimosso.</value></data>
   <data name="Camps_Flash_AssignmentNotFound" xml:space="preserve"><value>Assegnazione non trovata.</value></data>
+  <data name="Camps_Details_Breadcrumb" xml:space="preserve"><value>Percorso di navigazione</value></data>
+  <data name="Camps_Details_Slide" xml:space="preserve"><value>Diapositiva {0}</value></data>
+  <data name="Camps_Details_Previous" xml:space="preserve"><value>Precedente</value></data>
+  <data name="Camps_Details_Next" xml:space="preserve"><value>Successiva</value></data>
+  <data name="Camps_Details_SeasonLink" xml:space="preserve"><value>Visualizza la pagina della stagione {0}</value></data>
+  <data name="Camps_Details_MyMembership" xml:space="preserve"><value>La mia adesione</value></data>
+  <data name="Camps_Details_MembershipHelp" xml:space="preserve"><value>Questo non ti iscrive al campo. Unisciti prima tramite la procedura del campo, poi informa Humans per accedere ai ruoli del campo, alle assegnazioni di Ingresso Anticipato e alle notifiche.</value></data>
+  <data name="Camps_Details_FullSeason" xml:space="preserve"><value>Questo campo indica di essere al completo per {0} — puoi comunque richiedere di unirti.</value></data>
+  <data name="Camps_Details_RequestJoin" xml:space="preserve"><value>Richiedi di unirti per {0}</value></data>
+  <data name="Camps_Details_PendingApproval" xml:space="preserve"><value>In attesa dell’approvazione dei responsabili per {0}.</value></data>
+  <data name="Camps_Details_WithdrawConfirm" xml:space="preserve"><value>Ritirare la tua richiesta in sospeso?</value></data>
+  <data name="Camps_Details_WithdrawRequest" xml:space="preserve"><value>Ritira richiesta</value></data>
+  <data name="Camps_Details_ActiveMembership" xml:space="preserve"><value>Sei un membro per {0}.</value></data>
+  <data name="Camps_Details_LeaveConfirm" xml:space="preserve"><value>Lasciare questo campo per questa stagione?</value></data>
+  <data name="Camps_Details_LeaveCamp" xml:space="preserve"><value>Lascia il campo</value></data>
 </root>

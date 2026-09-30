@@ -714,6 +714,29 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         Logger.Entries.Should().Contain(e => e.Level == LogLevel.Error && e.Exception != null);
     }
 
+    [HumansFact]
+    public async Task ExpressInterest_PropagatesCallerCancellationDuringNotification()
+    {
+        var trip = await SeedTripAsync(SeedUser("Ada"));
+        using var cancellation = new CancellationTokenSource();
+        Notifications.SendAsync(
+                Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+                Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                throw new OperationCanceledException(cancellation.Token);
+            });
+
+        var act = () => NewService().ExpressInterestAsync(SeedUser("Bo"), trip.Id, null, 1, null, cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await using var ctx = OpenContext();
+        (await ctx.Interests.AnyAsync(i => i.TripId == trip.Id, Ct)).Should().BeTrue();
+        Logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);
+    }
+
     // ── Settings ──────────────────────────────────────────────────────────
 
     [HumansFact]

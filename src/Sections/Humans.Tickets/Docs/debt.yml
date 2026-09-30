@@ -11,10 +11,6 @@ inbox:
     id: TICKETS-2
     what: "TicketController.Orders/Attendees/Codes/SalesAggregates copy service DTOs into Models/TicketViewModels.cs field-by-field (TicketDashboardDtos.cs mirrored, ~150 lines; the Attendees VIP split IsVip/TaxableAmount/VipDonation is computed in the controller). Collapse: bind the DTOs directly as TicketTransferAdmin/Detail and Onsite already do, moving the VIP split onto the AttendeeRow DTO or into the view; the views declare the row types in Func<TicketOrderRow, IHtmlContent> helpers, so each needs a render check. Skipped by the 2026-09-05 run (finding 6) because the cloud container has no Postgres for that check."
     review: panel
-  - added: 2026-09-11
-    id: TICKETS-4
-    what: "TicketTransferService.ProcessTransferAsync / ApproveAsync / RejectAsync guard on request.Status == Pending with a plain read-then-write, so two overlapping Decide POSTs on the same request both pass the check and can both enter the vendor void/reissue flow (the Decide form has no submit guard either). no-concurrency-tokens rules out a row version; the fix is an idempotent guard in the service (e.g. a Processing status written before the vendor call) or a disabled-on-submit form. Raised by Codex on peterdrier/Humans#1589; health.md records it as a gap."
-    review: panel
   - added: 2026-09-22
     id: TICKETS-7
     what: "Services/Stores/CachingTicketVendorService.cs caches GetEventSummaryAsync with a hand-rolled 15-minute TTL EventSummaryCache instead of the standard TrackedCache decorator pattern (design-rules §15). Replace it with the standard caching pattern (Peter, freshness sweep 2026-09-22)."

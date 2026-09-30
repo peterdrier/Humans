@@ -263,4 +263,19 @@
   <data name="Camps_Flash_UnknownError" xml:space="preserve"><value>Error desconegut.</value></data>
   <data name="Camps_Flash_RoleUnassigned" xml:space="preserve"><value>Rol desassignat.</value></data>
   <data name="Camps_Flash_AssignmentNotFound" xml:space="preserve"><value>No s'ha trobat l'assignació.</value></data>
+  <data name="Camps_Details_Breadcrumb" xml:space="preserve"><value>Ruta de navegació</value></data>
+  <data name="Camps_Details_Slide" xml:space="preserve"><value>Diapositiva {0}</value></data>
+  <data name="Camps_Details_Previous" xml:space="preserve"><value>Anterior</value></data>
+  <data name="Camps_Details_Next" xml:space="preserve"><value>Següent</value></data>
+  <data name="Camps_Details_SeasonLink" xml:space="preserve"><value>Veure la pàgina de la temporada {0}</value></data>
+  <data name="Camps_Details_MyMembership" xml:space="preserve"><value>La meva pertinença</value></data>
+  <data name="Camps_Details_MembershipHelp" xml:space="preserve"><value>Això no t’incorpora al campament. Uneix-t’hi primer mitjançant el procés del mateix campament i després informa Humans per accedir als rols del campament, les assignacions d’Entrada Anticipada i les notificacions.</value></data>
+  <data name="Camps_Details_FullSeason" xml:space="preserve"><value>Aquest campament indica que està complet per al {0} — encara pots sol·licitar unir-t’hi.</value></data>
+  <data name="Camps_Details_RequestJoin" xml:space="preserve"><value>Sol·licitar unir-m’hi per al {0}</value></data>
+  <data name="Camps_Details_PendingApproval" xml:space="preserve"><value>Pendent d’aprovació dels responsables per al {0}.</value></data>
+  <data name="Camps_Details_WithdrawConfirm" xml:space="preserve"><value>Vols retirar la teva sol·licitud pendent?</value></data>
+  <data name="Camps_Details_WithdrawRequest" xml:space="preserve"><value>Retirar sol·licitud</value></data>
+  <data name="Camps_Details_ActiveMembership" xml:space="preserve"><value>Formes part del campament per al {0}.</value></data>
+  <data name="Camps_Details_LeaveConfirm" xml:space="preserve"><value>Vols sortir d’aquest campament per a aquesta temporada?</value></data>
+  <data name="Camps_Details_LeaveCamp" xml:space="preserve"><value>Sortir del campament</value></data>
 </root>

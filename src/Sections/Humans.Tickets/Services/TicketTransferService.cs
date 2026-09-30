@@ -1,4 +1,5 @@
 using Humans.AuditLog.Contracts;
+using Humans.Base.Threading;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Tickets.Contracts;
@@ -31,6 +32,17 @@ internal sealed class TicketTransferService(
     IClock clock,
     ILogger<TicketTransferService> logger) : ITicketTransferService
 {
+
+    // Hold the gate from the status read through the vendor outcome and local decision.
+    // Fixed stripes bound memory and coordinate separate service instances on this single server.
+    // A Process holds the gate through two TicketTailor calls (90s client timeout each), so waiters
+    // must outlast that rather than the 60s TrackedLock default.
+    private static readonly TrackedLock[] DecisionLocks = Enumerable.Range(0, 32)
+        .Select(i => new TrackedLock($"TicketTransfer.Decision[{i}]", timeout: TimeSpan.FromMinutes(5)))
+        .ToArray();
+
+    private static TrackedLock DecisionLockFor(Guid requestId) =>
+        DecisionLocks[(uint)requestId.GetHashCode() % (uint)DecisionLocks.Length];
 
     public async Task<IReadOnlyList<MyAttendeeRowDto>> GetMyAttendeesAsync(
         Guid userId, CancellationToken ct = default)
@@ -152,6 +164,7 @@ internal sealed class TicketTransferService(
 
     public async Task CancelAsync(Guid transferRequestId, Guid senderUserId, CancellationToken ct = default)
     {
+        using var decision = await DecisionLockFor(transferRequestId).AcquireAsync(logger, ct);
         var request = await transferRepo.GetByIdAsync(transferRequestId, ct)
             ?? throw new InvalidOperationException("Transfer not found.");
         if (request.Status != TicketTransferStatus.Pending)
@@ -178,6 +191,7 @@ internal sealed class TicketTransferService(
     public async Task<TicketTransferRowDto> ApproveAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
     {
+        using var decision = await DecisionLockFor(transferRequestId).AcquireAsync(logger, ct);
         var request = await LoadPendingAsync(transferRequestId, ct);
         await MarkApprovedAsync(
             request, adminUserId, adminNotes,
@@ -188,6 +202,7 @@ internal sealed class TicketTransferService(
     public async Task<TicketTransferRowDto> ProcessTransferAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
     {
+        using var decision = await DecisionLockFor(transferRequestId).AcquireAsync(logger, ct);
         var request = await LoadPendingAsync(transferRequestId, ct);
         // A partial (already-voided) request must not be re-processed — that would void the
         // already-voided ticket again and overwrite the partial state. Finish + Mark successful.
@@ -236,6 +251,8 @@ internal sealed class TicketTransferService(
     public async Task<TicketTransferRowDto> RetryReissueAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
     {
+        // The original void is already committed; waiting must not cancel its reissue.
+        using var decision = await DecisionLockFor(transferRequestId).AcquireAsync(logger, CancellationToken.None);
         var request = await transferRepo.GetByIdAsync(transferRequestId, ct)
             ?? throw new InvalidOperationException("Transfer not found.");
         if (request.Status != TicketTransferStatus.Pending
@@ -461,6 +478,7 @@ internal sealed class TicketTransferService(
         if (string.IsNullOrWhiteSpace(reason))
             throw new InvalidOperationException("A reason is required to cancel a transfer.");
 
+        using var decision = await DecisionLockFor(transferRequestId).AcquireAsync(logger, ct);
         var request = await transferRepo.GetByIdAsync(transferRequestId, ct)
             ?? throw new InvalidOperationException("Transfer not found.");
         if (request.Status != TicketTransferStatus.Pending)

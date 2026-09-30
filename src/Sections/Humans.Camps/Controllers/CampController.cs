@@ -1019,6 +1019,10 @@ internal sealed class CampController(
             else
                 SetSuccess(campsLocalizer["Camps_Flash_HumanAdded"].Value);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "AddMember failed for camp {CampSlug}, user {UserId}.", slug, userId);
@@ -1066,6 +1070,10 @@ internal sealed class CampController(
         {
             outcome = await _campService.AddMemberAndAssignRoleInActiveSeasonAsync(
                 camp.Id, roleDefinitionId, userId, user.Id, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

@@ -263,4 +263,19 @@
   <data name="Camps_Flash_UnknownError" xml:space="preserve"><value>Erreur inconnue.</value></data>
   <data name="Camps_Flash_RoleUnassigned" xml:space="preserve"><value>Rôle retiré.</value></data>
   <data name="Camps_Flash_AssignmentNotFound" xml:space="preserve"><value>Attribution introuvable.</value></data>
+  <data name="Camps_Details_Breadcrumb" xml:space="preserve"><value>Fil d’Ariane</value></data>
+  <data name="Camps_Details_Slide" xml:space="preserve"><value>Diapositive {0}</value></data>
+  <data name="Camps_Details_Previous" xml:space="preserve"><value>Précédente</value></data>
+  <data name="Camps_Details_Next" xml:space="preserve"><value>Suivante</value></data>
+  <data name="Camps_Details_SeasonLink" xml:space="preserve"><value>Voir la page de la saison {0}</value></data>
+  <data name="Camps_Details_MyMembership" xml:space="preserve"><value>Mon adhésion</value></data>
+  <data name="Camps_Details_MembershipHelp" xml:space="preserve"><value>Ceci ne vous inscrit pas au camp. Rejoignez d’abord le camp selon sa propre procédure, puis informez Humans pour accéder aux rôles du camp, aux allocations d’Entrée Anticipée et aux notifications.</value></data>
+  <data name="Camps_Details_FullSeason" xml:space="preserve"><value>Ce camp indique être complet pour {0} — vous pouvez quand même demander à le rejoindre.</value></data>
+  <data name="Camps_Details_RequestJoin" xml:space="preserve"><value>Demander à rejoindre pour {0}</value></data>
+  <data name="Camps_Details_PendingApproval" xml:space="preserve"><value>En attente de l’approbation des responsables pour {0}.</value></data>
+  <data name="Camps_Details_WithdrawConfirm" xml:space="preserve"><value>Retirer votre demande en attente ?</value></data>
+  <data name="Camps_Details_WithdrawRequest" xml:space="preserve"><value>Retirer la demande</value></data>
+  <data name="Camps_Details_ActiveMembership" xml:space="preserve"><value>Vous êtes membre pour {0}.</value></data>
+  <data name="Camps_Details_LeaveConfirm" xml:space="preserve"><value>Quitter ce camp pour cette saison ?</value></data>
+  <data name="Camps_Details_LeaveCamp" xml:space="preserve"><value>Quitter le camp</value></data>
 </root>
