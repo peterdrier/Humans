@@ -5,6 +5,11 @@ namespace Humans.Base.Interfaces;
 /// (GuideContentService, agent doc readers) are testable without network and share one
 /// Octokit client + token-resolution path.
 /// </summary>
+/// <remarks>
+/// Read operations honor caller cancellation before starting and while waiting for GitHub.
+/// Octokit does not expose cancellation on these endpoints, so an in-flight HTTP read may finish
+/// after the caller stops waiting. Cancelled reads propagate rather than return a missing result.
+/// </remarks>
 public interface IGuideContentSource
 {
     /// <summary>

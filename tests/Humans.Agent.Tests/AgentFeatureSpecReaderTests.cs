@@ -1,3 +1,4 @@
+using NSubstitute;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Agent.Services.Preload;
@@ -16,6 +17,40 @@ namespace Humans.Agent.Tests;
 /// </summary>
 public class AgentFeatureSpecReaderTests
 {
+    [HumansFact]
+    public async Task CancelledDocumentFetch_PropagatesInsteadOfReturningAMiss()
+    {
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        var source = Substitute.For<IGuideContentSource>();
+        source.ListMarkdownPathsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<(IReadOnlyList<string>, bool)>((["docs/features/global/example.md"], true)));
+        source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromCanceled<string>(cancelled.Token));
+        var reader = new AgentFeatureSpecReader(source, new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<AgentFeatureSpecReader>.Instance);
+
+        var read = () => reader.ReadAsync("example", cancelled.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
+    public async Task CancelledFetch_PropagatesInsteadOfReturningAMiss()
+    {
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        var source = Substitute.For<IGuideContentSource>();
+        source.ListMarkdownPathsAsync(Arg.Any<CancellationToken>()).Returns(Task.FromCanceled<(IReadOnlyList<string>, bool)>(cancelled.Token));
+        var reader = new AgentFeatureSpecReader(source, new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<AgentFeatureSpecReader>.Instance);
+
+        var read = () => reader.KnownStemsAsync(cancelled.Token);
+
+        var thrown = await read.Should().ThrowAsync<OperationCanceledException>();
+        thrown.Which.CancellationToken.Should().Be(cancelled.Token);
+    }
+
     /// <summary>
     /// <c>fetch_feature_spec</c> takes a bare stem, so two specs sharing a filename across
     /// two sections would leave one permanently unreachable — a silent loss with a green

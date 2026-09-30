@@ -91,7 +91,7 @@ internal sealed class GuideContentService(
                 var markdown = await source.GetMarkdownAsync(stem, cancellationToken);
                 newEntries[stem] = GuideSegmenter.Segment(markdown);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
                 anyFailures = true;
                 logger.LogWarning(ex,

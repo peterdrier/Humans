@@ -64,6 +64,29 @@ public class GuideContentServiceTests
     }
 
     [HumansFact]
+    public async Task RefreshAllAsync_CancelledFetch_StopsWithoutReplacingWarmCache()
+    {
+        var source = new FakeSource();
+        var service = CreateService(source, out var cache);
+        await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var cachedBefore = cache.Get<GuideDocument>("guide:Profiles");
+        var callsBefore = source.Calls;
+        using var cancelled = new CancellationTokenSource();
+        source.FailFor = _ =>
+        {
+            cancelled.Cancel();
+            return new OperationCanceledException(cancelled.Token);
+        };
+
+        var refresh = () => service.RefreshAllAsync(cancelled.Token);
+
+        var thrown = await refresh.Should().ThrowAsync<OperationCanceledException>();
+        thrown.Which.CancellationToken.Should().Be(cancelled.Token);
+        source.Calls.Should().Be(callsBefore + 1);
+        cache.Get<GuideDocument>("guide:Profiles").Should().BeSameAs(cachedBefore);
+    }
+
+    [HumansFact]
     public async Task GetPageAsync_FirstCall_FetchesFromSource()
     {
         var source = new FakeSource();

@@ -1,3 +1,4 @@
+using NSubstitute;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Agent.Services.Preload;
@@ -13,6 +14,56 @@ public class CommunityFaqReaderTests
 {
     private const string GeneralBody =
         "# General & Community — NCA\nLast updated: 2026-02-01 · windows merged through 2026-02-01\n\n## Overview\nWhat the NCA is and how to join.\n\n## FAQ\n**Q?**\nA.";
+
+    [HumansFact]
+    public async Task CancelledFetch_PropagatesInsteadOfReturningAMiss()
+    {
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        var source = Substitute.For<IGuideContentSource>();
+        source.ListMarkdownStemsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Task.FromCanceled<IReadOnlyList<string>>(cancelled.Token));
+        var reader = new CommunityFaqReader(source, new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<CommunityFaqReader>.Instance);
+
+        var read = () => reader.ListTopicsAsync(cancelled.Token);
+
+        var thrown = await read.Should().ThrowAsync<OperationCanceledException>();
+        thrown.Which.CancellationToken.Should().Be(cancelled.Token);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancelledDocumentFetch_DoesNotCacheAnIncompleteTopicIndex(bool reload)
+    {
+        using var cancelled = new CancellationTokenSource();
+        var source = Substitute.For<IGuideContentSource>();
+        source.ListMarkdownStemsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<string>>(["topic"]));
+        source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Original"));
+        var reader = new CommunityFaqReader(source, new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<CommunityFaqReader>.Instance);
+        if (reload) await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await cancelled.CancelAsync();
+                cancelled.Token.ThrowIfCancellationRequested();
+                return string.Empty;
+            });
+        Func<Task> read = async () =>
+        {
+            if (reload) await reader.ReloadAsync(cancelled.Token);
+            else await reader.ListTopicsAsync(cancelled.Token);
+        };
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Restored"));
+        var topics = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        topics.Should().ContainSingle().Which.Title.Should().Be(reload ? "Original" : "Restored");
+    }
 
     [HumansFact]
     public async Task ListTopicsAsync_parses_title_date_and_overview_summary()

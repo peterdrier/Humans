@@ -39,7 +39,7 @@ internal sealed class CommunityFaqReader(
         {
             stems = await source.ListMarkdownStemsAsync(FolderPath, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Failed to list community KB folder {Folder}; returning empty index", FolderPath);
             return [];
@@ -86,7 +86,7 @@ internal sealed class CommunityFaqReader(
         {
             stems = await source.ListMarkdownStemsAsync(FolderPath, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Community KB reload: listing {Folder} failed; keeping existing cache", FolderPath);
             return;
@@ -100,7 +100,7 @@ internal sealed class CommunityFaqReader(
             {
                 body = await source.GetMarkdownAsync(FolderPath, stem, cancellationToken);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
                 logger.LogWarning(ex, "Community KB reload: fetch failed for {Stem}; skipping", stem);
                 continue;
@@ -129,7 +129,7 @@ internal sealed class CommunityFaqReader(
             logger.LogWarning("Community KB file {Stem} not found on GitHub ({Folder})", stem, FolderPath);
             return null;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Failed to fetch community KB file {Stem} from GitHub; returning null", stem);
             return null;
