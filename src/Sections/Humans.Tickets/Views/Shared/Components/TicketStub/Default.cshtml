@@ -1,4 +1,5 @@
 @model Humans.Tickets.Contracts.TicketStubInfo
+@inject Humans.Settings.Contracts.ISettingsService SettingsService
 @{
     var isVoid = Model.Status == TicketAttendeeStatus.Void;
     var isCheckedIn = Model.Status == TicketAttendeeStatus.CheckedIn;
@@ -6,8 +7,9 @@
     // Emit the shared stub CSS once per request (the component renders many times).
     var emitCss = !Context.Items.ContainsKey("ticket-stub-css");
     if (emitCss) { Context.Items["ticket-stub-css"] = true; }
-    // TODO(open item): source the event label from the active event instead of a constant.
-    var eventLabel = Localizer["Tickets_TicketStub_EventLabel"];
+    var activeEvent = await SettingsService.GetActiveEventSettingsAsync(Context.RequestAborted);
+    var eventName = activeEvent?.EventName ?? Localizer["Tickets_TicketHoldings_Title"].Value;
+    var eventLabel = Localizer["Tickets_TicketStub_EventLabel", eventName];
 }
 @if (emitCss)
 {

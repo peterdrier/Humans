@@ -145,7 +145,9 @@ case-insensitive verified-email match returning at most one person (no enumerati
 ## Reusable Ticket Stub
 
 `<vc:ticket-stub>` renders one held ticket as a physical admission stub (event label, attendee name +
-email — the vendor `ti_…` serial was deliberately dropped from the stub). A pending outgoing transfer
+email — the vendor `ti_…` serial was deliberately dropped from the stub). The event label uses the
+active event's configured name, with localized admission text; without an active event it uses the
+localized Tickets title. A pending outgoing transfer
 shows a "transfer pending" stamp; voided tickets render
 muted. Used by the wizard (step A), the `/Profile/Me` ticket card (`<vc:ticket-holdings>`), and the
 homepage "You're in" ticket card.
