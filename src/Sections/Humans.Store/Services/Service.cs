@@ -760,7 +760,8 @@ internal sealed class Service(
     /// Records a Store-admin ledger entry: a <see cref="PaymentMethod.DepositReturn"/> credits a
     /// returned deposit (full or partial) back to the order; a <see cref="PaymentMethod.Refund"/>
     /// books money sent back out (issued by hand in the Stripe dashboard). The admin enters a
-    /// positive amount; a refund is stored negative. No cap — a camp may have overpaid.
+    /// positive amount; a refund is stored negative. A refund has no cap — a camp may have
+    /// overpaid — but deposit returns can never add up to more than the order's deposits.
     /// </summary>
     public async Task RecordAdminPaymentAsync(
         Guid orderId,
@@ -776,10 +777,23 @@ internal sealed class Service(
         if (amountEur <= 0)
             throw new InvalidOperationException("Amount must be greater than zero.");
 
-        var order = await repo.GetOrderByIdAsync(orderId, ct)
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
             ?? throw new InvalidOperationException("Order not found.");
         if (order.TeamId is not null)
             throw new InvalidOperationException("Team orders are non-billable.");
+
+        if (method == PaymentMethod.DepositReturn)
+        {
+            var depositTotal = BalanceCalculator.Compute(order, await LoadCurrentPricesAsync(ct)).DepositTotalEur;
+            var alreadyReturned = order.Payments
+                .Where(p => p.Method == PaymentMethod.DepositReturn && p.Status == PaymentStatus.Paid)
+                .Sum(p => p.AmountEur);
+            var remaining = depositTotal - alreadyReturned;
+            if (amountEur > remaining)
+                throw new InvalidOperationException(
+                    $"Deposit return of EUR {amountEur:0.00} exceeds the EUR {remaining:0.00} of deposit still held "
+                    + $"(EUR {depositTotal:0.00} deposited, EUR {alreadyReturned:0.00} already returned).");
+        }
 
         var signed = method == PaymentMethod.Refund ? -amountEur : amountEur;
         var payment = new Payment

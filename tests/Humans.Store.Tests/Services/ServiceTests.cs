@@ -1182,8 +1182,8 @@ public class ServiceTests
         var method = Enum.Parse<PaymentMethod>(methodName);
         var orderId = Guid.NewGuid();
         var actor = Guid.NewGuid();
-        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
-            .Returns(new Order { Id = orderId, CampSeasonId = Guid.NewGuid(), State = OrderState.InvoiceIssued });
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(MakeDepositOrder(orderId, depositTotal: 150m));
 
         await _service.RecordAdminPaymentAsync(orderId, method, entered, " re_123 ", "2 of 3 fences back", actor, TestContext.Current.CancellationToken);
 
@@ -1248,7 +1248,7 @@ public class ServiceTests
     public async Task RecordAdminPaymentAsync_rejects_team_order()
     {
         var orderId = Guid.NewGuid();
-        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
             .Returns(new Order { Id = orderId, TeamId = Guid.NewGuid() });
 
         var act = () => _service.RecordAdminPaymentAsync(orderId, PaymentMethod.DepositReturn, 10m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
@@ -1256,6 +1256,46 @@ public class ServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Team orders are non-billable.");
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
     }
+
+    [HumansFact]
+    public async Task RecordAdminPaymentAsync_rejects_deposit_return_beyond_deposit_still_held()
+    {
+        // €100 deposited, €30 already returned → at most €70 can still come back.
+        var orderId = Guid.NewGuid();
+        var order = MakeDepositOrder(orderId, depositTotal: 100m);
+        order.Payments.Add(new Payment { Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 30m, Method = PaymentMethod.DepositReturn, Status = PaymentStatus.Paid });
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+
+        var act = () => _service.RecordAdminPaymentAsync(orderId, PaymentMethod.DepositReturn, 70.01m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Deposit return of EUR 70.01 exceeds the EUR 70.00 of deposit still held*");
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+
+        await _service.RecordAdminPaymentAsync(orderId, PaymentMethod.DepositReturn, 70m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).AddPaymentAsync(Arg.Is<Payment>(p => p.AmountEur == 70m), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RecordAdminPaymentAsync_refund_has_no_cap()
+    {
+        var orderId = Guid.NewGuid();
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(MakeDepositOrder(orderId, depositTotal: 100m));
+
+        await _service.RecordAdminPaymentAsync(orderId, PaymentMethod.Refund, 5000m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).AddPaymentAsync(Arg.Is<Payment>(p => p.AmountEur == -5000m), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>An issued camp order with one line carrying exactly <paramref name="depositTotal"/> in deposit.</summary>
+    private static Order MakeDepositOrder(Guid orderId, decimal depositTotal) => new()
+    {
+        Id = orderId,
+        CampSeasonId = Guid.NewGuid(),
+        State = OrderState.InvoiceIssued,
+        Lines = { new OrderLine { Id = Guid.NewGuid(), OrderId = orderId, ProductId = Guid.NewGuid(), Qty = 1, UnitPriceSnapshot = 10m, VatRateSnapshot = 21m, DepositAmountSnapshot = depositTotal } },
+    };
 
     [HumansFact]
     public async Task RecordStripePaymentAsync_no_ops_when_payment_intent_id_already_exists()

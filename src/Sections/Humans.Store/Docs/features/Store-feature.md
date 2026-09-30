@@ -67,7 +67,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 - POST to `/Store/Order/{id}/RecordPayment` with a positive amount, method (`DepositReturn` | `Refund`), optional external reference (e.g. Stripe refund id), and optional notes.
 - Step 1, `DepositReturn`: stored positive, so a paid-up order goes negative — the overage owed to the camp. Partial returns are just smaller amounts.
 - Step 2, `Refund`: stored negative after the money is sent from the Stripe dashboard, bringing the order back to zero.
-- Inserts a `Paid` `Payment` row with `RecordedByUserId = actorUserId`. Any other method is rejected. No amount cap — a camp may have overpaid.
+- Inserts a `Paid` `Payment` row with `RecordedByUserId = actorUserId`. Any other method is rejected. A deposit return is capped at the deposit still held (deposit total minus returns already recorded); a refund has no cap — a camp may have overpaid.
 - Store admins only; never on a team order. Allowed in any order state (deposits come back after issuance).
 - Audit-logged (`StorePaymentRecorded`) with the actor.
 - *Bank-transfer / cash entry (`BankTransfer`, `Manual`) is not built.*
