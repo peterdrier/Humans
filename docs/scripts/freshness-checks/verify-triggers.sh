@@ -20,10 +20,11 @@
 # diff-mode.sh test 7 already covers read-only verification by hand; this
 # flag exists for scripting a preview of what this script would change).
 #
-# Exit code is always 0 — this is sweep hygiene, not a CI gate (per the
+# Findings exit 0 — this is sweep hygiene, not a CI gate (per the
 # issue's Problem/Motivation: "a dead trigger glob doesn't break anything at
 # runtime ... caught and repaired by the sweep itself, not gated in CI").
-# Callers read stdout, not the exit code.
+# Callers read stdout for findings. Operational failure to read the catalog
+# or enumerate its docs exits nonzero rather than reporting a clean scan.
 #
 # Output, one line per finding:
 #   REPAIRED <doc> | <old> -> <new>
@@ -128,8 +129,17 @@ declare -A dirty_docs
 dirty_docs["__seed__"]=1
 unset "dirty_docs[__seed__]"
 
-for f in $(editorial_docs); do
-  triggers=$(doc_trigger_lines "$f")
+if ! docs=$(editorial_docs); then
+  echo "ERROR: could not enumerate editorial docs; no trigger repairs attempted." >&2
+  exit 1
+fi
+for f in $docs; do
+  if ! triggers=$(doc_trigger_lines "$f"); then
+    echo "UNRESOLVED $f | could not read triggers"
+    unresolved=$((unresolved + 1))
+    dirty_docs["$f"]=1
+    continue
+  fi
   [ -z "$triggers" ] && continue
   while IFS= read -r glob; do
     [ -z "$glob" ] && continue

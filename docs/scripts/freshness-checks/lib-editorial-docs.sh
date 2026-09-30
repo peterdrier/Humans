@@ -7,12 +7,12 @@
 # in one script and reused nowhere else is exactly how a second script's
 # editorial coverage silently falls behind the catalog.
 #
-# Requires the caller to `CATALOG=...` before sourcing.
+# Requires the caller to `CATALOG=...` and enable `set -o pipefail`.
 
 # Catalog's `ignore:` list, one glob pattern per line.
 ignore_patterns() {
   awk '/^ignore:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" \
-    | grep -E '^[[:space:]]+- ' | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//'
+    | { grep -E '^[[:space:]]+- ' || [ "$?" -eq 1 ]; } | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//'
 }
 
 # True (0) if $1 matches any catalog ignore pattern. `case` glob matching
@@ -20,13 +20,18 @@ ignore_patterns() {
 # as `docs/plans/**` behaves the same as `docs/plans/*` here — both match any
 # depth, which is what the catalog author intends by using `**`.
 path_ignored() {
-  local path="$1" pat
+  local path="$1" pat patterns
+  if [ "$#" -gt 1 ]; then
+    patterns="$2"
+  else
+    patterns=$(ignore_patterns) || return 2
+  fi
   while IFS= read -r pat; do
     [ -z "$pat" ] && continue
     case "$path" in
       $pat) return 0 ;;
     esac
-  done < <(ignore_patterns)
+  done <<< "$patterns"
   return 1
 }
 
@@ -48,29 +53,33 @@ path_ignored() {
 # catalog: e.g. `src/Sections/*/Docs/data-access.md` is ignore-listed but has
 # no matching `-not` clause below, and would otherwise be walked.
 editorial_docs() {
-  awk '/^editorial_trees:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" \
-    | grep -E '^[[:space:]]+- ' \
-    | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//' \
-    | while IFS= read -r entry; do
-        [ -z "$entry" ] && continue
-        if [ -f "$entry" ]; then
-          path_ignored "$entry" || echo "$entry"
-        elif [ -d "${entry%/}" ]; then
-          find "${entry%/}" -name '*.md' \
-               -not -name 'SECTION-TEMPLATE.md' -not -name 'G5-SECTION-TEMPLATE.md' \
-               -not -name 'README.md' -not -name 'GettingStarted.md' -not -name 'Glossary.md' \
-               -not -path '*/obj/*' -not -path '*/bin/*' \
-               -not -path '*/Docs/20*.md' \
-               -not -name 'health.md' 2>/dev/null \
-            | while IFS= read -r f; do path_ignored "$f" || echo "$f"; done
-        else
-          # Unresolved entry: emit nothing here — test 3 reports it via
-          # editorial_entries_unresolved. The explicit `:` matters: without an
-          # else branch the `if` returns the failed `[ -d ]` status, which under
-          # `set -e` aborts the whole script mid-run instead of failing a test.
-          :
-        fi
-      done
+  local entries patterns entry files f
+  # Capture each producer before consuming its output. A failed walk can emit
+  # plausible partial results; a failed ignore read must never permit repairs.
+  patterns=$(ignore_patterns) || return
+  entries=$(awk '/^editorial_trees:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" \
+    | { grep -E '^[[:space:]]+- ' || [ "$?" -eq 1 ]; } \
+    | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//') || return
+  while IFS= read -r entry; do
+    [ -z "$entry" ] && continue
+    if [ -f "$entry" ]; then
+      files="$entry"
+    elif [ -d "${entry%/}" ]; then
+      files=$(find "${entry%/}" -name '*.md' \
+           -not -name 'SECTION-TEMPLATE.md' -not -name 'G5-SECTION-TEMPLATE.md' \
+           -not -name 'README.md' -not -name 'GettingStarted.md' -not -name 'Glossary.md' \
+           -not -path '*/obj/*' -not -path '*/bin/*' \
+           -not -path '*/Docs/20*.md' \
+           -not -name 'health.md') || return
+    else
+      # Test 3 reports unresolved entries separately.
+      continue
+    fi
+    while IFS= read -r f; do
+      [ -z "$f" ] && continue
+      path_ignored "$f" "$patterns" || echo "$f"
+    done <<< "$files"
+  done <<< "$entries"
 }
 
 # Catalog editorial_trees entries that resolve to nothing. A warning here is not
@@ -80,7 +89,7 @@ editorial_docs() {
 # exits green while the catalog points at nothing. Test 3 fails on any output.
 editorial_entries_unresolved() {
   awk '/^editorial_trees:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" \
-    | grep -E '^[[:space:]]+- ' \
+    | { grep -E '^[[:space:]]+- ' || [ "$?" -eq 1 ]; } \
     | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//' \
     | while IFS= read -r entry; do
         if [ -n "$entry" ] && [ ! -f "$entry" ] && [ ! -d "${entry%/}" ]; then
@@ -91,13 +100,14 @@ editorial_entries_unresolved() {
 
 # Extract the raw freshness:triggers glob/literal entries from one doc, one
 # per output line, trimmed. Empty output means the doc carries no marker.
-# `|| true` is load-bearing: a doc with no marker makes `grep -v` return 1,
+# The grep no-match guard is load-bearing: a doc with no marker returns 1,
 # which under a caller's `set -o pipefail` would otherwise abort mid-walk and
 # leave every doc after it unchecked (docs/freshness/last-report.md,
 # 2026-08-18 sweep, "the checker's own silence is not evidence").
+# Grep errors (status > 1) and failed awk reads still propagate.
 doc_trigger_lines() {
   awk '/<!-- freshness:triggers/,/^-->/' "$1" 2>/dev/null \
-    | { grep -vE '^\s*<!--|^-->' || true; } \
+    | { grep -vE '^\s*<!--|^-->' || [ "$?" -eq 1 ]; } \
     | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
 }
 
