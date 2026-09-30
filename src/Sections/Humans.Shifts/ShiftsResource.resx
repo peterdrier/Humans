@@ -423,4 +423,10 @@
   <data name="Shifts_Signup_Restricted" xml:space="preserve"><value>This shift is restricted to coordinators and admins.</value></data>
   <data name="Shifts_Signup_EarlyEntryClosed" xml:space="preserve"><value>Early entry signups are closed.</value></data>
   <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>This shift is at capacity.</value></data>
+  <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>Rota not found.</value></data>
+  <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>No shifts found in the specified date range.</value></data>
+  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Already signed up for all shifts in this range.</value></data>
+  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>All shifts in range have time conflicts with existing signups.</value></data>
+  <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>All shifts in this range are at capacity.</value></data>
+  <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>One or more shifts in this range are restricted to coordinators and admins.</value></data>
 </root>

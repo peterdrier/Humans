@@ -1209,4 +1209,10 @@
   <data name="Shifts_Signup_Restricted" xml:space="preserve"><value>Ce créneau est réservé aux coordinateurs et aux administrateurs.</value></data>
   <data name="Shifts_Signup_EarlyEntryClosed" xml:space="preserve"><value>Les inscriptions pour l’entrée anticipée sont closes.</value></data>
   <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>Ce créneau est complet.</value></data>
+  <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>Planning introuvable.</value></data>
+  <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>Aucun créneau trouvé dans la période indiquée.</value></data>
+  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Vous êtes déjà inscrit à tous les créneaux de cette période.</value></data>
+  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Tous les créneaux de cette période chevauchent des inscriptions existantes.</value></data>
+  <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Tous les créneaux de cette période sont complets.</value></data>
+  <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Un ou plusieurs créneaux de cette période sont réservés aux coordinateurs et aux administrateurs.</value></data>
 </root>

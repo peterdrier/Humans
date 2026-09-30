@@ -347,12 +347,12 @@ internal sealed class ShiftSignupService(
     public async Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId)
     {
         var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.Shifts);
-        if (rota is null) return SignupResult.Fail("Rota not found.");
+        if (rota is null) return SignupResult.Fail(localizer["Shifts_Signup_RotaNotFound"]);
 
         var shiftsInRange = SelectAllDayRangeShifts(rota, startDayOffset, endDayOffset);
 
         if (shiftsInRange.Count == 0)
-            return SignupResult.Fail("No shifts found in the specified date range.");
+            return SignupResult.Fail(localizer["Shifts_Signup_RangeEmpty"]);
 
         var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
         var existingShiftIds = await repo.GetActiveShiftIdsForUserAsync(userId, shiftIdsInRange);
@@ -362,7 +362,7 @@ internal sealed class ShiftSignupService(
             .ToList();
 
         if (shiftsToAssign.Count == 0)
-            return SignupResult.Fail("Already signed up for all shifts in this range.");
+            return SignupResult.Fail(localizer["Shifts_Signup_RangeAlreadySignedUp"]);
 
         var calendar = await calendarResolver.GetAsync(rota.EventSettingsId);
         if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
@@ -378,7 +378,7 @@ internal sealed class ShiftSignupService(
         }
 
         if (assignable.Count == 0)
-            return SignupResult.Fail("All shifts in range have time conflicts with existing signups.");
+            return SignupResult.Fail(localizer["Shifts_Signup_RangeConflicts"]);
 
         var assignableIds = assignable.Select(s => s.Id).ToHashSet();
         var signupCounts = await repo.GetConfirmedSignupCountsByShiftAsync(assignableIds);
@@ -394,7 +394,7 @@ internal sealed class ShiftSignupService(
         }
 
         if (capacityFiltered.Count == 0)
-            return SignupResult.Fail("All shifts in range are at capacity.");
+            return SignupResult.Fail(localizer["Shifts_Signup_RangeAtCapacity"]);
 
         assignable = capacityFiltered;
 
@@ -551,7 +551,7 @@ internal sealed class ShiftSignupService(
         var isPrivileged = flags.HasFlag(ShiftSignupRequestFlags.Privileged);
         var skipConflicts = flags.HasFlag(ShiftSignupRequestFlags.SkipConflicts);
         var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.EventSettings | RotaReadShape.Shifts);
-        if (rota is null) return SignupResult.Fail("Rota not found.");
+        if (rota is null) return SignupResult.Fail(localizer["Shifts_Signup_RotaNotFound"]);
 
         var localEs = rota.EventSettings;
         var calendar = await calendarResolver.GetAsync(rota.EventSettingsId);
@@ -572,7 +572,7 @@ internal sealed class ShiftSignupService(
         var shiftsInRange = SelectAllDayRangeShifts(rota, startDayOffset, endDayOffset);
 
         if (!isPrivileged && shiftsInRange.Any(s => s.AdminOnly))
-            return SignupResult.Fail("One or more shifts in this range are restricted to coordinators and admins.");
+            return SignupResult.Fail(localizer["Shifts_Signup_RangeRestricted"]);
 
         var existingSignups = await GetActiveUserSignupsAsync(userId);
 
@@ -593,11 +593,11 @@ internal sealed class ShiftSignupService(
         if (shiftsInRange.Count == 0)
             return conflictSelection.Warnings.Count > 0
                 ? SignupResult.Fail(string.Join(" ", conflictSelection.Warnings) + " Nothing to add.")
-                : SignupResult.Fail("No shifts found in the specified date range.");
+                : SignupResult.Fail(localizer["Shifts_Signup_RangeEmpty"]);
 
         var capacitySelection = await SelectCapacityAvailableRangeShiftsAsync(shiftsInRange);
         if (capacitySelection.AvailableShifts.Count == 0)
-            return SignupResult.Fail("All shifts in this range are at capacity.");
+            return SignupResult.Fail(localizer["Shifts_Signup_RangeAtCapacity"]);
 
         string? warning = conflictSelection.Warnings.Count > 0
             ? string.Join(" ", conflictSelection.Warnings)

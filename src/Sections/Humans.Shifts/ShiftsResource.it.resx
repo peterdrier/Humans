@@ -1209,4 +1209,10 @@
   <data name="Shifts_Signup_Restricted" xml:space="preserve"><value>Questo turno è riservato a coordinatori e amministratori.</value></data>
   <data name="Shifts_Signup_EarlyEntryClosed" xml:space="preserve"><value>Le iscrizioni per l’ingresso anticipato sono chiuse.</value></data>
   <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>Questo turno è al completo.</value></data>
+  <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>Piano dei turni non trovato.</value></data>
+  <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>Nessun turno trovato nell’intervallo di date specificato.</value></data>
+  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Sei già iscritto a tutti i turni di questo intervallo.</value></data>
+  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Tutti i turni dell’intervallo si sovrappongono a iscrizioni esistenti.</value></data>
+  <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Tutti i turni di questo intervallo sono al completo.</value></data>
+  <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Uno o più turni di questo intervallo sono riservati a coordinatori e amministratori.</value></data>
 </root>

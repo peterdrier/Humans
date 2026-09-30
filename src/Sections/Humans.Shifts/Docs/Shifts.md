@@ -287,6 +287,7 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 - The advisory dietary-missing banner passes `HttpContext.RequestAborted` through its qualifying-signup and profile reads. It still suppresses operational failures so the Shifts page renders, but does not log a disconnected browser as a banner failure.
 
 - Regular humans **cannot** manage rotas or shifts. They can only browse and sign up.
+- Range signup and assignment localize missing rota, empty range, already-assigned range, fully conflicting range, fully booked range and restricted-range rejections in all six cultures.
 - Duplicate signup, missing shift, closed browsing, restricted shift, closed early-entry signup and full-shift rejections use the six-culture Shifts resources across their single, range and coordinator assignment call sites.
 - Regular humans **cannot** approve, refuse, or bail other humans' signups. Single and range bail rejections (including early-entry closure) use the six-culture Shifts resources, as do shared signup-not-found and missing-calendar errors; the signup modal uses the shared localized close label.
 - Regular humans **cannot** voluntell other humans.

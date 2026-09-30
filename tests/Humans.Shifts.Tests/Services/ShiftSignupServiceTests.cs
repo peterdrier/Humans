@@ -1325,12 +1325,14 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task VoluntellRange_ReturnsError_WhenRotaNotFound()
     {
+        const string key = "Shifts_Signup_RotaNotFound";
+        _localizer[key].Returns(new LocalizedString(key, "translated missing rota"));
         // Act
         var result = await _service.VoluntellRangeAsync(Guid.NewGuid(), Guid.NewGuid(), -3, -1, Guid.NewGuid());
 
         // Assert
         result.Success.Should().BeFalse();
-        result.Error.Should().Contain("Rota not found");
+        result.Error.Should().Be("translated missing rota");
     }
 
     [HumansFact]

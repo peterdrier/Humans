@@ -1209,4 +1209,10 @@
   <data name="Shifts_Signup_Restricted" xml:space="preserve"><value>Aquest torn està reservat a coordinadors i administradors.</value></data>
   <data name="Shifts_Signup_EarlyEntryClosed" xml:space="preserve"><value>Les inscripcions d’entrada anticipada estan tancades.</value></data>
   <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>Aquest torn està complet.</value></data>
+  <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>No s’ha trobat la rota.</value></data>
+  <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>No s’han trobat torns en l’interval de dates indicat.</value></data>
+  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Ja t’has inscrit en tots els torns d’aquest interval.</value></data>
+  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Tots els torns de l’interval se superposen amb inscripcions existents.</value></data>
+  <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Tots els torns d’aquest interval estan complets.</value></data>
+  <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Un o més torns d’aquest interval estan reservats a coordinadors i administradors.</value></data>
 </root>
