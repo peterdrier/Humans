@@ -279,4 +279,8 @@
   <data name="Camps_Details_LeaveConfirm" xml:space="preserve"><value>¿Salir de este campamento para esta temporada?</value></data>
   <data name="Camps_Details_LeaveCamp" xml:space="preserve"><value>Salir del campamento</value></data>
   <data name="Camps_Details_Containers" xml:space="preserve"><value>Contenedores</value></data>
+  <data name="Camps_Flash_RequestNoOpenSeason" xml:space="preserve"><value>Este campamento no acepta solicitudes de incorporación este año.</value></data>
+  <data name="Camps_Flash_RequestCreated" xml:space="preserve"><value>Tu solicitud de incorporación se ha enviado a los responsables del campamento.</value></data>
+  <data name="Camps_Flash_RequestAlreadyActive" xml:space="preserve"><value>Ya eres miembro activo de este campamento.</value></data>
+  <data name="Camps_Flash_RequestAlreadyPending" xml:space="preserve"><value>Ya tienes una solicitud pendiente para este campamento.</value></data>
 </root>

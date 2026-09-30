@@ -846,15 +846,15 @@ internal sealed class CampController(
         var result = await _campService.RequestCampMembershipAsync(camp.Id, user.Id);
         if (result.NoticeLevel == CampMemberRequestNoticeLevel.Success)
         {
-            SetSuccess(result.Message);
+            SetSuccess(campsLocalizer[result.MessageKey].Value);
         }
         else if (result.NoticeLevel == CampMemberRequestNoticeLevel.Info)
         {
-            SetInfo(result.Message);
+            SetInfo(campsLocalizer[result.MessageKey].Value);
         }
         else
         {
-            SetError(result.Message);
+            SetError(campsLocalizer[result.MessageKey].Value);
         }
 
         return RedirectToAction(nameof(Details), new { slug });

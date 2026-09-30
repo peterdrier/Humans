@@ -1205,7 +1205,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             return new CampMemberRequestResult(
                 Guid.Empty,
                 CampMemberRequestOutcome.NoOpenSeason,
-                "Camp is not open for membership this year.",
+                "Camps_Flash_RequestNoOpenSeason",
                 CampMemberRequestNoticeLevel.Error);
         }
 
@@ -1228,19 +1228,19 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
                 new CampMemberRequestResult(
                     insert.MemberId,
                     CampMemberRequestOutcome.Created,
-                    "Your request to join has been sent to the camp leads.",
+                    "Camps_Flash_RequestCreated",
                     CampMemberRequestNoticeLevel.Success),
             CampMemberInsertOutcome.AlreadyActive =>
                 new CampMemberRequestResult(
                     insert.MemberId,
                     CampMemberRequestOutcome.AlreadyActive,
-                    "You are already an active member of this camp.",
+                    "Camps_Flash_RequestAlreadyActive",
                     CampMemberRequestNoticeLevel.Info),
             _ =>
                 new CampMemberRequestResult(
                     insert.MemberId,
                     CampMemberRequestOutcome.AlreadyPending,
-                    "You already have a pending request for this camp.",
+                    "Camps_Flash_RequestAlreadyPending",
                     CampMemberRequestNoticeLevel.Info)
         };
     }

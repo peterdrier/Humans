@@ -279,4 +279,8 @@
   <data name="Camps_Details_LeaveConfirm" xml:space="preserve"><value>Lasciare questo campo per questa stagione?</value></data>
   <data name="Camps_Details_LeaveCamp" xml:space="preserve"><value>Lascia il campo</value></data>
   <data name="Camps_Details_Containers" xml:space="preserve"><value>Contenitori</value></data>
+  <data name="Camps_Flash_RequestNoOpenSeason" xml:space="preserve"><value>Questo camp non accetta richieste di adesione per quest’anno.</value></data>
+  <data name="Camps_Flash_RequestCreated" xml:space="preserve"><value>La tua richiesta di adesione è stata inviata ai responsabili del camp.</value></data>
+  <data name="Camps_Flash_RequestAlreadyActive" xml:space="preserve"><value>Sei già un membro attivo di questo camp.</value></data>
+  <data name="Camps_Flash_RequestAlreadyPending" xml:space="preserve"><value>Hai già una richiesta in attesa per questo camp.</value></data>
 </root>

@@ -4,6 +4,7 @@ using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Base.Enums;
+using Humans.Base.Constants;
 using Humans.Base;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -16,6 +17,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Xunit;
 
 namespace Humans.Camps.Tests.Controllers;
 
@@ -104,6 +106,32 @@ public class CampControllerTests
         vm.Camps.Should().BeEmpty();
         vm.MyCamps.Should().ContainSingle(c => c.Id == pending.Id);
         ((int)controller.ViewBag.PendingCount).Should().Be(1);
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(CampMemberRequestOutcome.Created), nameof(CampMemberRequestNoticeLevel.Success), "Camps_Flash_RequestCreated", TempDataKeys.SuccessMessage)]
+    [InlineData(nameof(CampMemberRequestOutcome.AlreadyActive), nameof(CampMemberRequestNoticeLevel.Info), "Camps_Flash_RequestAlreadyActive", TempDataKeys.InfoMessage)]
+    [InlineData(nameof(CampMemberRequestOutcome.AlreadyPending), nameof(CampMemberRequestNoticeLevel.Info), "Camps_Flash_RequestAlreadyPending", TempDataKeys.InfoMessage)]
+    [InlineData(nameof(CampMemberRequestOutcome.NoOpenSeason), nameof(CampMemberRequestNoticeLevel.Error), "Camps_Flash_RequestNoOpenSeason", TempDataKeys.ErrorMessage)]
+    public async Task RequestMembership_RendersLocalizedOutcome(
+        string outcome, string noticeLevel, string messageKey, string tempDataKey)
+    {
+        var userId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
+        _camps.RequestCampMembershipAsync(camp.Id, userId, Arg.Any<CancellationToken>())
+            .Returns(new CampMemberRequestResult(Guid.NewGuid(), Enum.Parse<CampMemberRequestOutcome>(outcome), messageKey, Enum.Parse<CampMemberRequestNoticeLevel>(noticeLevel)));
+        const string translated = "Solicitud de incorporación traducida";
+        _campsLocalizer[messageKey].Returns(new LocalizedString(messageKey, translated));
+        var controller = BuildController(userId);
+
+        var result = await controller.RequestMembership(camp.Slug);
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be(nameof(CampController.Details));
+        redirect.RouteValues!["slug"].Should().Be(camp.Slug);
+        controller.TempData[tempDataKey].Should().Be(translated);
     }
 
     [HumansFact]

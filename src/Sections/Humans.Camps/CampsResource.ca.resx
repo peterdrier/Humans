@@ -279,4 +279,8 @@
   <data name="Camps_Details_LeaveConfirm" xml:space="preserve"><value>Vols sortir d’aquest campament per a aquesta temporada?</value></data>
   <data name="Camps_Details_LeaveCamp" xml:space="preserve"><value>Sortir del campament</value></data>
   <data name="Camps_Details_Containers" xml:space="preserve"><value>Contenidors</value></data>
+  <data name="Camps_Flash_RequestNoOpenSeason" xml:space="preserve"><value>Aquest campament no accepta sol·licituds d’incorporació aquest any.</value></data>
+  <data name="Camps_Flash_RequestCreated" xml:space="preserve"><value>La teva sol·licitud d’incorporació s’ha enviat als responsables del campament.</value></data>
+  <data name="Camps_Flash_RequestAlreadyActive" xml:space="preserve"><value>Ja ets membre actiu d’aquest campament.</value></data>
+  <data name="Camps_Flash_RequestAlreadyPending" xml:space="preserve"><value>Ja tens una sol·licitud pendent per a aquest campament.</value></data>
 </root>

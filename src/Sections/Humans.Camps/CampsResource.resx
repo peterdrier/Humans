@@ -228,4 +228,8 @@
   <data name="Camps_Details_LeaveConfirm" xml:space="preserve"><value>Leave this camp for this season?</value></data>
   <data name="Camps_Details_LeaveCamp" xml:space="preserve"><value>Leave camp</value></data>
   <data name="Camps_Details_Containers" xml:space="preserve"><value>Containers</value></data>
+  <data name="Camps_Flash_RequestNoOpenSeason" xml:space="preserve"><value>Camp is not open for membership this year.</value></data>
+  <data name="Camps_Flash_RequestCreated" xml:space="preserve"><value>Your request to join has been sent to the camp leads.</value></data>
+  <data name="Camps_Flash_RequestAlreadyActive" xml:space="preserve"><value>You are already an active member of this camp.</value></data>
+  <data name="Camps_Flash_RequestAlreadyPending" xml:space="preserve"><value>You already have a pending request for this camp.</value></data>
 </root>
