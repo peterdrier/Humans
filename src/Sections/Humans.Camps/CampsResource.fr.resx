@@ -278,4 +278,5 @@
   <data name="Camps_Details_ActiveMembership" xml:space="preserve"><value>Vous êtes membre pour {0}.</value></data>
   <data name="Camps_Details_LeaveConfirm" xml:space="preserve"><value>Quitter ce camp pour cette saison ?</value></data>
   <data name="Camps_Details_LeaveCamp" xml:space="preserve"><value>Quitter le camp</value></data>
+  <data name="Camps_Details_Containers" xml:space="preserve"><value>Conteneurs</value></data>
 </root>

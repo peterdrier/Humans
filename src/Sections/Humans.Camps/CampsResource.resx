@@ -227,4 +227,5 @@
   <data name="Camps_Details_ActiveMembership" xml:space="preserve"><value>You are a member for {0}.</value></data>
   <data name="Camps_Details_LeaveConfirm" xml:space="preserve"><value>Leave this camp for this season?</value></data>
   <data name="Camps_Details_LeaveCamp" xml:space="preserve"><value>Leave camp</value></data>
+  <data name="Camps_Details_Containers" xml:space="preserve"><value>Containers</value></data>
 </root>
