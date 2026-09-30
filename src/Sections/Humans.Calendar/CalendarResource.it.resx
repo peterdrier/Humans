@@ -63,7 +63,6 @@
   <data name="Calendar_AllDayEvent" xml:space="preserve"><value>Evento di tutto il giorno</value></data>
   <data name="Calendar_AllDayLabel" xml:space="preserve"><value>Tutto il giorno</value></data>
   <data name="Calendar_AllTeamsMonthView" xml:space="preserve"><value>Tutti i team (vista mensile)</value></data>
-  <data name="Calendar_AllTimesShownIn" xml:space="preserve"><value>Tutti gli orari sono mostrati in {0}.</value></data>
   <data name="Calendar_BackToCalendar" xml:space="preserve"><value>Torna al calendario</value></data>
   <data name="Calendar_CancelOccurrenceConfirm" xml:space="preserve"><value>Annullare solo questa occorrenza?</value></data>
   <data name="Calendar_CancelThisOccurrence" xml:space="preserve"><value>Annulla questa</value></data>
@@ -105,8 +104,7 @@
   <data name="Calendar_OwningTeam" xml:space="preserve"><value>Team proprietario</value></data>
   <data name="Calendar_Prev" xml:space="preserve"><value>Prec.</value></data>
   <data name="Calendar_Recurrence" xml:space="preserve"><value>Ricorrenza</value></data>
-  <data name="Calendar_RecurrenceTimezoneHelpPrefix" xml:space="preserve"><value>TZ IANA, es.</value></data>
-  <data name="Calendar_RecurrenceTimezoneLabel" xml:space="preserve"><value>Fuso orario della ricorrenza</value></data>
+  <data name="Calendar_TimeZoneLabel" xml:space="preserve"><value>Fuso orario</value></data>
   <data name="Calendar_RecurrenceTimezoneNote" xml:space="preserve"><value>Fuso orario: {0}</value></data>
   <data name="Calendar_RecurringEvent" xml:space="preserve"><value>Evento ricorrente</value></data>
   <data name="Calendar_RRule" xml:space="preserve"><value>RRULE</value></data>

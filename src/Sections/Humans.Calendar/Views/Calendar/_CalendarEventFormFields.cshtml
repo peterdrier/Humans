@@ -23,15 +23,22 @@
 </div>
 
 <div class="row @(Model.IsAllDay ? "d-none" : null)" data-when-timed>
-    <div class="col-md-6 mb-3">
+    <div class="col-md-4 mb-3">
         <label asp-for="StartLocal" class="form-label">@Localizer["Calendar_Start"]</label>
         <input asp-for="StartLocal" type="datetime-local" class="form-control" />
         <span asp-validation-for="StartLocal" class="text-danger small"></span>
     </div>
-    <div class="col-md-6 mb-3">
+    <div class="col-md-4 mb-3">
         <label asp-for="EndLocal" class="form-label">@Localizer["Calendar_End"]</label>
         <input asp-for="EndLocal" type="datetime-local" class="form-control" />
         <span asp-validation-for="EndLocal" class="text-danger small"></span>
+    </div>
+    <div class="col-md-4 mb-3">
+        <label asp-for="RecurrenceTimezone" class="form-label">@Localizer["Calendar_TimeZoneLabel"]</label>
+        <select asp-for="RecurrenceTimezone" class="form-select"
+                asp-items="@(DateTimeZoneProviders.Tzdb.Ids.Order(StringComparer.Ordinal).Select(id => new SelectListItem(id, id)))">
+        </select>
+        <span asp-validation-for="RecurrenceTimezone" class="text-danger small"></span>
     </div>
 </div>
 
@@ -72,17 +79,10 @@
     <label asp-for="IsRecurring" class="form-check-label">@Localizer["Calendar_RecurringEvent"]</label>
 </div>
 
-<div class="row">
-    <div class="col-md-8 mb-3">
-        <label asp-for="RecurrenceRule" class="form-label">@Localizer["Calendar_RRule"]</label>
-        <input asp-for="RecurrenceRule" class="form-control" placeholder="FREQ=WEEKLY;BYDAY=TU" />
-        <small class="text-muted">@Localizer["Calendar_RRuleHelpPrefix"] <code>FREQ=WEEKLY;BYDAY=TU;COUNT=10</code></small>
-    </div>
-    <div class="col-md-4 mb-3 @(Model.IsAllDay ? "d-none" : null)" data-timezone>
-        <label asp-for="RecurrenceTimezone" class="form-label">@Localizer["Calendar_RecurrenceTimezoneLabel"]</label>
-        <input asp-for="RecurrenceTimezone" class="form-control" />
-        <small class="text-muted">@Localizer["Calendar_RecurrenceTimezoneHelpPrefix"] <code>Europe/Madrid</code></small>
-    </div>
+<div class="mb-3">
+    <label asp-for="RecurrenceRule" class="form-label">@Localizer["Calendar_RRule"]</label>
+    <input asp-for="RecurrenceRule" class="form-control" placeholder="FREQ=WEEKLY;BYDAY=TU" />
+    <small class="text-muted">@Localizer["Calendar_RRuleHelpPrefix"] <code>FREQ=WEEKLY;BYDAY=TU;COUNT=10</code></small>
 </div>
 
 <script nonce="@Context.Items["CspNonce"]">
@@ -96,7 +96,6 @@
         if (!timed || !allDay) return;
         function update() {
             timed.classList.toggle('d-none', checkbox.checked);
-            form.querySelector('[data-timezone]').classList.toggle('d-none', checkbox.checked);
             allDay.classList.toggle('d-none', !checkbox.checked);
         }
         checkbox.addEventListener('change', update);

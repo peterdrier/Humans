@@ -63,7 +63,6 @@
   <data name="Calendar_AllDayEvent" xml:space="preserve"><value>Esdeveniment de tot el dia</value></data>
   <data name="Calendar_AllDayLabel" xml:space="preserve"><value>Tot el dia</value></data>
   <data name="Calendar_AllTeamsMonthView" xml:space="preserve"><value>Tots els equips (vista de mes)</value></data>
-  <data name="Calendar_AllTimesShownIn" xml:space="preserve"><value>Totes les hores es mostren en {0}.</value></data>
   <data name="Calendar_BackToCalendar" xml:space="preserve"><value>Torna al calendari</value></data>
   <data name="Calendar_CancelOccurrenceConfirm" xml:space="preserve"><value>Vols cancel·lar només aquesta ocurrència?</value></data>
   <data name="Calendar_CancelThisOccurrence" xml:space="preserve"><value>Cancel·la aquesta</value></data>
@@ -105,8 +104,7 @@
   <data name="Calendar_OwningTeam" xml:space="preserve"><value>Equip propietari</value></data>
   <data name="Calendar_Prev" xml:space="preserve"><value>Anterior</value></data>
   <data name="Calendar_Recurrence" xml:space="preserve"><value>Recurrència</value></data>
-  <data name="Calendar_RecurrenceTimezoneHelpPrefix" xml:space="preserve"><value>TZ IANA, p. ex.</value></data>
-  <data name="Calendar_RecurrenceTimezoneLabel" xml:space="preserve"><value>Zona horària de la recurrència</value></data>
+  <data name="Calendar_TimeZoneLabel" xml:space="preserve"><value>Zona horària</value></data>
   <data name="Calendar_RecurrenceTimezoneNote" xml:space="preserve"><value>Zona horària: {0}</value></data>
   <data name="Calendar_RecurringEvent" xml:space="preserve"><value>Esdeveniment recurrent</value></data>
   <data name="Calendar_RRule" xml:space="preserve"><value>RRULE</value></data>

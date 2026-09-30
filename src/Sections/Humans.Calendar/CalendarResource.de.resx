@@ -63,7 +63,6 @@
   <data name="Calendar_AllDayEvent" xml:space="preserve"><value>Ganztägige Veranstaltung</value></data>
   <data name="Calendar_AllDayLabel" xml:space="preserve"><value>Ganztägig</value></data>
   <data name="Calendar_AllTeamsMonthView" xml:space="preserve"><value>Alle Teams (Monatsansicht)</value></data>
-  <data name="Calendar_AllTimesShownIn" xml:space="preserve"><value>Alle Zeiten werden in {0} angezeigt.</value></data>
   <data name="Calendar_BackToCalendar" xml:space="preserve"><value>Zurück zum Kalender</value></data>
   <data name="Calendar_CancelOccurrenceConfirm" xml:space="preserve"><value>Nur diesen Termin absagen?</value></data>
   <data name="Calendar_CancelThisOccurrence" xml:space="preserve"><value>Diesen absagen</value></data>
@@ -105,8 +104,7 @@
   <data name="Calendar_OwningTeam" xml:space="preserve"><value>Verantwortliches Team</value></data>
   <data name="Calendar_Prev" xml:space="preserve"><value>Zurück</value></data>
   <data name="Calendar_Recurrence" xml:space="preserve"><value>Wiederholung</value></data>
-  <data name="Calendar_RecurrenceTimezoneHelpPrefix" xml:space="preserve"><value>IANA-Zeitzone, z. B.</value></data>
-  <data name="Calendar_RecurrenceTimezoneLabel" xml:space="preserve"><value>Zeitzone der Wiederholung</value></data>
+  <data name="Calendar_TimeZoneLabel" xml:space="preserve"><value>Zeitzone</value></data>
   <data name="Calendar_RecurrenceTimezoneNote" xml:space="preserve"><value>Zeitzone: {0}</value></data>
   <data name="Calendar_RecurringEvent" xml:space="preserve"><value>Wiederkehrende Veranstaltung</value></data>
   <data name="Calendar_RRule" xml:space="preserve"><value>RRULE</value></data>

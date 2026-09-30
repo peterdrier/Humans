@@ -7,6 +7,12 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    @if (Context.Features.Get<Microsoft.AspNetCore.Http.Features.ISessionFeature>()?.Session is { } tzSession
+         && string.IsNullOrEmpty(Microsoft.AspNetCore.Http.SessionExtensions.GetString(tzSession, Humans.Base.Extensions.DateTimeDisplayExtensions.SessionKey)))
+    {
+        @* No display zone in this session (new, or expired) — site.js reports the browser's. *@
+        <meta name="tz-needed" />
+    }
     <meta name="description" content="Humans — Membership portal for Nobodies Collective" />
     <meta property="og:title" content="@ViewData["Title"] - @Localizer["Nav_Brand"]" />
     <meta property="og:description" content="Humans — Membership portal for Nobodies Collective" />

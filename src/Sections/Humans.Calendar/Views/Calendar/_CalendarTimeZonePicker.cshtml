@@ -1,0 +1,21 @@
+@model string
+@* The zone every time on the page is shown in. Changing it saves the choice as the
+   session's display zone (the same /api/timezone the browser reports to) and reloads. *@
+<div class="d-flex align-items-center gap-2 mb-3 small text-muted">
+    <label for="calendar-timezone" class="mb-0">@Localizer["Calendar_TimeZoneLabel"]</label>
+    <select id="calendar-timezone" class="form-select form-select-sm w-auto">
+        @foreach (var id in DateTimeZoneProviders.Tzdb.Ids.Order(StringComparer.Ordinal))
+        {
+            <option value="@id" selected="@(id == Model)">@id</option>
+        }
+    </select>
+</div>
+<script nonce="@Context.Items["CspNonce"]">
+    document.getElementById('calendar-timezone').addEventListener('change', function () {
+        fetch('/api/timezone', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ timeZone: this.value })
+        }).then(function (r) { if (r.ok) location.reload(); });
+    });
+</script>

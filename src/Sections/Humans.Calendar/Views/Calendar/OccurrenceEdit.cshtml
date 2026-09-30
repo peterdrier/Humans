@@ -14,7 +14,6 @@
           asp-route-id="@Model.EventId"
           asp-route-originalStartUtc="@Model.OriginalOccurrenceStartUtc">
         @Html.AntiForgeryToken()
-        @Html.HiddenFor(m => m.RecurrenceTimezone)
 
         <div asp-validation-summary="All" class="text-danger mb-2"></div>
 
@@ -34,13 +33,19 @@
         else
         {
         <div class="row">
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
                 <label asp-for="OverrideStartLocal" class="form-label">@Localizer["Calendar_OverrideStart"]</label>
                 <input asp-for="OverrideStartLocal" type="datetime-local" class="form-control" />
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
                 <label asp-for="OverrideEndLocal" class="form-label">@Localizer["Calendar_OverrideEnd"]</label>
                 <input asp-for="OverrideEndLocal" type="datetime-local" class="form-control" />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label asp-for="RecurrenceTimezone" class="form-label">@Localizer["Calendar_TimeZoneLabel"]</label>
+                <select asp-for="RecurrenceTimezone" class="form-select"
+                        asp-items="@(DateTimeZoneProviders.Tzdb.Ids.Order(StringComparer.Ordinal).Select(id => new SelectListItem(id, id)))">
+                </select>
             </div>
         </div>
 
