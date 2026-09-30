@@ -363,7 +363,7 @@ separately below the key table.
 | Key | TTL | Type | Populated By | Invalidated By |
 |-----|-----|------|-------------|----------------|
 | `FeedbackBadgeCount` | 2 min | Static | **FeedbackService** (`GetActionableCountAsync`) | `INavBadgeCacheInvalidator` (FeedbackService, IssuesService, ApplicationDecisionService, RoleAssignmentService) |
-| `NotificationBadge:{userId}` | 2 min | Per-User | **NotificationBellViewComponent** | NotificationService, NotificationEmitter, NotificationInboxService |
+| `NotificationBadge:{userId}` | 2 min | Per-User | **NotificationInboxService** (`GetUnreadBadgeCountsAsync`) | NotificationService, NotificationEmitter, NotificationInboxService |
 | `NotificationMeters` | 2 min | Static | NotificationMeterProvider | `INotificationMeterCacheInvalidator` (TeamService, ApplicationDecisionService) |
 | `claims:{userId}` | 60 sec | Per-User | (claims principal factory) | `IRoleAssignmentClaimsCacheInvalidator` (RoleAssignmentService, AccountDeletionService) |
 | `shift-auth:{userId}` | 60 sec | Per-User | ShiftManagementService | ShiftManagementService, `IShiftAuthorizationInvalidator` (TeamService, AccountDeletionService) |
@@ -405,12 +405,9 @@ separately below the key table.
 
 ### Cache Issues / Notes
 
-1. **One view component still populates a cache** that services
-   invalidate. `NotificationBadge:{userId}` is populated by
-   `NotificationBellViewComponent` — a backwards pattern: services know how
-   to invalidate but not to recompute. `FeedbackBadgeCount` is
-   owned and populated by `FeedbackService`; `NavBadge:Voting:{userId}`
-   is owned and populated by `ApplicationDecisionService`.
+1. **Nav-badge caches are owned by services.** `NotificationBadge:{userId}` is
+   populated by `NotificationInboxService`, `FeedbackBadgeCount` by
+   `FeedbackService`, and `NavBadge:Voting:{userId}` by `ApplicationDecisionService`.
 
 2. **Ticket user holdings are tracked, not `IMemoryCache` keys.**
    `CachingTicketQueryService` keeps user holdings in `Tickets.UserHoldings`,
@@ -461,13 +458,7 @@ Finance, DevLogin, etc.) go entirely through service interfaces.
 
 ### View Components (cache populators)
 
-| Component | Cache Key |
-|-----------|-----------|
-| **NotificationBellViewComponent** | `NotificationBadge:{userId}` (read/write) |
-
-All other view components read via owning services. `NavBadgesViewComponent`
-owns no cache entries — `FeedbackBadgeCount` is owned by `FeedbackService`
-and `NavBadge:Voting:{userId}` by `ApplicationDecisionService`.
+No view component populates a cache; all read via owning services.
 
 ### Background Jobs
 
@@ -489,7 +480,6 @@ Controllers and components that touch `IMemoryCache` directly.
 
 | Controller / Component | Cache Operation | Key |
 |------------------------|-----------------|-----|
-| **NotificationBellViewComponent** | GetOrCreate | `NotificationBadge:{userId}` |
 | **GateLoginThrottle** (Web infrastructure, used by the gate-terminal sign-in) | TryGetValue / Set / Remove | `GateLoginFailures:{sourceIp}` |
 | **GatePinThrottle** (`Humans.Gate/Services/Stores/`; used by `GateController` PIN claim / override) | TryGetValue / Set / Remove | `GatePinFailures:{key}` |
 | **GateVendorMirrorLedger** (`Humans.Gate/Services/Stores/`; used by `GateController` and `GateVendorBackfillAdminController`) | TryGetValue / Set (atomic claim) | `GateVendorMirrorSent:{vendorTicketId}` |

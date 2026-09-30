@@ -33,7 +33,7 @@ internal interface INotificationInboxService
 
     /// <summary>
     /// Resolves a notification (marks it as handled by the user).
-    /// Returns false if the notification was not found or user is not a recipient.
+    /// NotFound if the notification does not exist; Forbidden if the user is not a recipient.
     /// </summary>
     Task<NotificationActionResult> ResolveAsync(
         Guid notificationId, Guid userId,
@@ -41,7 +41,8 @@ internal interface INotificationInboxService
 
     /// <summary>
     /// Dismisses an informational notification.
-    /// Returns false if the notification is actionable (cannot be dismissed).
+    /// NotFound if the notification does not exist; Forbidden if the user is not a recipient
+    /// or the notification is actionable (cannot be dismissed).
     /// </summary>
     Task<NotificationActionResult> DismissAsync(
         Guid notificationId, Guid userId,
@@ -77,7 +78,8 @@ internal interface INotificationInboxService
 
     /// <summary>
     /// Click-through: marks a notification as read and returns the action URL.
-    /// Returns null if the notification is not found or user is not a recipient.
+    /// Returns null if the notification is not found, the user is not a recipient,
+    /// or the notification has no action URL.
     /// </summary>
     Task<string?> ClickThroughAsync(
         Guid notificationId, Guid userId,

@@ -357,7 +357,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
                 break;
             case NotificationInboxFilter.Approvals:
                 query = query.Where(nr =>
-                    // ConsentReviewNeeded and ApplicationSubmitted retained for pre-PR-642 historical rows only; no new rows emit these sources.
+                    // ConsentReviewNeeded and ApplicationSubmitted: retired sources, kept so existing rows still filter; nothing emits them.
                     nr.Notification.Source == NotificationSource.ConsentReviewNeeded ||
                     nr.Notification.Source == NotificationSource.ApplicationSubmitted ||
                     nr.Notification.Source == NotificationSource.ApplicationApproved ||

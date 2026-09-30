@@ -5,11 +5,9 @@ using Xunit;
 namespace Humans.Notifications.Tests.Enums;
 
 /// <summary>
-/// Notifications' string-stored-enum guard. Lives here rather than the central
-/// <c>Humans.Domain.Tests.Enums.EnumStringStabilityTests</c> because <see cref="NotificationSource"/>,
-/// <see cref="NotificationClass"/> and <see cref="NotificationPriority"/> all sit on
-/// Notifications' contracts leaf after the section's G5 move (nobodies-collective/Humans#866),
-/// where the central project cannot name them (nobodies-collective/Humans#1025).
+/// Notifications' string-stored-enum guard. <see cref="NotificationSource"/>,
+/// <see cref="NotificationClass"/> and <see cref="NotificationPriority"/> sit on
+/// Notifications' contracts leaf, so the section's own tests guard them.
 /// </summary>
 /// <remarks>
 /// All three are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves

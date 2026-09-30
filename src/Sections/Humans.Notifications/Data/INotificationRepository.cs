@@ -162,7 +162,7 @@ internal interface INotificationRepository : IRepository
 
     /// <summary>
     /// Returns every unresolved recipient row for a user with the parent
-    /// <c>Notification</c>, ordered newest first. Used by the popup.
+    /// <c>Notification</c>, unordered — the controller sorts. Used by the popup.
     /// </summary>
     Task<IReadOnlyList<NotificationRecipient>> GetPopupAsync(
         Guid userId, CancellationToken ct = default);

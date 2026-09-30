@@ -6,16 +6,13 @@ namespace Humans.Notifications.Tests;
 
 /// <summary>
 /// Architecture tests enforcing the §15 repository pattern for the
-/// Notifications section — migrated per issue #550, moved to its own project at G5
-/// (nobodies-collective/Humans#866).
+/// Notifications section.
 ///
 /// <para>
-/// Notifications chose <b>Option A</b> (no caching decorator, no dict cache):
-/// in-app dispatch is fire-and-forget and reads go through the inbox service.
-/// Nav-badge counts are cached inside <c>NotificationInboxService.GetUnreadBadgeCountsAsync</c>
-/// via short-TTL <see cref="Microsoft.Extensions.Caching.Memory.IMemoryCache"/> (§15).
-/// The same rationale used by Users (#243), Governance (#242), Budget (#544),
-/// City Planning (#543), and Audit Log (#552) when they skipped the decorator.
+/// No caching decorator: in-app dispatch is fire-and-forget and reads go through the
+/// inbox service. Nav-badge counts are cached inside
+/// <c>NotificationInboxService.GetUnreadBadgeCountsAsync</c> via short-TTL
+/// <see cref="Microsoft.Extensions.Caching.Memory.IMemoryCache"/> (§15).
 /// </para>
 /// </summary>
 public class NotificationsArchitectureTests

@@ -13,7 +13,7 @@ namespace Humans.Notifications;
 
 /// <summary>
 /// Notifications' DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix. No caching decorator (issue #550): the
+/// nothing names it, so it needs no section prefix. No caching decorator: the
 /// inbox service owns the per-user badge-count cache and evicts it on every write, and the
 /// meter provider owns the meter-aggregate cache.
 /// </summary>
