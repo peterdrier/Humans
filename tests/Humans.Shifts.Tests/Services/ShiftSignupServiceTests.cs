@@ -179,10 +179,12 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
+        const string key = "Shifts_Signup_AlreadySignedUp";
+        _localizer[key].Returns(new LocalizedString(key, "translated duplicate rejection"));
         var result = await _service.SignUpAsync(userId, shift.Id);
 
         result.Success.Should().BeFalse();
-        result.Error.Should().Contain("Already signed up");
+        result.Error.Should().Be("translated duplicate rejection");
     }
 
     [HumansFact]
@@ -255,7 +257,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.SignUpAsync(userId, shift.Id);
 
         result.Success.Should().BeFalse();
-        result.Error.Should().Contain("not currently open");
+        result.Error.Should().Be("Shifts_Signup_BrowsingClosed");
     }
 
     [HumansFact]
@@ -269,7 +271,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.SignUpAsync(userId, shift.Id);
 
         result.Success.Should().BeFalse();
-        result.Error.Should().Contain("restricted to coordinators");
+        result.Error.Should().Be("Shifts_Signup_Restricted");
     }
 
     [HumansFact]
@@ -283,7 +285,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.SignUpAsync(Guid.NewGuid(), shift.Id);
 
         result.Success.Should().BeFalse();
-        result.Error.Should().Contain("at capacity");
+        result.Error.Should().Be("Shifts_Signup_AtCapacity");
         (await ShiftsDb.ShiftSignups.CountAsync(
             s => s.ShiftId == shift.Id && s.Status == SignupStatus.Confirmed,
             TestContext.Current.CancellationToken)).Should().Be(shift.MaxVolunteers);
@@ -301,7 +303,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.SignUpAsync(userId, shift.Id);
 
         result.Success.Should().BeFalse();
-        result.Error.Should().Contain("Early entry signups are closed");
+        result.Error.Should().Be("Shifts_Signup_EarlyEntryClosed");
     }
 
     [HumansFact]
@@ -621,7 +623,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.VoluntellAsync(Guid.NewGuid(), shift.Id, Guid.NewGuid());
 
         result.Success.Should().BeFalse();
-        result.Error.Should().Contain("at capacity");
+        result.Error.Should().Be("Shifts_Signup_AtCapacity");
     }
 
     [HumansFact]
@@ -1105,7 +1107,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -2);
 
         result.Success.Should().BeFalse();
-        result.Error.Should().Contain("Early entry signups are closed");
+        result.Error.Should().Be("Shifts_Signup_EarlyEntryClosed");
     }
 
     // ============================================================

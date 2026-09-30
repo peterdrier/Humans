@@ -1204,4 +1204,10 @@
   <data name="Shifts_BailRange_NotAuthorized" xml:space="preserve"><value>No tienes permiso para cancelar este bloque de inscripciones.</value></data>
   <data name="Shifts_Bail_EarlyEntryClosed" xml:space="preserve"><value>No puedes cancelar turnos de montaje después del cierre de la entrada anticipada.</value></data>
   <data name="Shifts_Bail_AlreadyBailed" xml:space="preserve"><value>Esta inscripción ya se ha cancelado.</value></data>
+  <data name="Shifts_Signup_AlreadySignedUp" xml:space="preserve"><value>Ya te has inscrito en este turno.</value></data>
+  <data name="Shifts_Signup_ShiftNotFound" xml:space="preserve"><value>Turno no encontrado.</value></data>
+  <data name="Shifts_Signup_BrowsingClosed" xml:space="preserve"><value>La consulta de turnos no está abierta actualmente.</value></data>
+  <data name="Shifts_Signup_Restricted" xml:space="preserve"><value>Este turno está reservado a coordinadores y administradores.</value></data>
+  <data name="Shifts_Signup_EarlyEntryClosed" xml:space="preserve"><value>Las inscripciones de entrada anticipada están cerradas.</value></data>
+  <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>Este turno está completo.</value></data>
 </root>

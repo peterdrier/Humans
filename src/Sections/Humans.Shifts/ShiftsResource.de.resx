@@ -1203,4 +1203,10 @@
   <data name="Shifts_BailRange_NotAuthorized" xml:space="preserve"><value>Du darfst diesen Anmeldungsblock nicht absagen.</value></data>
   <data name="Shifts_Bail_EarlyEntryClosed" xml:space="preserve"><value>Du kannst Aufbauschichten nach dem Ende der Frühzutrittsfrist nicht mehr absagen.</value></data>
   <data name="Shifts_Bail_AlreadyBailed" xml:space="preserve"><value>Diese Anmeldung wurde bereits abgesagt.</value></data>
+  <data name="Shifts_Signup_AlreadySignedUp" xml:space="preserve"><value>Du bist bereits für diese Schicht angemeldet.</value></data>
+  <data name="Shifts_Signup_ShiftNotFound" xml:space="preserve"><value>Schicht nicht gefunden.</value></data>
+  <data name="Shifts_Signup_BrowsingClosed" xml:space="preserve"><value>Die Schichtübersicht ist derzeit nicht geöffnet.</value></data>
+  <data name="Shifts_Signup_Restricted" xml:space="preserve"><value>Diese Schicht ist Koordinatoren und Administratoren vorbehalten.</value></data>
+  <data name="Shifts_Signup_EarlyEntryClosed" xml:space="preserve"><value>Die Anmeldungen für die frühe Anreise sind geschlossen.</value></data>
+  <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>Diese Schicht ist voll belegt.</value></data>
 </root>

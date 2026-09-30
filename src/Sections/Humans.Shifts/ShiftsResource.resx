@@ -417,4 +417,10 @@
   <data name="Shifts_BailRange_NotAuthorized" xml:space="preserve"><value>Not authorized to bail this signup block.</value></data>
   <data name="Shifts_Bail_EarlyEntryClosed" xml:space="preserve"><value>Cannot bail from build shifts after early entry close.</value></data>
   <data name="Shifts_Bail_AlreadyBailed" xml:space="preserve"><value>This signup has already been bailed.</value></data>
+  <data name="Shifts_Signup_AlreadySignedUp" xml:space="preserve"><value>Already signed up for this shift.</value></data>
+  <data name="Shifts_Signup_ShiftNotFound" xml:space="preserve"><value>Shift not found.</value></data>
+  <data name="Shifts_Signup_BrowsingClosed" xml:space="preserve"><value>Shift browsing is not currently open.</value></data>
+  <data name="Shifts_Signup_Restricted" xml:space="preserve"><value>This shift is restricted to coordinators and admins.</value></data>
+  <data name="Shifts_Signup_EarlyEntryClosed" xml:space="preserve"><value>Early entry signups are closed.</value></data>
+  <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>This shift is at capacity.</value></data>
 </root>

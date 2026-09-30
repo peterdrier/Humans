@@ -58,10 +58,10 @@ internal sealed class ShiftSignupService(
         var isPrivileged = flags.HasFlag(ShiftSignupRequestFlags.Privileged);
         var activeShiftIds = await repo.GetActiveShiftIdsForUserAsync(userId, [shiftId]);
         if (activeShiftIds.Contains(shiftId))
-            return SignupResult.Fail("Already signed up for this shift.");
+            return SignupResult.Fail(localizer["Shifts_Signup_AlreadySignedUp"]);
 
         var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Context);
-        if (shift is null) return SignupResult.Fail("Shift not found.");
+        if (shift is null) return SignupResult.Fail(localizer["Shifts_Signup_ShiftNotFound"]);
 
         var localEs = shift.Rota.EventSettings;
         var calendar = await calendarResolver.GetAsync(shift.Rota.EventSettingsId);
@@ -70,13 +70,13 @@ internal sealed class ShiftSignupService(
         isPrivileged = await IsPrivilegedAsync(userId, shift.Rota.TeamId, isPrivileged);
 
         if (!localEs.IsShiftBrowsingOpen && !isPrivileged)
-            return SignupResult.Fail("Shift browsing is not currently open.");
+            return SignupResult.Fail(localizer["Shifts_Signup_BrowsingClosed"]);
 
         if (shift.AdminOnly && !isPrivileged)
-            return SignupResult.Fail("This shift is restricted to coordinators and admins.");
+            return SignupResult.Fail(localizer["Shifts_Signup_Restricted"]);
 
         if (shift.IsEarlyEntry && calendar.IsEarlyEntryClosed(now) && !isPrivileged)
-            return SignupResult.Fail("Early entry signups are closed.");
+            return SignupResult.Fail(localizer["Shifts_Signup_EarlyEntryClosed"]);
 
         var overlapWarning = await CheckOverlapAsync(userId, shift, calendar);
         if (overlapWarning is not null)
@@ -85,7 +85,7 @@ internal sealed class ShiftSignupService(
         string? warning = null;
         var confirmedCount = shift.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
         if (confirmedCount >= shift.MaxVolunteers)
-            return SignupResult.Fail("This shift is at capacity.");
+            return SignupResult.Fail(localizer["Shifts_Signup_AtCapacity"]);
 
         if (shift.IsEarlyEntry)
         {
@@ -273,10 +273,10 @@ internal sealed class ShiftSignupService(
     {
         var activeShiftIds = await repo.GetActiveShiftIdsForUserAsync(userId, [shiftId]);
         if (activeShiftIds.Contains(shiftId))
-            return SignupResult.Fail("Already signed up for this shift.");
+            return SignupResult.Fail(localizer["Shifts_Signup_AlreadySignedUp"]);
 
         var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Context);
-        if (shift is null) return SignupResult.Fail("Shift not found.");
+        if (shift is null) return SignupResult.Fail(localizer["Shifts_Signup_ShiftNotFound"]);
 
         var calendar = await calendarResolver.GetAsync(shift.Rota.EventSettingsId);
         if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
@@ -284,7 +284,7 @@ internal sealed class ShiftSignupService(
 
         var confirmedCount = shift.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
         if (confirmedCount >= shift.MaxVolunteers)
-            return SignupResult.Fail("This shift is at capacity.");
+            return SignupResult.Fail(localizer["Shifts_Signup_AtCapacity"]);
 
         var overlapWarning = await CheckOverlapAsync(userId, shift, calendar);
         if (overlapWarning is not null)
@@ -560,13 +560,13 @@ internal sealed class ShiftSignupService(
         isPrivileged = await IsPrivilegedAsync(userId, rota.TeamId, isPrivileged);
 
         if (!localEs.IsShiftBrowsingOpen && !isPrivileged)
-            return SignupResult.Fail("Shift browsing is not currently open.");
+            return SignupResult.Fail(localizer["Shifts_Signup_BrowsingClosed"]);
 
         if (rota.Period == RotaPeriod.Build
             && calendar.IsEarlyEntryClosed(now)
             && !isPrivileged)
         {
-            return SignupResult.Fail("Early entry signups are closed.");
+            return SignupResult.Fail(localizer["Shifts_Signup_EarlyEntryClosed"]);
         }
 
         var shiftsInRange = SelectAllDayRangeShifts(rota, startDayOffset, endDayOffset);
