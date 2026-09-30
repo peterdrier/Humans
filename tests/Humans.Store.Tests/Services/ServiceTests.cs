@@ -1263,6 +1263,45 @@ public class ServiceTests
             Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task CompletedCheckout_FailedRecordingPropagates_AndRetryRecordsOnce(bool paid, bool cancelled)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var orderId = Guid.NewGuid();
+        var recorded = new List<Payment>();
+        _repo.StripePaymentIntentExistsAsync("pi_retry", ct).Returns(_ => recorded.Count > 0);
+        Exception failure = cancelled
+            ? new OperationCanceledException(ct)
+            : new InvalidOperationException("Payment storage unavailable");
+        _repo.AddPaymentAsync(Arg.Any<Payment>(), ct).Returns(Task.FromException(failure));
+        var evt = new StoreCheckoutWebhookEvent("evt_retry", StoreCheckoutEventKind.CheckoutSessionCompleted,
+            new StoreCheckoutSessionData("cs_retry", orderId, "pi_retry", 42.50m, PaymentStatus: paid ? "paid" : "unpaid"));
+
+        Func<Task> process = () => _service.HandleStripeCheckoutWebhookEventAsync(evt, ct);
+        (await process.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
+        recorded.Should().BeEmpty();
+        _repo.AddPaymentAsync(Arg.Any<Payment>(), ct).Returns(call =>
+        {
+            recorded.Add(call.Arg<Payment>());
+            return Task.CompletedTask;
+        });
+
+        await process();
+        await process();
+
+        var payment = recorded.Should().ContainSingle().Subject;
+        payment.OrderId.Should().Be(orderId);
+        payment.StripePaymentIntentId.Should().Be("pi_retry");
+        payment.AmountEur.Should().Be(42.50m);
+        payment.Status.Should().Be(paid ? PaymentStatus.Paid : PaymentStatus.Pending);
+        await _audit.Received(1).LogAsync(AuditAction.StorePaymentRecorded, AuditEntityTypes.Payment,
+            payment.Id, Arg.Any<string>(), "StripeWebhook", orderId, AuditEntityTypes.Order);
+    }
+
     [HumansFact]
     public async Task HandleStripeCheckoutWebhookEventAsync_skips_completed_checkout_when_session_is_incomplete()
     {

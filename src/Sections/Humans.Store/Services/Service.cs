@@ -910,6 +910,8 @@ internal sealed class Service(
             logger.LogError(ex,
                 "Failed to record Stripe payment for order {OrderId} (session {SessionId})",
                 orderId, session.SessionId);
+            // A failed recording must not become a successful webhook acknowledgement.
+            throw;
         }
     }
 
