@@ -78,6 +78,8 @@
   <data name="Store_RecordPaymentType" xml:space="preserve"><value>Type</value></data>
   <data name="Store_Method_DepositReturn" xml:space="preserve"><value>Deposit return (credit to the order)</value></data>
   <data name="Store_Method_Refund" xml:space="preserve"><value>Refund (money sent back from Stripe)</value></data>
+  <data name="Enum_PaymentMethod_DepositReturn" xml:space="preserve"><value>Deposit return</value></data>
+  <data name="Enum_PaymentMethod_Refund" xml:space="preserve"><value>Refund</value></data>
   <data name="Store_RecordPaymentAmount" xml:space="preserve"><value>Amount (EUR)</value></data>
   <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Reference (e.g. Stripe refund id)</value></data>
   <data name="Store_RecordPaymentNotes" xml:space="preserve"><value>Notes</value></data>

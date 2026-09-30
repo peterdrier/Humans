@@ -83,6 +83,8 @@
   <data name="Store_RecordPaymentType" xml:space="preserve"><value>Tipo</value></data>
   <data name="Store_Method_DepositReturn" xml:space="preserve"><value>Devolución de fianza (abono al pedido)</value></data>
   <data name="Store_Method_Refund" xml:space="preserve"><value>Reembolso (dinero devuelto desde Stripe)</value></data>
+  <data name="Enum_PaymentMethod_DepositReturn" xml:space="preserve"><value>Devolución de fianza</value></data>
+  <data name="Enum_PaymentMethod_Refund" xml:space="preserve"><value>Reembolso</value></data>
   <data name="Store_RecordPaymentAmount" xml:space="preserve"><value>Importe (EUR)</value></data>
   <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Referencia (p. ej. id del reembolso en Stripe)</value></data>
   <data name="Store_RecordPaymentNotes" xml:space="preserve"><value>Notas</value></data>

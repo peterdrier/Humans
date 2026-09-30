@@ -83,6 +83,8 @@
   <data name="Store_RecordPaymentType" xml:space="preserve"><value>Tipo</value></data>
   <data name="Store_Method_DepositReturn" xml:space="preserve"><value>Restituzione cauzione (accredito sull'ordine)</value></data>
   <data name="Store_Method_Refund" xml:space="preserve"><value>Rimborso (denaro restituito da Stripe)</value></data>
+  <data name="Enum_PaymentMethod_DepositReturn" xml:space="preserve"><value>Restituzione cauzione</value></data>
+  <data name="Enum_PaymentMethod_Refund" xml:space="preserve"><value>Rimborso</value></data>
   <data name="Store_RecordPaymentAmount" xml:space="preserve"><value>Importo (EUR)</value></data>
   <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Riferimento (es. id del rimborso Stripe)</value></data>
   <data name="Store_RecordPaymentNotes" xml:space="preserve"><value>Note</value></data>

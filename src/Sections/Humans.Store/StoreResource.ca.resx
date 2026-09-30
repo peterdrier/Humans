@@ -83,6 +83,8 @@
   <data name="Store_RecordPaymentType" xml:space="preserve"><value>Tipus</value></data>
   <data name="Store_Method_DepositReturn" xml:space="preserve"><value>Devolució de fiança (abonament a la comanda)</value></data>
   <data name="Store_Method_Refund" xml:space="preserve"><value>Reemborsament (diners retornats des de Stripe)</value></data>
+  <data name="Enum_PaymentMethod_DepositReturn" xml:space="preserve"><value>Devolució de fiança</value></data>
+  <data name="Enum_PaymentMethod_Refund" xml:space="preserve"><value>Reemborsament</value></data>
   <data name="Store_RecordPaymentAmount" xml:space="preserve"><value>Import (EUR)</value></data>
   <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Referència (p. ex. id del reemborsament a Stripe)</value></data>
   <data name="Store_RecordPaymentNotes" xml:space="preserve"><value>Notes</value></data>
