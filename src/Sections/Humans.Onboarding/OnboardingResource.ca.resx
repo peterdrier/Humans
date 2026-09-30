@@ -314,4 +314,8 @@
     <value>&lt;p&gt;&lt;strong&gt;Motiu:&lt;/strong&gt; {0}&lt;/p&gt;</value>
     <comment>{0} = reason text (HTML-encoded by caller)</comment>
   </data>
+  <data name="Onboarding_Notification_ProfileRejectedTitle" xml:space="preserve"><value>S’ha revisat la teva inscripció</value></data>
+  <data name="Onboarding_Notification_ProfileRejectedBody" xml:space="preserve"><value>La teva inscripció no s’ha pogut aprovar en aquest moment.</value></data>
+  <data name="Onboarding_Notification_ProfileRejectedWithReason" xml:space="preserve"><value>La teva inscripció no s’ha pogut aprovar: {0}</value></data>
+  <data name="Onboarding_Notification_ViewProfile" xml:space="preserve"><value>Veure el perfil</value></data>
 </root>

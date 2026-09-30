@@ -113,6 +113,29 @@ public sealed class OnboardingServiceTests
             default!, cancellationToken: Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(null, "Tu inscripción no se ha podido aprobar en este momento.")]
+    [Xunit.InlineData("Duplicate account", "Tu inscripción no se ha podido aprobar: Duplicate account")]
+    public async Task RejectSignupAsync_LocalizesNotificationForRecipient(string? reason, string expectedBody)
+    {
+        var userId = Guid.NewGuid();
+        _userService.ApplyProfileOnboardingMutationAsync(userId,
+            Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(burnerName: "Member"))
+                with { PreferredLanguage = "es" });
+
+        (await BuildSut().RejectSignupAsync(userId, Guid.NewGuid(), reason,
+            Xunit.TestContext.Current.CancellationToken)).Success.Should().BeTrue();
+
+        var args = _notificationService.ReceivedCalls().Single().GetArguments();
+        args[3].Should().Be("Se ha revisado tu inscripción");
+        args[5].Should().Be(expectedBody);
+        args[6].Should().Be("/Profile");
+        args[7].Should().Be("Ver perfil");
+    }
+
     [HumansFact]
     public async Task RejectSignupAsync_OnSuccess_AuditsDeprovisionsAllThreeTeamsAndNotifies()
     {
