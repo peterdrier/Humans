@@ -411,4 +411,10 @@
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>FYI, your shifts with this team are:</value></data>
   <data name="Shifts_ShiftProfile_LoadFailed" xml:space="preserve"><value>Failed to load shift information.</value></data>
   <data name="Shifts_ShiftProfile_SaveFailed" xml:space="preserve"><value>Failed to save shift information.</value></data>
+  <data name="Shifts_EventCalendarNotConfigured" xml:space="preserve"><value>Event calendar not configured.</value></data>
+  <data name="Shifts_SignupNotFound" xml:space="preserve"><value>Signup not found.</value></data>
+  <data name="Shifts_Bail_NotAuthorized" xml:space="preserve"><value>Not authorized to bail this signup.</value></data>
+  <data name="Shifts_BailRange_NotAuthorized" xml:space="preserve"><value>Not authorized to bail this signup block.</value></data>
+  <data name="Shifts_Bail_EarlyEntryClosed" xml:space="preserve"><value>Cannot bail from build shifts after early entry close.</value></data>
+  <data name="Shifts_Bail_AlreadyBailed" xml:space="preserve"><value>This signup has already been bailed.</value></data>
 </root>

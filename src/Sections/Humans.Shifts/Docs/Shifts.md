@@ -287,7 +287,7 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 - The advisory dietary-missing banner passes `HttpContext.RequestAborted` through its qualifying-signup and profile reads. It still suppresses operational failures so the Shifts page renders, but does not log a disconnected browser as a banner failure.
 
 - Regular humans **cannot** manage rotas or shifts. They can only browse and sign up.
-- Regular humans **cannot** approve, refuse, or bail other humans' signups.
+- Regular humans **cannot** approve, refuse, or bail other humans' signups. Single and range bail rejections (including early-entry closure) use the six-culture Shifts resources, as do shared signup-not-found and missing-calendar errors; the signup modal uses the shared localized close label.
 - Regular humans **cannot** voluntell other humans.
 - Regular humans (no team coordinator / management role anywhere) **cannot** see the cross-department shift dashboard.
 - Department coordinators / sub-team managers **cannot** see the dashboard's coordinator-activity panel or trigger the per-shift voluntell action — those stay on the narrower `ShiftDashboardAccess` policy (Admin / NoInfoAdmin / VolunteerCoordinator). The page entry is on the wider `ShiftDepartmentManager` policy.

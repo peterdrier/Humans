@@ -65,7 +65,7 @@ internal sealed class ShiftSignupService(
 
         var localEs = shift.Rota.EventSettings;
         var calendar = await calendarResolver.GetAsync(shift.Rota.EventSettingsId);
-        if (calendar is null) return SignupResult.Fail("Event calendar not configured.");
+        if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
         var now = clock.GetCurrentInstant();
         isPrivileged = await IsPrivilegedAsync(userId, shift.Rota.TeamId, isPrivileged);
 
@@ -145,13 +145,13 @@ internal sealed class ShiftSignupService(
     public async Task<SignupResult> ApproveAsync(Guid signupId, Guid reviewerUserId)
     {
         var signup = await repo.GetByIdForMutationAsync(signupId);
-        if (signup is null) return SignupResult.Fail("Signup not found.");
+        if (signup is null) return SignupResult.Fail(localizer["Shifts_SignupNotFound"]);
 
         if (signup.Status != SignupStatus.Pending)
             return SignupResult.Fail($"Cannot approve signup in {signup.Status} state.");
 
         var calendar = await calendarResolver.GetAsync(signup.Shift.Rota.EventSettingsId);
-        if (calendar is null) return SignupResult.Fail("Event calendar not configured.");
+        if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
 
         var overlapWarning = await CheckOverlapAsync(signup.UserId, signup.Shift, calendar);
         string? warning = null;
@@ -201,7 +201,7 @@ internal sealed class ShiftSignupService(
     public async Task<SignupResult> RefuseAsync(Guid signupId, Guid reviewerUserId, string? reason)
     {
         var signup = await repo.GetByIdForMutationAsync(signupId);
-        if (signup is null) return SignupResult.Fail("Signup not found.");
+        if (signup is null) return SignupResult.Fail(localizer["Shifts_SignupNotFound"]);
 
         signup.Refuse(reviewerUserId, clock, reason);
 
@@ -225,26 +225,26 @@ internal sealed class ShiftSignupService(
     public async Task<SignupResult> BailAsync(Guid signupId, Guid actorUserId, string? reason)
     {
         var signup = await repo.GetByIdForMutationAsync(signupId);
-        if (signup is null) return SignupResult.Fail("Signup not found.");
+        if (signup is null) return SignupResult.Fail(localizer["Shifts_SignupNotFound"]);
 
         var calendar = await calendarResolver.GetAsync(signup.Shift.Rota.EventSettingsId);
-        if (calendar is null) return SignupResult.Fail("Event calendar not configured.");
+        if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
         var now = clock.GetCurrentInstant();
         var isOwner = signup.UserId == actorUserId;
         var isPrivileged = await IsPrivilegedAsync(actorUserId, signup.Shift.Rota.TeamId);
 
         // Auth: must be signup owner or privileged (dept coordinator/NoInfoAdmin/Admin)
         if (!isOwner && !isPrivileged)
-            return SignupResult.Fail("Not authorized to bail this signup.");
+            return SignupResult.Fail(localizer["Shifts_Bail_NotAuthorized"]);
 
         if (signup.Status == SignupStatus.Bailed)
         {
             logger.LogWarning("Bail attempted on already-bailed signup {SignupId} by actor {ActorUserId}", signupId, actorUserId);
-            return SignupResult.Fail("This signup has already been bailed.");
+            return SignupResult.Fail(localizer["Shifts_Bail_AlreadyBailed"]);
         }
 
         if (signup.Shift.IsEarlyEntry && calendar.IsEarlyEntryClosed(now) && !isPrivileged)
-            return SignupResult.Fail("Cannot bail from build shifts after early entry close.");
+            return SignupResult.Fail(localizer["Shifts_Bail_EarlyEntryClosed"]);
 
         signup.Bail(actorUserId, clock, reason);
 
@@ -279,7 +279,7 @@ internal sealed class ShiftSignupService(
         if (shift is null) return SignupResult.Fail("Shift not found.");
 
         var calendar = await calendarResolver.GetAsync(shift.Rota.EventSettingsId);
-        if (calendar is null) return SignupResult.Fail("Event calendar not configured.");
+        if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
         var now = clock.GetCurrentInstant();
 
         var confirmedCount = shift.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
@@ -365,7 +365,7 @@ internal sealed class ShiftSignupService(
             return SignupResult.Fail("Already signed up for all shifts in this range.");
 
         var calendar = await calendarResolver.GetAsync(rota.EventSettingsId);
-        if (calendar is null) return SignupResult.Fail("Event calendar not configured.");
+        if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
         var skippedOverlaps = new List<string>();
         var assignable = new List<Shift>();
         foreach (var shift in shiftsToAssign)
@@ -476,10 +476,10 @@ internal sealed class ShiftSignupService(
     public async Task<SignupResult> MarkNoShowAsync(Guid signupId, Guid reviewerUserId)
     {
         var signup = await repo.GetByIdForMutationAsync(signupId);
-        if (signup is null) return SignupResult.Fail("Signup not found.");
+        if (signup is null) return SignupResult.Fail(localizer["Shifts_SignupNotFound"]);
 
         var calendar = await calendarResolver.GetAsync(signup.Shift.Rota.EventSettingsId);
-        if (calendar is null) return SignupResult.Fail("Event calendar not configured.");
+        if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
         var shiftEnd = signup.Shift.GetAbsoluteEnd(calendar);
         var now = clock.GetCurrentInstant();
 
@@ -508,7 +508,7 @@ internal sealed class ShiftSignupService(
     public async Task<SignupResult> RemoveSignupAsync(Guid signupId, Guid removedByUserId, string? reason)
     {
         var signup = await repo.GetByIdForMutationAsync(signupId);
-        if (signup is null) return SignupResult.Fail("Signup not found.");
+        if (signup is null) return SignupResult.Fail(localizer["Shifts_SignupNotFound"]);
 
         if (signup.Status != SignupStatus.Confirmed)
             return SignupResult.Fail($"Cannot remove signup in {signup.Status} state.");
@@ -555,7 +555,7 @@ internal sealed class ShiftSignupService(
 
         var localEs = rota.EventSettings;
         var calendar = await calendarResolver.GetAsync(rota.EventSettingsId);
-        if (calendar is null) return SignupResult.Fail("Event calendar not configured.");
+        if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
         var now = clock.GetCurrentInstant();
         isPrivileged = await IsPrivilegedAsync(userId, rota.TeamId, isPrivileged);
 
@@ -850,7 +850,7 @@ internal sealed class ShiftSignupService(
         var now = clock.GetCurrentInstant();
         var approved = new List<ShiftSignup>();
         var calendar = await calendarResolver.GetAsync(signups[0].Shift.Rota.EventSettingsId);
-        if (calendar is null) return SignupResult.Fail("Event calendar not configured.");
+        if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
 
         foreach (var signup in signups)
         {
@@ -987,16 +987,16 @@ internal sealed class ShiftSignupService(
 
         var firstSignup = signups[0];
         var calendar = await calendarResolver.GetAsync(firstSignup.Shift.Rota.EventSettingsId)
-            ?? throw new InvalidOperationException("Event calendar not configured.");
+            ?? throw new InvalidOperationException(localizer["Shifts_EventCalendarNotConfigured"]);
         var now = clock.GetCurrentInstant();
         var isOwner = firstSignup.UserId == actorUserId;
         var isPrivileged = await IsPrivilegedAsync(actorUserId, firstSignup.Shift.Rota.TeamId);
 
         if (!isOwner && !isPrivileged)
-            throw new InvalidOperationException("Not authorized to bail this signup block.");
+            throw new InvalidOperationException(localizer["Shifts_BailRange_NotAuthorized"]);
 
         if (signups.Any(s => s.Shift.IsEarlyEntry) && calendar.IsEarlyEntryClosed(now) && !isPrivileged)
-            throw new InvalidOperationException("Cannot bail from build shifts after early entry close.");
+            throw new InvalidOperationException(localizer["Shifts_Bail_EarlyEntryClosed"]);
 
         foreach (var signup in signups)
         {

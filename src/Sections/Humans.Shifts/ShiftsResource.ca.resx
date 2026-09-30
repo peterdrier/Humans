@@ -1197,4 +1197,10 @@
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Per a la teva informaci&#xF3;, les teves franges amb aquest equip s&#xF3;n:</value></data>
   <data name="Shifts_ShiftProfile_LoadFailed" xml:space="preserve"><value>No s'ha pogut carregar la informació dels torns.</value></data>
   <data name="Shifts_ShiftProfile_SaveFailed" xml:space="preserve"><value>No s'ha pogut desar la informació dels torns.</value></data>
+  <data name="Shifts_EventCalendarNotConfigured" xml:space="preserve"><value>El calendari de l’esdeveniment no està configurat.</value></data>
+  <data name="Shifts_SignupNotFound" xml:space="preserve"><value>No s’ha trobat la inscripció.</value></data>
+  <data name="Shifts_Bail_NotAuthorized" xml:space="preserve"><value>No tens permís per cancel·lar aquesta inscripció.</value></data>
+  <data name="Shifts_BailRange_NotAuthorized" xml:space="preserve"><value>No tens permís per cancel·lar aquest bloc d’inscripcions.</value></data>
+  <data name="Shifts_Bail_EarlyEntryClosed" xml:space="preserve"><value>No pots cancel·lar torns de muntatge després del tancament de l’entrada anticipada.</value></data>
+  <data name="Shifts_Bail_AlreadyBailed" xml:space="preserve"><value>Aquesta inscripció ja s’ha cancel·lat.</value></data>
 </root>

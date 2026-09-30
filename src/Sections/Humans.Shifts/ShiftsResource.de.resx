@@ -1197,4 +1197,10 @@
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Zur Info, deine Schichten bei diesem Team:</value></data>
   <data name="Shifts_ShiftProfile_LoadFailed" xml:space="preserve"><value>Schichtinformationen konnten nicht geladen werden.</value></data>
   <data name="Shifts_ShiftProfile_SaveFailed" xml:space="preserve"><value>Schichtinformationen konnten nicht gespeichert werden.</value></data>
+  <data name="Shifts_EventCalendarNotConfigured" xml:space="preserve"><value>Der Veranstaltungskalender ist nicht eingerichtet.</value></data>
+  <data name="Shifts_SignupNotFound" xml:space="preserve"><value>Die Anmeldung wurde nicht gefunden.</value></data>
+  <data name="Shifts_Bail_NotAuthorized" xml:space="preserve"><value>Du darfst diese Anmeldung nicht absagen.</value></data>
+  <data name="Shifts_BailRange_NotAuthorized" xml:space="preserve"><value>Du darfst diesen Anmeldungsblock nicht absagen.</value></data>
+  <data name="Shifts_Bail_EarlyEntryClosed" xml:space="preserve"><value>Du kannst Aufbauschichten nach dem Ende der Frühzutrittsfrist nicht mehr absagen.</value></data>
+  <data name="Shifts_Bail_AlreadyBailed" xml:space="preserve"><value>Diese Anmeldung wurde bereits abgesagt.</value></data>
 </root>

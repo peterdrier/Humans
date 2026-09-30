@@ -34,6 +34,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftViewInvalidator _viewInvalidator;
+    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
 
     // Fixed test time: 2026-06-15 12:00 UTC
@@ -69,8 +70,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         _viewInvalidator = Substitute.For<IShiftViewInvalidator>();
-        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
-        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         _service = new ShiftSignupService(
             _repo,
             Substitute.For<IVolunteerTrackingRepository>(),
@@ -85,7 +85,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             Clock,
             NullLogger<ShiftSignupService>.Instance,
             _users,
-            localizer);
+            _localizer);
     }
 
     // ============================================================
@@ -441,7 +441,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.BailAsync(signup.Id, userId, null);
 
         result.Success.Should().BeFalse();
-        result.Error.Should().Contain("early entry close");
+        result.Error.Should().Be("Shifts_Bail_EarlyEntryClosed");
     }
 
     // ============================================================
@@ -1111,6 +1111,41 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     // ============================================================
     // BailRange
     // ============================================================
+
+    [HumansTheory]
+    [InlineData(false, false, "Shifts_Bail_NotAuthorized")]
+    [InlineData(true, false, "Shifts_BailRange_NotAuthorized")]
+    [InlineData(false, true, "Shifts_Bail_EarlyEntryClosed")]
+    [InlineData(true, true, "Shifts_Bail_EarlyEntryClosed")]
+    public async Task Bail_RejectionsAreLocalizedWithoutMutatingSignups(
+        bool range, bool earlyEntryClosed, string key)
+    {
+        var (settings, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        shift.DayOffset = -1;
+        if (earlyEntryClosed) settings.EarlyEntryClose = TestNow - Duration.FromHours(1);
+        var userId = Guid.NewGuid();
+        var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
+        signup.SignupBlockId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        _localizer[key].Returns(new LocalizedString(key, "translated rejection"));
+        var actor = earlyEntryClosed ? userId : Guid.NewGuid();
+
+        if (range)
+        {
+            var action = () => _service.BailRangeAsync(signup.SignupBlockId.Value, actor);
+            await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("translated rejection");
+        }
+        else
+        {
+            var result = await _service.BailAsync(signup.Id, actor, null);
+            result.Success.Should().BeFalse();
+            result.Error.Should().Be("translated rejection");
+        }
+        (await ShiftsDb.ShiftSignups.FindAsync([signup.Id], TestContext.Current.CancellationToken))!
+            .Status.Should().Be(SignupStatus.Confirmed);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
+    }
 
     [HumansFact]
     public async Task BailRange_BailsAllSignupsInBlock()

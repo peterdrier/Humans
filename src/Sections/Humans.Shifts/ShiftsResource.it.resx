@@ -1197,4 +1197,10 @@
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Per tua informazione, le tue fasce con questo team sono:</value></data>
   <data name="Shifts_ShiftProfile_LoadFailed" xml:space="preserve"><value>Impossibile caricare le informazioni sui turni.</value></data>
   <data name="Shifts_ShiftProfile_SaveFailed" xml:space="preserve"><value>Impossibile salvare le informazioni sui turni.</value></data>
+  <data name="Shifts_EventCalendarNotConfigured" xml:space="preserve"><value>Il calendario dell’evento non è configurato.</value></data>
+  <data name="Shifts_SignupNotFound" xml:space="preserve"><value>Iscrizione non trovata.</value></data>
+  <data name="Shifts_Bail_NotAuthorized" xml:space="preserve"><value>Non hai il permesso di annullare questa iscrizione.</value></data>
+  <data name="Shifts_BailRange_NotAuthorized" xml:space="preserve"><value>Non hai il permesso di annullare questo blocco di iscrizioni.</value></data>
+  <data name="Shifts_Bail_EarlyEntryClosed" xml:space="preserve"><value>Non puoi annullare i turni di montaggio dopo la chiusura dell’ingresso anticipato.</value></data>
+  <data name="Shifts_Bail_AlreadyBailed" xml:space="preserve"><value>Questa iscrizione è già stata annullata.</value></data>
 </root>
