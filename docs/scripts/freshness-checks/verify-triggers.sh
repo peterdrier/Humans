@@ -32,12 +32,12 @@
 # then a summary line:
 #   SUMMARY repaired=<n> unresolved=<n> docs_forced_dirty=<n>
 # followed by one line per doc carrying >=1 UNRESOLVED trigger:
-# Failed target searches or file replacements remain UNRESOLVED; only
-# successful writes (or proposed --check repairs) count as REPAIRED.
 #   FORCE-DIRTY <doc>
 # Phase 4 unions FORCE-DIRTY docs into its dirty list regardless of whether
 # anything in the diff window matches — an unresolved dead trigger means the
 # doc needs a human-legible review this run, not silent skipping.
+# Failed target searches or file replacements remain UNRESOLVED; only
+# successful writes (or proposed --check repairs) count as REPAIRED.
 
 set -uo pipefail  # deliberately no -e: one bad doc must not silence the rest
                    # (docs/freshness/last-report.md, 2026-08-18 sweep — "the

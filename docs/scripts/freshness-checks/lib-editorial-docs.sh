@@ -15,17 +15,13 @@ ignore_patterns() {
     | { grep -E '^[[:space:]]+- ' || [ "$?" -eq 1 ]; } | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//'
 }
 
-# True (0) if $1 matches any catalog ignore pattern. `case` glob matching
-# treats `*` as unbounded (it matches `/` too), so a catalog pattern written
-# as `docs/plans/**` behaves the same as `docs/plans/*` here — both match any
-# depth, which is what the catalog author intends by using `**`.
+# True (0) if $1 matches any pattern in $2 (ignore_patterns output, one per
+# line). `case` glob matching treats `*` as unbounded (it matches `/` too), so
+# a catalog pattern written as `docs/plans/**` behaves the same as
+# `docs/plans/*` here — both match any depth, which is what the catalog author
+# intends by using `**`.
 path_ignored() {
-  local path="$1" pat patterns
-  if [ "$#" -gt 1 ]; then
-    patterns="$2"
-  else
-    patterns=$(ignore_patterns) || return 2
-  fi
+  local path="$1" patterns="$2" pat
   while IFS= read -r pat; do
     [ -z "$pat" ] && continue
     case "$path" in
