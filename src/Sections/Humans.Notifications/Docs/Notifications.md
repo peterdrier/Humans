@@ -29,7 +29,7 @@ In-app notification fan-out (stored events + per-user inbox) and live meter coun
 | Title | string (200) | Display title |
 | Body | string (2000)? | Optional body text |
 | ActionUrl | string (500)? | Optional URL for the action button |
-| ActionLabel | string (50)? | Optional button label (falls back to "View →" in UI) |
+| ActionLabel | string (max 50)? | Optional button label; stored only — not exported, no page renders it |
 | Priority | NotificationPriority | Enum stored as string (50): `Normal`/`High`/`Critical` |
 | Source | NotificationSource | Enum stored as string (50) — see below |
 | SourceKey | string (128)? | Optional correlation key for the specific source entity (e.g. issue id); enables `ResolveBySourceKeyAsync` auto-resolution |

@@ -385,7 +385,6 @@ public class NotificationInboxServiceTests : IDisposable
 
         result.Actionable.Should().HaveCount(1);
         result.Informational.Should().HaveCount(1);
-        result.ActionableCount.Should().Be(1);
     }
 
     // --- Cache invalidation ---

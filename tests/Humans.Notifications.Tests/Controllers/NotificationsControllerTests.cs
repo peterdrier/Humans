@@ -10,7 +10,6 @@ using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -32,8 +31,7 @@ public sealed class NotificationsControllerTests
             Substitute.For<ITeamServiceRead>(), Substitute.For<ITicketSync>(),
             Substitute.For<IApplicationServiceRead>(), Substitute.For<ICampServiceRead>(), cache,
             NullLogger<NotificationMeterProvider>.Instance);
-        var controller = new NotificationsController(inbox, Substitute.For<IUserServiceRead>(), meterProvider,
-            Substitute.For<IStringLocalizer<NotificationsResource>>())
+        var controller = new NotificationsController(inbox, Substitute.For<IUserServiceRead>(), meterProvider)
         {
             ControllerContext = new() { HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token } }
         };

@@ -99,7 +99,6 @@ internal sealed record NotificationRowDto
     public Guid Id { get; init; }
     public string Title { get; init; } = string.Empty;
     public string? ActionUrl { get; init; }
-    public string? ActionLabel { get; init; }
     public NotificationPriority Priority { get; init; }
     public NotificationSource Source { get; init; }
     public NotificationClass Class { get; init; }
@@ -135,7 +134,6 @@ internal sealed record NotificationPopupResult
 {
     public List<NotificationRowDto> Actionable { get; init; } = [];
     public List<NotificationRowDto> Informational { get; init; } = [];
-    public int ActionableCount { get; init; }
 }
 
 /// <summary>

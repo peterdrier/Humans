@@ -90,7 +90,6 @@ internal sealed class NotificationInboxService(
         {
             Actionable = actionable,
             Informational = informational,
-            ActionableCount = actionable.Count,
         };
     }
 
@@ -309,7 +308,6 @@ internal sealed class NotificationInboxService(
             Id = n.Id,
             Title = n.Title,
             ActionUrl = n.ActionUrl,
-            ActionLabel = n.ActionLabel,
             Priority = n.Priority,
             Source = n.Source,
             Class = n.Class,

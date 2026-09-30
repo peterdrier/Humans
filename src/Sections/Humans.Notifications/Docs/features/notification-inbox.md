@@ -21,7 +21,7 @@ Admins and coordinators receive many email notifications that lack shared state.
 - `Title` (string, max 200) -- short title displayed in the notification row
 - `Body` (string, nullable, max 2000) -- optional body text
 - `ActionUrl` (string, nullable, max 500) -- link for the action button
-- `ActionLabel` (string, nullable, max 50) -- button text, falls back to "View ->"
+- `ActionLabel` (string, nullable, max 50) -- button text; stored only -- not exported, no page renders it
 - `Priority` (NotificationPriority: Normal, High, Critical) -- stored as string
 - `Source` (NotificationSource) -- which system generated it, stored as string
 - `SourceKey` (string, nullable, max 128) -- optional correlation key for the specific source entity; enables `ResolveBySourceKeyAsync` auto-resolution
