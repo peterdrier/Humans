@@ -72,6 +72,15 @@ public sealed class ShiftFilterResolverTests
         to.Should().Be(new LocalDate(2026, 7, 15));
     }
 
+    [HumansFact]
+    public void ResolvePeriodRange_NoPeriod_ReturnsWholeEventWindow()
+    {
+        var es = MakeEventSettings(gate: new LocalDate(2026, 7, 9), buildStart: -7, eventEnd: 4, strikeEnd: 6);
+        var (from, to) = ShiftFilterResolver.ResolvePeriodRange(null, es);
+        from.Should().Be(new LocalDate(2026, 7, 2));
+        to.Should().Be(new LocalDate(2026, 7, 15));
+    }
+
     // Only the four calendar scalars ResolvePeriodRange reads are meaningful here;
     // the rest are filled with inert defaults.
     private static BurnSettingsInfo MakeEventSettings(LocalDate gate, int buildStart, int eventEnd, int strikeEnd) =>

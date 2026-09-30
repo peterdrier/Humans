@@ -147,8 +147,7 @@ internal sealed class VolunteerTrackingController(
         }
         else
         {
-            rangeStart = eventSettings.GateOpeningDate.PlusDays(eventSettings.BuildStartOffset);
-            rangeEnd = eventSettings.GateOpeningDate.PlusDays(eventSettings.StrikeEndOffset);
+            (rangeStart, rangeEnd) = ShiftFilterResolver.ResolvePeriodRange(null, eventSettings);
         }
         // Guard against a hand-crafted URL with endDate before startDate (the form's HTML5
         // validation would block this, but the action is reachable directly).

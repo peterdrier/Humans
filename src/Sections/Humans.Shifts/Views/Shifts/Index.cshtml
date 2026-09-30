@@ -8,12 +8,9 @@
     var isUrgencySort = string.Equals(Model.Sort, "urgency", StringComparison.OrdinalIgnoreCase);
 
     // Phase date ranges for display on cards
-    var buildFrom = es.GateOpeningDate.PlusDays(es.BuildStartOffset);
-    var buildTo = es.GateOpeningDate.PlusDays(-1);
-    var eventFrom = es.GateOpeningDate;
-    var eventTo = es.GateOpeningDate.PlusDays(es.EventEndOffset);
-    var strikeFrom = es.GateOpeningDate.PlusDays(es.EventEndOffset + 1);
-    var strikeTo = es.GateOpeningDate.PlusDays(es.StrikeEndOffset);
+    var (buildFrom, buildTo) = ShiftFilterResolver.ResolvePeriodRange(ShiftPeriod.Build, es);
+    var (eventFrom, eventTo) = ShiftFilterResolver.ResolvePeriodRange(ShiftPeriod.Event, es);
+    var (strikeFrom, strikeTo) = ShiftFilterResolver.ResolvePeriodRange(ShiftPeriod.Strike, es);
 
     // Multiselect phase state: default all selected (= no filter)
     var activePeriods = Model.FilterPeriods;
