@@ -225,6 +225,19 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task DismissAsync_ReturnsForbiddenIfNotRecipient()
+    {
+        var notification = await CreateNotification();
+
+        var result = await _service.DismissAsync(notification.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.Forbidden.Should().BeTrue();
+        var unchanged = await _dbContext.Notifications.AsNoTracking().FirstAsync(n => n.Id == notification.Id, Xunit.TestContext.Current.CancellationToken);
+        unchanged.ResolvedAt.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task DismissAsync_ReturnsNotFoundForMissing()
     {
         var result = await _service.DismissAsync(Guid.NewGuid(), _userId, Xunit.TestContext.Current.CancellationToken);
@@ -310,6 +323,17 @@ public class NotificationInboxServiceTests : IDisposable
         unresolvedInfo.ResolvedAt.Should().BeNull();
     }
 
+    [HumansFact]
+    public async Task BulkResolveAsync_LeavesOtherUsersNotificationsAlone()
+    {
+        var notification = await CreateNotification(NotificationClass.Actionable);
+
+        await _service.BulkResolveAsync([notification.Id], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var unchanged = await _dbContext.Notifications.AsNoTracking().FirstAsync(n => n.Id == notification.Id, Xunit.TestContext.Current.CancellationToken);
+        unchanged.ResolvedAt.Should().BeNull();
+    }
+
     // --- BulkDismissAsync ---
 
     [HumansFact]
@@ -340,6 +364,17 @@ public class NotificationInboxServiceTests : IDisposable
 
         var resolvedInfo = await _dbContext.Notifications.AsNoTracking().FirstAsync(n => n.Id == informational.Id, Xunit.TestContext.Current.CancellationToken);
         resolvedInfo.ResolvedAt.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task BulkDismissAsync_LeavesOtherUsersNotificationsAlone()
+    {
+        var notification = await CreateNotification();
+
+        await _service.BulkDismissAsync([notification.Id], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var unchanged = await _dbContext.Notifications.AsNoTracking().FirstAsync(n => n.Id == notification.Id, Xunit.TestContext.Current.CancellationToken);
+        unchanged.ResolvedAt.Should().BeNull();
     }
 
     // --- ClickThroughAsync ---

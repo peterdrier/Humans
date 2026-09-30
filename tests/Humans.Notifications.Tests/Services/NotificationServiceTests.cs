@@ -115,4 +115,80 @@ public class NotificationServiceTests : IDisposable
         notification.Recipients.Should().HaveCount(2);
     }
 
+    [HumansFact]
+    public async Task SendToRoleAsync_Informational_SkipsHoldersWithInboxDisabled()
+    {
+        var suppressed = Guid.NewGuid();
+        var allowed = Guid.NewGuid();
+        _roleAssignmentService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
+            .Returns([suppressed, allowed]);
+        _dbContext.CommunicationPreferences.Add(new()
+        {
+            UserId = suppressed,
+            Category = NotificationSource.TeamMemberAdded.ToMessageCategory(),
+            InboxEnabled = false,
+        });
+
+        await _service.SendToRoleAsync(
+            NotificationSource.TeamMemberAdded,
+            NotificationClass.Informational,
+            NotificationPriority.Normal,
+            "Heads up",
+            "Board", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        var notification = await _notificationsDb.Notifications
+            .Include(n => n.Recipients)
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        notification.Recipients.Select(r => r.UserId).Should().BeEquivalentTo([allowed]);
+    }
+
+    [HumansFact]
+    public async Task SendToRoleAsync_Actionable_IgnoresInboxPreference()
+    {
+        var holder = Guid.NewGuid();
+        _roleAssignmentService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
+            .Returns([holder]);
+        _dbContext.CommunicationPreferences.Add(new()
+        {
+            UserId = holder,
+            Category = NotificationSource.TeamMemberAdded.ToMessageCategory(),
+            InboxEnabled = false,
+        });
+
+        await _service.SendToRoleAsync(
+            NotificationSource.TeamMemberAdded,
+            NotificationClass.Actionable,
+            NotificationPriority.Normal,
+            "Act on this",
+            "Board", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        var notification = await _notificationsDb.Notifications
+            .Include(n => n.Recipients)
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        notification.Recipients.Single().UserId.Should().Be(holder);
+    }
+
+    [HumansFact]
+    public async Task SendToRoleAsync_AllHoldersSuppressed_WritesNothing()
+    {
+        var holder = Guid.NewGuid();
+        _roleAssignmentService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
+            .Returns([holder]);
+        _dbContext.CommunicationPreferences.Add(new()
+        {
+            UserId = holder,
+            Category = NotificationSource.TeamMemberAdded.ToMessageCategory(),
+            InboxEnabled = false,
+        });
+
+        await _service.SendToRoleAsync(
+            NotificationSource.TeamMemberAdded,
+            NotificationClass.Informational,
+            NotificationPriority.Normal,
+            "Heads up",
+            "Board", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        (await _notificationsDb.Notifications.AnyAsync(Xunit.TestContext.Current.CancellationToken))
+            .Should().BeFalse();
+    }
 }
