@@ -577,29 +577,57 @@ internal sealed class HoldedClient : IHoldedClient
         var items = await GetPagedAsync(query, pageSafetyCap, ct);
         try
         {
-            return items.Select(n => new HoldedBankMovementDto
+            var movements = new List<HoldedBankMovementDto>();
+            var skipped = 0;
+            foreach (var n in items)
             {
-                Id = ReadRequiredString(Prop(n, "id"), "id"),
-                Date = ParseBankMovementDate(Prop(n, "date")?.GetValue<string>() ?? ""),
-                Amount = ReadRequiredDecimalV2(Prop(n, "amount"), "amount"),
-                Description = Prop(n, "description")?.GetValue<string>(),
-                // Never defaulted: "pending" is the one status the SEPA sweep reads as "nothing is
-                // tied to this line yet, it may be booked", so manufacturing it for an absent field
-                // would let a response shape change turn an already-settled line into a bookable
-                // one. Absent means unreadable, like 'id' above. An unknown *present*
-                // value needs no guard — anything but "pending" already fails closed.
-                Status = ReadRequiredString(Prop(n, "status"), "status").ToLowerInvariant(),
-                Origin = Prop(n, "origin")?.GetValue<string>(),
-            })
-            .Where(m => m.Date >= from && m.Date <= to)
-            .ToList();
+                LocalDate date;
+                try
+                {
+                    date = ParseBankMovementDate(Prop(n, "date")?.GetValue<string>() ?? "");
+                }
+                catch (Exception ex) when (ex is HoldedPermanentException or InvalidOperationException
+                    or FormatException)
+                {
+                    // One line with no readable date (an empty string on a Sabadell line,
+                    // peterdrier/Humans#1861) must not block every SEPA sweep. It cannot be placed in
+                    // the from/to window, so it is left out; the sweep then sees no bank line for it,
+                    // which only delays a booking. Detail on the first; the rest are counted.
+                    if (skipped == 0)
+                        _logger.LogWarning(ex, "Unreadable Holded bank movement date; skipping the line.");
+                    skipped++;
+                    continue;
+                }
+
+                if (date < from || date > to) continue;
+
+                movements.Add(new HoldedBankMovementDto
+                {
+                    Id = ReadRequiredString(Prop(n, "id"), "id"),
+                    Date = date,
+                    Amount = ReadRequiredDecimalV2(Prop(n, "amount"), "amount"),
+                    Description = Prop(n, "description")?.GetValue<string>(),
+                    // Never defaulted: "pending" is the one status the SEPA sweep reads as "nothing is
+                    // tied to this line yet, it may be booked", so manufacturing it for an absent field
+                    // would let a response shape change turn an already-settled line into a bookable
+                    // one. Absent means unreadable, like 'id' above. An unknown *present*
+                    // value needs no guard — anything but "pending" already fails closed.
+                    Status = ReadRequiredString(Prop(n, "status"), "status").ToLowerInvariant(),
+                    Origin = Prop(n, "origin")?.GetValue<string>(),
+                });
+            }
+
+            if (skipped > 0)
+                _logger.LogWarning(
+                    "Skipped {Skipped} Holded bank movement(s) with an unreadable date in account {AccountId}.",
+                    skipped, treasuryAccountId);
+            return movements;
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException or UnparsableValueException)
         {
-            // Same rule as ledger lines: a silently dropped outgoing line reads as "no bank line
-            // yet" and delays a booking, but a *manufactured* one would book against a movement
-            // that does not exist. Either way the whole page fails rather than skipping the line.
+            // Same rule as ledger lines for every other field: a *manufactured* line would book
+            // against a movement that does not exist, so an unreadable id/amount/status fails the page.
             throw new HoldedPermanentException(
                 $"Holded bank-movements {from}..{to} for account {treasuryAccountId} could not be read.",
                 ex);
@@ -631,7 +659,7 @@ internal sealed class HoldedClient : IHoldedClient
 
     /// <summary>Bank-movement dates are unverified against the probe's ledger-entry finding
     /// (`DD/MM/YYYY`), so both that shape and ISO are accepted; neither parsing throws
-    /// <c>HoldedPermanentException</c> for the caller.</summary>
+    /// <c>HoldedPermanentException</c>, which the caller skips the line on.</summary>
     private static LocalDate ParseBankMovementDate(string s)
     {
         var iso = LocalDatePattern.Iso.Parse(s);
