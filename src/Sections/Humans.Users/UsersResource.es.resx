@@ -1172,4 +1172,7 @@
   <data name="Users_Profile_ShiftRangeSignupSucceeded" xml:space="preserve"><value>¡Te has apuntado al rango de fechas correctamente!</value></data>
   <data name="Users_Profile_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Te has apuntado al rango de fechas correctamente. Nota: {0}</value><comment>{0} = signup warning</comment></data>
   <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>No se pueden cambiar las categorías siempre activas.</value></data>
+  <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Tu acceso ha sido suspendido: {0}</value></data>
+  <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Ver perfil</value></data>
+  <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Falta el consentimiento a los documentos requeridos (plazo de gracia vencido)</value></data>
 </root>

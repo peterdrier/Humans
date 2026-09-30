@@ -33,6 +33,29 @@ public class HumanLifecycleServiceTests
             _metrics,
             NullLogger<HumanLifecycleService>.Instance);
 
+    [HumansTheory]
+    [Xunit.InlineData(null, "Tu cuenta ha sido suspendida por un administrador")]
+    [Xunit.InlineData("Review needed", "Tu acceso ha sido suspendido: Review needed")]
+    public async Task SuspendAsync_LocalizesNoticeForMemberRatherThanAdmin(string? notes, string expectedBody)
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(MakeUserInfo(userId, UserState.AdminSuspended) with { PreferredLanguage = "es" });
+        _userService.ApplyProfileOnboardingMutationAsync(userId,
+            Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+
+        (await BuildSut().SuspendAsync(userId, Guid.NewGuid(), notes,
+            Xunit.TestContext.Current.CancellationToken)).Success.Should().BeTrue();
+
+        var args = _notificationService.ReceivedCalls().Single().GetArguments();
+        args[3].Should().Be("Tu cuenta ha sido suspendida");
+        args[5].Should().Be(expectedBody);
+        args[6].Should().Be("/Profile");
+        args[7].Should().Be("Ver perfil");
+        _metrics.Received(1).RecordMemberSuspended("admin");
+    }
+
     [HumansFact]
     public async Task SuspendAsync_OnSuccess_WritesProfileNotifiesAndRecordsMetric()
     {
@@ -75,7 +98,7 @@ public class HumanLifecycleServiceTests
             NotificationSource.AccessSuspended,
             NotificationClass.Actionable,
             NotificationPriority.Critical,
-            "Your access has been suspended",
+            "Your account has been suspended",
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids.Contains(userId)),
             Arg.Is<string?>(b => b != null && b.Contains(notes)),
             "/Profile",
@@ -113,7 +136,7 @@ public class HumanLifecycleServiceTests
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),
             Arg.Any<IReadOnlyList<Guid>>(),
-            "Your access has been suspended by an administrator.",
+            "Your account has been suspended by an administrator",
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),

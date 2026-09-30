@@ -1172,4 +1172,7 @@
   <data name="Users_Profile_ShiftRangeSignupSucceeded" xml:space="preserve"><value>T'hi has apuntat al rang de dates correctament!</value></data>
   <data name="Users_Profile_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>T'hi has apuntat al rang de dates correctament. Nota: {0}</value><comment>{0} = signup warning</comment></data>
   <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>No es poden canviar les categories sempre actives.</value></data>
+  <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>El teu accés ha estat suspès: {0}</value></data>
+  <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Veure el perfil</value></data>
+  <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Falta el consentiment als documents requerits (termini de gràcia vençut)</value></data>
 </root>

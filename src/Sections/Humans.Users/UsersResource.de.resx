@@ -1172,4 +1172,7 @@
   <data name="Users_Profile_ShiftRangeSignupSucceeded" xml:space="preserve"><value>Erfolgreich zum Schichtzeitraum angemeldet!</value></data>
   <data name="Users_Profile_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Erfolgreich zum Schichtzeitraum angemeldet. Hinweis: {0}</value><comment>{0} = signup warning</comment></data>
   <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Immer aktive Kategorien können nicht geändert werden.</value></data>
+  <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Dein Zugang wurde gesperrt: {0}</value></data>
+  <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Profil ansehen</value></data>
+  <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Erforderliche Einwilligung fehlt (Nachfrist abgelaufen)</value></data>
 </root>

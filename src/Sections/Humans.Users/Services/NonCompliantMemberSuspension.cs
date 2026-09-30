@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Resources;
+using Humans.Base.Extensions;
 using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
 using NodaTime;
@@ -43,6 +46,8 @@ internal sealed class NonCompliantMemberSuspension(
     IHumansMetrics metrics,
     ILogger<NonCompliantMemberSuspension> logger) : INonCompliantMemberSuspension
 {
+    private static readonly ResourceManager NoticeResources = new(typeof(UsersResource));
+
     /// <summary>
     /// The audit actor recorded against every suspension this sweep performs. It is a
     /// persisted string, and it is the *job* class's name rather than this type's — the
@@ -93,6 +98,8 @@ internal sealed class NonCompliantMemberSuspension(
                 continue;
             }
 
+            var culture = CultureInfo.GetCultureInfo(
+                user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");
             var effectiveEmail = user.Email;
             if (effectiveEmail is not null)
             {
@@ -101,8 +108,8 @@ internal sealed class NonCompliantMemberSuspension(
                     await emailService.SendAsync(emailMessages.AccessSuspended(
                         effectiveEmail,
                         user.BurnerName,
-                        "Missing required document consent (grace period expired)",
-                        user.PreferredLanguage),
+                        NoticeResources.GetString("Users_Notification_ConsentSuspensionReason", culture)!,
+                        culture.Name),
                         cancellationToken);
                 }
                 catch (Exception ex)
@@ -118,11 +125,11 @@ internal sealed class NonCompliantMemberSuspension(
                     NotificationSource.AccessSuspended,
                     NotificationClass.Actionable,
                     NotificationPriority.Critical,
-                    "Your access has been suspended",
+                    NoticeResources.GetString("AccountStatus_HeadingSuspended", culture)!,
                     [user.Id],
-                    body: "Your access has been suspended because required document consent is missing. Please review and sign the required documents to restore access.",
+                    body: NoticeResources.GetString("AccountStatus_ConsentSuspendedBody", culture)!,
                     actionUrl: "/Consent",
-                    actionLabel: "Review documents",
+                    actionLabel: NoticeResources.GetString("AccountStatus_ReviewConsents", culture)!,
                     cancellationToken: cancellationToken);
             }
             catch (Exception ex)

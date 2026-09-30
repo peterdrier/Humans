@@ -567,4 +567,7 @@
   <data name="Users_Profile_ShiftRangeSignupSucceeded" xml:space="preserve"><value>Signed up for date range!</value></data>
   <data name="Users_Profile_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Signed up for date range. Note: {0}</value><comment>{0} = signup warning</comment></data>
   <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Cannot change always-on categories.</value></data>
+  <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Your access has been suspended: {0}</value></data>
+  <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>View profile</value></data>
+  <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Missing required document consent (grace period expired)</value></data>
 </root>
