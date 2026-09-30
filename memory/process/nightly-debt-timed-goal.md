@@ -37,3 +37,9 @@ bounded discovery, localization, or decided mechanical edits. The coordinator
 verifies findings, reviews edits, and owns builds/tests, Git, and the goal.
 Keep helper edits disjoint and finish them before validation; use direct work
 when delegation adds overhead or is unavailable.
+
+**Spend visibility:** After creating the PR, post the Codex spend skill report
+using recorded, explicit cleanup and gate-repair session IDs. Include linked
+subagents; never infer the run from the reporting chat's current session. Keep
+repair breakdowns separate. Label costs as Standard API equivalents, not actual
+subscription charges. Reporting failure must not block fix publication.

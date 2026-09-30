@@ -170,11 +170,29 @@ throwaway Git repositories; no integration tests or remote publication):
 python3 .codex/cron/test_daily_debt.py
 ```
 
+## Spend comment
+
+After creating a PR (including drafts and recovered publications), the wrapper
+posts the Codex spend skill's report. It records explicit cleanup and gate-repair
+session IDs, with a separate breakdown for each root and its linked subagents.
+The estimate uses Standard API list rates; it is not subscription billing.
+Reporting failures are logged and never block publishing validated fixes.
+
+Install the Codex `spend` skill from
+[`peterdrier/skills`](https://github.com/peterdrier/skills/tree/main/plugins/pd-codex/skills/spend)
+into `${CODEX_HOME:-~/.codex}/skills/spend`, using the Skill Installer with repo
+`peterdrier/skills` and path `plugins/pd-codex/skills/spend`. For a plugin install
+or another location, set `SPEND_SCRIPT` to its `scripts/spend.py` path.
+A missing calculator is reported visibly in the PR comment.
+
 ## Logs
 
 - File log: `$LOG_DIR/debt-YYYY-MM-DD.log` (default
   `~/.humans-debt-runner/logs/`), one file per calendar day, appended across
   runs. Ends with a one-line `SUMMARY ...` you can `grep` across days.
+- Session IDs: `$LOG_DIR/sessions-YYYY-MM-DD.jsonl`; spend comment body:
+  `$LOG_DIR/spend-YYYY-MM-DD.md`. Kept outside the disposable clone for
+  publication retries.
 - Journal (systemd path only): `journalctl --user -u humans-debt.service`.
 - Logs older than `LOG_RETENTION_DAYS` (default 30) are pruned at the start
   of each run.

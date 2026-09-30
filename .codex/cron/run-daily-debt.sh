@@ -127,6 +127,7 @@ main() {
   CODEX_MODEL="${CODEX_MODEL:-gpt-6.1-sol}"
   CODEX_EFFORT="${CODEX_EFFORT:-medium}"
   LOG_DIR="${LOG_DIR:-$HOME/.humans-debt-runner/logs}"         # must be outside WORK_DIR (git clean would wipe it)
+  SPEND_SCRIPT="${SPEND_SCRIPT:-${CODEX_HOME:-$HOME/.codex}/skills/spend/scripts/spend.py}"
   BRANCH_PREFIX="${BRANCH_PREFIX:-codex/daily-debt}"           # branch = $BRANCH_PREFIX/YYYY-MM-DD
   GH_BASE_BRANCH="${GH_BASE_BRANCH:-main}"                     # base branch on origin
   CODEX_DANGEROUS="${CODEX_DANGEROUS:-1}"                      # 1 = dangerous mode on every turn, 0 = unattended workspace-write
@@ -341,6 +342,7 @@ main() {
   # survives for the rest of the day — which is what lets the recovery path
   # below re-use the report from the run that pushed this branch.
   local last_message_file="$LOG_DIR/last-message-$run_date.md"
+  export DEBT_SESSION_MANIFEST="$LOG_DIR/sessions-$run_date.jsonl"
   if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
     # Branch already pushed today. If a PR exists for it in ANY state, today's
     # work is done — a PR Peter closed or merged during the day is finished
@@ -373,6 +375,7 @@ main() {
     if pr_url="$(open_pr_for_branch "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo" "$retry_draft")"; then
       exit_reason="pushed"
       log "opened PR for pre-existing branch: $pr_url"
+      post_spend_comment "$pr_url" "$gh_repo" "$run_date" "$log_file"
     else
       exit_reason="pr-create-failed"
       pr_url="none"
@@ -424,6 +427,7 @@ main() {
 
   # The goal client saves the final report outside the checkout, keeping
   # runner evidence out of the tree being tested and pushed.
+  : >"$DEBT_SESSION_MANIFEST"
   rm -f "$last_message_file"
 
   local work_started work_deadline
@@ -588,6 +592,7 @@ main() {
   if pr_url="$(open_pr_for_branch "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo")"; then
     exit_reason="pushed"
     log "opened PR: $pr_url"
+    post_spend_comment "$pr_url" "$gh_repo" "$run_date" "$log_file"
   else
     exit_reason="pr-create-failed"
     pr_url="none"
@@ -630,6 +635,7 @@ Goal time: $TIME_BUDGET; actual worker time: $(format_duration "$work_elapsed").
   if pr_url="$(open_pr_for_branch "$branch" "$base_branch" "$run_date" "$log_file" "$report" "$gh_repo" true)"; then
     exit_reason="pushed-draft-$gate-failed"
     log "opened draft PR for failed $gate gate: $pr_url"
+    post_spend_comment "$pr_url" "$gh_repo" "$run_date" "$log_file"
     write_summary "$run_date" "$exit_reason" "$commits" "$build" "$test" "$pr_url"
     exit 1
   fi
@@ -637,6 +643,22 @@ Goal time: $TIME_BUDGET; actual worker time: $(format_duration "$work_elapsed").
   log "ERROR: pushed broken branch but could not open draft PR — see $log_file"
   write_summary "$run_date" "$exit_reason" "$commits" "$build" "$test" "$pr_url"
   exit 1
+}
+
+# Reporting is best effort: a failed estimate/comment must not hide committed fixes.
+post_spend_comment() {
+  local pr="$1" gh_repo="$2" run_date="$3" log_file="$4"
+  local report_file="$LOG_DIR/spend-$run_date.md"
+  if ! python3 "$WORK_DIR/.codex/cron/spend-report.py" "$DEBT_SESSION_MANIFEST" "$SPEND_SCRIPT" >"$report_file" 2>>"$log_file"; then
+    log "WARNING: spend report generation failed; see $log_file"
+    return 0
+  fi
+  if gh pr comment "$pr" --repo "$gh_repo" --body-file "$report_file" >>"$log_file" 2>&1; then
+    log "posted spend report: $pr"
+  else
+    log "WARNING: spend comment failed; report retained at $report_file"
+  fi
+  return 0
 }
 
 # Opens the daily-debt PR for an already-pushed branch. Prints the PR URL on

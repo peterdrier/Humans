@@ -75,6 +75,13 @@ def run(prompt_file, report_file, deadline):
                 }, 2)
             elif event.get("id") == 2:
                 thread_id = event["result"]["thread"]["id"]
+                manifest = os.environ.get("DEBT_SESSION_MANIFEST")
+                if manifest:
+                    try:
+                        with Path(manifest).open("a") as sessions:
+                            sessions.write(json.dumps({"thread_id": thread_id}) + "\n")
+                    except OSError as error:
+                        print(f"WARNING: could not record spend session: {error}", flush=True)
                 send("thread/goal/set", {"threadId": thread_id, "objective": objective}, 3)
             elif event.get("id") == 3:
                 goal_status = event["result"]["goal"]["status"]

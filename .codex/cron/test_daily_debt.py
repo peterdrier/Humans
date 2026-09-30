@@ -64,13 +64,20 @@ if name == "gh":
     if args[:2] == ["pr", "create"]:
         body = pathlib.Path(args[args.index("--body-file") + 1]).read_text()
         (root / "pr-body").write_text(body)
+        if scenario == "pr-create-failure":
+            sys.exit(1)
         print("https://example.invalid/pull/1")
+    if args[:2] == ["pr", "comment"]:
+        (root / "pr-comment").write_text(pathlib.Path(args[args.index("--body-file") + 1]).read_text())
+        if scenario == "comment-failure":
+            sys.exit(1)
     sys.exit()
 if name == "dotnet":
     assert os.environ["VSTestTestCaseFilter"] == "FullyQualifiedName!~Humans.Integration.Tests"
     if args[0] == "test":
         assert args[args.index("--filter") + 1] == os.environ["VSTestTestCaseFilter"]
-    sys.exit(1 if scenario == args[0] + "-failure" else 0)
+    sys.exit(1 if scenario == args[0] + "-failure" or
+             (scenario == "build-repair" and args[0] == "build" and not (root / "repaired").exists()) else 0)
 if args[:2] == ["login", "status"]:
     sys.exit()
 assert args[:2] == ["app-server", "--stdio"]
@@ -79,7 +86,10 @@ helper_config = [args[i + 1] for i, arg in enumerate(args) if arg == "-c"]
 assert "agents.enabled=true" in helper_config
 assert 'agents.default_subagent_model="gpt-6-luna"' in helper_config
 assert 'agents.default_subagent_reasoning_effort="medium"' in helper_config
-thread = "fixture-thread"
+count_file = root / "sessions-started"
+count = int(count_file.read_text()) if count_file.exists() else 0
+count_file.write_text(str(count + 1))
+thread = "fixture-thread" if count == 0 else "fixture-repair"
 started = 0
 objective = None
 
@@ -141,6 +151,16 @@ for line in sys.stdin:
             emit("turn/completed", {"turn": {"status": "completed"}})
             continue
         prompt = params["input"][0]["text"]
+        if thread == "fixture-repair":
+            print(json.dumps({"id": request["id"], "result": {}}), flush=True)
+            time.sleep(2)
+            commit(3)
+            (root / "repaired").touch()
+            (root / "clock").write_text(str(int(time.time()) + 2))
+            emit("thread/goal/updated", {"goal": {"status": "complete"}})
+            emit("item/completed", {"item": {"type": "agentMessage", "phase": "final_answer", "text": "Gate repaired"}})
+            emit("turn/completed", {"turn": {"status": "completed"}})
+            continue
         assert "__WORK_" not in prompt
         assert "get_goal" in prompt
         assert "Time is the only target" in prompt
@@ -173,7 +193,9 @@ for line in sys.stdin:
         script.chmod(0o755)
         for name in ("codex", "gh", "dotnet", "date"):
             (binary / name).symlink_to(script)
-        self.env = dict(os.environ, PATH=f"{binary}:{os.environ['PATH']}",
+        calculator = self.root / "spend.py"
+        calculator.write_text("import sys\nprint('Agent cost for ' + sys.argv[1])\n")
+        self.env = dict(os.environ, SPEND_SCRIPT=str(calculator), PATH=f"{binary}:{os.environ['PATH']}",
                         FIXTURE=str(self.root), REPO_URL=str(self.remote),
                         WORK_DIR=str(self.clone), LOG_DIR=str(self.root / "logs"),
                         TIME_BUDGET="90s", CODEX_DANGEROUS="1",
@@ -193,11 +215,14 @@ for line in sys.stdin:
         return result, calls, published
 
     def test_native_goal_continues_in_one_session_and_publishes_once(self):
+        self.env["CODEX_THREAD_ID"] = "unrelated-reporting-chat"
         self.env.pop("CODEX_MODEL", None)
         self.env.pop("CODEX_EFFORT", None)
         result, calls, published = self.run_scenario("complete")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(len(published), 1)
+        self.assertIn("Agent cost for fixture-thread", (self.root / "pr-comment").read_text())
+        self.assertEqual(sum(x[:3] == ["gh", "pr", "comment"] for x in calls), 1)
         requests = [json.loads(x) for x in (self.root / "requests.jsonl").read_text().splitlines()]
         self.assertEqual(sum(x["method"] == "turn/start" for x in requests), 1)
         self.assertEqual(sum(x["method"] == "thread/start" for x in requests), 1)
@@ -213,6 +238,42 @@ for line in sys.stdin:
         self.assertNotIn("- [ ]", body)
         self.assertEqual([x[1] for x in calls if x[0] == "dotnet"], ["build", "test"])
         self.assertEqual(len(self.git(self.clone, "log", "--oneline", "origin/main..HEAD").splitlines()), 2)
+
+    def test_spend_includes_separate_repair_root(self):
+        self.env.update(GATE_REPAIR_ATTEMPTS="1", GATE_REPAIR_BUDGET="1s")
+        result, _, published = self.run_scenario("build-repair")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(published), 1)
+        comment = (self.root / "pr-comment").read_text()
+        self.assertIn("Cleanup — `fixture-thread`", comment)
+        self.assertIn("Gate repair 1 — `fixture-repair`", comment)
+        self.assertIn("Agent cost for fixture-repair", comment)
+
+    def test_spend_failures_do_not_block_publication(self):
+        for scenario in ("comment-failure", "missing-calculator", "calculator-failure"):
+            with self.subTest(scenario=scenario):
+                if scenario != "comment-failure":
+                    self.setUp()
+                if scenario == "missing-calculator":
+                    self.env["SPEND_SCRIPT"] = str(self.root / "absent.py")
+                elif scenario == "calculator-failure":
+                    Path(self.env["SPEND_SCRIPT"]).write_text("raise RuntimeError('usage unavailable')")
+                result, _, published = self.run_scenario(scenario)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(len(published), 1)
+                if scenario != "comment-failure":
+                    self.assertIn("Spend unavailable", (self.root / "pr-comment").read_text())
+                else:
+                    self.assertIn("WARNING: spend comment failed", result.stdout)
+
+    def test_recovered_publication_uses_original_session_manifest(self):
+        result, _, _ = self.run_scenario("pr-create-failure")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.root / "pr-comment").exists())
+        result, calls, _ = self.run_scenario("complete")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(sum(x[:2] == ["codex", "app-server"] for x in calls), 1)
+        self.assertIn("Agent cost for fixture-thread", (self.root / "pr-comment").read_text())
 
     def test_explicit_model_and_effort_override_reach_the_session(self):
         (self.clone / ".codex/cron/debt-runner.env").write_text(
@@ -263,6 +324,7 @@ for line in sys.stdin:
                 if scenario in ("build-failure", "test-failure"):
                     self.assertEqual(len(published), 1)
                     self.assertIn("--draft", published[0])
+                    self.assertIn("Agent cost for fixture-thread", (self.root / "pr-comment").read_text())
                 else:
                     self.assertEqual(published, [])
 
