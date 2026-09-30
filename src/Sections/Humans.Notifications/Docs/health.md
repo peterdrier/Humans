@@ -71,7 +71,7 @@ Shapes 1, 2, 7, 8 and 10 are the cross-section write contract; 6 is the one cros
   state is stored on the recipient row — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:62`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:110`.
 - An `Actionable` notification cannot be dismissed, singly or in bulk — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:83`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:176`.
 - Only a recipient can resolve, dismiss, mark read or click through a notification — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:54`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:80`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:103`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:152`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:205`.
-- Every page route acts on the signed-in human's own pile and nobody else's — `src/Sections/Humans.Notifications/Controllers/NotificationsController.cs:23`.
+- Every page route acts on the signed-in human's own pile and nobody else's — `src/Sections/Humans.Notifications/Controllers/NotificationsController.cs:21`.
 - Every transition made on a human's behalf evicts the badge cache of each user it touched —
   `src/Sections/Humans.Notifications/Services/NotificationInboxService.cs:103`; the nightly purge is the exception (seams).
 - The purge deletes resolved rows past 7 days, unresolved informational rows past 30 days and
@@ -125,3 +125,4 @@ Specified or known, not built; reserved, not ranked:
 | Run | Date | Headline | PR |
 |-----|------|----------|----|
 | 1 | 2026-08-26 | DI-cycle story corrected; doc names brought in line with the code | peterdrier/Humans#1527 |
+| 2 | 2026-09-30 | One row shape; inbox reads stop loading co-recipients | pending |

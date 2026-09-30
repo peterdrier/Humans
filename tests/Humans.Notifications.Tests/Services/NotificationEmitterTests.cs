@@ -36,7 +36,7 @@ public class NotificationEmitterTests : IDisposable
     public NotificationEmitterTests()
     {
         // notifications/notification_recipients live in NotificationsDbContext;
-        // communication_preferences stays on the main pile.
+        // communication_preferences rows are seeded into a PreferenceRegistry stand-in.
         var notificationsOptions = new DbContextOptionsBuilder<NotificationsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
