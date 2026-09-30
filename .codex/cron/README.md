@@ -79,7 +79,8 @@ codex login status   # expect a signed-in result
 #    push and PR creation. Do this as the same user the timer will run as.
 gh auth status || gh auth login
 
-# 4. codex on PATH and authenticated (whatever `codex login` your install needs)
+# 4. codex CLI 0.159.2 or newer on PATH and authenticated
+#    (whatever `codex login` your install needs)
 codex --version
 ```
 
@@ -94,6 +95,9 @@ own day-to-day model preference would silently change what the nightly job
 runs too. Override in `debt-runner.env` if you want the nightly job on a
 different model/effort than the default. Existing installations with an
 explicit model override must update it to adopt the new default.
+
+Codex CLI **0.159.2 or newer is required**. The helper routing below was
+verified with 0.159.2; older CLI configuration schemas are unsupported.
 
 The runner enables subagents and pins `agents.default_subagent_model` to
 `gpt-6-luna` and `agents.default_subagent_reasoning_effort` to `medium` on its

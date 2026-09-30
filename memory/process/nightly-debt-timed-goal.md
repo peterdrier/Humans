@@ -30,7 +30,8 @@ separate. Freeze membership before editing and stop adding candidates at the
 deadline. Run the full non-integration suite once in the final wrapper gate,
 not repeatedly per commit. Test-only work cannot qualify a run for publication.
 
-**Model routing:** Default to `gpt-6.1-sol` / medium for the coordinator.
+**Model routing:** Require Codex CLI 0.159.2 or newer. Default to
+`gpt-6.1-sol` / medium for the coordinator.
 Optional `gpt-6-luna` / medium helpers get narrow, fresh-context briefs for
 bounded discovery, localization, or decided mechanical edits. The coordinator
 verifies findings, reviews edits, and owns builds/tests, Git, and the goal.
