@@ -56,6 +56,8 @@ fi
 MISSING=""
 MISS_COUNT=0
 TOTAL=0
+# Check enumeration status before consuming output, including partial output.
+SERVICE_CLASSES=$(service_classes)
 while IFS='|' read -r PRIMARY NAMES FILE; do
   [ -z "$PRIMARY" ] && continue
   TOTAL=$((TOTAL + 1))
@@ -76,7 +78,7 @@ while IFS='|' read -r PRIMARY NAMES FILE; do
 "
     MISS_COUNT=$((MISS_COUNT + 1))
   fi
-done <<< "$(service_classes)"
+done <<< "$SERVICE_CLASSES"
 
 # Zero services means the enumeration itself broke (it once died on a gawk-only
 # builtin under mawk); a vacuous "all 0 appear" must never read as a pass.
