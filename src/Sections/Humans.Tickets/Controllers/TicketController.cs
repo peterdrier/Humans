@@ -422,9 +422,9 @@ internal sealed class TicketController(
     }
 
     /// <summary>
-    /// Donor list for the accountant: every paid order that carries a donation —
-    /// a standalone checkout donation, the part of a VIP ticket above the
-    /// threshold, or both — with the buyer's name and email. Admin only; each download is audited.
+    /// Donor list for the accountant: one row per donation on a paid order — the
+    /// part of a VIP ticket above the threshold, or a separate checkout donation —
+    /// with the buyer's name and email. Admin only; each download is audited.
     /// </summary>
     [HttpGet("Export/Donations")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -438,14 +438,15 @@ internal sealed class TicketController(
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {
-            csv.WriteRow("Date", "Order ID", "Name", "Email", "Standalone Donation", "VIP Donation", "Total Donation");
+            csv.WriteRow("Date", "Order ID", "Name", "Email", "Type", "Amount");
             foreach (var o in rows)
             {
-                csv.WriteRow(o.Date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, o.DonationAmount, o.VipDonations,
-                    o.DonationAmount + o.VipDonations);
+                if (o.VipDonations > 0)
+                    csv.WriteRow(o.Date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, "VIP ticket", o.VipDonations);
+                if (o.DonationAmount > 0)
+                    csv.WriteRow(o.Date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, "Separate donation", o.DonationAmount);
             }
-            csv.WriteRow("Total", "", "", "", rows.Sum(o => o.DonationAmount), rows.Sum(o => o.VipDonations),
-                rows.Sum(o => o.DonationAmount + o.VipDonations));
+            csv.WriteRow("Total", "", "", "", "", rows.Sum(o => o.DonationAmount + o.VipDonations));
         });
         return File(bytes, "text/csv", "ticketing-donations.csv");
     }
