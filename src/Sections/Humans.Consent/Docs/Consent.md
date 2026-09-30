@@ -134,7 +134,7 @@ Three controllers serve this section.
 - When a new document version is published, existing consents for the old version become stale and re-consent is required.
 - Per-user reads on `consent_records` chain-follow merge tombstones via the resolved record's `UserInfo.AllUserIds` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge, DB triggers (`prevent_consent_record_update`, `prevent_consent_record_delete`) make any rewrite physically impossible.
 
-- A failed or cancelled inline consent-cache reload evicts the affected user's cached consent set before propagating the failure; the next read reloads the committed consent state.
+- A successful consent submission evicts every affected merge-chain cache key before inline reloads start. A failed or cancelled reload therefore leaves no alias serving the pre-submit consent set; the failure propagates and later reads reload the committed state.
 
 ## Negative Access Rules
 
