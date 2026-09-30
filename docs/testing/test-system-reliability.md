@@ -36,16 +36,13 @@ Each phase is one or more independent PRs off `main` (this is not `one-branch-fo
 
 Before turning anything on in CI, the existing failure backlog gets fixed. Bucket by cluster (Hangfire init, container race, schema drift, fixture state, etc.) — one PR per cluster, all linked to the P0 issue.
 
-Skipping a failure with a tracking issue attached is not an alternative to fixing it; that just moves the backlog somewhere less visible. The act of triage will surface the actual root causes (Hangfire is the prime suspect; container race is second). P1 stays blocked on P0 — turning CI green is non-negotiable.
+Skipping a failure with a tracking issue attached is not an alternative to fixing it; that just moves the backlog somewhere less visible. The act of triage will surface the actual root causes (Hangfire is the prime suspect; container race is second).
 
 **Definition of done:** `HUMANS_INTEGRATION_TESTS=1 dotnet test tests/Humans.Integration.Tests` returns 0 failures on `origin/main` HEAD. P0 issue closes.
 
-### P1 — Turn integration tests on in CI
-**Value: high · Effort: small · Risk: low. Depends on P0.**
+### P1 — Turn integration tests on in CI — **retired**
 
-Remove `--filter "FullyQualifiedName!~Humans.Integration.Tests"` from `.github/workflows/build.yml`. Either run integration tests in the same job (simplest) or as a separate job with Postgres service container (cleaner separation, allows per-job timeout tuning). Keep the existing `--blame-hang-timeout 2m` guard.
-
-**Definition of done:** integration tests run on every PR. A new "pre-existing failure" cannot land on `main` without being noticed.
+`Humans.Integration.Tests` is opt-in (`HUMANS_INTEGRATION_TESTS=1`) and local-only by policy; it never runs in CI ([`integration-tests-are-not-ci-tests`](../../memory/process/integration-tests-are-not-ci-tests.md)). The localization sweep's cron job is the one carve-out.
 
 ### P2 — Share one Postgres container across the assembly — **shipped**
 **Value: high · Effort: medium · Risk: medium. Depends on P0. Landed via nobodies-collective/Humans#764.**
@@ -167,7 +164,7 @@ Subsumed by P2a. The substitutes were single-instance because the factory was; t
 
 1. **P0** — fix the 53 integration failures. Bucket by cluster, one PR per cluster.
 2. **P5** in parallel — write down that failures get fixed, so new ones don't reaccumulate.
-3. **P1** — turn integration on in CI (only after P0 hits zero failures).
+3. **P1** — retired; the suite stays out of CI by policy.
 4. **P3** — Hangfire abstraction. Done before P2 so the shared-container fixture doesn't need to know about Hangfire.
 5. **P2** — `IAssemblyFixture` migration.
 6. **P4** — section-by-section in-memory-DB removal, in batches.
@@ -180,7 +177,7 @@ Parent: nobodies-collective/Humans#761. Phase issues:
 | Phase | Issue |
 |-------|-------|
 | P0 — Fix 53 integration failures | nobodies-collective/Humans#762 |
-| P1 — Integration in CI | nobodies-collective/Humans#763 |
+| P1 — Integration in CI (retired) | nobodies-collective/Humans#763 |
 | P2 — Shared container fixture | nobodies-collective/Humans#764 (shipped; isolation follow-up nobodies-collective/Humans#983) |
 | P3 — Hangfire abstraction | nobodies-collective/Humans#765 |
 | P4 — EF In-Memory migration | nobodies-collective/Humans#766 |
