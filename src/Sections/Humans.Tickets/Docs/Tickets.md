@@ -144,6 +144,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 | `/Tickets/Export/Attendees` | GET | `TicketAdminOrAdmin` | CSV export of attendees |
 | `/Tickets/Export/Orders` | GET | `TicketAdminOrAdmin` | CSV export of orders |
 | `/Tickets/Export/AccountantReport` | GET | `TicketAdminOrAdmin` | CSV of monthly ticket income for the accountant: gross split into taxable ticket income, 10% VAT, VIP + standalone donations, fees, and refunded gross by purchase month |
+| `/Tickets/Export/Donations` | GET | `TicketAdminOrAdmin` | CSV donor list for the accountant: each paid order with a donation (standalone checkout donation and/or VIP amount above the threshold over live seats) — date, order id, buyer name, email, amounts, plus a total row |
 | `/Welcome` | GET | `[AllowAnonymous]` | Post-purchase landing page (`WelcomeController`, Onboarding section) |
 
 `/Welcome` is an intentional post-purchase landing route owned by Tickets logic while physically handled by `WelcomeController` in `Humans.Onboarding`; it is documented here to avoid it being treated as a routing boundary drift in future alignments.

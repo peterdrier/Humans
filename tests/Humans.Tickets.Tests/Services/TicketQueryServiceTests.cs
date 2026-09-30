@@ -920,6 +920,35 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         rows[0].AttendeeCount.Should().Be(2);
     }
 
+    [HumansFact]
+    public async Task GetOrderExportDataAsync_CarriesOrderIdAndVipDonationOverLiveSeats()
+    {
+        // Two live VIP seats at 400 (85 above the 315 threshold each); a voided 1000 seat must not count.
+        var order = MakeOrder("ord_vip", TicketPaymentStatus.Paid,
+            Instant.FromUtc(2026, 3, 1, 10, 0), 900m, 100m, 57.27m, 2, 85m);
+        order.Attendees.Add(new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = "ord_vip_void",
+            TicketOrderId = order.Id,
+            TicketOrder = null!,
+            AttendeeName = "Voided",
+            TicketTypeName = "VIP",
+            Price = 1000m,
+            Status = TicketAttendeeStatus.Void,
+            VendorEventId = "ev_test",
+            SyncedAt = order.PurchasedAt,
+        });
+        TicketsDb.TicketOrders.Add(order);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = (await _service.GetOrderExportDataAsync()).Single();
+
+        row.VendorOrderId.Should().Be("ord_vip");
+        row.DonationAmount.Should().Be(100m);
+        row.VipDonations.Should().Be(170m);
+    }
+
     // ====================================================================
     // GetTicketOrdersAsync tests
     // ====================================================================

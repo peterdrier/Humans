@@ -421,6 +421,35 @@ internal sealed class TicketController(
         return File(bytes, "text/csv", "ticket-income-by-month.csv");
     }
 
+    /// <summary>
+    /// Donor list for the accountant: every paid order that carries a donation —
+    /// a standalone checkout donation, the part of a VIP ticket above the
+    /// threshold, or both — with the buyer's name and email.
+    /// </summary>
+    [HttpGet("Export/Donations")]
+    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
+    public async Task<IActionResult> ExportDonations()
+    {
+        var rows = (await ticketQueryService.GetOrderExportDataAsync())
+            .Where(o => string.Equals(o.PaymentStatus, nameof(TicketPaymentStatus.Paid), StringComparison.Ordinal)
+                        && o.DonationAmount + o.VipDonations > 0)
+            .OrderBy(o => o.Date, StringComparer.Ordinal)
+            .ToList();
+
+        var bytes = HumansCsv.WriteBytes(csv =>
+        {
+            csv.WriteRow("Date", "Order ID", "Name", "Email", "Standalone Donation", "VIP Donation", "Total Donation");
+            foreach (var o in rows)
+            {
+                csv.WriteRow(o.Date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, o.DonationAmount, o.VipDonations,
+                    o.DonationAmount + o.VipDonations);
+            }
+            csv.WriteRow("Total", "", "", "", rows.Sum(o => o.DonationAmount), rows.Sum(o => o.VipDonations),
+                rows.Sum(o => o.DonationAmount + o.VipDonations));
+        });
+        return File(bytes, "text/csv", "ticketing-donations.csv");
+    }
+
     private static void WriteAccountantRow(CsvWriter csv, string label, int orders, int tickets, decimal gross,
         decimal donations, decimal vipDonations, decimal ticketIncomeInclVat, decimal vat,
         decimal ticketIncomeExVat, decimal stripeFees, decimal ttFees, decimal refundedGross)

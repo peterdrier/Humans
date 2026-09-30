@@ -400,4 +400,8 @@ internal sealed class OrderExportRow
     public decimal? StripeFee { get; init; }
     public decimal? ApplicationFee { get; init; }
     public string PaymentStatus { get; init; } = string.Empty;
+    public string VendorOrderId { get; init; } = string.Empty;
+
+    /// <summary>Sum of (price − 315) over the order's Valid/CheckedIn seats priced above the VIP threshold.</summary>
+    public decimal VipDonations { get; init; }
 }

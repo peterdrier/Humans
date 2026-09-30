@@ -81,7 +81,10 @@
             <span><i class="fa-solid fa-file-invoice"></i> Monthly Income for Accountant</span>
             @if ((await AuthService.AuthorizeAsync(User, PolicyNames.TicketAdminOrAdmin)).Succeeded)
             {
-                <a asp-action="ExportAccountantReport" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-download"></i> Export CSV</a>
+                <span>
+                    <a asp-action="ExportAccountantReport" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-download"></i> Export CSV</a>
+                    <a asp-action="ExportDonations" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-download"></i> Ticketing Donations</a>
+                </span>
             }
         </div>
         <div class="card-body p-0">
