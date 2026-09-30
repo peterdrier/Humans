@@ -118,6 +118,17 @@
   <data name="Expenses_Flash_NotEditable" xml:space="preserve"><value>Este informe ya no se puede editar.</value></data>
   <data name="Expenses_Flash_LoadEditFailed" xml:space="preserve"><value>No se pudo cargar el formulario de edición.</value></data>
   <data name="Expenses_Flash_ReportUpdated" xml:space="preserve"><value>Informe actualizado.</value></data>
+  <data name="Expenses_Flash_ReportUpdateFailed" xml:space="preserve"><value>No se pudo actualizar el informe.</value></data>
+  <data name="Expenses_Flash_LineUpdated" xml:space="preserve"><value>Línea actualizada.</value></data>
+  <data name="Expenses_Flash_UpdateLineFailed" xml:space="preserve"><value>No se pudo actualizar la línea</value></data>
+  <data name="Expenses_Flash_LineRemoved" xml:space="preserve"><value>Línea eliminada.</value></data>
+  <data name="Expenses_Flash_RemoveLineFailed" xml:space="preserve"><value>No se pudo eliminar la línea</value></data>
+  <data name="Expenses_Flash_AttachmentUploaded" xml:space="preserve"><value>Archivo adjunto subido.</value></data>
+  <data name="Expenses_Flash_UploadAttachmentFailed" xml:space="preserve"><value>No se pudo subir el archivo adjunto.</value></data>
+  <data name="Expenses_Flash_ReportSubmitted" xml:space="preserve"><value>Informe enviado.</value></data>
+  <data name="Expenses_Flash_SubmitFailed" xml:space="preserve"><value>No se pudo enviar el informe.</value></data>
+  <data name="Expenses_Flash_ReportWithdrawn" xml:space="preserve"><value>Informe retirado.</value></data>
+  <data name="Expenses_Flash_WithdrawFailed" xml:space="preserve"><value>No se pudo retirar este informe.</value></data>
   <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Datos de línea no válidos.</value></data>
   <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Recibo añadido.</value></data>
   <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Factura añadida. Ahora añade los recibos que la respaldan.</value></data>

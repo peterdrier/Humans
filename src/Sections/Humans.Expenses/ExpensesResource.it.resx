@@ -118,6 +118,17 @@
   <data name="Expenses_Flash_NotEditable" xml:space="preserve"><value>Questo report non può più essere modificato.</value></data>
   <data name="Expenses_Flash_LoadEditFailed" xml:space="preserve"><value>Impossibile caricare il modulo di modifica.</value></data>
   <data name="Expenses_Flash_ReportUpdated" xml:space="preserve"><value>Report aggiornato.</value></data>
+  <data name="Expenses_Flash_ReportUpdateFailed" xml:space="preserve"><value>Impossibile aggiornare il report.</value></data>
+  <data name="Expenses_Flash_LineUpdated" xml:space="preserve"><value>Riga aggiornata.</value></data>
+  <data name="Expenses_Flash_UpdateLineFailed" xml:space="preserve"><value>Impossibile aggiornare la riga</value></data>
+  <data name="Expenses_Flash_LineRemoved" xml:space="preserve"><value>Riga rimossa.</value></data>
+  <data name="Expenses_Flash_RemoveLineFailed" xml:space="preserve"><value>Impossibile rimuovere la riga</value></data>
+  <data name="Expenses_Flash_AttachmentUploaded" xml:space="preserve"><value>Allegato caricato.</value></data>
+  <data name="Expenses_Flash_UploadAttachmentFailed" xml:space="preserve"><value>Impossibile caricare l’allegato.</value></data>
+  <data name="Expenses_Flash_ReportSubmitted" xml:space="preserve"><value>Report inviato.</value></data>
+  <data name="Expenses_Flash_SubmitFailed" xml:space="preserve"><value>Impossibile inviare il report.</value></data>
+  <data name="Expenses_Flash_ReportWithdrawn" xml:space="preserve"><value>Report ritirato.</value></data>
+  <data name="Expenses_Flash_WithdrawFailed" xml:space="preserve"><value>Impossibile ritirare questo report.</value></data>
   <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Dati della riga non validi.</value></data>
   <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Ricevuta aggiunta.</value></data>
   <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Fattura aggiunta. Ora aggiungi le ricevute che la giustificano.</value></data>

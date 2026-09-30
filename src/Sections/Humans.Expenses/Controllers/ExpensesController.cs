@@ -278,7 +278,7 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Edit), new { id });
         }
 
-        SetError($"Failed to update: {result.ErrorMessage}");
+        SetError($"{localizer["Expenses_Flash_ReportUpdateFailed"]} {result.ErrorMessage}");
         await PopulateEditModelAsync(model, report);
         return View(model);
     }
@@ -335,7 +335,7 @@ internal sealed class ExpensesController(
         {
             SetError(result.ErrorMessage is null
                 ? localizer["Expenses_Flash_AddLineFailed"]
-                : $"Failed to add line: {result.ErrorMessage}");
+                : $"{localizer["Expenses_Flash_AddLineFailed"]} {result.ErrorMessage}");
             return BackToForm();
         }
 
@@ -411,7 +411,7 @@ internal sealed class ExpensesController(
 
         var result = await service.UpdateLineWithResultAsync(
             id, user.Id, await IsFinanceAdminAsync(), input.LineId, input.Description, input.Amount);
-        SetMutationResultWithDetails(result, "Line updated.", "Failed to update line");
+        SetMutationResultWithDetails(result, localizer["Expenses_Flash_LineUpdated"], localizer["Expenses_Flash_UpdateLineFailed"]);
 
         return RedirectToAction(nameof(LineEdit), new { id, lineId = input.LineId });
     }
@@ -428,7 +428,7 @@ internal sealed class ExpensesController(
 
         var result = await service.RemoveLineWithResultAsync(
             id, user.Id, await IsFinanceAdminAsync(), lineId);
-        SetMutationResultWithDetails(result, "Line removed.", "Failed to remove line");
+        SetMutationResultWithDetails(result, localizer["Expenses_Flash_LineRemoved"], localizer["Expenses_Flash_RemoveLineFailed"]);
 
         return parentLineId is { } parent
             ? RedirectToAction(nameof(LineProofs), new { id, lineId = parent })
@@ -453,7 +453,7 @@ internal sealed class ExpensesController(
         var result = await service.AttachFileToLineWithResultAsync(
             id, user.Id, await IsFinanceAdminAsync(), lineId, file.FileName, file.ContentType, stream);
 
-        SetMutationResult(result, "Attachment uploaded.", "Failed to upload attachment.");
+        SetMutationResult(result, localizer["Expenses_Flash_AttachmentUploaded"], localizer["Expenses_Flash_UploadAttachmentFailed"]);
 
         return RedirectToAction(nameof(LineEdit), new { id, lineId });
     }
@@ -486,7 +486,7 @@ internal sealed class ExpensesController(
         if (errorResult is not null) return errorResult;
 
         var result = await service.SubmitWithResultAsync(id, user.Id, await IsFinanceAdminAsync());
-        SetMutationResult(result, "Report submitted.", "Could not submit the report.");
+        SetMutationResult(result, localizer["Expenses_Flash_ReportSubmitted"], localizer["Expenses_Flash_SubmitFailed"]);
 
         return RedirectToAction(nameof(Detail), new { id });
     }
@@ -500,7 +500,7 @@ internal sealed class ExpensesController(
         if (report.SubmitterUserId != user.Id) return Forbid();
 
         var result = await service.WithdrawWithResultAsync(id, user.Id);
-        SetMutationResult(result, "Report withdrawn.", "Could not withdraw this report.");
+        SetMutationResult(result, localizer["Expenses_Flash_ReportWithdrawn"], localizer["Expenses_Flash_WithdrawFailed"]);
         return RedirectToAction(nameof(Detail), new { id });
     }
 

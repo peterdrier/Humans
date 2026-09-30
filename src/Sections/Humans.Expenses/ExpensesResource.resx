@@ -118,6 +118,17 @@
   <data name="Expenses_Flash_NotEditable" xml:space="preserve"><value>This report can no longer be edited.</value></data>
   <data name="Expenses_Flash_LoadEditFailed" xml:space="preserve"><value>Failed to load the edit form.</value></data>
   <data name="Expenses_Flash_ReportUpdated" xml:space="preserve"><value>Report updated.</value></data>
+  <data name="Expenses_Flash_ReportUpdateFailed" xml:space="preserve"><value>Failed to update the report.</value></data>
+  <data name="Expenses_Flash_LineUpdated" xml:space="preserve"><value>Line updated.</value></data>
+  <data name="Expenses_Flash_UpdateLineFailed" xml:space="preserve"><value>Failed to update line</value></data>
+  <data name="Expenses_Flash_LineRemoved" xml:space="preserve"><value>Line removed.</value></data>
+  <data name="Expenses_Flash_RemoveLineFailed" xml:space="preserve"><value>Failed to remove line</value></data>
+  <data name="Expenses_Flash_AttachmentUploaded" xml:space="preserve"><value>Attachment uploaded.</value></data>
+  <data name="Expenses_Flash_UploadAttachmentFailed" xml:space="preserve"><value>Failed to upload attachment.</value></data>
+  <data name="Expenses_Flash_ReportSubmitted" xml:space="preserve"><value>Report submitted.</value></data>
+  <data name="Expenses_Flash_SubmitFailed" xml:space="preserve"><value>Could not submit the report.</value></data>
+  <data name="Expenses_Flash_ReportWithdrawn" xml:space="preserve"><value>Report withdrawn.</value></data>
+  <data name="Expenses_Flash_WithdrawFailed" xml:space="preserve"><value>Could not withdraw this report.</value></data>
   <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Invalid line data.</value></data>
   <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Receipt added.</value></data>
   <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Invoice added. Now add the receipts behind it.</value></data>

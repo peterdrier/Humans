@@ -212,6 +212,7 @@ The submitter-facing `/Expenses/New` form uses `ExpensesResource` for all labels
 - **Badge colours** — `Models/StatusBadgeExtensions.GetBadgeClass` is the single source; `Section.Register` projects it into `EnumBadgeMap` for the table-column half of the same page.
 - **Cross-domain navs** — none declared. All cross-section linkage is scalar FK only.
 - **Cross-section calls** route through `IBudgetServiceRead`, `ITeamServiceRead`, `IUserService`, `IEmailService`, `IUserEmailService`, `IAuditLogService`, `IFileStorage`, `IHoldedClient`, `IHoldedFinanceService`, and `IHoldedFinanceServiceRead` (Finance, Feature 2).
+- **Member mutation messages** — controller-owned header/line/file/submit/withdraw success and failure text uses the section resources in all six cultures. Service-provided error details and IBAN mutation messages retain their existing representation.
 - **Report action preamble** — one private controller helper resolves the current user, loads the report and optionally checks the existing operation requirement. Missing users/reports return 404; operation denial returns 403. Line-read, IBAN, withdrawal and non-editable-page rules remain action-specific.
 - **Architecture test** — `tests/Humans.Expenses.Tests/ExpensesArchitectureTests.cs` pins the shape.
 

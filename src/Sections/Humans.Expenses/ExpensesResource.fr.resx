@@ -118,6 +118,17 @@
   <data name="Expenses_Flash_NotEditable" xml:space="preserve"><value>Ce rapport ne peut plus être modifié.</value></data>
   <data name="Expenses_Flash_LoadEditFailed" xml:space="preserve"><value>Impossible de charger le formulaire de modification.</value></data>
   <data name="Expenses_Flash_ReportUpdated" xml:space="preserve"><value>Rapport mis à jour.</value></data>
+  <data name="Expenses_Flash_ReportUpdateFailed" xml:space="preserve"><value>Impossible de mettre à jour le rapport.</value></data>
+  <data name="Expenses_Flash_LineUpdated" xml:space="preserve"><value>Ligne mise à jour.</value></data>
+  <data name="Expenses_Flash_UpdateLineFailed" xml:space="preserve"><value>Impossible de mettre à jour la ligne</value></data>
+  <data name="Expenses_Flash_LineRemoved" xml:space="preserve"><value>Ligne supprimée.</value></data>
+  <data name="Expenses_Flash_RemoveLineFailed" xml:space="preserve"><value>Impossible de supprimer la ligne</value></data>
+  <data name="Expenses_Flash_AttachmentUploaded" xml:space="preserve"><value>Pièce jointe téléversée.</value></data>
+  <data name="Expenses_Flash_UploadAttachmentFailed" xml:space="preserve"><value>Impossible de téléverser la pièce jointe.</value></data>
+  <data name="Expenses_Flash_ReportSubmitted" xml:space="preserve"><value>Rapport soumis.</value></data>
+  <data name="Expenses_Flash_SubmitFailed" xml:space="preserve"><value>Impossible de soumettre le rapport.</value></data>
+  <data name="Expenses_Flash_ReportWithdrawn" xml:space="preserve"><value>Rapport retiré.</value></data>
+  <data name="Expenses_Flash_WithdrawFailed" xml:space="preserve"><value>Impossible de retirer ce rapport.</value></data>
   <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Données de ligne non valides.</value></data>
   <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Reçu ajouté.</value></data>
   <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Facture ajoutée. Ajoute maintenant les reçus qui la justifient.</value></data>

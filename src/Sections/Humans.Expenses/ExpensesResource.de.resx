@@ -118,6 +118,17 @@
   <data name="Expenses_Flash_NotEditable" xml:space="preserve"><value>Dieser Bericht kann nicht mehr bearbeitet werden.</value></data>
   <data name="Expenses_Flash_LoadEditFailed" xml:space="preserve"><value>Das Bearbeitungsformular konnte nicht geladen werden.</value></data>
   <data name="Expenses_Flash_ReportUpdated" xml:space="preserve"><value>Bericht aktualisiert.</value></data>
+  <data name="Expenses_Flash_ReportUpdateFailed" xml:space="preserve"><value>Der Bericht konnte nicht aktualisiert werden.</value></data>
+  <data name="Expenses_Flash_LineUpdated" xml:space="preserve"><value>Zeile aktualisiert.</value></data>
+  <data name="Expenses_Flash_UpdateLineFailed" xml:space="preserve"><value>Die Zeile konnte nicht aktualisiert werden</value></data>
+  <data name="Expenses_Flash_LineRemoved" xml:space="preserve"><value>Zeile entfernt.</value></data>
+  <data name="Expenses_Flash_RemoveLineFailed" xml:space="preserve"><value>Die Zeile konnte nicht entfernt werden</value></data>
+  <data name="Expenses_Flash_AttachmentUploaded" xml:space="preserve"><value>Anhang hochgeladen.</value></data>
+  <data name="Expenses_Flash_UploadAttachmentFailed" xml:space="preserve"><value>Der Anhang konnte nicht hochgeladen werden.</value></data>
+  <data name="Expenses_Flash_ReportSubmitted" xml:space="preserve"><value>Bericht eingereicht.</value></data>
+  <data name="Expenses_Flash_SubmitFailed" xml:space="preserve"><value>Der Bericht konnte nicht eingereicht werden.</value></data>
+  <data name="Expenses_Flash_ReportWithdrawn" xml:space="preserve"><value>Bericht zurückgezogen.</value></data>
+  <data name="Expenses_Flash_WithdrawFailed" xml:space="preserve"><value>Dieser Bericht konnte nicht zurückgezogen werden.</value></data>
   <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Ungültige Positionsdaten.</value></data>
   <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Beleg hinzugefügt.</value></data>
   <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Rechnung hinzugefügt. Füge nun die dazugehörigen Belege hinzu.</value></data>
