@@ -164,15 +164,8 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.View);
             if (errorResult is not null) return errorResult;
-
-            var report = await service.GetAsync(id);
-            if (report is null) return NotFound();
-
-            var authResult = await authService.AuthorizeAsync(User, report,
-                new ExpenseReportOperationRequirement(ExpenseReportOperation.View));
-            if (!authResult.Succeeded) return Forbid();
 
             var category = await budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
             var categoryName = category is not null
@@ -237,11 +230,8 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, user, report) = await RequireReportAsync(id);
             if (errorResult is not null) return errorResult;
-
-            var report = await service.GetAsync(id);
-            if (report is null) return NotFound();
             if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
             {
                 // Someone who may read the report but not change it is told why; everyone else is
@@ -271,12 +261,8 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(Guid id, ExpenseEditViewModel model)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
-        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         if (!ModelState.IsValid)
         {
@@ -300,11 +286,8 @@ internal sealed class ExpensesController(
     [HttpGet("{id:guid}/Lines/New")]
     public async Task<IActionResult> NewLine(Guid id, ExpenseLineType? type = null)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
         if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
         {
             if (!await AllowsAsync(report, ExpenseReportOperation.View)) return Forbid();
@@ -325,12 +308,8 @@ internal sealed class ExpensesController(
     [RequestSizeLimit(25 * 1024 * 1024)] // 25 MB limit on request; service enforces 20 MB + content type
     public async Task<IActionResult> AddLine(Guid id, AddLineInputModel input, IFormFile? file)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
-        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         // Where the submitter came from — and returns to on a validation error.
         IActionResult BackToForm() => input.ParentLineId is { } parent
@@ -377,11 +356,8 @@ internal sealed class ExpensesController(
     [HttpGet("{id:guid}/Lines/{lineId:guid}")]
     public async Task<IActionResult> LineEdit(Guid id, Guid lineId)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
         var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user.Id);
         if (!allowed) return Forbid();
 
@@ -399,11 +375,8 @@ internal sealed class ExpensesController(
     [HttpGet("{id:guid}/Lines/{lineId:guid}/Proofs")]
     public async Task<IActionResult> LineProofs(Guid id, Guid lineId)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
         var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user.Id);
         if (!allowed) return Forbid();
 
@@ -427,12 +400,8 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateLine(Guid id, EditLineInputModel input)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
-        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         if (!ModelState.IsValid)
         {
@@ -451,12 +420,8 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveLine(Guid id, Guid lineId)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
-        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         // A removed proof row returns the submitter to its invoice's proofs page.
         var parentLineId = report.Lines.FirstOrDefault(l => l.Id == lineId)?.ParentLineId;
@@ -475,12 +440,8 @@ internal sealed class ExpensesController(
     [RequestSizeLimit(25 * 1024 * 1024)] // 25 MB limit on request; service enforces 20 MB + content type
     public async Task<IActionResult> AttachFile(Guid id, Guid lineId, IFormFile? file)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
-        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         if (file is null || file.Length == 0)
         {
@@ -501,12 +462,8 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveAttachment(Guid id, Guid lineId)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
-        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         try
         {
@@ -525,12 +482,8 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Submit(Guid id)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Submit);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
-        if (!await AllowsAsync(report, ExpenseReportOperation.Submit)) return Forbid();
 
         var result = await service.SubmitWithResultAsync(id, user.Id, await IsFinanceAdminAsync());
         SetMutationResult(result, "Report submitted.", "Could not submit the report.");
@@ -542,11 +495,8 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid id)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
         var result = await service.WithdrawWithResultAsync(id, user.Id);
@@ -559,11 +509,8 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, user, report) = await RequireReportAsync(id);
             if (errorResult is not null) return errorResult;
-
-            var report = await service.GetAsync(id);
-            if (report is null) return NotFound();
             if (!await CanSetReportIbanAsync(report, user.Id)) return Forbid();
 
             // The IBAN on this page is always the report submitter's — the page sets who gets paid
@@ -593,11 +540,8 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Iban(Guid id, ExpenseIbanViewModel model)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
         if (!await CanSetReportIbanAsync(report, user.Id)) return Forbid();
 
         var result = await service.SaveSubmitterIbanWithResultAsync(
@@ -670,15 +614,8 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Endorse(Guid id, EndorseInputModel input)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Endorse);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
-
-        var authResult = await authService.AuthorizeAsync(User, report,
-            new ExpenseReportOperationRequirement(ExpenseReportOperation.Endorse));
-        if (!authResult.Succeeded) return Forbid();
 
         if (!ModelState.IsValid)
         {
@@ -697,15 +634,8 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CoordinatorReject(Guid id, CoordinatorRejectInputModel input)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.CoordinatorReject);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
-
-        var authResult = await authService.AuthorizeAsync(User, report,
-            new ExpenseReportOperationRequirement(ExpenseReportOperation.CoordinatorReject));
-        if (!authResult.Succeeded) return Forbid();
 
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(input.Reason))
         {
@@ -760,15 +690,8 @@ internal sealed class ExpensesController(
     [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
     public async Task<IActionResult> Approve(Guid id, ApproveInputModel input)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Approve);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
-
-        var authResult = await authService.AuthorizeAsync(User, report,
-            new ExpenseReportOperationRequirement(ExpenseReportOperation.Approve));
-        if (!authResult.Succeeded) return Forbid();
 
         if (!ModelState.IsValid)
         {
@@ -788,15 +711,8 @@ internal sealed class ExpensesController(
     [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
     public async Task<IActionResult> Reject(Guid id, FinanceRejectInputModel input)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.FinanceReject);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
-
-        var authResult = await authService.AuthorizeAsync(User, report,
-            new ExpenseReportOperationRequirement(ExpenseReportOperation.FinanceReject));
-        if (!authResult.Succeeded) return Forbid();
 
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(input.Reason))
         {
@@ -815,15 +731,8 @@ internal sealed class ExpensesController(
     [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
     public async Task<IActionResult> HoldedRetry(Guid id)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.RequeueHoldedPush);
         if (errorResult is not null) return errorResult;
-
-        var report = await service.GetAsync(id);
-        if (report is null) return NotFound();
-
-        var authResult = await authService.AuthorizeAsync(User, report,
-            new ExpenseReportOperationRequirement(ExpenseReportOperation.RequeueHoldedPush));
-        if (!authResult.Succeeded) return Forbid();
 
         var result = await service.RequeueHoldedPushWithResultAsync(id, user.Id);
         SetMutationResult(result,
@@ -872,6 +781,23 @@ internal sealed class ExpensesController(
             // The handler already restricts both coordinator operations to Submitted.
             Endorse: await AllowsAsync(report, ExpenseReportOperation.Endorse),
             CoordinatorReject: await AllowsAsync(report, ExpenseReportOperation.CoordinatorReject));
+    }
+
+    /// <summary>Resolve the actor and report before any action-specific work. On failure the
+    /// action must return ErrorResult; User and Report are valid only on success, matching
+    /// RequireCurrentUserAsync's contract. Special access rules stay with their actions.</summary>
+    private async Task<(IActionResult? ErrorResult, UserInfo User, ExpenseReportDto Report)>
+        RequireReportAsync(Guid id, ExpenseReportOperation? operation = null)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return (errorResult, null!, null!);
+
+        var report = await service.GetAsync(id);
+        if (report is null) return (NotFound(), null!, null!);
+        if (operation is { } required && !await AllowsAsync(report, required))
+            return (Forbid(), null!, null!);
+
+        return (null, user, report);
     }
 
     private async Task<bool> AllowsAsync(ExpenseReportDto report, ExpenseReportOperation operation) =>
