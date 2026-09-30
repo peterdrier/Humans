@@ -297,7 +297,7 @@ else
     @if (Model.CanRecordPayment)
     {
         <h2 class="h5 mb-3 mt-4">@Localizer["Store_RecordPaymentHeading"]</h2>
-        <form asp-action="RecordPayment" asp-route-id="@order.Id" method="post" class="row g-2 mb-3 align-items-end">
+        <form asp-action="RecordPayment" asp-route-id="@order.Id" method="post" class="row g-2 mb-3 align-items-end" data-submit-once>
             @Html.AntiForgeryToken()
             <div class="col-md-3">
                 <label class="form-label">@Localizer["Store_RecordPaymentType"]</label>
@@ -387,6 +387,12 @@ else
                 if (!confirm(this.getAttribute('data-confirm'))) {
                     e.preventDefault();
                 }
+            });
+        });
+        // A recorded payment can't be undone, so a double-click must not post it twice.
+        document.querySelectorAll('form[data-submit-once]').forEach(function (form) {
+            form.addEventListener('submit', function () {
+                form.querySelector('[type=submit]').disabled = true;
             });
         });
     </script>
