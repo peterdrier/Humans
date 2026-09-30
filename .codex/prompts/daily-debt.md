@@ -199,6 +199,33 @@ when the deadline passes, stop adding candidates and finish only the current
 batch. Report each corrected item and its ledger id/file under the shared
 commit and validation, so fewer commits do not hide what changed.
 
+## Optional Luna helpers
+
+The coordinator runs on `gpt-6.1-sol` with medium reasoning by default. You
+may spawn `gpt-6-luna` subagents when a bounded task saves enough work to
+justify briefing and reviewing it. Delegation is optional, never a quota.
+
+- Good tasks: gathering candidate locations, finding existing resource keys,
+  preparing localization batches, summarizing long logs, or applying an
+  already-decided mechanical correction to explicitly assigned files.
+- Give a narrow brief with paths, the exact correction, relevant repo rules,
+  expected output, and the work deadline. Use a fresh context (`fork_turns:
+  "none"`) and explicitly select `gpt-6-luna` with medium reasoning; do not
+  inherit the coordinator's model or copy the whole session for a small task.
+- Prefer read-only helpers. For edits, assign disjoint files (including tests
+  and resx files) and do not edit those files concurrently. Start with at most
+  two helpers; do tiny tasks directly rather than spawning per string/file.
+- Helpers never build, test, commit, push, open PRs, switch branches, create
+  worktrees, or manage the coordinator's goal. Keep compiler work serial and
+  the shared checkout on the supplied branch. Finish all helper work before
+  validation, commit, and goal completion; stop adding work at the deadline.
+- Keep task selection, cancellation semantics, architecture and authorization
+  decisions, final diff review, validation, and commits with the coordinator.
+  Verify helper findings against code and review every edit; summaries alone
+  are not proof. Validate the integrated batch once under the existing rules.
+- If Luna or subagent tools are unavailable, do the work directly. Do not
+  change the coordinator model or spend the work window repairing delegation.
+
 ## Target selection
 
 Target is [`debt-ladder.md`](./debt-ladder.md): a standing, ordered list of

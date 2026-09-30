@@ -189,12 +189,17 @@ for line in sys.stdin:
         return result, calls, published
 
     def test_native_goal_continues_in_one_session_and_publishes_once(self):
+        self.env.pop("CODEX_MODEL", None)
+        self.env.pop("CODEX_EFFORT", None)
         result, calls, published = self.run_scenario("complete")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(len(published), 1)
         requests = [json.loads(x) for x in (self.root / "requests.jsonl").read_text().splitlines()]
         self.assertEqual(sum(x["method"] == "turn/start" for x in requests), 1)
         self.assertEqual(sum(x["method"] == "thread/start" for x in requests), 1)
+        thread = next(x["params"] for x in requests if x["method"] == "thread/start")
+        self.assertEqual(thread["model"], "gpt-6.1-sol")
+        self.assertEqual(thread["config"]["model_reasoning_effort"], "medium")
         self.assertEqual(sum(x[:2] == ["codex", "app-server"] for x in calls), 1)
         body = (self.root / "pr-body").read_text()
         self.assertIn("Cumulative fixes: 2", body)
@@ -204,6 +209,16 @@ for line in sys.stdin:
         self.assertNotIn("- [ ]", body)
         self.assertEqual([x[1] for x in calls if x[0] == "dotnet"], ["build", "test"])
         self.assertEqual(len(self.git(self.clone, "log", "--oneline", "origin/main..HEAD").splitlines()), 2)
+
+    def test_explicit_model_and_effort_override_reach_the_session(self):
+        (self.clone / ".codex/cron/debt-runner.env").write_text(
+            "CODEX_MODEL=gpt-6-luna\nCODEX_EFFORT=low\n")
+        result, _, _ = self.run_scenario("complete")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        requests = [json.loads(x) for x in (self.root / "requests.jsonl").read_text().splitlines()]
+        thread = next(x["params"] for x in requests if x["method"] == "thread/start")
+        self.assertEqual(thread["model"], "gpt-6-luna")
+        self.assertEqual(thread["config"]["model_reasoning_effort"], "low")
 
     def test_early_completion_resumes_same_goal_until_deadline(self):
         for scenario in ("early-complete", "early-repeated", "early-deadline-race"):

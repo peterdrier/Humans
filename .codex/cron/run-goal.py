@@ -65,7 +65,7 @@ def run(prompt_file, report_file, deadline):
                 send("initialized", {})
                 send("thread/start", {
                     "cwd": os.environ["WORK_DIR"],
-                    "model": os.environ.get("CODEX_MODEL", "gpt-5.6-terra"),
+                    "model": os.environ.get("CODEX_MODEL", "gpt-6.1-sol"),
                     "approvalPolicy": "never",
                     "sandbox": "danger-full-access" if dangerous else "workspace-write",
                     "config": {"model_reasoning_effort": os.environ.get("CODEX_EFFORT", "medium")},

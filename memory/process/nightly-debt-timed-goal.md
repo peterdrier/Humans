@@ -1,6 +1,6 @@
 ---
 name: Nightly debt runs use the whole work window
-description: Nightly debt work batches simple corrections, prioritizes production fixes, uses the full timed goal, and publishes one PR.
+description: Nightly debt work uses Sol with optional Luna helpers, batches simple corrections, prioritizes production fixes, and uses the full timed goal.
 ---
 
 Work actively for the full configured window, then finish the current task
@@ -29,3 +29,10 @@ checks once per completed batch. Keep complex or approval-dependent changes
 separate. Freeze membership before editing and stop adding candidates at the
 deadline. Run the full non-integration suite once in the final wrapper gate,
 not repeatedly per commit. Test-only work cannot qualify a run for publication.
+
+**Model routing:** Default to `gpt-6.1-sol` / medium for the coordinator.
+Optional `gpt-6-luna` / medium helpers get narrow, fresh-context briefs for
+bounded discovery, localization, or decided mechanical edits. The coordinator
+verifies findings, reviews edits, and owns builds/tests, Git, and the goal.
+Keep helper edits disjoint and finish them before validation; use direct work
+when delegation adds overhead or is unavailable.
