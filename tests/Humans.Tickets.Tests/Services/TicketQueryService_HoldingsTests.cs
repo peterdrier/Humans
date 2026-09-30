@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;
@@ -44,6 +45,7 @@ public sealed class TicketQueryService_HoldingsTests
             Substitute.For<ITeamService>(),
             Substitute.For<ISettingsService>(),
             Substitute.For<ITicketCacheInvalidator>(),
+            Substitute.For<IAuditLogService>(),
             SystemClock.Instance);
 
         // Default: no orders, no visible attendees

@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;
@@ -26,6 +27,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ISettingsService _shiftManagementService = Substitute.For<ISettingsService>();
     private readonly ITicketCacheInvalidator _cacheInvalidator = Substitute.For<ITicketCacheInvalidator>();
+    private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly TicketQueryService _service;
 
     public TicketQueryServiceTests()
@@ -45,6 +47,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             _teamService,
             _shiftManagementService,
             _cacheInvalidator,
+            _auditLog,
             SystemClock.Instance);
 
         // Defaults for the Volunteers team lookup — tests that care override them.
@@ -947,6 +950,30 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         row.VendorOrderId.Should().Be("ord_vip");
         row.DonationAmount.Should().Be(100m);
         row.VipDonations.Should().Be(170m);
+    }
+
+    [HumansFact]
+    public async Task GetDonationExportDataAsync_PaidDonorsOldestFirst_AndAudited()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        TicketsDb.TicketOrders.Add(MakeOrder("ord_plain", TicketPaymentStatus.Paid,
+            Instant.FromUtc(2026, 3, 1, 10, 0), 315m, 0m, 28.64m, 1, 0m));
+        TicketsDb.TicketOrders.Add(MakeOrder("ord_vip", TicketPaymentStatus.Paid,
+            Instant.FromUtc(2026, 4, 1, 10, 0), 400m, 0m, 28.64m, 1, 85m));
+        TicketsDb.TicketOrders.Add(MakeOrder("ord_gift", TicketPaymentStatus.Paid,
+            Instant.FromUtc(2026, 3, 15, 10, 0), 365m, 50m, 28.64m, 1, 0m));
+        TicketsDb.TicketOrders.Add(MakeOrder("ord_refunded", TicketPaymentStatus.Refunded,
+            Instant.FromUtc(2026, 3, 20, 10, 0), 400m, 0m, 28.64m, 1, 85m));
+        await SaveAllAsync(ct);
+        var actor = Guid.NewGuid();
+
+        var rows = await _service.GetDonationExportDataAsync(actor);
+
+        rows.Select(r => r.VendorOrderId).Should().Equal("ord_gift", "ord_vip");
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.TicketDonationsExported, "Tickets", Guid.Empty,
+            Arg.Is<string>(d => d.Contains("2 orders", StringComparison.Ordinal) && d.Contains("135.00", StringComparison.Ordinal)),
+            actor, null, null);
     }
 
     // ====================================================================

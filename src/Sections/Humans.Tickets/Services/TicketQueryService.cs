@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using System.Diagnostics.CodeAnalysis;
 using NodaTime;
 using Humans.Base.Extensions;
@@ -29,6 +30,7 @@ internal sealed class TicketQueryService(
     ITeamServiceRead teamService,
     ISettingsService settingsService,
     ITicketCacheInvalidator cacheInvalidator,
+    IAuditLogService auditLog,
     IClock clock) : ITicketService, IUserDataContributor
 {
     private async Task<int> ComputeUserTicketCountAsync(Guid userId)
@@ -781,6 +783,23 @@ internal sealed class TicketQueryService(
     {
         var rows = await ticketRepository.GetOrderExportDataAsync();
         return rows.ToList();
+    }
+
+    public async Task<List<OrderExportRow>> GetDonationExportDataAsync(Guid actorUserId)
+    {
+        var rows = (await ticketRepository.GetOrderExportDataAsync())
+            .Where(o => string.Equals(o.PaymentStatus, nameof(TicketPaymentStatus.Paid), StringComparison.Ordinal)
+                        && o.DonationAmount + o.VipDonations > 0)
+            .OrderBy(o => o.Date, StringComparer.Ordinal)
+            .ToList();
+
+        await auditLog.LogAsync(
+            AuditAction.TicketDonationsExported,
+            "Tickets", Guid.Empty,
+            description: $"Donor list exported: {rows.Count} orders, {rows.Sum(o => o.DonationAmount + o.VipDonations):F2} EUR",
+            actorUserId: actorUserId);
+
+        return rows;
     }
 
     public async Task<UserTicketHoldings> GetUserTicketHoldingsAsync(

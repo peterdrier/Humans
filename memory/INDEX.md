@@ -90,6 +90,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`authorization-conventions`](code/authorization-conventions.md) — Controllers/routes use `[Authorize(Policy = PolicyNames.X)]`; views use `authorize-policy` or `IAuthorizationService`. Never `[Authorize(Roles=...)]` or `User.IsInRole` chains.
 - [`auth-in-views-self-resolving`](code/auth-in-views-self-resolving.md) — In reusable views/components, resolve auth via injected `IAuthorizationService` in the template — don't pass `Can…` auth booleans on the view model.
 - [`audit-pii-subject-allowed`](code/audit-pii-subject-allowed.md) — An audit entry may show PII unmasked only when the PII belongs to that entry's own subject.
+- [`data-exports-are-audited`](code/data-exports-are-audited.md) — HARD RULE. Every bulk export/download of personal data writes an audit entry (actor, what, row count) and carries the narrowest role; adding one is a decision for Peter first.
 - [`controller-base-conventions`](code/controller-base-conventions.md) — MVC controllers extend `HumansControllerBase`; API controllers extend `ApiControllerBase` — never direct `_userManager.GetUserAsync` or `TempData[...]` calls.
 - [`comments-stay-short`](code/comments-stay-short.md) — Code comments and doc blocks get 1-3 lines stating what's true now and why — never a history of the decision.
 - [`clamp-page-size`](code/clamp-page-size.md) — Use `ClampPageSize()` for page-size clamping instead of scattering inline `Math.Clamp(pageSize, ...)` calls.

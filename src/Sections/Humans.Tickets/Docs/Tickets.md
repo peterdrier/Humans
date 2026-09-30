@@ -78,7 +78,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 | Any authenticated user with attendees on their orders (Sender) | Send any `Valid` attendee from their own order to another Humans user; cancel a `Pending` transfer they created |
 | TicketAdmin, Board, Admin | View the ticket dashboard, orders, attendees, codes, gate list, sales aggregates, and the "Who Hasn't Bought" report (controller-wide policy `TicketAdminBoardOrAdmin`) |
 | TicketAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV. Generate discount codes for campaigns (Campaign section, policy `TicketAdminOrAdmin`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketAdminOrAdmin`). Import attendee contacts (preview + selectively apply) from `/Tickets/Admin/Contacts` (policy `TicketAdminOrAdmin`). Set/rotate the gate-terminal password from `/Tickets/Admin/Gate` (policy `TicketAdminOrAdmin`; see `src/Sections/Humans.Scanner/Docs/features/gate-terminal-login.md`) |
-| Admin | Trigger a full re-sync (clears the `LastSyncAt` cursor). Open and submit the participation backfill page (`/Tickets/Participation/Backfill`) |
+| Admin | Trigger a full re-sync (clears the `LastSyncAt` cursor). Open and submit the participation backfill page (`/Tickets/Participation/Backfill`). Download the donor list CSV (`/Tickets/Export/Donations`, audited) |
 
 ## Invariants
 
@@ -144,7 +144,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 | `/Tickets/Export/Attendees` | GET | `TicketAdminOrAdmin` | CSV export of attendees |
 | `/Tickets/Export/Orders` | GET | `TicketAdminOrAdmin` | CSV export of orders |
 | `/Tickets/Export/AccountantReport` | GET | `TicketAdminOrAdmin` | CSV of monthly ticket income for the accountant: gross split into taxable ticket income, 10% VAT, VIP + standalone donations, fees, and refunded gross by purchase month |
-| `/Tickets/Export/Donations` | GET | `TicketAdminOrAdmin` | CSV donor list for the accountant: each paid order with a donation (standalone checkout donation and/or VIP amount above the threshold over live seats) — date, order id, buyer name, email, amounts, plus a total row |
+| `/Tickets/Export/Donations` | GET | `AdminOnly` | CSV donor list for the accountant: each paid order with a donation (standalone checkout donation and/or VIP amount above the threshold over live seats) — date, order id, buyer name, amounts, plus a total row. No email. Every download writes a `TicketDonationsExported` audit entry (actor, order count, total) |
 | `/Welcome` | GET | `[AllowAnonymous]` | Post-purchase landing page (`WelcomeController`, Onboarding section) |
 
 `/Welcome` is an intentional post-purchase landing route owned by Tickets logic while physically handled by `WelcomeController` in `Humans.Onboarding`; it is documented here to avoid it being treated as a routing boundary drift in future alignments.
@@ -178,7 +178,7 @@ Outbound (what Tickets injects; the project references are the authority — `Hu
 - **Budget:** `IBudgetServiceRead` — `GetActiveYearAsync` + `ComputeBudgetSummary` feed the dashboard's break-even calculation. The Tickets→Budget bridge is Budget's: `Humans.Budget.Services.TicketingBudgetService` reads through `ITicketServiceRead` and writes through Budget's `IBudgetService`.
 - **EarlyEntry:** `IEarlyEntryService.GetForUserAsync` — the viewer's own earliest entry date on the holder-facing stub surfaces (see Invariants).
 - **Stripe:** `IStripeService.GetPaymentDetailsAsync` populates `PaymentMethod` / `PaymentMethodDetail` / `StripeFee` / `ApplicationFee` per order. Configured via `STRIPE_TICKETS_KEY`; if `IsConfigured` is false, enrichment is skipped silently and the dashboard's fee breakdown stays empty.
-- **Audit:** `IAuditLogService.LogAsync` — the transfer actions above plus `TicketContactsImported`. `<vc:audit-log>` on the transfer detail page is the AuditLog section's component.
+- **Audit:** `IAuditLogService.LogAsync` — the transfer actions above plus `TicketContactsImported` and `TicketDonationsExported` (every donor-list download). `<vc:audit-log>` on the transfer detail page is the AuditLog section's component.
 - **Email:** `IEmailService.SendAsync` with the section's own `TicketsEmails` builder (`TicketTransferRequested`, `TicketTransferTeamNotification`, `TicketTransferDecision`). Tickets owns this copy and its `/Email/EmailPreview` samples (peterdrier/Humans#1651); it is hardcoded English, not localized, and localizing it is tracked in peterdrier/Humans#1657.
 - **GDPR:** `TicketQueryService` implements `IUserDataContributor` — export slices `TicketOrders` and `TicketAttendeeMatches`; erasure tombstones as described under Triggers.
 - **Users (account merge, inbound-by-registration):** `TicketSyncService` implements `IUserMerge`; `AccountMergeService.FoldAsync` calls `ReassignAsync`, which delegates to `ITicketRepository.ReassignToUserAsync`.

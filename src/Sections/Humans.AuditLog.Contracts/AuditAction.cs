@@ -179,6 +179,8 @@ public enum AuditAction
     MailerLiteAudienceSyncCompleted,
     GoogleSyncRetryScheduled,
     TicketContactsImported,
+    // Admin downloaded the donor list CSV (buyer names + amounts) for the accountant.
+    TicketDonationsExported,
     ContainerCreated,
     ContainerUpdated,
     ContainerDeleted,
