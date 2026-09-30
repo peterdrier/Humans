@@ -759,12 +759,12 @@ public sealed class ExpenseReportServiceTests
             });
 
         using var content = new MemoryStream([1, 2, 3]);
-        var result = await _sut.AddLineWithResultAsync(
+        var action = () => _sut.AddLineWithResultAsync(
             id, admin, true, "Timber", 40m,
             file: new ExpenseFileUpload("receipt.pdf", "application/pdf", content),
             ct: uploadCancellation.Token);
 
-        result.Succeeded.Should().BeFalse();
+        await action.Should().ThrowAsync<OperationCanceledException>();
         var loaded = await _sut.GetAsync(id, ct);
         loaded!.Lines.Should().BeEmpty();
         await AuditLog.DidNotReceive().LogAsync(
@@ -1170,6 +1170,74 @@ public sealed class ExpenseReportServiceTests
         error.Exception.Should().BeOfType<InvalidOperationException>()
             .Which.Message.Should().Be("IUserService: profile cache not initialized");
         logger.Entries.Should().NotContain(e => e.Level == LogLevel.Warning);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("submit", true)]
+    [Xunit.InlineData("submit", false)]
+    [Xunit.InlineData("iban", true)]
+    [Xunit.InlineData("iban", false)]
+    public async Task MemberMutation_CancellationIsPreservedOnlyWhenCallerCancelled(
+        string operation, bool callerCancelled)
+    {
+        var logger = new CapturingLogger<ExpenseReportService>();
+        var sut = new ExpenseReportService(
+            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            _userEmailService, _emailService, TestExpensesEmails.Create(),
+            AuditLog, _holdedClient, _holdedFinance, Clock, logger,
+            Options.Create(new TravelReimbursementConfig()));
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await sut.CreateDraftAsync(submitter, submitter, category.Id, null,
+            Xunit.TestContext.Current.CancellationToken);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            Xunit.TestContext.Current.CancellationToken);
+        var exception = new OperationCanceledException(cancellation.Token);
+        if (string.Equals(operation, "submit", StringComparison.Ordinal))
+        {
+            var lineId = await sut.AddLineAsync(id, submitter, false, "Item", 50m,
+                ct: Xunit.TestContext.Current.CancellationToken);
+            var attachmentId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter),
+                Xunit.TestContext.Current.CancellationToken);
+            await _expenseRepo.SetLineAttachmentAsync(lineId, attachmentId,
+                Xunit.TestContext.Current.CancellationToken);
+            _userService.GetUserInfoAsync(submitter, cancellation.Token).Throws(_ =>
+            {
+                if (callerCancelled) cancellation.Cancel();
+                return exception;
+            });
+        }
+        else
+        {
+            _userService.SetProfileIbanAsync(submitter, "ES9121000418450200051332", cancellation.Token)
+                .Throws(_ =>
+                {
+                    if (callerCancelled) cancellation.Cancel();
+                    return exception;
+                });
+        }
+        logger.Entries.Clear();
+        Func<Task> action = async () =>
+        {
+            if (string.Equals(operation, "submit", StringComparison.Ordinal))
+                (await sut.SubmitWithResultAsync(id, submitter, false, cancellation.Token))
+                    .Succeeded.Should().BeFalse();
+            else
+                (await sut.SaveSubmitterIbanWithResultAsync(id, submitter,
+                    "ES9121000418450200051332", cancellation.Token))
+                    .Succeeded.Should().BeFalse();
+        };
+        if (callerCancelled)
+        {
+            var thrown = await action.Should().ThrowAsync<OperationCanceledException>();
+            thrown.Which.Should().BeSameAs(exception);
+            logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);
+        }
+        else
+        {
+            await action();
+            logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error && e.Exception == exception);
+        }
     }
 
     [HumansFact]

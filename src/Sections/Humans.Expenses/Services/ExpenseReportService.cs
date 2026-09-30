@@ -350,7 +350,7 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
         Guid budgetCategoryId, string? note,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             await UpdateDraftAsync(reportId, actorUserId, actorIsFinanceAdmin, budgetCategoryId, note, ct);
             return ExpenseMutationResult.Success;
@@ -445,6 +445,10 @@ internal sealed class ExpenseReportService(
                 $"Added {(parentLineId is null ? "line" : "proof row")} \"{description}\" €{amount}", ct);
             return new ExpenseAddLineResult(true, null, lineId);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (ExpenseValidationException ex)
         {
             logger.LogWarning("Error adding line to report {ReportId}: {Reason}", reportId, ex.Message);
@@ -466,7 +470,7 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid submitterUserId,
         string origin, string destination, decimal km,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var rate = _travel.MileageRatePerKm;
             var amount = Math.Round(km * rate, 2, MidpointRounding.AwayFromZero);
@@ -483,7 +487,7 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid submitterUserId,
         PerDiemKind kind, int days, string? note,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var rate = kind == PerDiemKind.Overnight ? _travel.PerDiemOvernightRate : _travel.PerDiemDayTripRate;
             var amount = Math.Round(days * rate, 2, MidpointRounding.AwayFromZero);
@@ -534,7 +538,7 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
         Guid lineId, string description, decimal amount,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             await UpdateLineAsync(reportId, actorUserId, actorIsFinanceAdmin, lineId, description, amount, ct);
             return ExpenseMutationResult.Success;
@@ -578,7 +582,7 @@ internal sealed class ExpenseReportService(
     public Task<ExpenseMutationResult> RemoveLineWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             await RemoveLineAsync(reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
             return ExpenseMutationResult.Success;
@@ -695,7 +699,7 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
         Guid lineId, string originalFileName, string contentType,
         Stream content, CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             await AttachFileToLineAsync(
                 reportId, actorUserId, actorIsFinanceAdmin, lineId, originalFileName, contentType, content, ct);
@@ -789,7 +793,7 @@ internal sealed class ExpenseReportService(
 
     public Task<ExpenseMutationResult> SubmitWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var submitted = await SubmitAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
             return submitted
@@ -819,7 +823,7 @@ internal sealed class ExpenseReportService(
     }
     public Task<ExpenseMutationResult> WithdrawWithResultAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var withdrawn = await WithdrawAsync(reportId, submitterUserId, ct);
             return withdrawn
@@ -884,6 +888,10 @@ internal sealed class ExpenseReportService(
                 Succeeded: true,
                 IsValidationError: false,
                 MessageKey: normalized is null ? "Expenses_Iban_Removed" : "Expenses_Iban_Saved");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -964,6 +972,7 @@ internal sealed class ExpenseReportService(
     }
 
     private async Task<ExpenseMutationResult> RunMutationAsync(
+        CancellationToken ct,
         Func<Task<ExpenseMutationResult>> mutation,
         string logMessage,
         string? exceptionPrefix,
@@ -972,6 +981,10 @@ internal sealed class ExpenseReportService(
         try
         {
             return await mutation();
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex) when (ex is ExpenseValidationException or UnauthorizedAccessException)
         {
@@ -1025,7 +1038,7 @@ internal sealed class ExpenseReportService(
     public Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
         Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var endorsed = await CoordinatorEndorseAsync(reportId, coordinatorUserId, actorIsFinanceAdmin, maxAmount, ct);
             return endorsed
@@ -1059,7 +1072,7 @@ internal sealed class ExpenseReportService(
     public Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
         Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var rejected = await CoordinatorRejectAsync(reportId, coordinatorUserId, actorIsFinanceAdmin, reason, ct);
             return rejected
@@ -1139,7 +1152,7 @@ internal sealed class ExpenseReportService(
     public Task<ExpenseMutationResult> ApproveWithResultAsync(
         Guid reportId, Guid actorUserId, Guid? overrideCategoryId, decimal? maxAmount,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var approved = await ApproveAsync(reportId, actorUserId, overrideCategoryId, maxAmount, ct);
             return approved
@@ -1170,7 +1183,7 @@ internal sealed class ExpenseReportService(
     public Task<ExpenseMutationResult> FinanceRejectWithResultAsync(
         Guid reportId, Guid actorUserId, string reason,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var rejected = await FinanceRejectAsync(reportId, actorUserId, reason, ct);
             return rejected
@@ -1198,7 +1211,7 @@ internal sealed class ExpenseReportService(
 
     public Task<ExpenseMutationResult> RequeueHoldedPushWithResultAsync(
         Guid reportId, Guid actorUserId, CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var requeued = await RequeueHoldedPushAsync(reportId, actorUserId, ct);
             return requeued
