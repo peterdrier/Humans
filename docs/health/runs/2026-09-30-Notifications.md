@@ -44,18 +44,19 @@ Independence check: pass — findings 1, 2 and 11 come from the target's row-sha
 - 2, 4 — one row shape between service and view; the popup reads its count off the list (reviewed, REJECT then APPROVE after two fixes).
 - 5, 6, 7, 8 — comments and docs corrected; provenance cut. The section doc's `**Status:**` line keeps its issue refs because `SECTION-TEMPLATE.md` asks for them.
 - 9 — unused parameter cut with finding 1.
+- 15 — constructor-shape architecture test deleted at Peter's ruling; its file held no other test.
 - 19 — both comments corrected; the tests' `_dbContext` field name, which misleads the same way, is left as is.
 - 10 — tests added; the preference tests fail when the filter is disabled. The dismiss test pins today's Forbidden answer, which 2026-08-26 finding 19 may change.
 
 ## Skipped
 
-- 3, 15 — decisions; see `## Needs Peter`.
+- 3 — Peter: leave for now.
+- 17 — Peter: keep both issues open.
 - 11 — the approved Notification Board redesign replaces both dispatch loops.
 - 12 — optional; not worth a reviewer round this run.
 - 13 — a past-tense narrative in a template, not a claim about the tree.
 - 14 — standing backlog; `resource-key-prefix-matches-section` forbids backfill as a side effect.
 - 16 — already queued in the 2026-08-26 run file; not re-asked.
-- 17 — recommendations only; existing issues are read-only to a run.
 - 18 — unreachable from the pages; noted, not changed.
 - Backdoor passed over as blocked (nobodies-collective/Humans#1860).
 - The harness named its own claude/ branch as the development branch; the run used `section-doctor/2026-09-30T011604Z` as the skill's mechanics and the routine prompt require.
@@ -72,9 +73,9 @@ Independence check: pass — findings 1, 2 and 11 come from the target's row-sha
 
 ## Needs Peter
 
-- [ ] 3 — Render `Body` (and `ActionLabel`) on the row, or stop accepting, storing and searching them?
-- [ ] 15 — Move the constructor-shape architecture test to an analyzer, or delete it?
-- [ ] 17 — Keep nobodies-collective/Humans#852 and peterdrier/Humans#1626 open as they stand?
+- [x] 3 — Render `Body` (and `ActionLabel`) on the row, or stop accepting, storing and searching them? Peter: leave for now.
+- [x] 15 — Move the constructor-shape architecture test to an analyzer, or delete it? Peter: delete; applied.
+- [x] 17 — Keep nobodies-collective/Humans#852 and peterdrier/Humans#1626 open as they stand? Peter: keep both.
 
 ## File coverage
 
@@ -139,7 +140,6 @@ Independence check: pass — findings 1, 2 and 11 come from the target's row-sha
 | `tests/Humans.Notifications.Tests/Controllers/NotificationsControllerTests.cs` | changed |
 | `tests/Humans.Notifications.Tests/Enums/EnumStringStabilityTests.cs` | changed |
 | `tests/Humans.Notifications.Tests/Humans.Notifications.Tests.csproj` | reviewed |
-| `tests/Humans.Notifications.Tests/NotificationsArchitectureTests.cs` | changed |
 | `tests/Humans.Notifications.Tests/Services/NotificationEmitterTests.cs` | changed |
 | `tests/Humans.Notifications.Tests/Services/NotificationInboxReadTests.cs` | reviewed |
 | `tests/Humans.Notifications.Tests/Services/NotificationInboxServiceTests.cs` | changed |
