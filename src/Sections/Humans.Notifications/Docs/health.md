@@ -10,25 +10,21 @@ Derived fresh each section-doctor run, before any scan. History at the bottom.
 
 ## 1. What the section does
 
-Every other part of the system, when something happens a human should know about, hands
-Notifications a sentence and a list of people. Notifications keeps that sentence until the
-people have seen it and — where it represents work — until someone has done the work. It
-shows each human their own pile at `/Notifications` and in the bell at the top of every page,
-lets them clear items off it, and throws away what has aged out.
+When something happens elsewhere that a human should know about, the section that saw it
+hands Notifications a sentence and a list of people. Notifications keeps that sentence until
+the people have seen it and — where it asks for work — until someone has done the work. Each
+human sees their own pile on the inbox page and behind the bell at the top of every page, can
+clear items off it, and anything that has aged out is thrown away overnight.
 
-Alongside the pile it shows a second thing that looks the same but isn't: a computed count of
-work waiting in someone else's queue ("11 consent reviews pending"). Those counts are asked
-of the section that owns the work rather than kept in a column here, so they cannot drift the
-way a stored counter can — a stale one is at most two minutes behind, because the answers are
-held in a short-TTL memory cache that writes elsewhere evict. That bound is the whole
-guarantee: not "always current", but "never wrong for longer than the cache lives".
+Beside the pile it shows a second thing that looks the same but is not stored at all: live
+counts of work waiting in queues other sections own ("consent reviews pending"), asked of those
+sections on each render and held for at most two minutes.
 
-Two rules give the section its character. **Seeing is personal, doing is shared** — each
-recipient has their own read state, but when any one of them handles an item it is handled
-for everyone it was sent to. And **a human can turn off the chatter but not the work** — a
-notification that is merely news respects the recipient's per-category preference and can be
-dismissed; one that asks for something goes through regardless and can only be cleared by
-doing the thing.
+An agent polling on a human's behalf can read the same unread pile and counts through the
+machine API; reading never changes anything.
+
+Two rules give the section its character: seeing is personal but doing is shared, and a human
+can mute the chatter but never the work.
 
 ## 2. The shapes
 
@@ -36,124 +32,96 @@ doing the thing.
 |---|---|---|
 | 1 | "Tell these humans something happened." | `INotificationEmitter.SendAsync` (explicit recipients) · `INotificationService.SendToRoleAsync` (everyone holding a role) |
 | 2 | "That condition is fixed — clear the alerts about it." | `INotificationAutoResolve.ResolveBySourceAsync` (one human, one source) · `ResolveBySourceKeyAsync` (every recipient, one source entity) |
-| 3 | "What is on my pile?" | `GET /Notifications` · `GET /Notifications/Popup` · `NotificationBell` chrome component |
-| 4 | "I have dealt with this." | `Resolve` · `Dismiss` · `MarkRead` · `MarkAllRead` · `BulkResolve` · `BulkDismiss` · `ClickThrough` |
-| 5 | "How much work is waiting for someone like me?" | the meters, computed per-render by `NotificationMeterProvider` |
-| 6 | "Throw away what has aged out." | `INotificationRetention.PurgeExpiredAsync`, driven nightly by `CleanupNotificationsJob` |
-| 7 | "This human's badge counts are wrong now." | `INotificationService.InvalidateBadgeCachesForUsers` |
-| 8 | "Give me / erase everything you hold about this human." | `IUserDataContributor` (export + erasure) |
-| 9 | "These two accounts are one human — fold them." | `IUserMerge.ReassignAsync` |
+| 3 | "What is on my pile?" | `GET /Notifications` · `GET /Notifications/Popup` · the `NotificationBell` chrome component |
+| 4 | "I have dealt with this." | `MarkAllRead` · `BulkResolve` · `BulkDismiss` · `ClickThrough` from the pages; `Resolve` · `Dismiss` · `MarkRead` routed but reached by no page |
+| 5 | "How much work is waiting for someone like me?" | `NotificationMeterProvider.GetMetersForUserAsync` |
+| 6 | "What is unread for this key's owner?" | `INotificationInboxRead.GetUnreadInboxAsync`, served by Backdoor at `/api/backdoor/notifications` |
+| 7 | "Throw away what has aged out." | `INotificationRetention.PurgeExpiredAsync`, driven nightly by `CleanupNotificationsJob` |
+| 8 | "These humans' badges are stale now." | `INotificationService.InvalidateBadgeCachesForUsers` |
+| 9 | "Give me / erase everything you hold about this human." | `IUserDataContributor` on `NotificationInboxService` |
+| 10 | "These two accounts are one human — fold them." | `IUserMerge.ReassignAsync` on `NotificationService` |
 
-Shapes 1–2 and 6–9 are the cross-section contract; 3–5 are the section's own pages and have
-no consumer outside it.
-
-Shape 5 is the odd one out and deliberately so: it is the only shape with no row in the
-section's own tables. It sits next to shapes 3–4 on the page because a human reading their
-pile does not care which of the two a line came from.
+Shapes 1, 2, 7, 8 and 10 are the cross-section write contract; 6 is the one cross-section read;
+3–5 are the section's own pages.
 
 ## 3. Structure
 
-The layout those shapes imply, written fresh:
-
-- **One contracts leaf** carrying exactly shapes 1, 2, 6 and 7 plus the enums their signatures
-  name. Shape 7 belongs here for the same reason as the rest — the account merge in Users has
-  to evict both folded accounts' badges after it commits, and that is a cross-section call.
-  Everything else stays inside the section.
-- **One dispatch path.** Building a notification and its recipient rows, applying the
-  preference filter and evicting the affected badge caches is one piece of logic, whether the
-  recipients arrived as a list or as a role name. The role case adds one step in front —
-  turn a role name into user ids — and one difference behind: role fan-out makes a single
-  shared row, an explicit list makes one row each.
-- **One inbox service** owning shapes 3, 4, 6, 8: read models, per-row state transitions,
-  the retention cutoffs, the GDPR contribution. Its badge count is the only cached read.
-- **One meter provider** owning shape 5, reaching every count through the owning section's
-  read interface and never through a table.
-- **One repository** as the only thing that touches `notifications` /
-  `notification_recipients`.
-- **One controller** that parses, calls, and formats — carrying no rule of its own, including
-  no copy of a rule the service already applies.
-- **One view model per page**, and one row shape between service and view rather than two
-  that differ in a default value.
+- **One contracts leaf** carrying shapes 1, 2, 7 and 8 plus the three enums their signatures
+  name, because a dozen sections emit and must not reference the whole section. Shape 6 lives
+  in the section's own `Contracts/` folder: its only consumer, Backdoor, already references
+  the section project, as it does for every section it serves.
+- **One dispatch path.** Build rows, apply the preference filter, persist, evict the badges of
+  whoever received something. Explicit recipients get a row each; a role gets one shared row.
+- **One inbox service** for shapes 2, 3, 4, 7 and 9: read models, per-row transitions, the
+  retention cutoffs, the GDPR contribution, the one cached read (badge counts).
+- **One meter provider** for shape 5, reaching every count through the owning section's read
+  interface.
+- **One thin adapter** for shape 6, composing the inbox's unread tab with the meters.
+- **One repository**, the only code touching `notifications` / `notification_recipients`.
+- **One controller** that parses, calls and formats.
+- **One row shape between service and view**, carrying only what a page renders.
 
 ## 4. Invariants
 
-- A table row is written only through `INotificationRepository`; nothing else in the solution
-  touches `notifications` or `notification_recipients` (HUM0025).
-- Meters are computed, never stored. No `meter_counts` table, ever.
-- Read state is per-recipient; resolution is shared across every recipient of a notification.
-- `Informational` obeys the recipient's `InboxEnabled` preference for the source's
-  `MessageCategory`; `Actionable` ignores it.
-- `Actionable` can be resolved, never dismissed — on the single and the bulk path alike.
-- A human who is not a recipient of a notification cannot read, resolve, dismiss, mark-read
-  or click through it. Whether the refusal distinguishes "not yours" from "does not exist"
-  follows from how the route looks the row up, and today the two pairs differ: `Resolve` and
-  `Dismiss` load the notification and so can return `Forbidden`; `MarkRead` and `ClickThrough`
-  query the `(NotificationId, UserId)` row and so can only return `NotFound`. Either is
-  defensible — the id is an unguessable Guid, so there is nothing to enumerate — but the split
-  is an accident of two lookup shapes, not a decision, and one of the two should win.
-- A human cannot see another human's pile, badge count, or unread total.
-- Every source has a deliberate `MessageCategory`, not one arrived at by falling through a
-  default arm.
-- An emit with no surviving recipients writes nothing and logs why.
-- Every mutation made on a human's behalf evicts the badge cache of every user it affected.
-  The nightly purge is the one gap: `PurgeExpiredAsync` deletes through repository methods
-  that return counts and nothing else, so a recipient whose unresolved informational
-  row was just deleted can carry a stale unread badge for the two-minute TTL. Either the purge
-  reports who it touched, or the exception gets stated on purpose.
-- The nightly purge deletes resolved rows past 7 days, unresolved informational rows past
-  30 days, and unresolved rows of retired sources — and never an unresolved actionable row of
-  a live source.
-- Every string a human reads on `/Notifications` comes from the section's resx set, in all six
-  cultures — the page is not admin-side, so the `/Admin/*` exemption does not reach it. The
-  meter titles are English literals in `NotificationMeterProvider` today; that is the gap this
-  target names, not a second rule.
+- Only `NotificationRepository` touches the section's tables — `src/Humans.Analyzers/Internal/Rules/TableOwnershipRule.cs` (HUM0025).
+- An `Informational` emit skips a recipient whose inbox preference for the source's category is
+  off; an `Actionable` emit never does — `src/Sections/Humans.Notifications/Services/NotificationEmitter.cs:57`, `src/Sections/Humans.Notifications/Services/NotificationService.cs:83`.
+- An emit whose recipients are all filtered out writes nothing and logs why — `src/Sections/Humans.Notifications/Services/NotificationEmitter.cs:89`, `src/Sections/Humans.Notifications/Services/NotificationService.cs:95`.
+- Resolution is stored on the notification, so resolving clears it for every recipient; read
+  state is stored on the recipient row — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:62`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:110`.
+- An `Actionable` notification cannot be dismissed, singly or in bulk — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:83`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:176`.
+- Only a recipient can resolve, dismiss, mark read or click through a notification — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:54`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:80`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:103`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:152`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:205`.
+- Every page route acts on the signed-in human's own pile and nobody else's — `src/Sections/Humans.Notifications/Controllers/NotificationsController.cs:23`.
+- Every transition made on a human's behalf evicts the badge cache of each user it touched —
+  `src/Sections/Humans.Notifications/Services/NotificationInboxService.cs:103`; the nightly purge is the exception (seams).
+- The purge deletes resolved rows past 7 days, unresolved informational rows past 30 days and
+  unresolved rows of retired sources, and nothing else — `src/Sections/Humans.Notifications/Services/NotificationInboxService.cs:214`.
+- Meters are computed on read and never stored — `src/Sections/Humans.Notifications/Services/NotificationMeterProvider.cs:230`.
+- The machine read never mutates: it calls only the inbox's read and the meter provider — `src/Sections/Humans.Notifications/Services/NotificationInboxRead.cs:22`.
 
 ## 5. Seams
 
-Specified-but-unbuilt; reserved, not ranked, not built here:
+Specified or known, not built; reserved, not ranked:
 
-- **`SendToRoleAsync` cannot carry a `sourceKey`.** `ResolveBySourceKeyAsync` therefore can
-  never clear a role fan-out — the shape-2 answer only reaches shape-1's explicit-recipient
-  half. No caller needs it today; the asymmetry is a seam, not a defect.
-- **A stated fire-and-forget contract that dispatch does not implement.** Callers are told to
-  treat dispatch as fire-and-forget, but no dispatch method is `try`/`catch`-wrapped, so an
-  emit failure propagates into the caller's write path. Every call site is currently expected
-  to wrap it itself.
+- **The Notification Board redesign** (`Docs/features/notification-board.md`, approved) replaces
+  the stored inbox with an in-memory board of section-published entries and retires the
+  `NotificationSource` enum. Until its phase 4 lands, `notification-inbox.md` describes what runs.
+- **The purge leaves badges stale** for up to the two-minute TTL: the three delete methods
+  report counts, not affected users.
+- **Role fan-out takes no `sourceKey`**, so `ResolveBySourceKeyAsync` can never clear it.
+- **Dispatch is described as fire-and-forget but is not wrapped**; an emit failure reaches the
+  caller.
+- **Meter titles are English literals** on a page the admin localization exemption does not
+  cover.
 
 ## 6. Deliberately not done
 
-- **No caching decorator on the dispatch or inbox service.** Both cache one thing internally
-  and evict it in-band on every write; a decorator would sit between the service and its own
-  invalidation.
-- **No real-time push.** A small user base and a 2-minute badge cache do not buy a socket.
-- **No stored meter.** A count that is too slow to compute is the owning section's problem to
-  fix with a narrow count method, not this section's to denormalise.
-- **No `GroupKey` on a notification.** Whether recipients share one row or get one each is
-  decided at the call site by which method is called, and that is the whole mechanism.
-- **Daily digests stay email.** They are summaries, not work items; they do not fit
-  resolve/dismiss.
+- **No caching decorator.** Both services cache one thing and evict it in-band on their own
+  writes; a decorator would sit between a service and its own invalidation.
+- **No real-time push.** A two-minute badge is enough at this scale.
+- **No stored meter.** A slow count is the owning section's to fix with a narrow read.
+- **No `GroupKey`.** Shared-versus-individual is decided by which dispatch method is called.
+- **Digests stay email.** Summaries are not work items.
 
 ## Load-bearing weirdness
 
-- **`NotificationEmitter` is a separate type from `NotificationService`, not a base class of
-  it.** The narrow `INotificationEmitter` is what sections that Notifications itself calls
-  into may inject, so the graph cannot close on itself. `NotificationService.SendAsync`
-  delegating to the emitter — rather than sharing a helper — is what keeps that one piece of
-  logic in one place across both types.
-- **`NotificationRecipient.UserId` is init-only**, which is why the account-merge fold is
-  implemented as remove-then-add rather than an update.
-- **`Notification.ResolvedByUserId` and `NotificationRecipient.UserId` carry no FK and no nav
-  property** (nobodies-collective/Humans#992, #996). Display names are stitched in memory from
-  `IUserServiceRead`. This is the rule for every cross-domain id here, not an oversight.
-- **`ApplicationSubmitted` and `ConsentReviewNeeded` are retired sources**: no new rows are
-  emitted, historical unresolved rows have no resolution path, and the purge deletes them
-  outright. The inbox's "Approvals" filter still names them so the historical rows remain
-  findable while they last.
-- **The repository is a Singleton over `IDbContextFactory`**, not a Scoped service over a
-  Scoped context — that is what lets the Singleton-ish call sites inject it directly.
+- **`NotificationEmitter` is its own type.** `NotificationService` injects
+  `IRoleAssignmentService`, and `RoleAssignmentService` emits; it injects the narrow
+  `INotificationEmitter`, whose implementation has no edge back, so the graph cannot close.
+  `NotificationService.SendAsync` delegates to the emitter to keep one copy of that path.
+- **`NotificationRecipient.UserId` is init-only**, so the account-merge fold is
+  remove-then-add rather than an update.
+- **No FK and no navigation on `ResolvedByUserId` or `NotificationRecipient.UserId`**
+  (nobodies-collective/Humans#992, nobodies-collective/Humans#996); names are stitched from
+  `IUserServiceRead`.
+- **`ApplicationSubmitted` and `ConsentReviewNeeded` are retired sources**: nothing emits them,
+  the purge deletes their unresolved rows, and the inbox's approvals filter still names them
+  while any remain.
+- **The repository is a Singleton over `IDbContextFactory`** so Singleton-lifetime callers can
+  inject it.
 
 ## History
 
-| Run | Date | Reforge (surface / loc / cogP95 / cogMax) | PR |
-|-----|------|-------------------------------------------|----|
-| 1 | 2026-08-26 | 274 / 2381 / 7 / 25 | peterdrier/Humans#1527 |
+| Run | Date | Headline | PR |
+|-----|------|----------|----|
+| 1 | 2026-08-26 | DI-cycle story corrected; doc names brought in line with the code | peterdrier/Humans#1527 |
