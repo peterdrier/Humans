@@ -1,0 +1,69 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/db-migration-checklist-hook.sh\"",
+            "timeout": 10,
+            "statusMessage": "Checking for database changes..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/check-ef-output-dir.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking EF migration command..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/razor-lint-hook.sh\" || true",
+            "timeout": 15,
+            "statusMessage": "Linting Razor views..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/block-data-migration-hook.sh\"",
+            "timeout": 10,
+            "statusMessage": "Checking for data migration commit..."
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/block-data-migration-hook.sh\"",
+            "timeout": 10,
+            "statusMessage": "Checking for data migration..."
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/block-inherited-subagent-model.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking subagent model tier..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash 'H:\\source\\humans\\.claude\\worktrees\\github-issue-1853-282dc8\\.codex\\hooks\\session-start.sh'",
+            "timeout": 5,
+            "statusMessage": "Loading project rules..."
+          }
+        ]
+      }
+    ]
+  }
+}

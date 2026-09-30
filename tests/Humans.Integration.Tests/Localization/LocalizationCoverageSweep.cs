@@ -26,15 +26,15 @@ public sealed class LocalizationCoverageSweep(
 {
     /// <summary>
     /// Gates the sweep out of normal CI runs (it boots a second app host and crawls every
-    /// page, ~20s). Set <c>RUN_LOCALIZATION_SWEEP=1</c> to run it — e.g. from the bi-weekly
-    /// maintenance job. How (and whether) it should gate on findings is decided separately.
+    /// page, ~20s). Set <c>RUN_LOCALIZATION_SWEEP=1</c> (plus the project's own opt-in,
+    /// <c>HUMANS_INTEGRATION_TESTS=1</c>) to run it — e.g. from the bi-weekly maintenance job. How (and whether) it should gate on findings is decided separately.
     /// </summary>
     public static bool SweepEnabled =>
         string.Equals(Environment.GetEnvironmentVariable("RUN_LOCALIZATION_SWEEP"), "1", StringComparison.Ordinal);
 
     [HumansFact(
         Timeout = 600_000,
-        Skip = "Set RUN_LOCALIZATION_SWEEP=1 to run the localization-coverage sweep (bi-weekly maintenance job).",
+        Skip = "Set HUMANS_INTEGRATION_TESTS=1 and RUN_LOCALIZATION_SWEEP=1 to run the localization-coverage sweep (bi-weekly maintenance job).",
         SkipUnless = nameof(SweepEnabled))]
     public async Task Public_pages_are_localized_and_admin_pages_are_not()
     {
