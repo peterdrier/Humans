@@ -212,4 +212,19 @@
   <data name="Camps_Flash_UnknownError" xml:space="preserve"><value>Unknown error.</value></data>
   <data name="Camps_Flash_RoleUnassigned" xml:space="preserve"><value>Role unassigned.</value></data>
   <data name="Camps_Flash_AssignmentNotFound" xml:space="preserve"><value>Assignment not found.</value></data>
+  <data name="Camps_Details_Breadcrumb" xml:space="preserve"><value>Breadcrumb</value></data>
+  <data name="Camps_Details_Slide" xml:space="preserve"><value>Slide {0}</value></data>
+  <data name="Camps_Details_Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Camps_Details_Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Camps_Details_SeasonLink" xml:space="preserve"><value>View {0} season page</value></data>
+  <data name="Camps_Details_MyMembership" xml:space="preserve"><value>My membership</value></data>
+  <data name="Camps_Details_MembershipHelp" xml:space="preserve"><value>This does not join you to the camp. Join through the camp’s own process first, then tell Humans so you get access to any per-camp roles, Early Entry allocations, and notifications.</value></data>
+  <data name="Camps_Details_FullSeason" xml:space="preserve"><value>This camp says it’s full for {0} — you can still request to join.</value></data>
+  <data name="Camps_Details_RequestJoin" xml:space="preserve"><value>Request to join for {0}</value></data>
+  <data name="Camps_Details_PendingApproval" xml:space="preserve"><value>Pending lead approval for {0}.</value></data>
+  <data name="Camps_Details_WithdrawConfirm" xml:space="preserve"><value>Withdraw your pending request?</value></data>
+  <data name="Camps_Details_WithdrawRequest" xml:space="preserve"><value>Withdraw request</value></data>
+  <data name="Camps_Details_ActiveMembership" xml:space="preserve"><value>You are a member for {0}.</value></data>
+  <data name="Camps_Details_LeaveConfirm" xml:space="preserve"><value>Leave this camp for this season?</value></data>
+  <data name="Camps_Details_LeaveCamp" xml:space="preserve"><value>Leave camp</value></data>
 </root>
