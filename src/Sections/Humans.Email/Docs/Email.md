@@ -32,7 +32,7 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 | RecipientName | string? | Display name |
 | Subject | string | Email subject line |
 | HtmlBody | string | Rendered HTML body |
-| PlainTextBody | string? | Optional plain-text alternative |
+| PlainTextBody | string? | Optional plain-text alternative; composed bodies retain action URLs and paragraph/heading/list/line-break separation |
 | TemplateName | string | Template identifier used to render this message |
 | UserId | Guid? | Bare cross-section id (optional) — no FK constraint, no nav |
 | CampaignGrantId | Guid? | Bare cross-section id (CampaignGrant, Campaigns) — no FK constraint, no nav; status mirroring writes through `ICampaignService` |
