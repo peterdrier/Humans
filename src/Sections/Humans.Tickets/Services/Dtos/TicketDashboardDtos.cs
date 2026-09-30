@@ -401,7 +401,24 @@ internal sealed class OrderExportRow
     public decimal? ApplicationFee { get; init; }
     public string PaymentStatus { get; init; } = string.Empty;
     public string VendorOrderId { get; init; } = string.Empty;
+    public Instant PurchasedAt { get; init; }
 
     /// <summary>Sum of (price − 315) over the order's Valid/CheckedIn seats priced above the VIP threshold.</summary>
     public decimal VipDonations { get; init; }
+}
+
+/// <summary>
+/// One donation on a paid order, for the accountant's donor list. <see cref="Date"/> is the
+/// purchase date in Europe/Madrid, the zone the monthly accountant report buckets by.
+/// </summary>
+internal sealed record DonationExportRow(
+    string Date,
+    string VendorOrderId,
+    string BuyerName,
+    string BuyerEmail,
+    string Type,
+    decimal Amount)
+{
+    public const string VipTicket = "VIP ticket";
+    public const string SeparateDonation = "Separate donation";
 }

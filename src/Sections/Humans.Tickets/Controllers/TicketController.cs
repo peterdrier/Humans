@@ -439,14 +439,11 @@ internal sealed class TicketController(
         var bytes = HumansCsv.WriteBytes(csv =>
         {
             csv.WriteRow("Date", "Order ID", "Name", "Email", "Type", "Amount");
-            foreach (var o in rows)
+            foreach (var r in rows)
             {
-                if (o.VipDonations > 0)
-                    csv.WriteRow(o.Date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, "VIP ticket", o.VipDonations);
-                if (o.DonationAmount > 0)
-                    csv.WriteRow(o.Date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, "Separate donation", o.DonationAmount);
+                csv.WriteRow(r.Date, r.VendorOrderId, r.BuyerName, r.BuyerEmail, r.Type, r.Amount);
             }
-            csv.WriteRow("Total", "", "", "", "", rows.Sum(o => o.DonationAmount + o.VipDonations));
+            csv.WriteRow("Total", "", "", "", "", rows.Sum(r => r.Amount));
         });
         return File(bytes, "text/csv", "ticketing-donations.csv");
     }

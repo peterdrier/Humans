@@ -880,6 +880,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 ApplicationFee = o.ApplicationFee,
                 PaymentStatus = o.PaymentStatus.ToString(),
                 VendorOrderId = o.VendorOrderId,
+                PurchasedAt = o.PurchasedAt,
                 VipDonations = o.Attendees
                     .Where(a =>
                         (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn) &&

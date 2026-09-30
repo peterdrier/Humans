@@ -1,3 +1,4 @@
+using Humans.Tickets.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
@@ -964,15 +965,24 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             Instant.FromUtc(2026, 3, 15, 10, 0), 365m, 50m, 28.64m, 1, 0m));
         TicketsDb.TicketOrders.Add(MakeOrder("ord_refunded", TicketPaymentStatus.Refunded,
             Instant.FromUtc(2026, 3, 20, 10, 0), 400m, 0m, 28.64m, 1, 85m));
+        // Both kinds on one order; bought 23:30 UTC on 31 Mar = 01:30 on 1 Apr in Europe/Madrid.
+        TicketsDb.TicketOrders.Add(MakeOrder("ord_both", TicketPaymentStatus.Paid,
+            Instant.FromUtc(2026, 3, 31, 23, 30), 450m, 50m, 28.64m, 1, 85m));
         await SaveAllAsync(ct);
         var actor = Guid.NewGuid();
 
         var rows = await _service.GetDonationExportDataAsync(actor);
 
-        rows.Select(r => r.VendorOrderId).Should().Equal("ord_gift", "ord_vip");
+        rows.Select(r => (r.VendorOrderId, r.Type, r.Amount)).Should().Equal(
+            ("ord_gift", DonationExportRow.SeparateDonation, 50m),
+            ("ord_both", DonationExportRow.VipTicket, 85m),
+            ("ord_both", DonationExportRow.SeparateDonation, 50m),
+            ("ord_vip", DonationExportRow.VipTicket, 85m));
+        rows[1].Date.Should().Be("2026-04-01");
+        rows[0].BuyerEmail.Should().Be("buyer@example.com");
         await _auditLog.Received(1).LogAsync(
             AuditAction.TicketDonationsExported, "Tickets", Guid.Empty,
-            Arg.Is<string>(d => d.Contains("2 orders", StringComparison.Ordinal) && d.Contains("135.00", StringComparison.Ordinal)),
+            Arg.Is<string>(d => d.Contains("4 donation rows", StringComparison.Ordinal) && d.Contains("270.00", StringComparison.Ordinal)),
             actor, null, null);
     }
 
