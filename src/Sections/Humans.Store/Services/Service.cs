@@ -760,7 +760,7 @@ internal sealed class Service(
     /// Records a Store-admin ledger entry: a <see cref="PaymentMethod.DepositReturn"/> credits a
     /// returned deposit (full or partial) back to the order; a <see cref="PaymentMethod.Refund"/>
     /// books money sent back out (issued by hand in the Stripe dashboard). The admin enters a
-    /// positive amount; a refund is stored negative. A refund has no cap — a camp may have
+    /// positive amount; a refund is stored negative and must cite its reference. A refund has no cap — a camp may have
     /// overpaid — but deposit returns can never add up to more than the order's deposits.
     /// </summary>
     public async Task RecordAdminPaymentAsync(
@@ -776,6 +776,8 @@ internal sealed class Service(
             throw new InvalidOperationException($"Only deposit returns and refunds can be recorded by hand, not {method}.");
         if (amountEur <= 0)
             throw new InvalidOperationException("Amount must be greater than zero.");
+        if (method == PaymentMethod.Refund && string.IsNullOrWhiteSpace(externalRef))
+            throw new InvalidOperationException("A refund needs a reference (e.g. the Stripe refund id).");
 
         var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
             ?? throw new InvalidOperationException("Order not found.");

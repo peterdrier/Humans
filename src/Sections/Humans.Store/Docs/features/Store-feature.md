@@ -64,7 +64,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 **As** a Store admin, **I want** to credit returned deposits to a camp's order and book the refunds I send from the Stripe dashboard, **so that** every camp's balance shows what we owe them before any money goes out.
 
 **Acceptance Criteria:**
-- POST to `/Store/Order/{id}/RecordPayment` with a positive amount, method (`DepositReturn` | `Refund`), optional external reference (e.g. Stripe refund id), and optional notes.
+- POST to `/Store/Order/{id}/RecordPayment` with a positive amount, method (`DepositReturn` | `Refund`), an external reference (e.g. Stripe refund id; required for `Refund`, optional for `DepositReturn`), and optional notes.
 - Step 1, `DepositReturn`: stored positive, so a paid-up order goes negative — the overage owed to the camp. Partial returns are just smaller amounts.
 - Step 2, `Refund`: stored negative after the money is sent from the Stripe dashboard, bringing the order back to zero.
 - Inserts a `Paid` `Payment` row with `RecordedByUserId = actorUserId`. Any other method is rejected. A deposit return is capped at the deposit still held (deposit total minus returns already recorded); a refund has no cap — a camp may have overpaid.

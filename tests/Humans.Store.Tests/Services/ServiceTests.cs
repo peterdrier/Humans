@@ -1226,6 +1226,31 @@ public class ServiceTests
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    public async Task RecordAdminPaymentAsync_rejects_refund_without_reference(string? externalRef)
+    {
+        var act = () => _service.RecordAdminPaymentAsync(Guid.NewGuid(), PaymentMethod.Refund, 10m, externalRef, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("A refund needs a reference*");
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RecordAdminPaymentAsync_allows_deposit_return_without_reference()
+    {
+        var orderId = Guid.NewGuid();
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(MakeDepositOrder(orderId, depositTotal: 50m));
+
+        await _service.RecordAdminPaymentAsync(orderId, PaymentMethod.DepositReturn, 50m, "  ", null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).AddPaymentAsync(
+            Arg.Is<Payment>(p => p.Method == PaymentMethod.DepositReturn && p.ExternalRef == null),
+            Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task RepairPaymentMethodNamesAsync_copies_int_method_and_audits_each_row()
     {
@@ -1283,7 +1308,7 @@ public class ServiceTests
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
             .Returns(MakeDepositOrder(orderId, depositTotal: 100m));
 
-        await _service.RecordAdminPaymentAsync(orderId, PaymentMethod.Refund, 5000m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        await _service.RecordAdminPaymentAsync(orderId, PaymentMethod.Refund, 5000m, "re_123", null, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await _repo.Received(1).AddPaymentAsync(Arg.Is<Payment>(p => p.AmountEur == -5000m), Arg.Any<CancellationToken>());
     }
