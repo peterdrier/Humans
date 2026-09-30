@@ -123,10 +123,17 @@ public sealed class ExpensesControllerTests
         var reports = Substitute.For<IExpenseReportService>();
         reports.GetAsync(reportId).Returns(new ExpenseReportDto
         {
-            Id = reportId, SubmitterUserId = actorId, BudgetCategoryId = Guid.NewGuid(),
-            BudgetYearId = Guid.NewGuid(), Status = ExpenseReportStatus.Draft,
-            PayeeName = "Submitter", PayeeIban = "", Total = 0,
-            CreatedAt = default, UpdatedAt = default, Lines = []
+            Id = reportId,
+            SubmitterUserId = actorId,
+            BudgetCategoryId = Guid.NewGuid(),
+            BudgetYearId = Guid.NewGuid(),
+            Status = ExpenseReportStatus.Draft,
+            PayeeName = "Submitter",
+            PayeeIban = "",
+            Total = 0,
+            CreatedAt = default,
+            UpdatedAt = default,
+            Lines = []
         });
         reports.SaveSubmitterIbanWithResultAsync(reportId, actorId, Arg.Any<string?>())
             .Returns(new ExpenseIbanSaveResult(succeeded, validationError, messageKey));

@@ -1480,7 +1480,9 @@ public class SurveyServiceTests
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
         survey.Title = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["en"] = "English title", ["es"] = "Spanish title", ["de"] = "German title"
+            ["en"] = "English title",
+            ["es"] = "Spanish title",
+            ["de"] = "German title"
         });
         var firstUser = Guid.NewGuid();
         var secondUser = Guid.NewGuid();

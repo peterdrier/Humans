@@ -124,7 +124,8 @@ public sealed class OnboardingServiceTests
             .Returns(new OnboardingResult(true));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(burnerName: "Member"))
-                with { PreferredLanguage = "es" });
+                with
+            { PreferredLanguage = "es" });
 
         (await BuildSut().RejectSignupAsync(userId, Guid.NewGuid(), reason,
             Xunit.TestContext.Current.CancellationToken)).Success.Should().BeTrue();
