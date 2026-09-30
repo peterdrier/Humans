@@ -120,25 +120,25 @@
             @* Community info *@
             <div class="card mb-4">
                 <div class="card-header">
-                    <i class="fa-solid fa-users me-1"></i> Community
+                    <i class="fa-solid fa-users me-1"></i> @Localizer["Camp_CommunityHeading"]
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
                             <dl>
-                                <dt>Languages</dt>
+                                <dt>@Localizer["Camp_LanguagesLabel"]</dt>
                                 <dd>@season.Languages</dd>
-                                <dt>Accepting Humans</dt>
-                                <dd>@season.AcceptingMembers</dd>
-                                <dt>Kids Welcome</dt>
-                                <dd>@season.KidsWelcome</dd>
+                                <dt>@Localizer["Camp_AcceptingMembersLabel"]</dt>
+                                <dd>@SharedLocalizer.EnumDisplay(season.AcceptingMembers)</dd>
+                                <dt>@Localizer["Camp_KidsWelcomeLabel"]</dt>
+                                <dd>@SharedLocalizer.EnumDisplay(season.KidsWelcome)</dd>
                                 @if (season.KidsWelcome != YesNoMaybe.No)
                                 {
-                                    <dt>Kids Visiting</dt>
-                                    <dd>@season.KidsVisiting</dd>
+                                    <dt>@Localizer["Camp_KidsVisitingLabel"]</dt>
+                                    <dd>@SharedLocalizer.EnumDisplay(season.KidsVisiting)</dd>
                                     @if (!string.IsNullOrEmpty(season.KidsAreaDescription))
                                     {
-                                        <dt>Kids Area</dt>
+                                        <dt>@Localizer["Camp_KidsAreaDescriptionLabel"]</dt>
                                         <dd>@Html.SanitizedMarkdown(season.KidsAreaDescription)</dd>
                                     }
                                 }
@@ -146,9 +146,9 @@
                         </div>
                         <div class="col-md-6">
                             <dl>
-                                <dt>Adult Playspace</dt>
-                                <dd>@season.AdultPlayspace</dd>
-                                <dt>Expected Humans</dt>
+                                <dt>@Localizer["Camp_AdultPlayspaceLabel"]</dt>
+                                <dd>@SharedLocalizer.EnumDisplay(season.AdultPlayspace)</dd>
+                                <dt>@Localizer["Camp_MemberCountLabel"]</dt>
                                 <dd>@season.MemberCount</dd>
                             </dl>
                         </div>
@@ -161,13 +161,13 @@
             {
                 <div class="card mb-4">
                     <div class="card-header">
-                        <i class="fa-solid fa-heart-pulse me-1"></i> Vibes
+                        <i class="fa-solid fa-heart-pulse me-1"></i> @Localizer["Camp_VibesLabel"]
                     </div>
                     <div class="card-body">
                         <div class="d-flex flex-wrap gap-2">
                             @foreach (var vibe in season.Vibes)
                             {
-                                <span class="badge bg-secondary fs-6">@vibe</span>
+                                <span class="badge bg-secondary fs-6">@Localizer.EnumDisplay(vibe)</span>
                             }
                         </div>
                     </div>
@@ -179,15 +179,15 @@
             {
                 <div class="card mb-4">
                     <div class="card-header">
-                        <i class="fa-solid fa-masks-theater me-1"></i> Culture & Events
+                        <i class="fa-solid fa-masks-theater me-1"></i> @Localizer["Camp_CultureHeading"]
                     </div>
                     <div class="card-body">
                         <dl>
-                            <dt>Performance Space</dt>
-                            <dd>@season.HasPerformanceSpace</dd>
+                            <dt>@Localizer["Camp_PerformanceSpaceLabel"]</dt>
+                            <dd>@SharedLocalizer.EnumDisplay(season.HasPerformanceSpace)</dd>
                             @if (!string.IsNullOrEmpty(season.PerformanceTypes))
                             {
-                                <dt>Performance Types</dt>
+                                <dt>@Localizer["Camp_PerformanceTypesLabel"]</dt>
                                 <dd>@season.PerformanceTypes</dd>
                             }
                         </dl>
