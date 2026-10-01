@@ -34,8 +34,18 @@ fi
 # All declared package versions.
 DECLARED=$(grep -oE '<PackageVersion Include="[^"]+"' "$PROPS" | sed 's/.*"\(.*\)"/\1/' | sort -u)
 
-# All package references in src (NOT tests).
-PROD_REFS=$(grep -hoE '<PackageReference Include="[^"]+"' src/*/*.csproj 2>/dev/null \
+# Include section projects at every depth, excluding generated build trees.
+shopt -s globstar nullglob
+PROJECTS=()
+for PROJECT in src/**/*.csproj; do
+  case "$PROJECT" in */obj/*|*/bin/*) continue ;; esac
+  PROJECTS+=("$PROJECT")
+done
+if [ "${#PROJECTS[@]}" -eq 0 ]; then
+  echo "FAIL [about-page-packages]: no production projects found under src/"
+  exit 1
+fi
+PROD_REFS=$(grep -hoE '<PackageReference Include="[^"]+"' "${PROJECTS[@]}" \
   | sed 's/.*"\(.*\)"/\1/' | sort -u)
 
 # Intersection = production packages we should mention on About.
@@ -108,7 +118,8 @@ for PKG in $PROD_PACKAGES; do
   fi
   FOUND=false
   for ALIAS in $(alias_for "$PKG"); do
-    if echo "$DOC_LOWER" | grep -qF "$ALIAS"; then
+    # Avoid echo receiving SIGPIPE when grep finds an early match on a large page.
+    if grep -qF "$ALIAS" <<< "$DOC_LOWER"; then
       FOUND=true
       break
     fi
