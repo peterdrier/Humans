@@ -12,6 +12,67 @@ public class MailerLiteClientRetryTests
     private const string HumansGroupPage =
         """{"data":[{"id":"42","name":"Humans - Test","created_at":"2026-01-01 00:00:00","active_count":0,"unsubscribed_count":0,"unconfirmed_count":0,"bounced_count":0,"junk_count":0}],"meta":{"current_page":1,"last_page":1}}""";
 
+    [HumansTheory]
+    [Xunit.InlineData("null-subscribers")]
+    [Xunit.InlineData("null-groups")]
+    [Xunit.InlineData("repeated-cursor")]
+    [Xunit.InlineData("wrong-group-page")]
+    [Xunit.InlineData("invalid-last-page")]
+    public async Task RefreshAsync_RejectsInvalidPaginationAndPreservesSnapshot(string shape)
+    {
+        const string subscriberPage = """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active"}],"meta":{"next_cursor":null}}""";
+        var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK, subscriberPage);
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        var client = NewClient(handler);
+        var original = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
+        var fetchedAt = client.LastFetchedAt;
+
+        if (string.Equals(shape, "null-subscribers", StringComparison.Ordinal))
+            handler.EnqueueJson(HttpStatusCode.OK, "null");
+        else if (string.Equals(shape, "repeated-cursor", StringComparison.Ordinal))
+        {
+            const string repeatedPage = """{"data":[],"meta":{"next_cursor":"same-cursor"}}""";
+            handler.EnqueueJson(HttpStatusCode.OK, repeatedPage);
+            handler.EnqueueJson(HttpStatusCode.OK, repeatedPage);
+            // Bounds the broken pre-fix walk so the repro cannot hang.
+            handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"next_cursor":null}}""");
+        }
+        else
+            handler.EnqueueJson(HttpStatusCode.OK, subscriberPage);
+        var groupPage = shape switch
+        {
+            "null-groups" => "null",
+            "wrong-group-page" => HumansGroupPage.Replace("\"current_page\":1", "\"current_page\":2", StringComparison.Ordinal),
+            "invalid-last-page" => HumansGroupPage.Replace("\"last_page\":1", "\"last_page\":0", StringComparison.Ordinal),
+            _ => HumansGroupPage,
+        };
+        handler.EnqueueJson(HttpStatusCode.OK, groupPage);
+
+        var act = async () => await client.RefreshAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+        (await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(original);
+        client.LastFetchedAt.Should().Be(fetchedAt);
+        (await client.ListGroupsAsync(Xunit.TestContext.Current.CancellationToken)).Should().ContainSingle(g => g.Id == "42");
+    }
+
+    [HumansFact]
+    public async Task RefreshAsync_FollowsGroupMetadataAcrossEmptyIntermediatePage()
+    {
+        var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"next_cursor":null}}""");
+        handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"current_page":1,"last_page":2}}""");
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage
+            .Replace("\"current_page\":1", "\"current_page\":2", StringComparison.Ordinal)
+            .Replace("\"last_page\":1", "\"last_page\":2", StringComparison.Ordinal));
+
+        var groups = await NewClient(handler).ListGroupsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        groups.Should().ContainSingle(g => g.Id == "42");
+        handler.Calls.Should().Be(3);
+    }
+
     [HumansFact]
     public async Task AssignSubscriberToGroupAsync_RetriesAfter429_AndSucceeds()
     {

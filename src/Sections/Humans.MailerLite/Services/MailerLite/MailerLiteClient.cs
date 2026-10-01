@@ -222,6 +222,7 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         [EnumeratorCancellation] CancellationToken ct)
     {
         string? cursor = null;
+        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
         while (true)
         {
             // include=groups required — omitting it returns empty GroupIds.
@@ -230,9 +231,12 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
             using var resp = await SendAsync(HttpMethod.Get, url, content: null, ct);
             resp.EnsureSuccessStatusCode();
             var body = await resp.Content.ReadFromJsonAsync<SubscriberListEnvelope>(Json, ct);
-            if (body is null) yield break;
+            if (body?.Data is null || body.Meta is null)
+                throw new HttpRequestException("MailerLite returned an incomplete subscriber page.");
             foreach (var s in body.Data) yield return s;
             if (string.IsNullOrEmpty(body.Meta.NextCursor)) yield break;
+            if (!seenCursors.Add(body.Meta.NextCursor))
+                throw new HttpRequestException("MailerLite repeated a subscriber pagination cursor.");
             cursor = body.Meta.NextCursor;
         }
     }
@@ -246,7 +250,9 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
             using var resp = await SendAsync(HttpMethod.Get, $"/api/groups?page={page}&limit=100", content: null, ct);
             resp.EnsureSuccessStatusCode();
             var body = await resp.Content.ReadFromJsonAsync<GroupListEnvelope>(Json, ct);
-            if (body is null || body.Data.Count == 0) break;
+            if (body?.Data is null || body.Meta is null ||
+                body.Meta.CurrentPage != page || body.Meta.LastPage < page)
+                throw new HttpRequestException("MailerLite returned invalid group pagination metadata.");
             results.AddRange(body.Data);
             if (body.Meta.CurrentPage >= body.Meta.LastPage) break;
             page++;
