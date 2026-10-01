@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Localization;
 using Humans.Events.Services.Dtos;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
@@ -20,7 +21,8 @@ internal sealed class EventService(
     IEmailService emailService,
     EventsEmails emailMessages,
     IClock clock,
-    ILogger<EventService> logger)
+    ILogger<EventService> logger,
+    IStringLocalizer<EventsResource> localizer)
     // IUserDataContributor is implemented by CachingEventService, which delegates here —
     // erasure edits cached rows, so the fan-out has to run through the decorator.
     : IEventService, ICalendarFeedContributor
@@ -283,7 +285,7 @@ internal sealed class EventService(
         var categories = await repo.GetActiveCategoriesAsync(ct);
         var existingEvents = await repo.GetCampSubmissionsAsync(campId, ct);
 
-        var errors = EventBulkImportValidator.ValidateRows(rows, categories, existingEvents);
+        var errors = EventBulkImportValidator.ValidateRows(rows, categories, existingEvents, localizer);
         if (errors.Count > 0)
             return new BulkImportResult(errors, 0, 0);
 

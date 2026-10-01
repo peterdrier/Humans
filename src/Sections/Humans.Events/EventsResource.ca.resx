@@ -141,4 +141,31 @@
   <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Selecciona un fitxer CSV per pujar.</value></data>
   <data name="Events_UploadNoRows" xml:space="preserve"><value>El CSV no tenia cap fila d'esdeveniment. Afegeix almenys una fila sota la capçalera i torna-ho a provar.</value></data>
   <data name="Events_UploadComplete" xml:space="preserve"><value>Càrrega massiva completada: {0} creats, {1} actualitzats.</value><comment>{0} = created count; {1} = updated count</comment></data>
+  <data name="Events_Upload_TitleRequired" xml:space="preserve"><value>El camp Title és obligatori.</value></data>
+  <data name="Events_Upload_TitleTooLong" xml:space="preserve"><value>Title ha de tenir 80 caràcters com a màxim.</value></data>
+  <data name="Events_Upload_DescriptionRequired" xml:space="preserve"><value>El camp Description és obligatori.</value></data>
+  <data name="Events_Upload_DescriptionTooLong" xml:space="preserve"><value>Description ha de tenir 450 caràcters com a màxim.</value></data>
+  <data name="Events_Upload_LocationNoteTooLong" xml:space="preserve"><value>LocationNote ha de tenir 120 caràcters com a màxim.</value></data>
+  <data name="Events_Upload_HostTooLong" xml:space="preserve"><value>Host ha de tenir 40 caràcters com a màxim.</value></data>
+  <data name="Events_Upload_CategoryRequired" xml:space="preserve"><value>El camp Category és obligatori.</value></data>
+  <data name="Events_Upload_CategoryInvalid" xml:space="preserve"><value>La categoria '{0}' no és una categoria activa vàlida.</value></data>
+  <data name="Events_Upload_CategoryAmbiguous" xml:space="preserve"><value>La categoria '{0}' coincideix amb més d'una categoria activa.</value></data>
+  <data name="Events_Upload_DateRequired" xml:space="preserve"><value>El camp Date és obligatori.</value></data>
+  <data name="Events_Upload_DateFormat" xml:space="preserve"><value>Date ha de tenir el format yyyy-MM-dd.</value></data>
+  <data name="Events_Upload_StartTimeRequired" xml:space="preserve"><value>El camp StartTime és obligatori.</value></data>
+  <data name="Events_Upload_StartTimeFormat" xml:space="preserve"><value>StartTime ha de tenir el format HH:mm.</value></data>
+  <data name="Events_Upload_DurationRange" xml:space="preserve"><value>DurationMinutes ha d'estar entre 15 i 480.</value></data>
+  <data name="Events_Upload_DurationIncrement" xml:space="preserve"><value>DurationMinutes ha de ser múltiple de 15.</value></data>
+  <data name="Events_Upload_PriorityRange" xml:space="preserve"><value>PriorityRank ha d'estar entre 1 i 100.</value></data>
+  <data name="Events_Upload_RecurrenceDays" xml:space="preserve"><value>RecurrenceDays només pot contenir Mon Tue Wed Thu Fri Sat Sun.</value></data>
+  <data name="Events_Upload_DuplicateEventId" xml:space="preserve"><value>L'esdeveniment {0} apareix més d'una vegada a la càrrega.</value></data>
+  <data name="Events_Upload_EventNotFound" xml:space="preserve"><value>No s'ha trobat l'esdeveniment {0} per a aquest barrio.</value></data>
+  <data name="Events_Upload_WithdrawnEventCannotUpdate" xml:space="preserve"><value>Els esdeveniments retirats no es poden actualitzar amb una càrrega massiva.</value></data>
+  <data name="Events_Upload_MissingRequiredColumns" xml:space="preserve"><value>Falten columnes obligatòries al CSV: {0}. Baixa una plantilla nova per veure les columnes esperades.</value></data>
+  <data name="Events_Upload_RowIdInvalidGuid" xml:space="preserve"><value>Fila {0}: Id no és un Guid vàlid.</value></data>
+  <data name="Events_Upload_RowDurationNotInteger" xml:space="preserve"><value>Fila {0}: DurationMinutes no és un nombre enter.</value></data>
+  <data name="Events_Upload_RowPriorityNotInteger" xml:space="preserve"><value>Fila {0}: PriorityRank no és un nombre enter.</value></data>
+  <data name="Events_Upload_RowRecurringBoolean" xml:space="preserve"><value>Fila {0}: IsRecurring ha de ser true o false.</value></data>
+  <data name="Events_Upload_ParseFailed" xml:space="preserve"><value>No s'ha pogut processar el CSV. Baixa una plantilla nova i comprova el format del fitxer.</value></data>
+  <data name="Events_Upload_ParseErrorDetail" xml:space="preserve"><value>No s'ha pogut processar el CSV: {0}</value></data>
 </root>

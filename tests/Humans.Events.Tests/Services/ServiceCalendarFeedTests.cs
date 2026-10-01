@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Events.Contracts;
@@ -15,6 +17,10 @@ namespace Humans.Events.Tests.Services;
 
 public class EventServiceCalendarFeedTests
 {
+    private readonly IStringLocalizer<EventsResource> _localizer =
+        new StringLocalizer<EventsResource>(new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
+
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 6, 15, 12, 0);
     // 19:00 Europe/Madrid on 2026-07-01 = 17:00 UTC (CEST).
     private static readonly Instant EventStart = Instant.FromUtc(2026, 7, 1, 17, 0);
@@ -25,7 +31,7 @@ public class EventServiceCalendarFeedTests
 
     public EventServiceCalendarFeedTests()
     {
-        _service = new EventService(_repo, _burnSettings, Substitute.For<IUserServiceRead>(), Substitute.For<IEmailService>(), new EventsEmails(NullLogger<EventsEmails>.Instance), new FakeClock(FixedNow), NullLogger<EventService>.Instance);
+        _service = new EventService(_repo, _burnSettings, Substitute.For<IUserServiceRead>(), Substitute.For<IEmailService>(), new EventsEmails(NullLogger<EventsEmails>.Instance), new FakeClock(FixedNow), NullLogger<EventService>.Instance, _localizer);
         // Default: no guide settings → no recurrence expansion context.
         _repo.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
             .Returns((EventGuideSettings?)null);

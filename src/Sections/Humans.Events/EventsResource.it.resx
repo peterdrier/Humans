@@ -141,4 +141,31 @@
   <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Seleziona un file CSV da caricare.</value></data>
   <data name="Events_UploadNoRows" xml:space="preserve"><value>Il CSV non conteneva righe di eventi. Aggiungi almeno una riga sotto l'intestazione e riprova.</value></data>
   <data name="Events_UploadComplete" xml:space="preserve"><value>Caricamento di massa completato: {0} creati, {1} aggiornati.</value><comment>{0} = created count; {1} = updated count</comment></data>
+  <data name="Events_Upload_TitleRequired" xml:space="preserve"><value>Il campo Title è obbligatorio.</value></data>
+  <data name="Events_Upload_TitleTooLong" xml:space="preserve"><value>Title deve contenere al massimo 80 caratteri.</value></data>
+  <data name="Events_Upload_DescriptionRequired" xml:space="preserve"><value>Il campo Description è obbligatorio.</value></data>
+  <data name="Events_Upload_DescriptionTooLong" xml:space="preserve"><value>Description deve contenere al massimo 450 caratteri.</value></data>
+  <data name="Events_Upload_LocationNoteTooLong" xml:space="preserve"><value>LocationNote deve contenere al massimo 120 caratteri.</value></data>
+  <data name="Events_Upload_HostTooLong" xml:space="preserve"><value>Host deve contenere al massimo 40 caratteri.</value></data>
+  <data name="Events_Upload_CategoryRequired" xml:space="preserve"><value>Il campo Category è obbligatorio.</value></data>
+  <data name="Events_Upload_CategoryInvalid" xml:space="preserve"><value>La categoria '{0}' non è una categoria attiva valida.</value></data>
+  <data name="Events_Upload_CategoryAmbiguous" xml:space="preserve"><value>La categoria '{0}' corrisponde a più di una categoria attiva.</value></data>
+  <data name="Events_Upload_DateRequired" xml:space="preserve"><value>Il campo Date è obbligatorio.</value></data>
+  <data name="Events_Upload_DateFormat" xml:space="preserve"><value>Date deve essere nel formato yyyy-MM-dd.</value></data>
+  <data name="Events_Upload_StartTimeRequired" xml:space="preserve"><value>Il campo StartTime è obbligatorio.</value></data>
+  <data name="Events_Upload_StartTimeFormat" xml:space="preserve"><value>StartTime deve essere nel formato HH:mm.</value></data>
+  <data name="Events_Upload_DurationRange" xml:space="preserve"><value>DurationMinutes deve essere compreso tra 15 e 480.</value></data>
+  <data name="Events_Upload_DurationIncrement" xml:space="preserve"><value>DurationMinutes deve essere un multiplo di 15.</value></data>
+  <data name="Events_Upload_PriorityRange" xml:space="preserve"><value>PriorityRank deve essere compreso tra 1 e 100.</value></data>
+  <data name="Events_Upload_RecurrenceDays" xml:space="preserve"><value>RecurrenceDays può contenere solo Mon Tue Wed Thu Fri Sat Sun.</value></data>
+  <data name="Events_Upload_DuplicateEventId" xml:space="preserve"><value>L'evento {0} compare più di una volta nel caricamento.</value></data>
+  <data name="Events_Upload_EventNotFound" xml:space="preserve"><value>Evento {0} non trovato per questo barrio.</value></data>
+  <data name="Events_Upload_WithdrawnEventCannotUpdate" xml:space="preserve"><value>Gli eventi ritirati non possono essere aggiornati tramite caricamento massivo.</value></data>
+  <data name="Events_Upload_MissingRequiredColumns" xml:space="preserve"><value>Nel CSV mancano colonne obbligatorie: {0}. Scarica un nuovo modello per vedere le colonne previste.</value></data>
+  <data name="Events_Upload_RowIdInvalidGuid" xml:space="preserve"><value>Riga {0}: Id non è un Guid valido.</value></data>
+  <data name="Events_Upload_RowDurationNotInteger" xml:space="preserve"><value>Riga {0}: DurationMinutes non è un numero intero.</value></data>
+  <data name="Events_Upload_RowPriorityNotInteger" xml:space="preserve"><value>Riga {0}: PriorityRank non è un numero intero.</value></data>
+  <data name="Events_Upload_RowRecurringBoolean" xml:space="preserve"><value>Riga {0}: IsRecurring deve essere true o false.</value></data>
+  <data name="Events_Upload_ParseFailed" xml:space="preserve"><value>Impossibile analizzare il CSV. Scarica un nuovo modello e controlla il formato del file.</value></data>
+  <data name="Events_Upload_ParseErrorDetail" xml:space="preserve"><value>Impossibile analizzare il CSV: {0}</value></data>
 </root>

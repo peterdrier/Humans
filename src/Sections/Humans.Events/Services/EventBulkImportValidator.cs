@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Localization;
 using Humans.Base.Extensions;
 using Humans.Events.Contracts;
 using Humans.Events.Domain;
@@ -11,7 +12,8 @@ internal static class EventBulkImportValidator
     public static List<BulkImportRowError> ValidateRows(
         IReadOnlyList<BulkCsvRow> rows,
         IReadOnlyList<EventCategory> categories,
-        IReadOnlyList<Event> existingEvents)
+        IReadOnlyList<Event> existingEvents,
+        IStringLocalizer<EventsResource> localizer)
     {
         var errors = new List<BulkImportRowError>();
         var duplicateIds = rows
@@ -24,38 +26,38 @@ internal static class EventBulkImportValidator
         {
             var rowErrors = new List<string>();
 
-            if (string.IsNullOrWhiteSpace(row.Title)) rowErrors.Add("Title is required.");
-            else if (row.Title.Length > 80) rowErrors.Add("Title must be 80 characters or fewer.");
+            if (string.IsNullOrWhiteSpace(row.Title)) rowErrors.Add(localizer["Events_Upload_TitleRequired"].Value);
+            else if (row.Title.Length > 80) rowErrors.Add(localizer["Events_Upload_TitleTooLong"].Value);
 
-            if (string.IsNullOrWhiteSpace(row.Description)) rowErrors.Add("Description is required.");
-            else if (row.Description.Length > 450) rowErrors.Add("Description must be 450 characters or fewer.");
+            if (string.IsNullOrWhiteSpace(row.Description)) rowErrors.Add(localizer["Events_Upload_DescriptionRequired"].Value);
+            else if (row.Description.Length > 450) rowErrors.Add(localizer["Events_Upload_DescriptionTooLong"].Value);
 
-            if (row.LocationNote?.Length > 120) rowErrors.Add("LocationNote must be 120 characters or fewer.");
-            if (row.Host?.Length > 40) rowErrors.Add("Host must be 40 characters or fewer.");
+            if (row.LocationNote?.Length > 120) rowErrors.Add(localizer["Events_Upload_LocationNoteTooLong"].Value);
+            if (row.Host?.Length > 40) rowErrors.Add(localizer["Events_Upload_HostTooLong"].Value);
 
-            ValidateCategory(row, categories, rowErrors);
+            ValidateCategory(row, categories, rowErrors, localizer);
 
-            if (string.IsNullOrWhiteSpace(row.Date)) rowErrors.Add("Date is required.");
+            if (string.IsNullOrWhiteSpace(row.Date)) rowErrors.Add(localizer["Events_Upload_DateRequired"].Value);
             else if (!NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Success)
-                rowErrors.Add("Date must be in yyyy-MM-dd format.");
+                rowErrors.Add(localizer["Events_Upload_DateFormat"].Value);
 
-            if (string.IsNullOrWhiteSpace(row.StartTime)) rowErrors.Add("StartTime is required.");
+            if (string.IsNullOrWhiteSpace(row.StartTime)) rowErrors.Add(localizer["Events_Upload_StartTimeRequired"].Value);
             else if (!DateFormattingExtensions.TimeOfDayPattern.Parse(row.StartTime).Success)
-                rowErrors.Add("StartTime must be in HH:mm format.");
+                rowErrors.Add(localizer["Events_Upload_StartTimeFormat"].Value);
 
             if (row.DurationMinutes < 15 || row.DurationMinutes > 480)
-                rowErrors.Add("DurationMinutes must be between 15 and 480.");
+                rowErrors.Add(localizer["Events_Upload_DurationRange"].Value);
             else if (row.DurationMinutes % 15 != 0)
-                rowErrors.Add("DurationMinutes must be a multiple of 15.");
+                rowErrors.Add(localizer["Events_Upload_DurationIncrement"].Value);
 
             if (row.PriorityRank is { } rank && (rank < 1 || rank > 100))
-                rowErrors.Add("PriorityRank must be between 1 and 100.");
+                rowErrors.Add(localizer["Events_Upload_PriorityRange"].Value);
 
             if (row.IsRecurring && !string.IsNullOrWhiteSpace(row.RecurrenceDays)
                 && !EventRecurrenceDays.HasOnlyDisplayDays(row.RecurrenceDays))
-                rowErrors.Add("RecurrenceDays must contain only Mon Tue Wed Thu Fri Sat Sun.");
+                rowErrors.Add(localizer["Events_Upload_RecurrenceDays"].Value);
 
-            ValidateExistingEvent(row, existingEvents, duplicateIds, rowErrors);
+            ValidateExistingEvent(row, existingEvents, duplicateIds, rowErrors, localizer);
 
             if (rowErrors.Count > 0)
                 errors.Add(new BulkImportRowError(row.RowNumber, row.Title, rowErrors));
@@ -64,11 +66,12 @@ internal static class EventBulkImportValidator
     }
 
     private static void ValidateCategory(
-        BulkCsvRow row, IReadOnlyList<EventCategory> categories, List<string> errors)
+        BulkCsvRow row, IReadOnlyList<EventCategory> categories, List<string> errors,
+        IStringLocalizer<EventsResource> localizer)
     {
         if (string.IsNullOrWhiteSpace(row.Category))
         {
-            errors.Add("Category is required.");
+            errors.Add(localizer["Events_Upload_CategoryRequired"].Value);
             return;
         }
 
@@ -76,21 +79,22 @@ internal static class EventBulkImportValidator
             .Where(category => string.Equals(category.Name, row.Category, StringComparison.OrdinalIgnoreCase))
             .ToList();
         if (matchingCategories.Count == 0)
-            errors.Add($"Category '{row.Category}' is not a valid active category.");
+            errors.Add(localizer["Events_Upload_CategoryInvalid", row.Category].Value);
         else if (matchingCategories.Count > 1)
-            errors.Add($"Category '{row.Category}' matches more than one active category.");
+            errors.Add(localizer["Events_Upload_CategoryAmbiguous", row.Category].Value);
     }
 
     private static void ValidateExistingEvent(
-        BulkCsvRow row, IReadOnlyList<Event> existingEvents, HashSet<Guid> duplicateIds, List<string> errors)
+        BulkCsvRow row, IReadOnlyList<Event> existingEvents, HashSet<Guid> duplicateIds, List<string> errors,
+        IStringLocalizer<EventsResource> localizer)
     {
         if (!row.Id.HasValue) return;
 
         if (duplicateIds.Contains(row.Id.Value))
-            errors.Add($"Event {row.Id.Value} appears more than once in the upload.");
+            errors.Add(localizer["Events_Upload_DuplicateEventId", row.Id.Value].Value);
         else if (existingEvents.FirstOrDefault(eventRow => eventRow.Id == row.Id.Value) is not { } existing)
-            errors.Add($"Event {row.Id.Value} not found for this barrio.");
+            errors.Add(localizer["Events_Upload_EventNotFound", row.Id.Value].Value);
         else if (existing.Status == EventStatus.Withdrawn)
-            errors.Add("Withdrawn events cannot be updated via bulk upload.");
+            errors.Add(localizer["Events_Upload_WithdrawnEventCannotUpdate"].Value);
     }
 }

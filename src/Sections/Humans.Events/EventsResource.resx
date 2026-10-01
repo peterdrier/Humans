@@ -136,4 +136,31 @@
   <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Please select a CSV file to upload.</value></data>
   <data name="Events_UploadNoRows" xml:space="preserve"><value>The CSV had no event rows. Add at least one row below the header and try again.</value></data>
   <data name="Events_UploadComplete" xml:space="preserve"><value>Bulk upload complete — {0} created, {1} updated.</value><comment>{0} = created count; {1} = updated count</comment></data>
+  <data name="Events_Upload_TitleRequired" xml:space="preserve"><value>Title is required.</value></data>
+  <data name="Events_Upload_TitleTooLong" xml:space="preserve"><value>Title must be 80 characters or fewer.</value></data>
+  <data name="Events_Upload_DescriptionRequired" xml:space="preserve"><value>Description is required.</value></data>
+  <data name="Events_Upload_DescriptionTooLong" xml:space="preserve"><value>Description must be 450 characters or fewer.</value></data>
+  <data name="Events_Upload_LocationNoteTooLong" xml:space="preserve"><value>LocationNote must be 120 characters or fewer.</value></data>
+  <data name="Events_Upload_HostTooLong" xml:space="preserve"><value>Host must be 40 characters or fewer.</value></data>
+  <data name="Events_Upload_CategoryRequired" xml:space="preserve"><value>Category is required.</value></data>
+  <data name="Events_Upload_CategoryInvalid" xml:space="preserve"><value>Category '{0}' is not a valid active category.</value></data>
+  <data name="Events_Upload_CategoryAmbiguous" xml:space="preserve"><value>Category '{0}' matches more than one active category.</value></data>
+  <data name="Events_Upload_DateRequired" xml:space="preserve"><value>Date is required.</value></data>
+  <data name="Events_Upload_DateFormat" xml:space="preserve"><value>Date must be in yyyy-MM-dd format.</value></data>
+  <data name="Events_Upload_StartTimeRequired" xml:space="preserve"><value>StartTime is required.</value></data>
+  <data name="Events_Upload_StartTimeFormat" xml:space="preserve"><value>StartTime must be in HH:mm format.</value></data>
+  <data name="Events_Upload_DurationRange" xml:space="preserve"><value>DurationMinutes must be between 15 and 480.</value></data>
+  <data name="Events_Upload_DurationIncrement" xml:space="preserve"><value>DurationMinutes must be a multiple of 15.</value></data>
+  <data name="Events_Upload_PriorityRange" xml:space="preserve"><value>PriorityRank must be between 1 and 100.</value></data>
+  <data name="Events_Upload_RecurrenceDays" xml:space="preserve"><value>RecurrenceDays must contain only Mon Tue Wed Thu Fri Sat Sun.</value></data>
+  <data name="Events_Upload_DuplicateEventId" xml:space="preserve"><value>Event {0} appears more than once in the upload.</value></data>
+  <data name="Events_Upload_EventNotFound" xml:space="preserve"><value>Event {0} not found for this barrio.</value></data>
+  <data name="Events_Upload_WithdrawnEventCannotUpdate" xml:space="preserve"><value>Withdrawn events cannot be updated via bulk upload.</value></data>
+  <data name="Events_Upload_MissingRequiredColumns" xml:space="preserve"><value>The CSV is missing required column(s): {0}. Download a fresh template to see the expected columns.</value></data>
+  <data name="Events_Upload_RowIdInvalidGuid" xml:space="preserve"><value>Row {0}: Id is not a valid Guid.</value></data>
+  <data name="Events_Upload_RowDurationNotInteger" xml:space="preserve"><value>Row {0}: DurationMinutes is not an integer.</value></data>
+  <data name="Events_Upload_RowPriorityNotInteger" xml:space="preserve"><value>Row {0}: PriorityRank is not an integer.</value></data>
+  <data name="Events_Upload_RowRecurringBoolean" xml:space="preserve"><value>Row {0}: IsRecurring must be true or false.</value></data>
+  <data name="Events_Upload_ParseFailed" xml:space="preserve"><value>Could not parse CSV. Download a fresh template and check the file format.</value></data>
+  <data name="Events_Upload_ParseErrorDetail" xml:space="preserve"><value>Could not parse CSV: {0}</value></data>
 </root>
