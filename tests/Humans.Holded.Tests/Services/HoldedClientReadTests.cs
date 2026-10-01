@@ -24,7 +24,7 @@ public class HoldedClientReadTests
     [HumansFact]
     public async Task ListExpenseAccounts_parses_num_and_name()
     {
-        var json = """{"items":[{"id":"a1","name":"Otros servicios","account_num":62900000,"archived":false}],"cursor":null,"has_more":false}""";
+        var json = """{"items":[{"id":"a1","name":"Otros servicios","account_num":62900000.0,"archived":false}],"cursor":null,"has_more":false}""";
         var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, json));
 
         var client = Make(handler);
@@ -34,6 +34,44 @@ public class HoldedClientReadTests
         accounts[0].Id.Should().Be("a1");
         accounts[0].Name.Should().Be("Otros servicios");
         accounts[0].AccountNum.Should().Be(62900000);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("expense", "account_num", 62900000.5)]
+    [Xunit.InlineData("chart", "number", 10000000.5)]
+    [Xunit.InlineData("ledger", "entry_number", 2064.5)]
+    [Xunit.InlineData("ledger", "line", 2.5)]
+    [Xunit.InlineData("ledger", "account", 40000004.5)]
+    public async Task Account_and_ledger_reads_refuse_fractional_identifiers(
+        string endpoint, string field, double value)
+    {
+        var body = JsonNode.Parse("""
+            {"items":[{"id":"a1","name":"Capital","account_num":62900000,"number":10000000,
+              "entry_number":2064,"line":2,"date":"09/02/2026","account":40000004,
+              "debit":"0.00","credit":"1000.00","balance":"-1000.00"}],
+             "cursor":null,"has_more":false}
+            """)!;
+        body["items"]![0]![field] = value;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, body.ToJsonString())));
+
+        var act = async () =>
+        {
+            switch (endpoint)
+            {
+                case "expense":
+                    await client.ListExpenseAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+                    break;
+                case "chart":
+                    await client.ListAccountingAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+                    break;
+                case "ledger":
+                    await client.ListLedgerEntriesAsync(new LocalDate(2026, 1, 1), new LocalDate(2026, 12, 31),
+                        ct: Xunit.TestContext.Current.CancellationToken);
+                    break;
+            }
+        };
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
     [HumansFact]
@@ -171,8 +209,8 @@ public class HoldedClientReadTests
     public async Task ListLedgerEntries_parses_ddMMyyyy_dates_and_string_decimals()
     {
         var json = """
-        {"items":[{"entry_number":2064,"line":2,"date":"09/02/2026","type":"payment",
-          "description":"","doc_description":"","account":40000004,"debit":"0.00",
+        {"items":[{"entry_number":2064.0,"line":2.0,"date":"09/02/2026","type":"payment",
+          "description":"","doc_description":"","account":40000004.0,"debit":"0.00",
           "credit":"1200.00","tags":[],"checked":false}],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -384,7 +422,7 @@ public class HoldedClientReadTests
     public async Task ListAccountingAccounts_parses_totals()
     {
         var json = """
-        {"items":[{"id":"a1","color":"#fff","number":10000000,"name":"Capital",
+        {"items":[{"id":"a1","color":"#fff","number":10000000.0,"name":"Capital",
           "description":"","group":"Equity","debit":"0.00","credit":"1000.00",
           "balance":"-1000.00","archived":false,"non_deductible":false}],
          "cursor":null,"has_more":false}

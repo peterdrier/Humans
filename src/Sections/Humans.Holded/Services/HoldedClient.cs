@@ -1004,9 +1004,16 @@ internal sealed class HoldedClient : IHoldedClient
     private static decimal ReadDecimalV2(JsonNode? node) =>
         decimal.Parse(node?.GetValue<string>() ?? "0", CultureInfo.InvariantCulture);
 
-    // GetValue<decimal> (not <long>) so a JSON float token like 40000001.0 parses; cast truncates.
-    private static int? ReadInt(JsonNode? node) =>
-        node is null ? null : (int?)node.GetValue<decimal>();
+    // Holded may encode an integer as a JSON float (40000001.0). Accept that shape,
+    // but never truncate a fractional identifier onto a different account or ledger row.
+    private static int? ReadInt(JsonNode? node)
+    {
+        if (node is null) return null;
+        var value = node.GetValue<decimal>();
+        if (value != decimal.Truncate(value))
+            throw new FormatException("Holded integer field contains a fractional value.");
+        return (int)value;
+    }
 
     private static int ReadRequiredInt(JsonNode? node, string field) =>
         ReadInt(node) ?? throw new HoldedPermanentException(

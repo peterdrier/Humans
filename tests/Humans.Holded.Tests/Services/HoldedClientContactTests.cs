@@ -22,13 +22,24 @@ public class HoldedClientContactTests
     [HumansFact]
     public async Task GetContact_parses_supplier_record_num()
     {
-        var json = """{"id":"c1","name":"Daniela Real","supplier_record":{"num":40000001}}""";
+        var json = """{"id":"c1","name":"Daniela Real","supplier_record":{"num":40000001.0}}""";
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
 
         var contact = await client.GetContactAsync("c1", Xunit.TestContext.Current.CancellationToken);
 
         contact.Id.Should().Be("c1");
         contact.SupplierAccountNum.Should().Be(40000001);
+    }
+
+    [HumansFact]
+    public async Task GetContact_refuses_fractional_supplier_account_number()
+    {
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK,
+            """{"id":"c1","name":"Daniela Real","supplier_record":{"num":40000001.5}}""")));
+
+        var act = async () => await client.GetContactAsync("c1", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
     [HumansFact]

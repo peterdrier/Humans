@@ -18,6 +18,7 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 - **Replace semantics**: a sweep is the truth for its window — cached lines the sweep no longer
   returns are deleted (an empty fetch still deletes). Append-only caching was the phantom-row
   bug (deleted/reclassified lines lingering forever).
+- **Integer identities stay exact**: fractional chart/account numbers and ledger entry/line numbers fail the connector read rather than being truncated onto a different cached identity.
 - **Chart totals are required**: missing or null debit, credit or balance fails the account page as a permanent connector error before replacing cached totals. Explicit zero totals remain valid.
 - **Reconciliation**: after every sweep, each non-archived account's chart balance is compared
   to the local ledger sum; drifted accounts get one targeted full-history re-pull (capped at 10
