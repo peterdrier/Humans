@@ -283,4 +283,10 @@
   <data name="Camps_Flash_RequestCreated" xml:space="preserve"><value>Deine Mitgliedschaftsanfrage wurde an die Camp-Leitung gesendet.</value></data>
   <data name="Camps_Flash_RequestAlreadyActive" xml:space="preserve"><value>Du bist bereits ein aktives Mitglied dieses Camps.</value></data>
   <data name="Camps_Flash_RequestAlreadyPending" xml:space="preserve"><value>Du hast bereits eine ausstehende Anfrage für dieses Camp.</value></data>
+  <data name="Camps_Details_EditAndAssignRoles" xml:space="preserve"><value>{0} bearbeiten / Rollen zuweisen</value></data>
+  <data name="Camps_Details_ManageEvents" xml:space="preserve"><value>Veranstaltungen verwalten</value></data>
+  <data name="Camps_Details_WithdrawSeasonConfirm" xml:space="preserve"><value>Möchtest du das Barrio wirklich aus dieser Saison zurückziehen?</value></data>
+  <data name="Camps_Details_WithdrawSeason" xml:space="preserve"><value>Saison zurückziehen</value></data>
+  <data name="Camps_Details_MarkFullConfirm" xml:space="preserve"><value>Diese Saison als voll markieren? Das zeigt Besuchenden nur, dass ihr vermutlich ausgebucht seid — sie können weiterhin um Aufnahme bitten.</value></data>
+  <data name="Camps_Details_MarkFull" xml:space="preserve"><value>Saison als voll markieren</value></data>
 </root>

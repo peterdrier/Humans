@@ -283,4 +283,10 @@
   <data name="Camps_Flash_RequestCreated" xml:space="preserve"><value>Tu solicitud de incorporación se ha enviado a los responsables del campamento.</value></data>
   <data name="Camps_Flash_RequestAlreadyActive" xml:space="preserve"><value>Ya eres miembro activo de este campamento.</value></data>
   <data name="Camps_Flash_RequestAlreadyPending" xml:space="preserve"><value>Ya tienes una solicitud pendiente para este campamento.</value></data>
+  <data name="Camps_Details_EditAndAssignRoles" xml:space="preserve"><value>Editar {0} / Asignar roles</value></data>
+  <data name="Camps_Details_ManageEvents" xml:space="preserve"><value>Gestionar eventos</value></data>
+  <data name="Camps_Details_WithdrawSeasonConfirm" xml:space="preserve"><value>¿Seguro que quieres retirar el Barrio de esta temporada?</value></data>
+  <data name="Camps_Details_WithdrawSeason" xml:space="preserve"><value>Retirar temporada</value></data>
+  <data name="Camps_Details_MarkFullConfirm" xml:space="preserve"><value>¿Marcar esta temporada como completa? Solo indica a las visitas que parece que no quedan plazas; aún pueden solicitar unirse.</value></data>
+  <data name="Camps_Details_MarkFull" xml:space="preserve"><value>Marcar temporada como completa</value></data>
 </root>

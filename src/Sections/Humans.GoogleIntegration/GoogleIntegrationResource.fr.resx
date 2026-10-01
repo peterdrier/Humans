@@ -90,4 +90,5 @@
 &lt;p&gt;L'équipe Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = removed email, {2} = current Google email</comment>
   </data>
+  <data name="GoogleIntegration_MyResourcesTitle" xml:space="preserve"><value>Vos ressources Google</value></data>
 </root>

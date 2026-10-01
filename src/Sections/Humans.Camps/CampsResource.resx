@@ -232,4 +232,10 @@
   <data name="Camps_Flash_RequestCreated" xml:space="preserve"><value>Your request to join has been sent to the camp leads.</value></data>
   <data name="Camps_Flash_RequestAlreadyActive" xml:space="preserve"><value>You are already an active member of this camp.</value></data>
   <data name="Camps_Flash_RequestAlreadyPending" xml:space="preserve"><value>You already have a pending request for this camp.</value></data>
+  <data name="Camps_Details_EditAndAssignRoles" xml:space="preserve"><value>Edit {0} / Assign roles</value></data>
+  <data name="Camps_Details_ManageEvents" xml:space="preserve"><value>Manage Events</value></data>
+  <data name="Camps_Details_WithdrawSeasonConfirm" xml:space="preserve"><value>Are you sure you want to withdraw from this season?</value></data>
+  <data name="Camps_Details_WithdrawSeason" xml:space="preserve"><value>Withdraw Season</value></data>
+  <data name="Camps_Details_MarkFullConfirm" xml:space="preserve"><value>Mark this season full? This just tells visitors you look full — people can still request to join.</value></data>
+  <data name="Camps_Details_MarkFull" xml:space="preserve"><value>Mark Season Full</value></data>
 </root>

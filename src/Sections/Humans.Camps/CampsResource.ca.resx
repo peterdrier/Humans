@@ -283,4 +283,10 @@
   <data name="Camps_Flash_RequestCreated" xml:space="preserve"><value>La teva sol·licitud d’incorporació s’ha enviat als responsables del campament.</value></data>
   <data name="Camps_Flash_RequestAlreadyActive" xml:space="preserve"><value>Ja ets membre actiu d’aquest campament.</value></data>
   <data name="Camps_Flash_RequestAlreadyPending" xml:space="preserve"><value>Ja tens una sol·licitud pendent per a aquest campament.</value></data>
+  <data name="Camps_Details_EditAndAssignRoles" xml:space="preserve"><value>Edita {0} / Assigna rols</value></data>
+  <data name="Camps_Details_ManageEvents" xml:space="preserve"><value>Gestiona els esdeveniments</value></data>
+  <data name="Camps_Details_WithdrawSeasonConfirm" xml:space="preserve"><value>Segur que vols retirar el Barrio d'aquesta temporada?</value></data>
+  <data name="Camps_Details_WithdrawSeason" xml:space="preserve"><value>Retira el Barrio de la temporada</value></data>
+  <data name="Camps_Details_MarkFullConfirm" xml:space="preserve"><value>Vols marcar aquesta temporada com a plena? Només indica a les visites que sembla que no queden places; encara poden demanar d'unir-s'hi.</value></data>
+  <data name="Camps_Details_MarkFull" xml:space="preserve"><value>Marca la temporada com a plena</value></data>
 </root>
