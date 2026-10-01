@@ -132,6 +132,7 @@ Both kinds of submission are managed from a single page — **My Event Submissio
 
 **Acceptance Criteria:**
 - Favourite / unfavourite any approved event
+- A recurring occurrence favourite must name an authored recurrence day; missing or unpublished events and nonexistent occurrences cannot be added.
 - Personal schedule shows favourited events sorted chronologically by day and start time
 - If logged in: favourites stored as UserEventFavourite records (survives device switch)
 - If not logged in: favourites stored in localStorage

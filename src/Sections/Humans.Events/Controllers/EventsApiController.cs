@@ -234,9 +234,20 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized();
 
-        var added = await guide.AddFavouriteAsync(userId.Value, eventId, day);
-        if (!added) return Conflict(new { error = "Already favourited" });
-        return Ok(new { favourited = true });
+        try
+        {
+            var added = await guide.AddFavouriteAsync(userId.Value, eventId, day);
+            if (!added) return Conflict(new { error = "Already favourited" });
+            return Ok(new { favourited = true });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return BadRequest();
+        }
     }
 
     [Authorize]

@@ -149,6 +149,7 @@ public sealed class EventServiceTests
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
+        _repo.Events.Add(new Event { Id = eventId, Status = EventStatus.Approved, IsRecurring = true, RecurrenceDays = "0,2,4" });
 
         var added = await _service.AddFavouriteAsync(userId, eventId, dayOffset: 4, TestContext.Current.CancellationToken);
 
@@ -166,6 +167,7 @@ public sealed class EventServiceTests
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
+        _repo.Events.Add(new Event { Id = eventId, Status = EventStatus.Approved, IsRecurring = true, RecurrenceDays = "0,2,4" });
         await _service.AddFavouriteAsync(userId, eventId, dayOffset: null, TestContext.Current.CancellationToken);
 
         var added = await _service.AddFavouriteAsync(userId, eventId, dayOffset: 4, TestContext.Current.CancellationToken);
@@ -173,6 +175,58 @@ public sealed class EventServiceTests
         added.Should().BeFalse();
         _repo.Favourites.Should().ContainSingle();
         _repo.SaveChangesCount.Should().Be(1);
+    }
+
+    [HumansTheory]
+    [InlineData(-1)]
+    [InlineData(1)]
+    [InlineData(999)]
+    public async Task AddFavouriteAsync_RejectsMissingRecurringOccurrences(int day)
+    {
+        var ev = new Event { Id = Guid.NewGuid(), Status = EventStatus.Approved, IsRecurring = true, RecurrenceDays = "0, 2,4" };
+        _repo.Events.Add(ev);
+
+        var act = () => _service.AddFavouriteAsync(Guid.NewGuid(), ev.Id, day, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>().Where(e => e.ParamName == "dayOffset");
+        _repo.Favourites.Should().BeEmpty();
+        _repo.SaveChangesCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task AddFavouriteAsync_PreservesDayIgnoringBehaviorForNonRecurringEvents()
+    {
+        var ev = new Event { Id = Guid.NewGuid(), Status = EventStatus.Approved, IsRecurring = false };
+        _repo.Events.Add(ev);
+
+        var added = await _service.AddFavouriteAsync(Guid.NewGuid(), ev.Id, 999, TestContext.Current.CancellationToken);
+
+        added.Should().BeTrue();
+        _repo.Favourites.Should().ContainSingle().Which.DayOffset.Should().Be(999);
+    }
+
+    [HumansFact]
+    public async Task AddFavouriteAsync_RejectsMissingEvents()
+    {
+        var act = () => _service.AddFavouriteAsync(Guid.NewGuid(), Guid.NewGuid(), null, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+        _repo.Favourites.Should().BeEmpty();
+        _repo.SaveChangesCount.Should().Be(0);
+    }
+
+    [HumansTheory]
+    [InlineData(EventStatus.Pending)]
+    [InlineData(EventStatus.Rejected)]
+    public async Task AddFavouriteAsync_RejectsUnpublishedEvents(EventStatus status)
+    {
+        var ev = new Event { Id = Guid.NewGuid(), Status = status };
+        _repo.Events.Add(ev);
+        var act = () => _service.AddFavouriteAsync(Guid.NewGuid(), ev.Id, null, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+        _repo.Favourites.Should().BeEmpty();
+        _repo.SaveChangesCount.Should().Be(0);
     }
 
     [HumansFact]

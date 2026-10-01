@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Globalization;
 using Microsoft.Extensions.Localization;
 using Humans.Events.Services.Dtos;
 using Humans.Base.Extensions;
@@ -424,8 +425,21 @@ internal sealed class EventService(
             f.Id, f.UserId, f.GuideEventId, f.DayOffset, f.CreatedAt, ToEventInfo(f.Event))).ToList();
     }
 
-    public Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
-        => repo.AddFavouriteIfAbsentAsync(BuildFavourite(userId, eventId, dayOffset), ct);
+    public async Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
+    {
+        var ev = await repo.GetApprovedEventByIdAsync(eventId, ct)
+            ?? throw new KeyNotFoundException();
+        if (dayOffset is { } day && ev.IsRecurring && !string.IsNullOrWhiteSpace(ev.RecurrenceDays)
+            && !ev.RecurrenceDays
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Any(value => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var offset)
+                    && offset == day))
+        {
+            throw new ArgumentOutOfRangeException(nameof(dayOffset));
+        }
+
+        return await repo.AddFavouriteIfAbsentAsync(BuildFavourite(userId, eventId, dayOffset), ct);
+    }
 
     public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
         => repo.RemoveFavouriteAsync(userId, eventId, dayOffset, ct);

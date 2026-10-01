@@ -137,6 +137,8 @@ Append-only audit log. DB-level: `OnDelete(DeleteBehavior.Restrict)` prevents ca
 
 Unique constraint on (UserId, GuideEventId, DayOffset) with `NULLS NOT DISTINCT` (PG15+), so a user cannot hold two whole-event (null-day) favourites for the same event.
 
+Adding a favourite requires a currently approved event. A supplied day on a recurring event with authored recurrence days must match one of those offsets; invalid targets are rejected before persistence (API 404 for missing/unpublished events, 400 for invalid occurrence days). Null still favourites the whole event, and non-recurring events retain their day-ignoring expansion behavior.
+
 ### EventPreference
 
 **Table:** `event_preferences`

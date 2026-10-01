@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Events.Tests.Controllers;
 
@@ -109,6 +110,25 @@ public class EventsApiControllerTests
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         var list = ok.Value.Should().BeAssignableTo<IEnumerable<GuideEventApiDto>>().Subject;
         return list.Should().ContainSingle().Subject;
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AddFavourite_ReturnsClientErrorForInvalidTargets(bool invalidDay)
+    {
+        var controller = BuildController();
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
+        _guide.AddFavouriteAsync(userId, eventId, 999, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(invalidDay
+                ? new ArgumentOutOfRangeException(nameof(invalidDay)) : new KeyNotFoundException()));
+
+        var result = await controller.AddFavourite(eventId, 999);
+
+        result.Should().BeOfType(invalidDay ? typeof(BadRequestResult) : typeof(NotFoundResult));
     }
 
     private EventsApiController BuildController()
