@@ -2203,6 +2203,65 @@ public class SurveyServiceTests
     private static SurveyAnswerInput Ans(Guid q, params string[] options) => new(q, options.ToList(), null, null);
     private static SurveyAnswerInput TextAns(Guid q, string text) => new(q, [], text, null);
 
+    [HumansTheory]
+    [InlineData("duplicate")]
+    [InlineData("equal-ranks")]
+    [InlineData("rejection")]
+    public async Task SubmitResponseAsync_rejects_invalid_ranked_ballots_before_persisting(string violation)
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        var questionId = Guid.NewGuid();
+        var question = RankedQuestion(questionId, survey.Id);
+        question.RankedSettings = RankedQuestionSettings.Default with
+        {
+            AllowEqualRanks = false,
+            AllowReject = false,
+        };
+        survey.Questions = [question];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var ranked = violation switch
+        {
+            "duplicate" => new RankedAnswer([["a"], ["a"]], []),
+            "equal-ranks" => new RankedAnswer([["a", "b"]], []),
+            _ => new RankedAnswer([["a"]], ["b"]),
+        };
+        var submission = new SurveySubmission(
+            survey.Id, null, null, null,
+            ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
+            [new SurveyAnswerInput(questionId, [], null, null, null, ranked)]);
+
+        var act = async () => await CreateService().SubmitResponseAsync(
+            submission, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*invalid*");
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+            Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitResponseAsync_persists_normalized_valid_ranked_ballots()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        var questionId = Guid.NewGuid();
+        survey.Questions = [RankedQuestion(questionId, survey.Id)];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        SurveyResponse? saved = null;
+        _repo.When(repo => repo.AddResponseWithAnswersAndSaveAsync(
+                Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+            .Do(call => saved = call.Arg<SurveyResponse>());
+        var submission = new SurveySubmission(
+            survey.Id, null, null, null,
+            ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
+            [new SurveyAnswerInput(questionId, [], null, null, null,
+                new RankedAnswer([["b", "unknown", "a"]], ["c"]))]);
+
+        await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+
+        saved.Should().NotBeNull();
+        saved!.Answers.Should().ContainSingle().Which.RankedValue
+            .Should().BeEquivalentTo(new RankedAnswer([["a", "b"]], ["c"]));
+    }
+
     [HumansFact]
     public async Task SubmitResponseAsync_identified_finalises_existing_draft_and_completes_invitation()
     {

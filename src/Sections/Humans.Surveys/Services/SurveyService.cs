@@ -1119,6 +1119,10 @@ internal sealed class SurveyService(
         {
             throw new InvalidOperationException("Required survey questions are unanswered.");
         }
+        if (prepared.InvalidAnswers.Count > 0)
+        {
+            throw new InvalidOperationException("Survey answers are invalid.");
+        }
 
         await PersistResponseAsync(submission, prepared.VisibleAnswers, ct);
     }

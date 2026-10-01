@@ -22,6 +22,8 @@ tracked by nobodies-collective/Humans#86.
   eligibility is still rechecked when each invitee answers and submits.
 - Equal ranks are enabled by default.
 - Reject is optional and means unacceptable, not vetoed.
+- Wizard and direct service submission reject repeated options, disallowed equal
+  ranks, and disallowed rejection before writing a response.
 - Preference tiers are ranked > unranked > rejected.
 - Ranked Pairs (Tideman) is the precommitted official method.
 - Condorcet check and Borda are post-close sensitivity analysis.
