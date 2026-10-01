@@ -762,20 +762,20 @@ internal sealed class SurveyService(
             }
             invitationsCreated++;
 
-            var preferredCulture = users.TryGetValue(userId, out var user) ? user.PreferredLanguage : null;
-            var culture = preferredCulture.IsSupportedCultureCode()
-                ? preferredCulture!
-                : survey.DefaultCulture;
-            var name = user?.BurnerName ?? string.Empty;
-            var title = survey.Title.Resolve(culture, survey.DefaultCulture);
-            var customSubject = survey.InvitationEmailSubject.ResolveOptional(culture, survey.DefaultCulture);
-            var customMessage = survey.InvitationEmailMessage.ResolveOptional(culture, survey.DefaultCulture);
-            var token = tokenProvider.Create(inv.Id);
-            var msg = emailMessages.SurveyInvitation(
-                email, name, title, token, culture, customSubject, customMessage);
-
             try
             {
+                var preferredCulture = users.TryGetValue(userId, out var user) ? user.PreferredLanguage : null;
+                var culture = preferredCulture.IsSupportedCultureCode()
+                    ? preferredCulture!
+                    : survey.DefaultCulture;
+                var name = user?.BurnerName ?? string.Empty;
+                var title = survey.Title.Resolve(culture, survey.DefaultCulture);
+                var customSubject = survey.InvitationEmailSubject.ResolveOptional(culture, survey.DefaultCulture);
+                var customMessage = survey.InvitationEmailMessage.ResolveOptional(culture, survey.DefaultCulture);
+                var token = tokenProvider.Create(inv.Id);
+                var msg = emailMessages.SurveyInvitation(
+                    email, name, title, token, culture, customSubject, customMessage);
+
                 await emailService.SendAsync(msg, ct);
                 emailsQueued++;
             }
@@ -866,19 +866,19 @@ internal sealed class SurveyService(
 
             if (!meta.Answerable) continue;
 
-            var preferredCulture = users.TryGetValue(inv.UserId, out var user) ? user.PreferredLanguage : null;
-            var culture = preferredCulture.IsSupportedCultureCode()
-                ? preferredCulture!
-                : meta.DefaultCulture;
-            var name = user?.BurnerName ?? string.Empty;
-            var token = tokenProvider.Create(inv.Id);
-            var title = meta.Title.Resolve(culture, meta.DefaultCulture);
-            var msg = emailMessages.SurveyReminder(email, name, title, token, culture);
-
-            // Per-invitee guard (mirrors SendInvitesAsync): one transport failure must not abort the
+            // Per-invitee guard (mirrors SendInvitesAsync): preparation or transport failure must not abort the
             // sweep. ReminderSentAt stays unstamped on failure so the next daily run retries.
             try
             {
+                var preferredCulture = users.TryGetValue(inv.UserId, out var user) ? user.PreferredLanguage : null;
+                var culture = preferredCulture.IsSupportedCultureCode()
+                    ? preferredCulture!
+                    : meta.DefaultCulture;
+                var name = user?.BurnerName ?? string.Empty;
+                var token = tokenProvider.Create(inv.Id);
+                var title = meta.Title.Resolve(culture, meta.DefaultCulture);
+                var msg = emailMessages.SurveyReminder(email, name, title, token, culture);
+
                 await emailService.SendAsync(msg, ct);
                 await repo.SetReminderSentAsync(inv.Id, now, ct);
                 reminded++;

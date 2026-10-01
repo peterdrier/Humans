@@ -1332,8 +1332,10 @@ public class SurveyServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task SendInvitesAsync_marks_failed_when_email_send_throws()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SendInvitesAsync_marks_failed_and_continues_when_email_preparation_or_send_throws(bool preparationFails)
     {
         var teamId = Guid.NewGuid();
         Guid b = Guid.NewGuid(), c = Guid.NewGuid();
@@ -1351,10 +1353,13 @@ public class SurveyServiceTests
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>()));
-        // Throw for the first SendAsync call, succeed for the second.
         var calls = 0;
-        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
-            .Returns(_ => calls++ == 0 ? throw new InvalidOperationException("boom") : Task.CompletedTask);
+        if (preparationFails)
+            _tokenProvider.Create(Arg.Any<Guid>()).Returns(_ => calls++ == 0
+                ? throw new System.Security.Cryptography.CryptographicException("key unavailable") : "token");
+        else
+            _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+                .Returns(_ => calls++ == 0 ? throw new InvalidOperationException("boom") : Task.CompletedTask);
 
         var result = await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -1363,6 +1368,8 @@ public class SurveyServiceTests
         result.Failed.Should().Be(1);
         await _repo.Received(1).UpdateInvitationStatusAsync(
             Arg.Any<Guid>(), EmailOutboxStatus.Failed, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -1624,8 +1631,10 @@ public class SurveyServiceTests
         await _repo.DidNotReceive().SetReminderSentAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task SendDueRemindersAsync_continues_sweep_after_one_send_failure()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SendDueRemindersAsync_continues_sweep_after_one_preparation_or_send_failure(bool preparationFails)
     {
         var now = _clock.GetCurrentInstant();
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
@@ -1657,19 +1666,24 @@ public class SurveyServiceTests
             });
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
-        // First send (invitee A) blows up; the sweep must still reach invitee B.
-        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
-            .Returns(
-                _ => Task.FromException(new InvalidOperationException("smtp down")),
-                _ => Task.CompletedTask);
+        if (preparationFails)
+            _tokenProvider.Create(invA.Id).Returns(_ =>
+                throw new System.Security.Cryptography.CryptographicException("key unavailable"));
+        else
+            _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+                .Returns(
+                    _ => Task.FromException(new InvalidOperationException("smtp down")),
+                    _ => Task.CompletedTask);
 
         var count = await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 
         count.Should().Be(1);
-        await _emailService.Received(2).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        await _emailService.Received(preparationFails ? 1 : 2).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         // A stays unstamped (retried next run); B is stamped.
         await _repo.DidNotReceive().SetReminderSentAsync(invA.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).SetReminderSentAsync(invB.Id, now, Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.SurveyReminderSent, "Survey", Guid.Empty, Arg.Any<string>(), "SurveyService");
     }
 
     [HumansFact]
