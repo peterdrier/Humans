@@ -24,6 +24,7 @@
 #      directions with synthetic input, not just whatever today's real docs
 #      happen to contain (nobodies-collective/Humans#1021).
 #   9. Trigger repairs report failures truthfully and continue to later docs.
+#  10. Authorization inventory rejects failed handler scans.
 #
 # Test 7 exists because a dead trigger glob is SILENT: it makes a doc look
 # *clean* rather than *unchecked*, so the doc drops out of the sweep's dirty
@@ -378,6 +379,35 @@ then
   PASS=$((PASS+1))
 else
   echo "FAIL [test 9]: trigger repair failure handling"
+  FAIL=$((FAIL+1))
+fi
+
+# A failed handler scan must not turn into a zero-handler authorization PASS,
+# even when the producer returned some usable-looking output before failing.
+if python3 - "$SCRIPT_DIR/authorization-inventory.sh" <<'PYTEST'
+import os, pathlib, shutil, subprocess, sys, tempfile
+script = pathlib.Path(sys.argv[1]).resolve()
+real_grep = shutil.which('grep')
+for partial in (False, True):
+    with tempfile.TemporaryDirectory() as directory:
+        probe = pathlib.Path(directory) / 'grep'
+        probe.write_text(
+            '#!/bin/bash\nif [[ "$1" == -rlE ]]; then\n'
+            + (f'{real_grep} "$@"\n' if partial else '')
+            + 'exit 42\nfi\n' + f'exec {real_grep} "$@"\n')
+        probe.chmod(0o755)
+        env = os.environ.copy()
+        env['PATH'] = directory + ':' + env['PATH']
+        result = subprocess.run(['bash', str(script)], env=env, capture_output=True, text=True)
+        assert result.returncode != 0, result.stdout
+        assert 'could not enumerate authorization handlers' in result.stdout, result
+        assert 'PASS [authorization-inventory]' not in result.stdout, result.stdout
+PYTEST
+then
+  echo "PASS [test 10]: authorization inventory rejects failed and partial handler scans"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 10]: authorization handler scan failure handling"
   FAIL=$((FAIL+1))
 fi
 

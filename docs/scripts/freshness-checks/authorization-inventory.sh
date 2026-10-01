@@ -80,7 +80,10 @@ for D in src/Humans.Web/Authorization/ src/Sections/*/Authorization/; do
 done
 HANDLERS=""
 if [ ${#HANDLER_DIRS[@]} -gt 0 ]; then
-  HANDLERS=$(grep -rlE 'AuthorizationHandler<' "${HANDLER_DIRS[@]}" 2>/dev/null | sort -u || true)
+  if ! HANDLERS=$({ grep -rlE 'AuthorizationHandler<' "${HANDLER_DIRS[@]}" 2>/dev/null || [ "$?" -eq 1 ]; } | sort -u); then
+    echo "FAIL [authorization-inventory]: could not enumerate authorization handlers"
+    exit 1
+  fi
 fi
 
 MISSING_HND=""
