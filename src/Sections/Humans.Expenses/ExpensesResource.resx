@@ -229,4 +229,26 @@
   <data name="Expenses_Iban_SaveFailed" xml:space="preserve"><value>Failed to save IBAN.</value></data>
   <data name="Expenses_Iban_Removed" xml:space="preserve"><value>IBAN removed.</value></data>
   <data name="Expenses_Iban_Saved" xml:space="preserve"><value>IBAN saved.</value></data>
+  <data name="Expenses_Validation_CategoryNotFound" xml:space="preserve"><value>Category not found.</value></data>
+  <data name="Expenses_Validation_CategoryDifferentBudgetYear" xml:space="preserve"><value>That category belongs to a different budget year than this report.</value></data>
+  <data name="Expenses_Validation_ProofRowsMustBeReceipts" xml:space="preserve"><value>Proof rows must be receipt lines.</value></data>
+  <data name="Expenses_Validation_ParentLineNotFound" xml:space="preserve"><value>Parent line not found on this report.</value></data>
+  <data name="Expenses_Validation_ProofRowsRequireInvoice" xml:space="preserve"><value>Proof rows can only be added to an invoice line.</value></data>
+  <data name="Expenses_Validation_OnlyReceiptAndInvoiceLines" xml:space="preserve"><value>Only receipt and invoice lines can be added.</value></data>
+  <data name="Expenses_Validation_LineNotOnReport" xml:space="preserve"><value>Line does not belong to the specified report.</value></data>
+  <data name="Expenses_Validation_TravelLinesComputedCannotEdit" xml:space="preserve"><value>Travel lines are computed from their inputs and cannot be edited. Remove the line and add it again to change it.</value></data>
+  <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>File too large. Maximum size is {0} MB.</value></data>
+  <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>Filename must be {0} characters or fewer.</value></data>
+  <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Only the submitter can submit.</value></data>
+  <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>Report must have at least one line.</value></data>
+  <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Receipt and invoice lines must have an attachment before submitting.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>Submitter must have an IBAN set on their profile.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>Submitter must have first and last name set on their profile.</value></data>
+  <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>Could not submit the report. It may no longer be a draft.</value></data>
+  <data name="Expenses_Validation_SubmissionFailed" xml:space="preserve"><value>Submission failed</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Only the submitter can withdraw.</value></data>
+  <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Withdrawal failed</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Only the submitter can edit this report.</value></data>
+  <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>This report cannot be edited when it is in status {0}.</value></data>
 </root>

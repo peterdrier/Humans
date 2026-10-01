@@ -216,4 +216,26 @@
   <data name="Expenses_Iban_SaveFailed" xml:space="preserve"><value>No se pudo guardar el IBAN.</value></data>
   <data name="Expenses_Iban_Removed" xml:space="preserve"><value>IBAN eliminado.</value></data>
   <data name="Expenses_Iban_Saved" xml:space="preserve"><value>IBAN guardado.</value></data>
+  <data name="Expenses_Validation_CategoryNotFound" xml:space="preserve"><value>Categoría no encontrada.</value></data>
+  <data name="Expenses_Validation_CategoryDifferentBudgetYear" xml:space="preserve"><value>Esa categoría pertenece a un ejercicio presupuestario distinto del de este informe.</value></data>
+  <data name="Expenses_Validation_ProofRowsMustBeReceipts" xml:space="preserve"><value>Las líneas justificativas deben ser líneas de recibo.</value></data>
+  <data name="Expenses_Validation_ParentLineNotFound" xml:space="preserve"><value>No se encontró la línea principal en este informe.</value></data>
+  <data name="Expenses_Validation_ProofRowsRequireInvoice" xml:space="preserve"><value>Las líneas justificativas solo se pueden añadir a una línea de factura.</value></data>
+  <data name="Expenses_Validation_OnlyReceiptAndInvoiceLines" xml:space="preserve"><value>Solo se pueden añadir líneas de recibo y de factura.</value></data>
+  <data name="Expenses_Validation_LineNotOnReport" xml:space="preserve"><value>La línea no pertenece al informe indicado.</value></data>
+  <data name="Expenses_Validation_TravelLinesComputedCannotEdit" xml:space="preserve"><value>Las líneas de viaje se calculan a partir de sus datos y no se pueden editar. Elimina la línea y vuelve a añadirla para cambiarla.</value></data>
+  <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>El archivo es demasiado grande. El tamaño máximo es de {0} MB.</value></data>
+  <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>El nombre del archivo debe tener {0} caracteres como máximo.</value></data>
+  <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Tipo de archivo no compatible. Sube un archivo PDF, JPEG, PNG o HEIC.</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Solo quien presenta el informe puede enviarlo.</value></data>
+  <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>El informe debe tener al menos una línea.</value></data>
+  <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Las líneas de recibo y factura deben tener un archivo adjunto antes de enviar el informe.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>La persona que presenta el informe debe tener un IBAN en su perfil.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>La persona que presenta el informe debe tener nombre y apellidos en su perfil.</value></data>
+  <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>No se pudo enviar el informe. Es posible que ya no sea un borrador.</value></data>
+  <data name="Expenses_Validation_SubmissionFailed" xml:space="preserve"><value>Error al enviar</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Solo quien presenta el informe puede retirarlo.</value></data>
+  <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Error al retirar</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Solo quien presenta el informe puede editarlo.</value></data>
+  <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Este informe no se puede editar cuando está en estado {0}.</value></data>
 </root>

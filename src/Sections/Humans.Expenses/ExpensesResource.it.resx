@@ -216,4 +216,26 @@
   <data name="Expenses_Iban_SaveFailed" xml:space="preserve"><value>Impossibile salvare l’IBAN.</value></data>
   <data name="Expenses_Iban_Removed" xml:space="preserve"><value>IBAN rimosso.</value></data>
   <data name="Expenses_Iban_Saved" xml:space="preserve"><value>IBAN salvato.</value></data>
+  <data name="Expenses_Validation_CategoryNotFound" xml:space="preserve"><value>Categoria non trovata.</value></data>
+  <data name="Expenses_Validation_CategoryDifferentBudgetYear" xml:space="preserve"><value>Questa categoria appartiene a un esercizio di bilancio diverso da quello di questo rendiconto.</value></data>
+  <data name="Expenses_Validation_ProofRowsMustBeReceipts" xml:space="preserve"><value>Le righe giustificative devono essere righe di ricevuta.</value></data>
+  <data name="Expenses_Validation_ParentLineNotFound" xml:space="preserve"><value>La riga principale non è stata trovata in questo rendiconto.</value></data>
+  <data name="Expenses_Validation_ProofRowsRequireInvoice" xml:space="preserve"><value>Le righe giustificative possono essere aggiunte solo a una riga di fattura.</value></data>
+  <data name="Expenses_Validation_OnlyReceiptAndInvoiceLines" xml:space="preserve"><value>È possibile aggiungere solo righe di ricevuta e fattura.</value></data>
+  <data name="Expenses_Validation_LineNotOnReport" xml:space="preserve"><value>La riga non appartiene al rendiconto specificato.</value></data>
+  <data name="Expenses_Validation_TravelLinesComputedCannotEdit" xml:space="preserve"><value>Le righe di viaggio sono calcolate dai dati inseriti e non possono essere modificate. Rimuovi la riga e aggiungila di nuovo per cambiarla.</value></data>
+  <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>File troppo grande. La dimensione massima è {0} MB.</value></data>
+  <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>Il nome del file deve contenere al massimo {0} caratteri.</value></data>
+  <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Tipo di file non supportato. Carica un file PDF, JPEG, PNG o HEIC.</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Solo chi presenta il rendiconto può inviarlo.</value></data>
+  <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>Il rendiconto deve contenere almeno una riga.</value></data>
+  <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Le righe di ricevuta e fattura devono avere un allegato prima dell'invio.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>Chi presenta il rendiconto deve avere un IBAN nel proprio profilo.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>Chi presenta il rendiconto deve avere nome e cognome nel proprio profilo.</value></data>
+  <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>Impossibile inviare il rendiconto. Potrebbe non essere più una bozza.</value></data>
+  <data name="Expenses_Validation_SubmissionFailed" xml:space="preserve"><value>Invio non riuscito</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Solo chi presenta il rendiconto può ritirarlo.</value></data>
+  <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Ritiro non riuscito</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Solo chi presenta il rendiconto può modificarlo.</value></data>
+  <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Questo rendiconto non può essere modificato quando è nello stato {0}.</value></data>
 </root>

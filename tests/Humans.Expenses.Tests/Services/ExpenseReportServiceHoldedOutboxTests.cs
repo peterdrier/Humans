@@ -11,6 +11,8 @@ using Humans.Teams.Contracts;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
@@ -23,6 +25,10 @@ namespace Humans.Expenses.Tests.Services;
 
 public class ExpenseReportServiceHoldedOutboxTests
 {
+    private readonly IStringLocalizer<ExpensesResource> _localizer =
+        new StringLocalizer<ExpensesResource>(new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
+
     private const int BatchSize = 100;
 
     private readonly IExpenseRepository _repo;
@@ -102,7 +108,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             _holdedFinance,
             _clock,
             Substitute.For<ILogger<ExpenseReportService>>(),
-            Options.Create(new TravelReimbursementConfig()));
+            Options.Create(new TravelReimbursementConfig()), _localizer);
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────
@@ -1149,7 +1155,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             _holdedFinance,
             _clock,
             logger,
-            Options.Create(new TravelReimbursementConfig()));
+            Options.Create(new TravelReimbursementConfig()), _localizer);
 
         var report = MakeReport() with { PayeeIban = "ES9121000418450200051332" };
 

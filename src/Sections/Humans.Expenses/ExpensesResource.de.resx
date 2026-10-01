@@ -216,4 +216,26 @@
   <data name="Expenses_Iban_SaveFailed" xml:space="preserve"><value>Die IBAN konnte nicht gespeichert werden.</value></data>
   <data name="Expenses_Iban_Removed" xml:space="preserve"><value>IBAN entfernt.</value></data>
   <data name="Expenses_Iban_Saved" xml:space="preserve"><value>IBAN gespeichert.</value></data>
+  <data name="Expenses_Validation_CategoryNotFound" xml:space="preserve"><value>Kategorie nicht gefunden.</value></data>
+  <data name="Expenses_Validation_CategoryDifferentBudgetYear" xml:space="preserve"><value>Diese Kategorie gehört zu einem anderen Haushaltsjahr als dieser Bericht.</value></data>
+  <data name="Expenses_Validation_ProofRowsMustBeReceipts" xml:space="preserve"><value>Belegzeilen müssen Belegpositionen sein.</value></data>
+  <data name="Expenses_Validation_ParentLineNotFound" xml:space="preserve"><value>Die übergeordnete Position wurde in diesem Bericht nicht gefunden.</value></data>
+  <data name="Expenses_Validation_ProofRowsRequireInvoice" xml:space="preserve"><value>Belegzeilen können nur zu einer Rechnungsposition hinzugefügt werden.</value></data>
+  <data name="Expenses_Validation_OnlyReceiptAndInvoiceLines" xml:space="preserve"><value>Es können nur Beleg- und Rechnungspositionen hinzugefügt werden.</value></data>
+  <data name="Expenses_Validation_LineNotOnReport" xml:space="preserve"><value>Die Position gehört nicht zum angegebenen Bericht.</value></data>
+  <data name="Expenses_Validation_TravelLinesComputedCannotEdit" xml:space="preserve"><value>Reisezeilen werden aus ihren Angaben berechnet und können nicht bearbeitet werden. Entferne die Position und füge sie erneut hinzu, um sie zu ändern.</value></data>
+  <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>Datei zu groß. Die maximale Größe beträgt {0} MB.</value></data>
+  <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>Der Dateiname darf höchstens {0} Zeichen lang sein.</value></data>
+  <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Dateityp nicht unterstützt. Lade eine PDF-, JPEG-, PNG- oder HEIC-Datei hoch.</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Nur die Person, die den Bericht eingereicht hat, kann ihn absenden.</value></data>
+  <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>Der Bericht muss mindestens eine Position enthalten.</value></data>
+  <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Beleg- und Rechnungspositionen müssen vor dem Absenden einen Anhang haben.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>Die einreichende Person muss eine IBAN im Profil hinterlegt haben.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>Die einreichende Person muss Vor- und Nachnamen im Profil angegeben haben.</value></data>
+  <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>Der Bericht konnte nicht abgesendet werden. Möglicherweise ist er kein Entwurf mehr.</value></data>
+  <data name="Expenses_Validation_SubmissionFailed" xml:space="preserve"><value>Einreichung fehlgeschlagen</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Nur die Person, die den Bericht eingereicht hat, kann ihn zurückziehen.</value></data>
+  <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Zurückziehen fehlgeschlagen</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Nur die Person, die den Bericht eingereicht hat, kann ihn bearbeiten.</value></data>
+  <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Dieser Bericht kann im Status {0} nicht bearbeitet werden.</value></data>
 </root>

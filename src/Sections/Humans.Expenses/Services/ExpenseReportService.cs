@@ -11,6 +11,7 @@ using Humans.Teams.Contracts;
 using Humans.Expenses.Services.Dtos;
 using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 using System.Globalization;
 using Humans.Expenses.Contracts;
@@ -39,7 +40,8 @@ internal sealed class ExpenseReportService(
     IHoldedFinanceService holdedFinance,
     IClock clock,
     ILogger<ExpenseReportService> logger,
-    IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportService,
+    IOptions<TravelReimbursementConfig> travelConfig,
+    IStringLocalizer<ExpensesResource> localizer) : IExpenseReportService,
         IExpenseReportBackgroundProcessor, IUserDataContributor
 {
     internal const string ExpenseReports = "ExpenseReports";
@@ -310,10 +312,10 @@ internal sealed class ExpenseReportService(
         if (IsPendingApproval(report.Status))
         {
             var snapshot = await budgetService.GetCategoryByIdAsync(budgetCategoryId)
-                ?? throw new ExpenseValidationException("Category not found.");
+                ?? throw new ExpenseValidationException(localizer["Expenses_Validation_CategoryNotFound"]);
             if (snapshot.BudgetGroup?.BudgetYearId != report.BudgetYearId)
                 throw new ExpenseValidationException(
-                    "That category belongs to a different budget year than this report.");
+                    localizer["Expenses_Validation_CategoryDifferentBudgetYear"]);
             categoryName = snapshot.Name;
             budgetYearId = report.BudgetYearId;
         }
@@ -384,11 +386,11 @@ internal sealed class ExpenseReportService(
         {
             // A proof row is a Receipt backing an Invoice line on the same report. One level only.
             if (lineType != ExpenseLineType.Receipt)
-                throw new ExpenseValidationException("Proof rows must be receipt lines.");
+                throw new ExpenseValidationException(localizer["Expenses_Validation_ProofRowsMustBeReceipts"]);
             var parent = report.Lines.FirstOrDefault(l => l.Id == parentId)
-                ?? throw new ExpenseValidationException("Parent line not found on this report.");
+                ?? throw new ExpenseValidationException(localizer["Expenses_Validation_ParentLineNotFound"]);
             if (parent.LineType != ExpenseLineType.Invoice)
-                throw new ExpenseValidationException("Proof rows can only be added to an invoice line.");
+                throw new ExpenseValidationException(localizer["Expenses_Validation_ProofRowsRequireInvoice"]);
         }
 
         var line = new ExpenseLine
@@ -419,7 +421,7 @@ internal sealed class ExpenseReportService(
             // Travel lines are computed and can no longer be created; this path takes free-text
             // amounts, so it accepts only the receipt-backed types.
             if (lineType is not (ExpenseLineType.Receipt or ExpenseLineType.Invoice))
-                throw new ExpenseValidationException("Only receipt and invoice lines can be added.");
+                throw new ExpenseValidationException(localizer["Expenses_Validation_OnlyReceiptAndInvoiceLines"]);
             // Validate the file before creating anything, so a bad upload leaves no half-made line.
             if (file is not null)
                 ValidateAttachmentUpload(file.FileName, file.ContentType, file.Content);
@@ -511,14 +513,14 @@ internal sealed class ExpenseReportService(
         var report = await RequireEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
 
         var existing = report.Lines.FirstOrDefault(l => l.Id == lineId)
-            ?? throw new UnauthorizedAccessException("Line does not belong to the specified report.");
+            ?? throw new UnauthorizedAccessException(localizer["Expenses_Validation_LineNotOnReport"]);
         // Travel lines carry computed amounts (mileage km×rate, per-diem days×rate) and waive the
         // receipt requirement on that basis. A free-text amount/description edit here would let a
         // submitter claim an arbitrary unreceipted amount on a Mileage/PerDiem line. To change one,
         // remove it and re-add so the amount is always recomputed from its inputs.
         if (existing.LineType is ExpenseLineType.Mileage or ExpenseLineType.PerDiem)
             throw new ExpenseValidationException(
-                "Travel lines are computed from their inputs and cannot be edited. Remove the line and add it again to change it.");
+                localizer["Expenses_Validation_TravelLinesComputedCannotEdit"]);
 
         var line = new ExpenseLine
         {
@@ -596,21 +598,21 @@ internal sealed class ExpenseReportService(
         "application/pdf", "image/jpeg", "image/jpg", "image/png", "image/heic"
     };
 
-    private static string ValidateAttachmentUpload(
+    private string ValidateAttachmentUpload(
         string originalFileName, string contentType, Stream content)
     {
         if (content is null || content.Length == 0)
-            throw new ExpenseValidationException("Please select a file.");
+            throw new ExpenseValidationException(localizer["Expenses_Flash_SelectFile"]);
         if (content.Length > AttachmentMaxBytes)
-            throw new ExpenseValidationException($"File too large. Maximum size is {AttachmentMaxBytes / (1024 * 1024)} MB.");
+            throw new ExpenseValidationException(localizer["Expenses_Validation_FileTooLarge", AttachmentMaxBytes / (1024 * 1024)]);
 
         var fileName = Path.GetFileName(originalFileName);
         if (fileName.Length > AttachmentFileNameMaxLength)
-            throw new ExpenseValidationException($"Filename must be {AttachmentFileNameMaxLength} characters or fewer.");
+            throw new ExpenseValidationException(localizer["Expenses_Validation_FilenameTooLong", AttachmentFileNameMaxLength]);
 
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         if (!AllowedContentTypes.Contains(contentType) || !AllowedExtensions.Contains(extension))
-            throw new ExpenseValidationException("Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.");
+            throw new ExpenseValidationException(localizer["Expenses_Validation_UnsupportedFileType"]);
 
         return extension;
     }
@@ -625,7 +627,7 @@ internal sealed class ExpenseReportService(
         var report = await RequireEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
 
         var line = report.Lines.FirstOrDefault(l => l.Id == lineId)
-            ?? throw new UnauthorizedAccessException("Line does not belong to the specified report.");
+            ?? throw new UnauthorizedAccessException(localizer["Expenses_Validation_LineNotOnReport"]);
         var previousAttachmentId = line.AttachmentId;
 
         var attachmentId = Guid.NewGuid();
@@ -714,7 +716,7 @@ internal sealed class ExpenseReportService(
 
         var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
         if (line is null)
-            throw new UnauthorizedAccessException("Line does not belong to the specified report.");
+            throw new UnauthorizedAccessException(localizer["Expenses_Validation_LineNotOnReport"]);
 
         if (line.Attachment is null) return; // idempotent
 
@@ -748,29 +750,29 @@ internal sealed class ExpenseReportService(
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return false;
         if (!actorIsFinanceAdmin && report.SubmitterUserId != actorUserId)
-            throw new UnauthorizedAccessException("Only the submitter can submit.");
+            throw new UnauthorizedAccessException(localizer["Expenses_Validation_OnlySubmitterCanSubmit"]);
         if (report.Status != ExpenseReportStatus.Draft) return false;
 
         if (!report.Lines.Any())
-            throw new ExpenseValidationException("Report must have at least one line.");
+            throw new ExpenseValidationException(localizer["Expenses_Validation_ReportNeedsLine"]);
 
         // Receipt lines (proof rows included) need their receipt; invoice lines need the invoice file.
         if (report.Lines.Any(l => l.LineType is ExpenseLineType.Receipt or ExpenseLineType.Invoice
                                   && l.AttachmentId is null))
-            throw new ExpenseValidationException("Receipt and invoice lines must have an attachment before submitting.");
+            throw new ExpenseValidationException(localizer["Expenses_Validation_ReceiptInvoiceNeedAttachment"]);
 
         // The payee is whoever the report belongs to — never the person pressing Submit. An admin
         // submitting on a member's behalf must snapshot the *member's* IBAN and legal name, or the
         // money goes to the wrong account.
         var profile = (await userService.GetUserInfoAsync(report.SubmitterUserId, ct))?.Profile;
         if (profile?.Iban is null)
-            throw new ExpenseValidationException("Submitter must have an IBAN set on their profile.");
+            throw new ExpenseValidationException(localizer["Expenses_Validation_SubmitterNeedsIban"]);
 
         // Financial records use legal name (not BurnerName). See memory/architecture/burnername-is-the-display-name.md.
         var legalName = $"{profile.FirstName} {profile.LastName}".Trim();
         if (string.IsNullOrWhiteSpace(legalName))
         {
-            throw new ExpenseValidationException("Submitter must have first and last name set on their profile.");
+            throw new ExpenseValidationException(localizer["Expenses_Validation_SubmitterNeedsFirstAndLastName"]);
         }
         var payeeIban = profile.Iban;
 
@@ -798,8 +800,8 @@ internal sealed class ExpenseReportService(
             var submitted = await SubmitAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
             return submitted
                 ? ExpenseMutationResult.Success
-                : ExpenseMutationResult.Failure("Could not submit the report. It may no longer be a draft.");
-        }, "Error submitting expense report {ReportId}", "Submission failed", reportId);
+                : ExpenseMutationResult.Failure(localizer["Expenses_Validation_CouldNotSubmitReport"]);
+        }, "Error submitting expense report {ReportId}", localizer["Expenses_Validation_SubmissionFailed"], reportId);
 
     internal async Task<bool> WithdrawAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default)
@@ -807,7 +809,7 @@ internal sealed class ExpenseReportService(
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return false;
         if (report.SubmitterUserId != submitterUserId)
-            throw new UnauthorizedAccessException("Only the submitter can withdraw.");
+            throw new UnauthorizedAccessException(localizer["Expenses_Validation_OnlySubmitterCanWithdraw"]);
 
         var now = clock.GetCurrentInstant();
         var ok = await repo.WithdrawAsync(reportId, now, ct);
@@ -828,8 +830,8 @@ internal sealed class ExpenseReportService(
             var withdrawn = await WithdrawAsync(reportId, submitterUserId, ct);
             return withdrawn
                 ? ExpenseMutationResult.Success
-                : ExpenseMutationResult.Failure("Could not withdraw this report.");
-        }, "Error withdrawing expense report {ReportId}", "Withdrawal failed", reportId);
+                : ExpenseMutationResult.Failure(localizer["Expenses_Flash_WithdrawFailed"]);
+        }, "Error withdrawing expense report {ReportId}", localizer["Expenses_Validation_WithdrawalFailed"], reportId);
 
     public async Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
         Guid reportId, Guid actorUserId, string? iban, CancellationToken ct = default)
@@ -1628,9 +1630,9 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct)
     {
         var report = await repo.GetByIdAsync(reportId, ct)
-            ?? throw new ExpenseValidationException("Report not found.");
+            ?? throw new ExpenseValidationException(localizer["Expenses_Iban_ReportNotFound"]);
         if (!actorIsFinanceAdmin && report.SubmitterUserId != actorUserId)
-            throw new UnauthorizedAccessException("Only the submitter can edit this report.");
+            throw new UnauthorizedAccessException(localizer["Expenses_Validation_OnlySubmitterCanEdit"]);
 
         var editable = actorIsFinanceAdmin
             ? report.Status is ExpenseReportStatus.Draft
@@ -1639,7 +1641,7 @@ internal sealed class ExpenseReportService(
             : report.Status is ExpenseReportStatus.Draft;
         if (!editable)
             throw new ExpenseValidationException(
-                $"This report cannot be edited when it is in status {report.Status}.");
+                localizer["Expenses_Validation_ReportCannotBeEditedInStatus", localizer.EnumDisplay(report.Status)]);
         return report;
     }
 

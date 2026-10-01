@@ -18,5 +18,5 @@ inbox:
   - added: 2026-09-26
     id: EXP-5
     status: partial
-    what: "Member-facing Expenses service and model validation errors still return hardcoded English. Views, controller-owned mutation flash text, and all IBAN mutation outcomes now use the six-culture section resources; other service-provided details retain their existing English representation. Remaining localization from EXP-5, verified during the daily debt sweep 2026-09-30."
+    what: "Expenses model data-annotation validation still uses default messages without section resources. Submitter-facing report, line, upload, submission, withdrawal and IBAN service outcomes now use all six cultures. Coordinator/finance-only review messages remain operator-exempt. Remaining localization from EXP-5, verified during the daily debt sweep 2026-10-01."
     review: panel

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using System.Globalization;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
 using Humans.Base.Interfaces;
@@ -10,6 +11,7 @@ using Humans.Teams.Contracts;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Localization;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Enums;
 using Humans.Email.Contracts;
@@ -36,6 +38,10 @@ namespace Humans.Expenses.Tests.Services;
 /// </summary>
 public sealed class ExpenseReportServiceTests
 {
+    private readonly IStringLocalizer<ExpensesResource> _localizer =
+        new StringLocalizer<ExpensesResource>(new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
+
     private static readonly Instant FakeNow = Instant.FromUtc(2026, 5, 10, 12, 0);
 
     private readonly IAuditLogService AuditLog = Substitute.For<IAuditLogService>();
@@ -89,7 +95,7 @@ public sealed class ExpenseReportServiceTests
             _holdedFinance,
             Clock,
             NullLogger<ExpenseReportService>.Instance,
-            Options.Create(new TravelReimbursementConfig()));
+            Options.Create(new TravelReimbursementConfig()), _localizer);
     }
 
     private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
@@ -483,7 +489,7 @@ public sealed class ExpenseReportServiceTests
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
-            Options.Create(new TravelReimbursementConfig()));
+            Options.Create(new TravelReimbursementConfig()), _localizer);
 
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -507,6 +513,39 @@ public sealed class ExpenseReportServiceTests
         logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("en", "Please select a file.")]
+    [Xunit.InlineData("es", "Selecciona un archivo.")]
+    [Xunit.InlineData("de", "Bitte wähle eine Datei aus.")]
+    [Xunit.InlineData("it", "Seleziona un file.")]
+    [Xunit.InlineData("fr", "Veuillez sélectionner un fichier.")]
+    [Xunit.InlineData("ca", "Selecciona un fitxer.")]
+    public async Task AddLineWithResultAsync_LocalizesUploadRejection_BeforeCreatingLine(
+        string culture, string expectedMessage)
+    {
+        var originalCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+            await using var content = new MemoryStream();
+
+            var result = await _sut.AddLineWithResultAsync(
+                Guid.NewGuid(), Guid.NewGuid(), false, "Receipt", 10m,
+                file: new ExpenseFileUpload("receipt.pdf", "application/pdf", content),
+                ct: Xunit.TestContext.Current.CancellationToken);
+
+            result.Succeeded.Should().BeFalse();
+            result.LineId.Should().BeNull();
+            result.ErrorMessage.Should().Be(expectedMessage);
+            (await _expenseRepo.GetAllAsync(Xunit.TestContext.Current.CancellationToken))
+                .Should().BeEmpty();
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = originalCulture;
+        }
+    }
+
     [HumansFact]
     public async Task AddLineWithResultAsync_LogsError_WithStackTrace_WhenRepositoryReportsFailure()
     {
@@ -525,7 +564,7 @@ public sealed class ExpenseReportServiceTests
             failingRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
-            Options.Create(new TravelReimbursementConfig()));
+            Options.Create(new TravelReimbursementConfig()), _localizer);
 
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1116,7 +1155,7 @@ public sealed class ExpenseReportServiceTests
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
-            Options.Create(new TravelReimbursementConfig()));
+            Options.Create(new TravelReimbursementConfig()), _localizer);
 
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1145,7 +1184,7 @@ public sealed class ExpenseReportServiceTests
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
-            Options.Create(new TravelReimbursementConfig()));
+            Options.Create(new TravelReimbursementConfig()), _localizer);
 
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1185,7 +1224,7 @@ public sealed class ExpenseReportServiceTests
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
-            Options.Create(new TravelReimbursementConfig()));
+            Options.Create(new TravelReimbursementConfig()), _localizer);
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var id = await sut.CreateDraftAsync(submitter, submitter, category.Id, null,
