@@ -199,22 +199,21 @@ internal sealed class EventService(
     private async Task SendLifecycleEmailAsync(
         Event guideEvent, EventStatus newStatus, string? reason, string actionUrl, CancellationToken ct)
     {
-        var submitter = await userService.GetUserInfoAsync(guideEvent.SubmitterUserId, ct);
-        if (submitter?.Email is null)
-        {
-            logger.LogWarning(
-                "Skipping lifecycle email for event {EventId}: submitter {SubmitterId} has no notification email",
-                guideEvent.Id, guideEvent.SubmitterUserId);
-            return;
-        }
-
-        var submitterEmail = submitter.Email;
-
-        // The mutation is already persisted by the caller — a degraded email
-        // service must not fail the submit/moderation operation (and, via the
-        // caching decorator, must not skip cache invalidation).
+        // The mutation is already persisted by the caller — failures preparing or
+        // sending email must not report a failed submit/moderation operation.
         try
         {
+            var submitter = await userService.GetUserInfoAsync(guideEvent.SubmitterUserId, ct);
+            if (submitter?.Email is null)
+            {
+                logger.LogWarning(
+                    "Skipping lifecycle email for event {EventId}: submitter {SubmitterId} has no notification email",
+                    guideEvent.Id, guideEvent.SubmitterUserId);
+                return;
+            }
+
+            var submitterEmail = submitter.Email;
+
             await emailService.SendAsync(emailMessages.EventLifecycle(
                 new EventLifecycleNotification(
                     NewStatus: newStatus,

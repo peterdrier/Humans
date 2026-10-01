@@ -286,7 +286,7 @@ Hard deletion is not supported; `Withdrawn` is the terminal state for events rem
 | Moderation: Rejected | Submitter — rejection with reason |
 | Moderation: ResubmitRequested | Submitter — edit request with reason |
 
-All emails use the existing `EmailOutboxMessage` / `ProcessEmailOutboxJob` infrastructure.
+All emails use the existing `EmailOutboxMessage` / `ProcessEmailOutboxJob` infrastructure. Lifecycle notifications run after persistence; failures looking up the recipient or preparing/sending the message are logged and do not fail the committed submission or moderation.
 
 ## Route Summary
 

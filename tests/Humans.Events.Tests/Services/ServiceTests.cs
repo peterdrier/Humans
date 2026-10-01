@@ -308,6 +308,48 @@ public sealed class EventServiceTests
         guideEvent.Status.Should().Be(EventStatus.Rejected);
     }
 
+    [HumansFact]
+    public async Task SubmitEventAsync_SubmitterLookupFailure_DoesNotFailCommittedSubmission()
+    {
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(),
+            Title = "Fire show", Status = EventStatus.Pending
+        };
+        _userService.GetUserInfoAsync(guideEvent.SubmitterUserId, Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromException<UserInfo?>(new InvalidOperationException("User lookup unavailable")));
+
+        var act = () => _service.SubmitEventAsync(
+            guideEvent, "https://x/Events/MySubmissions", TestContext.Current.CancellationToken);
+
+        await act.Should().NotThrowAsync();
+        _repo.Events.Should().Contain(guideEvent);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
+    }
+
+    [HumansFact]
+    public async Task ApplyModerationAsync_SubmitterLookupFailure_DoesNotFailCommittedDecision()
+    {
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(),
+            Title = "Fire show", Status = EventStatus.Pending
+        };
+        _repo.Events.Add(guideEvent);
+        _userService.GetUserInfoAsync(guideEvent.SubmitterUserId, Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromException<UserInfo?>(new InvalidOperationException("User lookup unavailable")));
+
+        var act = () => _service.ApplyModerationAsync(
+            guideEvent.Id, Guid.NewGuid(), EventModerationActionType.Rejected,
+            "Too loud", "https://x/edit", TestContext.Current.CancellationToken);
+
+        await act.Should().NotThrowAsync();
+        guideEvent.Status.Should().Be(EventStatus.Rejected);
+        _repo.EventModerationActions.Should().ContainSingle(action =>
+            action.GuideEventId == guideEvent.Id && action.Action == EventModerationActionType.Rejected);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
+    }
+
     private Guid StubSubmitterWithEmail(string email, string burnerName)
     {
         var userId = Guid.NewGuid();
