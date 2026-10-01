@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Data;
+using Humans.MailerLite.Domain;
 using Humans.MailerLite.Services.Dtos;
 using Humans.Users.Contracts;
 using Humans.MailerLite.Services;
@@ -248,6 +249,30 @@ public class MailerLiteAudienceSyncServiceTests
         await _audit.DidNotReceive().GetFilteredEntriesAsync(
             Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
             Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ComputeAllStatsAsync_DuplicateKeyRows_ShowsTheNewest()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var audience = NewAudience("a-aud", "Humans - A", []);
+        SetupEmailsEmpty();
+        SetupGroups(Group("g1", "Humans - A"));
+        SetupSubscribers();
+        var newest = Instant.FromUtc(2026, 8, 20, 0, 0);
+        var repository = Substitute.For<IMailerLiteRepository>();
+        repository.GetSyncStatesAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            new MailerLiteSyncState { Id = Guid.NewGuid(), Key = "a-aud", LastSyncAt = newest.Minus(Duration.FromDays(1)) },
+            new MailerLiteSyncState { Id = Guid.NewGuid(), Key = "a-aud", LastSyncAt = newest },
+        ]);
+        var service = new MailerLiteAudienceSyncService(
+            _ml, _emails, _audit, repository, new FakeClock(SyncedAt), [audience],
+            NullLogger<MailerLiteAudienceSyncService>.Instance);
+
+        var stats = await service.ComputeAllStatsAsync(ct);
+
+        stats.Single().LastSyncAt.Should().Be(newest);
     }
 
     // ---------- helpers ----------
