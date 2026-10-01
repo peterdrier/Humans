@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using Xunit;
 using AwesomeAssertions;
 using Humans.MailerLite.Services.MailerLite;
 
@@ -38,6 +39,40 @@ public class MailerLiteClientDeleteSubscriberTests
             "an erased human's address must not survive in the no-TTL subscriber cache");
     }
 
+    [HumansTheory]
+    [InlineData("active", HttpStatusCode.NoContent)]
+    [InlineData("unsubscribed", HttpStatusCode.NoContent)]
+    [InlineData("unconfirmed", HttpStatusCode.NoContent)]
+    [InlineData("bounced", HttpStatusCode.NoContent)]
+    [InlineData("junk", HttpStatusCode.NoContent)]
+    [InlineData("active", HttpStatusCode.NotFound)]
+    public async Task DeleteSubscriberAsync_UpdatesStatusTotals(string status, HttpStatusCode response)
+    {
+        var client = BuildClient(new DeleteHandler(response, status));
+        var before = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
+        (before.ActiveCount + before.UnsubscribedCount + before.UnconfirmedCount
+            + before.BouncedCount + before.JunkCount).Should().Be(1);
+
+        await client.DeleteSubscriberAsync(Erased, Xunit.TestContext.Current.CancellationToken);
+
+        var after = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
+        (after.ActiveCount + after.UnsubscribedCount + after.UnconfirmedCount
+            + after.BouncedCount + after.JunkCount).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task DeleteSubscriberAsync_Failure_PreservesSnapshotAndStatusTotals()
+    {
+        var client = BuildClient(new DeleteHandler(HttpStatusCode.InternalServerError));
+        var before = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var delete = () => client.DeleteSubscriberAsync(Erased, Xunit.TestContext.Current.CancellationToken);
+        await delete.Should().ThrowAsync<HttpRequestException>();
+
+        (await SnapshotEmailsAsync(client)).Should().Contain(Erased);
+        (await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(before);
+    }
+
     private static async Task DrainAsync(MailerLiteClient client)
     {
         (await SnapshotEmailsAsync(client)).Should().Contain(Erased, "the snapshot must be warm first");
@@ -57,7 +92,7 @@ public class MailerLiteClientDeleteSubscriberTests
 
     // One subscriber on the first subscribers page, empty thereafter; DELETE answers
     // with the status under test.
-    private sealed class DeleteHandler(HttpStatusCode deleteStatus) : HttpMessageHandler
+    private sealed class DeleteHandler(HttpStatusCode deleteStatus, string status = "active") : HttpMessageHandler
     {
         private bool _subscribersServed;
 
@@ -76,7 +111,7 @@ public class MailerLiteClientDeleteSubscriberTests
             {
                 _subscribersServed = true;
                 body =
-                    "{\"data\":[{\"id\":\"1\",\"email\":\"" + Erased + "\",\"status\":\"active\"," +
+                    "{\"data\":[{\"id\":\"1\",\"email\":\"" + Erased + "\",\"status\":\"" + status + "\"," +
                     "\"source\":\"api\",\"subscribed_at\":null,\"unsubscribed_at\":null," +
                     "\"opted_in_at\":null,\"fields\":{},\"groups\":[]}]," +
                     "\"meta\":{\"next_cursor\":null}}";

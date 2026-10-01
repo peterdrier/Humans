@@ -158,9 +158,12 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
     {
         using var _ = await _gate.AcquireAsync(logger, ct);
         if (_subscribers is not null)
+        {
             _subscribers = _subscribers
                 .Where(s => !string.Equals(s.Email, email, StringComparison.OrdinalIgnoreCase))
                 .ToList();
+            _summary = SummarizeSubscribers(_subscribers);
+        }
     }
 
     private async Task RequireHumansGroupAsync(string groupId, CancellationToken ct)
@@ -197,11 +200,22 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
     private async Task PopulateLockedAsync(CancellationToken ct)
     {
         var subscribers = new List<MailerLiteSubscriber>();
-        int active = 0, unsub = 0, unc = 0, bnc = 0, jnk = 0;
         await foreach (var s in FetchSubscribersAsync(ct))
-        {
             subscribers.Add(s);
-            switch (s.Status)
+        var groups = await FetchGroupsAsync(ct);
+
+        _subscribers = subscribers;
+        _summary = SummarizeSubscribers(subscribers);
+        _groups = groups;
+        _lastFetchedAt = clock.GetCurrentInstant();
+    }
+
+    private static MailerLiteAccountSummary SummarizeSubscribers(IReadOnlyList<MailerLiteSubscriber> subscribers)
+    {
+        int active = 0, unsub = 0, unc = 0, bnc = 0, jnk = 0;
+        foreach (var subscriber in subscribers)
+        {
+            switch (subscriber.Status)
             {
                 case "active": active++; break;
                 case "unsubscribed": unsub++; break;
@@ -210,12 +224,7 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
                 case "junk": jnk++; break;
             }
         }
-        var groups = await FetchGroupsAsync(ct);
-
-        _subscribers = subscribers;
-        _summary = new MailerLiteAccountSummary(active, unsub, unc, bnc, jnk);
-        _groups = groups;
-        _lastFetchedAt = clock.GetCurrentInstant();
+        return new MailerLiteAccountSummary(active, unsub, unc, bnc, jnk);
     }
 
     private async IAsyncEnumerable<MailerLiteSubscriber> FetchSubscribersAsync(
