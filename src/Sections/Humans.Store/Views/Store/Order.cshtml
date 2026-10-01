@@ -425,13 +425,6 @@ else
 
 @section Scripts {
     <script nonce="@Context.Items["CspNonce"]">
-        document.querySelectorAll('[data-confirm]').forEach(function (button) {
-            button.addEventListener('click', function (e) {
-                if (!confirm(this.getAttribute('data-confirm'))) {
-                    e.preventDefault();
-                }
-            });
-        });
         // A recorded payment can't be undone, so a double-click must not post it twice.
         document.querySelectorAll('form[data-submit-once]').forEach(function (form) {
             form.addEventListener('submit', function () {
