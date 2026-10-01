@@ -1044,12 +1044,27 @@ internal sealed class Service(
     /// save, like the audit lines: an outbox row is a promise of money, so a rolled-back file
     /// must not leave one. Sent at generation rather than at booking because generation is when
     /// the treasurer hands the file to the bank; booking only records that the money moved.
+    /// Notification failures must not prevent downloading the already-saved file.
     /// </summary>
     private async Task SendPayoutEmailsAsync(IReadOnlyList<SepaPayoutTransfer> transfers, CancellationToken ct)
     {
         var userIds = transfers.Select(t => t.UserId).Distinct().ToList();
-        var infos = await users.GetUserInfosAsync(userIds, ct);
-        var targets = await userEmails.GetNotificationTargetEmailsAsync(userIds, ct);
+        IReadOnlyDictionary<Guid, UserInfo> infos;
+        IReadOnlyDictionary<Guid, string> targets;
+        try
+        {
+            infos = await users.GetUserInfosAsync(userIds, ct);
+            targets = await userEmails.GetNotificationTargetEmailsAsync(userIds, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to resolve recipients for saved SEPA payout {FileId}", transfers[0].FileId);
+            return;
+        }
 
         foreach (var t in transfers)
         {
@@ -1062,8 +1077,19 @@ internal sealed class Service(
                 continue;
             }
 
-            await emailService.SendAsync(emails.SepaPayoutGenerated(
-                recipient, member.BurnerName, t.Amount, t.IbanMasked, member.PreferredLanguage), ct);
+            try
+            {
+                await emailService.SendAsync(emails.SepaPayoutGenerated(
+                    recipient, member.BurnerName, t.Amount, t.IbanMasked, member.PreferredLanguage), ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to queue email for saved SEPA payout transfer {TransferId}", t.Id);
+            }
         }
     }
 

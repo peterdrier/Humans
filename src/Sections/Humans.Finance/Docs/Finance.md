@@ -269,7 +269,7 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 ## Triggers
 
 - None on the budget side: this section only reads Budget, so it fires no Budget-side effects.
-- On **SEPA payout generation**: after the file and its transfers are saved and audited, one `sepa_payout_generated` email per transfer goes to the bound member (`FinanceEmails.SepaPayoutGenerated`, `MessageCategory.System`, in their preferred language) naming the amount and the masked IBAN. A refused batch sends nothing; a member with no notification email is logged and skipped. Booking sends nothing — by then the money has moved (peterdrier/Humans#1820).
+- On **SEPA payout generation**: after the file and its transfers are saved and audited, one `sepa_payout_generated` email per transfer goes to the bound member (`FinanceEmails.SepaPayoutGenerated`, `MessageCategory.System`, in their preferred language) naming the amount and the masked IBAN. A refused batch sends nothing; a member with no notification email is logged and skipped. Recipient lookup and individual email failures are logged without blocking download of the saved file or suppressing later recipients; request cancellation still propagates. Booking sends nothing — by then the money has moved (peterdrier/Humans#1820).
 - When the sync job starts, `HoldedDocSyncState.Status` flips to `Running`. On success returns to `Idle` with `LastSyncAt` and `LastSyncedDocCount` updated. On exception goes to `Error` with `LastError` populated; next scheduled run retries.
 
 ## Cross-Section Dependencies

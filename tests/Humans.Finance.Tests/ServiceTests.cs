@@ -2171,6 +2171,84 @@ public class HoldedFinanceServiceTests
             Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData("member")]
+    [InlineData("address")]
+    [InlineData("send")]
+    public async Task GenerateSepaPayout_EmailFailureStillReturnsTheSavedFile(string failure)
+    {
+        ConfigureSepa();
+        var userId = SeedPayableCreditor();
+        StubMember(userId, "Ana", "ana@example.com", "es");
+        var unavailable = new InvalidOperationException("Notification dependency unavailable");
+        if (string.Equals(failure, "member", StringComparison.Ordinal))
+            _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(unavailable));
+        else if (string.Equals(failure, "address", StringComparison.Ordinal))
+            _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<IReadOnlyDictionary<Guid, string>>(unavailable));
+        else
+            _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException(unavailable));
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 12.34m)], 50m, Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        await _repo.Received(1).AddSepaPayoutAsync(
+            Arg.Is<SepaPayoutFile>(f => f.Xml == result.Xml && f.FileName == result.FileName),
+            Arg.Any<IReadOnlyList<SepaPayoutTransfer>>(), Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.SepaPayoutTransfer, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), userId, Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayout_FailedEmailDoesNotSuppressOtherTransfers()
+    {
+        ConfigureSepa();
+        var firstUserId = SeedPayableCreditor();
+        var secondUserId = Guid.NewGuid();
+        _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [40000004] = -30m, [40000005] = -30m });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = firstUserId, HoldedContactId = "c1", SupplierAccountNum = 40000004 },
+            new() { UserId = secondUserId, HoldedContactId = "c2", SupplierAccountNum = 40000005 },
+        });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "c1", Name = "Ana Ruiz", SupplierAccountNum = 40000004, Iban = AnaIban },
+            new() { Id = "c2", Name = "Dani", SupplierAccountNum = 40000005, Iban = "NL91ABNA0417164300" },
+        });
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [firstUserId] = UserInfo.Create(
+                    new User { Id = firstUserId, BurnerName = "Ana", CreatedAt = FixedNow },
+                    [], [], [], null, []),
+                [secondUserId] = UserInfo.Create(
+                    new User { Id = secondUserId, BurnerName = "Dani", CreatedAt = FixedNow },
+                    [], [], [], null, []),
+            });
+        _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string>
+            {
+                [firstUserId] = "ana@example.com", [secondUserId] = "dani@example.com",
+            });
+        _emailService.SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == "ana@example.com"), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("Outbox temporarily unavailable")));
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 10m), new SepaPayoutSelection(40000005, 10m)],
+            50m, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == "dani@example.com"), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task GenerateSepaPayout_WhenRefused_SendsNoEmail()
     {

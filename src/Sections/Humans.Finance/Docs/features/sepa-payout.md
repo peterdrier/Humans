@@ -74,6 +74,8 @@ longer needs a redeploy.
    one `sepa_payout_generated` email per transfer to the bound member — amount and masked IBAN, in
    their preferred language, `MessageCategory.System` (peterdrier/Humans#1820). Both come after the
    save so a rolled-back file leaves neither a ghost audit row nor a promise of money in the outbox.
+   Notification failures are logged and do not block download of the saved file; a failed email
+   does not suppress later recipients. Request cancellation still propagates.
 7. The XML streams back as `<org-slug>-<yyyy-MM-dd-HHmm>-<first 8 hex of the file id>.xml`. The
    stamp is minute-resolution, so the id suffix is what keeps two batches in one minute apart — the
    filename is the treasurer's handle on a downloaded copy and is quoted in the audit line.
