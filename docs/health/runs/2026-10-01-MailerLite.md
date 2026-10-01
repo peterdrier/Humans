@@ -20,8 +20,7 @@ The gaps fell into these groups:
   longer exist, and the invariant doc cited an architecture test that does not exist.
 
 The one behavioural finding is a disagreement between the debug preview and the real push on
-suppressed subscribers. The spec and the preview's own pinned test define the preview's
-behaviour, so this run changed neither side, and the question goes to Peter.
+suppressed subscribers. Peter ruled that the preview follows Sync, and it now does.
 
 Independence check: pass. Findings 1, 2, 3, 4 and 13 come from reading the section against the
 target, not from any tool. Finding 1 is a difference between what the spec says and what the
@@ -38,6 +37,7 @@ code does, which no scanner reports.
    - The feature spec defines the preview's exclusion, and
      `MailerLiteAudienceDebugSnapshotBuilderTests.Build_CurrentlyInMl_SkipsSuppressedStatuses`
      pins it.
+   - **Ruled (Peter):** the preview matches Sync.
 2. **`Contracts/IMailerLiteAudienceSync` was public cross-section surface with no
    cross-section consumer.** It existed so the section's public job could call its own sync
    service. The job's remarks justified it being public with a claim that the Shell names the
@@ -88,6 +88,8 @@ code does, which no scanner reports.
 13. **The controller holds business logic.** `MailerLiteAdminController` computes the drift
     report and the >10% plan-drift check on Commit. Moving either into the import service needs
     a new interface method.
+    - **Ruled (Peter):** move it. `IMailerLiteImportService.ComputeDriftAsync` is the one new
+      method; the 10% rule is a pure method on `ImportPlanCounts`.
 14. **Advisory (conformance).** `MailerLiteEmailNormalization.cs` sits at the project root rather
     than under a folder.
 15. **Inbox recommendations.** These are read-only; this run changed no issue.
@@ -130,20 +132,22 @@ Filed: MAILERLITE-2, for finding 12.
   - Reviewer: `doctor-reviewer`, APPROVE.
   - It checked render equivalence field by field, the timing of the stats-failure catch, the
     empty paths, and the leftover-reference sweep.
+- **Finding 1 (ruled):** the preview lists suppressed group members, never adds a suppressed
+  subscriber, and removes every suppressed member, as Sync does. The spec says so, and
+  `MailerLiteAudienceDebugSnapshotBuilderTests.Build_SuppressedSubscribers_DiffMatchesSync` pins it.
+- **Finding 13 (ruled):** the drift report and the 10% check moved out of the controller.
+  `MailerLiteImportServiceDriftTests` pins the count.
 - **Finding 11:** each comment was corrected or cut.
 - No live render happened: this was an unattended cloud run. The views compile at build and
   pass `razor-lint`. The preview deploy is where the dashboard and import pages are checked.
 
 ## Skipped
 
-- **Finding 1** goes to Needs Peter. The spec and the code disagree, and the code may be the
-  side that is wrong, so this run changed neither.
 - **Finding 3, partly.** `AudienceStats.DisplayName` and `LastSyncSummary` stay, even though no
   view renders them. `LastSyncSummary` is the only reader of the persisted `Summary` column, and
   a sync test pins it. Dropping it turns a column write-only, which is a schema question.
 - **Finding 12** is a deletion, so it is reviewer-gated, and it is the least valuable item on
   the ranked list. Ledgered as MAILERLITE-2.
-- **Finding 13** goes to Needs Peter, because moving the logic adds public surface.
 - **Finding 14** is advisory only.
 - **Findings 15, 16 and 17** are recommendations and carry-forwards.
 - **Not pursued: a possible GDPR gap.** An unverified identity email can reach MailerLite through
@@ -181,12 +185,12 @@ similar: the projection dropped a field, and the view paid for it with a search.
 the target now states "no cross-section surface" and "a view takes the service's own record"
 outright, and both claims became true in this run. A target that stops moving while its claims
 start holding is a section near its end state. What remains is the question in finding 1 and
-the controller logic in finding 13, and both need Peter, not a strike.
+the controller logic in finding 13, and both needed Peter, not a strike. He ruled on both.
 
 ## Needs Peter
 
-- [ ] 1 — debug preview vs Sync on suppressed subscribers: make the preview match Sync, or stop Sync unassigning suppressed members?
-- [ ] 13 — drift report and the >10% Commit check: move into the import service (a new interface method), or leave in the controller?
+- [x] 1 — debug preview vs Sync on suppressed subscribers: make the preview match Sync, or stop Sync unassigning suppressed members? → match Sync (applied)
+- [x] 13 — drift report and the >10% Commit check: move into the import service (a new interface method), or leave in the controller? → move it (applied)
 
 ## File coverage
 
@@ -211,7 +215,7 @@ the controller logic in finding 13, and both need Peter, not a strike.
 | `src/Sections/Humans.MailerLite/Humans.MailerLite.csproj` | reviewed |
 | `src/Sections/Humans.MailerLite/Jobs/MailerLiteAudienceSyncJob.cs` | changed |
 | `src/Sections/Humans.MailerLite/MailerLiteEmailNormalization.cs` | reviewed |
-| `src/Sections/Humans.MailerLite/Models/MailerLiteAudienceDebugSnapshotBuilder.cs` | reviewed |
+| `src/Sections/Humans.MailerLite/Models/MailerLiteAudienceDebugSnapshotBuilder.cs` | changed |
 | `src/Sections/Humans.MailerLite/Models/MailerLiteAudienceDebugViewModel.cs` | changed |
 | `src/Sections/Humans.MailerLite/Models/MailerLiteDashboardViewModel.cs` | changed |
 | `src/Sections/Humans.MailerLite/Properties/AssemblyInfo.cs` | reviewed |
@@ -233,7 +237,8 @@ the controller logic in finding 13, and both need Peter, not a strike.
 | `src/Sections/Humans.MailerLite/Services/Dtos/AudienceStats.cs` | reviewed |
 | `src/Sections/Humans.MailerLite/Services/Dtos/AudienceSyncResult.cs` | reviewed |
 | `src/Sections/Humans.MailerLite/Services/Dtos/BulkImportResult.cs` | reviewed |
-| `src/Sections/Humans.MailerLite/Services/Dtos/ImportPlan.cs` | reviewed |
+| `src/Sections/Humans.MailerLite/Services/Dtos/DriftReport.cs` | changed |
+| `src/Sections/Humans.MailerLite/Services/Dtos/ImportPlan.cs` | changed |
 | `src/Sections/Humans.MailerLite/Services/Dtos/ImportResult.cs` | reviewed |
 | `src/Sections/Humans.MailerLite/Services/Dtos/MailerLiteAccountSummary.cs` | reviewed |
 | `src/Sections/Humans.MailerLite/Services/Dtos/MailerLiteGroup.cs` | reviewed |
@@ -249,7 +254,7 @@ the controller logic in finding 13, and both need Peter, not a strike.
 | `src/Sections/Humans.MailerLite/Services/MailerLite/MailerLiteSubscriberConverter.cs` | reviewed |
 | `src/Sections/Humans.MailerLite/Services/MailerLiteAudienceSyncService.cs` | changed |
 | `src/Sections/Humans.MailerLite/Services/MailerLiteGdprContributor.cs` | reviewed |
-| `src/Sections/Humans.MailerLite/Services/MailerLiteImportService.cs` | reviewed |
+| `src/Sections/Humans.MailerLite/Services/MailerLiteImportService.cs` | changed |
 | `src/Sections/Humans.MailerLite/Views/MailerLite/Admin/Debug.cshtml` | changed |
 | `src/Sections/Humans.MailerLite/Views/MailerLite/Admin/Import.cshtml` | changed |
 | `src/Sections/Humans.MailerLite/Views/MailerLite/Admin/Index.cshtml` | reviewed |
@@ -266,12 +271,12 @@ the controller logic in finding 13, and both need Peter, not a strike.
 | `tests/Humans.MailerLite.Tests/Audiences/ShiftViewAudienceTests.cs` | reviewed |
 | `tests/Humans.MailerLite.Tests/Audiences/TicketNoShiftsAudienceTests.cs` | reviewed |
 | `tests/Humans.MailerLite.Tests/Controllers/MailerLiteAdminControllerAudienceSyncTests.cs` | reviewed |
-| `tests/Humans.MailerLite.Tests/Controllers/MailerLiteAdminControllerTests.cs` | reviewed |
+| `tests/Humans.MailerLite.Tests/Controllers/MailerLiteAdminControllerTests.cs` | changed |
 | `tests/Humans.MailerLite.Tests/Data/MailerLiteRepositoryTests.cs` | reviewed |
 | `tests/Humans.MailerLite.Tests/Humans.MailerLite.Tests.csproj` | reviewed |
 | `tests/Humans.MailerLite.Tests/Infrastructure/InMemoryMailerLiteRepository.cs` | reviewed |
 | `tests/Humans.MailerLite.Tests/Infrastructure/UserInfoStubHelpers.cs` | reviewed |
-| `tests/Humans.MailerLite.Tests/Models/MailerLiteAudienceDebugSnapshotBuilderTests.cs` | reviewed |
+| `tests/Humans.MailerLite.Tests/Models/MailerLiteAudienceDebugSnapshotBuilderTests.cs` | changed |
 | `tests/Humans.MailerLite.Tests/Services/ImportResultTests.cs` | reviewed |
 | `tests/Humans.MailerLite.Tests/Services/MailerLiteAudienceSyncServiceTests.cs` | changed |
 | `tests/Humans.MailerLite.Tests/Services/MailerLiteClientCacheTests.cs` | reviewed |
@@ -280,7 +285,8 @@ the controller logic in finding 13, and both need Peter, not a strike.
 | `tests/Humans.MailerLite.Tests/Services/MailerLiteClientWriteGuardTests.cs` | reviewed |
 | `tests/Humans.MailerLite.Tests/Services/MailerLiteGdprContributorTests.cs` | reviewed |
 | `tests/Humans.MailerLite.Tests/Services/MailerLiteImportServiceClassifierTests.cs` | reviewed |
-| `tests/Humans.MailerLite.Tests/Services/MailerLiteImportServiceConflictRuleTests.cs` | reviewed |
+| `tests/Humans.MailerLite.Tests/Services/MailerLiteImportServiceConflictRuleTests.cs` | changed |
+| `tests/Humans.MailerLite.Tests/Services/MailerLiteImportServiceDriftTests.cs` | changed |
 | `tests/Humans.MailerLite.Tests/Services/MailerLiteImportServiceIdempotencyTests.cs` | reviewed |
 | `tests/Humans.MailerLite.Tests/Services/MailerLiteImportServiceThrottleTests.cs` | reviewed |
 | `tests/Humans.MailerLite.Tests/Services/MailerLiteImportServiceWebsiteScopeTests.cs` | reviewed |
