@@ -464,8 +464,13 @@ internal sealed class CalendarService(
                         NodaTime.Period.Between(info.StartDate!.Value, info.EndDateExclusive!.Value, PeriodUnits.Days).Days);
                     if (end <= start) throw new InvalidOperationException("An all-day occurrence requires a non-empty date range.");
                 }
-                else if (x.OverrideStartDate is not null || x.OverrideEndDateExclusive is not null)
-                    throw new InvalidOperationException("A timed occurrence cannot have all-day dates.");
+                else
+                {
+                    if (x.OverrideStartDate is not null || x.OverrideEndDateExclusive is not null)
+                        throw new InvalidOperationException("A timed occurrence cannot have all-day dates.");
+                    if (x.OverrideEndUtc is { } end && end < (x.OverrideStartUtc ?? originalUtc!.Value))
+                        throw new InvalidOperationException("An occurrence cannot end before it starts.");
+                }
             },
             ct: ct, originalDate: originalDate);
 

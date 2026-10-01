@@ -85,6 +85,72 @@ public sealed class CalendarRepositoryTests : IDisposable
         (await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken))!.Exceptions.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task TimedService_RejectsOverridesEndingBeforeTheirEffectiveStart(
+        bool moveStart, bool existingOverride)
+    {
+        var ev = BuildEvent();
+        ev.RecurrenceRule = "FREQ=DAILY";
+        ev.RecurrenceTimezone = "UTC";
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
+        var service = CreateService();
+        if (existingOverride)
+            await service.OverrideOccurrenceAsync(ev.Id, ev.StartUtc,
+                new OverrideOccurrenceDto(null, null, "Previous title", null, null, null),
+                Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var original = ev.StartUtc!.Value;
+        var invalid = new OverrideOccurrenceDto(
+            moveStart ? original.Plus(Duration.FromHours(2)) : null,
+            original.Plus(Duration.FromHours(moveStart ? 1 : -1)),
+            "Invalid replacement", null, null, null);
+        var act = () => service.OverrideOccurrenceAsync(ev.Id, original, invalid,
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        var stored = (await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken))!;
+        if (existingOverride)
+        {
+            var previous = stored.Exceptions.Should().ContainSingle().Subject;
+            previous.OverrideTitle.Should().Be("Previous title");
+            previous.OverrideStartUtc.Should().BeNull();
+            previous.OverrideEndUtc.Should().BeNull();
+        }
+        else
+            stored.Exceptions.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, true)]
+    public async Task TimedService_PreservesValidPartialAndZeroDurationOverrides(bool moveStart, bool setEnd)
+    {
+        var ev = BuildEvent();
+        ev.RecurrenceRule = "FREQ=DAILY";
+        ev.RecurrenceTimezone = "UTC";
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
+        var original = ev.StartUtc!.Value;
+        var moved = original.Plus(Duration.FromHours(2));
+        await CreateService().OverrideOccurrenceAsync(ev.Id, original,
+            new OverrideOccurrenceDto(moveStart ? moved : null,
+                setEnd ? (moveStart ? moved : original) : null, null, null, null, null),
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var stored = (await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken))!;
+        var occurrence = CalendarOccurrenceExpander.Expand([CalendarOccurrenceExpander.ToInfo(stored)],
+            original, original.Plus(Duration.FromDays(1)), new Dictionary<Guid, string>(), NullLogger.Instance)
+            .Should().ContainSingle().Subject;
+        occurrence.OccurrenceStartUtc.Should().Be(moveStart ? moved : original);
+        occurrence.OccurrenceEndUtc.Should().Be(setEnd
+            ? (moveStart ? moved : original)
+            : moved.Plus(ev.EndUtc!.Value - original));
+    }
+
     [HumansFact]
     public async Task AllDayService_MovesAndCancelsDateOccurrence_UpdatingOneRow()
     {

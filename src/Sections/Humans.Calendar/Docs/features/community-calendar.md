@@ -107,6 +107,7 @@ is a separate call on the same interface and is unaffected.
 - Per-occurrence actions: cancel, reschedule (change time/title)
 - Cancelled occurrence is hidden from calendar view
 - Rescheduled occurrence shows new time; recurrence rule unchanged
+- Timed overrides reject an end before the effective start without replacing an existing exception. An omitted start uses the original occurrence; an omitted end retains the series duration. Equal start/end remains valid.
 - Changes recorded in `CalendarEventException` table
 
 ## Data Model
