@@ -3,7 +3,7 @@
 - Invocation: unattended daily cloud routine, no arguments (Phase 8 skipped per routine prompt)
 - Anchor commit: `d8e6c2209` (origin/main at branch point); branch `section-doctor/2026-10-01T011558Z`.
 - Budget: 2.5h.
-- PR: pending
+- PR: peterdrier/Humans#1876
 
 ## Assessment summary
 

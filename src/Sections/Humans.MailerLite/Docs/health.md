@@ -131,4 +131,4 @@ Reserve the places; don't build them.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-08-25 | Debug picker always showed the last list; Apply confirmed twice; dead client surface deleted; shared audience rules defined once | peterdrier/Humans#1513 |
-| section-doctor | 2026-10-01 | The section has no cross-section surface; admin views render the service records; docs and comments say what the code does | pending |
+| section-doctor | 2026-10-01 | The section has no cross-section surface; admin views render the service records; docs and comments say what the code does | peterdrier/Humans#1876 |
