@@ -216,6 +216,26 @@
   <data name="Camp_Members_RoleOverCapacityTitle" xml:space="preserve"><value>Più assegnazioni del numero di posti configurato.</value></data>
   <data name="Camp_Members_AddMemberSearchHelp" xml:space="preserve"><value>Cerca per nome. Lo human viene aggiunto alla stagione aperta del camp come Attivo.</value></data>
   <data name="Camp_Members_NoPendingRequests" xml:space="preserve"><value>Nessuna richiesta in sospeso.</value></data>
+  <data name="Camps_Members_Members" xml:space="preserve"><value>Membri</value></data>
+  <data name="Camps_Members_Roles" xml:space="preserve"><value>Ruoli</value></data>
+  <data name="Camps_Members_ShowDescription" xml:space="preserve"><value>Mostra descrizione</value></data>
+  <data name="Camps_Members_AddToRole" xml:space="preserve"><value>Aggiungi al ruolo</value></data>
+  <data name="Camps_Members_RemoveAssignment" xml:space="preserve"><value>Rimuovi questa assegnazione</value></data>
+  <data name="Camps_Members_RemoveAssignmentConfirm" xml:space="preserve"><value>Rimuovere questa assegnazione?</value></data>
+  <data name="Camps_Members_AssignHelp" xml:space="preserve"><value>Assegna — aggiunge al camp se non è ancora membro</value></data>
+  <data name="Camps_Members_AddActiveMember" xml:space="preserve"><value>Aggiungi membro attivo</value></data>
+  <data name="Camps_Members_SeasonHumans" xml:space="preserve"><value>Humans in questa stagione</value></data>
+  <data name="Camps_Members_PendingRequests" xml:space="preserve"><value>Richieste in attesa</value></data>
+  <data name="Camps_Members_RejectConfirm" xml:space="preserve"><value>Rifiutare questa richiesta?</value></data>
+  <data name="Camps_Members_ActiveHumans" xml:space="preserve"><value>Humans attivi</value></data>
+  <data name="Camps_Members_EeSlotsHelp" xml:space="preserve"><value>Posti ingresso anticipato concessi / assegnati a questo camp per {0}</value></data>
+  <data name="Camps_Members_RevokeEarlyEntry" xml:space="preserve"><value>Revoca ingresso anticipato</value></data>
+  <data name="Camps_Members_GrantEarlyEntry" xml:space="preserve"><value>Concedi ingresso anticipato</value></data>
+  <data name="Camps_Members_GrantEe" xml:space="preserve"><value>Concedi EE</value></data>
+  <data name="Camps_Members_RemoveHumanConfirm" xml:space="preserve"><value>Rimuovere questo human?</value></data>
+  <data name="Camps_Members_RecordHelp" xml:space="preserve"><value>Questo è un record che permette all'app di sapere chi appartiene a ciascun camp. L'approvazione qui non ammette una persona nel tuo camp: questo avviene tramite il processo proprio del tuo camp.</value></data>
+  <data name="Camps_Members_Approve" xml:space="preserve"><value>Approva</value></data>
+  <data name="Camps_Members_Reject" xml:space="preserve"><value>Rifiuta</value></data>
   <!-- Controller feedback -->
   <data name="Camps_Flash_RegistrationClosed" xml:space="preserve"><value>La registrazione è attualmente chiusa.</value></data>
   <data name="Camps_Flash_RegistrationPendingReview" xml:space="preserve"><value>Il tuo camp è stato registrato ed è in attesa di revisione.</value></data>

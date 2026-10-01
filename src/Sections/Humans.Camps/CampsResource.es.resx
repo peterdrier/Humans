@@ -216,6 +216,26 @@
   <data name="Camp_Members_RoleOverCapacityTitle" xml:space="preserve"><value>Más asignaciones que el número de plazas configurado.</value></data>
   <data name="Camp_Members_AddMemberSearchHelp" xml:space="preserve"><value>Busca por nombre. El human se añade a la temporada abierta del barrio como Activo.</value></data>
   <data name="Camp_Members_NoPendingRequests" xml:space="preserve"><value>No hay solicitudes pendientes.</value></data>
+  <data name="Camps_Members_Members" xml:space="preserve"><value>Miembros</value></data>
+  <data name="Camps_Members_Roles" xml:space="preserve"><value>Roles</value></data>
+  <data name="Camps_Members_ShowDescription" xml:space="preserve"><value>Mostrar descripción</value></data>
+  <data name="Camps_Members_AddToRole" xml:space="preserve"><value>Añadir al rol</value></data>
+  <data name="Camps_Members_RemoveAssignment" xml:space="preserve"><value>Eliminar esta asignación</value></data>
+  <data name="Camps_Members_RemoveAssignmentConfirm" xml:space="preserve"><value>¿Eliminar esta asignación?</value></data>
+  <data name="Camps_Members_AssignHelp" xml:space="preserve"><value>Asignar — añade al barrio si todavía no es miembro</value></data>
+  <data name="Camps_Members_AddActiveMember" xml:space="preserve"><value>Añadir miembro activo</value></data>
+  <data name="Camps_Members_SeasonHumans" xml:space="preserve"><value>Humans esta temporada</value></data>
+  <data name="Camps_Members_PendingRequests" xml:space="preserve"><value>Solicitudes pendientes</value></data>
+  <data name="Camps_Members_RejectConfirm" xml:space="preserve"><value>¿Rechazar esta solicitud?</value></data>
+  <data name="Camps_Members_ActiveHumans" xml:space="preserve"><value>Humans activos</value></data>
+  <data name="Camps_Members_EeSlotsHelp" xml:space="preserve"><value>Plazas de entrada temprana concedidas / asignadas a este barrio para {0}</value></data>
+  <data name="Camps_Members_RevokeEarlyEntry" xml:space="preserve"><value>Revocar entrada temprana</value></data>
+  <data name="Camps_Members_GrantEarlyEntry" xml:space="preserve"><value>Conceder entrada temprana</value></data>
+  <data name="Camps_Members_GrantEe" xml:space="preserve"><value>Conceder EE</value></data>
+  <data name="Camps_Members_RemoveHumanConfirm" xml:space="preserve"><value>¿Eliminar a este human?</value></data>
+  <data name="Camps_Members_RecordHelp" xml:space="preserve"><value>Este es un registro para que la aplicación sepa quién está en cada barrio. Aprobar aquí no admite a alguien en tu barrio; eso se hace mediante el proceso propio de tu barrio.</value></data>
+  <data name="Camps_Members_Approve" xml:space="preserve"><value>Aprobar</value></data>
+  <data name="Camps_Members_Reject" xml:space="preserve"><value>Rechazar</value></data>
   <!-- Controller feedback -->
   <data name="Camps_Flash_RegistrationClosed" xml:space="preserve"><value>El registro está cerrado actualmente.</value></data>
   <data name="Camps_Flash_RegistrationPendingReview" xml:space="preserve"><value>Tu campamento se ha registrado y está pendiente de revisión.</value></data>
