@@ -870,7 +870,7 @@ internal sealed class HoldedClient : IHoldedClient
     /// <see cref="Arr"/> rather than the raw indexer, for the reason spelled out on those two.</summary>
     private static HoldedPurchaseDocListItemDto ParsePurchaseDoc(JsonNode? n) => new()
     {
-        Id = Prop(n, "id")?.GetValue<string>() ?? "",
+        Id = ReadRequiredString(Prop(n, "id"), "id"),
         DocNumber = Prop(n, "document_number")?.GetValue<string>() ?? "",
         ContactId = Prop(n, "contact_id")?.GetValue<string>(),
         ContactName = Prop(n, "contact_name")?.GetValue<string>() ?? "",
@@ -880,7 +880,8 @@ internal sealed class HoldedClient : IHoldedClient
         Tax = ReadDecimalV2(Prop(n, "tax")),
         // Total feeds the budget actuals; an absent field must fail the page, not upsert 0.00.
         Total = ReadRequiredDecimalV2(Prop(n, "total"), "total"),
-        PaymentsPending = ReadDecimalV2(Prop(n, "payments_pending")),
+        // Missing pending amounts must not make unpaid documents disappear from payment allocation.
+        PaymentsPending = ReadRequiredDecimalV2(Prop(n, "payments_pending"), "payments_pending"),
         IsDraft = Prop(n, "draft")?.GetValue<bool>(),
         Currency = Prop(n, "currency")?.GetValue<string>() ?? "eur",
         Tags = ReadTags(Prop(n, "tags")),

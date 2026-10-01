@@ -125,7 +125,7 @@ public class HoldedClientReadTests
           {
             "id":"doc-1","document_number":"F001","contact_name":"Alice",
             "date":"2026-05-14",
-            "subtotal":"100.00","tax":"21.00","total":"121.00",
+            "subtotal":"100.00","tax":"21.00","total":"121.00","payments_pending":"21.00",
             "currency":"eur","tags":["adminstaff"],
             "lines":[
               {"price":"100.00","account":"acc-629","tags":["adminstaff"]}
@@ -141,6 +141,7 @@ public class HoldedClientReadTests
         docs.Should().HaveCount(1);
         var doc = docs[0];
         doc.Id.Should().Be("doc-1");
+        doc.PaymentsPending.Should().Be(21.00m);
         doc.Date.Should().Be(
             new LocalDate(2026, 5, 14)
                 .AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"])
@@ -152,6 +153,27 @@ public class HoldedClientReadTests
         line.AccountId.Should().Be("acc-629");
         line.Tags.Should().ContainSingle("adminstaff");
         line.Amount.Should().Be(100.0m);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("id", null, false)]
+    [Xunit.InlineData("id", null, true)]
+    [Xunit.InlineData("id", "", true)]
+    [Xunit.InlineData("id", " ", true)]
+    [Xunit.InlineData("payments_pending", null, false)]
+    [Xunit.InlineData("payments_pending", null, true)]
+    public async Task ListPurchaseDocuments_refuses_incomplete_payment_fields(
+        string field, string? value, bool present)
+    {
+        var doc = JsonNode.Parse("""{"id":"doc-1","date":"2026-05-14","total":"121.00","payments_pending":"121.00","draft":false}""")!.AsObject();
+        if (present) doc[field] = value;
+        else doc.Remove(field);
+        var json = new JsonObject { ["items"] = new JsonArray(doc), ["has_more"] = false };
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json.ToJsonString())));
+
+        var act = async () => await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>().WithMessage($"*'{field}'*");
     }
 
     [HumansFact]
@@ -175,12 +197,13 @@ public class HoldedClientReadTests
     {
         // Holded sends an absent sub-record as an empty array (#994) and is equally free to send an
         // absent collection as something other than an array; AsArray() throws on both.
-        var json = """{"items":[{"id":"doc-1","document_number":"F001","date":"2026-05-14","total":"121.00","lines":{},"tags":""}],"cursor":null,"has_more":false}""";
+        var json = """{"items":[{"id":"doc-1","document_number":"F001","date":"2026-05-14","total":"121.00","payments_pending":"0.00","lines":{},"tags":""}],"cursor":null,"has_more":false}""";
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
 
         var docs = await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
 
         docs.Should().ContainSingle();
+        docs[0].PaymentsPending.Should().Be(0m);
         docs[0].Lines.Should().BeEmpty();
         docs[0].Tags.Should().BeEmpty();
     }
@@ -203,9 +226,9 @@ public class HoldedClientReadTests
     {
         var json = """
         {"items":[
-          {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","description":"ER: Tent pegs"},
-          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","description":null},
-          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00"}
+          {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","payments_pending":"0.00","description":"ER: Tent pegs"},
+          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","payments_pending":"0.00","description":null},
+          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00","payments_pending":"0.00"}
         ],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -223,9 +246,9 @@ public class HoldedClientReadTests
         // field in the one full pull instead of a second sweep.
         var json = """
         {"items":[
-          {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","draft":false},
-          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","draft":true},
-          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00"}
+          {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","payments_pending":"0.00","draft":false},
+          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","payments_pending":"0.00","draft":true},
+          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00","payments_pending":"0.00"}
         ],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
