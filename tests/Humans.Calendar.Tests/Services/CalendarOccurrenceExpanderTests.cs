@@ -198,7 +198,8 @@ public sealed class CalendarOccurrenceExpanderTests
         const string rule = "FREQ=DAILY;UNTIL=20260605T235959";
         var start = Instant.FromUtc(2026, 6, 1, 20, 30); // 22:30 Madrid
         var info = BuildInfo(start: start, end: start.Plus(Duration.FromHours(1)), recurrenceRule: rule)
-            with { RecurrenceTimezone = "Europe/Madrid" };
+            with
+        { RecurrenceTimezone = "Europe/Madrid" };
         var results = CalendarOccurrenceExpander.Expand([info], Instant.FromUtc(2026, 6, 1, 0, 0),
             Instant.FromUtc(2026, 6, 10, 0, 0), new Dictionary<Guid, string>(), NullLogger.Instance);
         results.Should().HaveCount(5);
