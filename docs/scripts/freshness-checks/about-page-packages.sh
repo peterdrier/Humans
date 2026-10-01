@@ -59,7 +59,7 @@ MISSING=""
 MISS_COUNT=0
 FOUND_COUNT=0
 
-# alias_for <package-name>: prints space-separated substrings to try.
+# alias_for <package-name>: prints one substring per line to try.
 # Returns the package name itself plus pragmatic OS-aliased fallbacks for
 # Microsoft.* / Google.Apis.* packages where the About page typically uses
 # a shortened form ("Identity", "Drive API", etc.).
@@ -117,13 +117,13 @@ for PKG in $PROD_PACKAGES; do
     continue
   fi
   FOUND=false
-  for ALIAS in $(alias_for "$PKG"); do
+  while IFS= read -r ALIAS; do
     # Avoid echo receiving SIGPIPE when grep finds an early match on a large page.
     if grep -qF "$ALIAS" <<< "$DOC_LOWER"; then
       FOUND=true
       break
     fi
-  done
+  done < <(alias_for "$PKG")
   if [ "$FOUND" = "true" ]; then
     FOUND_COUNT=$((FOUND_COUNT + 1))
   else

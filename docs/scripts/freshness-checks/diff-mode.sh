@@ -456,6 +456,36 @@ else
   FAIL=$((FAIL+1))
 fi
 
+# Multiword package aliases must match as phrases, not unrelated individual
+# words elsewhere on the About page.
+if python3 - "$SCRIPT_DIR/about-page-packages.sh" <<'PYTEST'
+import pathlib, subprocess, sys, tempfile
+script = pathlib.Path(sys.argv[1]).resolve()
+for package, alias, fragment in (
+    ('Microsoft.EntityFrameworkCore', 'entity framework core', 'core'),
+    ('Microsoft.AspNetCore.Authentication.Google', 'google authentication', 'google'),
+    ('Google.Apis.Drive.v3', 'drive api', 'api'),
+):
+    with tempfile.TemporaryDirectory() as directory:
+        root = pathlib.Path(directory)
+        about = root / 'src/Humans.Web/Views/About/Index.cshtml'
+        about.parent.mkdir(parents=True)
+        (root / 'Directory.Packages.props').write_text(f'<PackageVersion Include="{package}" Version="1"/>')
+        (root / 'src/Humans.Web/Test.csproj').write_text(f'<PackageReference Include="{package}"/>')
+        for text, expected in ((package, 0), (alias, 0), (fragment, 1), ('Unrelated prose', 1)):
+            about.write_text(text)
+            result = subprocess.run(['bash', str(script)], cwd=root, capture_output=True, text=True)
+            assert result.returncode == expected, (package, text, result)
+            assert ('PASS [about-page-packages]' in result.stdout) == (expected == 0), result.stdout
+PYTEST
+then
+  echo "PASS [test 12]: package inventory matches complete aliases and rejects isolated words"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 12]: package alias matching"
+  FAIL=$((FAIL+1))
+fi
+
 echo "═══ Summary ═══"
 echo "Passed: $PASS"
 echo "Failed: $FAIL"
