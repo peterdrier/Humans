@@ -2657,6 +2657,93 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task AdvanceWizardAsync_keeps_valid_choices_and_discards_other_answer_fields()
+    {
+        var survey = SurveyForWizard(out var id, out _);
+        var state = WizardState(survey.Id);
+        var answer = new SurveyAnswerInput(id, ["yes", "yes", "removed"], "irrelevant", 99);
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state, 1, back: false, [answer], ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Navigated);
+        var captured = state.Answers[id.ToString()];
+        captured.SelectedOptionValues.Should().ContainSingle().Which.Should().Be("yes");
+        captured.TextValue.Should().BeNull();
+        captured.RatingValue.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task SubmitResponseAsync_uses_normalized_choices_for_branching_and_ignores_hidden_invalid_answers()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        var gateId = Guid.NewGuid();
+        var ratingId = Guid.NewGuid();
+        var rating = RatingQuestion(ratingId, survey.Id, 2, 1, 5);
+        rating.IsRequired = true;
+        rating.ShowIf = new BranchCondition
+        {
+            Clauses = [new BranchClause { QuestionId = gateId, Operator = BranchOperator.Answered }],
+        };
+        survey.Questions =
+        [
+            ChoiceQuestion(gateId, survey.Id, SurveyQuestionType.SingleChoice, 1, ("yes", "Yes", 1)),
+            rating,
+        ];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        SurveyResponse? saved = null;
+        _repo.When(repo => repo.AddResponseWithAnswersAndSaveAsync(
+                Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+            .Do(call => saved = call.Arg<SurveyResponse>());
+        var submission = new SurveySubmission(
+            survey.Id, null, null, null,
+            ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
+            [Ans(gateId, "removed"), new SurveyAnswerInput(ratingId, [], null, 99)]);
+
+        await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+
+        saved!.Answers.Should().ContainSingle().Which.QuestionId.Should().Be(gateId);
+        saved.Answers.Single().SelectedOptionValues.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("unknown-choice")]
+    [InlineData("text-for-choice")]
+    [InlineData("multiple-single-choice")]
+    [InlineData("rating-too-low")]
+    [InlineData("rating-too-high")]
+    public async Task AdvanceWizardAsync_validates_answer_shape_against_the_question(string violation)
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        var id = Guid.NewGuid();
+        var isRating = violation.StartsWith("rating", StringComparison.Ordinal);
+        var question = isRating
+            ? RatingQuestion(id, survey.Id, 1, 1, 5)
+            : ChoiceQuestion(id, survey.Id, SurveyQuestionType.SingleChoice, 1,
+                ("yes", "Yes", 1), ("no", "No", 2));
+        question.IsRequired = true;
+        survey.Questions = [question];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var answer = violation switch
+        {
+            "unknown-choice" => Ans(id, "forged"),
+            "text-for-choice" => TextAns(id, "not a choice"),
+            "multiple-single-choice" => Ans(id, "yes", "no"),
+            "rating-too-low" => new SurveyAnswerInput(id, [], null, 0),
+            _ => new SurveyAnswerInput(id, [], null, 6),
+        };
+        var state = WizardState(survey.Id);
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state, 1, back: false, [answer], ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+        result.MissingRequired.Concat(result.InvalidAnswers ?? []).Should().Contain(id);
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+            Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task AdvanceWizardAsync_reports_invalid_ranked_answer_and_preserves_it()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
@@ -2682,6 +2769,44 @@ public class SurveyServiceTests
         state.CurrentPage.Should().Be(1);
         state.Answers[questionId.ToString()].RankedValue.Should().BeEquivalentTo(ranked);
         state.Started.Should().BeFalse();
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+            Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdvanceWizardAsync_revalidates_choice_and_rating_schema_at_final_submission(bool rating)
+    {
+        var id = Guid.NewGuid();
+        var initial = SurveyWith(SurveyStatus.Open, null, null);
+        var reloaded = new Survey
+        {
+            Id = initial.Id,
+            Title = initial.Title,
+            DefaultCulture = initial.DefaultCulture,
+            Status = SurveyStatus.Open,
+        };
+        var initialQuestion = rating
+            ? RatingQuestion(id, initial.Id, 1, 1, 5)
+            : ChoiceQuestion(id, initial.Id, SurveyQuestionType.SingleChoice, 1, ("yes", "Yes", 1));
+        var reloadedQuestion = rating
+            ? RatingQuestion(id, initial.Id, 1, 1, 3)
+            : ChoiceQuestion(id, initial.Id, SurveyQuestionType.SingleChoice, 1, ("no", "No", 1));
+        initialQuestion.IsRequired = true;
+        reloadedQuestion.IsRequired = true;
+        initial.Questions = [initialQuestion];
+        reloaded.Questions = [reloadedQuestion];
+        _repo.GetByIdAsync(initial.Id, Arg.Any<CancellationToken>()).Returns(initial, reloaded);
+        var state = WizardState(initial.Id);
+        var answer = rating ? new SurveyAnswerInput(id, [], null, 4) : Ans(id, "yes");
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state, 1, back: false, [answer], ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+        result.MissingRequired.Concat(result.InvalidAnswers ?? []).Should().Contain(id);
+        state.CurrentPage.Should().Be(1);
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }

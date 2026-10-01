@@ -1308,31 +1308,24 @@ internal sealed class SurveyService(
                 continue;
             }
 
-            RankedAnswer? rankedValue = null;
-            if (question.Type == SurveyQuestionType.RankedChoice)
+            try
             {
-                try
-                {
-                    rankedValue = NormalizeRankedAnswer(question, answer.RankedValue);
-                }
-                catch (InvalidOperationException)
-                {
-                    rankedValue = answer.RankedValue;
-                    invalidAnswers.Add(id);
-                }
+                answer = NormalizeAnswer(question, answer);
+            }
+            catch (InvalidOperationException)
+            {
+                invalidAnswers.Add(id);
             }
 
             state.Answers[id.ToString()] = new SurveyWizardAnswer
             {
-                SelectedOptionValues = answer.SelectedOptionValues.Where(v => !string.IsNullOrEmpty(v)).ToList(),
-                GridSelections = NormalizeGridSelections(
-                    question.GridRows,
-                    question.Options,
-                    question.GridSelectionMode,
-                    answer.GridSelections),
-                TextValue = string.IsNullOrWhiteSpace(answer.TextValue) ? null : answer.TextValue,
+                SelectedOptionValues = answer.SelectedOptionValues.ToList(),
+                GridSelections = answer.GridSelections?.ToDictionary(
+                    pair => pair.Key, pair => pair.Value.ToList(), StringComparer.Ordinal)
+                    ?? new Dictionary<string, List<string>>(StringComparer.Ordinal),
+                TextValue = answer.TextValue,
                 RatingValue = answer.RatingValue,
-                RankedValue = rankedValue,
+                RankedValue = answer.RankedValue,
             };
         }
 
@@ -2207,61 +2200,72 @@ internal sealed class SurveyService(
         Survey survey,
         IReadOnlyList<SurveyAnswerInput> answers)
     {
-        var states = answers.ToDictionary(
+        var questions = ToQuestionInputs(survey).ToDictionary(q => q.Id!.Value);
+        var invalidAnswers = new HashSet<Guid>();
+        var normalizedAnswers = answers
+            .Where(a => questions.TryGetValue(a.QuestionId, out var question)
+                && question.Type != SurveyQuestionType.Information)
+            .Select(a =>
+            {
+                try
+                {
+                    return NormalizeAnswer(questions[a.QuestionId], a);
+                }
+                catch (InvalidOperationException)
+                {
+                    invalidAnswers.Add(a.QuestionId);
+                    return a;
+                }
+            })
+            .ToList();
+        // Invalid answers cannot drive branching; an invalid answer that is itself hidden is ignored.
+        var states = normalizedAnswers.ToDictionary(
             a => a.QuestionId,
-            a => new AnswerState(a.SelectedOptionValues, a.TextValue, a.RatingValue, a.GridSelections, a.RankedValue));
-
+            a => invalidAnswers.Contains(a.QuestionId)
+                ? AnswerState.None
+                : new AnswerState(a.SelectedOptionValues, a.TextValue, a.RatingValue, a.GridSelections, a.RankedValue));
         var effective = SurveyBranchingEvaluator.EffectiveAnswerStates(
             survey.Questions
                 .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
                 .Select(q => (q.Id, q.ShowIf)),
             states);
+        var visibleAnswers = normalizedAnswers.Where(a => effective.ContainsKey(a.QuestionId)).ToList();
+        return new VisibleAnswerPreparation(
+            visibleAnswers,
+            visibleAnswers.Where(a => invalidAnswers.Contains(a.QuestionId)).Select(a => a.QuestionId).ToList());
+    }
 
-        var questions = survey.Questions.ToDictionary(q => q.Id);
-        var invalidAnswers = new List<Guid>();
-        var visibleAnswers = answers
-            .Where(a => effective.ContainsKey(a.QuestionId))
-            .Where(a => questions.TryGetValue(a.QuestionId, out var question)
-                && question.Type != SurveyQuestionType.Information)
-            .Select(a =>
-            {
-                var question = questions[a.QuestionId];
-                var normalizedGridSelections = question.Type == SurveyQuestionType.Grid
-                    ? NormalizeGridSelections(
-                        question.GridRows?.Select(row => new GridRowInput(row.Value, row.Label)).ToList(),
-                        question.Options
-                            .OrderBy(option => option.Order)
-                            .Select(option => new OptionInput(option.Id, option.Order, option.Value, option.Label))
-                            .ToList(),
-                        question.GridSelectionMode,
-                        a.GridSelections)
-                    : null;
-                RankedAnswer? normalizedRanked = null;
-                if (question.Type == SurveyQuestionType.RankedChoice)
-                {
-                    try
-                    {
-                        normalizedRanked = NormalizeRankedAnswer(question, a.RankedValue);
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        normalizedRanked = a.RankedValue;
-                        invalidAnswers.Add(a.QuestionId);
-                    }
-                }
-                return a with
-                {
-                    GridSelections = normalizedGridSelections?.Count > 0
-                        ? normalizedGridSelections.ToDictionary(
-                                kv => kv.Key,
-                                kv => (IReadOnlyList<string>)kv.Value,
-                                StringComparer.Ordinal)
-                        : null,
-                    RankedValue = normalizedRanked,
-                };
-            })
-            .ToList();
-        return new VisibleAnswerPreparation(visibleAnswers, invalidAnswers);
+    private static SurveyAnswerInput NormalizeAnswer(QuestionInput question, SurveyAnswerInput answer)
+    {
+        var choices = question.Type is SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice
+            ? answer.SelectedOptionValues
+                .Where(value => question.Options.Any(option => string.Equals(option.Value, value, StringComparison.Ordinal)))
+                .Where(value => !string.IsNullOrEmpty(value))
+                .Distinct(StringComparer.Ordinal)
+                .ToList()
+            : [];
+        if (question.Type == SurveyQuestionType.SingleChoice && choices.Count > 1)
+            throw new InvalidOperationException("A single-choice question permits only one option.");
+
+        var rating = question.Type == SurveyQuestionType.Rating ? answer.RatingValue : null;
+        if (rating is { } value && (value < (question.RatingMin ?? 1) || value > (question.RatingMax ?? 5)))
+            throw new InvalidOperationException("The rating is outside the question's range.");
+
+        var grid = question.Type == SurveyQuestionType.Grid
+            ? NormalizeGridSelections(question.GridRows, question.Options, question.GridSelectionMode, answer.GridSelections)
+            : null;
+        return answer with
+        {
+            SelectedOptionValues = choices,
+            TextValue = question.Type is SurveyQuestionType.ShortText or SurveyQuestionType.LongText
+                && !string.IsNullOrWhiteSpace(answer.TextValue) ? answer.TextValue : null,
+            RatingValue = rating,
+            GridSelections = grid?.Count > 0
+                ? grid.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value, StringComparer.Ordinal)
+                : null,
+            RankedValue = question.Type == SurveyQuestionType.RankedChoice
+                ? NormalizeRankedAnswer(question, answer.RankedValue) : null,
+        };
     }
 
     private sealed record VisibleAnswerPreparation(
@@ -2846,13 +2850,6 @@ internal sealed class SurveyService(
     }
 
     private static RankedAnswer? NormalizeRankedAnswer(QuestionInput question, RankedAnswer? answer)
-    {
-        if (answer is null) return null;
-        var authored = question.Options.OrderBy(option => option.Order).Select(option => option.Value).ToList();
-        return NormalizeRankedAnswer(authored, question.RankedSettings, answer);
-    }
-
-    private static RankedAnswer? NormalizeRankedAnswer(SurveyQuestion question, RankedAnswer? answer)
     {
         if (answer is null) return null;
         var authored = question.Options.OrderBy(option => option.Order).Select(option => option.Value).ToList();
