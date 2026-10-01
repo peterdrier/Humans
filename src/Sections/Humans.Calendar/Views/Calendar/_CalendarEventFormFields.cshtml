@@ -67,23 +67,207 @@
 
 <hr />
 
-<div class="form-check mb-3">
-    <input asp-for="IsRecurring" class="form-check-input" />
-    <label asp-for="IsRecurring" class="form-check-label">@Localizer["Calendar_RecurringEvent"]</label>
+@{
+    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    // Monday-first; weekday names come from culture data, not resources.
+    var weekdays = new[] { ("MO", DayOfWeek.Monday), ("TU", DayOfWeek.Tuesday), ("WE", DayOfWeek.Wednesday),
+        ("TH", DayOfWeek.Thursday), ("FR", DayOfWeek.Friday), ("SA", DayOfWeek.Saturday), ("SU", DayOfWeek.Sunday) };
+    var fullDayNames = string.Join("|", Enumerable.Range(0, 7).Select(i => culture.DateTimeFormat.GetDayName((DayOfWeek)i)));
+}
+
+@* IsRecurring is driven by the picker: true for every choice except "Does not repeat". *@
+@Html.HiddenFor(m => m.IsRecurring)
+
+<div id="calendar-recurrence" class="mb-3"
+     data-day-names="@fullDayNames"
+     data-month-day="@Localizer["Calendar_RepeatMonthlyDay"].Value"
+     data-nth1="@Localizer["Calendar_RepeatMonthlyNth1"].Value"
+     data-nth2="@Localizer["Calendar_RepeatMonthlyNth2"].Value"
+     data-nth3="@Localizer["Calendar_RepeatMonthlyNth3"].Value"
+     data-nth4="@Localizer["Calendar_RepeatMonthlyNth4"].Value"
+     data-nth-last="@Localizer["Calendar_RepeatMonthlyNthLast"].Value">
+    <div class="mb-3">
+        <label for="rec-freq" class="form-label">@Localizer["Calendar_Repeats"]</label>
+        <select id="rec-freq" class="form-select">
+            <option value="NONE" selected>@Localizer["Calendar_RepeatNone"]</option>
+            <option value="DAILY">@Localizer["Calendar_RepeatDaily"]</option>
+            <option value="WEEKLY">@Localizer["Calendar_RepeatWeekly"]</option>
+            <option value="MONTHLY">@Localizer["Calendar_RepeatMonthly"]</option>
+            <option value="YEARLY">@Localizer["Calendar_RepeatYearly"]</option>
+            <option value="CUSTOM">@Localizer["Calendar_RepeatCustom"]</option>
+        </select>
+    </div>
+
+    <div class="d-none" data-rec="picker">
+        <div class="row g-2 align-items-center mb-3">
+            <div class="col-auto"><label for="rec-interval" class="col-form-label">@Localizer["Calendar_RepeatEvery"]</label></div>
+            <div class="col-auto"><input id="rec-interval" type="number" min="1" max="999" value="1" class="form-control" style="width:5rem" /></div>
+            <div class="col-auto">
+                <span data-unit="DAILY">@Localizer["Calendar_RepeatUnitDay"]</span>
+                <span data-unit="WEEKLY">@Localizer["Calendar_RepeatUnitWeek"]</span>
+                <span data-unit="MONTHLY">@Localizer["Calendar_RepeatUnitMonth"]</span>
+                <span data-unit="YEARLY">@Localizer["Calendar_RepeatUnitYear"]</span>
+            </div>
+        </div>
+
+        <fieldset class="mb-3" data-rec="weekly">
+            <legend class="form-label fs-6">@Localizer["Calendar_RepeatOn"]</legend>
+            @foreach (var (code, day) in weekdays)
+            {
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="rec-wd-@code" value="@code" data-weekday />
+                    <label class="form-check-label" for="rec-wd-@code">@culture.DateTimeFormat.GetAbbreviatedDayName(day)</label>
+                </div>
+            }
+        </fieldset>
+
+        <fieldset class="mb-3" data-rec="monthly">
+            <legend class="form-label fs-6">@Localizer["Calendar_RepeatMonthlyLegend"]</legend>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="rec-month" id="rec-month-day" checked />
+                <label class="form-check-label" for="rec-month-day" id="rec-month-day-label"></label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="rec-month" id="rec-month-nth" />
+                <label class="form-check-label" for="rec-month-nth" id="rec-month-nth-label"></label>
+            </div>
+        </fieldset>
+
+        <fieldset class="mb-3">
+            <legend class="form-label fs-6">@Localizer["Calendar_RepeatEnds"]</legend>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="rec-ends" id="rec-ends-never" checked />
+                <label class="form-check-label" for="rec-ends-never">@Localizer["Calendar_RepeatEndsNever"]</label>
+            </div>
+            <div class="form-check d-flex align-items-center gap-2">
+                <input class="form-check-input" type="radio" name="rec-ends" id="rec-ends-on" />
+                <label class="form-check-label" for="rec-ends-on">@Localizer["Calendar_RepeatEndsOn"]</label>
+                <input type="date" id="rec-until" class="form-control form-control-sm w-auto" aria-label="@Localizer["Calendar_RepeatEndsOn"]" />
+            </div>
+            <div class="form-check d-flex align-items-center gap-2">
+                <input class="form-check-input" type="radio" name="rec-ends" id="rec-ends-after" />
+                <label class="form-check-label" for="rec-ends-after">@Localizer["Calendar_RepeatEndsAfter"]</label>
+                <input type="number" id="rec-count" min="1" max="999" value="10" class="form-control form-control-sm" style="width:5rem" aria-label="@Localizer["Calendar_RepeatEndsAfter"]" />
+                <span>@Localizer["Calendar_RepeatOccurrences"]</span>
+            </div>
+        </fieldset>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 mb-3 d-none" data-rec="custom">
+            <label asp-for="RecurrenceRule" class="form-label">@Localizer["Calendar_RRule"]</label>
+            <input asp-for="RecurrenceRule" class="form-control" placeholder="FREQ=WEEKLY;BYDAY=TU" />
+            <small class="text-muted">@Localizer["Calendar_RRuleHelpPrefix"] <code>FREQ=WEEKLY;BYDAY=TU;COUNT=10</code></small>
+        </div>
+        <div class="col-md-4 mb-3 d-none" data-timezone>
+            <label asp-for="RecurrenceTimezone" class="form-label">@Localizer["Calendar_RecurrenceTimezoneLabel"]</label>
+            <input asp-for="RecurrenceTimezone" class="form-control" />
+            <small class="text-muted">@Localizer["Calendar_RecurrenceTimezoneHelpPrefix"] <code>Europe/Madrid</code></small>
+        </div>
+    </div>
 </div>
 
-<div class="row">
-    <div class="col-md-8 mb-3">
-        <label asp-for="RecurrenceRule" class="form-label">@Localizer["Calendar_RRule"]</label>
-        <input asp-for="RecurrenceRule" class="form-control" placeholder="FREQ=WEEKLY;BYDAY=TU" />
-        <small class="text-muted">@Localizer["Calendar_RRuleHelpPrefix"] <code>FREQ=WEEKLY;BYDAY=TU;COUNT=10</code></small>
-    </div>
-    <div class="col-md-4 mb-3 @(Model.IsAllDay ? "d-none" : null)" data-timezone>
-        <label asp-for="RecurrenceTimezone" class="form-label">@Localizer["Calendar_RecurrenceTimezoneLabel"]</label>
-        <input asp-for="RecurrenceTimezone" class="form-control" />
-        <small class="text-muted">@Localizer["Calendar_RecurrenceTimezoneHelpPrefix"] <code>Europe/Madrid</code></small>
-    </div>
-</div>
+<script nonce="@Context.Items["CspNonce"]">
+    (function () {
+        var root = document.getElementById('calendar-recurrence');
+        if (!root) return;
+        var form = root.closest('form');
+        var $ = function (id) { return document.getElementById(id); };
+        var q = function (sel) { return root.querySelector(sel); };
+        var CODES = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+        var freq = $('rec-freq'), interval = $('rec-interval'), until = $('rec-until'), count = $('rec-count');
+        var isRecurring = form.querySelector('input[type=hidden][name=IsRecurring]');
+        var rule = $('RecurrenceRule'), allDay = $('calendar-event-isallday');
+        var weekdayBoxes = [].slice.call(root.querySelectorAll('[data-weekday]'));
+        var monthNth = $('rec-month-nth'), endsOn = $('rec-ends-on'), endsAfter = $('rec-ends-after');
+        var dayNames = root.dataset.dayNames.split('|');
+        var weekdaysTouched = false;
+
+        // Event start as {day, dow}; falls back to today while the form is still empty.
+        function start() {
+            var el = allDay.checked ? $('StartDateLocal') : $('StartLocal');
+            var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(el && el.value);
+            var d = m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : new Date();
+            if (!m) d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            return { day: d.getUTCDate(), dow: d.getUTCDay() };
+        }
+        // 1-4 = nth weekday of the month; the 5th is expressed as the last (-1).
+        function nth(s) { var n = Math.ceil(s.day / 7); return n > 4 ? -1 : n; }
+
+        function compose() {
+            var f = freq.value, s = start(), p = ['FREQ=' + f];
+            var n = parseInt(interval.value, 10);
+            if (n > 1) p.push('INTERVAL=' + n);
+            if (f === 'WEEKLY') {
+                var days = weekdayBoxes.filter(function (b) { return b.checked; }).map(function (b) { return b.value; });
+                p.push('BYDAY=' + (days.length ? days.join(',') : CODES[s.dow]));
+            } else if (f === 'MONTHLY') {
+                p.push(monthNth.checked ? 'BYDAY=' + nth(s) + CODES[s.dow] : 'BYMONTHDAY=' + s.day);
+            }
+            if (endsOn.checked && until.value) {
+                // All-day needs a date-only UNTIL; timed needs end-of-day so the last day's occurrence is kept.
+                p.push('UNTIL=' + until.value.replace(/-/g, '') + (allDay.checked ? '' : 'T235959'));
+            } else if (endsAfter.checked && parseInt(count.value, 10) > 0) {
+                p.push('COUNT=' + parseInt(count.value, 10));
+            }
+            return p.join(';');
+        }
+
+        // Fill the controls from an existing rule. Anything the picker cannot reproduce exactly
+        // (compared as an unordered set of parts) is left to Custom so nothing is rewritten.
+        function load(text) {
+            var kv = {};
+            var ok = text.split(';').every(function (part) {
+                var i = part.indexOf('=');
+                if (i < 1 || part.slice(0, i) in kv) return false;
+                kv[part.slice(0, i)] = part.slice(i + 1);
+                return true;
+            });
+            if (!ok || ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'].indexOf(kv.FREQ) < 0) return false;
+            freq.value = kv.FREQ;
+            interval.value = kv.INTERVAL || 1;
+            weekdayBoxes.forEach(function (b) { b.checked = (kv.BYDAY || '').split(',').indexOf(b.value) >= 0; });
+            weekdaysTouched = true;
+            monthNth.checked = !!kv.BYDAY && kv.FREQ === 'MONTHLY';
+            $('rec-month-day').checked = !monthNth.checked;
+            var m = /^(\d{4})(\d{2})(\d{2})(T235959)?$/.exec(kv.UNTIL || '');
+            if (m) { until.value = m[1] + '-' + m[2] + '-' + m[3]; endsOn.checked = true; }
+            else if (kv.COUNT) { count.value = kv.COUNT; endsAfter.checked = true; }
+            else $('rec-ends-never').checked = true;
+            var canon = function (t) { return t.split(';').sort().join(';'); };
+            return canon(compose()) === canon(text);
+        }
+
+        function refresh() {
+            var f = freq.value, s = start(), picker = f !== 'NONE' && f !== 'CUSTOM';
+            if (!weekdaysTouched) weekdayBoxes.forEach(function (b) { b.checked = b.value === CODES[s.dow]; });
+            $('rec-month-day-label').textContent = root.dataset.monthDay.replace('{0}', s.day);
+            var n = nth(s);
+            $('rec-month-nth-label').textContent = root.dataset[n < 0 ? 'nthLast' : 'nth' + n].replace('{0}', dayNames[s.dow]);
+            q('[data-rec=picker]').classList.toggle('d-none', !picker);
+            q('[data-rec=weekly]').classList.toggle('d-none', f !== 'WEEKLY');
+            q('[data-rec=monthly]').classList.toggle('d-none', f !== 'MONTHLY');
+            q('[data-rec=custom]').classList.toggle('d-none', f !== 'CUSTOM');
+            root.querySelectorAll('[data-unit]').forEach(function (u) { u.classList.toggle('d-none', u.dataset.unit !== f); });
+            q('[data-timezone]').classList.toggle('d-none', f === 'NONE' || allDay.checked);
+            until.required = picker && endsOn.checked;
+            count.required = picker && endsAfter.checked;
+            isRecurring.value = f === 'NONE' ? 'false' : 'true';
+            if (f === 'NONE') rule.value = '';
+            else if (picker) rule.value = compose();
+        }
+
+        // Existing values: the rule text wins; a posted-back "recurring" flag with no rule shows Custom.
+        var existing = rule.value.trim();
+        if (existing) { if (!load(existing)) freq.value = 'CUSTOM'; }
+        else freq.value = isRecurring.value.toLowerCase() === 'true' ? 'CUSTOM' : 'NONE';
+
+        weekdayBoxes.forEach(function (b) { b.addEventListener('change', function () { weekdaysTouched = true; }); });
+        form.addEventListener('input', function (e) { if (root.contains(e.target) || e.target.id === 'StartLocal' || e.target.id === 'StartDateLocal') refresh(); });
+        form.addEventListener('change', function (e) { if (root.contains(e.target) || e.target === allDay) refresh(); });
+        refresh();
+    })();
+</script>
 
 <script nonce="@Context.Items["CspNonce"]">
     (function () {
@@ -96,7 +280,6 @@
         if (!timed || !allDay) return;
         function update() {
             timed.classList.toggle('d-none', checkbox.checked);
-            form.querySelector('[data-timezone]').classList.toggle('d-none', checkbox.checked);
             allDay.classList.toggle('d-none', !checkbox.checked);
         }
         checkbox.addEventListener('change', update);

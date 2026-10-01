@@ -76,7 +76,7 @@ is a separate call on the same interface and is unaffected.
 
 **Acceptance Criteria:**
 - Form with: title, description (optional), team (pre-selected if viewing team), date/time, timezone
-- Support single event or recurring (select recurrence frequency, interval, until date)
+- Support single event or recurring via a friendly picker (repeats daily/weekly/monthly/yearly, every N, weekdays, monthly day or nth weekday, ends never/on date/after N); "Custom" exposes the raw RRULE for anything else, and existing rules the picker cannot represent open as Custom
 - Save creates the event and redirects to event details
 - Required fields: title, team, start date/time
 

@@ -108,9 +108,33 @@
   <data name="Calendar_RecurrenceTimezoneHelpPrefix" xml:space="preserve"><value>TZ IANA, p. ex.</value></data>
   <data name="Calendar_RecurrenceTimezoneLabel" xml:space="preserve"><value>Zona horària de la recurrència</value></data>
   <data name="Calendar_RecurrenceTimezoneNote" xml:space="preserve"><value>Zona horària: {0}</value></data>
-  <data name="Calendar_RecurringEvent" xml:space="preserve"><value>Esdeveniment recurrent</value></data>
   <data name="Calendar_RRule" xml:space="preserve"><value>RRULE</value></data>
   <data name="Calendar_RRuleHelpPrefix" xml:space="preserve"><value>RRULE de l'RFC 5545. Deixa-ho en blanc per a un esdeveniment únic. Exemple:</value></data>
+  <data name="Calendar_Repeats" xml:space="preserve"><value>Es repeteix</value></data>
+  <data name="Calendar_RepeatNone" xml:space="preserve"><value>No es repeteix</value></data>
+  <data name="Calendar_RepeatDaily" xml:space="preserve"><value>Cada dia</value></data>
+  <data name="Calendar_RepeatWeekly" xml:space="preserve"><value>Cada setmana</value></data>
+  <data name="Calendar_RepeatMonthly" xml:space="preserve"><value>Cada mes</value></data>
+  <data name="Calendar_RepeatYearly" xml:space="preserve"><value>Cada any</value></data>
+  <data name="Calendar_RepeatCustom" xml:space="preserve"><value>Personalitzat (RRULE)</value></data>
+  <data name="Calendar_RepeatEvery" xml:space="preserve"><value>Repeteix cada</value></data>
+  <data name="Calendar_RepeatUnitDay" xml:space="preserve"><value>dia/dies</value></data>
+  <data name="Calendar_RepeatUnitWeek" xml:space="preserve"><value>setmana/es</value></data>
+  <data name="Calendar_RepeatUnitMonth" xml:space="preserve"><value>mes/os</value></data>
+  <data name="Calendar_RepeatUnitYear" xml:space="preserve"><value>any/s</value></data>
+  <data name="Calendar_RepeatOn" xml:space="preserve"><value>Repeteix el</value></data>
+  <data name="Calendar_RepeatMonthlyLegend" xml:space="preserve"><value>Mensualment</value></data>
+  <data name="Calendar_RepeatMonthlyDay" xml:space="preserve"><value>El dia {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth1" xml:space="preserve"><value>El primer {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth2" xml:space="preserve"><value>El segon {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth3" xml:space="preserve"><value>El tercer {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth4" xml:space="preserve"><value>El quart {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNthLast" xml:space="preserve"><value>L'últim {0}</value></data>
+  <data name="Calendar_RepeatEnds" xml:space="preserve"><value>Acaba</value></data>
+  <data name="Calendar_RepeatEndsNever" xml:space="preserve"><value>Mai</value></data>
+  <data name="Calendar_RepeatEndsOn" xml:space="preserve"><value>El</value></data>
+  <data name="Calendar_RepeatEndsAfter" xml:space="preserve"><value>Després de</value></data>
+  <data name="Calendar_RepeatOccurrences" xml:space="preserve"><value>repeticions</value></data>
   <data name="Calendar_SaveOverride" xml:space="preserve"><value>Desa la substitució</value></data>
   <data name="Calendar_Start" xml:space="preserve"><value>Inici</value></data>
   <data name="Calendar_StartDate" xml:space="preserve"><value>Data d'inici</value></data>

@@ -190,6 +190,20 @@ public sealed class CalendarOccurrenceExpanderTests
         occurrence.EndDateExclusive.Should().Be(new LocalDate(2026, 3, 31));
     }
 
+    // The event form's recurrence picker emits this floating end-of-day UNTIL for timed events;
+    // a date-only UNTIL would drop the last day's evening occurrence.
+    [HumansFact]
+    public void Expand_TimedFloatingEndOfDayUntil_IncludesLastDay()
+    {
+        const string rule = "FREQ=DAILY;UNTIL=20260605T235959";
+        var start = Instant.FromUtc(2026, 6, 1, 20, 30); // 22:30 Madrid
+        var info = BuildInfo(start: start, end: start.Plus(Duration.FromHours(1)), recurrenceRule: rule)
+            with { RecurrenceTimezone = "Europe/Madrid" };
+        var results = CalendarOccurrenceExpander.Expand([info], Instant.FromUtc(2026, 6, 1, 0, 0),
+            Instant.FromUtc(2026, 6, 10, 0, 0), new Dictionary<Guid, string>(), NullLogger.Instance);
+        results.Should().HaveCount(5);
+    }
+
     [HumansFact]
     public void Expand_DateOverrideMovedBeforeSeries_SurvivesPrefilterAndPreservesDuration()
     {

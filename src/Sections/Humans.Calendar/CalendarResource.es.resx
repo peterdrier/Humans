@@ -108,9 +108,33 @@
   <data name="Calendar_RecurrenceTimezoneHelpPrefix" xml:space="preserve"><value>TZ de IANA, p. ej.</value></data>
   <data name="Calendar_RecurrenceTimezoneLabel" xml:space="preserve"><value>Zona horaria de la repetición</value></data>
   <data name="Calendar_RecurrenceTimezoneNote" xml:space="preserve"><value>Zona horaria: {0}</value></data>
-  <data name="Calendar_RecurringEvent" xml:space="preserve"><value>Evento recurrente</value></data>
   <data name="Calendar_RRule" xml:space="preserve"><value>RRULE</value></data>
   <data name="Calendar_RRuleHelpPrefix" xml:space="preserve"><value>RRULE de RFC 5545. Déjalo en blanco para un evento único. Ejemplo:</value></data>
+  <data name="Calendar_Repeats" xml:space="preserve"><value>Se repite</value></data>
+  <data name="Calendar_RepeatNone" xml:space="preserve"><value>No se repite</value></data>
+  <data name="Calendar_RepeatDaily" xml:space="preserve"><value>Cada día</value></data>
+  <data name="Calendar_RepeatWeekly" xml:space="preserve"><value>Cada semana</value></data>
+  <data name="Calendar_RepeatMonthly" xml:space="preserve"><value>Cada mes</value></data>
+  <data name="Calendar_RepeatYearly" xml:space="preserve"><value>Cada año</value></data>
+  <data name="Calendar_RepeatCustom" xml:space="preserve"><value>Personalizado (RRULE)</value></data>
+  <data name="Calendar_RepeatEvery" xml:space="preserve"><value>Repetir cada</value></data>
+  <data name="Calendar_RepeatUnitDay" xml:space="preserve"><value>día(s)</value></data>
+  <data name="Calendar_RepeatUnitWeek" xml:space="preserve"><value>semana(s)</value></data>
+  <data name="Calendar_RepeatUnitMonth" xml:space="preserve"><value>mes(es)</value></data>
+  <data name="Calendar_RepeatUnitYear" xml:space="preserve"><value>año(s)</value></data>
+  <data name="Calendar_RepeatOn" xml:space="preserve"><value>Repetir los</value></data>
+  <data name="Calendar_RepeatMonthlyLegend" xml:space="preserve"><value>Mensualmente</value></data>
+  <data name="Calendar_RepeatMonthlyDay" xml:space="preserve"><value>El día {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth1" xml:space="preserve"><value>El primer {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth2" xml:space="preserve"><value>El segundo {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth3" xml:space="preserve"><value>El tercer {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth4" xml:space="preserve"><value>El cuarto {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNthLast" xml:space="preserve"><value>El último {0}</value></data>
+  <data name="Calendar_RepeatEnds" xml:space="preserve"><value>Termina</value></data>
+  <data name="Calendar_RepeatEndsNever" xml:space="preserve"><value>Nunca</value></data>
+  <data name="Calendar_RepeatEndsOn" xml:space="preserve"><value>El</value></data>
+  <data name="Calendar_RepeatEndsAfter" xml:space="preserve"><value>Después de</value></data>
+  <data name="Calendar_RepeatOccurrences" xml:space="preserve"><value>repeticiones</value></data>
   <data name="Calendar_SaveOverride" xml:space="preserve"><value>Guardar sobrescritura</value></data>
   <data name="Calendar_Start" xml:space="preserve"><value>Inicio</value></data>
   <data name="Calendar_StartDate" xml:space="preserve"><value>Fecha de inicio</value></data>
