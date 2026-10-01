@@ -141,8 +141,23 @@ public class ServiceIssueInvoiceTests
         };
     }
 
-    private void Arrange(Order order, Product product)
+    /// <summary>Arranges the repository for <paramref name="order"/>. Issuance needs a zero balance, so by
+    /// default the order is settled in full against the live catalog price; pass
+    /// <paramref name="settled"/> false to leave it with whatever payments it already carries.</summary>
+    private void Arrange(Order order, Product product, bool settled = true)
     {
+        if (settled)
+        {
+            var due = BalanceCalculator.Compute(order, new Dictionary<Guid, BalanceCalculator.ProductPrice>
+            {
+                [product.Id] = new(product.UnitPriceEur, product.VatRatePercent, product.DepositAmountEur),
+            }).BalanceEur;
+            order.Payments.Add(new Payment
+            {
+                Id = Guid.NewGuid(), OrderId = order.Id, AmountEur = due,
+                Method = PaymentMethod.BankTransfer, Status = PaymentStatus.Paid,
+            });
+        }
         _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
         _repo.GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<Product> { product });
@@ -265,6 +280,48 @@ public class ServiceIssueInvoiceTests
             .WithMessage("*deposit liability account*");
         await _holded.DidNotReceive().CreateSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(-10, true)]   // camp still owes €10
+    [InlineData(10, false)]   // org owes the camp €10 (e.g. a deposit return not yet refunded)
+    [InlineData(10, true)]
+    public async Task Invoice_is_refused_unless_the_balance_is_exactly_zero(int offsetEur, bool identified)
+    {
+        var order = CampOrder(identified: identified);
+        var product = IceProduct();
+        Arrange(order, product);
+        order.Payments.Single().AmountEur += offsetEur;
+
+        var act = () => _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*balance is zero*");
+        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+            Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().SaveIssuedInvoiceAsync(
+            Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Invoice_is_refused_when_unpaid_even_with_full_counterparty_details()
+    {
+        var order = CampOrder(identified: true);
+        Arrange(order, IceProduct(), settled: false);
+
+        var act = () => _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*balance is zero*");
+    }
+
+    [HumansFact]
+    public async Task Zero_balance_alone_is_not_enough_when_the_counterparty_details_are_missing_over_the_threshold()
+    {
+        var order = CampOrder(qty: 200, identified: false);
+        Arrange(order, IceProduct());
+
+        var act = () => _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*full factura*");
     }
 
     [HumansFact]

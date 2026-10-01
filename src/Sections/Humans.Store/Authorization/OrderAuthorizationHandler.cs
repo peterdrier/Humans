@@ -23,7 +23,8 @@ namespace Humans.Store.Authorization;
 ///   order is how that gets tracked. Additive — a TeamsAdmin who is also a camp lead still
 ///   gets camp-edit rights through the lead path below.
 /// - IssueInvoice and RecordPayment are Store-admin-only on every order, and are additionally
-///   denied on team orders even for admins (team orders are non-billable). Delete is Store-admin-only on
+///   denied on team orders even for admins (team orders are non-billable). Refund is narrower
+///   still: Admin and FinanceAdmin only — a StoreAdmin is denied. Delete is Store-admin-only on
 ///   camp orders; on team orders TeamsAdmin gets it too, per the line above.
 /// - Camp lead/co-lead of the camp owning the resource's CampSeason: allow camp orders.
 /// - Coordinator (department-level management role holder) of the resource's Team:
@@ -59,6 +60,8 @@ internal sealed class OrderAuthorizationHandler(
             {
                 // Even admins can't Pay/EditCounterparty a team order — it has no billing.
                 if (resource.IsTeamOrder && IsTeamBillingBlocked(req))
+                    continue;
+                if (req == OrderOperationRequirement.Refund && !RoleChecks.IsFinanceAdmin(context.User))
                     continue;
                 context.Succeed(req);
             }
@@ -172,7 +175,8 @@ internal sealed class OrderAuthorizationHandler(
         => requirement == OrderOperationRequirement.EditCounterparty
             || requirement == OrderOperationRequirement.Pay
             || requirement == OrderOperationRequirement.IssueInvoice
-            || requirement == OrderOperationRequirement.RecordPayment;
+            || requirement == OrderOperationRequirement.RecordPayment
+            || requirement == OrderOperationRequirement.Refund;
 
     /// <summary>Operations no camp lead or coordinator ever gets. Consulted from the
     /// lead/coordinator block only — the TeamsAdmin block above does not apply it, so a
@@ -180,7 +184,8 @@ internal sealed class OrderAuthorizationHandler(
     private static bool IsStoreAdminOnly(OrderOperationRequirement requirement)
         => requirement == OrderOperationRequirement.Delete
             || requirement == OrderOperationRequirement.IssueInvoice
-            || requirement == OrderOperationRequirement.RecordPayment;
+            || requirement == OrderOperationRequirement.RecordPayment
+            || requirement == OrderOperationRequirement.Refund;
 
     private static bool IsLineEdit(OrderOperationRequirement requirement)
         => requirement == OrderOperationRequirement.AddLine

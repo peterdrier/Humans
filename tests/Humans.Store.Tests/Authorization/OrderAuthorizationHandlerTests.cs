@@ -129,6 +129,30 @@ public class OrderAuthorizationHandlerTests
     public Task Store_admins_can_record_payment_on_camp_order(string role) =>
         AssertOutcome(role, MakeOrder(team: false), OrderOperationRequirement.RecordPayment, expectAllowed: true);
 
+    [HumansTheory]
+    [InlineData(RoleNames.Admin)]
+    [InlineData(RoleNames.FinanceAdmin)]
+    public Task Finance_admin_and_admin_can_refund_on_camp_order(string role) =>
+        AssertOutcome(role, MakeOrder(team: false), OrderOperationRequirement.Refund, expectAllowed: true);
+
+    [HumansFact]
+    public Task StoreAdmin_cannot_refund_on_camp_order() =>
+        AssertOutcome(RoleNames.StoreAdmin, MakeOrder(team: false), OrderOperationRequirement.Refund, expectAllowed: false);
+
+    [HumansFact]
+    public Task TeamsAdmin_cannot_refund_on_camp_order() =>
+        AssertOutcome(RoleNames.TeamsAdmin, MakeOrder(team: false), OrderOperationRequirement.Refund, expectAllowed: false);
+
+    [HumansFact]
+    public Task CampLead_cannot_refund_own_camp_order() =>
+        AssertLeadOperation(OrderOperationRequirement.Refund, expectAllowed: false);
+
+    [HumansTheory]
+    [InlineData(RoleNames.Admin)]
+    [InlineData(RoleNames.FinanceAdmin)]
+    public Task Refund_is_denied_on_team_order_even_for_finance_admin_and_admin(string role) =>
+        AssertOutcome(role, MakeOrder(team: true), OrderOperationRequirement.Refund, expectAllowed: false);
+
     [HumansFact]
     public Task CampLead_cannot_record_payment_on_own_camp_order() =>
         AssertLeadOperation(OrderOperationRequirement.RecordPayment, expectAllowed: false);

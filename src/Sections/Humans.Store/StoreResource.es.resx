@@ -103,4 +103,7 @@
   <data name="Store_TotalClearedPayments" xml:space="preserve"><value>Total de pagos liquidados</value></data><data name="Store_TotalPayments" xml:space="preserve"><value>Total de pagos</value></data><data name="Store_UnitPriceBreakdown" xml:space="preserve"><value>({0} + {1}% IVA)</value></data><data name="Store_Vat" xml:space="preserve"><value>IVA</value></data>
   <data name="Store_ColVatId" xml:space="preserve"><value>IVA / NIF / CIF</value></data>
   <data name="Store_Utc" xml:space="preserve"><value>UTC</value></data>
+  <data name="Store_DepositsReturned" xml:space="preserve"><value>Fianzas devueltas</value></data>
+  <data name="Store_RefundAmount" xml:space="preserve"><value>Importe a reembolsar</value></data>
+  <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>Solo se puede emitir la factura cuando el saldo del pedido es cero.</value></data>
 </root>

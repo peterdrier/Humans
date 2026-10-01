@@ -1,4 +1,7 @@
+@using Humans.Store.Authorization
+@using Microsoft.AspNetCore.Authorization
 @model Humans.Store.Models.OrderViewModel
+@inject IAuthorizationService AuthService
 @{
     ViewData["Title"] = Localizer["Store_OrderTitle", Model.CounterpartyDisplayName].Value;
     var order = Model.Order;
@@ -6,6 +9,8 @@
     var pendingTotal = order.Payments
         .Where(p => p.Status == PaymentStatus.Pending)
         .Sum(p => p.AmountEur);
+    var canRefund = Model.CanRecordPayment
+        && (await AuthService.AuthorizeAsync(User, order, OrderOperationRequirement.Refund)).Succeeded;
 }
 
 <nav aria-label="breadcrumb" class="mb-3">
@@ -21,7 +26,7 @@
     <div class="d-flex align-items-center gap-2">
         <span class="badge bg-info text-dark fs-6">@Localizer.EnumDisplay(order.CounterpartyType)</span>
         <span class="badge bg-secondary fs-6">@Localizer.EnumDisplay(order.State)</span>
-        @if (Model.CanIssueInvoice)
+        @if (Model.CanIssueInvoice && order.BalanceEur == 0)
         {
             <form asp-action="IssueInvoice" asp-route-id="@order.Id" method="post" class="mb-0">
                 @Html.AntiForgeryToken()
@@ -30,6 +35,13 @@
                     <i class="fa-solid fa-file-invoice me-1"></i> @Localizer["Store_IssueInvoice"]
                 </button>
             </form>
+        }
+        else if (Model.CanIssueInvoice)
+        {
+            <button type="button" class="btn btn-sm btn-outline-primary" disabled>
+                <i class="fa-solid fa-file-invoice me-1"></i> @Localizer["Store_IssueInvoice"]
+            </button>
+            <small class="text-muted">@Localizer["Store_IssueInvoiceNeedsZeroBalance"]</small>
         }
         @if (Model.CanDelete)
         {
@@ -75,6 +87,14 @@
         <div class="col-6 col-md">
             <div class="card text-center h-100">
                 <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">@Localizer["Store_DepositsReturned"]</h6>
+                    <h4 class="card-title mb-0">@Model.DepositsReturnedEur.ToEuro()</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md">
+            <div class="card text-center h-100">
+                <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">@Localizer["Store_TotalPayments"]</h6>
                     <h4 class="card-title mb-0 text-success">@order.PaymentsTotalEur.ToEuro()</h4>
                 </div>
@@ -83,8 +103,8 @@
         <div class="col-6 col-md">
             <div class="card text-center bg-light h-100">
                 <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">@Localizer["Store_BalanceOwed"]</h6>
-                    <h4 class="card-title mb-0 fw-bold">@order.BalanceEur.ToEuro()</h4>
+                    <h6 class="card-subtitle mb-2 text-muted">@Localizer[Model.IsRefundDue ? "Store_RefundAmount" : "Store_BalanceOwed"]</h6>
+                    <h4 class="card-title mb-0 fw-bold">@Model.BalanceBoxAmountEur.ToEuro()</h4>
                 </div>
             </div>
         </div>
@@ -303,7 +323,10 @@ else
                 <label class="form-label">@Localizer["Store_RecordPaymentType"]</label>
                 <select name="method" class="form-select" required>
                     <option value="@PaymentMethod.DepositReturn">@Localizer["Store_Method_DepositReturn"]</option>
-                    <option value="@PaymentMethod.Refund">@Localizer["Store_Method_Refund"]</option>
+                    @if (canRefund)
+                    {
+                        <option value="@PaymentMethod.Refund">@Localizer["Store_Method_Refund"]</option>
+                    }
                 </select>
             </div>
             <div class="col-md-2">

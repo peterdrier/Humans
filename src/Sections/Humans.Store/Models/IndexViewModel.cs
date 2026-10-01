@@ -1,3 +1,4 @@
+using Humans.Store.Domain;
 using Humans.Store.Services.Dtos;
 
 namespace Humans.Store.Models;
@@ -37,6 +38,17 @@ internal sealed class OrderViewModel
     /// <summary>True when the current user is a Store admin on a camp order. Surfaces the
     /// deposit-return / refund form.</summary>
     public bool CanRecordPayment { get; init; }
+
+    /// <summary>Paid deposit returns credited to the order (the "Deposits returned" box).</summary>
+    public decimal DepositsReturnedEur => Order.Payments
+        .Where(p => p.Method == PaymentMethod.DepositReturn && p.Status == PaymentStatus.Paid)
+        .Sum(p => p.AmountEur);
+
+    /// <summary>True when the org owes the camp (negative balance): the last box reads "Refund amount".</summary>
+    public bool IsRefundDue => Order.BalanceEur < 0;
+
+    /// <summary>The last box's figure: the amount owed, or — when <see cref="IsRefundDue"/> — the positive refund amount.</summary>
+    public decimal BalanceBoxAmountEur => Math.Abs(Order.BalanceEur);
 
     /// <summary>
     /// Line ids whose Remove button renders, resolved per line against the order authorization

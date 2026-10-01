@@ -1118,6 +1118,8 @@ internal sealed class Service(
     /// <see cref="StoreSectionOptions.SimplifiedInvoiceThresholdEur"/> a receipt is not legal,
     /// so a counterparty-less order that large is refused rather than downgraded.
     ///
+    /// Only issuable at a zero balance: a camp that still owes, or is owed, settles first.
+    ///
     /// Idempotent on both sides: an order that already carries an <c>IssuedInvoiceId</c> throws
     /// without calling Holded, and — because a document approved by an attempt that then failed
     /// locally leaves no trace here — Holded is searched for a document already tagged with this
@@ -1149,6 +1151,9 @@ internal sealed class Service(
         // document and the order agree forever after. BalanceCalculator already computed the
         // effective prices for an Open order — reuse them rather than re-deriving.
         var totals = BalanceCalculator.Compute(order, await LoadCurrentPricesAsync(ct));
+        if (totals.BalanceEur != 0m)
+            throw new InvalidOperationException(
+                $"An invoice can only be issued when the order balance is zero (currently EUR {totals.BalanceEur:0.00}).");
         var totalsByLine = totals.Lines.ToDictionary(t => t.LineId);
         foreach (var line in order.Lines)
         {

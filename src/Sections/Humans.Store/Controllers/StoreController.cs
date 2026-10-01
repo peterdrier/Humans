@@ -221,6 +221,9 @@ internal sealed class StoreController(
 
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordPayment);
         if (!auth.Succeeded) return Forbid();
+        if (method == PaymentMethod.Refund
+            && !(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Refund)).Succeeded)
+            return Forbid();
 
         try
         {
