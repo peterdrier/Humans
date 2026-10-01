@@ -175,10 +175,12 @@ internal sealed class BackdoorFinanceController(
         {
             budgetCategoryId = m.BudgetCategoryId,
             categoryName = m.CategoryName,
+            groupName = m.GroupName,
             holdedAccountNumber = m.HoldedAccountNumber,
             holdedAccountId = m.HoldedAccountId,
             tag = m.Tag,
             isActive = m.IsActive,
+            updatedAt = m.UpdatedAt.ToIso8601(),
         }));
     }
 

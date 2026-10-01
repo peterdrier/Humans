@@ -129,6 +129,10 @@
   <data name="Expenses_Flash_SubmitFailed" xml:space="preserve"><value>No se pudo enviar el informe.</value></data>
   <data name="Expenses_Flash_ReportWithdrawn" xml:space="preserve"><value>Informe retirado.</value></data>
   <data name="Expenses_Flash_WithdrawFailed" xml:space="preserve"><value>No se pudo retirar este informe.</value></data>
+  <data name="Expenses_Flash_ReportEndorsed" xml:space="preserve"><value>Informe avalado.</value></data>
+  <data name="Expenses_Flash_EndorseFailed" xml:space="preserve"><value>No se pudo avalar el informe.</value></data>
+  <data name="Expenses_Flash_ReportRejected" xml:space="preserve"><value>Informe rechazado.</value></data>
+  <data name="Expenses_Flash_RejectFailed" xml:space="preserve"><value>No se pudo rechazar el informe.</value></data>
   <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Datos de línea no válidos.</value></data>
   <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Recibo añadido.</value></data>
   <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Factura añadida. Ahora añade los recibos que la respaldan.</value></data>

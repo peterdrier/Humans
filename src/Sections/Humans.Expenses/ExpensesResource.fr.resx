@@ -129,6 +129,10 @@
   <data name="Expenses_Flash_SubmitFailed" xml:space="preserve"><value>Impossible de soumettre le rapport.</value></data>
   <data name="Expenses_Flash_ReportWithdrawn" xml:space="preserve"><value>Rapport retiré.</value></data>
   <data name="Expenses_Flash_WithdrawFailed" xml:space="preserve"><value>Impossible de retirer ce rapport.</value></data>
+  <data name="Expenses_Flash_ReportEndorsed" xml:space="preserve"><value>Rapport avalisé.</value></data>
+  <data name="Expenses_Flash_EndorseFailed" xml:space="preserve"><value>Impossible d’avaliser le rapport.</value></data>
+  <data name="Expenses_Flash_ReportRejected" xml:space="preserve"><value>Rapport rejeté.</value></data>
+  <data name="Expenses_Flash_RejectFailed" xml:space="preserve"><value>Impossible de rejeter le rapport.</value></data>
   <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Données de ligne non valides.</value></data>
   <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Reçu ajouté.</value></data>
   <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Facture ajoutée. Ajoute maintenant les reçus qui la justifient.</value></data>

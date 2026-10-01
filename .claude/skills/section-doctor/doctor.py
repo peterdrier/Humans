@@ -36,10 +36,12 @@ BRANCH_RE = re.compile(r"^section-doctor/(.+)$")
 WORDS = {w: i + 2 for i, w in enumerate(
     "two three four five six seven eight nine ten eleven twelve".split())}
 NUM = r"(?:[0-9]+|" + "|".join(WORDS) + ")"
+# A numeral after a type word is an EF column width ("string (50)?"), not a count.
+NOT_AFTER_TYPE = "".join(rf"(?<!\b{w} )(?<!\b{w})" for w in ("string", "varchar", "nvarchar", "char"))
 # Must-fix: a count with a structural tell — it names the rows under it, or it is a total.
 STRUCTURAL_RE = re.compile(
     r"(?:"
-    r"\(\s*[0-9]+\s*\)"                               # "Routes (3)"
+    + NOT_AFTER_TYPE + r"\(\s*[0-9]+\s*\)"                # "Routes (3)"
     r"|\b(?:total|count|n)\s*[:=]\s*[0-9]+\b"          # "Total: 3", "count = 3"
     r"|\|\s*(?:total|count)\s*\|\s*[0-9]+\s*\|"      # markdown total row
     r")",

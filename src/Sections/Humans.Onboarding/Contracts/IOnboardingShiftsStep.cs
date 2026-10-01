@@ -25,8 +25,8 @@ public sealed record OnboardingShiftsStepArgs(
 /// <remarks>
 /// Single-contributor seam — one property, not a fan-out list — because exactly one section
 /// (Shifts) owns this step's presentation. If no contributor registers, resolving
-/// <see cref="IOnboardingShiftsStep"/> throws at request time (fails loudly; there is no
-/// startup-time check for this seam).
+/// <see cref="IOnboardingShiftsStep"/> throws at request time, and startup fails first:
+/// <c>SectionActivation.ThrowOnUnmetDependencies</c> rejects an unmet dependency.
 /// </remarks>
 public interface IOnboardingShiftsStep : ISectionContribution
 {

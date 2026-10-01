@@ -677,7 +677,7 @@ open_pr_for_branch() {
   fi
   {
     printf '%s\n\n' "$run_report"
-    echo "Runner validation: build and tests passed; Humans.Integration.Tests excluded."
+    echo "Runner validation: build ${build_result:-skipped}, tests ${test_result:-skipped}; Humans.Integration.Tests excluded."
   } >"$pr_body_file"
 
   local result

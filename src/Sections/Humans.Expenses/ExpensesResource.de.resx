@@ -129,6 +129,10 @@
   <data name="Expenses_Flash_SubmitFailed" xml:space="preserve"><value>Der Bericht konnte nicht eingereicht werden.</value></data>
   <data name="Expenses_Flash_ReportWithdrawn" xml:space="preserve"><value>Bericht zurückgezogen.</value></data>
   <data name="Expenses_Flash_WithdrawFailed" xml:space="preserve"><value>Dieser Bericht konnte nicht zurückgezogen werden.</value></data>
+  <data name="Expenses_Flash_ReportEndorsed" xml:space="preserve"><value>Bericht befürwortet.</value></data>
+  <data name="Expenses_Flash_EndorseFailed" xml:space="preserve"><value>Der Bericht konnte nicht befürwortet werden.</value></data>
+  <data name="Expenses_Flash_ReportRejected" xml:space="preserve"><value>Bericht abgelehnt.</value></data>
+  <data name="Expenses_Flash_RejectFailed" xml:space="preserve"><value>Der Bericht konnte nicht abgelehnt werden.</value></data>
   <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Ungültige Positionsdaten.</value></data>
   <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Beleg hinzugefügt.</value></data>
   <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Rechnung hinzugefügt. Füge nun die dazugehörigen Belege hinzu.</value></data>

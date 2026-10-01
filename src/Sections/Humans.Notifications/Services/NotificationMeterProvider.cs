@@ -195,6 +195,10 @@ internal sealed class NotificationMeterProvider(
 
                 return pendingCount;
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to compute camp lead pending-request count for {UserId}", userId);
@@ -212,6 +216,10 @@ internal sealed class NotificationMeterProvider(
             try
             {
                 return await ComputeCountsAsync(cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {

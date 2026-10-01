@@ -129,6 +129,10 @@
   <data name="Expenses_Flash_SubmitFailed" xml:space="preserve"><value>Could not submit the report.</value></data>
   <data name="Expenses_Flash_ReportWithdrawn" xml:space="preserve"><value>Report withdrawn.</value></data>
   <data name="Expenses_Flash_WithdrawFailed" xml:space="preserve"><value>Could not withdraw this report.</value></data>
+  <data name="Expenses_Flash_ReportEndorsed" xml:space="preserve"><value>Report endorsed.</value></data>
+  <data name="Expenses_Flash_EndorseFailed" xml:space="preserve"><value>Could not endorse the report.</value></data>
+  <data name="Expenses_Flash_ReportRejected" xml:space="preserve"><value>Report rejected.</value></data>
+  <data name="Expenses_Flash_RejectFailed" xml:space="preserve"><value>Could not reject the report.</value></data>
   <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Invalid line data.</value></data>
   <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Receipt added.</value></data>
   <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Invoice added. Now add the receipts behind it.</value></data>

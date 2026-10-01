@@ -129,6 +129,10 @@
   <data name="Expenses_Flash_SubmitFailed" xml:space="preserve"><value>No s’ha pogut enviar l’informe.</value></data>
   <data name="Expenses_Flash_ReportWithdrawn" xml:space="preserve"><value>Informe retirat.</value></data>
   <data name="Expenses_Flash_WithdrawFailed" xml:space="preserve"><value>No s’ha pogut retirar aquest informe.</value></data>
+  <data name="Expenses_Flash_ReportEndorsed" xml:space="preserve"><value>Informe avalat.</value></data>
+  <data name="Expenses_Flash_EndorseFailed" xml:space="preserve"><value>No s’ha pogut avalar l’informe.</value></data>
+  <data name="Expenses_Flash_ReportRejected" xml:space="preserve"><value>Informe rebutjat.</value></data>
+  <data name="Expenses_Flash_RejectFailed" xml:space="preserve"><value>No s’ha pogut rebutjar l’informe.</value></data>
   <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Dades de línia no vàlides.</value></data>
   <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Rebut afegit.</value></data>
   <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Factura afegida. Ara afegeix els rebuts que la justifiquen.</value></data>

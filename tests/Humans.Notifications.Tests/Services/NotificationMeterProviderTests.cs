@@ -7,6 +7,7 @@ using AwesomeAssertions;
 using Humans.Camps.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Base.Caching;
 using Humans.Base.Constants;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -193,6 +194,40 @@ public class NotificationMeterProviderTests : IDisposable
             m.ActionUrl == "/Barrios");
         await _campService.Received(1).GetCampsForYearAsync(2026, Arg.Any<CancellationToken>());
         await _campService.Received(1).GetCampsForYearAsync(2027, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetMetersForUserAsync_CancelledDuringCounts_ThrowsAndCachesNothing()
+    {
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns<Task<IReadOnlyCollection<UserInfo>>>(_ => throw new OperationCanceledException(cts.Token));
+
+        var act = () => _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.Admin), cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        _cache.TryGetValue(CacheKeys.NotificationMeters, out _).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task GetMetersForUserAsync_CancelledDuringCampLeadCount_ThrowsAndCachesNothing()
+    {
+        var leadUserId = Guid.NewGuid();
+        using var cts = new CancellationTokenSource();
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns<Task<CampSettingsInfo>>(async _ =>
+            {
+                await cts.CancelAsync();
+                throw new OperationCanceledException(cts.Token);
+            });
+
+        var act = () => _provider.GetMetersForUserAsync(CreatePrincipalWithId(leadUserId), cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        _cache.TryGetValue(CacheKeys.CampLeadJoinRequestsBadge(leadUserId), out _).Should().BeFalse();
     }
 
     private static ClaimsPrincipal CreatePrincipal(params string[] roles)

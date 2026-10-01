@@ -562,6 +562,8 @@ public class BackdoorFinanceControllerTests
 
         var json = Emitted(result);
         json.Should().Contain(@"""categoryName"":""Staff""");
+        json.Should().Contain(@"""groupName"":""Operations""");
+        json.Should().Contain(@"""updatedAt"":""2026-06-01T00:00:00Z""");
         json.Should().Contain(@"""holdedAccountNumber"":62900101");
         json.Should().Contain(@"""isActive"":true");
     }
