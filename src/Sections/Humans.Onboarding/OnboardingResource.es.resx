@@ -170,6 +170,7 @@
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Bienvenido — empecemos por tu nombre</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Crítico</value></data>
   <data name="Onboarding_PriorityImportant" xml:space="preserve"><value>Importante</value></data>
+  <data name="Onboarding_ShiftsPriorityFilter" xml:space="preserve"><value>Filtro de prioridad de turnos</value></data>
   <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>Solo está cubierto el {0}% de los turnos "críticos". Ayúdanos a hacer posible el evento cubriendo algunos cuando puedas.</value></data>
   <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Si puedes venir antes para el montaje o quedarte al desmontaje, esos son los turnos más difíciles de cubrir — por favor, priorízalos al elegir tus turnos.</value></data>
   <data name="Onboarding_ShiftsCriticalCtaSetupClosed" xml:space="preserve"><value>Las inscripciones de montaje están cerradas — ya estamos en el sitio. Por favor, céntrate en los turnos del evento y de desmontaje.</value></data>

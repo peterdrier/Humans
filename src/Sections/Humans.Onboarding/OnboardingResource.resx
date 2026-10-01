@@ -87,6 +87,7 @@
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Welcome — let's start with your name</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Critical</value></data>
   <data name="Onboarding_PriorityImportant" xml:space="preserve"><value>Important</value></data>
+  <data name="Onboarding_ShiftsPriorityFilter" xml:space="preserve"><value>Shift priority filter</value></data>
   <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>Only {0}% of the "critical" shifts are filled. Please help us make the event happen by picking up a few where you can.</value></data>
   <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>If you can come early for set-up or stay for strike, those slots are the hardest to fill — please prioritise them when picking your shifts.</value></data>
   <data name="Onboarding_ShiftsCriticalCtaSetupClosed" xml:space="preserve"><value>Set-up sign-ups are closed — we're already on site. Please focus on event-time and strike shifts.</value></data>

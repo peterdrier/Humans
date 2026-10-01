@@ -170,6 +170,7 @@
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Bienvenue — commençons par votre nom</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Critique</value></data>
   <data name="Onboarding_PriorityImportant" xml:space="preserve"><value>Important</value></data>
+  <data name="Onboarding_ShiftsPriorityFilter" xml:space="preserve"><value>Filtre de priorité des créneaux</value></data>
   <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>Seuls {0} % des quarts « critiques » sont pourvus. Aidez-nous à rendre l'événement possible en en prenant quelques-uns si vous le pouvez.</value></data>
   <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Si vous pouvez venir tôt pour le montage ou rester pour le démontage, ce sont les quarts les plus difficiles à pourvoir — veuillez les prioriser lors du choix de vos quarts.</value></data>
   <data name="Onboarding_ShiftsCriticalCtaSetupClosed" xml:space="preserve"><value>Les inscriptions au montage sont closes — nous sommes déjà sur place. Veuillez vous concentrer sur les quarts pendant l'événement et de démontage.</value></data>

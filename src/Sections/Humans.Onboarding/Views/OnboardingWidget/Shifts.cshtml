@@ -37,7 +37,7 @@
             }
 
             <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-                <div class="btn-group" role="group" aria-label="Shift priority filter">
+                <div class="btn-group" role="group" aria-label="@Localizer["Onboarding_ShiftsPriorityFilter"]">
                     <a asp-action="Shifts" asp-route-priority="critical" class="@PillCss("critical")">@Localizer["Onboarding_PriorityCritical"]</a>
                     <a asp-action="Shifts" asp-route-priority="important" class="@PillCss("important")">@Localizer["Onboarding_PriorityImportant"]</a>
                     <a asp-action="Shifts" asp-route-priority="all" class="@PillCss("all")">@SharedLocalizer["Shifts_All"]</a>

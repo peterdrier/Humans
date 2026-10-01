@@ -149,7 +149,7 @@
                     {
                         <span class="form-text mb-0">@q.RatingMinLabel</span>
                     }
-                    <div class="btn-group" role="group" aria-label="Rating">
+                    <div class="btn-group" role="group" aria-label="@q.Prompt">
                         @for (var n = min; n <= max; n++)
                         {
                             var checkedRating = q.RatingValue == n;

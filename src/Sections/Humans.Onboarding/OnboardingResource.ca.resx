@@ -170,6 +170,7 @@
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Benvingut/da — comencem pel teu nom</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Crític</value></data>
   <data name="Onboarding_PriorityImportant" xml:space="preserve"><value>Important</value></data>
+  <data name="Onboarding_ShiftsPriorityFilter" xml:space="preserve"><value>Filtre de prioritat dels torns</value></data>
   <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>Només està cobert el {0}% dels torns "crítics". Ajuda'ns a fer possible l'esdeveniment cobrint-ne alguns quan puguis.</value></data>
   <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Si pots venir abans per al muntatge o quedar-te al desmuntatge, aquests són els torns més difícils de cobrir — si us plau, prioritza'ls a l'hora de triar els teus torns.</value></data>
   <data name="Onboarding_ShiftsCriticalCtaSetupClosed" xml:space="preserve"><value>Les inscripcions de muntatge estan tancades — ja som al lloc. Si us plau, centra't en els torns de l'esdeveniment i de desmuntatge.</value></data>

@@ -170,6 +170,7 @@
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Willkommen — fangen wir mit deinem Namen an</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Kritisch</value></data>
   <data name="Onboarding_PriorityImportant" xml:space="preserve"><value>Wichtig</value></data>
+  <data name="Onboarding_ShiftsPriorityFilter" xml:space="preserve"><value>Filter nach Schichtpriorität</value></data>
   <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>Nur {0}% der „kritischen“ Schichten sind besetzt. Hilf uns, die Veranstaltung möglich zu machen, indem du ein paar übernimmst, wo du kannst.</value></data>
   <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Wenn du früh zum Aufbau kommen oder zum Abbau bleiben kannst, sind das die am schwersten zu besetzenden Schichten — bitte priorisiere sie bei der Auswahl deiner Schichten.</value></data>
   <data name="Onboarding_ShiftsCriticalCtaSetupClosed" xml:space="preserve"><value>Aufbau-Anmeldungen sind geschlossen — wir sind bereits vor Ort. Bitte konzentriere dich auf Schichten während der Veranstaltung und beim Abbau.</value></data>
