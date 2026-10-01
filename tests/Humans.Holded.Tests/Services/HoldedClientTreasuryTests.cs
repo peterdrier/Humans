@@ -129,13 +129,14 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task ListBankMovementsAsync_LineWithUnreadableDate_IsSkipped_AndLogged()
+    public async Task ListBankMovementsAsync_NonCandidateLineWithUnreadableDate_IsSkipped_AndLogged()
     {
         // An empty `date` on one Sabadell line failed every SEPA sweep (peterdrier/Humans#1861).
+        // Incoming or already-touched lines can never be a SEPA candidate, so they are skipped.
         var json = """
         {"items":[
-          {"id":"m1","account":"tr-1","date":"","amount":"-10.00","status":"pending"},
-          {"id":"m2","account":"tr-1","date":"not-a-date","amount":"-10.00","status":"pending"},
+          {"id":"m1","account":"tr-1","date":"","amount":"10.00","status":"pending"},
+          {"id":"m2","account":"tr-1","date":"not-a-date","amount":"-10.00","status":"reconciled"},
           {"id":"m3","account":"tr-1","date":"2026-08-18","amount":"-20.00","status":"pending"}
         ],"cursor":null,"has_more":false}
         """;
@@ -149,6 +150,26 @@ public class HoldedClientTreasuryTests
         movements.Select(m => m.Id).Should().Equal("m3");
         logger.Entries.Should().Contain(e =>
             e.Level == LogLevel.Warning && e.Message.Contains("Skipped 2 Holded bank movement(s)"));
+    }
+
+    [HumansFact]
+    public async Task ListBankMovementsAsync_PendingOutgoingLineWithUnreadableDate_IsPermanent()
+    {
+        // Dropping the undated line would leave m2 with no visible rival, so the sweep could book the
+        // transfer against the wrong one of two same-amount lines. The page fails instead.
+        var json = """
+        {"items":[
+          {"id":"m1","account":"tr-1","date":"","amount":"-20.00","status":"pending"},
+          {"id":"m2","account":"tr-1","date":"2026-08-18","amount":"-20.00","status":"pending"}
+        ],"cursor":null,"has_more":false}
+        """;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var act = async () => await client.ListBankMovementsAsync(
+            "tr-1", new LocalDate(2026, 8, 1), new LocalDate(2026, 8, 31),
+            Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
     [HumansFact]

@@ -589,12 +589,19 @@ internal sealed class HoldedClient : IHoldedClient
                 catch (Exception ex) when (ex is HoldedPermanentException or InvalidOperationException
                     or FormatException)
                 {
-                    // One line with no readable date (an empty string on a Sabadell line,
-                    // peterdrier/Humans#1861) must not block every SEPA sweep. It cannot be placed in
-                    // the from/to window, so it is left out; the sweep then sees no bank line for it,
-                    // which only delays a booking. Detail on the first; the rest are counted.
+                    // A line with no readable date (an empty string on a Sabadell line,
+                    // peterdrier/Humans#1861) cannot be placed in the from/to window. Leaving it out is
+                    // safe only if it can never be a SEPA candidate: Finance's rival checks count every
+                    // pending outgoing line, so dropping one of those would hide a rival and let an
+                    // ambiguous booking through. Those still fail the page; the rest are skipped.
+                    if (ReadRequiredDecimalV2(Prop(n, "amount"), "amount") < 0m
+                        && string.Equals(ReadRequiredString(Prop(n, "status"), "status"), "pending",
+                            StringComparison.OrdinalIgnoreCase))
+                        throw new HoldedPermanentException(
+                            $"Holded bank movement '{Prop(n, "id")?.GetValue<string>()}' in account "
+                            + $"{treasuryAccountId} is a pending outgoing line with no readable date.", ex);
                     if (skipped == 0)
-                        _logger.LogWarning(ex, "Unreadable Holded bank movement date; skipping the line.");
+                        _logger.LogWarning("Unreadable Holded bank movement date; skipping the line.");
                     skipped++;
                     continue;
                 }
@@ -659,7 +666,7 @@ internal sealed class HoldedClient : IHoldedClient
 
     /// <summary>Bank-movement dates are unverified against the probe's ledger-entry finding
     /// (`DD/MM/YYYY`), so both that shape and ISO are accepted; neither parsing throws
-    /// <c>HoldedPermanentException</c>, which the caller skips the line on.</summary>
+    /// <c>HoldedPermanentException</c>, which the caller skips a non-candidate line on.</summary>
     private static LocalDate ParseBankMovementDate(string s)
     {
         var iso = LocalDatePattern.Iso.Parse(s);
