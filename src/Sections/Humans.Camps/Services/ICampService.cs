@@ -152,7 +152,7 @@ internal sealed record CampMemberLookup(Guid CampSeasonId, Guid UserId, CampMemb
 internal sealed record CampMemberRequestResult(
     Guid CampMemberId,
     CampMemberRequestOutcome Outcome,
-    string Message,
+    string MessageKey,
     CampMemberRequestNoticeLevel NoticeLevel);
 
 internal sealed record CampMembershipMutationResult(bool Succeeded, string? ErrorMessage)

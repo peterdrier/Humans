@@ -10,12 +10,21 @@ namespace Humans.Expenses.Services;
 /// report, and differ when a finance admin files or fixes one on a member's behalf. Every mutation
 /// therefore takes <c>actorUserId</c> plus <c>actorIsFinanceAdmin</c> — the caller's authority,
 /// resolved at the controller (design-rules §6), mirroring
-/// <see cref="IExpenseReportServiceRead.GetReviewQueueAsync"/>. Set it and the ownership match is
+/// <see cref="GetReviewQueueAsync"/>. Set it and the ownership match is
 /// waived and the editable window widens from Draft to Draft/Submitted/CoordinatorEndorsed; the
 /// checks are defence in depth behind the resource-based handler, not the primary gate.</para>
 /// </remarks>
 internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicationService
 {
+    Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
+        Guid submitterUserId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
+        Guid coordinatorUserId, CancellationToken ct = default);
+
+    /// <summary>All expense reports, all statuses — dashboard/aggregate reads sum client-side (small dataset).</summary>
+    Task<IReadOnlyList<ExpenseReportDto>> GetAllAsync(CancellationToken ct = default);
+
     /// <summary>Creates a draft owned by <paramref name="submitterUserId"/>. When
     /// <paramref name="actorUserId"/> is someone else, the creation is audited as on-behalf.</summary>
     Task<Guid> CreateDraftAsync(
@@ -84,11 +93,11 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
 
     /// <summary>A non-null <paramref name="maxAmount"/> caps what this report pays out; null leaves it uncapped.</summary>
     Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, string reason,
+        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
         CancellationToken ct = default);
 
     /// <summary>A non-null <paramref name="maxAmount"/> overrides any cap the coordinator set.</summary>
@@ -118,8 +127,8 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
     Task<ExpenseMutationResult> RequeueHoldedPushWithResultAsync(
         Guid reportId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Written-off Holded pushes across all reports — the /Expenses/Review banner count.</summary>
-    Task<int> CountFailedHoldedPushesAsync(CancellationToken ct = default);
+    /// <summary>Reports with a written-off Holded push — the /Expenses/Review banner and flags.</summary>
+    Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(CancellationToken ct = default);
 }
 
 internal sealed record ExpenseMutationResult(bool Succeeded, string? ErrorMessage)
@@ -136,7 +145,8 @@ internal sealed record ExpenseAddLineResult(bool Succeeded, string? ErrorMessage
 /// <summary>An uploaded file passed through to the service untouched.</summary>
 internal sealed record ExpenseFileUpload(string FileName, string ContentType, Stream Content);
 
+/// <summary>IBAN mutation outcome; the controller resolves MessageKey in ExpensesResource.</summary>
 internal sealed record ExpenseIbanSaveResult(
     bool Succeeded,
     bool IsValidationError,
-    string Message);
+    string MessageKey);

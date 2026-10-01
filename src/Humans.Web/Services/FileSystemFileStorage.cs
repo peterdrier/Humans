@@ -32,30 +32,26 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
 
         var tempPath = $"{fullPath}.{Guid.NewGuid():N}.tmp";
-        await using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
-        {
-            await content.CopyToAsync(stream, ct);
-        }
-
         try
         {
+            await using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                await content.CopyToAsync(stream, ct);
+            }
+
             File.Move(tempPath, fullPath, overwrite: true);
         }
-        catch (Exception moveEx)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            logger.LogWarning(moveEx,
-                "Failed to rename temp file {TempPath} to {FinalPath}; cleaning up",
+            DeleteTempFile(tempPath);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to save temp file {TempPath} to {FinalPath}; cleaning up",
                 tempPath, fullPath);
-            try
-            {
-                File.Delete(tempPath);
-            }
-            catch (IOException cleanupEx)
-            {
-                logger.LogWarning(cleanupEx,
-                    "Failed to clean up temp file {TempPath} after a failed rename to {FinalPath}",
-                    tempPath, fullPath);
-            }
+            DeleteTempFile(tempPath);
             throw;
         }
     }
@@ -121,5 +117,19 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
         }
 
         return Path.Combine(_root, key.Replace('/', Path.DirectorySeparatorChar));
+    }
+
+    private void DeleteTempFile(string tempPath)
+    {
+        try
+        {
+            File.Delete(tempPath);
+        }
+        catch (IOException cleanupEx)
+        {
+            logger.LogWarning(cleanupEx,
+                "Failed to clean up temp file {TempPath} after a failed save",
+                tempPath);
+        }
     }
 }

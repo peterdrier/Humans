@@ -29,7 +29,7 @@ public sealed class NobodiesEmailBadgeViewComponent(IUserServiceRead userService
     /// <param name="mode">Display mode — see class doc.</param>
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, string mode = "badge")
     {
-        var info = await userService.GetUserInfoAsync(userId);
+        var info = await userService.GetUserInfoAsync(userId, HttpContext.RequestAborted);
         var nobodies = info?.UserEmails.FirstOrDefault(e => e.IsVerified
             && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
 

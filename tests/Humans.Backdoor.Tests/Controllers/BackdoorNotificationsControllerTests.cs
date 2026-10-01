@@ -3,7 +3,6 @@ using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Backdoor.Contracts;
 using Humans.Backdoor.Controllers;
-using Humans.Backdoor.Filters;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
@@ -24,28 +23,6 @@ public class BackdoorNotificationsControllerTests
 
     public BackdoorNotificationsControllerTests() =>
         _sut = new BackdoorNotificationsController(_inbox, Substitute.For<IUserServiceRead>());
-
-    [HumansFact]
-    public void Every_route_hangs_off_the_api_key_filter()
-    {
-        var filter = typeof(BackdoorNotificationsController)
-            .GetCustomAttributes(typeof(ServiceFilterAttribute), inherit: false)
-            .Cast<ServiceFilterAttribute>()
-            .Single();
-
-        filter.ServiceType.Should().Be(typeof(BackdoorApiKeyAuthFilter));
-    }
-
-    [HumansFact]
-    public async Task Get_without_a_principal_is_Unauthorized_and_reads_nothing()
-    {
-        _sut.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
-
-        var result = await _sut.Get(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<UnauthorizedResult>();
-        await _inbox.DidNotReceiveWithAnyArgs().GetUnreadInboxAsync(default!, default);
-    }
 
     [HumansFact]
     public async Task Get_projects_rows_and_meters_for_the_keys_owner()

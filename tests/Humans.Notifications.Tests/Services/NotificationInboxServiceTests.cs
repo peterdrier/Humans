@@ -134,6 +134,37 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetInboxAsync_NamesTheResolver_AndLooksUpNoOtherUser()
+    {
+        var resolverId = Guid.NewGuid();
+        var notification = await CreateNotification(
+            resolvedAt: _clock.GetCurrentInstant(), resolvedByUserId: resolverId);
+        _dbContext.NotificationRecipients.Add(new NotificationRecipient
+        {
+            NotificationId = notification.Id,
+            UserId = Guid.NewGuid(),
+        });
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
+            {
+                [resolverId] = new(
+                    resolverId, "Resolver", false, "en", null, Instant.FromUnixTimeSeconds(0),
+                    null, null, null, null, null, false, false, null, null, null,
+                    null, null, null, [], [], [], null, []),
+            }));
+
+        var result = await _service.GetInboxAsync(
+            _userId, search: null, filter: "resolved", tab: "all",
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Resolved.Should().ContainSingle().Which.ResolvedByName.Should().Be("Resolver");
+        await _userService.Received(1).GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(resolverId)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ResolveAsync_ReturnsNotFoundForMissingNotification()
     {
         var result = await _service.ResolveAsync(Guid.NewGuid(), _userId, Xunit.TestContext.Current.CancellationToken);
@@ -191,6 +222,19 @@ public class NotificationInboxServiceTests : IDisposable
 
         result.Success.Should().BeFalse();
         result.Forbidden.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task DismissAsync_ReturnsForbiddenIfNotRecipient()
+    {
+        var notification = await CreateNotification();
+
+        var result = await _service.DismissAsync(notification.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.Forbidden.Should().BeTrue();
+        var unchanged = await _dbContext.Notifications.AsNoTracking().FirstAsync(n => n.Id == notification.Id, Xunit.TestContext.Current.CancellationToken);
+        unchanged.ResolvedAt.Should().BeNull();
     }
 
     [HumansFact]
@@ -279,6 +323,17 @@ public class NotificationInboxServiceTests : IDisposable
         unresolvedInfo.ResolvedAt.Should().BeNull();
     }
 
+    [HumansFact]
+    public async Task BulkResolveAsync_LeavesOtherUsersNotificationsAlone()
+    {
+        var notification = await CreateNotification(NotificationClass.Actionable);
+
+        await _service.BulkResolveAsync([notification.Id], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var unchanged = await _dbContext.Notifications.AsNoTracking().FirstAsync(n => n.Id == notification.Id, Xunit.TestContext.Current.CancellationToken);
+        unchanged.ResolvedAt.Should().BeNull();
+    }
+
     // --- BulkDismissAsync ---
 
     [HumansFact]
@@ -309,6 +364,17 @@ public class NotificationInboxServiceTests : IDisposable
 
         var resolvedInfo = await _dbContext.Notifications.AsNoTracking().FirstAsync(n => n.Id == informational.Id, Xunit.TestContext.Current.CancellationToken);
         resolvedInfo.ResolvedAt.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task BulkDismissAsync_LeavesOtherUsersNotificationsAlone()
+    {
+        var notification = await CreateNotification();
+
+        await _service.BulkDismissAsync([notification.Id], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var unchanged = await _dbContext.Notifications.AsNoTracking().FirstAsync(n => n.Id == notification.Id, Xunit.TestContext.Current.CancellationToken);
+        unchanged.ResolvedAt.Should().BeNull();
     }
 
     // --- ClickThroughAsync ---
@@ -354,7 +420,6 @@ public class NotificationInboxServiceTests : IDisposable
 
         result.Actionable.Should().HaveCount(1);
         result.Informational.Should().HaveCount(1);
-        result.ActionableCount.Should().Be(1);
     }
 
     // --- Cache invalidation ---

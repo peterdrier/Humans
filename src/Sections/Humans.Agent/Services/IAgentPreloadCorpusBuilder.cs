@@ -9,6 +9,7 @@ internal interface IAgentPreloadCorpusBuilder
     /// <summary>
     /// Forces a reload+swap of the agent's in-memory knowledge: re-fetches the community KB and
     /// rebuilds the cached preload corpus for every tier. Admin-triggered; no app restart needed.
+    /// Returns false when a fetch failed and the previous preload corpus was retained.
     /// </summary>
-    Task ReloadAllAsync(CancellationToken cancellationToken = default);
+    Task<bool> ReloadAllAsync(CancellationToken cancellationToken = default);
 }

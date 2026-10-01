@@ -260,7 +260,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - When an offer is edited and the member point, waypoints, or direction changed: the route is
   recomputed and re-stored.
 - When an interest is created: `INotificationEmitter` notifies the posting owner (`Actionable`),
-  best-effort — failures are caught and logged, never surfaced to the caller.
+  best-effort — delivery failures are caught and logged, never surfaced to the caller. Caller
+  cancellation still propagates.
 - When an interest is accepted: the interest's author is notified (`Informational`); seats
   remaining recomputes on next read.
 - When an interest is declined: the interest's author gets a neutral `Informational`
@@ -307,7 +308,9 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - `IRideshareRepository` (impl `RideshareRepository`, `IDbContextFactory<RideshareDbContext>`) is the only code path that touches this section's tables via `DbContext`.
 - **Decorator decision** — caching decorator (`CachingRideshareService`, Singleton). One
   `TrackedCache<int, RideshareSnapshot>` keyed `"Rideshare.Snapshot"` (per year, `warmOnStartup: false`);
-  every write delegates to the inner service, then the cache is cleared in full — a year-graph
+  every write delegates to the inner service, then the cache is cleared in full even if the
+  inner call throws or is cancelled (a write may have committed before a later failure).
+  This includes GDPR erasure and account merge; the original failure still propagates. A year-graph
   cache at this scale, cleared on any write, is acceptable rather than tracking per-year
   invalidation keys.
 - **Display stitching** — cross-section display data resolves through `IUserServiceRead.GetUserInfosAsync`.

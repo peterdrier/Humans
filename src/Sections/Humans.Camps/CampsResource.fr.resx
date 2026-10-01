@@ -151,6 +151,13 @@
   <data name="Camp_Index_NoFilterResults" xml:space="preserve"><value>Aucun {0} trouvé pour les filtres sélectionnés.</value></data>
   <data name="Camp_Index_NoSearchResults" xml:space="preserve"><value>Aucun {0} ne correspond à votre recherche.</value></data>
   <data name="Camp_Index_PendingApproval" xml:space="preserve"><value>en attente d'approbation</value></data>
+  <data name="Camps_MyCamps_Title" xml:space="preserve"><value>Mes Barrios</value></data>
+  <data name="Camps_MyCamps_Active" xml:space="preserve"><value>Actif</value></data>
+  <data name="Camps_MyCamps_Pending" xml:space="preserve"><value>En attente</value></data>
+  <data name="Camps_RolesCard_Roles" xml:space="preserve"><value>Rôles</value></data>
+  <data name="Camps_RolesCard_Leads" xml:space="preserve"><value>Responsables</value></data>
+  <data name="Camps_RolesCard_OpenSlot" xml:space="preserve"><value>poste libre</value></data>
+  <data name="Camps_RolesCard_OpenSlots" xml:space="preserve"><value>postes libres</value></data>
   <data name="Camp_Index_SearchLabel" xml:space="preserve"><value>Rechercher</value></data>
   <data name="Camp_Index_SearchPlaceholder" xml:space="preserve"><value>Tapez un nom de {0}…</value></data>
   <data name="Camp_Index_ShowLeadPositions" xml:space="preserve"><value>Afficher les postes de lead</value></data>
@@ -199,6 +206,7 @@
   <data name="Camp_Details_AlsoKnownAs" xml:space="preserve"><value>Également connu sous le nom de :</value></data>
   <data name="Camp_Details_SwissCampBadge" xml:space="preserve"><value>Swiss Camp</value></data>
   <data name="Camp_Details_RosterEmpty" xml:space="preserve"><value>Aucun human enregistré pour cette saison pour le moment.</value></data>
+  <data name="Camps_Details_Roster" xml:space="preserve"><value>Liste {0}</value></data>
   <data name="Camp_Members_NoRolesDefined" xml:space="preserve"><value>Aucun rôle de camp défini pour le moment.</value></data>
   <data name="Camp_Members_NoRolesAdminHint" xml:space="preserve"><value>CampAdmin peut les ajouter dans</value></data>
   <data name="Camp_Members_NoRolesAdminHintLink" xml:space="preserve"><value>Rôles de camp</value></data>
@@ -208,4 +216,97 @@
   <data name="Camp_Members_RoleOverCapacityTitle" xml:space="preserve"><value>Plus d'affectations que le nombre de places configuré.</value></data>
   <data name="Camp_Members_AddMemberSearchHelp" xml:space="preserve"><value>Recherchez par nom. Le human est ajouté à la saison ouverte du camp comme Actif.</value></data>
   <data name="Camp_Members_NoPendingRequests" xml:space="preserve"><value>Aucune demande en attente.</value></data>
+  <data name="Camps_Members_Members" xml:space="preserve"><value>Membres</value></data>
+  <data name="Camps_Members_Roles" xml:space="preserve"><value>Rôles</value></data>
+  <data name="Camps_Members_ShowDescription" xml:space="preserve"><value>Afficher la description</value></data>
+  <data name="Camps_Members_AddToRole" xml:space="preserve"><value>Ajouter au rôle</value></data>
+  <data name="Camps_Members_RemoveAssignment" xml:space="preserve"><value>Supprimer cette attribution</value></data>
+  <data name="Camps_Members_RemoveAssignmentConfirm" xml:space="preserve"><value>Supprimer cette attribution ?</value></data>
+  <data name="Camps_Members_AssignHelp" xml:space="preserve"><value>Attribuer — ajoute au camp si la personne n'en est pas encore membre</value></data>
+  <data name="Camps_Members_AddActiveMember" xml:space="preserve"><value>Ajouter une personne active</value></data>
+  <data name="Camps_Members_SeasonHumans" xml:space="preserve"><value>Humans cette saison</value></data>
+  <data name="Camps_Members_PendingRequests" xml:space="preserve"><value>Demandes en attente</value></data>
+  <data name="Camps_Members_RejectConfirm" xml:space="preserve"><value>Rejeter cette demande ?</value></data>
+  <data name="Camps_Members_ActiveHumans" xml:space="preserve"><value>Humans actifs</value></data>
+  <data name="Camps_Members_EeSlotsHelp" xml:space="preserve"><value>Places d'entrée anticipée accordées / attribuées à ce camp pour {0}</value></data>
+  <data name="Camps_Members_RevokeEarlyEntry" xml:space="preserve"><value>Révoquer l'entrée anticipée</value></data>
+  <data name="Camps_Members_GrantEarlyEntry" xml:space="preserve"><value>Accorder l'entrée anticipée</value></data>
+  <data name="Camps_Members_GrantEe" xml:space="preserve"><value>Accorder EE</value></data>
+  <data name="Camps_Members_RemoveHumanConfirm" xml:space="preserve"><value>Supprimer ce human ?</value></data>
+  <data name="Camps_Members_RecordHelp" xml:space="preserve"><value>Ceci est un enregistrement qui permet à l'application de savoir qui appartient à chaque camp. L'approbation ici n'admet personne dans votre camp ; cela se fait selon le processus propre à votre camp.</value></data>
+  <data name="Camps_Members_Approve" xml:space="preserve"><value>Approuver</value></data>
+  <data name="Camps_Members_Reject" xml:space="preserve"><value>Rejeter</value></data>
+  <!-- Controller feedback -->
+  <data name="Camps_Flash_RegistrationClosed" xml:space="preserve"><value>Les inscriptions sont actuellement fermées.</value></data>
+  <data name="Camps_Flash_RegistrationPendingReview" xml:space="preserve"><value>Votre camp a été inscrit et est en attente de validation.</value></data>
+  <data name="Camps_Flash_RegistrationFailed" xml:space="preserve"><value>Nous n'avons pas pu inscrire votre camp pour le moment. Réessayez ou contactez un administrateur si le problème persiste.</value></data>
+  <data name="Camps_Flash_NoSeason" xml:space="preserve"><value>Aucune saison trouvée pour ce camp.</value></data>
+  <data name="Camps_Flash_UnknownHuman" xml:space="preserve"><value>(inconnu)</value></data>
+  <data name="Camps_Flash_UpdateFailed" xml:space="preserve"><value>La mise à jour du camp a échoué.</value></data>
+  <data name="Camps_Flash_Updated" xml:space="preserve"><value>Camp mis à jour.</value></data>
+  <data name="Camps_Flash_OptedIn" xml:space="preserve"><value>Inscription à la saison {0} effectuée.</value></data>
+  <data name="Camps_Flash_SeasonWithdrawn" xml:space="preserve"><value>Saison retirée.</value></data>
+  <data name="Camps_Flash_SeasonFull" xml:space="preserve"><value>Saison marquée complète.</value></data>
+  <data name="Camps_Flash_NameRequired" xml:space="preserve"><value>Le nom ne peut pas être vide.</value></data>
+  <data name="Camps_Flash_HistoricalNameAdded" xml:space="preserve"><value>Nom historique ajouté.</value></data>
+  <data name="Camps_Flash_HistoricalNameRemoved" xml:space="preserve"><value>Nom historique supprimé.</value></data>
+  <data name="Camps_Flash_ImageRequired" xml:space="preserve"><value>Sélectionnez un fichier à téléverser.</value></data>
+  <data name="Camps_Flash_ImageUploaded" xml:space="preserve"><value>Image téléversée.</value></data>
+  <data name="Camps_Flash_ImageUploadFailed" xml:space="preserve"><value>Le téléversement de l'image a échoué.</value></data>
+  <data name="Camps_Flash_ImageDeleted" xml:space="preserve"><value>Image supprimée.</value></data>
+  <data name="Camps_Flash_ImageOrderUpdated" xml:space="preserve"><value>Ordre des images mis à jour.</value></data>
+  <data name="Camps_Flash_RequestWithdrawn" xml:space="preserve"><value>Votre demande en attente a été retirée.</value></data>
+  <data name="Camps_Flash_MembershipLeft" xml:space="preserve"><value>Vous avez quitté ce camp pour cette saison.</value></data>
+  <data name="Camps_Flash_MembershipLeaveFailed" xml:space="preserve"><value>Impossible de quitter ce camp.</value></data>
+  <data name="Camps_Flash_MembershipApproved" xml:space="preserve"><value>Adhésion approuvée.</value></data>
+  <data name="Camps_Flash_RequestRejected" xml:space="preserve"><value>Demande rejetée.</value></data>
+  <data name="Camps_Flash_MemberRemoved" xml:space="preserve"><value>Membre supprimé.</value></data>
+  <data name="Camps_Flash_EarlyEntryGranted" xml:space="preserve"><value>Entrée anticipée accordée.</value></data>
+  <data name="Camps_Flash_EarlyEntryRevoked" xml:space="preserve"><value>Entrée anticipée retirée.</value></data>
+  <data name="Camps_Flash_EarlyEntryCapReached" xml:space="preserve"><value>Impossible d'accorder l'entrée anticipée : la limite de places de ce camp est atteinte.</value></data>
+  <data name="Camps_Flash_EarlyEntryActiveMembersOnly" xml:space="preserve"><value>Seuls les membres actifs du camp peuvent avoir une entrée anticipée.</value></data>
+  <data name="Camps_Flash_EarlyEntryAlreadyEntered" xml:space="preserve"><value>Impossible de retirer l'entrée anticipée : ce membre est déjà entré dans l'événement et sa place est utilisée.</value></data>
+  <data name="Camps_Flash_HumanRequired" xml:space="preserve"><value>Recherchez et sélectionnez d'abord un human.</value></data>
+  <data name="Camps_Flash_NoActiveSeason" xml:space="preserve"><value>Aucune saison active pour ce camp.</value></data>
+  <data name="Camps_Flash_HumanAdded" xml:space="preserve"><value>Human ajouté au camp.</value></data>
+  <data name="Camps_Flash_HumanAddFailed" xml:space="preserve"><value>Impossible d'ajouter le human au camp.</value></data>
+  <data name="Camps_Flash_RoleAssignFailed" xml:space="preserve"><value>Impossible d'assigner le rôle.</value></data>
+  <data name="Camps_Flash_RoleAssigned" xml:space="preserve"><value>Rôle assigné.</value></data>
+  <data name="Camps_Flash_RoleNotFound" xml:space="preserve"><value>Définition du rôle introuvable.</value></data>
+  <data name="Camps_Flash_RoleDeactivated" xml:space="preserve"><value>Ce rôle est désactivé.</value></data>
+  <data name="Camps_Flash_RoleMemberNotFound" xml:space="preserve"><value>Membre du camp introuvable.</value></data>
+  <data name="Camps_Flash_RoleActiveMembersOnly" xml:space="preserve"><value>Seuls les membres actifs du camp peuvent avoir des rôles.</value></data>
+  <data name="Camps_Flash_RoleMemberSeasonMismatch" xml:space="preserve"><value>Le membre n'est pas dans cette saison.</value></data>
+  <data name="Camps_Flash_RoleSlotsFilled" xml:space="preserve"><value>Toutes les places de ce rôle sont occupées.</value></data>
+  <data name="Camps_Flash_RoleAlreadyHeld" xml:space="preserve"><value>Ce human a déjà ce rôle.</value></data>
+  <data name="Camps_Flash_RoleSeasonNotFound" xml:space="preserve"><value>Saison introuvable.</value></data>
+  <data name="Camps_Flash_UnknownError" xml:space="preserve"><value>Erreur inconnue.</value></data>
+  <data name="Camps_Flash_RoleUnassigned" xml:space="preserve"><value>Rôle retiré.</value></data>
+  <data name="Camps_Flash_AssignmentNotFound" xml:space="preserve"><value>Attribution introuvable.</value></data>
+  <data name="Camps_Details_Breadcrumb" xml:space="preserve"><value>Fil d’Ariane</value></data>
+  <data name="Camps_Details_Slide" xml:space="preserve"><value>Diapositive {0}</value></data>
+  <data name="Camps_Details_Previous" xml:space="preserve"><value>Précédente</value></data>
+  <data name="Camps_Details_Next" xml:space="preserve"><value>Suivante</value></data>
+  <data name="Camps_Details_SeasonLink" xml:space="preserve"><value>Voir la page de la saison {0}</value></data>
+  <data name="Camps_Details_MyMembership" xml:space="preserve"><value>Mon adhésion</value></data>
+  <data name="Camps_Details_MembershipHelp" xml:space="preserve"><value>Ceci ne vous inscrit pas au camp. Rejoignez d’abord le camp selon sa propre procédure, puis informez Humans pour accéder aux rôles du camp, aux allocations d’Entrée Anticipée et aux notifications.</value></data>
+  <data name="Camps_Details_FullSeason" xml:space="preserve"><value>Ce camp indique être complet pour {0} — vous pouvez quand même demander à le rejoindre.</value></data>
+  <data name="Camps_Details_RequestJoin" xml:space="preserve"><value>Demander à rejoindre pour {0}</value></data>
+  <data name="Camps_Details_PendingApproval" xml:space="preserve"><value>En attente de l’approbation des responsables pour {0}.</value></data>
+  <data name="Camps_Details_WithdrawConfirm" xml:space="preserve"><value>Retirer votre demande en attente ?</value></data>
+  <data name="Camps_Details_WithdrawRequest" xml:space="preserve"><value>Retirer la demande</value></data>
+  <data name="Camps_Details_ActiveMembership" xml:space="preserve"><value>Vous êtes membre pour {0}.</value></data>
+  <data name="Camps_Details_LeaveConfirm" xml:space="preserve"><value>Quitter ce camp pour cette saison ?</value></data>
+  <data name="Camps_Details_LeaveCamp" xml:space="preserve"><value>Quitter le camp</value></data>
+  <data name="Camps_Details_Containers" xml:space="preserve"><value>Conteneurs</value></data>
+  <data name="Camps_Flash_RequestNoOpenSeason" xml:space="preserve"><value>Ce camp n’accepte pas de demandes d’adhésion cette année.</value></data>
+  <data name="Camps_Flash_RequestCreated" xml:space="preserve"><value>Ta demande d’adhésion a été envoyée aux responsables du camp.</value></data>
+  <data name="Camps_Flash_RequestAlreadyActive" xml:space="preserve"><value>Tu es déjà membre actif de ce camp.</value></data>
+  <data name="Camps_Flash_RequestAlreadyPending" xml:space="preserve"><value>Tu as déjà une demande en attente pour ce camp.</value></data>
+  <data name="Camps_Details_EditAndAssignRoles" xml:space="preserve"><value>Modifier {0} / Attribuer des rôles</value></data>
+  <data name="Camps_Details_ManageEvents" xml:space="preserve"><value>Gérer les événements</value></data>
+  <data name="Camps_Details_WithdrawSeasonConfirm" xml:space="preserve"><value>Voulez-vous vraiment retirer le Barrio de cette saison ?</value></data>
+  <data name="Camps_Details_WithdrawSeason" xml:space="preserve"><value>Retirer le Barrio de la saison</value></data>
+  <data name="Camps_Details_MarkFullConfirm" xml:space="preserve"><value>Marquer cette saison comme complète ? Cela indique simplement aux visiteurs que vous semblez complet ; ils peuvent toujours demander à vous rejoindre.</value></data>
+  <data name="Camps_Details_MarkFull" xml:space="preserve"><value>Marquer la saison comme complète</value></data>
 </root>

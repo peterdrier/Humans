@@ -27,7 +27,8 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   never logged. Jobs and pages no-op cleanly when it is unset (PR-preview / local dev).
 - Errors are classified at the client boundary: `HoldedTransientException` (5xx, network,
   timeout, persistent 429) is retry-eligible; `HoldedPermanentException` (other 4xx, unreadable
-  page bodies) is not.
+  page bodies and malformed creation/upsert responses) is not. One carve-out: `ApprovePurchaseDocumentAsync` treats Holded's 400 "Document
+  already approved" as success (logged at Warning), so a retried push does not write itself off.
 - Every call is metered into the singleton `IHoldedCallLog` (in-memory queue) with its
   `X-RateLimit-*` headers; the Holded section drains it to `holded_api_calls`. The plan-tier
   budget (~2,000 calls/month) is the real allowance — `GET /usage`'s `limit` is Holded's
@@ -42,6 +43,10 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 - Cursor pagination (`{items, cursor, has_more}`, `limit` ≤ 200) runs to completion or
   **throws** — a truncated list is never returned, because list results feed replace-semantics
   reconciliation where a short fetch would delete live rows.
+- Expense-account `account_num` and chart account `id` are required. Missing numbers or missing/null/blank IDs fail the complete read with `HoldedPermanentException` before callers can provision or invoice from an incomplete account map.
+- Account numbers, supplier account numbers, ledger entry numbers and ledger line numbers must be integral. Numeric forms such as `40000001.0` are accepted; fractions are rejected instead of truncated. Contact-list parsing retains its existing skip-and-log behavior for unreadable contacts.
+- Purchase-document IDs must be nonblank; a missing/blank ID fails the complete read with `HoldedPermanentException`, so Finance never syncs an empty document identity. An absent `payments_pending` reads as 0, the safe direction (refuses a booking rather than over-paying).
+- Accounting-account debit, credit and balance are required decimal strings. Missing or null totals reject the complete page with `HoldedPermanentException`; they never become fabricated zero balances.
 - `ledger-entries` dates arrive as `DD/MM/YYYY` (parsed via `HoldedLedgerDatePattern` in
   `DateFormattingExtensions`); purchases/contacts dates are ISO. Decimals arrive as strings.
 - The live `ledger-entries` API's `end_date` is **exclusive** — an entry dated `end_date` itself

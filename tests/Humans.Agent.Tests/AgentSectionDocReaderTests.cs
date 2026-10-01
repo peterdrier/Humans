@@ -1,3 +1,4 @@
+using NSubstitute;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Agent.Services.Preload;
@@ -17,6 +18,22 @@ namespace Humans.Agent.Tests;
 /// </summary>
 public class AgentSectionDocReaderTests
 {
+    [HumansFact]
+    public async Task CancelledFetch_PropagatesInsteadOfReturningAMiss()
+    {
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        var source = Substitute.For<IGuideContentSource>();
+        source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Task.FromCanceled<string>(cancelled.Token));
+        var reader = new AgentSectionDocReader(source, new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<AgentSectionDocReader>.Instance);
+
+        var read = () => reader.ReadAsync("Shifts", cancelled.Token);
+
+        var thrown = await read.Should().ThrowAsync<OperationCanceledException>();
+        thrown.Which.CancellationToken.Should().Be(cancelled.Token);
+    }
+
     [HumansTheory]
     [InlineData("Shifts")]
     [InlineData("shifts")]

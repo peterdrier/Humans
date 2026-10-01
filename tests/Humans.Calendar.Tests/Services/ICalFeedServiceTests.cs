@@ -1,7 +1,8 @@
 using AwesomeAssertions;
 using Humans.Calendar.Contracts;
 using Humans.Calendar.Services;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
+using Xunit;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
@@ -13,12 +14,13 @@ namespace Humans.Calendar.Tests.Services;
 public class ICalFeedServiceTests
 {
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly ILogger<ICalFeedService> _logger = Substitute.For<ILogger<ICalFeedService>>();
     private readonly ICalendarFeedTokenService _tokens = Substitute.For<ICalendarFeedTokenService>();
 
     private ICalFeedService CreateService(params ICalendarFeedContributor[] contributors) =>
         new(_users, _tokens, contributors,
             Options.Create(new EmailSettings { BaseUrl = "https://calendar.example" }),
-            NullLogger<ICalFeedService>.Instance);
+            _logger);
 
     private static CalendarFeedItem MakeItem(string uid, string source, Instant start) =>
         new(
@@ -76,14 +78,29 @@ public class ICalFeedServiceTests
         items[1].Uid.Should().Be("b@x");
     }
 
-    [HumansFact]
-    public async Task GetFeedItemsAsync_PropagatesContributorFailure()
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task GetFeedItemsAsync_PropagatesFailuresWithoutLoggingAbortedRequests(
+        bool dependencyCancelled, bool callerCancelled)
     {
-        var service = CreateService(new FakeContributor(new InvalidOperationException("boom")));
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            Xunit.TestContext.Current.CancellationToken);
+        if (callerCancelled) await cancellation.CancelAsync();
+        Exception exception = dependencyCancelled
+            ? new OperationCanceledException(cancellation.Token)
+            : new InvalidOperationException("boom");
+        var service = CreateService(new FakeContributor(exception));
+        var act = () => service.GetFeedItemsAsync(Guid.NewGuid(), cancellation.Token);
 
-        var act = async () => await service.GetFeedItemsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+        if (dependencyCancelled)
+            (await act.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(exception);
+        else
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+        var errors = _logger.ReceivedCalls().Where(call => call.GetArguments()[0] is LogLevel.Error).ToList();
+        errors.Should().HaveCount(callerCancelled ? 0 : 1);
+        if (!callerCancelled) errors.Single().GetArguments()[3].Should().BeSameAs(exception);
     }
 
     [HumansFact]

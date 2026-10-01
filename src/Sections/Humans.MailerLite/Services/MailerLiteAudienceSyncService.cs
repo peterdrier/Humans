@@ -2,7 +2,6 @@ using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Data;
 using Humans.MailerLite.Domain;
 using Humans.MailerLite.Services.Dtos;
-using Humans.MailerLite.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
 
@@ -10,7 +9,7 @@ namespace Humans.MailerLite.Services;
 
 /// <summary>
 /// Orchestrates audience computation, ML state diffing, and the apply step.
-/// Lives in the Application layer; the section's sync state goes through
+/// The section's sync state goes through
 /// <see cref="IMailerLiteRepository"/>.
 /// </summary>
 internal sealed class MailerLiteAudienceSyncService(
@@ -20,7 +19,7 @@ internal sealed class MailerLiteAudienceSyncService(
     IMailerLiteRepository repository,
     IClock clock,
     IEnumerable<IMailerLiteAudience> audiences,
-    ILogger<MailerLiteAudienceSyncService> logger) : IMailerLiteAudienceSyncService, IMailerLiteAudienceSync
+    ILogger<MailerLiteAudienceSyncService> logger) : IMailerLiteAudienceSyncService
 {
     private const string HumansGroupPrefix = "Humans - ";
     private const string JobName = nameof(MailerLiteAudienceSyncService);
@@ -41,18 +40,6 @@ internal sealed class MailerLiteAudienceSyncService(
             }
         }
         return results;
-    }
-
-    /// <summary>
-    /// The <see cref="IMailerLiteAudienceSync"/> half, driven by <c>MailerLiteAudienceSyncJob</c>.
-    /// The scheduled run has no actor, and the job logs only how many audiences completed —
-    /// so the contracts leaf carries an <c>int</c> rather than the section's
-    /// <see cref="AudienceSyncResult"/> list.
-    /// </summary>
-    public async Task<int> SyncAllAudiencesAsync(CancellationToken cancellationToken = default)
-    {
-        var results = await SyncAllAsync(actorUserId: null, cancellationToken);
-        return results.Count;
     }
 
     public async Task<IReadOnlyList<AudienceStats>> ComputeAllStatsAsync(CancellationToken ct = default)
@@ -104,7 +91,7 @@ internal sealed class MailerLiteAudienceSyncService(
         // Single snapshot reused for diff + apply; per-write methods don't invalidate the subscriber cache.
         var subscribers = new List<MailerLiteSubscriber>();
         await foreach (var s in ml.ListSubscribersAsync(ct)) subscribers.Add(s);
-        var byEmail = subscribers.ToDictionary(s => NormalizeEmail(s.Email), s => s, StringComparer.Ordinal);
+        var byEmail = subscribers.ToDictionary(s => MailerLiteEmailNormalization.Normalize(s.Email), s => s, StringComparer.Ordinal);
         var currentGroupMemberIds = subscribers
             .Where(s => s.GroupIds.Contains(group.Id, StringComparer.Ordinal))
             .Select(s => s.Id)
@@ -117,7 +104,7 @@ internal sealed class MailerLiteAudienceSyncService(
 
         foreach (var (_, email) in userEmailMap)
         {
-            var norm = NormalizeEmail(email);
+            var norm = MailerLiteEmailNormalization.Normalize(email);
             if (!byEmail.TryGetValue(norm, out var sub))
             {
                 toBulkImport.Add(email);
@@ -236,7 +223,7 @@ internal sealed class MailerLiteAudienceSyncService(
     {
         var subscribers = new List<MailerLiteSubscriber>();
         await foreach (var s in ml.ListSubscribersAsync(ct)) subscribers.Add(s);
-        var byEmail = subscribers.ToDictionary(s => NormalizeEmail(s.Email), s => s, StringComparer.Ordinal);
+        var byEmail = subscribers.ToDictionary(s => MailerLiteEmailNormalization.Normalize(s.Email), s => s, StringComparer.Ordinal);
         var groups = await ml.ListGroupsAsync(ct);
         return new MlSnapshot(byEmail, groups);
     }
@@ -253,7 +240,7 @@ internal sealed class MailerLiteAudienceSyncService(
         int excluded = 0, inGroup = 0;
         foreach (var (_, email) in userEmailMap)
         {
-            if (!snapshot.ByEmail.TryGetValue(NormalizeEmail(email), out var sub)) continue;
+            if (!snapshot.ByEmail.TryGetValue(MailerLiteEmailNormalization.Normalize(email), out var sub)) continue;
             if (sub.IsSuppressed) excluded++;
             else if (group is not null && sub.GroupIds.Contains(group.Id, StringComparer.Ordinal)) inGroup++;
         }
@@ -268,9 +255,6 @@ internal sealed class MailerLiteAudienceSyncService(
             LastSyncAt: null,
             LastSyncSummary: null);
     }
-
-    private static string NormalizeEmail(string email) =>
-        email.Trim().ToLowerInvariant();
 
     private sealed record MlSnapshot(
         IReadOnlyDictionary<string, MailerLiteSubscriber> ByEmail,

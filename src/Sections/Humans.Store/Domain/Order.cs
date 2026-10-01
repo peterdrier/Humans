@@ -10,7 +10,7 @@ internal sealed class Order
     /// <summary>
     /// Cross-section linkage to <c>CampSeason</c> — bare Guid, no EF navigation, no FK
     /// constraint (per <c>memory/architecture/no-cross-section-ef-joins.md</c>). Resolved
-    /// at the service layer via <c>ICampService.GetCampSeasonByIdAsync</c>. Exactly one of
+    /// at the service layer via <c>ICampServiceRead.GetCampSeasonByIdAsync</c>. Exactly one of
     /// <see cref="CampSeasonId"/> and <see cref="TeamId"/> is non-null; the invariant is
     /// service-enforced, not DB-enforced.
     /// </summary>
@@ -19,9 +19,8 @@ internal sealed class Order
     /// <summary>
     /// Cross-section linkage to <c>Team</c> for non-billable department orders — bare
     /// Guid, no EF navigation, no FK constraint. Resolved at the service layer via
-    /// <c>ITeamServiceRead.GetTeamAsync</c>. Exactly one of <see cref="CampSeasonId"/>
-    /// and <see cref="TeamId"/> is non-null; the invariant is service-enforced, not
-    /// DB-enforced.
+    /// <c>ITeamServiceRead.GetTeamAsync</c>. See <see cref="CampSeasonId"/> for the
+    /// exactly-one-counterparty invariant.
     /// </summary>
     public Guid? TeamId { get; set; }
 

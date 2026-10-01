@@ -11,7 +11,8 @@ public sealed class MembershipTierBadgeViewComponent(IUserServiceRead userServic
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
-        var tier = (await userService.GetUserInfoAsync(userId))?.Profile?.MembershipTier ?? MembershipTier.Volunteer;
+        var tier = (await userService.GetUserInfoAsync(userId, HttpContext.RequestAborted))?.Profile?.MembershipTier
+            ?? MembershipTier.Volunteer;
 
         return tier == MembershipTier.Volunteer ? Content(string.Empty) : View(tier);
     }

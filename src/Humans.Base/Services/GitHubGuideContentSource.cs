@@ -8,6 +8,7 @@ namespace Humans.Base.Services;
 public sealed class GitHubGuideContentSource : IGuideContentSource
 {
     private readonly IOptions<GuideSettings> _guideSettings;
+    // These Octokit reads have no token overload; cancellation stops waiting for their result.
     private readonly GitHubClient _client;
     private readonly ILogger<GitHubGuideContentSource> _logger;
 
@@ -35,6 +36,7 @@ public sealed class GitHubGuideContentSource : IGuideContentSource
 
     public async Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var settings = _guideSettings.Value;
         var path = $"{folderPath.TrimEnd('/')}/{fileStem}.md";
 
@@ -46,7 +48,7 @@ public sealed class GitHubGuideContentSource : IGuideContentSource
             settings.Owner,
             settings.Repository,
             path,
-            settings.Branch);
+            settings.Branch).WaitAsync(cancellationToken);
 
         return System.Text.Encoding.UTF8.GetString(rawBytes);
     }
@@ -54,6 +56,7 @@ public sealed class GitHubGuideContentSource : IGuideContentSource
     public async Task<IReadOnlyList<string>> ListMarkdownStemsAsync(
         string folderPath, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var settings = _guideSettings.Value;
         try
         {
@@ -61,7 +64,7 @@ public sealed class GitHubGuideContentSource : IGuideContentSource
                 settings.Owner,
                 settings.Repository,
                 folderPath.TrimEnd('/'),
-                settings.Branch);
+                settings.Branch).WaitAsync(cancellationToken);
 
             return contents
                 .Where(c => c.Type == ContentType.File &&
@@ -79,11 +82,12 @@ public sealed class GitHubGuideContentSource : IGuideContentSource
     public async Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(
         CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var settings = _guideSettings.Value;
         try
         {
             var tree = await _client.Git.Tree.GetRecursive(
-                settings.Owner, settings.Repository, settings.Branch);
+                settings.Owner, settings.Repository, settings.Branch).WaitAsync(cancellationToken);
 
             // GitHub caps a recursive tree; past the cap the response is a partial list that
             // looks complete. Say so rather than let a caller treat a truncated corpus as the

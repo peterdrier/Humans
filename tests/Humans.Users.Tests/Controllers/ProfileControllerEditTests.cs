@@ -1,6 +1,7 @@
 using Humans.Users.Controllers;
 using Humans.Users.Services;
 using Humans.Users.Models;
+using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Configuration;
@@ -156,6 +157,21 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
+    public void Edit_caps_the_profile_picture_request_before_multipart_binding()
+    {
+        var limit = typeof(ProfileController).GetMethods()
+            .Single(method => string.Equals(method.Name, nameof(ProfileController.Edit), StringComparison.Ordinal)
+                && method.GetCustomAttribute<HttpPostAttribute>() is not null)
+            .GetCustomAttribute<RequestSizeLimitAttribute>();
+
+        limit.Should().NotBeNull();
+        typeof(RequestSizeLimitAttribute)
+            .GetField("_bytes", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(limit)
+            .Should().Be(21L * 1024 * 1024);
+    }
+
+    [HumansFact]
     public async Task DownloadData_ExportFailure_ShowsErrorAndReturnsToPrivacy()
     {
         _gdprService.ExportForUserAsync(_userId, Arg.Any<CancellationToken>())
@@ -165,6 +181,19 @@ public class ProfileControllerEditTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Privacy");
         _controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Error_TryAgainLater");
+    }
+
+    [HumansFact]
+    public async Task DownloadData_CancelledRequest_PropagatesCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        _gdprService.ExportForUserAsync(_userId, cancellation.Token)
+            .Returns(Task.FromException<GdprExport>(new OperationCanceledException(cancellation.Token)));
+
+        var act = () => _controller.DownloadData(cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]

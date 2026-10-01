@@ -93,6 +93,10 @@ builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 // moved to Humans.Tickets with /Tickets/Admin/Gate (nobodies-collective/Humans#1091).
 builder.Services.AddSingleton<GateLoginThrottle>();
 
+// Since-startup sign-in tally by method, shown on the /Admin dashboard. In-memory only.
+builder.Services.AddSingleton<LoginMethodCounter>();
+builder.Services.AddSingleton<ISectionChrome, Humans.Web.ShellChrome>();
+
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
@@ -349,12 +353,14 @@ builder.Services.AddRateLimiter(options =>
             return RateLimitPartition.GetNoLimiter(string.Empty);
         }
 
+        // Signed-in humans get a higher per-user budget; anonymous traffic stays at 100/min per IP.
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
         return RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            partitionKey: userId ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
-                PermitLimit = 100,
+                PermitLimit = userId is null ? 100 : 300,
                 Window = TimeSpan.FromMinutes(1)
             });
     });

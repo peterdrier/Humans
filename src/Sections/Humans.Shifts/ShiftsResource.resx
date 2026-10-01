@@ -411,4 +411,22 @@
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>FYI, your shifts with this team are:</value></data>
   <data name="Shifts_ShiftProfile_LoadFailed" xml:space="preserve"><value>Failed to load shift information.</value></data>
   <data name="Shifts_ShiftProfile_SaveFailed" xml:space="preserve"><value>Failed to save shift information.</value></data>
+  <data name="Shifts_EventCalendarNotConfigured" xml:space="preserve"><value>Event calendar not configured.</value></data>
+  <data name="Shifts_SignupNotFound" xml:space="preserve"><value>Signup not found.</value></data>
+  <data name="Shifts_Bail_NotAuthorized" xml:space="preserve"><value>Not authorized to bail this signup.</value></data>
+  <data name="Shifts_BailRange_NotAuthorized" xml:space="preserve"><value>Not authorized to bail this signup block.</value></data>
+  <data name="Shifts_Bail_EarlyEntryClosed" xml:space="preserve"><value>Cannot bail from build shifts after early entry close.</value></data>
+  <data name="Shifts_Bail_AlreadyBailed" xml:space="preserve"><value>This signup has already been bailed.</value></data>
+  <data name="Shifts_Signup_AlreadySignedUp" xml:space="preserve"><value>Already signed up for this shift.</value></data>
+  <data name="Shifts_Signup_ShiftNotFound" xml:space="preserve"><value>Shift not found.</value></data>
+  <data name="Shifts_Signup_BrowsingClosed" xml:space="preserve"><value>Shift browsing is not currently open.</value></data>
+  <data name="Shifts_Signup_Restricted" xml:space="preserve"><value>This shift is restricted to coordinators and admins.</value></data>
+  <data name="Shifts_Signup_EarlyEntryClosed" xml:space="preserve"><value>Early entry signups are closed.</value></data>
+  <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>This shift is at capacity.</value></data>
+  <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>Rota not found.</value></data>
+  <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>No shifts found in the specified date range.</value></data>
+  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Already signed up for all shifts in this range.</value></data>
+  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>All shifts in range have time conflicts with existing signups.</value></data>
+  <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>All shifts in this range are at capacity.</value></data>
+  <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>One or more shifts in this range are restricted to coordinators and admins.</value></data>
 </root>

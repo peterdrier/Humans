@@ -1162,4 +1162,17 @@
   <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Demande de suppression enregistrée. Votre compte sera définitivement supprimé le {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Demande de suppression enregistrée. Comme vous avez des billets pour un prochain événement, votre compte sera supprimé après le {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>Impossible d'annuler la demande de suppression. Veuillez réessayer.</value></data>
+  <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Possède un compte e-mail @nobodies.team</value></data>
+  <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importé · pas encore de profil</value></data>
+  <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Cette personne existe dans le système mais n'a pas encore complété de profil (par exemple, elle a été importée depuis une liste de diffusion ou la billetterie).</value></data>
+  <data name="Users_Profile_ShiftSignupFailed" xml:space="preserve"><value>L'inscription au créneau a échoué.</value></data>
+  <data name="Users_Profile_ShiftSignupSucceeded" xml:space="preserve"><value>Inscription au créneau réussie !</value></data>
+  <data name="Users_Profile_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>Inscription au créneau réussie. Remarque : {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Users_Profile_ShiftRangeSignupFailed" xml:space="preserve"><value>L'inscription à la plage de créneaux a échoué.</value></data>
+  <data name="Users_Profile_ShiftRangeSignupSucceeded" xml:space="preserve"><value>Inscription à la plage de dates réussie !</value></data>
+  <data name="Users_Profile_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Inscription à la plage de dates réussie. Remarque : {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Les catégories toujours actives ne peuvent pas être modifiées.</value></data>
+  <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Ton accès a été suspendu : {0}</value></data>
+  <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Voir le profil</value></data>
+  <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Consentement aux documents requis manquant (délai de grâce expiré)</value></data>
 </root>

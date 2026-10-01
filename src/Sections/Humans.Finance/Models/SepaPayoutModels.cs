@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using NodaTime;
 
 namespace Humans.Finance.Models;
@@ -47,50 +48,6 @@ internal sealed record SepaPayoutSettings(decimal MaxPerTransfer, string? Unavai
     public bool IsAvailable => UnavailableReason is null;
 }
 
-/// <summary>
-/// One credit transfer flattened with the file it belongs to, for <c>/Finance/Sepa</c>. The file's
-/// XML is deliberately absent — the screen lists hundreds of rows and never renders the document.
-/// </summary>
-/// <param name="NotBookableReason">Why this transfer cannot be booked into Holded, or null when it
-/// can. The repository projects it null; <c>GetSepaPayoutsAsync</c> fills it in.</param>
-/// <param name="CandidateBankMovementId">The Sabadell line that matches this transfer, filled in by
-/// <c>GetSepaPayoutsAsync</c>; the repository always projects it null.</param>
-internal sealed record SepaPayoutTransferRow(
-    Guid TransferId,
-    Guid FileId,
-    string FileName,
-    Instant GeneratedAt,
-    Guid GeneratedByUserId,
-    Guid UserId,
-    int SupplierAccountNum,
-    string? HoldedContactId,
-    string CreditorName,
-    string IbanMasked,
-    decimal Amount,
-    Instant? BookedAt,
-    Guid? BookedByUserId,
-    string? HoldedBankMovementId,
-    Instant? ReconciledAt,
-    string? NotBookableReason,
-    string? CandidateBankMovementId,
-    LocalDate? CandidateBankMovementDate = null,
-    decimal? CandidateBankMovementAmount = null,
-    string? CandidateBankMovementDescription = null)
-{
-    /// <summary>Booked is exactly "has a <see cref="BookedAt"/>" — there is no status column.</summary>
-    public bool IsBooked => BookedAt is not null;
-
-    /// <summary>Booked, against a known bank line, and Holded has not been told they match yet.</summary>
-    public bool ReconcilePending =>
-        IsBooked && HoldedBankMovementId is { Length: > 0 } && ReconciledAt is null;
-
-    /// <summary>A bank line was found for this transfer and everything else checks out. The three
-    /// <c>CandidateBankMovement*</c> fields describe that line, so the treasurer can recognise it
-    /// before clicking Book; they are filled together with the id and are null without it.</summary>
-    public bool CanBook =>
-        !IsBooked && NotBookableReason is null && CandidateBankMovementId is { Length: > 0 };
-}
-
 /// <summary>An outgoing Sabadell line the sweep could not book, with why — the page's
 /// "a human has to look at this" list (nobodies-collective/Humans#1185).</summary>
 internal sealed record SepaBankMovementVm(
@@ -106,11 +63,15 @@ internal sealed record SepaBankMovementVm(
 internal sealed record SepaTransferVm(SepaPayoutTransferRow Row, string MemberName, string? BookedByName);
 
 /// <summary>One generated file and its transfers, as the screen groups them.</summary>
+/// <param name="BatchLine">The single bank line that debited this whole file, when there is one to
+/// process.</param>
 internal sealed record SepaPayoutFileVm(
+    Guid FileId,
     string FileName,
     Instant GeneratedAt,
     string GeneratedByName,
-    IReadOnlyList<SepaTransferVm> Transfers);
+    IReadOnlyList<SepaTransferVm> Transfers,
+    SepaBatchLineVm? BatchLine);
 
 /// <summary>The /Finance/Sepa page model.</summary>
 /// <param name="UnavailableReason">Set when booking is off for every row (missing configuration);

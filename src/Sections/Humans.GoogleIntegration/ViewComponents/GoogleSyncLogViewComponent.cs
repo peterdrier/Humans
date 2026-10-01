@@ -28,6 +28,10 @@ public sealed class GoogleSyncLogViewComponent(
             else if (userId.HasValue)
                 model.Entries = await syncLog.GetForUserAsync(userId.Value, ct);
         }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading Google sync log for ResourceId={ResourceId}, UserId={UserId}",

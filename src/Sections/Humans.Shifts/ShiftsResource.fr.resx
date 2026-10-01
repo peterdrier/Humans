@@ -1197,4 +1197,22 @@
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Pour information, vos cr&#xE9;neaux avec cette &#xE9;quipe&#xA0;:</value></data>
   <data name="Shifts_ShiftProfile_LoadFailed" xml:space="preserve"><value>Impossible de charger les informations de créneaux.</value></data>
   <data name="Shifts_ShiftProfile_SaveFailed" xml:space="preserve"><value>Impossible d'enregistrer les informations de créneaux.</value></data>
+  <data name="Shifts_EventCalendarNotConfigured" xml:space="preserve"><value>Le calendrier de l’événement n’est pas configuré.</value></data>
+  <data name="Shifts_SignupNotFound" xml:space="preserve"><value>Inscription introuvable.</value></data>
+  <data name="Shifts_Bail_NotAuthorized" xml:space="preserve"><value>Tu ne peux pas annuler cette inscription.</value></data>
+  <data name="Shifts_BailRange_NotAuthorized" xml:space="preserve"><value>Tu ne peux pas annuler ce groupe d’inscriptions.</value></data>
+  <data name="Shifts_Bail_EarlyEntryClosed" xml:space="preserve"><value>Tu ne peux pas annuler les créneaux de montage après la clôture de l’entrée anticipée.</value></data>
+  <data name="Shifts_Bail_AlreadyBailed" xml:space="preserve"><value>Cette inscription a déjà été annulée.</value></data>
+  <data name="Shifts_Signup_AlreadySignedUp" xml:space="preserve"><value>Vous êtes déjà inscrit à ce créneau.</value></data>
+  <data name="Shifts_Signup_ShiftNotFound" xml:space="preserve"><value>Créneau introuvable.</value></data>
+  <data name="Shifts_Signup_BrowsingClosed" xml:space="preserve"><value>La consultation des créneaux n’est pas ouverte actuellement.</value></data>
+  <data name="Shifts_Signup_Restricted" xml:space="preserve"><value>Ce créneau est réservé aux coordinateurs et aux administrateurs.</value></data>
+  <data name="Shifts_Signup_EarlyEntryClosed" xml:space="preserve"><value>Les inscriptions pour l’entrée anticipée sont closes.</value></data>
+  <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>Ce créneau est complet.</value></data>
+  <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>Planning introuvable.</value></data>
+  <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>Aucun créneau trouvé dans la période indiquée.</value></data>
+  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Vous êtes déjà inscrit à tous les créneaux de cette période.</value></data>
+  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Tous les créneaux de cette période chevauchent des inscriptions existantes.</value></data>
+  <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Tous les créneaux de cette période sont complets.</value></data>
+  <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Un ou plusieurs créneaux de cette période sont réservés aux coordinateurs et aux administrateurs.</value></data>
 </root>

@@ -183,6 +183,38 @@ public sealed class CachingConsentServiceTests
     }
 
     [HumansFact]
+    public async Task SubmitConsentAsync_RefreshFailure_EvictsEveryMergeChainKey()
+    {
+        var userId = Guid.NewGuid();
+        var sourceIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        var versionId = Guid.NewGuid();
+        var user = UserInfo.Create(new User { Id = userId }, [], [], [], null, [])
+            with
+        { MergedUserIds = sourceIds };
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _inner.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(user.AllUserIds.ToDictionary(id => id, _ => (IReadOnlySet<Guid>)new HashSet<Guid>()));
+        _inner.SubmitConsentAsync(userId, versionId, true, "1.2.3.4", "agent", Arg.Any<CancellationToken>())
+            .Returns(new ConsentSubmitResult(true, "Privacy"));
+        _inner.GetConsentedVersionIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlySet<Guid>>(new InvalidOperationException("reload unavailable")));
+        var sut = CreateSut();
+        await sut.GetConsentMapForUsersAsync(user.AllUserIds, Xunit.TestContext.Current.CancellationToken);
+
+        var submit = () => sut.SubmitConsentAsync(
+            userId, versionId, true, "1.2.3.4", "agent", Xunit.TestContext.Current.CancellationToken);
+        await submit.Should().ThrowAsync<InvalidOperationException>().WithMessage("reload unavailable");
+
+        foreach (var id in user.AllUserIds)
+            sut.ContainsKey(id).Should().BeFalse("no merge-chain alias may retain the pre-submit consent set");
+        _inner.GetConsentedVersionIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlySet<Guid>)new HashSet<Guid> { versionId });
+        foreach (var id in user.AllUserIds)
+            (await sut.GetConsentedVersionIdsAsync(id, Xunit.TestContext.Current.CancellationToken))
+                .Should().Contain(versionId);
+    }
+
+    [HumansFact]
     public async Task SubmitConsentAsync_Failure_DoesNotRefreshCache()
     {
         var userId = Guid.NewGuid();

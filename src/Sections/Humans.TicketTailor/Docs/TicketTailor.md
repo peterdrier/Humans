@@ -38,7 +38,8 @@ None — the section owns no tables. Tickets owns every local row mirrored from 
 - Outside Production `TicketVendorSettings.EventId` and `ApiKey` are filled with placeholders when empty, so `IsConfigured` is true and Tickets' sync runs against the fixture.
 - Both implementations are `internal sealed`; only `Section.Register` binds them, and only Tickets injects the port.
 - The Basic auth header is set only when `ApiKey` is non-empty.
-- List reads page until `links.next` is null. Orders and issued tickets filter on `updated_at.gte`; check-ins filter on `created_at.gte` (upload time, not scan time), so a late-uploaded offline scan is never skipped.
+- Each vendor response is disposed after its body is read or its failure is classified, so repeated paginated syncs release response streams promptly.
+- List reads page until `links.next` is null. Missing data, empty nonterminal pages and missing/blank/repeated continuation cursors throw `HttpRequestException`; a broken page walk never returns a partial list. Orders and issued tickets filter on `updated_at.gte`; check-ins filter on `created_at.gte` (upload time, not scan time), so a late-uploaded offline scan is never skipped.
 - `HttpClient.Timeout` is 90s (`Section.cs`) — production calls routinely land at 21.6-27.1s, and the old 30s ceiling was close enough to trip on vendor slowdowns (nobodies-collective/Humans#946).
 - `GetOrdersAsync` times each page of its pagination individually, not the whole loop — `HttpClient.Timeout` is per-request, and `LoggerTimingExtensions`' Error threshold is calibrated for one request, not a multi-page sync's cumulative time (nobodies-collective/Humans#946).
 - A check-in is reported only when a ticket's net quantity across records is positive; its time is the earliest positive record's `check_in_at`, falling back to `created_at`.

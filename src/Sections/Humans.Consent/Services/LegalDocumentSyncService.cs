@@ -613,10 +613,4 @@ internal sealed partial class LegalDocumentSyncService(
         }
     }
 
-    private async Task<string?> GetCanonicalFilePathAsync(
-        string folderPath, CancellationToken cancellationToken)
-    {
-        var files = await gitHub.DiscoverLanguageFilesAsync(folderPath, cancellationToken);
-        return files.GetValueOrDefault("es");
-    }
 }

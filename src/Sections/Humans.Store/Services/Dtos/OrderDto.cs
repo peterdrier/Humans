@@ -29,6 +29,7 @@ internal sealed record OrderDto(
 
 /// <summary>One recorded payment against a camp order (a row in <c>store_payments</c>).</summary>
 internal sealed record OrderPaymentDto(
+    Guid Id,
     decimal AmountEur,
     PaymentMethod Method,
     PaymentStatus Status,

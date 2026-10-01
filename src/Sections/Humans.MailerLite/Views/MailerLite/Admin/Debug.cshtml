@@ -298,7 +298,7 @@
     @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(np.State, np.Total, Model.Options, UrlFor))
 </section>
 
-@* Apply button — posts to existing Sync action *@
+@* Apply button — posts to the Sync action *@
 <div class="d-flex justify-content-end my-4">
     <form method="post"
           action="/MailerLite/Admin/Audiences/@Model.SelectedKey/Sync"

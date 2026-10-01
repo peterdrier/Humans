@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Containers. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 3
+next_id: 4
 inbox:
   - added: 2026-09-08
     id: CONT-1
@@ -12,3 +12,8 @@ inbox:
     id: CONT-2
     what: "Service validation failures reach the member untranslated: ContainerController's catch hands ex.Message to SetError, so \"A container can have at most 5 images.\" and the name-character message render in English in every culture (finding 5, /section-doctor on Containers 2026-09-08). Peter 2026-09-14: accept English for now, do the error-key pass later — Service throws a key the controller localizes against ContainersResource, rather than a formatted sentence. The two messages live in Service.ValidateName and the image-count guard."
     review: light
+  - added: 2026-09-25
+    id: CONTAINERS-3
+    what: "ContainerAuthorizationHandler decides Place for a barrio lead on CityPlanning's settings.Year (the public year) — both the container-placement-open check and the lead-of-season check — while CityPlanningApiController's placement endpoints save to the {year} in the route. A lead of the public year's season can write placements for any year while the public year's phase is open. Same year-confusion class as CITY-1. Found by /section-doctor on CityPlanning 2026-09-25."
+    review: panel
+    root: CITY-1

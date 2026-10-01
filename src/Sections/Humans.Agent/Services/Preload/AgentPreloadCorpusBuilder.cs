@@ -42,26 +42,32 @@ internal sealed class AgentPreloadCorpusBuilder(
         if (cache.TryGetValue<string>(cacheKey, out var cached) && cached is not null)
             return cached;
 
-        var result = await BuildCorpusAsync(config, cancellationToken);
-        cache.Set(cacheKey, result, HoldForever);
+        var (result, isComplete) = await BuildCorpusAsync(config, cancellationToken);
+        if (isComplete) cache.Set(cacheKey, result, HoldForever);
         return result;
     }
 
-    public async Task ReloadAllAsync(CancellationToken cancellationToken = default)
+    public async Task<bool> ReloadAllAsync(CancellationToken cancellationToken = default)
     {
         // Refresh the KB source first so the rebuilt index reflects the latest repo state,
         // then rebuild + atomically overwrite every tier's cached corpus (reload + swap).
-        await community.ReloadAsync(cancellationToken);
+        if (!await community.ReloadAsync(cancellationToken)) return false;
+        var corpora = new Dictionary<AgentPreloadConfig, string>();
         foreach (var config in Enum.GetValues<AgentPreloadConfig>())
         {
-            var fresh = await BuildCorpusAsync(config, cancellationToken);
-            cache.Set($"agent:preload:{config}", fresh, HoldForever);
+            var (fresh, isComplete) = await BuildCorpusAsync(config, cancellationToken);
+            if (!isComplete) return false;
+            corpora.Add(config, fresh);
         }
+        foreach (var (config, fresh) in corpora)
+            cache.Set($"agent:preload:{config}", fresh, HoldForever);
+        return true;
     }
 
-    private async Task<string> BuildCorpusAsync(AgentPreloadConfig config, CancellationToken cancellationToken)
+    private async Task<(string Body, bool IsComplete)> BuildCorpusAsync(AgentPreloadConfig config, CancellationToken cancellationToken)
     {
         var sections1 = config == AgentPreloadConfig.Tier1 ? Tier1Sections : Tier2Sections;
+        var isComplete = true;
         var sb = new StringBuilder();
         sb.AppendLine("# Nobodies Collective — System Knowledge");
         sb.AppendLine();
@@ -72,7 +78,11 @@ internal sealed class AgentPreloadCorpusBuilder(
         foreach (var key in sections1)
         {
             var body = await sections.ReadAsync(key, cancellationToken);
-            if (body is null) continue;
+            if (body is null)
+            {
+                isComplete = false;
+                continue;
+            }
             var tagline = ExtractTagline(body);
             sb.Append("- **").Append(key).Append("** — ").AppendLine(tagline);
         }
@@ -86,7 +96,7 @@ internal sealed class AgentPreloadCorpusBuilder(
         sb.AppendLine();
         sb.AppendLine(augmentor.BuildFaqMarkdown());
 
-        var communityEntries = await community.ListTopicsAsync(cancellationToken);
+        var (communityEntries, communityComplete) = await community.ListTopicsAsync(cancellationToken);
         if (communityEntries.Count > 0)
         {
             sb.AppendLine();
@@ -105,7 +115,7 @@ internal sealed class AgentPreloadCorpusBuilder(
             }
         }
 
-        return sb.ToString();
+        return (sb.ToString(), isComplete && communityComplete);
     }
 
     private static string ExtractTagline(string body)

@@ -41,7 +41,8 @@ public sealed record AccountingOrderLineDto(
 /// payments, so <paramref name="CounterpartyType"/> is always <c>Camp</c> today.
 /// </summary>
 /// <param name="AmountEur">Signed — a refund is negative.</param>
-/// <param name="Method">The <c>PaymentMethod</c> name: <c>Stripe</c>, <c>BankTransfer</c> or <c>Manual</c>.</param>
+/// <param name="Method">The <c>PaymentMethod</c> name: <c>Stripe</c>, <c>BankTransfer</c>, <c>Manual</c>,
+/// <c>DepositReturn</c> (a returned deposit credited to the order — no money moved) or <c>Refund</c>.</param>
 public sealed record AccountingPaymentDto(
     int Year,
     Guid OrderId,

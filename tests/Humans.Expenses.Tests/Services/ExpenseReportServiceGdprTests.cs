@@ -11,6 +11,7 @@ using Humans.Teams.Contracts;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -23,6 +24,10 @@ namespace Humans.Expenses.Tests.Services;
 
 public class ExpenseReportServiceGdprTests
 {
+    private readonly IStringLocalizer<ExpensesResource> _localizer =
+        new StringLocalizer<ExpensesResource>(new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
+
     private static readonly Instant FakeNow = Instant.FromUtc(2026, 5, 10, 12, 0);
     private static readonly Guid UserId = Guid.NewGuid();
 
@@ -64,7 +69,7 @@ public class ExpenseReportServiceGdprTests
             _holdedFinance,
             new FakeClock(FakeNow),
             NullLogger<ExpenseReportService>.Instance,
-            Options.Create(new TravelReimbursementConfig()));
+            Options.Create(new TravelReimbursementConfig()), _localizer);
     }
 
     private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(

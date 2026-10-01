@@ -1,43 +1,56 @@
+@using Humans.Store.Authorization
+@using Microsoft.AspNetCore.Authorization
 @model Humans.Store.Models.OrderViewModel
+@inject IAuthorizationService AuthService
 @{
-    ViewData["Title"] = $"Store order — {Model.CounterpartyDisplayName}";
+    ViewData["Title"] = Localizer["Store_OrderTitle", Model.CounterpartyDisplayName].Value;
     var order = Model.Order;
     var isTeamOrder = order.CounterpartyType == OrderCounterpartyType.Team;
     var pendingTotal = order.Payments
         .Where(p => p.Status == PaymentStatus.Pending)
         .Sum(p => p.AmountEur);
+    var canRefund = Model.CanRecordPayment
+        && (await AuthService.AuthorizeAsync(User, order, OrderOperationRequirement.Refund)).Succeeded;
+    var canDeletePayment = (await AuthService.AuthorizeAsync(User, order, OrderOperationRequirement.DeletePayment)).Succeeded;
 }
 
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">Store</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Store_Title"]</a></li>
         <li class="breadcrumb-item">@Model.CounterpartyDisplayName</li>
-        <li class="breadcrumb-item active">Order</li>
+        <li class="breadcrumb-item active">@Localizer["Store_Order"]</li>
     </ol>
 </nav>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Store order</h1>
+    <h1 class="mb-0">@Localizer["Store_Order"]</h1>
     <div class="d-flex align-items-center gap-2">
-        <span class="badge bg-info text-dark fs-6">@order.CounterpartyType</span>
-        <span class="badge bg-secondary fs-6">@order.State</span>
-        @if (Model.CanIssueInvoice)
+        <span class="badge bg-info text-dark fs-6">@Localizer.EnumDisplay(order.CounterpartyType)</span>
+        <span class="badge bg-secondary fs-6">@Localizer.EnumDisplay(order.State)</span>
+        @if (Model.CanIssueInvoice && order.BalanceEur == 0)
         {
             <form asp-action="IssueInvoice" asp-route-id="@order.Id" method="post" class="mb-0">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-sm btn-outline-primary"
-                        data-confirm="Issue this order's factura in Holded? Prices freeze at today's catalog and the order can never be re-issued.">
-                    <i class="fa-solid fa-file-invoice me-1"></i> Issue invoice
+                        data-confirm="@Localizer["Store_IssueInvoiceConfirm"].Value">
+                    <i class="fa-solid fa-file-invoice me-1"></i> @Localizer["Store_IssueInvoice"]
                 </button>
             </form>
+        }
+        else if (Model.CanIssueInvoice)
+        {
+            <button type="button" class="btn btn-sm btn-outline-primary" disabled>
+                <i class="fa-solid fa-file-invoice me-1"></i> @Localizer["Store_IssueInvoice"]
+            </button>
+            <small class="text-muted">@Localizer["Store_IssueInvoiceNeedsZeroBalance"]</small>
         }
         @if (Model.CanDelete)
         {
             <form asp-action="Delete" asp-route-id="@order.Id" method="post" class="mb-0">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-sm btn-outline-danger"
-                        data-confirm="Delete this zero-balance order? This cannot be undone.">
-                    <i class="fa-solid fa-trash me-1"></i> Delete
+                        data-confirm="@Localizer["Store_DeleteOrderConfirm"].Value">
+                    <i class="fa-solid fa-trash me-1"></i> @Localizer["Store_Delete"]
                 </button>
             </form>
         }
@@ -51,7 +64,7 @@
         <div class="col-6 col-md">
             <div class="card text-center h-100">
                 <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Lines subtotal</h6>
+                    <h6 class="card-subtitle mb-2 text-muted">@Localizer["Store_LinesSubtotal"]</h6>
                     <h4 class="card-title mb-0">@order.LinesSubtotalEur.ToEuro()</h4>
                 </div>
             </div>
@@ -59,7 +72,7 @@
         <div class="col-6 col-md">
             <div class="card text-center h-100">
                 <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">VAT</h6>
+                    <h6 class="card-subtitle mb-2 text-muted">@Localizer["Store_Vat"]</h6>
                     <h4 class="card-title mb-0">@order.VatTotalEur.ToEuro()</h4>
                 </div>
             </div>
@@ -67,7 +80,7 @@
         <div class="col-6 col-md">
             <div class="card text-center h-100">
                 <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Deposits</h6>
+                    <h6 class="card-subtitle mb-2 text-muted">@Localizer["Store_ColDeposits"]</h6>
                     <h4 class="card-title mb-0">@order.DepositTotalEur.ToEuro()</h4>
                 </div>
             </div>
@@ -75,7 +88,15 @@
         <div class="col-6 col-md">
             <div class="card text-center h-100">
                 <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Total payments</h6>
+                    <h6 class="card-subtitle mb-2 text-muted">@Localizer["Store_DepositsReturned"]</h6>
+                    <h4 class="card-title mb-0">@Model.DepositsReturnedEur.ToEuro()</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">@Localizer["Store_TotalPayments"]</h6>
                     <h4 class="card-title mb-0 text-success">@order.PaymentsTotalEur.ToEuro()</h4>
                 </div>
             </div>
@@ -83,27 +104,27 @@
         <div class="col-6 col-md">
             <div class="card text-center bg-light h-100">
                 <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Balance owed</h6>
-                    <h4 class="card-title mb-0 fw-bold">@order.BalanceEur.ToEuro()</h4>
+                    <h6 class="card-subtitle mb-2 text-muted">@Localizer[Model.IsRefundDue ? "Store_RefundAmount" : "Store_BalanceOwed"]</h6>
+                    <h4 class="card-title mb-0 fw-bold">@Model.BalanceBoxAmountEur.ToEuro()</h4>
                 </div>
             </div>
         </div>
     </div>
 }
 
-<h2 class="h4 mb-3">Lines</h2>
+<h2 class="h4 mb-3">@Localizer["Store_ColLines"]</h2>
 @if (order.Lines.Any())
 {
     <table class="table">
         <thead>
             <tr>
-                <th>Product</th>
-                <th class="text-end">Qty</th>
+                <th>@Localizer["Store_ColProduct"]</th>
+                <th class="text-end">@Localizer["Store_ColQty"]</th>
                 @if (!isTeamOrder)
                 {
-                    <th class="text-end">Unit price (incl. VAT)</th>
-                    <th class="text-end">Deposit</th>
-                    <th class="text-end">Line total (incl. VAT &amp; deposit)</th>
+                    <th class="text-end">@Localizer["Store_ColUnitPrice"]</th>
+                    <th class="text-end">@Localizer["Store_ColDeposit"]</th>
+                    <th class="text-end">@Localizer["Store_ColLineTotal"]</th>
                 }
                 <th></th>
             </tr>
@@ -118,7 +139,7 @@
                     {
                         <td class="text-end">
                             @line.EffectiveUnitPriceInclVat.ToEuro()
-                            <div class="text-muted small">(@line.EffectiveUnitPrice.ToEuro() + @line.EffectiveVatRate.ToString("0.##")% VAT)</div>
+                            <div class="text-muted small">@Localizer["Store_UnitPriceBreakdown", line.EffectiveUnitPrice.ToEuro(), line.EffectiveVatRate.ToString("0.##")]</div>
                         </td>
                         <td class="text-end">@(line.EffectiveDeposit.HasValue ? line.DepositEur.ToEuro() : "—")</td>
                         <td class="text-end">@line.TotalEur.ToEuro()</td>
@@ -130,7 +151,7 @@
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="lineId" value="@line.Id" />
                                 <button type="submit" class="btn btn-sm btn-outline-danger"
-                                        data-confirm="Remove this line?">Remove</button>
+                                        data-confirm="@Localizer["Store_RemoveLineConfirm"].Value">@Localizer["Store_Remove"]</button>
                             </form>
                         }
                     </td>
@@ -141,7 +162,7 @@
 }
 else
 {
-    <div class="alert alert-secondary">No lines on this order yet.</div>
+    <div class="alert alert-secondary">@Localizer["Store_NoLines"]</div>
 }
 
 @* Price changes on this order's products since it was created (#816). The AuditLog section
@@ -150,20 +171,20 @@ else
               entity-ids="@order.Lines.Select(l => l.ProductId).Distinct().ToList()"
               actions="StoreProductPriceChanged" since="@order.CreatedAt" limit="50"
               layout="table" columns="when,action,description"
-              title="Price changes since this order started"
-              empty-text="No price changes since this order started." />
+              title="@Localizer["Store_PriceChangesTitle"].Value"
+              empty-text="@Localizer["Store_NoPriceChanges"].Value" />
 
 @if (Model.CanEdit)
 {
-    <h2 class="h4 mb-3">Add line</h2>
+    <h2 class="h4 mb-3">@Localizer["Store_AddLine"]</h2>
     <form asp-action="AddLine" asp-route-id="@order.Id" method="post" class="row g-2 mb-4">
         @Html.AntiForgeryToken()
         <div class="col-md-7">
             <select name="productId" class="form-select" required>
-                <option value="">Choose a product…</option>
+                <option value="">@Localizer["Store_ChooseProduct"]</option>
                 @foreach (var product in Model.Catalog)
                 {
-                    <option value="@product.Id">@product.Name — @product.UnitPriceInclVatEur.ToEuro() incl. VAT (deadline @product.OrderableUntil.ToDate())</option>
+                    <option value="@product.Id">@Localizer["Store_ProductOption", product.Name, product.UnitPriceInclVatEur.ToEuro(), product.OrderableUntil.ToDate()]</option>
                 }
             </select>
         </div>
@@ -171,24 +192,28 @@ else
             <input type="number" name="qty" class="form-control" min="1" value="1" required />
         </div>
         <div class="col-md-3">
-            <button type="submit" class="btn btn-primary w-100">Add line</button>
+            <button type="submit" class="btn btn-primary w-100">@Localizer["Store_AddLine"]</button>
         </div>
     </form>
 }
 
 @if (!isTeamOrder)
 {
-    <h2 class="h4 mb-3">Payments</h2>
+    <h2 class="h4 mb-3">@Localizer["Store_Payments"]</h2>
     @if (order.Payments.Any())
     {
         <table class="table table-sm mb-3">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Method</th>
-                    <th>Status</th>
-                    <th>Reference</th>
-                    <th class="text-end">Amount</th>
+                    <th>@Localizer["Store_ColDate"]</th>
+                    <th>@Localizer["Store_ColMethod"]</th>
+                    <th>@Localizer["Store_ColStatus"]</th>
+                    <th>@Localizer["Store_ColReference"]</th>
+                    <th class="text-end">@Localizer["Store_ColAmount"]</th>
+                    @if (canDeletePayment)
+                    {
+                        <th></th>
+                    }
                 </tr>
             </thead>
             <tbody>
@@ -197,19 +222,19 @@ else
                     var isPending = payment.Status == PaymentStatus.Pending;
                     var isFailed = payment.Status == PaymentStatus.Failed;
                     <tr class="@(isPending ? "table-warning" : isFailed ? "text-muted" : "")">
-                        <td>@payment.ReceivedAt.ToInvariantTimestamp() UTC</td>
-                        <td><span class="badge bg-secondary">@payment.Method</span></td>
+                        <td>@payment.ReceivedAt.ToInvariantTimestamp() @Localizer["Store_Utc"]</td>
+                        <td><span class="badge bg-secondary">@Localizer.EnumDisplay(payment.Method)</span></td>
                         <td>
                             @switch (payment.Status)
                             {
                                 case PaymentStatus.Paid:
-                                    <span class="badge bg-success">Paid</span>
+                                    <span class="badge bg-success">@Localizer.EnumDisplay(payment.Status)</span>
                                     break;
                                 case PaymentStatus.Pending:
-                                    <span class="badge bg-warning text-dark" title="Mandate captured, not yet cleared">Pending settlement</span>
+                                    <span class="badge bg-warning text-dark" title="@Localizer["Store_PendingTitle"].Value">@Localizer.EnumDisplay(payment.Status)</span>
                                     break;
                                 case PaymentStatus.Failed:
-                                    <span class="badge bg-danger">Failed</span>
+                                    <span class="badge bg-danger">@Localizer.EnumDisplay(payment.Status)</span>
                                     break;
                             }
                         </td>
@@ -227,16 +252,31 @@ else
                             @payment.AmountEur.ToEuro()
                             @if (isPending)
                             {
-                                <div class="text-muted small">pending settlement</div>
+                                <div class="text-muted small">@Localizer["Store_PendingSettlement"]</div>
                             }
                         </td>
+                        @if (canDeletePayment)
+                        {
+                            @* Admin-only control (localization-admin-exempt): plain strings. *@
+                            <td class="text-end">
+                                <form asp-action="DeletePayment" asp-route-id="@order.Id" asp-route-paymentId="@payment.Id" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            data-confirm="Permanently delete this payment? The row is removed and the order balance changes.">Delete</button>
+                                </form>
+                            </td>
+                        }
                     </tr>
                 }
             </tbody>
             <tfoot>
                 <tr class="fw-bold">
-                    <td colspan="4" class="text-end">Total cleared payments</td>
+                    <td colspan="4" class="text-end">@Localizer["Store_TotalClearedPayments"]</td>
                     <td class="text-end">@order.PaymentsTotalEur.ToEuro()</td>
+                    @if (canDeletePayment)
+                    {
+                        <td></td>
+                    }
                 </tr>
             </tfoot>
         </table>
@@ -244,14 +284,13 @@ else
         {
             <div class="alert alert-warning py-2">
                 <i class="fa-solid fa-clock me-1"></i>
-                @pendingTotal.ToEuro() pending settlement (mandate captured, not yet cleared) &mdash;
-                not counted toward the outstanding balance until Stripe confirms.
+                @Localizer["Store_PendingSettlementNotice", pendingTotal.ToEuro()]
             </div>
         }
     }
     else
     {
-        <p class="text-muted">No payments recorded yet.</p>
+        <p class="text-muted">@Localizer["Store_NoPayments"]</p>
     }
 
     @if (order.BalanceEur > 0 && Model.CanPay)
@@ -261,41 +300,78 @@ else
             <form asp-action="Pay" asp-route-id="@order.Id" method="post" class="row g-2 mb-3 align-items-end">
                 @Html.AntiForgeryToken()
                 <div class="col-md-4">
-                    <label class="form-label">Amount to pay (EUR)</label>
+                    <label class="form-label">@Localizer["Store_AmountToPay"]</label>
                     <input type="number" name="amountEur" class="form-control"
                            min="0.01" max="@order.BalanceEur.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
                            step="0.01"
                            value="@order.BalanceEur.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" required />
                 </div>
                 <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary">Pay with Stripe</button>
-                    <small class="form-text text-muted d-block">You'll be redirected to Stripe Checkout.</small>
+                    <button type="submit" class="btn btn-primary">@Localizer["Store_PayWithStripe"]</button>
+                    <small class="form-text text-muted d-block">@Localizer["Store_StripeRedirect"]</small>
                 </div>
             </form>
         }
         else
         {
-            <div class="alert alert-warning">Stripe checkout is not configured for this environment.</div>
+            <div class="alert alert-warning">@Localizer["Store_StripeNotConfigured"]</div>
         }
     }
-    else if (order.BalanceEur <= 0)
+    else if (order.BalanceEur < 0)
     {
-        <p class="text-muted">No outstanding balance.</p>
+        <p class="text-muted">@Localizer["Store_Overpaid", (-order.BalanceEur).ToEuro()]</p>
+    }
+    else if (order.BalanceEur == 0)
+    {
+        <p class="text-muted">@Localizer["Store_NoOutstandingBalance"]</p>
     }
     else if (pendingTotal > 0)
     {
-        <p class="text-muted">Payment is disabled while a payment is pending settlement.</p>
+        <p class="text-muted">@Localizer["Store_PaymentDisabledPending"]</p>
     }
     else
     {
-        <p class="text-muted">Payments are recorded by the finance team.</p>
+        <p class="text-muted">@Localizer["Store_PaymentsRecordedFinance"]</p>
+    }
+
+    @if (Model.CanRecordPayment)
+    {
+        <h2 class="h5 mb-3 mt-4">@Localizer["Store_RecordPaymentHeading"]</h2>
+        <form asp-action="RecordPayment" asp-route-id="@order.Id" method="post" class="row g-2 mb-3 align-items-end" data-submit-once>
+            @Html.AntiForgeryToken()
+            <div class="col-md-3">
+                <label class="form-label">@Localizer["Store_RecordPaymentType"]</label>
+                <select name="method" class="form-select" required>
+                    <option value="@PaymentMethod.DepositReturn">@Localizer["Store_Method_DepositReturn"]</option>
+                    @if (canRefund)
+                    {
+                        <option value="@PaymentMethod.Refund">@Localizer["Store_Method_Refund"]</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">@Localizer["Store_RecordPaymentAmount"]</label>
+                <input type="number" name="amountEur" class="form-control" min="0.01" step="0.01" required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">@Localizer["Store_RecordPaymentRef"]</label>
+                <input type="text" name="externalRef" class="form-control" maxlength="200" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">@Localizer["Store_RecordPaymentNotes"]</label>
+                <input type="text" name="notes" class="form-control" maxlength="1000" />
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-outline-primary w-100">@Localizer["Store_RecordPaymentSubmit"]</button>
+            </div>
+        </form>
     }
 
     <h2 class="h4 mb-3 mt-4">
         <button class="btn btn-link p-0 text-reset text-decoration-none" type="button"
                 data-bs-toggle="collapse" data-bs-target="#counterpartyCollapse"
                 aria-expanded="false" aria-controls="counterpartyCollapse">
-            <i class="fa-solid fa-chevron-down me-1 small"></i> Counterparty (for invoice)
+            <i class="fa-solid fa-chevron-down me-1 small"></i> @Localizer["Store_CounterpartyForInvoice"]
         </button>
     </h2>
     <div class="collapse" id="counterpartyCollapse">
@@ -304,38 +380,38 @@ else
             <form asp-action="UpdateCounterparty" asp-route-id="@order.Id" method="post" class="row g-3 mb-4">
                 @Html.AntiForgeryToken()
                 <div class="col-md-6">
-                    <label class="form-label">Name</label>
+                    <label class="form-label">@Localizer["Store_ColName"]</label>
                     <input type="text" name="Name" class="form-control" value="@order.CounterpartyName" />
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">VAT / NIF / CIF</label>
+                    <label class="form-label">@Localizer["Store_ColVatId"]</label>
                     <input type="text" name="VatId" class="form-control" value="@order.CounterpartyVatId" />
                 </div>
                 <div class="col-md-12">
-                    <label class="form-label">Address</label>
+                    <label class="form-label">@Localizer["Store_ColAddress"]</label>
                     <input type="text" name="Address" class="form-control" value="@order.CounterpartyAddress" />
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Country</label>
+                    <label class="form-label">@Localizer["Store_ColCountry"]</label>
                     <input type="text" name="CountryCode" class="form-control" maxlength="2" value="@order.CounterpartyCountryCode" />
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Email</label>
+                    <label class="form-label">@Localizer["Store_ColEmail"]</label>
                     <input type="email" name="Email" class="form-control" value="@order.CounterpartyEmail" />
                 </div>
                 <div class="col-md-12">
-                    <button type="submit" class="btn btn-primary">Save counterparty</button>
+                    <button type="submit" class="btn btn-primary">@Localizer["Store_SaveCounterparty"]</button>
                 </div>
             </form>
         }
         else
         {
             <dl class="row">
-                <dt class="col-sm-3">Name</dt><dd class="col-sm-9">@order.CounterpartyName</dd>
-                <dt class="col-sm-3">VAT / NIF / CIF</dt><dd class="col-sm-9">@order.CounterpartyVatId</dd>
-                <dt class="col-sm-3">Address</dt><dd class="col-sm-9">@order.CounterpartyAddress</dd>
-                <dt class="col-sm-3">Country</dt><dd class="col-sm-9">@order.CounterpartyCountryCode</dd>
-                <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@order.CounterpartyEmail</dd>
+                <dt class="col-sm-3">@Localizer["Store_ColName"]</dt><dd class="col-sm-9">@order.CounterpartyName</dd>
+                <dt class="col-sm-3">@Localizer["Store_ColVatId"]</dt><dd class="col-sm-9">@order.CounterpartyVatId</dd>
+                <dt class="col-sm-3">@Localizer["Store_ColAddress"]</dt><dd class="col-sm-9">@order.CounterpartyAddress</dd>
+                <dt class="col-sm-3">@Localizer["Store_ColCountry"]</dt><dd class="col-sm-9">@order.CounterpartyCountryCode</dd>
+                <dt class="col-sm-3">@Localizer["Store_ColEmail"]</dt><dd class="col-sm-9">@order.CounterpartyEmail</dd>
             </dl>
         }
     </div>
@@ -343,17 +419,16 @@ else
 else
 {
     <div class="alert alert-info mt-4">
-        <strong>Non-billable.</strong> Team orders count toward supplier totals only — no invoice, no payment.
+        <strong>@Localizer["Store_NonBillable"]</strong> @Localizer["Store_NonBillableText"]
     </div>
 }
 
 @section Scripts {
     <script nonce="@Context.Items["CspNonce"]">
-        document.querySelectorAll('[data-confirm]').forEach(function (button) {
-            button.addEventListener('click', function (e) {
-                if (!confirm(this.getAttribute('data-confirm'))) {
-                    e.preventDefault();
-                }
+        // A recorded payment can't be undone, so a double-click must not post it twice.
+        document.querySelectorAll('form[data-submit-once]').forEach(function (form) {
+            form.addEventListener('submit', function () {
+                form.querySelector('[type=submit]').disabled = true;
             });
         });
     </script>

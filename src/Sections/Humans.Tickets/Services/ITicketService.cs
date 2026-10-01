@@ -79,6 +79,13 @@ internal interface ITicketService : ITicketServiceRead, IApplicationService
     Task<List<OrderExportRow>> GetOrderExportDataAsync();
 
     /// <summary>
+    /// One row per donation on a paid order (VIP amount above the threshold, separate checkout
+    /// donation), oldest first, dated in Europe/Madrid, for the accountant's donor list. Writes
+    /// an audit entry for the actor: this is a bulk export of buyer identity leaving the system.
+    /// </summary>
+    Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId);
+
+    /// <summary>
     /// Returns paid orders where the number of valid+checked-in attendees is
     /// less than the total number of attendees on the order.
     /// </summary>

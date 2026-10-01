@@ -175,6 +175,18 @@
   <data name="Issue_Area_Hint" xml:space="preserve">
     <value>Laissez vide pour détecter depuis la page actuelle.</value>
   </data>
+  <data name="Issues_Area_Camps" xml:space="preserve"><value>Barrios</value></data>
+  <data name="Issues_Area_Budget" xml:space="preserve"><value>Budget</value></data>
+  <data name="Issues_Area_CityPlanning" xml:space="preserve"><value>Urbanisme</value></data>
+  <data name="Issues_Area_Legal" xml:space="preserve"><value>Juridique et consentement</value></data>
+  <data name="Issues_Area_Onboarding" xml:space="preserve"><value>Intégration</value></data>
+  <data name="Issues_Area_Profiles" xml:space="preserve"><value>Profil et intégration</value></data>
+  <data name="Issues_Area_Scanner" xml:space="preserve"><value>Scanner</value></data>
+  <data name="Issues_Area_Shifts" xml:space="preserve"><value>Quarts et bénévolat</value></data>
+  <data name="Issues_Area_Teams" xml:space="preserve"><value>Équipes</value></data>
+  <data name="Issues_Area_Tickets" xml:space="preserve"><value>Billets</value></data>
+  <data name="Issues_Area_Governance" xml:space="preserve"><value>Vote et gouvernance</value></data>
+  <data name="Issues_Area_General" xml:space="preserve"><value>Général</value></data>
   <data name="Issue_Description" xml:space="preserve">
     <value>Description</value>
   </data>

@@ -549,4 +549,5 @@
   <data name="Teams_EditTeam_SensitiveHelp" xml:space="preserve"><value>Wenn aktiviert, zeigt das Hinzufügen oder Genehmigen von Personen einen Bestätigungsdialog mit dem zu erstellenden Prüfprotokoll. Diese Einstellung ist für Nicht-Administratoren nicht sichtbar.</value></data>
   <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Frühen Einlass aktivieren</value></data>
   <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>Wenn aktiviert, können die Koordinatoren dieses Teams und die Administratoren für frühen Einlass den Projekten dieses Teams frühen Einlass gewähren.</value></data>
+  <data name="Teams_TeamDetail_Roles" xml:space="preserve"><value>Rollen</value></data>
 </root>

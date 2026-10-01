@@ -5,20 +5,24 @@ using Humans.MailerLite.Services.Dtos;
 namespace Humans.MailerLite.Services;
 
 /// <summary>
-/// Splits import into a plan-build step and an apply step. Future
-/// Hangfire / webhook callers reuse the same pair: build a plan
-/// (possibly single-decision in the webhook case), then apply it.
+/// Splits import into a plan-build step and an apply step, stateless between them.
 /// </summary>
 internal interface IMailerLiteImportService : IApplicationService
 {
     /// <summary>
     /// When reconciliation last ran and what it did, or null before the first run.
-    /// Read from the section's own table — the dashboard used to scan <c>audit_log</c> for this
-    /// (nobodies-collective/Humans#1082).
+    /// Read from the section's own table (nobodies-collective/Humans#1082).
     /// </summary>
     Task<MailerLiteSyncSnapshot?> GetLastReconciliationAsync(CancellationToken ct = default);
 
     Task<ImportPlan> BuildPlanAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// The dashboard's drift report: builds a fresh plan and counts the people Humans has opted
+    /// out of marketing whom the <c>Website</c> list still holds as active.
+    /// <see cref="DriftReport.HumansOptedInMlAbsent"/> is a seam and stays null.
+    /// </summary>
+    Task<DriftReport> ComputeDriftAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Applies the plan. When <paramref name="maxPerOutcome"/> is set to a

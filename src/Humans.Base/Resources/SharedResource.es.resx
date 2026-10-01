@@ -94,9 +94,6 @@
   <data name="Common_ExportGeoJson" xml:space="preserve">
     <value>Exportar GeoJSON</value>
   </data>
-  <data name="Common_Submit" xml:space="preserve">
-    <value>Enviar</value>
-  </data>
   <data name="Common_NotProvided" xml:space="preserve">
     <value>No proporcionado</value>
   </data>
@@ -263,83 +260,15 @@
     <value>Bienvenido/a, {0}</value>
     <comment>{0} = display name</comment>
   </data>
-  <data name="Dashboard_PendingConsentsAlert" xml:space="preserve">
-    <value>&lt;strong&gt;Acción requerida:&lt;/strong&gt; Tiene {0} consentimiento(s) pendiente(s). &lt;a href="/Consent" class="alert-link"&gt;Revíselos y otorgue su consentimiento&lt;/a&gt; para mantener Su estado de voluntario activa.</value>
-    <comment>{0} = pending consent count</comment>
-  </data>
-  <data name="Dashboard_IncompleteProfileAlert" xml:space="preserve">
-    <value>&lt;strong&gt;Complete su perfil:&lt;/strong&gt; Su perfil está incompleto. &lt;a href="/Profile/Me/Edit" class="alert-link"&gt;Añada su información&lt;/a&gt; para que podamos conocerle mejor.</value>
-  </data>
   <data name="Dashboard_ProfileCard" xml:space="preserve">
     <value>Perfil</value>
-  </data>
-  <data name="Dashboard_ProfileComplete" xml:space="preserve">
-    <value>Su perfil está completo.</value>
-  </data>
-  <data name="Dashboard_ProfileIncomplete" xml:space="preserve">
-    <value>Complete su perfil para que podamos conocerle mejor.</value>
   </data>
   <data name="Dashboard_ProfileCompletionPercent" xml:space="preserve">
     <value>Perfil completado al {0}%</value>
     <comment>{0} = percentage 0-99</comment>
   </data>
-  <data name="Dashboard_FinishProfile" xml:space="preserve">
-    <value>Completa tu perfil</value>
-  </data>
-  <data name="Dashboard_ViewProfile" xml:space="preserve">
-    <value>Ver perfil</value>
-  </data>
   <data name="Dashboard_ConsentsCard" xml:space="preserve">
     <value>Acuerdos</value>
-  </data>
-  <data name="Dashboard_ConsentsNeeded" xml:space="preserve">
-    <value>&lt;strong&gt;{0}&lt;/strong&gt; de {1} documentos necesitan su consentimiento.</value>
-    <comment>{0} = pending count, {1} = total required</comment>
-  </data>
-  <data name="Dashboard_ReviewConsents" xml:space="preserve">
-    <value>Revisar acuerdos</value>
-  </data>
-  <data name="Dashboard_ConsentsUpToDate" xml:space="preserve">
-    <value>Todos los consentimientos están al día.</value>
-  </data>
-  <data name="Dashboard_ViewConsents" xml:space="preserve">
-    <value>Ver acuerdos</value>
-  </data>
-  <data name="Dashboard_NoConsentsRequired" xml:space="preserve">
-    <value>No se requiere consentimiento en este momento.</value>
-  </data>
-  <data name="Dashboard_LatestApplication" xml:space="preserve">
-    <value>Última solicitud:</value>
-  </data>
-  <data name="Dashboard_ViewApplicationHistory" xml:space="preserve">
-    <value>Ver historial de solicitudes</value>
-  </data>
-  <data name="Dashboard_GovernanceDescription" xml:space="preserve">
-    <value>Los asociados son humans con derecho a voto que participan en las decisiones de gobernanza como asambleas y elecciones. Esto está destinado a líderes comunitarios y humans comprometidos a largo plazo.</value>
-  </data>
-  <data name="Dashboard_GovernanceOptional" xml:space="preserve">
-    <value>La participación en la gobernanza es opcional y no afecta a su acceso a los recursos.</value>
-  </data>
-  <data name="Dashboard_LearnMore" xml:space="preserve">
-    <value>Más información</value>
-  </data>
-  <data name="Dashboard_OnboardingTitle" xml:space="preserve">
-    <value>Primeros pasos</value>
-  </data>
-  <data name="Dashboard_OnboardingDescription" xml:space="preserve">
-    <value>Completa estos pasos para ser voluntario:</value>
-  </data>
-  <data name="Dashboard_Step_Profile" xml:space="preserve">
-    <value>Completa tu perfil</value>
-  </data>
-  <data name="Dashboard_Step_Consents" xml:space="preserve">
-    <value>Revisa y acepta los documentos requeridos</value>
-  </data>
-  <data name="Dashboard_Step_Approval" xml:space="preserve">
-    <value>La junta revisa y aprueba tu cuenta</value>
-  </data>
-  <data name="Dashboard_Step_ConsentCheck" xml:space="preserve">
-    <value>Un coordinador revisa y aprueba tus documentos</value>
   </data>
   <data name="Dashboard_MembershipTier" xml:space="preserve">
     <value>Nivel de membresía</value>
@@ -350,26 +279,8 @@
   <data name="Dashboard_TierActive" xml:space="preserve">
     <value>Tu nivel de membresía está activo.</value>
   </data>
-  <data name="Dashboard_YourMembership" xml:space="preserve">
-    <value>Su estado de voluntario</value>
-  </data>
-  <data name="Dashboard_MemberSince" xml:space="preserve">
-    <value>Miembro desde</value>
-  </data>
-  <data name="Dashboard_LastLogin" xml:space="preserve">
-    <value>Último acceso</value>
-  </data>
-  <data name="Dashboard_QuickLinks" xml:space="preserve">
-    <value>Accesos rápidos</value>
-  </data>
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Revisar acuerdos</value>
-  </data>
-  <data name="Dashboard_PendingAgreementsSingular" xml:space="preserve">
-    <value>{0} acuerdo por revisar</value>
-  </data>
-  <data name="Dashboard_PendingAgreementsPlural" xml:space="preserve">
-    <value>{0} acuerdos por revisar</value>
   </data>
   <data name="Dashboard_RejectedTitle" xml:space="preserve">
     <value>Registro rechazado</value>
@@ -567,12 +478,6 @@
   <data name="MyTeams_View" xml:space="preserve">
     <value>Ver</value>
   </data>
-  <data name="AdminDashboard_Title" xml:space="preserve">
-    <value>Panel de administración</value>
-  </data>
-  <data name="AdminGoogleSync_Title" xml:space="preserve">
-    <value>Estado de sincronización con Google</value>
-  </data>
   <data name="Admin_CannotStartReview" xml:space="preserve">
     <value>No se puede iniciar la revisión. La solicitud no está en estado Enviada.</value>
   </data>
@@ -761,32 +666,8 @@
   <data name="AdminApp_Review" xml:space="preserve">
     <value>Revisar</value>
   </data>
-  <data name="GoogleSync_SyncNow" xml:space="preserve">
-    <value>Sincronizar ahora</value>
-  </data>
-  <data name="GoogleSync_TotalResources" xml:space="preserve">
-    <value>Recursos totales</value>
-  </data>
-  <data name="GoogleSync_InSync" xml:space="preserve">
-    <value>Sincronizado</value>
-  </data>
-  <data name="GoogleSync_Drifted" xml:space="preserve">
-    <value>Desviado</value>
-  </data>
-  <data name="GoogleSync_Errors" xml:space="preserve">
-    <value>Errores</value>
-  </data>
-  <data name="GoogleSync_NoResources" xml:space="preserve">
-    <value>No se encontraron recursos activos de Google.</value>
-  </data>
-  <data name="GoogleSync_Resource" xml:space="preserve">
-    <value>Recurso</value>
-  </data>
   <data name="GoogleSync_Details" xml:space="preserve">
     <value>Detalles</value>
-  </data>
-  <data name="GoogleSync_BackToDashboard" xml:space="preserve">
-    <value>Volver al panel de administración</value>
   </data>
   <data name="Nav_City" xml:space="preserve">
     <value>Mapa</value>
@@ -834,9 +715,6 @@
   </data>
   <data name="Camp_Plural" xml:space="preserve">
     <value>Barrios</value>
-  </data>
-  <data name="Agent_WidgetButton" xml:space="preserve">
-    <value>Abrir el asistente</value>
   </data>
   <data name="Login_MagicLink_Title" xml:space="preserve">
     <value>O iniciar sesión con correo</value>
@@ -937,9 +815,6 @@
   </data>
   <data name="Todo_Profile_Done" xml:space="preserve">
     <value>Tu perfil está completo.</value>
-  </data>
-  <data name="Todo_Profile_Pending" xml:space="preserve">
-    <value>Añade tu información para que la comunidad pueda conocerte.</value>
   </data>
   <data name="Todo_Profile_Action" xml:space="preserve">
     <value>Editar perfil</value>
@@ -1299,7 +1174,6 @@
   <data name="About_Staff_Intro" xml:space="preserve"><value>Todo colectivo necesita a quienes lo cuidan. Estos son los humans que ofrecen su tiempo y energía para mantener Nobodies en marcha — desde la gobernanza al soporte técnico, desde la confianza y seguridad hasta la alquimia de las entradas.</value></data>
   <data name="About_Staff_Title" xml:space="preserve"><value>Los humans detrás del telón</value></data>
   <data name="About_Title" xml:space="preserve"><value>Acerca de Humans</value></data>
-  <data name="Common_Actions" xml:space="preserve"><value>Acciones</value></data>
   <data name="Common_Admin" xml:space="preserve"><value>Administrador</value></data>
   <data name="Common_Amount" xml:space="preserve"><value>Importe</value></data>
   <data name="Common_Clear" xml:space="preserve"><value>Limpiar</value></data>

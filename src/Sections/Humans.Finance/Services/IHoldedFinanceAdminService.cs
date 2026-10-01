@@ -1,5 +1,6 @@
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
+using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 
 namespace Humans.Finance.Services;
@@ -57,4 +58,15 @@ internal interface IHoldedFinanceAdminService : IApplicationService
     [ExternalWrite]
     Task<SepaBookingResult> BookSepaTransferAsync(
         Guid transferId, string bankMovementId, Guid? actorUserId);
+
+    /// <summary>Books every unbooked transfer of one payout file against the single Sabadell line
+    /// the bank debited the whole file as — the line's amount must be the file's total, exactly.
+    /// Only ever a finance admin's Process click, never the sweep. Each transfer books as
+    /// <see cref="BookSepaTransferAsync"/> would (documents oldest first, remainder as a journal
+    /// entry, dated the line); the line is reconciled once, after the last. Every transfer is
+    /// checked before any is posted; a Holded refusal part-way leaves the booked ones booked, and
+    /// processing the file again finishes the rest. Takes no <c>CancellationToken</c>, for the same
+    /// reason.</summary>
+    [ExternalWrite]
+    Task<SepaBookingResult> BookSepaFileAsync(Guid fileId, string bankMovementId, Guid actorUserId);
 }

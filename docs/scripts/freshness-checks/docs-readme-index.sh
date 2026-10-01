@@ -1,9 +1,9 @@
 #!/bin/bash
 # Freshness check: docs-readme-index
 #
-# Counts .md files under docs/sections/, docs/features/, docs/guide/ (excluding
-# the catalog's ignore list) and verifies that docs/README.md has at least that
-# many link occurrences pointing into each folder. docs/features/ holds only the
+# Verifies that every .md file under docs/sections/, docs/features/, docs/guide/
+# (excluding the catalog's ignore list) has a link in docs/README.md.
+# docs/features/ holds only the
 # cross-section global/ specs; per-section specs live in src/Sections/*/Docs/ and
 # are covered by the src/Sections/*/Docs/*.md trigger, not counted here.
 #
@@ -19,49 +19,50 @@ if [ ! -f "$DOC" ]; then
   exit 1
 fi
 
-# Count source docs per tree, applying catalog ignore rules.
-count_md() {
+# Check exact destinations so duplicates cannot hide missing entries, and multiple
+# links on one line each count. Fragment links also index their source document.
+FAIL=false
+check_tree() {
   local dir="$1"; shift
-  local excludes=("$@")
   local find_args=(-name "*.md")
-  for ex in "${excludes[@]}"; do
+  local src=0 linked=0 file target files ex
+  for ex in "$@"; do
     find_args+=(-not -name "$ex")
   done
-  find "$dir" "${find_args[@]}" 2>/dev/null | wc -l
-}
-
-# Both templates are on the catalog's ignore list; excluding only the first left
-# G5-SECTION-TEMPLATE.md counted as a source doc, so this check demanded a README
-# row for a file the sweep is told to skip and could never PASS.
-SECTIONS_SRC=$(count_md docs/sections SECTION-TEMPLATE.md G5-SECTION-TEMPLATE.md)
-FEATURES_SRC=$(count_md docs/features)
-GUIDE_SRC=$(count_md docs/guide README.md GettingStarted.md Glossary.md)
-
-# Count link occurrences in README that point into each folder.
-SECTIONS_DOC=$(grep -cE '\]\(sections/[^)]+\.md\)' "$DOC" || true)
-FEATURES_DOC=$(grep -cE '\]\(features/[^)]+\.md\)' "$DOC" || true)
-GUIDE_DOC=$(grep -cE '\]\(guide/[^)]+\.md\)' "$DOC" || true)
-
-FAIL=false
-report() {
-  local label="$1" src="$2" doc="$3"
-  if [ "$doc" -lt "$src" ]; then
-    echo "  $label: src=$src doc=$doc — MISSING $((src - doc))"
+  if [ ! -d "$dir" ]; then
+    echo "  MISSING tree: $dir"
     FAIL=true
-  else
-    echo "  $label: src=$src doc=$doc — ok"
+    return
   fi
+  if ! files=$(find "$dir" "${find_args[@]}" -print); then
+    echo "  FAILED to enumerate: $dir"
+    FAIL=true
+    return
+  fi
+  while IFS= read -r file; do
+    [ -z "$file" ] && continue
+    src=$((src + 1))
+    target="${file#docs/}"
+    if grep -qF "]($target)" "$DOC" || grep -qF "]($target#" "$DOC"; then
+      linked=$((linked + 1))
+    else
+      echo "  MISSING link: $target"
+      FAIL=true
+    fi
+  done <<< "$files"
+  echo "  $dir: src=$src linked=$linked"
 }
 
-echo "[docs-readme-index] counts:"
-report "sections" "$SECTIONS_SRC" "$SECTIONS_DOC"
-report "features" "$FEATURES_SRC" "$FEATURES_DOC"
-report "guide   " "$GUIDE_SRC"    "$GUIDE_DOC"
+echo "[docs-readme-index] coverage:"
+# Both section templates and these guide entry pages are catalog exemptions.
+check_tree docs/sections SECTION-TEMPLATE.md G5-SECTION-TEMPLATE.md
+check_tree docs/features
+check_tree docs/guide README.md GettingStarted.md Glossary.md
 
 if [ "$FAIL" = "true" ]; then
-  echo "FAIL [docs-readme-index]: README link count below source count for at least one tree"
+  echo "FAIL [docs-readme-index]: source documents missing from README"
   exit 1
 fi
 
-echo "PASS [docs-readme-index]: README has >= source count for all three trees"
+echo "PASS [docs-readme-index]: README links to every non-exempt source document"
 exit 0

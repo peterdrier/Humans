@@ -12,9 +12,9 @@ mechanics: what it is, how to find tonight's candidates, how to tell the rung
 is drained, and the done-check.
 
 **Every rung obeys `daily-debt.md`'s guardrails without exception** — public
-surface needs Peter's approval (skip, don't add it), one section/theme per
-commit, six cultures, migrations only via `dotnet ef migrations add`, never
-touch `NoDestructiveMigrationOps.baseline.txt` or a `[DontFix]` class.
+surface needs Peter's approval (skip, don't add it), one coherent fix or
+same-correction batch per commit (possibly across sections), six cultures,
+migrations only via `dotnet ef migrations add`, never touch `NoDestructiveMigrationOps.baseline.txt` or a `[DontFix]` class.
 
 Every ledger row carries a permanent `id:` (`memory/process/debt-ledger-additions.md`). Identify
 an item by its id everywhere — in the PR body, in commit messages, in this file's seed lists — and
@@ -186,7 +186,9 @@ under `mawk`. Doc corrections require no build.
 **What:** A user-facing string hardcoded in English instead of a resx key,
 on a route that is **not** admin/operator-exempt
 (`memory/code/localization-admin-exempt.md`). All six cultures (en, es, de,
-it, fr, ca) in the same commit.
+it, fr, ca) in the same commit. Collect a small batch of verified gaps
+across related views/actions before editing; do not test and commit each
+string or file separately. Follow `daily-debt.md`'s batching rules.
 
 **Finds:**
 ```
@@ -215,7 +217,7 @@ picking it.
 
 **Drained when:** both grep commands return nothing outside the exempt list.
 
-**Done-check:** `dotnet test tests/Humans.Web.Tests -v quiet -clp:ErrorsOnly --filter "SharedResourceParityTests|SectionResourceParityTests"` plus the section's own tests.
+**Done-check:** `dotnet test tests/Humans.Web.Tests -v quiet -clp:ErrorsOnly --filter "SharedResourceParityTests|SectionResourceParityTests"` plus every affected section's tests, once for the completed batch.
 
 ---
 

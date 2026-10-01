@@ -250,6 +250,23 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Payment>> GetPaymentsMissingMethodNameAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.Payments.AsNoTracking()
+            .Where(p => p.MethodName == null)
+            .ToListAsync(ct);
+    }
+
+    public async Task SetPaymentMethodNameAsync(Guid paymentId, PaymentMethod methodName, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var payment = await ctx.Payments.FirstOrDefaultAsync(p => p.Id == paymentId, ct);
+        if (payment is null) return;
+        payment.MethodName = methodName;
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task DeletePaymentAsync(Guid paymentId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

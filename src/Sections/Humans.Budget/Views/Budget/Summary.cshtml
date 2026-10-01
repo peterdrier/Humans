@@ -141,35 +141,13 @@
         }
     </div>
 
+    <partial name="_BudgetChartSupport" />
+
     <script>
-    if (typeof Chart === 'undefined') {
-        var s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
-        s.integrity = 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ';
-        s.crossOrigin = 'anonymous';
-        s.onload = function() { renderBudgetCharts(); };
-        document.head.appendChild(s);
-    } else {
-        document.addEventListener('DOMContentLoaded', function() { renderBudgetCharts(); });
-    }
 
     function renderBudgetCharts() {
-        var cs = getComputedStyle(document.documentElement);
-        var cv = function(n) { return cs.getPropertyValue(n).trim(); };
-        var incomeColors = [
-            cv('--h-chart-cat-1'), cv('--h-chart-cat-2'), cv('--h-chart-cat-3'),
-            cv('--h-chart-cat-4'), cv('--h-chart-cat-5'), cv('--h-chart-cat-6'),
-            cv('--h-chart-cat-7'), cv('--h-chart-cat-8'), cv('--h-chart-cat-9'),
-            cv('--h-chart-cat-10'), cv('--h-chart-cat-11'), cv('--h-chart-cat-12'),
-            cv('--h-chart-cat-13'), cv('--h-chart-cat-14'), cv('--h-chart-cat-15')
-        ];
-        var expenseColors = [
-            cv('--h-chart-exp-1'), cv('--h-chart-exp-2'), cv('--h-chart-exp-3'),
-            cv('--h-chart-exp-4'), cv('--h-chart-exp-5'), cv('--h-chart-exp-6'),
-            cv('--h-chart-exp-7'), cv('--h-chart-exp-8'), cv('--h-chart-exp-9'),
-            cv('--h-chart-exp-10'), cv('--h-chart-exp-11'), cv('--h-chart-exp-12'),
-            cv('--h-chart-exp-13'), cv('--h-chart-exp-14'), cv('--h-chart-exp-15')
-        ];
+        var incomeColors = window.HumansBudgetCharts.incomeColors();
+        var expenseColors = window.HumansBudgetCharts.expenseColors();
         var tooltipCallback = {
             label: function(ctx) {
                 return ctx.label + ': \u20ac' + ctx.raw.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -194,7 +172,7 @@
                         data: incomeData,
                         backgroundColor: incomeColors.slice(0, incomeData.length),
                         borderWidth: 2,
-                        borderColor: cv('--h-bg-elevated')
+                        borderColor: window.HumansBudgetCharts.surfaceColor()
                     }]
                 },
                 options: {
@@ -216,7 +194,7 @@
                         data: expenseData,
                         backgroundColor: expenseColors.slice(0, expenseData.length),
                         borderWidth: 2,
-                        borderColor: cv('--h-bg-elevated')
+                        borderColor: window.HumansBudgetCharts.surfaceColor()
                     }]
                 },
                 options: {
@@ -229,6 +207,7 @@
             });
         }
     }
+    window.HumansBudgetCharts.load(renderBudgetCharts);
     </script>
 }
 else

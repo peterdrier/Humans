@@ -192,7 +192,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 **Acceptance Criteria:**
 - On a camp's detail page, an authenticated human with no existing membership sees a "Request to join for {year}" button (only when the camp has an Active or Full season for the public year).
 - Authenticated humans who are already a **lead** of the camp see a "You are a lead for {year}" info alert instead of the request button — leads are part of the camp by definition and shouldn't be prompted to request membership.
-- The Actions card on a camp lead's detail view labels the edit link as "Edit Barrio / Assign roles" so leads understand role management is one click away (the link goes to `/Edit`, which links through to `/Edit/Members` for role assignments and pending-request review); non-leads still see the plain "Edit Barrio" label.
+- The Actions card on a camp lead's detail view localizes its labels and season withdrawal/full confirmations in every supported culture. Its edit link reads "Edit Barrio / Assign roles" in English so leads understand role management is one click away (the link goes to `/Edit`, which links through to `/Edit/Members` for role assignments and pending-request review); non-leads still see the plain "Edit Barrio" label.
 - Copy on the request card explicitly states that this does NOT join you to the camp — do that through the camp's own process first.
 - A pending request can be withdrawn by the requester; an active membership can be left by the member.
 - Membership state (Pending / Active) is never rendered on anonymous views.
@@ -484,7 +484,6 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | `POST /Camps/Admin/CloseSeason/{year}` | Close season |
 | `POST /Camps/Admin/SetNameLockDate` | Set name lock date |
 | `GET /Camps/Admin/Export` | Export camps CSV |
-| `POST /Camps/Admin/UpdateRegistrationInfo` | Update the registration-info banner shown on the registration form |
 | `POST /Camps/Admin/Delete` | Delete camp (Admin only; campId as form field) |
 | `POST /Camps/Admin/Reactivate/{seasonId}` | CampAdmin reactivates a Full season to Active |
 | `POST /Camps/Admin/SetCampSeasonEeSlotCount/{seasonId}` | Set a season's Early Entry slot cap |

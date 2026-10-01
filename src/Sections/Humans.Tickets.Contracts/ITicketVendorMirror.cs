@@ -17,7 +17,10 @@ namespace Humans.Tickets.Contracts;
 /// </remarks>
 public interface ITicketVendorMirror : IApplicationService
 {
-    /// <summary>Records a check-in for an issued ticket at the vendor. Safe to retry.</summary>
+    /// <summary>
+    /// Records a check-in for an issued ticket at the vendor. Not idempotent: each POST creates
+    /// a record, so callers must never retry it.
+    /// </summary>
     [ExternalWrite]
     Task CreateCheckInAsync(
         string vendorTicketId, Instant occurredAt, CancellationToken ct = default);

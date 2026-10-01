@@ -1,3 +1,6 @@
+using Humans.Base.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
@@ -91,6 +94,25 @@ public sealed class OutboxEmailServiceTests : IDisposable
         bool doNotPersist = false) =>
         new(recipient, name, subject, html, template, category, replyTo, userId,
             campaignGrantId, campaignId, doNotPersist);
+
+    [HumansFact]
+    public async Task SendAsync_WithCanonicalComposer_PreservesActionUrlInPlainText()
+    {
+        var environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns(Environments.Production);
+        var composer = new BrandedEmailBodyComposer(
+            Options.Create(new EmailSettings { BaseUrl = "https://humans.example" }), environment);
+        _bodyComposer.Compose(Arg.Any<string>(), Arg.Any<string?>())
+            .Returns(call => composer.Compose(call.ArgAt<string>(0), call.ArgAt<string?>(1)));
+        const string html = "<h2>Confirm address</h2><p><a href=\"https://humans.example/verify?t=A%2FB&amp;email=a%40example.com\">Verify email</a></p>";
+
+        await _service.SendAsync(Message(html: html), Xunit.TestContext.Current.CancellationToken);
+
+        var queued = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        queued.PlainTextBody.Should().Be(
+            "Confirm address\n\nVerify email (https://humans.example/verify?t=A%2FB&email=a%40example.com)");
+        queued.HtmlBody.Should().Contain("https://humans.example/verify?t=A%2FB&amp;email=a%40example.com");
+    }
 
     [HumansFact]
     public async Task SendAsync_CreatesOutboxRowWithCorrectFields()

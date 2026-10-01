@@ -1,3 +1,7 @@
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Globalization;
 using AwesomeAssertions;
 using Humans.Issues.Domain;
 using Humans.Issues.Models;
@@ -8,6 +12,33 @@ namespace Humans.Issues.Tests.Models;
 
 public class IssueSectionInferenceTests
 {
+    private readonly IStringLocalizer<IssuesResource> _localizer =
+        new StringLocalizer<IssuesResource>(new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
+
+    [HumansTheory]
+    [InlineData("en", "Shifts & volunteering", "General")]
+    [InlineData("es", "Turnos y voluntariado", "General")]
+    [InlineData("de", "Schichten & Freiwilligenarbeit", "Allgemein")]
+    [InlineData("it", "Turni e volontariato", "Generale")]
+    [InlineData("fr", "Quarts et bénévolat", "Général")]
+    [InlineData("ca", "Torns i voluntariat", "General")]
+    public void AreaLabels_UseViewerCultureAndPreserveUnknownRoutingKeys(string culture, string shifts, string general)
+    {
+        var originalCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+            AreaLabelMap.LabelFor("Shifts", _localizer).Should().Be(shifts);
+            AreaLabelMap.LabelFor(null, _localizer).Should().Be(general);
+            AreaLabelMap.LabelFor("FutureArea", _localizer).Should().Be("FutureArea");
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = originalCulture;
+        }
+    }
+
     [HumansTheory]
     [InlineData("/Camps/abc", "Camps")]
     [InlineData("/camps", "Camps")]

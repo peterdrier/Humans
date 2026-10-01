@@ -2,7 +2,6 @@ using Humans.GoogleIntegration.Contracts;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Google.Apis.Admin.Directory.directory_v1;
-using Google.Apis.Auth.OAuth2;
 using Google.Apis.DriveActivity.v2;
 using Google.Apis.DriveActivity.v2.Data;
 using Google.Apis.Services;
@@ -86,7 +85,8 @@ internal sealed class GoogleDriveActivityClient(
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
-        var activityService = await GetActivityServiceAsync();
+        ct.ThrowIfCancellationRequested();
+        var activityService = await GetActivityServiceAsync(ct);
         string? pageToken = null;
 
         do
@@ -132,7 +132,8 @@ internal sealed class GoogleDriveActivityClient(
 
         try
         {
-            var directoryService = await GetDirectoryServiceAsync();
+            ct.ThrowIfCancellationRequested();
+            var directoryService = await GetDirectoryServiceAsync(ct);
             var userId = peopleId["people/".Length..];
             var user = await directoryService.Users.Get(userId).ExecuteAsync(ct);
             return user?.PrimaryEmail;
@@ -143,7 +144,7 @@ internal sealed class GoogleDriveActivityClient(
                 peopleId, ex.Error.Code);
             return null;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Error resolving {PeopleId} via Directory API", peopleId);
             return null;
@@ -196,14 +197,14 @@ internal sealed class GoogleDriveActivityClient(
         return result;
     }
 
-    private async Task<DriveActivityService> GetActivityServiceAsync()
+    private async Task<DriveActivityService> GetActivityServiceAsync(CancellationToken ct)
     {
         if (_activityService is not null)
         {
             return _activityService;
         }
 
-        var credential = await GetCredentialAsync(DriveActivityService.Scope.DriveActivityReadonly);
+        var credential = await GoogleCredentialLoader.LoadScopedAsync(_settings, ct, DriveActivityService.Scope.DriveActivityReadonly);
 
         _activityService = new DriveActivityService(new BaseClientService.Initializer
         {
@@ -214,14 +215,14 @@ internal sealed class GoogleDriveActivityClient(
         return _activityService;
     }
 
-    private async Task<DirectoryService> GetDirectoryServiceAsync()
+    private async Task<DirectoryService> GetDirectoryServiceAsync(CancellationToken ct)
     {
         if (_directoryService is not null)
         {
             return _directoryService;
         }
 
-        var credential = await GetCredentialAsync(DirectoryService.Scope.AdminDirectoryUserReadonly);
+        var credential = await GoogleCredentialLoader.LoadScopedAsync(_settings, ct, DirectoryService.Scope.AdminDirectoryUserReadonly);
 
         _directoryService = new DirectoryService(new BaseClientService.Initializer
         {
@@ -230,31 +231,6 @@ internal sealed class GoogleDriveActivityClient(
         });
 
         return _directoryService;
-    }
-
-    private async Task<GoogleCredential> GetCredentialAsync(params string[] scopes)
-    {
-        GoogleCredential credential;
-
-        if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyJson))
-        {
-            using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(_settings.ServiceAccountKeyJson));
-            credential = (await CredentialFactory.FromStreamAsync<ServiceAccountCredential>(stream, CancellationToken.None)
-                .ConfigureAwait(false)).ToGoogleCredential();
-        }
-        else if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyPath))
-        {
-            await using var stream = System.IO.File.OpenRead(_settings.ServiceAccountKeyPath);
-            credential = (await CredentialFactory.FromStreamAsync<ServiceAccountCredential>(stream, CancellationToken.None)
-                .ConfigureAwait(false)).ToGoogleCredential();
-        }
-        else
-        {
-            throw new InvalidOperationException(
-                "Google Workspace credentials not configured. Set ServiceAccountKeyPath or ServiceAccountKeyJson.");
-        }
-
-        return credential.CreateScoped(scopes);
     }
 
     private async Task<string?> GetServiceAccountJsonAsync(CancellationToken ct)

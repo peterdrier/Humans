@@ -1197,4 +1197,22 @@
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Per a la teva informaci&#xF3;, les teves franges amb aquest equip s&#xF3;n:</value></data>
   <data name="Shifts_ShiftProfile_LoadFailed" xml:space="preserve"><value>No s'ha pogut carregar la informació dels torns.</value></data>
   <data name="Shifts_ShiftProfile_SaveFailed" xml:space="preserve"><value>No s'ha pogut desar la informació dels torns.</value></data>
+  <data name="Shifts_EventCalendarNotConfigured" xml:space="preserve"><value>El calendari de l’esdeveniment no està configurat.</value></data>
+  <data name="Shifts_SignupNotFound" xml:space="preserve"><value>No s’ha trobat la inscripció.</value></data>
+  <data name="Shifts_Bail_NotAuthorized" xml:space="preserve"><value>No tens permís per cancel·lar aquesta inscripció.</value></data>
+  <data name="Shifts_BailRange_NotAuthorized" xml:space="preserve"><value>No tens permís per cancel·lar aquest bloc d’inscripcions.</value></data>
+  <data name="Shifts_Bail_EarlyEntryClosed" xml:space="preserve"><value>No pots cancel·lar torns de muntatge després del tancament de l’entrada anticipada.</value></data>
+  <data name="Shifts_Bail_AlreadyBailed" xml:space="preserve"><value>Aquesta inscripció ja s’ha cancel·lat.</value></data>
+  <data name="Shifts_Signup_AlreadySignedUp" xml:space="preserve"><value>Ja t’has inscrit en aquest torn.</value></data>
+  <data name="Shifts_Signup_ShiftNotFound" xml:space="preserve"><value>No s’ha trobat el torn.</value></data>
+  <data name="Shifts_Signup_BrowsingClosed" xml:space="preserve"><value>La consulta de torns no està oberta actualment.</value></data>
+  <data name="Shifts_Signup_Restricted" xml:space="preserve"><value>Aquest torn està reservat a coordinadors i administradors.</value></data>
+  <data name="Shifts_Signup_EarlyEntryClosed" xml:space="preserve"><value>Les inscripcions d’entrada anticipada estan tancades.</value></data>
+  <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>Aquest torn està complet.</value></data>
+  <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>No s’ha trobat la rota.</value></data>
+  <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>No s’han trobat torns en l’interval de dates indicat.</value></data>
+  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Ja t’has inscrit en tots els torns d’aquest interval.</value></data>
+  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Tots els torns de l’interval se superposen amb inscripcions existents.</value></data>
+  <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Tots els torns d’aquest interval estan complets.</value></data>
+  <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Un o més torns d’aquest interval estan reservats a coordinadors i administradors.</value></data>
 </root>

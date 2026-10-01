@@ -45,6 +45,12 @@ internal static class EventRecurrenceDays
         return offsets.Count > 0 ? string.Join(",", offsets) : null;
     }
 
+    /// <summary>Whether every supplied CSV day token is one of Mon through Sun.</summary>
+    public static bool HasOnlyDisplayDays(string displayDays) =>
+        displayDays.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(day => day.Trim())
+            .All(day => DayNames.Contains(day, StringComparer.OrdinalIgnoreCase));
+
     /// <summary>
     /// Case-insensitive set comparison of two space-separated day-name strings.
     /// Used for change-detection so a lossless offsets→names→offsets round-trip

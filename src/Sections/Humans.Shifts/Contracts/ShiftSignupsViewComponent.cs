@@ -34,12 +34,13 @@ public sealed class ShiftSignupsViewComponent(
 
         try
         {
-            var es = await burnSettings.GetActiveAsync();
+            var ct = HttpContext.RequestAborted;
+            var es = await burnSettings.GetActiveAsync(ct);
 
             // Signups come from the cached shift view; the Signups list is pre-filtered
             // to the active event by the inner ShiftViewService — no active event
             // yields an empty list.
-            var userView = await shiftView.GetUserAsync(userId);
+            var userView = await shiftView.GetUserAsync(userId, ct);
             var signups = userView.Signups;
 
             var now = clock.GetCurrentInstant();
@@ -53,7 +54,7 @@ public sealed class ShiftSignupsViewComponent(
             }
             else
             {
-                var teamsById = await teamService.GetTeamsAsync();
+                var teamsById = await teamService.GetTeamsAsync(ct);
                 teamNames = teamIds
                     .Where(teamsById.ContainsKey)
                     .ToDictionary(id => id, id => teamsById[id].Name);
@@ -66,6 +67,10 @@ public sealed class ShiftSignupsViewComponent(
                 model.Pending = buckets.Pending;
                 model.Past = buckets.Past;
             }
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

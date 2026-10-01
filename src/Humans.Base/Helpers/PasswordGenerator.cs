@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+
 namespace Humans.Base.Helpers;
 
 public static class PasswordGenerator
@@ -9,9 +11,8 @@ public static class PasswordGenerator
     /// </summary>
     public static string GenerateTemporary()
     {
-        var random = new Random();
         return new string(Enumerable.Range(0, 16)
-            .Select(_ => Characters[random.Next(Characters.Length)])
+            .Select(_ => Characters[RandomNumberGenerator.GetInt32(Characters.Length)])
             .ToArray());
     }
 }

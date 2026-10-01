@@ -3,18 +3,18 @@
   src/Sections/Humans.Stripe/**
 -->
 <!-- freshness:flag-on-change
-  Store catalog editing, order lifecycle, OrderableUntil gate, Stripe Checkout flow, webhook ingestion, invoice issuance idempotency, treasury sync matching, and resource-based authorization — review when Store services/entities/controllers/auth handlers change.
+  Store catalog editing, order lifecycle, OrderableUntil gate, Stripe Checkout flow, webhook ingestion, invoice issuance idempotency, and resource-based authorization — review when Store services/entities/controllers/auth handlers change.
 -->
 
 # 30 — Store
 
 ## Business Context
 
-The Store section lets Camp Leads order infrastructure-as-a-service items from the collective for the year (containers, electrical hookups, generator hours, etc.) and pay against those orders incrementally as the camp budget firms up. Historically every camp's purchase ran through ad-hoc spreadsheets, WhatsApp threads, and a single Treasurer who had to chase Camp Leads for line-item confirmation and chase Holded into emitting one consolidated factura per camp at year-end. The Store section replaces that workflow with: a section-owned product catalog (priced once per year by `StoreAdmin`), a per-camp running tab of order lines snapshotted at add-time, multi-method payments (Stripe Checkout for cards, manual entries for bank transfer / cash) accumulating against the order, and a single Holded-issued factura emitted by `FinanceAdmin` once the camp finishes and all reconciliation is done.
+The Store section lets Camp Leads order infrastructure-as-a-service items from the collective for the year (containers, electrical hookups, generator hours, etc.) and pay against those orders incrementally as the camp budget firms up. It provides: a section-owned product catalog (priced once per year by `StoreAdmin`), a per-camp running tab of order lines snapshotted at add-time, payments (Stripe Checkout for cards; bank transfer / cash entry is not yet built) accumulating against the order, and a single Holded-issued factura emitted by `FinanceAdmin` once the camp finishes and all reconciliation is done.
 
 This is fundamentally **camp data** with provenance recording (per `memory/architecture/provenance-fks-not-user-scoped.md`): order lines, payments, and invoices belong to the `CampSeason`, not to the lead who clicked the button. The `AddedByUserId` / `RecordedByUserId` / `IssuedByUserId` columns are audit/provenance only — deleting a user does not delete the order data.
 
-Refunds, payouts, and chargebacks remain Stripe-dashboard-manual (per `memory/architecture/refunds-manual-via-dashboard.md`). Humans only does the bookkeeping side: a refund issued in Stripe gets recorded as a negative `Payment` row by the Treasurer.
+Refunds, payouts, and chargebacks remain Stripe-dashboard-manual (per `memory/architecture/refunds-manual-via-dashboard.md`). Humans only does the bookkeeping side: a returned deposit is credited to the order as a `DepositReturn` payment, and a refund issued in Stripe is recorded as a negative `Refund` payment, both by a Store admin.
 
 The section invariant doc is [`Store.md`](../Store.md).
 
@@ -37,7 +37,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 
 **Acceptance Criteria:**
 - `/Store` shows the lead's camp seasons for the active year (resolved via `ICampServiceRead.GetCampsForYearAsync`, scanning each camp's `GetLeadSeasonIdForYear`) with a list of orders for each.
-- "Create order" creates a new `Order` in `Open` state attached to the camp season; `CreateOrderAsync` rejects a second order for a season that already has one — any one, including a legacy row still at `Year = 0` — so a camp season carries at most one. (The order `Label` was removed from the UI in #816 — the column is retained but unused.)
+- "Create order" creates a new `Order` in `Open` state attached to the camp season; `CreateOrderAsync` rejects a second order for a season that already has one — any one, including a legacy row still at `Year = 0` — so a camp season carries at most one.
 - Order detail at `/Store/Order/{id}` shows the line list, payment list, running balance, and counterparty fields.
 - Add-line form posts to `/Store/Order/{id}/AddLine` with a product id and quantity. The line snapshots `UnitPriceSnapshot`, `VatRateSnapshot`, and `DepositAmountSnapshot` from the product at add-time. **An `Open` order is a live running tab (#816):** it reprices its lines to the current catalog price, so catalog edits DO propagate to Open orders; the snapshot is only frozen into the effective price once the order is `InvoiceIssued` (`Store.md`).
 - `AddLineAsync` rejects with a clear message if (a) the order is not `Open` or (b) the product is deactivated. The `OrderableUntil` deadline is **not** enforced by the service — it is enforced at the **authorization layer**: `OrderAuthorizationHandler` denies non-admin line edits once today's event-zone date has passed the product's deadline (using the `OrderLineContext` resource). Store admins are exempt and may add/remove lines on any Open order regardless of deadline. The service only annotates the audit entry with `(past order deadline …)` when a line is written past the deadline.
@@ -59,16 +59,18 @@ The section invariant doc is [`Store.md`](../Store.md).
 - Pay is allowed regardless of order state (payments continue after invoice issuance — see `OrderOperationRequirement.Pay`).
 - Webhook errors are logged but the controller returns 200 to prevent Stripe retry storms; signature failures return 400.
 
-### US-30.4: Record a Manual Payment (Treasurer)
+### US-30.4: Record Deposit Returns and Refunds (Store admin)
 
-**As** a `FinanceAdmin`, **I want** to record bank transfers, cash receipts, and Stripe-dashboard refunds against an order, **so that** the order's balance reflects every euro that has actually moved.
+**As** a Store admin, **I want** to credit returned deposits to a camp's order and book the refunds I send from the Stripe dashboard, **so that** every camp's balance shows what we owe them before any money goes out.
 
 **Acceptance Criteria:**
-- POST to `/Store/Order/{id}/RecordPayment` with amount (signed — negatives are refunds), method (`BankTransfer` | `Manual`), optional external reference (e.g. Holded treasury entry id), and optional notes.
-- Inserts a `Payment` row with `RecordedByUserId = actorUserId`, `Method` as supplied. `Stripe` method is reserved for the webhook path and rejected here.
-- Allowed in any order state (refunds frequently happen post-issuance).
-- Audit-logged with the actor.
-- *Note: not yet implemented (Phase 5) — no service member, and no `/Store/Order/{id}/RecordPayment` endpoint. (The implemented `/Store/Admin/Payments` Stripe reconciliation screen is US-30.3-adjacent and separate from this per-order manual path.)*
+- POST to `/Store/Order/{id}/RecordPayment` with a positive amount, method (`DepositReturn` | `Refund`), an external reference (e.g. Stripe refund id; required for `Refund`, optional for `DepositReturn`), and optional notes.
+- Step 1, `DepositReturn`: stored positive, so a paid-up order goes negative — the overage owed to the camp. Partial returns are just smaller amounts.
+- Step 2, `Refund`: stored negative after the money is sent from the Stripe dashboard, bringing the order back to zero.
+- Inserts a `Paid` `Payment` row with `RecordedByUserId = actorUserId`. Any other method is rejected. A deposit return is capped at the deposit still held (deposit total minus returns already recorded); a refund has no cap — a camp may have overpaid.
+- Store admins only; never on a team order. Allowed in any order state (deposits come back after issuance).
+- Audit-logged (`StorePaymentRecorded`) with the actor.
+- *Bank-transfer / cash entry (`BankTransfer`, `Manual`) is not built.*
 
 ### US-30.5: Issue the Consolidated Factura (Treasurer)
 
@@ -88,9 +90,9 @@ The section invariant doc is [`Store.md`](../Store.md).
 
 **Acceptance Criteria:**
 - `TreasurySyncState` is a singleton cursor row tracking `LastSyncAt`, `SyncStatus` (`Idle` / `Running` / `Failed`), and `LastError`.
-- The sync job (paused — Phase 7) polls Holded for new treasury entries since `LastSyncAt`, attempts to match them to outstanding `BankTransfer` `Payment` rows by amount + counterparty, and stores match results.
-- Unmatched entries are flagged for Treasurer attention.
-- *Note: implementation of US-30.6 is paused alongside US-30.5.*
+- The sync job would poll Holded for new treasury entries since `LastSyncAt`, attempt to match them to outstanding `BankTransfer` `Payment` rows by amount + counterparty, and store match results.
+- Unmatched entries would be flagged for Treasurer attention.
+- *Note: US-30.6 is not built — no sync job exists; `TreasurySyncState` ships with no reader or writer (`Docs/debt.yml` STORE-2).*
 
 ### US-30.7: Admin Aggregate Summary (StoreAdmin / FinanceAdmin / Admin)
 
@@ -162,10 +164,11 @@ Resource-based via `OrderAuthorizationHandler` keyed on `OrderOperationRequireme
 | Dependency | Used for |
 |---|---|
 | `ICampServiceRead` | resolve current user's lead camp season for the active year, fetch season name |
+| `ITeamServiceRead` | department (team order) lookups: team name, top-level check, coordinator check |
 | `ISettingsService` | derive the active event year + time zone for OrderableUntil deadline gate |
 | `IAuditLogService` | audit every write |
 | `IStripeService` | Checkout Session creation; webhook signature verification |
-| `IHoldedClient` | factura issuance + treasury sync (Phase 5/7, paused) |
+| `IHoldedClient` | factura issuance (treasury sync is not built) |
 
 ## Configuration
 

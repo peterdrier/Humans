@@ -8,7 +8,7 @@ namespace Humans.Expenses.Data;
 internal interface IExpenseRepository : IRepository
 {
     // Reads — all return fully-populated DTOs (Lines + Attachment metadata always included).
-    // EF entity types stay inside Infrastructure; the Application layer sees only DTOs.
+    // EF entities stay inside the repository; callers see only DTOs.
     Task<ExpenseReportDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default);
@@ -52,7 +52,7 @@ internal interface IExpenseRepository : IRepository
 
     /// <summary>
     /// Rewrites the payee IBAN snapshot on an already-submitted report. Which statuses may be
-    /// refreshed is the service's call, as with the header edit above; this only writes.
+    /// refreshed is the service's call, as with <c>UpdateDraftAsync</c>; this only writes.
     /// Returns false when the report does not exist.
     /// </summary>
     Task<bool> UpdatePayeeIbanAsync(
@@ -102,8 +102,8 @@ internal interface IExpenseRepository : IRepository
     /// </summary>
     Task<HoldedExpenseOutboxEvent?> GetLatestOutboxForReportAsync(
         Guid reportId, CancellationToken ct = default);
-    /// <summary>Written-off events across all reports — the <c>/Expenses/Review</c> banner count.</summary>
-    Task<int> CountFailedOutboxAsync(CancellationToken ct = default);
+    /// <summary>Reports with a written-off push — the <c>/Expenses/Review</c> banner and flags.</summary>
+    Task<IReadOnlyList<Guid>> GetFailedOutboxReportIdsAsync(CancellationToken ct = default);
     /// <summary>
     /// Puts the report's failed or backing-off events back at the front of the drain: clears the
     /// write-off, the error, the backoff, and the retry budget. Returns false when the report has

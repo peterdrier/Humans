@@ -1,6 +1,5 @@
 using Google.Apis.Admin.Directory.directory_v1;
 using Google.Apis.Admin.Directory.directory_v1.Data;
-using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Humans.Base.Extensions;
 using Humans.Base.Configuration;
@@ -26,7 +25,11 @@ internal sealed class WorkspaceUserDirectoryClient(
         if (_directoryService is not null)
             return _directoryService;
 
-        var credential = await GetCredentialAsync();
+        // Account mutations share this client; initialization retains its detached token.
+        var credential = await GoogleCredentialLoader.LoadScopedAsync(
+            _settings, CancellationToken.None,
+            DirectoryService.Scope.AdminDirectoryUser,
+            DirectoryService.Scope.AdminDirectoryUserSecurity);
 
         _directoryService = new DirectoryService(new BaseClientService.Initializer
         {
@@ -35,34 +38,6 @@ internal sealed class WorkspaceUserDirectoryClient(
         });
 
         return _directoryService;
-    }
-
-    private async Task<GoogleCredential> GetCredentialAsync()
-    {
-        GoogleCredential credential;
-
-        if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyJson))
-        {
-            using var stream = new MemoryStream(
-                System.Text.Encoding.UTF8.GetBytes(_settings.ServiceAccountKeyJson));
-            credential = (await CredentialFactory.FromStreamAsync<ServiceAccountCredential>(
-                stream, CancellationToken.None).ConfigureAwait(false)).ToGoogleCredential();
-        }
-        else if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyPath))
-        {
-            await using var stream = File.OpenRead(_settings.ServiceAccountKeyPath);
-            credential = (await CredentialFactory.FromStreamAsync<ServiceAccountCredential>(
-                stream, CancellationToken.None).ConfigureAwait(false)).ToGoogleCredential();
-        }
-        else
-        {
-            throw new InvalidOperationException(
-                "Google Workspace credentials not configured. Set ServiceAccountKeyPath or ServiceAccountKeyJson.");
-        }
-
-        return credential.CreateScoped(
-            DirectoryService.Scope.AdminDirectoryUser,
-            DirectoryService.Scope.AdminDirectoryUserSecurity);
     }
 
     public async Task<IReadOnlyList<WorkspaceUserAccount>> ListAccountsAsync(

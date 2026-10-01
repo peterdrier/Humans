@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using System.Diagnostics.CodeAnalysis;
 using NodaTime;
 using Humans.Base.Extensions;
@@ -29,6 +30,7 @@ internal sealed class TicketQueryService(
     ITeamServiceRead teamService,
     ISettingsService settingsService,
     ITicketCacheInvalidator cacheInvalidator,
+    IAuditLogService auditLog,
     IClock clock) : ITicketService, IUserDataContributor
 {
     private async Task<int> ComputeUserTicketCountAsync(Guid userId)
@@ -781,6 +783,31 @@ internal sealed class TicketQueryService(
     {
         var rows = await ticketRepository.GetOrderExportDataAsync();
         return rows.ToList();
+    }
+
+    public async Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId)
+    {
+        var orders = (await ticketRepository.GetOrderExportDataAsync())
+            .Where(o => string.Equals(o.PaymentStatus, nameof(TicketPaymentStatus.Paid), StringComparison.Ordinal))
+            .OrderBy(o => o.PurchasedAt);
+
+        var rows = new List<DonationExportRow>();
+        foreach (var o in orders)
+        {
+            var date = o.PurchasedAt.InZone(MadridZone).Date.ToInvariantDate();
+            if (o.VipDonations > 0)
+                rows.Add(new DonationExportRow(date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.VipTicket, o.VipDonations));
+            if (o.DonationAmount > 0)
+                rows.Add(new DonationExportRow(date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.SeparateDonation, o.DonationAmount));
+        }
+
+        await auditLog.LogAsync(
+            AuditAction.TicketDonationsExported,
+            "Tickets", Guid.Empty,
+            description: $"Donor list exported: {rows.Count} donation rows, {rows.Sum(r => r.Amount):F2} EUR",
+            actorUserId: actorUserId);
+
+        return rows;
     }
 
     public async Task<UserTicketHoldings> GetUserTicketHoldingsAsync(

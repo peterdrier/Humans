@@ -43,15 +43,17 @@ service_interfaces() {
   local decls seed pat new merged i
   decls=$(find src -name '*.cs' -type f -not -path '*/obj/*' -not -path '*/bin/*' -print0 \
           | xargs -0 awk 'FNR==1{printf "\n"} {printf "%s ", $0}' \
-          | grep -oE 'interface +I[A-Za-z0-9_]+[^{;]*' \
-          | sed -E 's/interface +//' | tr -d '\r')
-  seed=$(printf 'IApplicationService\nIOrchestrator\n%s\n' \
-           "$(echo "$decls" | grep -E ':.*\b(IApplicationService|IOrchestrator)\b' | sed -E 's/[ <:].*//')" \
-         | grep -v '^$' | sort -u)
+          | { grep -oE 'interface +I[A-Za-z0-9_]+[^{;]*' || [ "$?" -eq 1 ]; } \
+          | sed -E 's/interface +//' | tr -d '\r') || return
+  # No matching declarations is valid; grep errors and producer failures are not.
+  seed=$(echo "$decls" | { grep -E ':.*\b(IApplicationService|IOrchestrator)\b' || [ "$?" -eq 1 ]; } \
+         | sed -E 's/[ <:].*//') || return
+  seed=$(printf 'IApplicationService\nIOrchestrator\n%s\n' "$seed" \
+         | grep -v '^$' | sort -u) || return
   for i in 1 2 3 4; do
-    pat=$(echo "$seed" | paste -sd'|')
-    new=$(echo "$decls" | grep -E ":.*\b($pat)\b" | sed -E 's/[ <:].*//' | sort -u)
-    merged=$(printf '%s\n%s\n' "$seed" "$new" | sort -u)
+    pat=$(echo "$seed" | paste -sd'|') || return
+    new=$(echo "$decls" | { grep -E ":.*\b($pat)\b" || [ "$?" -eq 1 ]; } | sed -E 's/[ <:].*//' | sort -u) || return
+    merged=$(printf '%s\n%s\n' "$seed" "$new" | sort -u) || return
     [ "$merged" = "$seed" ] && break
     seed="$merged"
   done
@@ -63,7 +65,7 @@ service_classes() {
   # thousands of subprocesses, which takes minutes under Git Bash on Windows;
   # this form runs in seconds everywhere.
   local pat
-  pat=$(service_interfaces | paste -sd'|')
+  pat=$(service_interfaces | paste -sd'|') || return
 
   find src/Sections src/Humans.Web/Services -path "*/Services/*" -name "*.cs" -type f -print0 \
     | xargs -0 awk -v ifpat="^(${pat})\$" \

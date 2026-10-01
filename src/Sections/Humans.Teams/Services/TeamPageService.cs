@@ -51,7 +51,8 @@ internal sealed class TeamPageService(
                 .Select(resource => new TeamPageResourceSummary(
                     resource.Name,
                     resource.Url ?? string.Empty,
-                    resource.ResourceType))
+                    resource.ResourceType,
+                    resource.ProvisionedAt))
                 .ToList()
             : [];
 

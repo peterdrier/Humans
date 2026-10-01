@@ -580,6 +580,81 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             .Should().Be(1, because: $"{verbName} must invalidate the cached CampInfo snapshot so the next warm-year read re-warms from the inner service");
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FailedCampUpdate_RefetchesCommittedFields(bool throws)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync(2026, [2026]);
+        var (camp, season) = await SeedCampWithSeasonAsync(2026);
+        var before = await _service.GetCampByIdAsync(camp.Id, ct);
+        before!.ContactEmail.Should().Be("test@camp.com");
+        var input = new CampUpdateInput(camp.Id, "changed@camp.com", camp.ContactPhone, null, null,
+            false, 1, false, season.Id, season.Name, SeedSeasonData());
+        var failure = new InvalidOperationException("Post-write dependency failed");
+        _innerSubstitute.UpdateCampAsync(input, ct).Returns(async _ =>
+        {
+            camp.ContactEmail = input.ContactEmail;
+            await SaveAllAsync(ct);
+            if (throws) throw failure;
+            return CampUpdateResult.Failure(failure.Message);
+        });
+
+        if (throws)
+        {
+            Func<Task> update = () => _service.UpdateCampAsync(input, ct);
+            (await update.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        }
+        else
+        {
+            (await _service.UpdateCampAsync(input, ct)).Succeeded.Should().BeFalse();
+        }
+        (await _service.GetCampByIdAsync(camp.Id, ct))!.ContactEmail.Should().Be(input.ContactEmail);
+    }
+
+    [HumansFact]
+    public async Task FailedSeasonStatusWrite_RefetchesCommittedStatus()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync(2026, [2026]);
+        var (camp, season) = await SeedCampWithSeasonAsync(2026);
+        await _service.GetCampsForYearAsync(2026, ct);
+        var failure = new InvalidOperationException("Post-write dependency failed");
+        _innerSubstitute.SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, ct).Returns(async _ =>
+        {
+            season.Status = CampSeasonStatus.Full;
+            await SaveAllAsync(ct);
+            throw failure;
+        });
+
+        Func<Task> change = () => _service.SetSeasonStatusAsync(camp.Id, season.Id, CampSeasonStatus.Full, ct);
+        (await change.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        var fresh = (await _service.GetCampsForYearAsync(2026, ct)).Single(c => c.Id == camp.Id);
+        fresh.Seasons.Single().Status.Should().Be(CampSeasonStatus.Full);
+    }
+
+    [HumansFact]
+    public async Task CancelledSettingsInvalidation_DoesNotKeepThePreWriteSettingsSlot()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var mutationCancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        await SeedSettingsAsync(2026, [2026]);
+        (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().NotContain(2027);
+        _innerSubstitute.OpenSeasonAsync(2027, mutationCancellation.Token).Returns(async _ =>
+        {
+            var settings = await CampsDb.CampSettings.SingleAsync(ct);
+            settings.OpenSeasons = [2026, 2027];
+            await SaveAllAsync(ct);
+            await mutationCancellation.CancelAsync();
+        });
+
+        Func<Task> open = () => _service.OpenSeasonAsync(2027, mutationCancellation.Token);
+        (await open.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken
+            .Should().Be(mutationCancellation.Token);
+        (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Contain(2027);
+    }
+
     public static TheoryData<string, Func<CachingCampServiceTests, CancellationToken, Task>> SettingsWriteVerbs => new()
     {
         { nameof(ICampService.OpenSeasonAsync), (t, ct) => t._service.OpenSeasonAsync(2027, ct) },

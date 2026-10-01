@@ -3,8 +3,3 @@
 version: 1
 next_id: 2
 inbox:
-  - added: 2026-09-14
-    id: DEV-1
-    what: "Humans.Development.csproj's cross-section-dependency comment lists IShiftManagementService, which is internal to Shifts; what the seeders inject is IShiftSeeding / IShiftSignupSeeding (finding N18, /section-doctor on Shifts 2026-09-05; swept in by /section-doctor on Issues 2026-09-14)."
-    review: light
-    root: CENTRAL-57

@@ -879,6 +879,13 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 StripeFee = o.StripeFee,
                 ApplicationFee = o.ApplicationFee,
                 PaymentStatus = o.PaymentStatus.ToString(),
+                VendorOrderId = o.VendorOrderId,
+                PurchasedAt = o.PurchasedAt,
+                VipDonations = o.Attendees
+                    .Where(a =>
+                        (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn) &&
+                        a.Price > TicketConstants.VipThresholdEuros)
+                    .Sum(a => a.Price - TicketConstants.VipThresholdEuros),
             };
         }).ToList();
     }

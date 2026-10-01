@@ -23,7 +23,8 @@ internal sealed class GovernanceWorkgroupsViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        var register = await workgroups.GetRegisterAsync();
+        var ct = HttpContext.RequestAborted;
+        var register = await workgroups.GetRegisterAsync(ct);
         var active = register
             .Where(w => w.Status == WorkgroupStatus.Active)
             .OrderBy(w => w.Name, StringComparer.CurrentCultureIgnoreCase)
@@ -35,7 +36,7 @@ internal sealed class GovernanceWorkgroupsViewComponent(
         var ids = active.SelectMany(w => w.CoordinatorUserIds()).Distinct().ToList();
         var people = ids.Count == 0
             ? new Dictionary<Guid, UserInfo>()
-            : await users.GetUserInfosAsync(ids);
+            : await users.GetUserInfosAsync(ids, ct);
 
         return View(new GovernanceWorkgroupsViewModel(active, people, clock.GetCurrentInstant()));
     }

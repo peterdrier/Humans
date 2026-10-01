@@ -109,4 +109,133 @@
 &lt;p&gt;El pagament es farà per transferència bancària al compte que acaba en {2}. T'avisarem quan la transferència s'hagi enviat.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{3}"&gt;Veure el teu informe de despeses&lt;/a&gt;&lt;/p&gt;</value></data>
   <data name="Expenses_Email_Approved_Subject" xml:space="preserve"><value>El teu informe de despeses ha estat aprovat</value></data>
+  <data name="Expenses_Flash_LoadIndexFailed" xml:space="preserve"><value>No s'han pogut carregar els informes de despeses.</value></data>
+  <data name="Expenses_Flash_NoActiveYearCategories" xml:space="preserve"><value>No hi ha cap any pressupostari actiu amb categories. Contacta amb un administrador de finances.</value></data>
+  <data name="Expenses_Flash_LoadFormFailed" xml:space="preserve"><value>No s'ha pogut carregar el formulari.</value></data>
+  <data name="Expenses_Flash_DraftCreated" xml:space="preserve"><value>Esborrany creat.</value></data>
+  <data name="Expenses_Flash_CreateFailed" xml:space="preserve"><value>No s'ha pogut crear l'esborrany.</value></data>
+  <data name="Expenses_Flash_LoadReportFailed" xml:space="preserve"><value>No s'ha pogut carregar l'informe de despeses.</value></data>
+  <data name="Expenses_Flash_NotEditable" xml:space="preserve"><value>Aquest informe ja no es pot editar.</value></data>
+  <data name="Expenses_Flash_LoadEditFailed" xml:space="preserve"><value>No s'ha pogut carregar el formulari d'edició.</value></data>
+  <data name="Expenses_Flash_ReportUpdated" xml:space="preserve"><value>Informe actualitzat.</value></data>
+  <data name="Expenses_Flash_ReportUpdateFailed" xml:space="preserve"><value>No s’ha pogut actualitzar l’informe.</value></data>
+  <data name="Expenses_Flash_LineUpdated" xml:space="preserve"><value>Línia actualitzada.</value></data>
+  <data name="Expenses_Flash_UpdateLineFailed" xml:space="preserve"><value>No s’ha pogut actualitzar la línia</value></data>
+  <data name="Expenses_Flash_LineRemoved" xml:space="preserve"><value>Línia eliminada.</value></data>
+  <data name="Expenses_Flash_RemoveLineFailed" xml:space="preserve"><value>No s’ha pogut eliminar la línia</value></data>
+  <data name="Expenses_Flash_AttachmentUploaded" xml:space="preserve"><value>Fitxer adjunt pujat.</value></data>
+  <data name="Expenses_Flash_UploadAttachmentFailed" xml:space="preserve"><value>No s’ha pogut pujar el fitxer adjunt.</value></data>
+  <data name="Expenses_Flash_ReportSubmitted" xml:space="preserve"><value>Informe enviat.</value></data>
+  <data name="Expenses_Flash_SubmitFailed" xml:space="preserve"><value>No s’ha pogut enviar l’informe.</value></data>
+  <data name="Expenses_Flash_ReportWithdrawn" xml:space="preserve"><value>Informe retirat.</value></data>
+  <data name="Expenses_Flash_WithdrawFailed" xml:space="preserve"><value>No s’ha pogut retirar aquest informe.</value></data>
+  <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Dades de línia no vàlides.</value></data>
+  <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Rebut afegit.</value></data>
+  <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Factura afegida. Ara afegeix els rebuts que la justifiquen.</value></data>
+  <data name="Expenses_Flash_LineAdded" xml:space="preserve"><value>Línia afegida.</value></data>
+  <data name="Expenses_Flash_SelectFile" xml:space="preserve"><value>Selecciona un fitxer.</value></data>
+  <data name="Expenses_Flash_AttachmentRemoved" xml:space="preserve"><value>Adjunt eliminat.</value></data>
+  <data name="Expenses_Flash_LoadIbanFailed" xml:space="preserve"><value>No s'ha pogut carregar el formulari d'IBAN.</value></data>
+  <data name="Expenses_Flash_InvalidMaximum" xml:space="preserve"><value>Import màxim no vàlid.</value></data>
+  <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>Cal un motiu de rebuig.</value></data>
+  <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>No s'ha pogut carregar la cua de revisió.</value></data>
+  <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Dades d'aprovació no vàlides.</value></data>
+  <!-- Submitter expense-edit page -->
+  <data name="Expenses_EditReport" xml:space="preserve"><value>Edita l'informe de despeses</value></data>
+  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Fil d'Ariadna</value></data>
+  <data name="Expenses_Edit" xml:space="preserve"><value>Edita</value></data>
+  <data name="Expenses_ReportHeader" xml:space="preserve"><value>Capçalera de l'informe</value></data>
+  <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Categoria pressupostària</value></data>
+  <data name="Expenses_CategoryChangeWarning" xml:space="preserve"><value>Canviar la categoria després de presentar-lo requereix retirar i tornar a presentar l'informe.</value></data>
+  <data name="Expenses_Optional" xml:space="preserve"><value>(opcional)</value></data>
+  <data name="Expenses_SaveHeader" xml:space="preserve"><value>Desa la capçalera</value></data>
+  <data name="Expenses_ExpenseLines" xml:space="preserve"><value>Partides de despesa</value></data>
+  <data name="Expenses_NoLinesYet" xml:space="preserve"><value>Encara no hi ha partides. Afegeix a sota el primer rebut o factura.</value></data>
+  <data name="Expenses_Mileage" xml:space="preserve"><value>Quilometratge</value></data>
+  <data name="Expenses_PerDiem" xml:space="preserve"><value>Dieta</value></data>
+  <data name="Expenses_Invoice" xml:space="preserve"><value>Factura</value></data>
+  <data name="Expenses_ProofCountSingular" xml:space="preserve"><value>1 rebut associat</value></data>
+  <data name="Expenses_ProofCountPlural" xml:space="preserve"><value>{0} rebuts associats</value></data>
+  <data name="Expenses_ReceiptAttached" xml:space="preserve"><value>Rebut adjunt</value></data>
+  <data name="Expenses_NeedsReceipt" xml:space="preserve"><value>Cal rebut</value></data>
+  <data name="Expenses_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Expenses_AddLine" xml:space="preserve"><value>Afegeix partida</value></data>
+  <data name="Expenses_BackToReport" xml:space="preserve"><value>Torna a l'informe</value></data>
+  <data name="Expenses_WhatAreYouAdding" xml:space="preserve"><value>Què esteu afegint?</value></data>
+  <data name="Expenses_Preferred" xml:space="preserve"><value>preferida</value></data>
+  <data name="Expenses_Receipt" xml:space="preserve"><value>Rebut</value></data>
+  <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Una empresa factura a l’associació per la feina o els béns. La factura ha d’anar a nom de la NCA. És molt preferible: l’associació pot recuperar l’IVA i estalviar un 21 %. Adjuntareu la factura i després els rebuts que la justifiquen perquè els revisi qui aprova.</value></data>
+  <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Heu pagat alguna cosa personalment i voleu que se us reemborsi. Els rebuts només s’aproven en determinades circumstàncies, normalment quan no era possible una factura o l’import és petit.</value></data>
+  <data name="Expenses_Cancel" xml:space="preserve"><value>Cancel·la</value></data>
+  <data name="Expenses_AddInvoice" xml:space="preserve"><value>Afegeix factura</value></data>
+  <data name="Expenses_AddReceipt" xml:space="preserve"><value>Afegeix rebut</value></data>
+  <data name="Expenses_InvoiceAddDescription" xml:space="preserve"><value>La factura de l’empresa, emesa a nom de la NCA. Després de desar-la afegireu els rebuts que la justifiquen perquè qui aprova pugui veure què cobreix l’import facturat.</value></data>
+  <data name="Expenses_ReceiptAddDescription" xml:space="preserve"><value>Alguna cosa que heu pagat personalment i voleu que se us reemborsi. Descriviu-la, introduïu l’import i adjunteu una foto o PDF del rebut.</value></data>
+  <data name="Expenses_InvoicePurpose" xml:space="preserve"><value>Per a què és la factura?</value></data>
+  <data name="Expenses_ReceiptPurpose" xml:space="preserve"><value>Què heu comprat?</value></data>
+  <data name="Expenses_InvoicePlaceholder" xml:space="preserve"><value>p. ex., mà d’obra de l’equip de muntatge, factura 2026-042</value></data>
+  <data name="Expenses_ReceiptPlaceholder" xml:space="preserve"><value>p. ex., fusta per a l’estructura d’ombra</value></data>
+  <data name="Expenses_AmountEur" xml:space="preserve"><value>Import (EUR)</value></data>
+  <data name="Expenses_InvoiceFile" xml:space="preserve"><value>La factura (PDF o foto)</value></data>
+  <data name="Expenses_ReceiptFile" xml:space="preserve"><value>El rebut (foto o PDF)</value></data>
+  <data name="Expenses_SaveAndAddReceipts" xml:space="preserve"><value>Desa i afegeix rebuts</value></data>
+  <data name="Expenses_SaveReceipt" xml:space="preserve"><value>Desa el rebut</value></data>
+  <data name="Expenses_NotAnInvoice" xml:space="preserve"><value>No és una factura?</value></data>
+  <data name="Expenses_NotAReceipt" xml:space="preserve"><value>No és un rebut?</value></data>
+  <data name="Expenses_ChangeType" xml:space="preserve"><value>Canvia el tipus</value></data>
+  <data name="Expenses_ReceiptsBehindInvoice" xml:space="preserve"><value>Rebuts associats a la factura</value></data>
+  <data name="Expenses_ReceiptsBehindIt" xml:space="preserve"><value>Rebuts associats</value></data>
+  <data name="Expenses_ProofAmountOf" xml:space="preserve"><value>{0} de {1}</value></data>
+  <data name="Expenses_NoProofsYet" xml:space="preserve"><value>Encara no n’hi ha cap. Afegiu els rebuts que mostren què cobreix l’import facturat; es revisen amb l’informe però no s’envien al sistema comptable.</value></data>
+  <data name="Expenses_AddReceiptFile" xml:space="preserve"><value>afegeix el fitxer del rebut</value></data>
+  <data name="Expenses_RemoveReceiptConfirm" xml:space="preserve"><value>Voleu suprimir aquest rebut?</value></data>
+  <data name="Expenses_Remove" xml:space="preserve"><value>Suprimeix</value></data>
+  <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>Què era?</value></data>
+  <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>p. ex., materials de la ferreteria</value></data>
+  <data name="Expenses_Done" xml:space="preserve"><value>Fet</value></data>
+  <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nou informe de despeses</value></data>
+  <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Seleccioneu una categoria —</value></data>
+  <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(opcional, màx. 500 caràcters)</value></data>
+  <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Descriviu la despesa…</value></data>
+  <data name="Expenses_CreateDraft" xml:space="preserve"><value>Crea un esborrany</value></data>
+  <data name="Expenses_HowItWorks" xml:space="preserve"><value>Com funciona</value></data>
+  <data name="Expenses_HowItWorksStep1" xml:space="preserve"><value>Creeu un esborrany i afegiu partides de despesa amb imports.</value></data>
+  <data name="Expenses_HowItWorksStep2" xml:space="preserve"><value>Adjunteu un rebut o factura a cada partida.</value></data>
+  <data name="Expenses_HowItWorksStep3" xml:space="preserve"><value>Configureu el vostre IBAN de pagament si encara no ho heu fet.</value></data>
+  <data name="Expenses_HowItWorksStep4" xml:space="preserve"><value>Envieu l’informe a revisió de coordinació o FinanceAdmin.</value></data>
+  <data name="Expenses_HowItWorksStep5" xml:space="preserve"><value>Després de l’aprovació rebreu una transferència SEPA.</value></data>
+  <data name="Expenses_BackToInvoiceReceipts" xml:space="preserve"><value>Torna als rebuts de la factura</value></data><data name="Expenses_Description" xml:space="preserve"><value>Descripció</value></data><data name="Expenses_EditLine" xml:space="preserve"><value>Edita la línia</value></data><data name="Expenses_FileRequiredBeforeSubmit" xml:space="preserve"><value>Obligatori abans d'enviar l'informe.</value></data><data name="Expenses_Line" xml:space="preserve"><value>Línia</value></data><data name="Expenses_NoFileAttached" xml:space="preserve"><value>No hi ha cap fitxer adjunt.</value></data><data name="Expenses_ReceiptsBehindThisInvoice" xml:space="preserve"><value>Rebuts d'aquesta factura</value></data><data name="Expenses_RemoveFile" xml:space="preserve"><value>Elimina el fitxer</value></data><data name="Expenses_RemoveFileConfirm" xml:space="preserve"><value>Voleu eliminar aquest fitxer? N'haureu de pujar un altre abans d'enviar.</value></data><data name="Expenses_RemoveInvoiceConfirm" xml:space="preserve"><value>Voleu eliminar aquesta factura i tots els seus rebuts?</value></data><data name="Expenses_RemoveLine" xml:space="preserve"><value>Elimina la línia</value></data><data name="Expenses_RemoveLineConfirm" xml:space="preserve"><value>Voleu eliminar aquesta línia i el seu fitxer?</value></data><data name="Expenses_TravelLineReadOnly" xml:space="preserve"><value>Les línies de viatge es calculen a partir de les seves dades i no es poden editar. Elimineu la línia de l'informe i torneu-la a afegir per canviar-la.</value></data><data name="Expenses_Upload" xml:space="preserve"><value>Puja</value></data>
+  <data name="Expenses_CurrentIban" xml:space="preserve"><value>IBAN actual</value></data><data name="Expenses_Iban" xml:space="preserve"><value>IBAN</value></data><data name="Expenses_IbanEnter" xml:space="preserve"><value>Introduïu el vostre IBAN complet sense espais.</value></data><data name="Expenses_IbanEnterOrRemove" xml:space="preserve"><value>Introduïu el vostre IBAN complet sense espais. Deixeu-lo buit per eliminar-lo.</value></data><data name="Expenses_IbanPrivacy" xml:space="preserve"><value>El vostre IBAN s'utilitza per processar transferències de reemborsament per SEPA. No es mostra mai a altres persones.</value></data><data name="Expenses_IbanStored" xml:space="preserve"><value>El vostre IBAN s'emmagatzema de manera segura i només FinanceAdmin hi pot accedir en el context dels vostres informes de despeses.</value></data><data name="Expenses_NewIban" xml:space="preserve"><value>IBAN nou</value></data><data name="Expenses_NewIbanOrRemove" xml:space="preserve"><value>IBAN nou (o deixeu-lo buit per eliminar-lo)</value></data><data name="Expenses_PaymentIban" xml:space="preserve"><value>IBAN de pagament</value></data>
+  <data name="Expenses_Flash_AddLineFailed" xml:space="preserve"><value>No s'ha pogut afegir la línia.</value></data>
+  <data name="Expenses_Flash_RemoveAttachmentFailed" xml:space="preserve"><value>No s'ha pogut eliminar el fitxer adjunt.</value></data>
+  <data name="Expenses_Save" xml:space="preserve"><value>Desa</value></data>
+  <data name="Expenses_ReceiptBehindInvoice" xml:space="preserve"><value>Rebut de la factura</value></data>
+  <data name="Expenses_Iban_ReportNotFound" xml:space="preserve"><value>Informe no trobat.</value></data>
+  <data name="Expenses_Iban_InvalidFormat" xml:space="preserve"><value>Format d’IBAN no vàlid.</value></data>
+  <data name="Expenses_Iban_RequiredForPendingReport" xml:space="preserve"><value>Aquest informe està pendent de pagament i necessita un IBAN. Substitueix-lo en lloc d’eliminar-lo.</value></data>
+  <data name="Expenses_Iban_SaveFailed" xml:space="preserve"><value>No s’ha pogut desar l’IBAN.</value></data>
+  <data name="Expenses_Iban_Removed" xml:space="preserve"><value>IBAN eliminat.</value></data>
+  <data name="Expenses_Iban_Saved" xml:space="preserve"><value>IBAN desat.</value></data>
+  <data name="Expenses_Validation_CategoryNotFound" xml:space="preserve"><value>Categoria no trobada.</value></data>
+  <data name="Expenses_Validation_CategoryDifferentBudgetYear" xml:space="preserve"><value>Aquesta categoria pertany a un exercici pressupostari diferent del d'aquest informe.</value></data>
+  <data name="Expenses_Validation_ProofRowsMustBeReceipts" xml:space="preserve"><value>Les línies justificatives han de ser línies de rebut.</value></data>
+  <data name="Expenses_Validation_ParentLineNotFound" xml:space="preserve"><value>No s'ha trobat la línia principal en aquest informe.</value></data>
+  <data name="Expenses_Validation_ProofRowsRequireInvoice" xml:space="preserve"><value>Les línies justificatives només es poden afegir a una línia de factura.</value></data>
+  <data name="Expenses_Validation_OnlyReceiptAndInvoiceLines" xml:space="preserve"><value>Només es poden afegir línies de rebut i de factura.</value></data>
+  <data name="Expenses_Validation_LineNotOnReport" xml:space="preserve"><value>La línia no pertany a l'informe indicat.</value></data>
+  <data name="Expenses_Validation_TravelLinesComputedCannotEdit" xml:space="preserve"><value>Les línies de viatge es calculen a partir de les dades introduïdes i no es poden editar. Elimina la línia i torna-la a afegir per canviar-la.</value></data>
+  <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>El fitxer és massa gran. La mida màxima és de {0} MB.</value></data>
+  <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>El nom del fitxer ha de tenir {0} caràcters com a màxim.</value></data>
+  <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Tipus de fitxer no admès. Puja un fitxer PDF, JPEG, PNG o HEIC.</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Només qui presenta l'informe el pot enviar.</value></data>
+  <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>L'informe ha de tenir almenys una línia.</value></data>
+  <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Les línies de rebut i factura han de tenir un fitxer adjunt abans d'enviar l'informe.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>La persona que presenta l'informe ha de tenir un IBAN al seu perfil.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>La persona que presenta l'informe ha de tenir el nom i els cognoms al seu perfil.</value></data>
+  <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>No s'ha pogut enviar l'informe. Potser ja no és un esborrany.</value></data>
+  <data name="Expenses_Validation_SubmissionFailed" xml:space="preserve"><value>Ha fallat l'enviament</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Només qui presenta l'informe el pot retirar.</value></data>
+  <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Ha fallat la retirada</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Només qui presenta l'informe el pot editar.</value></data>
+  <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Aquest informe no es pot editar quan és en estat {0}.</value></data>
 </root>

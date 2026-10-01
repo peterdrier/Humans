@@ -1,11 +1,9 @@
-using Humans.Settings.Contracts;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
 using Humans.Store.Models;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NodaTime;
 using NodaTime.Text;
 
 using Humans.Base.Authorization;
@@ -17,8 +15,6 @@ namespace Humans.Store.Controllers;
 [Route("Store/Admin")]
 internal sealed class StoreAdminController(
     Service storeService,
-    ISettingsService settingsService,
-    IClock clock,
     IUserServiceRead userService,
     ILogger<StoreAdminController> logger) : HumansControllerBase(userService)
 {
@@ -27,7 +23,7 @@ internal sealed class StoreAdminController(
     [HttpGet("Catalog")]
     public async Task<IActionResult> Catalog(CancellationToken ct)
     {
-        var year = await GetDefaultCatalogYearAsync();
+        var year = await storeService.GetCurrentEventYearAsync();
         var products = (await storeService.GetAllProductsForYearAsync(year, ct))
             .OrderByDescending(p => p.IsActive)
             .ThenBy(p => p.Name, StringComparer.Ordinal)
@@ -38,7 +34,7 @@ internal sealed class StoreAdminController(
     [HttpGet("Summary")]
     public async Task<IActionResult> Summary(int? year, CancellationToken ct)
     {
-        var defaultYear = await GetDefaultCatalogYearAsync();
+        var defaultYear = await storeService.GetCurrentEventYearAsync();
         var selectedYear = year ?? defaultYear;
 
         var summary = await storeService.GetStoreSummaryAsync(selectedYear, ct);
@@ -78,6 +74,28 @@ internal sealed class StoreAdminController(
         return RedirectToAction(nameof(OrderYears));
     }
 
+    [HttpGet("PaymentMethods")]
+    public async Task<IActionResult> PaymentMethods(CancellationToken ct)
+    {
+        var rows = await storeService.GetPaymentMethodRepairRowsAsync(ct);
+        return View(rows);
+    }
+
+    [HttpPost("PaymentMethods/Repair")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RepairPaymentMethods(CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var repaired = await storeService.RepairPaymentMethodNamesAsync(user.Id, ct);
+        if (repaired == 0)
+            SetInfo("No payments need their method copied.");
+        else
+            SetSuccess($"Copied the method on {repaired} payment(s).");
+        return RedirectToAction(nameof(PaymentMethods));
+    }
+
     [HttpPost("Payments/RecordMissing")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RecordMissingPayments(CancellationToken ct)
@@ -96,7 +114,7 @@ internal sealed class StoreAdminController(
     [HttpGet("Catalog/Edit")]
     public async Task<IActionResult> Edit(CancellationToken ct)
     {
-        var year = await GetDefaultCatalogYearAsync();
+        var year = await storeService.GetCurrentEventYearAsync();
         var model = new ProductInputModel
         {
             Year = year,
@@ -182,11 +200,5 @@ internal sealed class StoreAdminController(
             SetError(ex.Message);
         }
         return RedirectToAction(nameof(Catalog));
-    }
-
-    private async Task<int> GetDefaultCatalogYearAsync()
-    {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
-        return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
     }
 }

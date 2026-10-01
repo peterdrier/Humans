@@ -17,7 +17,8 @@ internal sealed record TeamPageMemberSummary(
 internal sealed record TeamPageResourceSummary(
     string Name,
     string Url,
-    GoogleResourceType ResourceType);
+    GoogleResourceType ResourceType,
+    Instant ProvisionedAt);
 
 internal sealed record TeamPageShiftsSummary(
     int TotalSlots,

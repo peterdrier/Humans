@@ -1197,4 +1197,22 @@
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Zur Info, deine Schichten bei diesem Team:</value></data>
   <data name="Shifts_ShiftProfile_LoadFailed" xml:space="preserve"><value>Schichtinformationen konnten nicht geladen werden.</value></data>
   <data name="Shifts_ShiftProfile_SaveFailed" xml:space="preserve"><value>Schichtinformationen konnten nicht gespeichert werden.</value></data>
+  <data name="Shifts_EventCalendarNotConfigured" xml:space="preserve"><value>Der Veranstaltungskalender ist nicht eingerichtet.</value></data>
+  <data name="Shifts_SignupNotFound" xml:space="preserve"><value>Die Anmeldung wurde nicht gefunden.</value></data>
+  <data name="Shifts_Bail_NotAuthorized" xml:space="preserve"><value>Du darfst diese Anmeldung nicht absagen.</value></data>
+  <data name="Shifts_BailRange_NotAuthorized" xml:space="preserve"><value>Du darfst diesen Anmeldungsblock nicht absagen.</value></data>
+  <data name="Shifts_Bail_EarlyEntryClosed" xml:space="preserve"><value>Du kannst Aufbauschichten nach dem Ende der Frühzutrittsfrist nicht mehr absagen.</value></data>
+  <data name="Shifts_Bail_AlreadyBailed" xml:space="preserve"><value>Diese Anmeldung wurde bereits abgesagt.</value></data>
+  <data name="Shifts_Signup_AlreadySignedUp" xml:space="preserve"><value>Du bist bereits für diese Schicht angemeldet.</value></data>
+  <data name="Shifts_Signup_ShiftNotFound" xml:space="preserve"><value>Schicht nicht gefunden.</value></data>
+  <data name="Shifts_Signup_BrowsingClosed" xml:space="preserve"><value>Die Schichtübersicht ist derzeit nicht geöffnet.</value></data>
+  <data name="Shifts_Signup_Restricted" xml:space="preserve"><value>Diese Schicht ist Koordinatoren und Administratoren vorbehalten.</value></data>
+  <data name="Shifts_Signup_EarlyEntryClosed" xml:space="preserve"><value>Die Anmeldungen für die frühe Anreise sind geschlossen.</value></data>
+  <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>Diese Schicht ist voll belegt.</value></data>
+  <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>Dienstplan nicht gefunden.</value></data>
+  <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>Im angegebenen Datumsbereich wurden keine Schichten gefunden.</value></data>
+  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Du bist bereits für alle Schichten in diesem Zeitraum angemeldet.</value></data>
+  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Alle Schichten in diesem Zeitraum überschneiden sich mit bestehenden Anmeldungen.</value></data>
+  <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Alle Schichten in diesem Zeitraum sind voll belegt.</value></data>
+  <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Eine oder mehrere Schichten in diesem Zeitraum sind Koordinatoren und Administratoren vorbehalten.</value></data>
 </root>

@@ -59,6 +59,7 @@
     var hiddenInput = document.getElementById('@hiddenId');
     var dropdown = document.getElementById('@dropdownId');
     var debounceTimer = null;
+    var queryVersion = 0;
     var isOpen = false;
     var excludeIds = @Html.Raw(excludeIdsJson);
     var scopeArg = @Html.Raw(scopeJson);
@@ -95,13 +96,14 @@
 
     textInput.addEventListener('input', function () {
         clearTimeout(debounceTimer);
+        var version = ++queryVersion;
+        hiddenInput.value = '';
+        hideDropdown();
         var q = textInput.value.trim();
         if (q.length < 2) {
-            hideDropdown();
-            hiddenInput.value = '';
             return;
         }
-        debounceTimer = setTimeout(function () { fetchResults(q); }, 300);
+        debounceTimer = setTimeout(function () { fetchResults(q, version); }, 300);
     });
 
     textInput.addEventListener('keydown', function (e) {
@@ -125,7 +127,7 @@
             });
     }
 
-    function fetchResults(q) {
+    function fetchResults(q, version) {
         var profileUrl = '/api/profiles/search?q=' + encodeURIComponent(q);
         if (scopeArg) profileUrl += '&scope=' + encodeURIComponent(scopeArg);
         if (allowEmail) profileUrl += '&allowEmail=true';
@@ -138,6 +140,7 @@
         // Each source resolves to [] on error, so one failing (e.g. ticket 403) still
         // renders the other's results. Profile rows first, then any ticket-resolved row.
         Promise.all(fetches).then(function (lists) {
+            if (version !== queryVersion) return;
             var merged = [];
             lists.forEach(function (list) {
                 if (Array.isArray(list)) { merged = merged.concat(list); }
@@ -193,6 +196,7 @@
             li.appendChild(textWrap);
             li.addEventListener('mousedown', function (e) {
                 e.preventDefault();
+                queryVersion++;
                 hiddenInput.value = r.userId;
                 textInput.value = r.displayName;
                 hideDropdown();

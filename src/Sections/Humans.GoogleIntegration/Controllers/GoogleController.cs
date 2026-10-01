@@ -623,7 +623,7 @@ internal sealed class GoogleController(
         var resourcesByTeam = await teamResourceService.GetResourcesByTeamIdsAsync(teamIds);
         var resourceLookup = resourcesByTeam.ToDictionary(
             kvp => kvp.Key,
-            kvp => kvp.Value.Select(r => $"{r.Name} ({r.ResourceType})").ToList());
+            kvp => kvp.Value.OrderBy(r => r.ProvisionedAt).Select(r => $"{r.Name} ({r.ResourceType})").ToList());
 
         ViewBag.GoogleEmailLookup = googleEmailLookup;
         ViewBag.DisplayNameLookup = displayNameLookup;

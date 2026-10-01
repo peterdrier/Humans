@@ -40,6 +40,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         new(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/webp" };
     private static readonly HashSet<string> AllowedImageExtensions =
         new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
+    private const int MaxImageFileNameLength = 256;
 
     public CampService(
         ICampRepository repo,
@@ -948,6 +949,10 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         }
 
         // Security: extension whitelist prevents image/jpeg + .html (static middleware would serve as HTML).
+        fileName = DisplayFileName(fileName);
+        if (fileName.Length > MaxImageFileNameLength)
+            return CampImageUploadResult.Failure($"Image filename must be {MaxImageFileNameLength} characters or fewer.");
+
         var ext = Path.GetExtension(fileName);
         if (!AllowedImageExtensions.Contains(ext))
         {
@@ -977,6 +982,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
         return CampImageUploadResult.Success(image);
     }
+
+    private static string DisplayFileName(string fileName) => fileName.Split('/', '\\').Last();
 
     public async Task DeleteImageAsync(
         Guid scopedCampId, Guid imageId, CancellationToken cancellationToken = default)
@@ -1198,7 +1205,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             return new CampMemberRequestResult(
                 Guid.Empty,
                 CampMemberRequestOutcome.NoOpenSeason,
-                "Camp is not open for membership this year.",
+                "Camps_Flash_RequestNoOpenSeason",
                 CampMemberRequestNoticeLevel.Error);
         }
 
@@ -1221,19 +1228,19 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
                 new CampMemberRequestResult(
                     insert.MemberId,
                     CampMemberRequestOutcome.Created,
-                    "Your request to join has been sent to the camp leads.",
+                    "Camps_Flash_RequestCreated",
                     CampMemberRequestNoticeLevel.Success),
             CampMemberInsertOutcome.AlreadyActive =>
                 new CampMemberRequestResult(
                     insert.MemberId,
                     CampMemberRequestOutcome.AlreadyActive,
-                    "You are already an active member of this camp.",
+                    "Camps_Flash_RequestAlreadyActive",
                     CampMemberRequestNoticeLevel.Info),
             _ =>
                 new CampMemberRequestResult(
                     insert.MemberId,
                     CampMemberRequestOutcome.AlreadyPending,
-                    "You already have a pending request for this camp.",
+                    "Camps_Flash_RequestAlreadyPending",
                     CampMemberRequestNoticeLevel.Info)
         };
     }

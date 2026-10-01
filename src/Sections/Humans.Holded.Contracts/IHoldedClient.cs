@@ -28,7 +28,8 @@ public interface IHoldedClient
         CancellationToken ct = default);
 
     /// <summary>Approves a purchase document. POST /purchases only creates a draft — only an
-    /// approved doc books to the ledger and leaves the draft list.</summary>
+    /// approved doc books to the ledger and leaves the draft list. Idempotent: a doc that is already
+    /// approved returns normally.</summary>
     Task ApprovePurchaseDocumentAsync(string documentId, CancellationToken ct = default);
 
     /// <summary>Records a payment against a purchase document and returns the new payment id.

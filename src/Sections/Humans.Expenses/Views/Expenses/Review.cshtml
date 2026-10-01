@@ -18,14 +18,25 @@
 @* Approved reports whose Holded push was written off look identical to healthy ones in every
    other view, so without this they are only discoverable by reconciling Holded by hand
    (nobodies-collective/Humans#1045). Finance admins are the only ones who can act on it. *@
-@if (Model.FailedHoldedPushCount > 0)
+@if (Model.FailedHoldedPushReportIds.Count > 0)
 {
+    var failedCount = Model.FailedHoldedPushReportIds.Count;
     <div class="alert alert-danger">
         <i class="fa-solid fa-triangle-exclamation me-2"></i>
-        <strong>@Model.FailedHoldedPushCount</strong>
-        approved @(Model.FailedHoldedPushCount == 1 ? "report" : "reports")
+        <strong>@failedCount</strong>
+        approved @(failedCount == 1 ? "report" : "reports")
         failed to finish pushing to Holded. Open the report to see the error, whether a payable was
-        created, and to re-queue the push.
+        created, and to re-queue the push:
+        <ul class="mb-0 mt-2">
+            @foreach (var failed in Model.Reports.Where(r => Model.FailedHoldedPushReportIds.Contains(r.Id)))
+            {
+                <li>
+                    <a asp-action="Detail" asp-route-id="@failed.Id" class="alert-link">@failed.Id.ToString()[..8]…</a>
+                    — @(Model.SubmitterNames.TryGetValue(failed.SubmitterUserId, out var failedName) ? failedName : SharedLocalizer["Common_Unknown"].Value),
+                    @failed.Payable.ToEuro()
+                </li>
+            }
+        </ul>
     </div>
 }
 
@@ -44,9 +55,17 @@ else
     foreach (var group in Model.ByStatus)
     {
         var rows = group.ToList();
-        var table = TableModel.For(rows)
+        var builder = TableModel.For(rows)
             .Id($"review-{group.Key}")
-            .Template(Localizer["Expenses_ColReport"].Value, reportCell)
+            .Template(Localizer["Expenses_ColReport"].Value, reportCell);
+        @* Finance-admin only (the set is empty for everyone else), so no localization keys. *@
+        if (rows.Any(r => Model.FailedHoldedPushReportIds.Contains(r.Id)))
+        {
+            builder = builder
+                .Column("Holded", r => Model.FailedHoldedPushReportIds.Contains(r.Id) ? "Push failed" : "", c => c.SelectFilter())
+                .RowCss(r => Model.FailedHoldedPushReportIds.Contains(r.Id) ? "table-danger" : null);
+        }
+        var table = builder
             .Column(Localizer["Expenses_ColSubmittedBy"].Value, r => Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : SharedLocalizer["Common_Unknown"].Value)
             .Column(Localizer["Expenses_ColDepartment"].Value, r => Model.DepartmentNames.TryGetValue(r.BudgetCategoryId, out var dept) ? dept : SharedLocalizer["Common_Unknown"].Value, c => c.SelectFilter())
             .Column(Localizer["Expenses_ColSubject"].Value, r => r.Note is { Length: > 80 } n ? n[..80] + "…" : r.Note)

@@ -88,9 +88,6 @@ The layout these shapes imply:
   view); the design reserves sourcing it from the active event. Not built.
 - **`VendorStepsJson`** column is dormant by design until prod soak; the drop is a scheduled
   follow-up, not this section's to do ad hoc.
-- **`CacheKeys.TicketDashboardStats`** is a reserved key for a dashboard cache that was never
-  added; nothing reads, writes or evicts it.
-
 ## Deliberately not done
 
 - No vendor-agnostic transfer abstraction beyond the port: the void-to-hold + reissue sequence
@@ -98,9 +95,9 @@ The layout these shapes imply:
 - No read-through cache on the dashboard stats; on-demand staleness during sync is accepted.
 - No pagination-free admin lists: orders, attendees and who-hasn't-bought are the one place the
   dataset is large enough that paging buys something.
-- No concurrency tokens on the transfer request (`no-concurrency-tokens`). The state machine
-  re-checks status on entry, which rejects a stale second submit but not two overlapping `Decide`
-  POSTs that both read Pending; that gap is recorded in `Docs/debt.yml`, not closed here.
+- No concurrency tokens on the transfer request (`no-concurrency-tokens`). Decisions use a shared
+  in-process gate and re-read status after acquiring it, so overlapping submissions cannot both
+  enter the vendor flow. The gate remains held until the outcome, audit and notifications finish.
 - No per-environment toggle for the automated transfer path; it is always offered.
 - No separate Attendee aggregate root: `TicketTransferRequest` references the attendee with no
   inverse collection on purpose.

@@ -209,7 +209,7 @@ internal sealed class GoogleDriveAccessSyncService(
 
         foreach (var perm in permissions)
         {
-            if (!IsAnyUserPermission(perm))
+            if (!DrivePermissionRoleMapper.IsAnyUserPermission(perm))
                 continue;
 
             var email = EmailNormalization.CanonicalizeGmail(perm.EmailAddress!);
@@ -218,7 +218,7 @@ internal sealed class GoogleDriveAccessSyncService(
                 roleByEmail[email] = perm.Role;
             // Keep the inherited floor separate from the effective role: the latter
             // can include a direct elevation that this folder must later revoke.
-            var inheritedLevels = perm.InheritedRoles.Select(ParseApiRole).ToArray();
+            var inheritedLevels = perm.InheritedRoles.Select(DrivePermissionRoleMapper.Parse).ToArray();
             if (inheritedLevels.Length > 0 && inheritedLevels.All(level => level.HasValue))
                 inheritedLevelByEmail[email] = inheritedLevels.Max()!.Value;
             if (IsDirectManagedPermission(perm) && perm.Id is not null &&
@@ -246,11 +246,11 @@ internal sealed class GoogleDriveAccessSyncService(
                 // one would otherwise never be raised to Contributor. Below the expected level
                 // the folder still needs a direct permission created, so classify it Missing;
                 // at or above it, inheritance already satisfies the claim.
-                state = ParseApiRole(currentRole) is { } inherited && inherited < member.Level
+                state = DrivePermissionRoleMapper.Parse(currentRole) is { } inherited && inherited < member.Level
                     ? MemberSyncState.Missing
                     : MemberSyncState.Inherited;
             else
-                state = inheritedLevel >= member.Level && ParseApiRole(currentRole) == inheritedLevel
+                state = inheritedLevel >= member.Level && DrivePermissionRoleMapper.Parse(currentRole) == inheritedLevel
                     ? MemberSyncState.Inherited
                     : string.Equals(currentRole, expectedRole, StringComparison.Ordinal)
                         ? MemberSyncState.Correct
@@ -270,7 +270,7 @@ internal sealed class GoogleDriveAccessSyncService(
                 : null;
             // A mixed permission already reduced to its inherited floor grants
             // nothing beyond the parent. It cannot be deleted here (#945).
-            if (inheritedRole is not null && ParseApiRole(extraRole) <= inheritedLevel)
+            if (inheritedRole is not null && DrivePermissionRoleMapper.Parse(extraRole) <= inheritedLevel)
                 continue;
             members.Add(new MemberSyncStatus(email, email, MemberSyncState.Extra, [], extraRole, inheritedRole));
         }
@@ -287,7 +287,7 @@ internal sealed class GoogleDriveAccessSyncService(
                 // AddOnly can elevate access but cannot reduce it. Unknown roles also
                 // wait for AddAndRemove rather than assuming a change is an elevation.
                 if (mode == SyncMode.AddOnly &&
-                    !(ParseApiRole(member.CurrentRole) < ParseApiRole(member.ExpectedRole)))
+                    !(DrivePermissionRoleMapper.Parse(member.CurrentRole) < DrivePermissionRoleMapper.Parse(member.ExpectedRole)))
                     continue;
                 await UpdateAndLogAsync(claim, member, permissionId, ct);
                 continue;
@@ -347,7 +347,7 @@ internal sealed class GoogleDriveAccessSyncService(
     {
         var role = member.ExpectedRole!;
         var error = await drivePermissions.UpdatePermissionAsync(claim.FolderId, permissionId, role, ct);
-        var action = ParseApiRole(member.CurrentRole) > ParseApiRole(role)
+        var action = DrivePermissionRoleMapper.Parse(member.CurrentRole) > DrivePermissionRoleMapper.Parse(role)
             ? GoogleSyncLogAction.AccessRevoked
             : GoogleSyncLogAction.AccessGranted;
         var description = error is null
@@ -434,28 +434,9 @@ internal sealed class GoogleDriveAccessSyncService(
         ErrorMessage = error
     };
 
-    private static DrivePermissionLevel? ParseApiRole(string? role) => role switch
-    {
-        "reader" => DrivePermissionLevel.Viewer,
-        "commenter" => DrivePermissionLevel.Commenter,
-        "writer" => DrivePermissionLevel.Contributor,
-        "fileOrganizer" => DrivePermissionLevel.ContentManager,
-        "organizer" => DrivePermissionLevel.Manager,
-        _ => null
-    };
-
-    private static bool IsAnyUserPermission(DrivePermission perm)
-    {
-        if (!string.Equals(perm.Type, "user", StringComparison.OrdinalIgnoreCase))
-            return false;
-        if (string.IsNullOrEmpty(perm.EmailAddress))
-            return false;
-        return !perm.EmailAddress.EndsWith(".iam.gserviceaccount.com", StringComparison.OrdinalIgnoreCase);
-    }
-
     private static bool IsDirectManagedPermission(DrivePermission perm)
     {
-        if (!IsAnyUserPermission(perm))
+        if (!DrivePermissionRoleMapper.IsAnyUserPermission(perm))
             return false;
         if (string.Equals(perm.Role, "owner", StringComparison.OrdinalIgnoreCase))
             return false;

@@ -3,17 +3,10 @@
   <!--
     Notifications' cross-section surface, carved into its own leaf project because sections
     from all over the app reach into it — Auth, Campaigns, Camps, Consent, Feedback,
-    GoogleIntegration (the section and its contracts leaf both), Governance, Issues,
-    Onboarding, Shifts, Teams and Users, plus the Shell for the bell.
+    GoogleIntegration, Governance, Issues, Onboarding, Rideshare, Shifts, Teams, Users and
+    Workgroups, plus the Shell for the bell.
     A Contracts/ *folder* inside Humans.Notifications would make each of them reference the
     whole section (design §15.5b, memory/architecture/section-project-cycle-fix.md).
-
-    INotificationRetention has one consumer, CleanupNotificationsJob in
-    Humans.Notifications/Jobs/, which is inside the section — so that interface could move
-    inward. It stays out here for now; that is a later pass. (The job lives in the section
-    because "Hangfire pins a job to its assembly" was re-measured and found false:
-    AddOrUpdate<T>(id, …) rewrites the stored type string at every startup, so the job id is
-    the stable key.)
 
     It holds exactly what lives outside the section: the dispatch, auto-resolve and retention
     interfaces, and the enums those signatures name — NotificationSource,

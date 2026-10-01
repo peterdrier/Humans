@@ -210,7 +210,12 @@ internal sealed class CachingConsentService(
         {
             // The id submitted with is refreshed even when it is not in the list (a stale
             // read); every id of the human is refreshed because every one is a cache key.
-            foreach (var id in chainIds.Contains(userId) ? chainIds : [userId, .. chainIds])
+            var affectedIds = chainIds.Contains(userId) ? chainIds : [userId, .. chainIds];
+            // Evict every alias before reloading so a failed reload cannot leave
+            // the rest of the chain serving the pre-submit consent set.
+            foreach (var id in affectedIds)
+                Invalidate(id);
+            foreach (var id in affectedIds)
                 await ReplaceAsync(id, ct).ConfigureAwait(false);
         }
 

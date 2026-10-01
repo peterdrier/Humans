@@ -80,6 +80,18 @@
   <data name="Issue_Title" xml:space="preserve"><value>Title</value></data>
   <data name="Issue_Area_Auto" xml:space="preserve"><value>Auto-detect</value></data>
   <data name="Issue_Area_Hint" xml:space="preserve"><value>Leave blank to auto-detect from the current page.</value></data>
+  <data name="Issues_Area_Camps" xml:space="preserve"><value>Barrios</value></data>
+  <data name="Issues_Area_Budget" xml:space="preserve"><value>Budget</value></data>
+  <data name="Issues_Area_CityPlanning" xml:space="preserve"><value>City planning</value></data>
+  <data name="Issues_Area_Legal" xml:space="preserve"><value>Legal &amp; consent</value></data>
+  <data name="Issues_Area_Onboarding" xml:space="preserve"><value>Onboarding</value></data>
+  <data name="Issues_Area_Profiles" xml:space="preserve"><value>Profile &amp; onboarding</value></data>
+  <data name="Issues_Area_Scanner" xml:space="preserve"><value>Scanner</value></data>
+  <data name="Issues_Area_Shifts" xml:space="preserve"><value>Shifts &amp; volunteering</value></data>
+  <data name="Issues_Area_Teams" xml:space="preserve"><value>Teams</value></data>
+  <data name="Issues_Area_Tickets" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Issues_Area_Governance" xml:space="preserve"><value>Voting &amp; governance</value></data>
+  <data name="Issues_Area_General" xml:space="preserve"><value>General</value></data>
   <data name="Issue_Description" xml:space="preserve"><value>Description</value></data>
   <data name="Issue_Description_Placeholder" xml:space="preserve"><value>What happened? What did you expect?</value></data>
   <data name="Issue_Attachment" xml:space="preserve"><value>Screenshot (optional)</value></data>

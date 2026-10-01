@@ -1,5 +1,3 @@
-using Humans.Base.Attributes;
-using Humans.CityPlanning.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
@@ -12,11 +10,9 @@ namespace Humans.Camps.Controllers;
 [Authorize(Policy = PolicyNames.CampAdminOrAdmin)]
 [Route("Barrios/Admin")]
 [Route("Camps/Admin")]
-[CrossSectionWrite("Camp admin edits the camp's city-planning registration.")]
 internal sealed class CampAdminController(
     ICampService campService,
     ICampRoleService campRoleService,
-    ICityPlanningService cityPlanningService,
     CampAdminPageBuilder campAdminPageBuilder,
     CampCsvExportBuilder campCsvExportBuilder,
     IUserServiceRead userService,
@@ -215,23 +211,6 @@ internal sealed class CampAdminController(
         }
     }
 
-    [HttpPost("UpdateRegistrationInfo")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateRegistrationInfo([FromForm] string? registrationInfo)
-    {
-        try
-        {
-            await cityPlanningService.UpdateRegistrationInfoAsync(registrationInfo);
-            SetSuccess("Registration info updated.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to update registration info");
-            SetError("Failed to update registration info.");
-        }
-        return RedirectToAction(nameof(Index));
-    }
-
     [HttpPost("Delete")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -345,6 +324,10 @@ internal sealed class CampAdminController(
             ModelState.AddModelError(string.Empty, ex.Message);
             return View("RoleForm", form);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "CreateRole failed.");
@@ -404,6 +387,10 @@ internal sealed class CampAdminController(
             ModelState.AddModelError(string.Empty, ex.Message);
             return View("RoleForm", form);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "EditRole failed for {RoleId}.", id);
@@ -424,6 +411,10 @@ internal sealed class CampAdminController(
             var ok = await campRoleService.DeactivateDefinitionAsync(id, user.Id, ct);
             if (!ok) return NotFound();
             SetSuccess("Camp role deactivated.");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -446,6 +437,10 @@ internal sealed class CampAdminController(
             if (!ok) return NotFound();
             SetSuccess("Camp role reactivated.");
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "ReactivateRole failed for {RoleId}.", id);
@@ -465,6 +460,10 @@ internal sealed class CampAdminController(
         {
             var definitionsCreated = await campRoleService.SeedSystemRolesAsync(user.Id, ct);
             SetSuccess($"System roles: {definitionsCreated} created.");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

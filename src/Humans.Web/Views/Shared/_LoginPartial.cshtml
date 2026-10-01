@@ -20,11 +20,11 @@
                 aria-expanded="false">
             @if (currentUser is not null)
             {
-                <vc:human user-id="@currentUser.Id" layout="Avatar" size="32" bg-color="bg-secondary" link="None" />
+                <vc:human user-id="@currentUser.Id" layout="Avatar" size="34" bg-color="bg-secondary" link="None" />
             }
             <span class="d-none d-md-inline profile-dropdown-name">@displayName</span>
         </button>
-        <ul class="dropdown-menu dropdown-menu-lg-end profile-dropdown-menu">
+        <ul class="dropdown-menu dropdown-menu-end profile-dropdown-menu">
             <!-- User info header -->
             <li class="px-3 py-2">
                 <div class="fw-semibold small">@displayName</div>

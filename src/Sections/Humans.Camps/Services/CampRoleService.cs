@@ -312,6 +312,10 @@ internal sealed class CampRoleService(
                 recipientUserIds: [memberLookup.UserId],
                 cancellationToken: ct);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Notification failed for CampRoleAssigned (assignment {AssignmentId}).", assignment.Id);

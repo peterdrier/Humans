@@ -9,7 +9,7 @@ namespace Humans.CityPlanning.Data;
 /// <c>city_planning_settings</c>,
 /// <c>camp_polygons</c> and <c>camp_polygon_histories</c>, with its own
 /// <c>__EFMigrationsHistory_CityPlanning</c> table and migrations under
-/// <c>Migrations/CityPlanning/</c>. Same database, same connection — the split
+/// <c>Data/Migrations/</c>. Same database, same connection — the split
 /// is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>

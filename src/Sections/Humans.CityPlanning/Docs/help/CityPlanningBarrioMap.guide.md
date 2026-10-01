@@ -6,7 +6,7 @@ The barrio placement map is the interactive editor where camp leads draw their b
 
 Editing is controlled by the **placement phase**, opened and closed by a Map Admin. Barrio leads can only draw or edit their own polygon while the phase is **open**. Map Admins can edit any polygon at any time.
 
-The Admin panel can schedule the phase to open and close automatically on specific dates.
+Organisers can set dates showing when placement is expected to open and close, but the phase itself still opens and closes only when a Map Admin does it by hand.
 
 ### Drawing Your Barrio
 
@@ -23,7 +23,7 @@ Click your barrio's polygon on the map. A popup appears with an **Edit** button 
 
 ### Polygon History
 
-Every save is recorded in an append-only history. Click **History** in the polygon popup to browse past versions. Map Admins can restore a previous version — restoring writes the current polygon to history before overwriting, so nothing is ever lost.
+Every save is recorded in an append-only history. Click **History** in the polygon popup to browse past versions. Map Admins can restore a previous version — this saves that old version again as the current one, noted with the time it was restored from. Nothing is lost, since every version is already recorded in history when it's saved.
 
 ### Measure Tool
 
@@ -33,12 +33,13 @@ Click the **Measure** button (ruler icon) to enter measurement mode, then click 
 
 **Map Admin** is not a standalone role. You are a Map Admin if you hold the `CampAdmin` role **or** belong to the `city-planning` team. Map Admins can edit any polygon at any time (regardless of placement phase), open/close placement, upload overlays, and export GeoJSON.
 
+Open and close placement, and set the announced placement dates, from the City Planning tab in Settings.
+
 The Admin panel provides:
 
-- **Placement phase** — open/close now, or schedule dates
 - **Limit zone** — upload a GeoJSON outline of the site boundary (for visual reference)
 - **Official zones** — upload a GeoJSON layer of pre-defined zones (for visual reference)
-- **Containers** — create and manage shipping containers for each barrio
+- **Containers** — manage shipping containers for each barrio
 - **Export** — download the year's polygons as a GeoJSON file
 
 ### What Happens Automatically

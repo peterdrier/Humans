@@ -107,7 +107,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 | Actor | Capabilities |
 |-------|--------------|
-| Admin | The **only** human actor. View all historical reports at `/Feedback` and `/Feedback/{id}`, update status, assign to humans and/or teams, link GitHub issues, and reply on any report (replies queue an email and dispatch an in-app notification to the reporter). Every action is gated by the controller-level `PolicyNames.AdminOnly`. |
+| Admin | The **only** human actor. View all historical reports at `/Feedback` and `/Feedback/{id}`, update status, assign to humans and/or teams, link GitHub issues, and reply on any report (replies queue an email and dispatch an in-app notification to the reporter). Every action is gated by the controller-level `PolicyNames.AdminOnly`; the index and detail GETs pass the browser abort token through their report, team, assignee, and reporter reads. |
 | API (key auth) | List, get, post messages, update status, update assignment, set GitHub issue via `/api/backdoor/feedback`. The controller lives in `Humans.Backdoor` and calls this section through `IFeedbackTriage` (nobodies-collective/Humans#1128); the key resolves to a human, so an API reply is attributed exactly like one typed in the UI. No report-creation endpoint. |
 
 `RoleNames.FeedbackAdmin` still exists as an assignable role (it appears on the Staff page and in the Guide, and still admits the holder to the `/Admin` shell via `AnyAdminRole`), but it **no longer grants any Feedback access**. Its former policy `PolicyNames.FeedbackAdminOrAdmin` and role group `RoleGroups.FeedbackAdminOrAdmin` were deleted with the lockdown.
@@ -133,7 +133,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 ## Triggers
 
-- When an admin posts a message on a report, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendAsync(FeedbackEmails.FeedbackResponse(...))`. After the message is persisted, an in-app `NotificationSource.FeedbackResponse` notification is also dispatched.
+- When an admin posts a message on a report, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendAsync(FeedbackEmails.FeedbackResponse(...))`. After the message is persisted, a localized in-app `NotificationSource.FeedbackResponse` notification is also dispatched in the reporter's preferred language.
 - When a message is posted or a status changes, the nav-badge cache is invalidated via `INavBadgeCacheInvalidator`.
 - When an account merge accepts, `FeedbackService.ReassignAsync` (`IUserMerge`) re-FKs `FeedbackReport.UserId` / `AssignedToUserId` / `ResolvedByUserId` and `FeedbackMessage.SenderUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section) inside an ambient `TransactionScope`.
 

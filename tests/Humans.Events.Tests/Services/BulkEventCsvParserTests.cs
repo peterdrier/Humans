@@ -1,3 +1,7 @@
+using System.Globalization;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options;
 using AwesomeAssertions;
 using Humans.Events.Services;
 using NodaTime;
@@ -7,6 +11,10 @@ namespace Humans.Events.Tests.Services;
 
 public sealed class BulkEventCsvParserTests
 {
+    private readonly IStringLocalizer<EventsResource> _localizer =
+        new StringLocalizer<EventsResource>(new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
+
     private const string Header =
         "Id,Barrio,Status,Title,Description,Category,Date,StartTime,DurationMinutes,LocationNote,Host,IsRecurring,RecurrenceDays,PriorityRank";
 
@@ -15,7 +23,7 @@ public sealed class BulkEventCsvParserTests
     {
         var csv = $"# a comment\n\n{Header}\n,Camp,,Title,Desc,Workshop,2026-07-08,09:30,60,,,false,,1\n";
 
-        var rows = BulkEventCsvParser.Parse(csv);
+        var rows = BulkEventCsvParser.Parse(csv, _localizer);
 
         rows.Should().ContainSingle();
         rows[0].Title.Should().Be("Title");
@@ -28,7 +36,7 @@ public sealed class BulkEventCsvParserTests
     {
         var csv = $"{Header}\n,Camp,,Title,Desc,Workshop,2026-07-08,09:30,60,,,false,,\n";
 
-        var rows = BulkEventCsvParser.Parse(csv);
+        var rows = BulkEventCsvParser.Parse(csv, _localizer);
 
         rows.Should().ContainSingle();
         rows[0].PriorityRank.Should().BeNull();
@@ -39,9 +47,30 @@ public sealed class BulkEventCsvParserTests
     {
         var csv = $"{Header}\n,Camp,,Title,Desc,Workshop,2026-07-08,09:30,60,,,false,,high\n";
 
-        var act = () => BulkEventCsvParser.Parse(csv);
+        var act = () => BulkEventCsvParser.Parse(csv, _localizer);
 
         act.Should().Throw<FormatException>().WithMessage("*PriorityRank is not an integer*");
+    }
+
+    [HumansFact]
+    public void Parse_InvalidRecurringFlag_IsAnError()
+    {
+        var csv = $"{Header}\n,Camp,,Title,Desc,Workshop,2026-07-08,09:30,60,,,sometimes,,1\n";
+
+        var act = () => BulkEventCsvParser.Parse(csv, _localizer);
+
+        act.Should().Throw<FormatException>().WithMessage("*IsRecurring must be true or false*");
+    }
+
+    [HumansFact]
+    public void Parse_BlankRecurringFlag_IsNotRecurring()
+    {
+        var csv = $"{Header}\n,Camp,,Title,Desc,Workshop,2026-07-08,09:30,60,,,,,1\n";
+
+        var rows = BulkEventCsvParser.Parse(csv, _localizer);
+
+        rows.Should().ContainSingle();
+        rows[0].IsRecurring.Should().BeFalse();
     }
 
     [HumansFact]
@@ -50,7 +79,7 @@ public sealed class BulkEventCsvParserTests
         var csv = "Title,Category,Date,StartTime,DurationMinutes,IsRecurring,PriorityRank,Description\n" +
                   "Yoga,Workshop,2026-07-08,09:30,60,false,1,Morning stretch\n";
 
-        var rows = BulkEventCsvParser.Parse(csv);
+        var rows = BulkEventCsvParser.Parse(csv, _localizer);
 
         rows.Should().ContainSingle();
         rows[0].Title.Should().Be("Yoga");
@@ -63,7 +92,7 @@ public sealed class BulkEventCsvParserTests
     {
         var csv = $"{Header},My Notes\n,Camp,,Title,Desc,Workshop,2026-07-08,09:30,60,,,false,,1,bring speakers\n";
 
-        var rows = BulkEventCsvParser.Parse(csv);
+        var rows = BulkEventCsvParser.Parse(csv, _localizer);
 
         rows.Should().ContainSingle();
         rows[0].PriorityRank.Should().Be(1);
@@ -75,7 +104,7 @@ public sealed class BulkEventCsvParserTests
         var csv = "title, CATEGORY ,Date,StartTime,DurationMinutes,IsRecurring,PriorityRank,Description\n" +
                   "Yoga,Workshop,2026-07-08,09:30,60,false,1,Desc\n";
 
-        var rows = BulkEventCsvParser.Parse(csv);
+        var rows = BulkEventCsvParser.Parse(csv, _localizer);
 
         rows.Should().ContainSingle();
         rows[0].Category.Should().Be("Workshop");
@@ -87,7 +116,7 @@ public sealed class BulkEventCsvParserTests
         var csv = "Title;Category;Date;StartTime;DurationMinutes;IsRecurring;PriorityRank;Description\n" +
                   "Yoga;Workshop;2026-07-08;09:30;60;false;1;Desc\n";
 
-        var rows = BulkEventCsvParser.Parse(csv);
+        var rows = BulkEventCsvParser.Parse(csv, _localizer);
 
         rows.Should().ContainSingle();
         rows[0].Title.Should().Be("Yoga");
@@ -106,7 +135,7 @@ public sealed class BulkEventCsvParserTests
                   "Title;Category;Date;StartTime;DurationMinutes;IsRecurring;PriorityRank;Description\n" +
                   "Yoga;Workshop;2026-07-08;09:30;60;false;1;Desc\n";
 
-        var rows = BulkEventCsvParser.Parse(csv);
+        var rows = BulkEventCsvParser.Parse(csv, _localizer);
 
         rows.Should().ContainSingle();
         rows[0].Title.Should().Be("Yoga");
@@ -117,7 +146,7 @@ public sealed class BulkEventCsvParserTests
     {
         var csv = $"{Header}\n,Camp,,Title,\"Line one\nLine two\",Workshop,2026-07-08,09:30,60,,,false,,1\n";
 
-        var rows = BulkEventCsvParser.Parse(csv);
+        var rows = BulkEventCsvParser.Parse(csv, _localizer);
 
         rows.Should().ContainSingle();
         rows[0].Description.Should().Be("Line one\nLine two");
@@ -129,7 +158,7 @@ public sealed class BulkEventCsvParserTests
         var csv = "Title,Category,Date,StartTime,DurationMinutes,IsRecurring,Description\n" +
                   "Yoga,Workshop,2026-07-08,09:30,60,false,Desc\n";
 
-        var act = () => BulkEventCsvParser.Parse(csv);
+        var act = () => BulkEventCsvParser.Parse(csv, _localizer);
 
         act.Should().Throw<FormatException>().WithMessage("*missing required column(s): PriorityRank*");
     }
@@ -141,7 +170,7 @@ public sealed class BulkEventCsvParserTests
                   ",Camp,,Title,Desc,Workshop,2026-07-08,09:30,sixty,,,false,,1\n" +
                   "not-a-guid,Camp,,Other,Desc,Workshop,2026-07-08,09:30,60,,,false,,1\n";
 
-        var act = () => BulkEventCsvParser.Parse(csv);
+        var act = () => BulkEventCsvParser.Parse(csv, _localizer);
 
         act.Should().Throw<FormatException>()
             .Where(e => e.Message.Contains("Row 2: DurationMinutes is not an integer.")
@@ -153,7 +182,7 @@ public sealed class BulkEventCsvParserTests
     {
         var csv = $"{Header}\n,Camp,,\"Hello, World\",Desc,Workshop,2026-07-08,09:30,60,,,false,,1\n";
 
-        var rows = BulkEventCsvParser.Parse(csv);
+        var rows = BulkEventCsvParser.Parse(csv, _localizer);
 
         rows.Should().ContainSingle();
         rows[0].Title.Should().Be("Hello, World");
@@ -164,7 +193,7 @@ public sealed class BulkEventCsvParserTests
     {
         var csv = $"{Header}\n,Camp,,Title,\"She said \"\"hi\"\"\",Workshop,2026-07-08,09:30,60,,,false,,1\n";
 
-        var rows = BulkEventCsvParser.Parse(csv);
+        var rows = BulkEventCsvParser.Parse(csv, _localizer);
 
         rows[0].Description.Should().Be("She said \"hi\"");
     }
@@ -176,7 +205,7 @@ public sealed class BulkEventCsvParserTests
         // required-value checks surface the real problem instead of a column count.
         var csv = $"{Header}\n,Camp,,Title\n";
 
-        var act = () => BulkEventCsvParser.Parse(csv);
+        var act = () => BulkEventCsvParser.Parse(csv, _localizer);
 
         act.Should().Throw<FormatException>().WithMessage("*DurationMinutes is not an integer*");
     }
@@ -186,19 +215,34 @@ public sealed class BulkEventCsvParserTests
     {
         var csv = $"{Header}\nnot-a-guid,Camp,,Title,Desc,Workshop,2026-07-08,09:30,60,,,false,,1\n";
 
-        var act = () => BulkEventCsvParser.Parse(csv);
+        var act = () => BulkEventCsvParser.Parse(csv, _localizer);
 
         act.Should().Throw<FormatException>().WithMessage("*not a valid Guid*");
     }
 
-    [HumansFact]
-    public void Parse_NonIntegerDuration_Throws()
+    [HumansTheory]
+    [InlineData("en", "Row 2: DurationMinutes is not an integer.")]
+    [InlineData("es", "Fila 2: DurationMinutes no es un número entero.")]
+    [InlineData("de", "Zeile 2: DurationMinutes ist keine ganze Zahl.")]
+    [InlineData("it", "Riga 2: DurationMinutes non è un numero intero.")]
+    [InlineData("fr", "Ligne 2 : DurationMinutes n’est pas un nombre entier.")]
+    [InlineData("ca", "Fila 2: DurationMinutes no és un nombre enter.")]
+    public void Parse_NonIntegerDuration_Throws_UsesUploaderCultureAndFileRow(string culture, string expectedError)
     {
-        var csv = $"{Header}\n,Camp,,Title,Desc,Workshop,2026-07-08,09:30,sixty,,,false,,1\n";
+        var originalCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+            var csv = $"{Header}\n,Camp,,Title,Desc,Workshop,2026-07-08,09:30,sixty,,,false,,1\n";
 
-        var act = () => BulkEventCsvParser.Parse(csv);
+            var act = () => BulkEventCsvParser.Parse(csv, _localizer);
 
-        act.Should().Throw<FormatException>().WithMessage("*DurationMinutes is not an integer*");
+            act.Should().Throw<FormatException>().WithMessage(expectedError);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = originalCulture;
+        }
     }
 }
 
@@ -227,6 +271,14 @@ public sealed class EventRecurrenceDaysTests
 
         EventRecurrenceDays.DisplayDaysToOffsets("Mon", gate, 0).Should().Be("0");
         EventRecurrenceDays.DisplayDaysToOffsets("Tue", gate, 0).Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData("Mon Wed Fri", true)]
+    [InlineData("Mon Funday", false)]
+    public void HasOnlyDisplayDays_RecognizesTheCsvDayVocabulary(string days, bool expected)
+    {
+        EventRecurrenceDays.HasOnlyDisplayDays(days).Should().Be(expected);
     }
 
     [HumansTheory]

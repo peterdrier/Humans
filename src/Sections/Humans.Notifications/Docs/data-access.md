@@ -54,7 +54,7 @@ Repository: `INotificationRepository`.
 
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
-| `NotificationBadge:{userId}` | 2 min | | | yes (on read/dismiss) |
+| `NotificationBadge:{userId}` | 2 min | yes | yes | yes (on read/dismiss) |
 
 Cross-section calls via `IUserServiceRead`. Implements `IUserDataContributor`.
 

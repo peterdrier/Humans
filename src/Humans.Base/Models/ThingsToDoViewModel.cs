@@ -11,7 +11,6 @@ public class ThingsToDoViewModel
 
 public class TodoItem
 {
-    public required string Key { get; set; }
     public required string Title { get; set; }
     public required string Description { get; set; }
     public required bool IsDone { get; set; }

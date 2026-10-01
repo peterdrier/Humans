@@ -4,9 +4,12 @@ using Humans.Calendar.Controllers;
 using Humans.Calendar.Models;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
+using Humans.Base.Enums;
+using Humans.Base.Extensions;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
@@ -29,6 +32,8 @@ public class CalendarControllerICalTests
     private readonly ICalendarServiceRead _calendarRead = Substitute.For<ICalendarServiceRead>();
     private readonly ICalendarService _calendar = Substitute.For<ICalendarService>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
+    private readonly InMemorySession _session = new();
+    private Instant _now = Instant.FromUtc(2026, 6, 1, 12, 0);
 
     private readonly Guid _viewer = Guid.NewGuid();
 
@@ -40,6 +45,76 @@ public class CalendarControllerICalTests
             .Returns(Array.Empty<CalendarOccurrence>());
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
+    }
+
+    [HumansFact]
+    public async Task Index_uses_the_browser_timezone_for_calendar_windows()
+    {
+        _session.SetString(DateTimeDisplayExtensions.SessionKey, "America/Los_Angeles");
+
+        var model = await IndexModelAsync();
+
+        model.ViewerTimezoneLabel.Should().Be("America/Los_Angeles");
+    }
+
+    [HumansFact]
+    public async Task Create_defaults_to_the_browser_local_date_and_zone()
+    {
+        _now = Instant.FromUtc(2026, 6, 1, 23, 0);
+        _session.SetString(DateTimeDisplayExtensions.SessionKey, "Asia/Tokyo");
+        var team = Guid.NewGuid();
+        _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>
+            {
+                [team] = new(team, "Team", null, "team", true, false, SystemTeamType.None,
+                    false, false, false, false, Instant.MinValue, [])
+            });
+
+        var result = await CreateController().Create((Guid?)null, Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
+        model.StartLocal.Should().Be(new DateTime(2026, 6, 2, 19, 0, 0));
+        model.EndDateLocal.Should().Be(new DateTime(2026, 6, 2));
+        model.RecurrenceTimezone.Should().Be("Asia/Tokyo");
+    }
+
+    [HumansFact]
+    public async Task Edit_renders_a_one_off_event_in_the_viewers_zone()
+    {
+        _session.SetString(DateTimeDisplayExtensions.SessionKey, "Asia/Tokyo");
+        var id = Guid.NewGuid();
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Talk", null, null, null, Guid.NewGuid(),
+            Instant.FromUtc(2026, 6, 1, 10, 0), Instant.FromUtc(2026, 6, 1, 11, 0),
+            IsAllDay: false, RecurrenceRule: null, RecurrenceTimezone: null, _now, _now));
+
+        var result = await CreateController().Edit(id, Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
+        model.StartLocal.Should().Be(new DateTime(2026, 6, 1, 19, 0, 0));
+        model.RecurrenceTimezone.Should().Be("Asia/Tokyo");
+    }
+
+    [HumansFact]
+    public async Task EditOccurrence_reads_override_times_in_the_posted_zone()
+    {
+        var id = Guid.NewGuid();
+        var original = Instant.FromUtc(2026, 6, 2, 17, 0);
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Weekly", null, null, null, Guid.NewGuid(), original, original.Plus(Duration.FromHours(1)),
+            IsAllDay: false, RecurrenceRule: "FREQ=WEEKLY", RecurrenceTimezone: "Europe/Madrid", _now, _now));
+
+        await CreateController().EditOccurrence(id, "2026-06-02T17:00:00Z", new OccurrenceOverrideFormViewModel
+        {
+            OverrideStartLocal = new DateTime(2026, 6, 3, 19, 0, 0),
+            RecurrenceTimezone = "Asia/Tokyo",
+        }, Xunit.TestContext.Current.CancellationToken);
+
+        await _calendar.Received(1).OverrideOccurrenceAsync(id, original,
+            Arg.Is<OverrideOccurrenceDto>(d => d.OverrideStartUtc == Instant.FromUtc(2026, 6, 3, 10, 0)),
+            _viewer, Arg.Any<CancellationToken>(), null);
     }
 
     [HumansFact]
@@ -139,6 +214,7 @@ public class CalendarControllerICalTests
         };
         http.Request.Scheme = "https";
         http.Request.Host = new HostString("humans.test");
+        http.Features.Set<ISessionFeature>(new TestSessionFeature(_session));
 
         return new CalendarController(
             _users,
@@ -146,11 +222,31 @@ public class CalendarControllerICalTests
             _calendarRead,
             _calendar,
             _teams,
-            new FakeClock(Instant.FromUtc(2026, 6, 1, 12, 0)),
+            new FakeClock(_now),
             localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
         };
+    }
+
+    private sealed class InMemorySession : ISession
+    {
+        private readonly Dictionary<string, byte[]> _values = new(StringComparer.Ordinal);
+
+        public bool IsAvailable => true;
+        public string Id => "calendar-test";
+        public IEnumerable<string> Keys => _values.Keys;
+        public void Clear() => _values.Clear();
+        public Task CommitAsync(CancellationToken ct = default) => Task.CompletedTask;
+        public Task LoadAsync(CancellationToken ct = default) => Task.CompletedTask;
+        public void Remove(string key) => _values.Remove(key);
+        public void Set(string key, byte[] value) => _values[key] = value;
+        public bool TryGetValue(string key, out byte[] value) => _values.TryGetValue(key, out value!);
+    }
+
+    private sealed class TestSessionFeature(ISession session) : ISessionFeature
+    {
+        public ISession Session { get; set; } = session;
     }
 }

@@ -93,7 +93,7 @@ internal sealed partial class AgentFeatureSpecReader(
 
             return index;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             // Log per memory/code/always-log-problems.md — an index that keeps failing is why
             // the agent's miss messages stop naming any valid stems.
@@ -145,7 +145,7 @@ internal sealed partial class AgentFeatureSpecReader(
                 "Agent feature spec {Stem} not found on GitHub in {Folder}", stem, folderPath);
             return null;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex,
                 "Failed to fetch agent feature spec {Stem} from GitHub; returning null", stem);

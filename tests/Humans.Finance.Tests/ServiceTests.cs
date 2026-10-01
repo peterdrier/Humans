@@ -2004,6 +2004,28 @@ public class HoldedFinanceServiceTests
         vm.CategoryMap.Single(m => m.BudgetCategoryId == gone).CategoryName.Should().BeNull();
     }
 
+    /// <summary>Backdoor's <c>category-map</c> route (peterdrier/Humans#1838) reads this directly —
+    /// same rows the connector page renders, not a second projection to drift from it.</summary>
+    [HumansFact]
+    public async Task GetCategoryMap_ProjectsCategoryAndGroupNames()
+    {
+        var live = Guid.NewGuid();
+        ActiveYearWith((live, "Staff"));
+        SeedConnector(map:
+        [
+            new() { BudgetCategoryId = live, HoldedAccountNumber = 62900101, Tag = "staff", IsActive = true },
+        ]);
+
+        var rows = await MakeService().GetCategoryMapAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = rows.Should().ContainSingle().Subject;
+        row.BudgetCategoryId.Should().Be(live);
+        row.CategoryName.Should().Be("Staff");
+        row.GroupName.Should().Be("Operations");
+        row.HoldedAccountNumber.Should().Be(62900101);
+        row.IsActive.Should().BeTrue();
+    }
+
     [HumansFact]
     public async Task GetConnectorOverview_ListsEveryDoc_MatchedAndUnmatched()
     {
@@ -2512,7 +2534,7 @@ public class HoldedFinanceServiceTests
             {
                 new()
                 {
-                    Id = BookableMovementId, AccountId = "treasury-1", Date = BankLineDate,
+                    Id = BookableMovementId, Date = BankLineDate,
                     Amount = amount, Description = description, Status = status,
                 },
             });
@@ -2871,6 +2893,27 @@ public class HoldedFinanceServiceTests
         unavailable.Should().Contain("Sepa:TreasuryAccountId");
         rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
         await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync(default);
+    }
+
+    /// <summary>Backdoor's <c>sepa-transfers</c> route (peterdrier/Humans#1838) reuses
+    /// <see cref="Service.GetSepaPayoutsAsync"/>'s pre-feed booking-state logic — same rows and
+    /// unavailable reason, minus the candidate-bank-line/unmatched-movements halves it renders only
+    /// on <c>/Finance/Sepa</c> — but skips the live Holded bank-feed read entirely (m2,
+    /// peterdrier/Humans#1839): every Backdoor poll would otherwise cost a live call nothing here
+    /// projects.</summary>
+    [HumansFact]
+    public async Task GetSepaTransfers_ReturnsTheSameRowsAndReason_WithoutReadingTheBankFeed()
+    {
+        ConfigureSepa();
+        SeedTransferRows();
+
+        var (transfers, unavailable) = await MakeService().GetSepaTransfersAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        transfers.Should().ContainSingle();
+        unavailable.Should().BeNull();
+        await _client.DidNotReceiveWithAnyArgs().ListBankMovementsAsync(
+            default!, default, default, default);
     }
 
     [HumansFact]

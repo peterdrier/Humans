@@ -1,18 +1,18 @@
 @model Humans.Camps.Models.CampEditViewModel
 @{
-    ViewData["Title"] = $"Members & Roles — {Model.Name}";
+    ViewData["Title"] = $"{Localizer["Camp_Edit_MembersRolesHeading"]} — {Model.Name}";
 }
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
         <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@Model.Slug">@Model.Name</a></li>
-        <li class="breadcrumb-item"><a asp-action="Edit" asp-route-slug="@Model.Slug">Edit</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Members</li>
+        <li class="breadcrumb-item"><a asp-action="Edit" asp-route-slug="@Model.Slug">@SharedLocalizer["Common_Edit"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Camps_Members_Members"]</li>
     </ol>
 </nav>
 
-<h1 class="mb-4">Members &amp; Roles — @Model.Name <small class="text-muted">(@Model.Year)</small></h1>
+<h1 class="mb-4">@Localizer["Camp_Edit_MembersRolesHeading"] — @Model.Name <small class="text-muted">(@Model.Year)</small></h1>
 
 
 <div class="row">
@@ -21,7 +21,7 @@
         {
             <div class="card mb-4">
                 <div class="card-header">
-                    <i class="fa-solid fa-list-check me-1"></i> Roles (@Model.Year)
+                    <i class="fa-solid fa-list-check me-1"></i> @Localizer["Camps_Members_Roles"] (@Model.Year)
                 </div>
                 <div class="card-body">
                     @if (Model.RolesPanel.Rows.Count == 0)
@@ -58,7 +58,7 @@
                                     {
                                         <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline text-muted"
                                                 data-bs-toggle="collapse" data-bs-target="#@descId"
-                                                aria-expanded="false" aria-controls="@descId" title="Show description">
+                                                aria-expanded="false" aria-controls="@descId" title="@Localizer["Camps_Members_ShowDescription"]">
                                             <i class="fa-solid fa-circle-info"></i>
                                         </button>
                                     }
@@ -66,7 +66,7 @@
                                     {
                                         <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline text-success"
                                                 data-bs-toggle="collapse" data-bs-target="#@addId"
-                                                aria-expanded="false" aria-controls="@addId" title="Add to role">
+                                                aria-expanded="false" aria-controls="@addId" title="@Localizer["Camps_Members_AddToRole"]">
                                             <i class="fa-solid fa-plus"></i>
                                         </button>
                                     }
@@ -89,7 +89,7 @@
                                                 {
                                                     <form asp-action="UnassignRole" asp-route-slug="@Model.Slug" asp-route-assignmentId="@slot.AssignmentId" method="post" class="d-inline">
                                                         @Html.AntiForgeryToken()
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-0 lh-1" title="Remove this assignment" data-confirm="Remove this assignment?">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-0 lh-1" title="@Localizer["Camps_Members_RemoveAssignment"]" data-confirm="@Localizer["Camps_Members_RemoveAssignmentConfirm"]">
                                                             <i class="fa-solid fa-xmark"></i>
                                                         </button>
                                                     </form>
@@ -108,10 +108,10 @@
                                             <input type="hidden" name="roleDefinitionId" value="@role.DefinitionId" />
                                             <vc:human-search field-name="userId"
                                                              instance-key="@($"role-{role.DefinitionId:N}")"
-                                                             placeholder="Search humans…"
+                                                             placeholder="@SharedLocalizer["Search_Title"].Value"
                                                              exclude-user-ids="@alreadyInRole"
                                                              scope="Name" />
-                                            <button class="btn btn-sm btn-outline-primary" type="submit" title="Assign — adds to camp if not yet a member">
+                                            <button class="btn btn-sm btn-outline-primary" type="submit" title="@Localizer["Camps_Members_AssignHelp"]">
                                                 <i class="fa-solid fa-check"></i>
                                             </button>
                                         </form>
@@ -131,13 +131,13 @@
         {
             <div class="card mb-4">
                 <div class="card-header">
-                    <i class="fa-solid fa-user-plus me-1"></i> Add active member
+                    <i class="fa-solid fa-user-plus me-1"></i> @Localizer["Camps_Members_AddActiveMember"]
                 </div>
                 <div class="card-body">
                     <form asp-action="AddMember" asp-route-slug="@Model.Slug" method="post" class="input-group">
                         @Html.AntiForgeryToken()
-                        <vc:human-search field-name="userId" scope="Name" />
-                        <button type="submit" class="btn btn-outline-success" title="Add active member">
+                        <vc:human-search field-name="userId" scope="Name" placeholder="@SharedLocalizer["Search_Title"].Value" />
+                        <button type="submit" class="btn btn-outline-success" title="@Localizer["Camps_Members_AddActiveMember"]">
                             <i class="fa-solid fa-user-plus"></i>
                         </button>
                     </form>
@@ -148,11 +148,11 @@
 
         <div class="card mb-4">
             <div class="card-header">
-                <i class="fa-solid fa-users-gear me-1"></i> Humans this season (@Model.Year)
+                <i class="fa-solid fa-users-gear me-1"></i> @Localizer["Camps_Members_SeasonHumans"] (@Model.Year)
             </div>
             <div class="card-body p-0">
                 <div class="px-3 py-2">
-                    <strong class="text-muted small">Pending requests (@Model.PendingMembers.Count)</strong>
+                    <strong class="text-muted small">@Localizer["Camps_Members_PendingRequests"] (@Model.PendingMembers.Count)</strong>
                 </div>
                 @if (Model.PendingMembers.Count == 0)
                 {
@@ -171,13 +171,13 @@
                                     {
                                         <form asp-action="ApproveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
                                             @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Approve">
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="@Localizer["Camps_Members_Approve"]">
                                                 <i class="fa-solid fa-check"></i>
                                             </button>
                                         </form>
                                         <form asp-action="RejectMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
                                             @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Reject" data-confirm="Reject this request?">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="@Localizer["Camps_Members_Reject"]" data-confirm="@Localizer["Camps_Members_RejectConfirm"]">
                                                 <i class="fa-solid fa-xmark"></i>
                                             </button>
                                         </form>
@@ -189,14 +189,14 @@
                 }
 
                 <div class="px-3 pt-3 pb-2 d-flex justify-content-between align-items-center gap-2">
-                    <strong class="text-muted small">Active humans (@Model.ActiveMembers.Count)</strong>
-                    <span class="badge bg-light text-dark border" title="Early Entry slots granted / allocated to this camp for @Model.Year">
+                    <strong class="text-muted small">@Localizer["Camps_Members_ActiveHumans"] (@Model.ActiveMembers.Count)</strong>
+                    <span class="badge bg-light text-dark border" title="@Localizer["Camps_Members_EeSlotsHelp", Model.Year]">
                         EE: @Model.EeGrantedCount/@Model.EeSlotCount
                     </span>
                 </div>
                 @if (Model.ActiveMembers.Count == 0)
                 {
-                    <div class="px-3 pb-2 text-muted small fst-italic">No humans yet.</div>
+                    <div class="px-3 pb-2 text-muted small fst-italic">@Localizer["Camp_Details_RosterEmpty"]</div>
                 }
                 else
                 {
@@ -224,14 +224,14 @@
                                         <input type="hidden" name="granted" value="@((!active.HasEarlyEntry).ToString().ToLowerInvariant())" />
                                         <button type="submit"
                                                 class="btn btn-sm @(active.HasEarlyEntry ? "btn-success" : "btn-outline-secondary")"
-                                                title="@(active.HasEarlyEntry ? "Revoke Early Entry" : "Grant Early Entry")"
+                                                title="@(active.HasEarlyEntry ? Localizer["Camps_Members_RevokeEarlyEntry"] : Localizer["Camps_Members_GrantEarlyEntry"])"
                                                 @(eeDisabled ? "disabled" : "")>
-                                            @(active.HasEarlyEntry ? "✓ EE" : "Grant EE")
+                                            @(active.HasEarlyEntry ? "✓ EE" : Localizer["Camps_Members_GrantEe"].Value)
                                         </button>
                                     </form>
                                     <form asp-action="RemoveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@active.CampMemberId" method="post" class="d-inline">
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-confirm="Remove this human?">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="@SharedLocalizer["Common_Remove"]" data-confirm="@Localizer["Camps_Members_RemoveHumanConfirm"]">
                                             <i class="fa-solid fa-user-minus"></i>
                                         </button>
                                     </form>
@@ -242,7 +242,7 @@
                 }
                 <div class="card-body border-top">
                     <small class="text-muted">
-                        This is a post-hoc record so the app knows who's in which camp. Approving here does <strong>not</strong> admit someone to your camp — that's done through your camp's own process.
+                        @Localizer["Camps_Members_RecordHelp"]
                     </small>
                 </div>
             </div>

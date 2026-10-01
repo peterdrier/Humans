@@ -1,6 +1,7 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
+using Humans.MailerLite.Domain;
 using Humans.MailerLite.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -70,6 +71,8 @@ public class MailerLiteArchitectureTests
             "audience keys collide");
         impls.Select(a => a.MailerLiteGroupName).Distinct(StringComparer.Ordinal).Count().Should().Be(impls.Count,
             "audience group names collide");
+        impls.Select(a => a.Key).Should().NotContain(MailerLiteSyncKeys.Reconciliation,
+            "the import's sync-state row owns that key");
     }
 
     /// <summary>

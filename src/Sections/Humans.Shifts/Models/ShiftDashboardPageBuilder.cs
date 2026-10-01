@@ -79,7 +79,7 @@ internal sealed class ShiftDashboardPageBuilder(
     {
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId) ?? DateTimeZone.Utc;
         var todayLocal = clock.GetCurrentInstant().InZone(tz).Date;
-        var firstBuildDay = eventSettings.GateOpeningDate.PlusDays(eventSettings.BuildStartOffset);
+        var (firstBuildDay, _) = ShiftFilterResolver.ResolvePeriodRange(ShiftPeriod.Build, eventSettings);
         var daysToBuild = Period.Between(todayLocal, firstBuildDay, PeriodUnits.Days).Days;
 
         return new BuildDayCountdown(

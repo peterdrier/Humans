@@ -221,6 +221,7 @@ mechanical:
       # repositories that read through them were not — so a repository or ctor
       # change inside a section never marked this map dirty.
       - "src/Sections/*/Services/**/*.cs"
+      - "src/Sections/*/Section.cs"
       - "src/Sections/*/Data/Repository.cs"
       - "src/Sections/*/Data/*Repository.cs"
     update: prompt

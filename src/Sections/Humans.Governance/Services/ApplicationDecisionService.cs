@@ -60,7 +60,7 @@ internal sealed class ApplicationDecisionService(
         if (application.Status != ApplicationStatus.Submitted)
             return new ApplicationDecisionResult(false, "NotSubmitted");
 
-        // Ordering: capture voter ids → finalize (atomic governance commit) → audit → tier/sync → notifications.
+        // Ordering: capture voter ids and Board ids → finalize (atomic governance commit) → audit → tier/sync → notifications.
         // Voter capture must precede FinalizeAsync (which deletes BoardVote rows).
         var voterIds = await repository.GetVoterIdsForApplicationAsync(applicationId, cancellationToken);
 
@@ -76,12 +76,14 @@ internal sealed class ApplicationDecisionService(
         var today = clock.GetCurrentInstant().InUtc().Date;
         application.TermExpiresAt = TermExpiryCalculator.ComputeTermExpiry(today);
 
+        // Resolve the Board before the write so nothing awaitable sits between the commit and the audit.
+        var boardMemberIds = await GetBoardMemberIdsAsync(cancellationToken);
+
         await repository.FinalizeAsync(application, cancellationToken);
 
         navBadge.Invalidate();
         notificationMeter.Invalidate();
-        foreach (var voterId in voterIds)
-            votingBadge.Invalidate(voterId);
+        InvalidateVotingBadges(boardMemberIds);
 
         await auditLogService.LogAsync(
             AuditAction.TierApplicationApproved,
@@ -150,12 +152,14 @@ internal sealed class ApplicationDecisionService(
         application.BoardMeetingDate = boardMeetingDate;
         application.DecisionNote = reason;
 
+        // Resolve the Board before the write so nothing awaitable sits between the commit and the audit.
+        var boardMemberIds = await GetBoardMemberIdsAsync(cancellationToken);
+
         await repository.FinalizeAsync(application, cancellationToken);
 
         navBadge.Invalidate();
         notificationMeter.Invalidate();
-        foreach (var voterId in voterIds)
-            votingBadge.Invalidate(voterId);
+        InvalidateVotingBadges(boardMemberIds);
 
         await auditLogService.LogAsync(
             AuditAction.TierApplicationRejected,
@@ -285,10 +289,12 @@ internal sealed class ApplicationDecisionService(
         };
         application.ValidateTier();
 
+        var boardMemberIds = await GetBoardMemberIdsAsync(ct);
         await repository.AddAsync(application, ct);
 
         navBadge.Invalidate();
         notificationMeter.Invalidate();
+        InvalidateVotingBadges(boardMemberIds);
 
         logger.LogInformation(
             "User {UserId} submitted application {ApplicationId}",
@@ -308,10 +314,12 @@ internal sealed class ApplicationDecisionService(
             return new ApplicationDecisionResult(false, "CannotWithdraw");
 
         application.Withdraw(clock);
+        var boardMemberIds = await GetBoardMemberIdsAsync(ct);
         await repository.UpdateAsync(application, ct);
 
         navBadge.Invalidate();
         notificationMeter.Invalidate();
+        InvalidateVotingBadges(boardMemberIds);
 
         metrics.RecordApplicationProcessed("withdrawn");
         logger.LogInformation(
@@ -567,6 +575,15 @@ internal sealed class ApplicationDecisionService(
             entry.AbsoluteExpirationRelativeToNow = BadgeCacheDuration;
             return await repository.GetUnvotedCountForBoardMemberAsync(boardMemberUserId, ct);
         });
+
+    private Task<IReadOnlyList<Guid>> GetBoardMemberIdsAsync(CancellationToken ct) =>
+        roleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct);
+
+    private void InvalidateVotingBadges(IReadOnlyList<Guid> boardMemberIds)
+    {
+        foreach (var boardMemberId in boardMemberIds)
+            votingBadge.Invalidate(boardMemberId);
+    }
 
     public Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default) =>
         repository.GetAdminStatsAsync(ct);

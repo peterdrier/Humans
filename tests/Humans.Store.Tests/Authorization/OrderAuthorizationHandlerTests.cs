@@ -109,6 +109,89 @@ public class OrderAuthorizationHandlerTests
     public Task CampLead_can_add_line_before_deadline_on_camp_order() =>
         AssertLeadOutcome(FutureDeadline, expectAllowed: true);
 
+    [HumansTheory]
+    [InlineData(RoleNames.Admin)]
+    [InlineData(RoleNames.StoreAdmin)]
+    [InlineData(RoleNames.FinanceAdmin)]
+    public async Task Store_admins_are_denied_billing_operations_on_team_order(string role)
+    {
+        // Team orders are non-billable at every privilege level.
+        await AssertOutcome(role, MakeOrder(team: true), OrderOperationRequirement.Pay, expectAllowed: false);
+        await AssertOutcome(role, MakeOrder(team: true), OrderOperationRequirement.EditCounterparty, expectAllowed: false);
+        await AssertOutcome(role, MakeOrder(team: true), OrderOperationRequirement.IssueInvoice, expectAllowed: false);
+        await AssertOutcome(role, MakeOrder(team: true), OrderOperationRequirement.RecordPayment, expectAllowed: false);
+    }
+
+    [HumansTheory]
+    [InlineData(RoleNames.Admin)]
+    [InlineData(RoleNames.StoreAdmin)]
+    [InlineData(RoleNames.FinanceAdmin)]
+    public Task Store_admins_can_record_payment_on_camp_order(string role) =>
+        AssertOutcome(role, MakeOrder(team: false), OrderOperationRequirement.RecordPayment, expectAllowed: true);
+
+    [HumansTheory]
+    [InlineData(RoleNames.Admin)]
+    [InlineData(RoleNames.FinanceAdmin)]
+    public Task Finance_admin_and_admin_can_refund_on_camp_order(string role) =>
+        AssertOutcome(role, MakeOrder(team: false), OrderOperationRequirement.Refund, expectAllowed: true);
+
+    [HumansFact]
+    public Task StoreAdmin_cannot_refund_on_camp_order() =>
+        AssertOutcome(RoleNames.StoreAdmin, MakeOrder(team: false), OrderOperationRequirement.Refund, expectAllowed: false);
+
+    [HumansFact]
+    public Task TeamsAdmin_cannot_refund_on_camp_order() =>
+        AssertOutcome(RoleNames.TeamsAdmin, MakeOrder(team: false), OrderOperationRequirement.Refund, expectAllowed: false);
+
+    [HumansFact]
+    public Task CampLead_cannot_refund_own_camp_order() =>
+        AssertLeadOperation(OrderOperationRequirement.Refund, expectAllowed: false);
+
+    [HumansTheory]
+    [InlineData(RoleNames.Admin)]
+    [InlineData(RoleNames.FinanceAdmin)]
+    public Task Refund_is_denied_on_team_order_even_for_finance_admin_and_admin(string role) =>
+        AssertOutcome(role, MakeOrder(team: true), OrderOperationRequirement.Refund, expectAllowed: false);
+
+    [HumansFact]
+    public Task Admin_can_delete_a_payment_on_camp_order() =>
+        AssertOutcome(RoleNames.Admin, MakeOrder(team: false), OrderOperationRequirement.DeletePayment, expectAllowed: true);
+
+    [HumansTheory]
+    [InlineData(RoleNames.StoreAdmin)]
+    [InlineData(RoleNames.FinanceAdmin)]
+    [InlineData(RoleNames.TeamsAdmin)]
+    public Task Only_full_admin_can_delete_a_payment(string role) =>
+        AssertOutcome(role, MakeOrder(team: false), OrderOperationRequirement.DeletePayment, expectAllowed: false);
+
+    [HumansFact]
+    public Task CampLead_cannot_delete_a_payment_on_own_camp_order() =>
+        AssertLeadOperation(OrderOperationRequirement.DeletePayment, expectAllowed: false);
+
+    [HumansFact]
+    public Task CampLead_cannot_record_payment_on_own_camp_order() =>
+        AssertLeadOperation(OrderOperationRequirement.RecordPayment, expectAllowed: false);
+
+    [HumansFact]
+    public Task TeamsAdmin_cannot_record_payment_on_camp_order() =>
+        AssertOutcome(RoleNames.TeamsAdmin, MakeOrder(team: false), OrderOperationRequirement.RecordPayment, expectAllowed: false);
+
+    [HumansFact]
+    public Task StoreAdmin_can_issue_invoice_on_camp_order() =>
+        AssertOutcome(RoleNames.StoreAdmin, MakeOrder(team: false), OrderOperationRequirement.IssueInvoice, expectAllowed: true);
+
+    [HumansFact]
+    public Task CampLead_cannot_issue_invoice_on_own_camp_order() =>
+        AssertLeadOperation(OrderOperationRequirement.IssueInvoice, expectAllowed: false);
+
+    [HumansFact]
+    public Task CampLead_cannot_delete_own_camp_order() =>
+        AssertLeadOperation(OrderOperationRequirement.Delete, expectAllowed: false);
+
+    [HumansFact]
+    public Task CampLead_can_pay_own_camp_order() =>
+        AssertLeadOperation(OrderOperationRequirement.Pay, expectAllowed: true);
+
     private async Task AssertOutcome(
         string role,
         object resource,
@@ -138,6 +221,24 @@ public class OrderAuthorizationHandlerTests
             [OrderOperationRequirement.AddLine],
             Principal(role: null, userId),
             new OrderLineContext(order, deadline));
+
+        await _handler.HandleAsync(context);
+
+        Assert.Equal(expectAllowed, context.HasSucceeded);
+    }
+
+    private async Task AssertLeadOperation(OrderOperationRequirement requirement, bool expectAllowed)
+    {
+        var userId = Guid.NewGuid();
+        var order = MakeOrder(team: false);
+        var seasonId = order.CampSeasonId!.Value;
+        var camp = MakeCampInfo(Guid.NewGuid(), seasonId, userId);
+        _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
+            .Returns(camp.Seasons[0]);
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([camp]);
+
+        var context = new AuthorizationHandlerContext([requirement], Principal(role: null, userId), order);
 
         await _handler.HandleAsync(context);
 

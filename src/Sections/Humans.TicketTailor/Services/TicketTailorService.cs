@@ -52,6 +52,7 @@ internal sealed class TicketTailorService : ITicketVendorService
     {
         var orders = new List<VendorOrderDto>();
         string? cursor = null;
+        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
 
         do
         {
@@ -66,13 +67,19 @@ internal sealed class TicketTailorService : ITicketVendorService
             TtPaginatedResponse<TtOrder>? body;
             using (_logger.TimeOperation())
             {
-                var response = await _httpClient.GetAsync(url, ct);
+                using var response = await _httpClient.GetAsync(url, ct);
                 response.EnsureSuccessStatusCode();
                 body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtOrder>>(JsonOptions, ct);
             }
 
-            if (body?.Data is null || body.Data.Count == 0)
+            if (body?.Data is null)
+                throw new HttpRequestException("TicketTailor pagination response is missing data.");
+            if (body.Data.Count == 0)
+            {
+                if (body.Links?.Next is not null)
+                    throw new HttpRequestException("TicketTailor pagination returned an empty nonterminal page.");
                 break;
+            }
 
             foreach (var order in body.Data)
             {
@@ -99,6 +106,9 @@ internal sealed class TicketTailorService : ITicketVendorService
             }
 
             cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
+            if (body.Links?.Next is not null
+                && (string.IsNullOrWhiteSpace(cursor) || !seenCursors.Add(cursor)))
+                throw new HttpRequestException("TicketTailor pagination returned a missing or repeated cursor.");
         } while (cursor is not null);
 
         _logger.LogInformation("Fetched {Count} orders from TicketTailor for event {EventId}",
@@ -113,6 +123,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         using var _ = _logger.TimeOperation();
         var tickets = new List<VendorTicketDto>();
         string? cursor = null;
+        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
 
         do
         {
@@ -122,16 +133,25 @@ internal sealed class TicketTailorService : ITicketVendorService
             if (cursor is not null)
                 url += $"&starting_after={cursor}";
 
-            var response = await _httpClient.GetAsync(url, ct);
+            using var response = await _httpClient.GetAsync(url, ct);
             response.EnsureSuccessStatusCode();
 
             var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtIssuedTicket>>(JsonOptions, ct);
-            if (body?.Data is null || body.Data.Count == 0)
+            if (body?.Data is null)
+                throw new HttpRequestException("TicketTailor pagination response is missing data.");
+            if (body.Data.Count == 0)
+            {
+                if (body.Links?.Next is not null)
+                    throw new HttpRequestException("TicketTailor pagination returned an empty nonterminal page.");
                 break;
+            }
 
             tickets.AddRange(body.Data.Select(ToVendorTicket));
 
             cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
+            if (body.Links?.Next is not null
+                && (string.IsNullOrWhiteSpace(cursor) || !seenCursors.Add(cursor)))
+                throw new HttpRequestException("TicketTailor pagination returned a missing or repeated cursor.");
         } while (cursor is not null);
 
         _logger.LogInformation("Fetched {Count} issued tickets from TicketTailor for event {EventId}",
@@ -146,6 +166,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         using var _ = _logger.TimeOperation();
         var records = new List<TtCheckIn>();
         string? cursor = null;
+        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
 
         do
         {
@@ -157,16 +178,25 @@ internal sealed class TicketTailorService : ITicketVendorService
             if (cursor is not null)
                 url += $"&starting_after={cursor}";
 
-            var response = await _httpClient.GetAsync(url, ct);
+            using var response = await _httpClient.GetAsync(url, ct);
             response.EnsureSuccessStatusCode();
 
             var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtCheckIn>>(JsonOptions, ct);
-            if (body?.Data is null || body.Data.Count == 0)
+            if (body?.Data is null)
+                throw new HttpRequestException("TicketTailor pagination response is missing data.");
+            if (body.Data.Count == 0)
+            {
+                if (body.Links?.Next is not null)
+                    throw new HttpRequestException("TicketTailor pagination returned an empty nonterminal page.");
                 break;
+            }
 
             records.AddRange(body.Data);
 
             cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
+            if (body.Links?.Next is not null
+                && (string.IsNullOrWhiteSpace(cursor) || !seenCursors.Add(cursor)))
+                throw new HttpRequestException("TicketTailor pagination returned a missing or repeated cursor.");
         } while (cursor is not null);
 
         var checkIns = NetCheckIns(records);
@@ -182,7 +212,7 @@ internal sealed class TicketTailorService : ITicketVendorService
     {
         using var _ = _logger.TimeOperation();
 
-        var response = await _httpClient.GetAsync($"{BaseUrl}/events/{eventId}", ct);
+        using var response = await _httpClient.GetAsync($"{BaseUrl}/events/{eventId}", ct);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -228,7 +258,7 @@ internal sealed class TicketTailorService : ITicketVendorService
                     : spec.DiscountValue * 100, // TT uses cents for monetary
             };
 
-            var response = await _httpClient.PostAsJsonAsync(
+            using var response = await _httpClient.PostAsJsonAsync(
                 $"{BaseUrl}/voucher_codes", payload, JsonOptions, ct);
             response.EnsureSuccessStatusCode();
 
@@ -256,7 +286,7 @@ internal sealed class TicketTailorService : ITicketVendorService
             ["check_in_at"] = occurredAt.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
         });
 
-        var response = await _httpClient.PostAsync($"{BaseUrl}/check_ins", form, ct);
+        using var response = await _httpClient.PostAsync($"{BaseUrl}/check_ins", form, ct);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -292,13 +322,16 @@ internal sealed class TicketTailorService : ITicketVendorService
                 TicketVendorFailureKind.Transient, ex);
         }
 
-        if (!response.IsSuccessStatusCode)
-            throw await BuildVendorWriteExceptionAsync(response, "void", vendorTicketId, ct);
+        using (response)
+        {
+            if (!response.IsSuccessStatusCode)
+                throw await BuildVendorWriteExceptionAsync(response, "void", vendorTicketId, ct);
 
-        var body = await response.Content.ReadFromJsonAsync<TtVoidResponse>(JsonOptions, ct);
-        return new VoidIssuedTicketResult(
-            VendorTicketId: body?.Id ?? vendorTicketId,
-            HoldId: body?.HoldId);
+            var body = await response.Content.ReadFromJsonAsync<TtVoidResponse>(JsonOptions, ct);
+            return new VoidIssuedTicketResult(
+                VendorTicketId: body?.Id ?? vendorTicketId,
+                HoldId: body?.HoldId);
+        }
     }
 
     public async Task<VendorTicketDto> IssueTicketAsync(
@@ -342,15 +375,18 @@ internal sealed class TicketTailorService : ITicketVendorService
                 TicketVendorFailureKind.Transient, ex);
         }
 
-        if (!response.IsSuccessStatusCode)
-            throw await BuildVendorWriteExceptionAsync(response, "issue", request.FullName, ct);
+        using (response)
+        {
+            if (!response.IsSuccessStatusCode)
+                throw await BuildVendorWriteExceptionAsync(response, "issue", request.FullName, ct);
 
-        var body = await response.Content.ReadFromJsonAsync<TtIssuedTicket>(JsonOptions, ct)
-            ?? throw new TicketVendorWriteException(
-                "TicketTailor issue returned 2xx with empty body",
-                TicketVendorFailureKind.Transient);
+            var body = await response.Content.ReadFromJsonAsync<TtIssuedTicket>(JsonOptions, ct)
+                ?? throw new TicketVendorWriteException(
+                    "TicketTailor issue returned 2xx with empty body",
+                    TicketVendorFailureKind.Transient);
 
-        return ToVendorTicket(body);
+            return ToVendorTicket(body);
+        }
     }
 
     // TicketTailor /check_ins includes checkout/undo records (quantity = -1) alongside

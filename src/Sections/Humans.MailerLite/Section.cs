@@ -2,7 +2,6 @@ using System.Net.Http.Headers;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
-using Humans.MailerLite.Contracts;
 using Humans.MailerLite.Data;
 using Humans.MailerLite.Jobs;
 using Humans.MailerLite.Services;
@@ -28,7 +27,7 @@ namespace Humans.MailerLite;
 /// <c>MailerLiteOptions</c> binds here rather than in Shell — unlike Email's settings, which
 /// four other sections read, <c>MailerLite:*</c> has exactly one consumer and it is the
 /// section's own client. The raw <c>MailerLite:AudienceSyncCron</c> read — the job schedule,
-/// not the client's configuration — moved into <c>SectionJobs.cs</c> at #1074's jobs seam.
+/// not the client's configuration — lives in <c>SectionJobs.cs</c>.
 /// </para>
 /// <para>
 /// No caching decorator: <c>MailerLiteClient</c> is a Singleton that holds its own
@@ -75,7 +74,7 @@ public sealed class Section : ISection
         services.AddSingleton<IMailerLiteService, MailerLiteClient>();
 
         // GDPR fan-out: MailerLite owns no user-scoped tables, but Article 17 erasure must
-        // still delete the person's MailerLite subscriber (design-rules §8a, #853).
+        // still delete the person's MailerLite subscriber (design-rules §8a, nobodies-collective/Humans#853).
         services.AddScoped<MailerLiteGdprContributor>();
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<MailerLiteGdprContributor>());
 
@@ -85,9 +84,7 @@ public sealed class Section : ISection
         // Audience framework — orchestrator + audience registrations.
         // Audiences are Scoped because their dependencies (ITicketServiceRead,
         // IShiftView) are Scoped/decorated-Singleton.
-        services.AddScoped<MailerLiteAudienceSyncService>();
-        services.AddScoped<IMailerLiteAudienceSyncService>(sp => sp.GetRequiredService<MailerLiteAudienceSyncService>());
-        services.AddScoped<IMailerLiteAudienceSync>(sp => sp.GetRequiredService<MailerLiteAudienceSyncService>());
+        services.AddScoped<IMailerLiteAudienceSyncService, MailerLiteAudienceSyncService>();
         services.AddScoped<IMailerLiteAudience, TicketNoShiftsAudience>();
         services.AddScoped<IMailerLiteAudience, HasShiftAudience>();
         services.AddScoped<IMailerLiteAudience, HasShiftSetupAudience>();

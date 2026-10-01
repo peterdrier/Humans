@@ -50,81 +50,45 @@ internal sealed class CachingRideshareService(
 
     // ── Offers ────────────────────────────────────────────────────────────
 
-    public async Task<Guid> CreateOfferAsync(Guid userId, int year, TripSave save, CancellationToken ct = default)
-    {
-        var id = await WithInner(inner => inner.CreateOfferAsync(userId, year, save, ct));
-        _cache.Clear();
-        return id;
-    }
+    public Task<Guid> CreateOfferAsync(Guid userId, int year, TripSave save, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.CreateOfferAsync(userId, year, save, ct));
 
-    public async Task UpdateOfferAsync(Guid tripId, Guid actorUserId, TripSave save, CancellationToken ct = default)
-    {
-        await WithInner(inner => inner.UpdateOfferAsync(tripId, actorUserId, save, ct));
-        _cache.Clear();
-    }
+    public Task UpdateOfferAsync(Guid tripId, Guid actorUserId, TripSave save, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.UpdateOfferAsync(tripId, actorUserId, save, ct));
 
-    public async Task CancelOfferAsync(Guid tripId, Guid actorUserId, CancellationToken ct = default)
-    {
-        await WithInner(inner => inner.CancelOfferAsync(tripId, actorUserId, ct));
-        _cache.Clear();
-    }
+    public Task CancelOfferAsync(Guid tripId, Guid actorUserId, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.CancelOfferAsync(tripId, actorUserId, ct));
 
     // ── Requests ──────────────────────────────────────────────────────────
 
-    public async Task<Guid> CreateRequestAsync(Guid userId, int year, RequestSave save, CancellationToken ct = default)
-    {
-        var id = await WithInner(inner => inner.CreateRequestAsync(userId, year, save, ct));
-        _cache.Clear();
-        return id;
-    }
+    public Task<Guid> CreateRequestAsync(Guid userId, int year, RequestSave save, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.CreateRequestAsync(userId, year, save, ct));
 
-    public async Task UpdateRequestAsync(Guid requestId, Guid actorUserId, RequestSave save, CancellationToken ct = default)
-    {
-        await WithInner(inner => inner.UpdateRequestAsync(requestId, actorUserId, save, ct));
-        _cache.Clear();
-    }
+    public Task UpdateRequestAsync(Guid requestId, Guid actorUserId, RequestSave save, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.UpdateRequestAsync(requestId, actorUserId, save, ct));
 
-    public async Task CancelRequestAsync(Guid requestId, Guid actorUserId, CancellationToken ct = default)
-    {
-        await WithInner(inner => inner.CancelRequestAsync(requestId, actorUserId, ct));
-        _cache.Clear();
-    }
+    public Task CancelRequestAsync(Guid requestId, Guid actorUserId, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.CancelRequestAsync(requestId, actorUserId, ct));
 
     // ── Interests ─────────────────────────────────────────────────────────
 
-    public async Task<Guid> ExpressInterestAsync(
-        Guid fromUserId, Guid tripId, Guid? requestId, int seats, string? message, CancellationToken ct = default)
-    {
-        var id = await WithInner(inner => inner.ExpressInterestAsync(fromUserId, tripId, requestId, seats, message, ct));
-        _cache.Clear();
-        return id;
-    }
+    public Task<Guid> ExpressInterestAsync(
+        Guid fromUserId, Guid tripId, Guid? requestId, int seats, string? message, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.ExpressInterestAsync(fromUserId, tripId, requestId, seats, message, ct));
 
-    public async Task AcceptInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default)
-    {
-        await WithInner(inner => inner.AcceptInterestAsync(interestId, actorUserId, ct));
-        _cache.Clear();
-    }
+    public Task AcceptInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.AcceptInterestAsync(interestId, actorUserId, ct));
 
-    public async Task DeclineInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default)
-    {
-        await WithInner(inner => inner.DeclineInterestAsync(interestId, actorUserId, ct));
-        _cache.Clear();
-    }
+    public Task DeclineInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.DeclineInterestAsync(interestId, actorUserId, ct));
 
-    public async Task WithdrawInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default)
-    {
-        await WithInner(inner => inner.WithdrawInterestAsync(interestId, actorUserId, ct));
-        _cache.Clear();
-    }
+    public Task WithdrawInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.WithdrawInterestAsync(interestId, actorUserId, ct));
 
     // ── Admin ─────────────────────────────────────────────────────────────
 
-    public async Task SaveSettingsAsync(int year, SettingsSave save, Guid actorUserId, CancellationToken ct = default)
-    {
-        await WithInner(inner => inner.SaveSettingsAsync(year, save, actorUserId, ct));
-        _cache.Clear();
-    }
+    public Task SaveSettingsAsync(int year, SettingsSave save, Guid actorUserId, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.SaveSettingsAsync(year, save, actorUserId, ct));
 
     // ── IUserDataContributor — GDPR export + erasure ──────────────────────
 
@@ -143,21 +107,41 @@ internal sealed class CachingRideshareService(
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
         WithInner(inner => inner.ContributeForUserAsync(userId, ct));
 
-    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
-    {
-        await WithInner(inner => inner.EraseForUserAsync(userId, ct));
-        _cache.Clear();
-    }
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        MutateAsync(inner => inner.EraseForUserAsync(userId, ct));
 
     // ── IUserMerge — account merge fold ───────────────────────────────────
 
-    public async Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
-    {
-        await WithInner(inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
-        _cache.Clear();
-    }
+    public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
+        MutateAsync(inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
 
     // ── Inner-service plumbing ────────────────────────────────────────────
+
+    // A repository write can commit before audit/notification work fails. Always evict
+    // the previous snapshot, and let the original failure reach the caller.
+    private async Task MutateAsync(Func<IRideshareService, Task> work)
+    {
+        try
+        {
+            await WithInner(work);
+        }
+        finally
+        {
+            _cache.Clear();
+        }
+    }
+
+    private async Task<T> MutateAsync<T>(Func<IRideshareService, Task<T>> work)
+    {
+        try
+        {
+            return await WithInner(work);
+        }
+        finally
+        {
+            _cache.Clear();
+        }
+    }
 
     private async Task<T> WithInner<T>(Func<IRideshareService, Task<T>> work)
     {

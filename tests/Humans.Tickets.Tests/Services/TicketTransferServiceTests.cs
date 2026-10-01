@@ -181,6 +181,22 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansFact]
+    public async Task CreateRequest_PropagatesRequestCancellation_WhenEmailSendIsCancelled()
+    {
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), aborted.Token)
+            .Returns(_ => Task.FromCanceled(aborted.Token));
+
+        var act = () => _service.CreateRequestAsync(
+            new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, aborted.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _transferRepo.Received(1).AddAsync(Arg.Any<TicketTransferRequest>(), aborted.Token);
+    }
+
+    [HumansFact]
     public async Task CreateRequest_Throws_WhenReceiverIsSender()
     {
         var act = () => _service.CreateRequestAsync(
@@ -634,6 +650,95 @@ public sealed class TicketTransferServiceTests
         var act = () => _service.RejectAsync(req.Id, _adminId, "no longer needed", Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
         req.Status.Should().Be(TicketTransferStatus.Pending);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("process")]
+    [Xunit.InlineData("approve")]
+    [Xunit.InlineData("reject")]
+    [Xunit.InlineData("cancel")]
+    public async Task OverlappingDecision_WaitsForVendorProcess_ThenRejectsDecidedRequest(string action)
+    {
+        var req = MakePending(Guid.NewGuid());
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+        var enteredVendor = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finishVoid = new TaskCompletionSource<VoidIssuedTicketResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                enteredVendor.TrySetResult();
+                return finishVoid.Task.WaitAsync(Xunit.TestContext.Current.CancellationToken);
+            });
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new VendorTicketDto("tt_new", null, "Alice Smith", "alice@example.com", "Full Week", 0m, "valid"));
+
+        var first = _service.ProcessTransferAsync(req.Id, _adminId, null, CancellationToken.None);
+        await enteredVendor.Task.WaitAsync(Xunit.TestContext.Current.CancellationToken);
+        var otherService = CreateService();
+        Task second = action switch
+        {
+            "process" => otherService.ProcessTransferAsync(req.Id, _adminId, null, CancellationToken.None),
+            "approve" => otherService.ApproveAsync(req.Id, _adminId, null, CancellationToken.None),
+            "reject" => otherService.RejectAsync(req.Id, _adminId, "cancel", CancellationToken.None),
+            "cancel" => otherService.CancelAsync(req.Id, _senderId, CancellationToken.None),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
+        };
+        try
+        {
+            second.IsCompleted.Should().BeFalse("a competing decision must wait until the vendor outcome is persisted");
+            await _transferRepo.Received(1).GetByIdAsync(req.Id, Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            finishVoid.TrySetResult(new VoidIssuedTicketResult("tkt_original", "hold_123"));
+            await first;
+        }
+
+        var decideAgain = () => second.WaitAsync(Xunit.TestContext.Current.CancellationToken);
+        await decideAgain.Should().ThrowAsync<InvalidOperationException>().WithMessage("Only Pending transfers*");
+        req.Status.Should().Be(TicketTransferStatus.Approved);
+        await _vendor.Received(1).VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>());
+        await _vendor.Received(1).IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task OverlappingRetry_IssuesHeldSeatOnce()
+    {
+        var req = MakePending(Guid.NewGuid());
+        req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+        req.VendorHoldId = "hold_123";
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
+            .Returns(MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Void));
+        var enteredVendor = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finishIssue = new TaskCompletionSource<VendorTicketDto>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                enteredVendor.TrySetResult();
+                return finishIssue.Task.WaitAsync(Xunit.TestContext.Current.CancellationToken);
+            });
+
+        var first = _service.RetryReissueAsync(req.Id, _adminId, null, CancellationToken.None);
+        await enteredVendor.Task.WaitAsync(Xunit.TestContext.Current.CancellationToken);
+        var second = CreateService().RetryReissueAsync(req.Id, _adminId, null, CancellationToken.None);
+        try
+        {
+            second.IsCompleted.Should().BeFalse();
+            await _transferRepo.Received(1).GetByIdAsync(req.Id, Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            finishIssue.TrySetResult(new VendorTicketDto("tt_new", null, "Alice Smith", "alice@example.com", "Full Week", 0m, "valid"));
+            await first;
+        }
+
+        var retryAgain = () => second.WaitAsync(Xunit.TestContext.Current.CancellationToken);
+        await retryAgain.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Retry is only available for a part-processed transfer*");
+        req.Status.Should().Be(TicketTransferStatus.Approved);
+        await _vendor.Received(1).IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>());
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────────

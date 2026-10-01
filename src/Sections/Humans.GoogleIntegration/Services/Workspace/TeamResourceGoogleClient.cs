@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Google.Apis.Auth.OAuth2;
 using Google.Apis.CloudIdentity.v1;
 using Google.Apis.Drive.v3;
 using Google.Apis.Services;
@@ -207,7 +206,7 @@ internal sealed class TeamResourceGoogleClient(
             return _driveService;
         }
 
-        var credential = await GetServiceAccountCredentialAsync(ct, DriveService.Scope.DriveReadonly);
+        var credential = await GoogleCredentialLoader.LoadScopedAsync(_settings, ct, DriveService.Scope.DriveReadonly);
 
         _driveService = new DriveService(new BaseClientService.Initializer
         {
@@ -225,7 +224,7 @@ internal sealed class TeamResourceGoogleClient(
             return _cloudIdentityService;
         }
 
-        var credential = await GetServiceAccountCredentialAsync(ct,
+        var credential = await GoogleCredentialLoader.LoadScopedAsync(_settings, ct,
             CloudIdentityService.Scope.CloudIdentityGroupsReadonly);
 
         _cloudIdentityService = new CloudIdentityService(new BaseClientService.Initializer
@@ -237,33 +236,4 @@ internal sealed class TeamResourceGoogleClient(
         return _cloudIdentityService;
     }
 
-    /// <summary>
-    /// Loads the service account credential WITHOUT impersonation.
-    /// This authenticates as the service account itself to access pre-shared resources.
-    /// </summary>
-    private async Task<GoogleCredential> GetServiceAccountCredentialAsync(CancellationToken ct, params string[] scopes)
-    {
-        GoogleCredential credential;
-
-        if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyJson))
-        {
-            using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(_settings.ServiceAccountKeyJson));
-            credential = (await CredentialFactory.FromStreamAsync<ServiceAccountCredential>(stream, ct)
-                .ConfigureAwait(false)).ToGoogleCredential();
-        }
-        else if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyPath))
-        {
-            await using var stream = File.OpenRead(_settings.ServiceAccountKeyPath);
-            credential = (await CredentialFactory.FromStreamAsync<ServiceAccountCredential>(stream, ct)
-                .ConfigureAwait(false)).ToGoogleCredential();
-        }
-        else
-        {
-            throw new InvalidOperationException(
-                "Google Workspace credentials not configured. Set ServiceAccountKeyPath or ServiceAccountKeyJson.");
-        }
-
-        // NO .CreateWithUser() — authenticate as the service account itself
-        return credential.CreateScoped(scopes);
-    }
 }

@@ -28,6 +28,11 @@ internal sealed class FeedbackEmails(
                 SanitizedMarkdownRenderer.Render(responseMessage)),
             "feedback_response", MessageCategory.System));
 
+    public (string Title, string Body) FeedbackResponseNotification(string? culture) =>
+        Localized(culture, () => (
+            L("Feedback_Notification_ResponseReceived_Title"),
+            L("Feedback_Notification_ResponseReceived_Body")));
+
     private string L(string key) => localizer[key].Value;
 
     private string Lf(string key, params object[] args) =>
@@ -35,7 +40,7 @@ internal sealed class FeedbackEmails(
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 
-    private EmailMessage Localized(string? culture, Func<EmailMessage> build)
+    private T Localized<T>(string? culture, Func<T> build)
     {
         using (new CultureScope(culture, logger))
         {

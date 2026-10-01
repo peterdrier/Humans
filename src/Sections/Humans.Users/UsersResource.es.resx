@@ -1162,4 +1162,17 @@
   <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Solicitud de eliminación registrada. Tu cuenta se eliminará permanentemente el {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Solicitud de eliminación registrada. Como tienes entradas para un próximo evento, tu cuenta se eliminará después del {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>No se pudo cancelar la solicitud de eliminación. Inténtalo de nuevo.</value></data>
+  <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Tiene una cuenta de correo @nobodies.team</value></data>
+  <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importado · sin perfil todavía</value></data>
+  <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Esta persona existe en el sistema, pero aún no ha completado un perfil (por ejemplo, se importó desde una lista de correo o de ticketing).</value></data>
+  <data name="Users_Profile_ShiftSignupFailed" xml:space="preserve"><value>No se pudo apuntar al turno.</value></data>
+  <data name="Users_Profile_ShiftSignupSucceeded" xml:space="preserve"><value>¡Te has apuntado correctamente!</value></data>
+  <data name="Users_Profile_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>Te has apuntado correctamente. Nota: {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Users_Profile_ShiftRangeSignupFailed" xml:space="preserve"><value>No se pudo apuntar al rango de turnos.</value></data>
+  <data name="Users_Profile_ShiftRangeSignupSucceeded" xml:space="preserve"><value>¡Te has apuntado al rango de fechas correctamente!</value></data>
+  <data name="Users_Profile_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Te has apuntado al rango de fechas correctamente. Nota: {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>No se pueden cambiar las categorías siempre activas.</value></data>
+  <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Tu acceso ha sido suspendido: {0}</value></data>
+  <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Ver perfil</value></data>
+  <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Falta el consentimiento a los documentos requeridos (plazo de gracia vencido)</value></data>
 </root>

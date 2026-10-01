@@ -332,8 +332,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
         var query = ctx.NotificationRecipients
             .Where(nr => nr.UserId == userId)
             .Include(nr => nr.Notification)
-                .ThenInclude(n => n.Recipients)
-            .AsNoTrackingWithIdentityResolution();
+            .AsNoTracking();
 
         if (tab == NotificationInboxTab.Unread)
         {
@@ -358,7 +357,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
                 break;
             case NotificationInboxFilter.Approvals:
                 query = query.Where(nr =>
-                    // ConsentReviewNeeded and ApplicationSubmitted retained for pre-PR-642 historical rows only; no new rows emit these sources.
+                    // ConsentReviewNeeded and ApplicationSubmitted: retired sources, kept so existing rows still filter; nothing emits them.
                     nr.Notification.Source == NotificationSource.ConsentReviewNeeded ||
                     nr.Notification.Source == NotificationSource.ApplicationSubmitted ||
                     nr.Notification.Source == NotificationSource.ApplicationApproved ||
@@ -394,8 +393,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
         return await ctx.NotificationRecipients
             .Where(nr => nr.UserId == userId && nr.Notification.ResolvedAt == null)
             .Include(nr => nr.Notification)
-                .ThenInclude(n => n.Recipients)
-            .AsNoTrackingWithIdentityResolution()
+            .AsNoTracking()
             .ToListAsync(ct);
     }
 
@@ -465,8 +463,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
     }
 
     public async Task<int> ReassignRecipientsToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default)
+        Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 

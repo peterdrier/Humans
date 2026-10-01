@@ -33,4 +33,4 @@ Click the **Measure** button (ruler icon) to enter measurement mode, then click 
 
 - **Map Admins** — can place and move any container at any time
 - **Barrio leads** — can place and move their barrio's containers while placement is **open**
-- **Everyone else** — read-only view of placed containers
+- **Everyone else** — cannot open this page; see placed containers as a layer on the City overview map instead

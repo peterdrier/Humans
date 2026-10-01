@@ -192,9 +192,12 @@
       Added by G5 lane 4b-iii A with Extensions/HtmlHelperExtensions.cs, the single
       Html.SanitizedMarkdown seam that ~25 section views render through. Markdig parses,
       HtmlSanitizer scrubs; nothing else in this project names either package.
+      AngleSharp — Helpers/HtmlPlainTextConverter.cs parses email HTML with it; named
+      explicitly rather than borrowed transitively from HtmlSanitizer.
     -->
     <PackageReference Include="HtmlSanitizer" />
     <PackageReference Include="Markdig" />
+    <PackageReference Include="AngleSharp" />
   </ItemGroup>
 
   <!--

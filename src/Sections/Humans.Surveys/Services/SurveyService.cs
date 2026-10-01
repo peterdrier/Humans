@@ -44,6 +44,7 @@ internal sealed class SurveyService(
     private const int InvitationEmailSubjectMaxLength = 200;
     private const int InvitationEmailMessageMaxLength = 4000;
     private const int MaxInformationImages = 5;
+    private const int MaxInformationImageFileNameLength = 256;
     private const long MaxInformationImageBytes = 10 * 1024 * 1024;
     // A shared epoch, not the real time: a CompletionTracked public start's real CreatedAt would
     // correlate with the unlinked response's SubmittedAt and unmask the respondent.
@@ -778,6 +779,10 @@ internal sealed class SurveyService(
                 await emailService.SendAsync(msg, ct);
                 emailsQueued++;
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex,
@@ -824,7 +829,7 @@ internal sealed class SurveyService(
         // re-checked here rather than in the query: Open alone is not answerable, and reminding
         // someone about a survey past its ClosesAt sends them to the Closed page — and spends their
         // one ReminderSentAt stamp doing it.
-        var surveys = new Dictionary<Guid, (string Title, string DefaultCulture, bool Answerable)>();
+        var surveys = new Dictionary<Guid, (LocalizedText Title, string DefaultCulture, bool Answerable)>();
 
         var reminded = 0;
         foreach (var inv in due)
@@ -853,7 +858,7 @@ internal sealed class SurveyService(
                 var survey = await repo.GetByIdAsync(inv.SurveyId, ct);
                 if (survey is null) continue;
                 meta = (
-                    survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture),
+                    survey.Title,
                     survey.DefaultCulture,
                     SurveyWizardFlow.IsAnswerable(survey.Status, survey.OpensAt, survey.ClosesAt, now));
                 surveys[inv.SurveyId] = meta;
@@ -861,10 +866,14 @@ internal sealed class SurveyService(
 
             if (!meta.Answerable) continue;
 
-            var culture = users.TryGetValue(inv.UserId, out var user) ? user.PreferredLanguage : meta.DefaultCulture;
+            var preferredCulture = users.TryGetValue(inv.UserId, out var user) ? user.PreferredLanguage : null;
+            var culture = preferredCulture.IsSupportedCultureCode()
+                ? preferredCulture!
+                : meta.DefaultCulture;
             var name = user?.BurnerName ?? string.Empty;
             var token = tokenProvider.Create(inv.Id);
-            var msg = emailMessages.SurveyReminder(email, name, meta.Title, token, culture);
+            var title = meta.Title.Resolve(culture, meta.DefaultCulture);
+            var msg = emailMessages.SurveyReminder(email, name, title, token, culture);
 
             // Per-invitee guard (mirrors SendInvitesAsync): one transport failure must not abort the
             // sweep. ReminderSentAt stays unstamped on failure so the next daily run retries.
@@ -873,6 +882,10 @@ internal sealed class SurveyService(
                 await emailService.SendAsync(msg, ct);
                 await repo.SetReminderSentAsync(inv.Id, now, ct);
                 reminded++;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -2482,11 +2495,11 @@ internal sealed class SurveyService(
                 {
                     if (requested.Upload is { } upload)
                     {
-                        ValidateInformationImage(upload);
+                        var fileName = ValidateInformationImage(upload);
                         // Replacements get a fresh key so a failed database save cannot delete or
                         // overwrite the still-authoritative existing file.
                         var imageId = Guid.NewGuid();
-                        var extension = Path.GetExtension(upload.FileName);
+                        var extension = Path.GetExtension(fileName);
                         var storagePath = $"uploads/surveys/{surveyId}/{questionId}/{imageId}{extension}";
                         await fileStorage.SaveAsync(storagePath, upload.Content, ct);
                         newStoragePaths.Add(storagePath);
@@ -2495,7 +2508,7 @@ internal sealed class SurveyService(
                             Id = imageId,
                             StoragePath = storagePath,
                             ContentType = upload.ContentType,
-                            FileName = upload.FileName,
+                            FileName = fileName,
                             Upload = null,
                         });
                         continue;
@@ -2545,8 +2558,9 @@ internal sealed class SurveyService(
             newStoragePaths);
     }
 
-    private static void ValidateInformationImage(SurveyImageUpload upload)
+    private static string ValidateInformationImage(SurveyImageUpload upload)
     {
+        var fileName = DisplayFileName(upload.FileName);
         if (upload.Length <= 0)
         {
             throw new InvalidOperationException("The selected image is empty.");
@@ -2559,12 +2573,21 @@ internal sealed class SurveyService(
         {
             throw new InvalidOperationException("Each Information image must be under 10 MB.");
         }
-        if (!AllowedInformationImageExtensions.Contains(Path.GetExtension(upload.FileName)))
+        if (!AllowedInformationImageExtensions.Contains(Path.GetExtension(fileName)))
         {
             throw new InvalidOperationException(
                 "Image filenames must end in .jpg, .jpeg, .png, or .webp.");
         }
+        if (fileName.Length > MaxInformationImageFileNameLength)
+        {
+            throw new InvalidOperationException(
+                $"Image filename must be {MaxInformationImageFileNameLength} characters or fewer.");
+        }
+
+        return fileName;
     }
+
+    private static string DisplayFileName(string fileName) => fileName.Split('/', '\\').Last();
 
     private async Task DeleteFilesBestEffortAsync(
         IEnumerable<string> storagePaths,

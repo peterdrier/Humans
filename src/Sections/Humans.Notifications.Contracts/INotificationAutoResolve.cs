@@ -3,7 +3,7 @@ namespace Humans.Notifications.Contracts;
 /// <summary>
 /// The two auto-resolution calls a section makes when the condition an open notification
 /// was reporting has been fixed. Carved off the section's internal
-/// <c>INotificationInboxService</c>, whose other nine members and every inbox read model
+/// <c>INotificationInboxService</c>, whose other members and every inbox read model
 /// stay internal: nothing outside the section renders an inbox, it only clears one.
 /// </summary>
 public interface INotificationAutoResolve

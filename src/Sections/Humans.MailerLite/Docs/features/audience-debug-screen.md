@@ -34,20 +34,20 @@ A per-audience debug screen on the existing MailerLite admin section that previe
 |---|---|---|
 | 1 | **Should be on list** (expected) | `IMailerLiteAudience.ComputeMemberUserIdsAsync` → notification-target email per `UserInfo` |
 | 2 | **Currently on list in ML** | Subscribers from `IMailerLiteService.ListSubscribersAsync` whose `GroupIds` contains the audience's group |
-| 3 | **To add** | §1 \ §2 by normalized email |
-| 4 | **To remove** | §2 \ §1 by normalized email |
+| 3 | **To add** | §1 \ §2 by normalized email, minus suppressed subscribers |
+| 4 | **To remove** | §2 \ §1 by normalized email, plus every suppressed member |
 | 5 | **Subscribed under non-primary email** (diagnostic) | For each row in §2: if it matches a verified `UserEmail` whose owner's *primary* is a different email, surface the pair side-by-side |
 
 §5 is diagnostic only — there is no separate apply path. When the underlying user belongs in the audience, the regular §3 (add primary) + §4 (remove non-primary) naturally swaps the emails on the next apply.
 
 ## Suppressed-status filter
 
-§2 excludes subscribers in `unsubscribed` / `bounced` / `junk` statuses via `MailerLiteSubscriber.IsSuppressed` — the same property the apply path reads. One definition, so the preview cannot disagree with Apply about who is excluded.
+§2 lists every group member, suppressed ones included (`unsubscribed` / `bounced` / `junk`, via `MailerLiteSubscriber.IsSuppressed` — the same property the apply path reads). §3 and §4 then predict Apply exactly: a suppressed subscriber is never in §3, and a suppressed member is in §4 even when expected, because Apply unassigns it. Pinned by `MailerLiteAudienceDebugSnapshotBuilderTests.Build_SuppressedSubscribers_DiffMatchesSync`.
 
 ## Caching
 
 - Audience compute reads cached interfaces only — `IShiftView` + `ITicketServiceRead` (both decorated by their caching layers). No DB queries during page render.
-- Name/email rendering reads cached `UserInfo` via `IUserService.GetAllUserInfosAsync`. Pinned by `MailerLiteAudienceDebugSnapshotBuilderTests.Build_NoDbQueries_OnlyCachedUserInfoAndMlReads`.
+- Name/email rendering reads cached `UserInfo` via `IUserServiceRead.GetAllUserInfosAsync`. Pinned by `MailerLiteAudienceDebugSnapshotBuilderTests.Build_NoDbQueries_OnlyCachedUserInfoAndMlReads`.
 - MailerLite reads are live (we're diffing against the remote we don't own).
 
 ## Paging + Sorting

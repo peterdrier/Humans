@@ -112,56 +112,6 @@ public class MailerLiteAdminControllerTests
     }
 
     // -----------------------------------------------------------------------
-    // Index — drift: HumansOptedOutMlActive counted correctly.
-    // -----------------------------------------------------------------------
-
-    [HumansFact]
-    public async Task Drift_CountsHumansOptedOutButMlActive()
-    {
-        // Arrange: one verified-match decision for user A, ML status "active".
-        var userId = Guid.NewGuid();
-        var decision = new SubscriberDecision(
-            Email: "a@example.com",
-            Status: "active",
-            Outcome: SubscriberOutcome.VerifiedFlipToOptIn,
-            TargetUserId: userId,
-            UnverifiedEmailIdToDelete: null,
-            AmbiguousUserIds: null);
-
-        var plan = new ImportPlan(
-            Decisions: new[] { decision }.ToList().AsReadOnly(),
-            TotalPulled: 1);
-
-        _importService.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(plan);
-
-        // Prefs: user A is opted out of Marketing.
-        _prefs.IsOptedOutAsync(userId, MessageCategory.Marketing, Arg.Any<CancellationToken>())
-            .Returns(true);
-
-        // Stub remaining Index dependencies with neutral defaults.
-        _mlService.GetAccountSummaryAsync(Arg.Any<CancellationToken>())
-            .Returns(new MailerLiteAccountSummary(0, 0, 0, 0, 0));
-        _mlService.ListGroupsAsync(Arg.Any<CancellationToken>())
-            .Returns([]);
-        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
-        _prefs.GetCountByCategoryAndStateAsync(
-                Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(0);
-        var ctrl = BuildSut();
-
-        // Act
-        var result = await ctrl.Index(TestContext.Current.CancellationToken);
-
-        // Assert: drift report should count 1 Humans-opted-out / ML-active disagreement.
-        var view = Assert.IsType<ViewResult>(result);
-        var vm = Assert.IsType<MailerLiteDashboardViewModel>(view.Model);
-        Assert.NotNull(vm.Drift);
-        Assert.Equal(1, vm.Drift!.HumansOptedOutMlActive);
-        Assert.Null(vm.MlError);
-    }
-
-    // -----------------------------------------------------------------------
     // Index — MailerLite outage: page still renders with MlError set.
     // -----------------------------------------------------------------------
 

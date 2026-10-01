@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Resources;
+using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Onboarding.Contracts;
@@ -15,6 +18,8 @@ internal sealed class HumanLifecycleService(
     IHumansMetrics metrics,
     ILogger<HumanLifecycleService> logger) : IHumanLifecycleService, IOrchestrator
 {
+    private static readonly ResourceManager NoticeResources = new(typeof(UsersResource));
+
     public async Task<OnboardingResult> SuspendAsync(
         Guid userId, Guid adminId, string? notes, CancellationToken ct = default)
     {
@@ -39,17 +44,20 @@ internal sealed class HumanLifecycleService(
 
         try
         {
+            var language = (await userService.GetUserInfoAsync(userId, ct))?.PreferredLanguage;
+            var culture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
             await notificationService.SendAsync(
                 NotificationSource.AccessSuspended,
                 NotificationClass.Actionable,
                 NotificationPriority.Critical,
-                "Your access has been suspended",
+                NoticeResources.GetString("AccountStatus_HeadingSuspended", culture)!,
                 [userId],
                 body: string.IsNullOrWhiteSpace(notes)
-                    ? "Your access has been suspended by an administrator."
-                    : $"Your access has been suspended: {notes}",
+                    ? NoticeResources.GetString("AccountStatus_HeadingAdminSuspended", culture)!
+                    : string.Format(culture,
+                        NoticeResources.GetString("Users_Notification_AdminSuspendedWithReason", culture)!, notes),
                 actionUrl: "/Profile",
-                actionLabel: "View profile",
+                actionLabel: NoticeResources.GetString("Users_Notification_ViewProfile", culture)!,
                 cancellationToken: ct);
         }
         catch (Exception ex)

@@ -28,7 +28,7 @@ public class SectionHelpTests
         var entry = Entry("ContainerMap");
 
         entry.Guide.Should().StartWith("## Container Placement Map");
-        entry.Guide.Should().EndWith("- **Everyone else** — read-only view of placed containers", "the file's trailing newline is framing, not content");
+        entry.Guide.Should().EndWith("- **Everyone else** — cannot open this page; see placed containers as a layer on the City overview map instead", "the file's trailing newline is framing, not content");
         entry.Glossary.Should().StartWith("## Container Placement Glossary");
         entry.Glossary.Should().Contain("| **Container** | A 20 ft shipping container represented as a pentagon on the map (rectangle body + triangular door end). |");
     }
@@ -39,7 +39,7 @@ public class SectionHelpTests
         var entry = Entry("CityPlanningOverview");
 
         entry.Guide.Should().StartWith("## City Planning Overview Map");
-        entry.Guide.Should().EndWith("Similarly, if container placement is open and you are a Barrio Lead, a **Go to container placement** button appears for placing your barrio's shipping containers.", "the file's trailing newline is framing, not content");
+        entry.Guide.Should().EndWith("Map Admins always see both links, regardless of the placement phase.", "the file's trailing newline is framing, not content");
         entry.Glossary.Should().StartWith("## City Planning Overview Glossary");
         entry.Glossary.Should().Contain("| **Human** | A member of Nobodies Collective. We say \"humans\", not \"members\" or \"volunteers\". |");
     }

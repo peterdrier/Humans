@@ -11,9 +11,8 @@ namespace Humans.Notifications.Tests;
 internal static class NotificationTestFixtures
 {
     /// <summary>
-    /// A stand-in for the in-memory <c>UsersDbContext</c> the emitter tests used to hold
-    /// <c>communication_preferences</c> rows in. Keeps <c>.CommunicationPreferences.Add(…)</c>
-    /// and <c>.SaveChangesAsync(ct)</c> so the test bodies are unchanged.
+    /// Holds the <c>communication_preferences</c> rows the emitter tests seed, behind
+    /// <c>.CommunicationPreferences.Add(…)</c> and <c>.SaveChangesAsync(ct)</c>.
     /// </summary>
     internal sealed class PreferenceRegistry
     {

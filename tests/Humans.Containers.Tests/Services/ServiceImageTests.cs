@@ -112,6 +112,38 @@ public sealed class ServiceImageTests
     }
 
     [HumansFact]
+    public async Task CreateAsync_RejectsAnOverlongImageFilenameBeforeWriting()
+    {
+        var image = new ContainerImageUpload(
+            Stream.Null, "image/jpeg", new string('a', 253) + ".jpg", 1024);
+
+        var act = async () => await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
+            CampId: CampId,
+            Name: "Test",
+            Description: null,
+            NewImages: [image]), ct: TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*256 characters or fewer*");
+        await _fileStorage.DidNotReceive().SaveAsync(
+            Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_StoresOnlyTheImageBasename()
+    {
+        var image = new ContainerImageUpload(Stream.Null, "image/jpeg", @"C:\fakepath\gallery.jpg", 1024);
+
+        var result = await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
+            CampId: CampId,
+            Name: "Test",
+            Description: null,
+            NewImages: [image]), ct: TestContext.Current.CancellationToken);
+
+        result.Images.Should().ContainSingle().Which.FileName.Should().Be("gallery.jpg");
+    }
+
+    [HumansFact]
     public async Task UpdateAsync_RejectsWhenAddedImagesWouldExceedFive()
     {
         var container = await SeedContainerAsync(galleryImages: 4);

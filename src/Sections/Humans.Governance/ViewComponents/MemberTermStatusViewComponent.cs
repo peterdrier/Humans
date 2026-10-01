@@ -18,20 +18,21 @@ public sealed class MemberTermStatusViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
+        var ct = HttpContext.RequestAborted;
         if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
             return Content(string.Empty);
         }
 
-        var tier = (await userService.GetUserInfoAsync(userId))?.Profile?.MembershipTier ?? MembershipTier.Volunteer;
-        var isVolunteerMember = (await membershipCalculator.GetMembershipSnapshotAsync(userId)).IsVolunteerMember;
+        var tier = (await userService.GetUserInfoAsync(userId, ct))?.Profile?.MembershipTier ?? MembershipTier.Volunteer;
+        var isVolunteerMember = (await membershipCalculator.GetMembershipSnapshotAsync(userId, ct)).IsVolunteerMember;
 
         if (!isVolunteerMember || tier == MembershipTier.Volunteer)
         {
             return Content(string.Empty);
         }
 
-        var applications = await applicationService.GetUserApplicationsAsync(userId);
+        var applications = await applicationService.GetUserApplicationsAsync(userId, ct);
         var (expiresAt, expiresSoon, expired) = ComputeTermState(applications, tier);
         var hasPendingApplication = applications.MaxBy(a => a.SubmittedAt)?.Status == ApplicationStatus.Submitted;
 

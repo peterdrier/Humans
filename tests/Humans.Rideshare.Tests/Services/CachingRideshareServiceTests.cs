@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Rideshare.Tests.Services;
 
@@ -125,6 +126,49 @@ public sealed class CachingRideshareServiceTests
 
         await _inner.Received(1).ReassignAsync(source, target, actor, now, Arg.Any<CancellationToken>());
         await _inner.Received(2).GetSnapshotAsync(2026, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("settings", false)]
+    [InlineData("settings", true)]
+    [InlineData("offer", false)]
+    [InlineData("offer", true)]
+    [InlineData("erasure", false)]
+    [InlineData("erasure", true)]
+    public async Task FailedWrite_EvictsSnapshots_AndPreservesTheFailure(string operation, bool cancelled)
+    {
+        var actor = Guid.NewGuid();
+        Exception failure = cancelled
+            ? new OperationCanceledException(Ct)
+            : new InvalidOperationException("Post-write dependency failed");
+        Func<Task> write;
+        switch (operation)
+        {
+            case "settings":
+                var settings = new SettingsSave("Elsewhere", 43.2, -2.4, July3, July3, July3, July3);
+                _inner.SaveSettingsAsync(2026, settings, actor, Ct).Returns(Task.FromException(failure));
+                write = () => _service.SaveSettingsAsync(2026, settings, actor, Ct);
+                break;
+            case "offer":
+                var offer = new TripSave(RideshareDirection.Inbound, "Paris", 48.85, 2.35, [], July3, 1, null,
+                    VehicleType.Car, 3, LuggageSize.Moderate, null, null, false, CostSharing.ShareFuel, null);
+                _inner.CreateOfferAsync(actor, 2026, offer, Ct).Returns(Task.FromException<Guid>(failure));
+                write = () => _service.CreateOfferAsync(actor, 2026, offer, Ct);
+                break;
+            default:
+                _inner.EraseForUserAsync(actor, Ct).Returns(Task.FromException(failure));
+                write = () => _service.EraseForUserAsync(actor, Ct);
+                break;
+        }
+
+        var before = await _service.GetSnapshotAsync(2026, Ct);
+        var otherYear = await _service.GetSnapshotAsync(2027, Ct);
+        (await write.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
+
+        (await _service.GetSnapshotAsync(2026, Ct)).Should().NotBeSameAs(before);
+        (await _service.GetSnapshotAsync(2027, Ct)).Should().NotBeSameAs(otherYear);
+        await _inner.Received(2).GetSnapshotAsync(2026, Ct);
+        await _inner.Received(2).GetSnapshotAsync(2027, Ct);
     }
 
     [HumansFact]

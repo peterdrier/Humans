@@ -25,6 +25,7 @@ internal sealed class Service(
         new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
     private const long MaxImageBytes = 10 * 1024 * 1024;
     private const int MaxImagesPerContainer = 5;
+    private const int MaxImageFileNameLength = 256;
 
     public async Task<IReadOnlyList<ContainerDto>> GetByCampAsync(Guid campId, CancellationToken ct = default)
     {
@@ -236,7 +237,7 @@ internal sealed class Service(
             }
             placement.PlacementImageStoragePath = await SaveImageAsync(containerId, image, ct);
             placement.PlacementImageContentType = image.ContentType;
-            placement.PlacementImageFileName = image.FileName;
+            placement.PlacementImageFileName = DisplayFileName(image.FileName);
         }
 
         placement.UpdatedAt = clock.GetCurrentInstant();
@@ -309,7 +310,14 @@ internal sealed class Service(
             throw new InvalidOperationException("Image must be under 10 MB.");
         }
         // Security: extension whitelist prevents image/jpeg + .html (static middleware would serve as HTML).
-        var ext = Path.GetExtension(image.FileName);
+        var fileName = DisplayFileName(image.FileName);
+        if (fileName.Length > MaxImageFileNameLength)
+        {
+            throw new InvalidOperationException(
+                $"Image filename must be {MaxImageFileNameLength} characters or fewer.");
+        }
+
+        var ext = Path.GetExtension(fileName);
         if (!AllowedImageExtensions.Contains(ext))
         {
             throw new InvalidOperationException(
@@ -319,7 +327,7 @@ internal sealed class Service(
 
     private async Task<string> SaveImageAsync(Guid containerId, ContainerImageUpload image, CancellationToken ct)
     {
-        var ext = Path.GetExtension(image.FileName);
+        var ext = Path.GetExtension(DisplayFileName(image.FileName));
         var key = $"uploads/containers/{containerId}/{Guid.NewGuid()}{ext}";
         await fileStorage.SaveAsync(key, image.Content, ct);
         return key;
@@ -344,13 +352,16 @@ internal sealed class Service(
                 ContainerId = containerId,
                 StoragePath = await SaveImageAsync(containerId, upload, ct),
                 ContentType = upload.ContentType,
-                FileName = upload.FileName,
+                FileName = DisplayFileName(upload.FileName),
                 SortOrder = firstSortOrder + i,
                 CreatedAt = now,
             });
         }
         await repo.AddImagesAsync(rows, ct);
     }
+
+    private static string DisplayFileName(string fileName) =>
+        fileName.Split('/', '\\').Last();
 
     private async Task<IReadOnlyList<ContainerDto>> ToDtosAsync(
         IReadOnlyList<Container> containers, CancellationToken ct)

@@ -1,16 +1,12 @@
-using Humans.CityPlanning.Contracts;
-
 namespace Humans.Camps.Models;
 
 internal sealed class CampAdminPageBuilder(
     ICampServiceRead campService,
-    ICampRoleService campRoleService,
-    ICityPlanningServiceRead cityPlanningService)
+    ICampRoleService campRoleService)
 {
     public async Task<CampAdminViewModel> BuildAsync()
     {
         var settings = await campService.GetSettingsAsync();
-        var registrationInfo = await cityPlanningService.GetRegistrationInfoAsync();
         var allCamps = await campService.GetCampsForYearAsync(settings.PublicYear);
         var openSeasons = settings.OpenSeasons.ToList();
 
@@ -35,7 +31,6 @@ internal sealed class CampAdminPageBuilder(
             WithdrawnCamps = withdrawnSeasons,
             NameLockDates = settings.NameLockDates.ToDictionary(kv => kv.Key, kv => kv.Value),
             AllCampSummaries = summaries,
-            RegistrationInfo = registrationInfo,
             PendingCamps = BuildCampCards(allCamps, settings.PublicYear, CampSeasonStatus.Pending)
         };
     }

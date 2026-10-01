@@ -86,6 +86,31 @@ public class BalanceCalculatorTests
             new BalanceCalculator.LineTotals(lineId, 100m, 21m, null, 100m, 21m, 0m, 121m));
     }
 
+    [HumansFact]
+    public void Deposit_return_leaves_overage_and_refund_settles_it()
+    {
+        // €100 item + €50 deposit, paid in full; €30 of the deposit comes back → €30 owed
+        // to the camp; refunding it lands the order on zero.
+        var order = new Order
+        {
+            Lines = new List<OrderLine>
+            {
+                new() { Id = Guid.NewGuid(), Qty = 1, UnitPriceSnapshot = 100m, VatRateSnapshot = 0m, DepositAmountSnapshot = 50m }
+            },
+            Payments = new List<Payment>
+            {
+                new() { AmountEur = 150m, Method = PaymentMethod.Stripe },
+                new() { AmountEur = 30m, Method = PaymentMethod.DepositReturn }
+            }
+        };
+
+        BalanceCalculator.Compute(order).BalanceEur.Should().Be(-30m);
+
+        order.Payments.Add(new Payment { AmountEur = -30m, Method = PaymentMethod.Refund });
+
+        BalanceCalculator.Compute(order).BalanceEur.Should().Be(0m);
+    }
+
     // ── Payment status exclusion (nobodies-collective/Humans#638) ───────────────
     // Only Paid rows count. A Pending mandate (captured, not yet cleared) and a Failed
     // settlement (bounced) must NOT reduce the order balance.

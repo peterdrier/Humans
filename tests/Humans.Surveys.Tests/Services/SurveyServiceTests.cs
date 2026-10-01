@@ -220,7 +220,7 @@ public class SurveyServiceTests
                     null,
                     L("Fire risk"),
                     L("Fire risk forecast table"),
-                    Upload: new SurveyImageUpload(content, "image/png", "fire-risk.png", 3)),
+                    Upload: new SurveyImageUpload(content, "image/png", "C:\\uploads\\fire-risk.png", 3)),
             ]);
 
         await CreateService().CreateAsync(
@@ -233,9 +233,34 @@ public class SurveyServiceTests
         var image = saved.InformationImages.Should().ContainSingle().Subject;
         image.StoragePath.Should().StartWith($"uploads/surveys/{captured.Id}/{questionId}/");
         image.StoragePath.Should().EndWith(".png");
+        image.FileName.Should().Be("fire-risk.png");
         image.Label.Resolve("en", "en").Should().Be("Fire risk");
         await _fileStorage.Received(1).SaveAsync(
             image.StoragePath, content, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_an_information_image_filename_over_256_characters()
+    {
+        await using var content = new MemoryStream([1, 2, 3]);
+        var information = new QuestionInput(
+            Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
+            L("Conditions"), L("Context"), false, null, null,
+            LocalizedText.Empty, LocalizedText.Empty, null, [],
+            InformationImages:
+            [
+                new InformationImageInput(
+                    null, L("Fire risk"), L("Fire risk forecast table"),
+                    Upload: new SurveyImageUpload(content, "image/png", new string('a', 253) + ".png", 3)),
+            ]);
+
+        var act = () => CreateService().CreateAsync(
+            Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*256 characters or fewer*");
+        await _fileStorage.DidNotReceive().SaveAsync(
+            Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1341,6 +1366,31 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task SendInvitesAsync_propagates_cancellation_without_marking_the_invitation_failed()
+    {
+        var teamId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(TeamWith(teamId, userId));
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [userId] = "u@example.org" });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), aborted.Token)
+            .Returns(Task.FromCanceled(aborted.Token));
+
+        var act = () => CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), aborted.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _repo.DidNotReceive().UpdateInvitationStatusAsync(
+            Arg.Any<Guid>(), EmailOutboxStatus.Failed, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task SendInvitesAsync_throws_when_not_open()
     {
         var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.Team, Guid.NewGuid());
@@ -1416,6 +1466,59 @@ public class SurveyServiceTests
         await _audit.Received(1).LogAsync(
             AuditAction.SurveyReminderSent, "Survey", Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [InlineData("es", "Spanish title")]
+    [InlineData("it", "English title")]
+    [InlineData("unsupported", "English title")]
+    [InlineData(null, "English title")]
+    public async Task SendDueRemindersAsync_ResolvesTitleForEachRecipient(
+        string? preferredCulture, string expectedTitle)
+    {
+        var now = _clock.GetCurrentInstant();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        survey.Title = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["en"] = "English title",
+            ["es"] = "Spanish title",
+            ["de"] = "German title"
+        });
+        var firstUser = Guid.NewGuid();
+        var secondUser = Guid.NewGuid();
+        var invitations = new List<SurveyInvitation>
+        {
+            new() { Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = firstUser,
+                SentAt = now - Duration.FromDays(8), LatestEmailStatus = EmailOutboxStatus.Sent },
+            new() { Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = secondUser,
+                SentAt = now - Duration.FromDays(8), LatestEmailStatus = EmailOutboxStatus.Sent }
+        };
+        _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(invitations);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [firstUser] = "first@example.org", [secondUser] = "second@example.org" });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
+            {
+                [firstUser] = UserInfoWithName(firstUser, "First") with { PreferredLanguage = preferredCulture! },
+                [secondUser] = UserInfoWithName(secondUser, "Second") with { PreferredLanguage = "de" }
+            }));
+
+        (await CreateService().SendDueRemindersAsync(TestContext.Current.CancellationToken)).Should().Be(2);
+
+        var messages = _emailService.ReceivedCalls().Select(call => call.GetArguments()[0])
+            .OfType<EmailMessage>().ToList();
+        messages.Should().HaveCount(2);
+        var first = messages.Single(m => string.Equals(m.RecipientEmail, "first@example.org", StringComparison.Ordinal));
+        first.Subject.Should().Be("Reminder: " + expectedTitle);
+        first.HtmlBody.Should().Contain(expectedTitle);
+        var second = messages.Single(m => string.Equals(m.RecipientEmail, "second@example.org", StringComparison.Ordinal));
+        second.Subject.Should().Be("Reminder: German title");
+        second.HtmlBody.Should().Contain("German title");
+        await _repo.Received(1).GetByIdAsync(survey.Id, Arg.Any<CancellationToken>());
+        foreach (var invitation in invitations)
+            await _repo.Received(1).SetReminderSentAsync(invitation.Id, now, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

@@ -389,6 +389,67 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
+    public async Task DeleteOrderAsync_rejects_a_paid_in_full_order()
+    {
+        // Paid in full reads zero-balance; deleting it would cascade the money records away.
+        var orderId = Guid.NewGuid();
+        var order = new Order
+        {
+            Id = orderId,
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2026,
+            Lines = new List<OrderLine>
+            {
+                new() { Id = Guid.NewGuid(), OrderId = orderId, ProductId = Guid.NewGuid(),
+                        Qty = 1, UnitPriceSnapshot = 10m, VatRateSnapshot = 0m }
+            },
+            Payments = new List<Payment>
+            {
+                new() { Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 10m,
+                        Method = PaymentMethod.Stripe, Status = PaymentStatus.Paid, StripePaymentIntentId = "pi_paid" }
+            }
+        };
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+
+        await _repo.DidNotReceive().DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public Task DeleteOrderAsync_rejects_an_order_holding_only_a_pending_payment() =>
+        AssertDeleteRefusedWithOnlyPayment(PaymentStatus.Pending);
+
+    [HumansFact]
+    public Task DeleteOrderAsync_rejects_an_order_holding_only_a_failed_payment() =>
+        AssertDeleteRefusedWithOnlyPayment(PaymentStatus.Failed);
+
+    private async Task AssertDeleteRefusedWithOnlyPayment(PaymentStatus status)
+    {
+        // Only Paid counts toward the balance, so an order holding only a Pending or Failed row
+        // reads zero — the row itself still has to survive.
+        var orderId = Guid.NewGuid();
+        var order = new Order
+        {
+            Id = orderId,
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2026,
+            Payments = new List<Payment>
+            {
+                new() { Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 10m,
+                        Method = PaymentMethod.Stripe, Status = status, StripePaymentIntentId = "pi_x" }
+            }
+        };
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+
+        await _repo.DidNotReceive().DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task DeleteOrderAsync_rejects_an_invoiced_order()
     {
         // A paid, issued order reads zero-balance, but its store_invoices row references it under a

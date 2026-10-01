@@ -131,6 +131,10 @@ internal sealed class OnboardingReviewController(
                 selectedUserIds, currentUser.Id, ct);
             SetBulkClearResultMessage(result, selectedUserIds.Count);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(

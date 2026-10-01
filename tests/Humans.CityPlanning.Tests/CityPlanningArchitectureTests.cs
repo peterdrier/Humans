@@ -1,5 +1,8 @@
 using AwesomeAssertions;
+using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
+using Humans.CityPlanning.Controllers;
+using Xunit;
 
 namespace Humans.CityPlanning.Tests;
 
@@ -29,5 +32,34 @@ public class CityPlanningArchitectureTests
             .Cast<RouteAttribute>()
             .Single().Template
             .Should().Be("api/city-planning");
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(CityPlanningController.UploadLimitZone))]
+    [InlineData(nameof(CityPlanningController.UploadOfficialZones))]
+    public void GeoJsonUploadPosts_CarryTheServiceFileLimitPlusMultipartOverhead(string action)
+    {
+        var limit = typeof(CityPlanningController).GetMethod(action)!
+            .GetCustomAttribute<RequestSizeLimitAttribute>();
+
+        limit.Should().NotBeNull();
+        typeof(RequestSizeLimitAttribute)
+            .GetField("_bytes", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(limit)
+            .Should().Be(11L * 1024 * 1024);
+    }
+
+    [HumansFact]
+    public void PlacementImageUpdate_CarriesTheServiceFileLimitPlusMultipartOverhead()
+    {
+        var apiController = typeof(Section).Assembly.GetType("Humans.CityPlanning.Controllers.CityPlanningApiController")!;
+        var limit = apiController.GetMethod("UpdateContainerPlacementNotes")!
+            .GetCustomAttribute<RequestSizeLimitAttribute>();
+
+        limit.Should().NotBeNull();
+        typeof(RequestSizeLimitAttribute)
+            .GetField("_bytes", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(limit)
+            .Should().Be(11L * 1024 * 1024);
     }
 }

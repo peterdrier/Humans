@@ -3,7 +3,6 @@ using Humans.Base.Controllers;
 using Humans.Notifications.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Localization;
 using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Controllers;
@@ -13,8 +12,7 @@ namespace Humans.Notifications.Controllers;
 internal sealed class NotificationsController(
     INotificationInboxService inboxService,
     IUserServiceRead userService,
-    NotificationMeterProvider meterProvider,
-    IStringLocalizer<NotificationsResource> localizer) : HumansControllerBase(userService)
+    NotificationMeterProvider meterProvider) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(
@@ -23,23 +21,18 @@ internal sealed class NotificationsController(
         var userId = GetCurrentUserId();
         if (userId is null) return Unauthorized();
 
-        var result = await inboxService.GetInboxAsync(userId.Value, search, filter, tab);
-
-        var defaultActionLabel = localizer["Notification_DefaultActionLabel"].Value;
+        var result = await inboxService.GetInboxAsync(userId.Value, search, filter, tab, HttpContext.RequestAborted);
 
         var meters = await meterProvider.GetMetersForUserAsync(User);
 
         return View(new NotificationInboxViewModel
         {
             NeedsAttention = result.NeedsAttention
-                .OrderByDescending(r => r.CreatedAt)
-                .Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+                .OrderByDescending(r => r.CreatedAt).ToList(),
             Informational = result.Informational
-                .OrderByDescending(r => r.CreatedAt)
-                .Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+                .OrderByDescending(r => r.CreatedAt).ToList(),
             Resolved = result.Resolved
-                .OrderByDescending(r => r.CreatedAt)
-                .Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+                .OrderByDescending(r => r.CreatedAt).ToList(),
             Meters = meters,
             UnreadCount = result.UnreadCount,
             SearchTerm = search,
@@ -54,22 +47,17 @@ internal sealed class NotificationsController(
         var userId = GetCurrentUserId();
         if (userId is null) return Unauthorized();
 
-        var result = await inboxService.GetPopupAsync(userId.Value);
-
-        var defaultActionLabel = localizer["Notification_DefaultActionLabel"].Value;
+        var result = await inboxService.GetPopupAsync(userId.Value, HttpContext.RequestAborted);
 
         var meters = await meterProvider.GetMetersForUserAsync(User);
 
         return PartialView("_NotificationPopup", new NotificationPopupViewModel
         {
             Actionable = result.Actionable
-                .OrderByDescending(r => r.CreatedAt)
-                .Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+                .OrderByDescending(r => r.CreatedAt).ToList(),
             Informational = result.Informational
-                .OrderByDescending(r => r.CreatedAt)
-                .Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+                .OrderByDescending(r => r.CreatedAt).ToList(),
             Meters = meters,
-            ActionableCount = result.ActionableCount,
         });
     }
 
@@ -191,24 +179,5 @@ internal sealed class NotificationsController(
             return LocalRedirect(url);
 
         return RedirectToAction(nameof(Index));
-    }
-
-    private static NotificationRowViewModel MapToViewModel(NotificationRowDto dto, string defaultActionLabel)
-    {
-        return new NotificationRowViewModel
-        {
-            Id = dto.Id,
-            Title = dto.Title,
-            ActionUrl = dto.ActionUrl,
-            ActionLabel = dto.ActionLabel ?? defaultActionLabel,
-            Priority = dto.Priority,
-            Source = dto.Source,
-            Class = dto.Class,
-            CreatedAt = dto.CreatedAt,
-            IsRead = dto.IsRead,
-            IsResolved = dto.IsResolved,
-            ResolvedAt = dto.ResolvedAt,
-            ResolvedByName = dto.ResolvedByName,
-        };
     }
 }

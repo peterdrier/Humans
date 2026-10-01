@@ -8,7 +8,7 @@ internal sealed class SectionJobs : ISectionJobs
 {
     public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)
     {
-        // Clean up resolved notifications older than 7 days.
+        // Daily purge; the retention rules live behind INotificationRetention.
         yield return new RecurringJobDescriptor(
             "notifications-cleanup", typeof(CleanupNotificationsJob), "30 4 * * *");
     }

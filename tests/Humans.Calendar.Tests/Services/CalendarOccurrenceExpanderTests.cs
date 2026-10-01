@@ -8,6 +8,30 @@ namespace Humans.Calendar.Tests.Services;
 
 public sealed class CalendarOccurrenceExpanderTests
 {
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public void Expand_IncludesZeroDurationEventAtWindowStart(bool recurring)
+    {
+        var from = Instant.FromUtc(2026, 6, 1, 10, 0);
+        var to = from.Plus(Duration.FromHours(1));
+        var rule = recurring ? "FREQ=DAILY;COUNT=1" : null;
+        var atStart = BuildInfo(start: from, end: from, recurrenceRule: rule);
+        var before = from.Minus(Duration.FromMinutes(1));
+        var events = new[]
+        {
+            atStart,
+            BuildInfo(start: before, end: before, recurrenceRule: rule),
+            BuildInfo(start: to, end: to, recurrenceRule: rule),
+            BuildInfo(start: before, end: from, recurrenceRule: rule),
+        };
+
+        var results = CalendarOccurrenceExpander.Expand(events, from, to,
+            new Dictionary<Guid, string>(), NullLogger.Instance);
+
+        results.Should().ContainSingle().Which.EventId.Should().Be(atStart.Id);
+    }
+
     [HumansFact]
     public void Expand_DropsCancelledRecurringOccurrence()
     {
@@ -164,6 +188,21 @@ public sealed class CalendarOccurrenceExpanderTests
         var occurrence = results.Should().ContainSingle().Subject;
         occurrence.StartDate.Should().Be(new LocalDate(2026, 3, 29));
         occurrence.EndDateExclusive.Should().Be(new LocalDate(2026, 3, 31));
+    }
+
+    // The event form's recurrence picker emits this floating end-of-day UNTIL for timed events;
+    // a date-only UNTIL would drop the last day's evening occurrence.
+    [HumansFact]
+    public void Expand_TimedFloatingEndOfDayUntil_IncludesLastDay()
+    {
+        const string rule = "FREQ=DAILY;UNTIL=20260605T235959";
+        var start = Instant.FromUtc(2026, 6, 1, 20, 30); // 22:30 Madrid
+        var info = BuildInfo(start: start, end: start.Plus(Duration.FromHours(1)), recurrenceRule: rule)
+            with
+        { RecurrenceTimezone = "Europe/Madrid" };
+        var results = CalendarOccurrenceExpander.Expand([info], Instant.FromUtc(2026, 6, 1, 0, 0),
+            Instant.FromUtc(2026, 6, 10, 0, 0), new Dictionary<Guid, string>(), NullLogger.Instance);
+        results.Should().HaveCount(5);
     }
 
     [HumansFact]

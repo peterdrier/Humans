@@ -299,7 +299,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
             Instant.FromUtc(2026, 7, 1, 17, 0),
             Instant.FromUtc(2026, 7, 1, 18, 0), false, null, null), uid);
 
-        var updated = await svc.UpdateEventWithResultAsync(ev.Id, new UpdateCalendarEventDto(
+        var updated = await svc.UpdateEventWithResultAsync(ev.Id, new CreateCalendarEventDto(
             "Updated", "new desc", "Hall", null, team.Id,
             Instant.FromUtc(2026, 7, 2, 17, 0),
             Instant.FromUtc(2026, 7, 2, 18, 0), false, null, null), uid, TestContext.Current.CancellationToken);
@@ -349,7 +349,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
             Instant.FromUtc(2026, 5, 1, 17, 0),
             Instant.FromUtc(2026, 5, 1, 18, 0), false, null, null), uid);
 
-        var result = await svc.UpdateEventWithResultAsync(ev.Id, new UpdateCalendarEventDto(
+        var result = await svc.UpdateEventWithResultAsync(ev.Id, new CreateCalendarEventDto(
             "Updated", null, null, null, team.Id,
             Instant.FromUtc(2026, 5, 2, 17, 0),
             Instant.FromUtc(2026, 5, 2, 18, 0),

@@ -105,11 +105,7 @@
                     <select asp-for="DurationMinutes" class="form-select" id="durationSelect">
                         @for (var mins = 15; mins <= 480; mins += 15)
                         {
-                            var hours = mins / 60;
-                            var rem = mins % 60;
-                            var label = hours > 0
-                                ? (rem > 0 ? $"{hours}h {rem}m" : $"{hours}h")
-                                : $"{mins}m";
+                            var label = EventDurationFormatter.Format(mins, Localizer);
                             <option value="@mins" selected="@(mins == Model.DurationMinutes ? "selected" : null)">@label</option>
                         }
                     </select>

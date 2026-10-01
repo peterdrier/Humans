@@ -682,6 +682,10 @@ internal sealed class RideshareService(
                 body: body, actionUrl: MineUrl,
                 actionLabel: actionLabel, cancellationToken: ct);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to send {Source} notification to {UserId}", source, recipientUserId);

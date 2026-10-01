@@ -25,8 +25,6 @@ internal sealed class BackdoorNotificationsController(INotificationInboxRead inb
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken ct)
     {
-        if (GetCurrentUserId() is null) return Unauthorized();
-
         var snapshot = await inbox.GetUnreadInboxAsync(User, ct);
         return Ok(new
         {

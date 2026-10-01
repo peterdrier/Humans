@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Extensions.Localization;
 using CsvHelper;
 using Humans.Base.Csv;
 using Humans.Events.Services.Dtos;
@@ -17,7 +18,7 @@ namespace Humans.Events.Services;
 /// </summary>
 internal static class BulkEventCsvParser
 {
-    public static List<BulkCsvRow> Parse(string csvText)
+    public static List<BulkCsvRow> Parse(string csvText, IStringLocalizer<EventsResource> localizer)
     {
         var config = HumansCsv.ReadConfig();
         config.AllowComments = true;
@@ -34,7 +35,7 @@ internal static class BulkEventCsvParser
         {
             if (args.InvalidHeaders.Length == 0) return;
             var missing = string.Join(", ", args.InvalidHeaders.SelectMany(h => h.Names));
-            throw new FormatException($"The CSV is missing required column(s): {missing}. Download a fresh template to see the expected columns.");
+            throw new FormatException(localizer["Events_Upload_MissingRequiredColumns", missing].Value);
         };
 
         var rows = new List<BulkCsvRow>();
@@ -57,19 +58,21 @@ internal static class BulkEventCsvParser
             if (!string.IsNullOrWhiteSpace(record.Id))
             {
                 if (Guid.TryParse(record.Id, out var g)) id = g;
-                else errors.Add($"Row {fileRow}: Id is not a valid Guid.");
+                else errors.Add(localizer["Events_Upload_RowIdInvalidGuid", fileRow].Value);
             }
 
             if (!int.TryParse(record.DurationMinutes, CultureInfo.InvariantCulture, out var duration))
-                errors.Add($"Row {fileRow}: DurationMinutes is not an integer.");
+                errors.Add(localizer["Events_Upload_RowDurationNotInteger", fileRow].Value);
             int? priority = null;
             if (!string.IsNullOrWhiteSpace(record.PriorityRank))
             {
                 if (int.TryParse(record.PriorityRank, CultureInfo.InvariantCulture, out var parsedPriority)) priority = parsedPriority;
-                else errors.Add($"Row {fileRow}: PriorityRank is not an integer.");
+                else errors.Add(localizer["Events_Upload_RowPriorityNotInteger", fileRow].Value);
             }
 
-            var isRecurring = string.Equals(record.IsRecurring, "true", StringComparison.OrdinalIgnoreCase);
+            var isRecurring = false;
+            if (!string.IsNullOrWhiteSpace(record.IsRecurring) && !bool.TryParse(record.IsRecurring, out isRecurring))
+                errors.Add(localizer["Events_Upload_RowRecurringBoolean", fileRow].Value);
 
             rows.Add(new BulkCsvRow(
                 fileRow, id,

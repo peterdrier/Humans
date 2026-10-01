@@ -61,6 +61,8 @@
   <data name="Events_ConflictBadge" xml:space="preserve"><value>Conflit d'horaire avec un autre événement en favori</value></data>
   <data name="Events_DownloadCsv" xml:space="preserve"><value>Télécharger le CSV des événements</value></data>
   <data name="Events_DurationMin" xml:space="preserve"><value>{0} min</value></data>
+  <data name="Events_DurationHours" xml:space="preserve"><value>{0} h</value></data>
+  <data name="Events_DurationHoursMinutes" xml:space="preserve"><value>{0} h {1} min</value></data>
   <data name="Events_FavouritesOnly" xml:space="preserve"><value>Uniquement</value></data>
   <data name="Events_FilterCategory" xml:space="preserve"><value>Catégorie</value></data>
   <data name="Events_FilterDay" xml:space="preserve"><value>Jour</value></data>
@@ -139,4 +141,31 @@
   <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Veuillez sélectionner un fichier CSV à téléverser.</value></data>
   <data name="Events_UploadNoRows" xml:space="preserve"><value>Le CSV ne contenait aucune ligne d'événement. Ajoutez au moins une ligne sous l'en-tête et réessayez.</value></data>
   <data name="Events_UploadComplete" xml:space="preserve"><value>Importation en masse terminée : {0} créés, {1} mis à jour.</value><comment>{0} = created count; {1} = updated count</comment></data>
+  <data name="Events_Upload_TitleRequired" xml:space="preserve"><value>Le champ Title est obligatoire.</value></data>
+  <data name="Events_Upload_TitleTooLong" xml:space="preserve"><value>Title doit comporter 80 caractères au maximum.</value></data>
+  <data name="Events_Upload_DescriptionRequired" xml:space="preserve"><value>Le champ Description est obligatoire.</value></data>
+  <data name="Events_Upload_DescriptionTooLong" xml:space="preserve"><value>Description doit comporter 450 caractères au maximum.</value></data>
+  <data name="Events_Upload_LocationNoteTooLong" xml:space="preserve"><value>LocationNote doit comporter 120 caractères au maximum.</value></data>
+  <data name="Events_Upload_HostTooLong" xml:space="preserve"><value>Host doit comporter 40 caractères au maximum.</value></data>
+  <data name="Events_Upload_CategoryRequired" xml:space="preserve"><value>Le champ Category est obligatoire.</value></data>
+  <data name="Events_Upload_CategoryInvalid" xml:space="preserve"><value>La catégorie '{0}' n’est pas une catégorie active valide.</value></data>
+  <data name="Events_Upload_CategoryAmbiguous" xml:space="preserve"><value>La catégorie '{0}' correspond à plusieurs catégories actives.</value></data>
+  <data name="Events_Upload_DateRequired" xml:space="preserve"><value>Le champ Date est obligatoire.</value></data>
+  <data name="Events_Upload_DateFormat" xml:space="preserve"><value>Date doit respecter le format yyyy-MM-dd.</value></data>
+  <data name="Events_Upload_StartTimeRequired" xml:space="preserve"><value>Le champ StartTime est obligatoire.</value></data>
+  <data name="Events_Upload_StartTimeFormat" xml:space="preserve"><value>StartTime doit respecter le format HH:mm.</value></data>
+  <data name="Events_Upload_DurationRange" xml:space="preserve"><value>DurationMinutes doit être compris entre 15 et 480.</value></data>
+  <data name="Events_Upload_DurationIncrement" xml:space="preserve"><value>DurationMinutes doit être un multiple de 15.</value></data>
+  <data name="Events_Upload_PriorityRange" xml:space="preserve"><value>PriorityRank doit être compris entre 1 et 100.</value></data>
+  <data name="Events_Upload_RecurrenceDays" xml:space="preserve"><value>RecurrenceDays ne doit contenir que Mon Tue Wed Thu Fri Sat Sun.</value></data>
+  <data name="Events_Upload_DuplicateEventId" xml:space="preserve"><value>L’événement {0} apparaît plusieurs fois dans le téléversement.</value></data>
+  <data name="Events_Upload_EventNotFound" xml:space="preserve"><value>Événement {0} introuvable pour ce barrio.</value></data>
+  <data name="Events_Upload_WithdrawnEventCannotUpdate" xml:space="preserve"><value>Les événements retirés ne peuvent pas être mis à jour par importation groupée.</value></data>
+  <data name="Events_Upload_MissingRequiredColumns" xml:space="preserve"><value>Il manque des colonnes obligatoires dans le CSV : {0}. Téléchargez un nouveau modèle pour voir les colonnes attendues.</value></data>
+  <data name="Events_Upload_RowIdInvalidGuid" xml:space="preserve"><value>Ligne {0} : Id n’est pas un Guid valide.</value></data>
+  <data name="Events_Upload_RowDurationNotInteger" xml:space="preserve"><value>Ligne {0} : DurationMinutes n’est pas un nombre entier.</value></data>
+  <data name="Events_Upload_RowPriorityNotInteger" xml:space="preserve"><value>Ligne {0} : PriorityRank n’est pas un nombre entier.</value></data>
+  <data name="Events_Upload_RowRecurringBoolean" xml:space="preserve"><value>Ligne {0} : IsRecurring doit être true ou false.</value></data>
+  <data name="Events_Upload_ParseFailed" xml:space="preserve"><value>Impossible d’analyser le CSV. Téléchargez un nouveau modèle et vérifiez le format du fichier.</value></data>
+  <data name="Events_Upload_ParseErrorDetail" xml:space="preserve"><value>Impossible d’analyser le CSV : {0}</value></data>
 </root>

@@ -89,11 +89,20 @@ internal sealed class HoldedClient : IHoldedClient
 
         using var resp = await SendAsync(req, ct);
         var body = await resp.Content.ReadAsStringAsync(ct);
-        var node = JsonNode.Parse(body)
-            ?? throw new HoldedTransientException("Holded returned empty body");
-        var id = node["id"]?.GetValue<string>()
-            ?? throw new HoldedTransientException("Holded response missing id");
-        return id;
+        try
+        {
+            var node = JsonNode.Parse(body)
+                ?? throw new HoldedTransientException("Holded returned empty body");
+            var id = node["id"]?.GetValue<string>()
+                ?? throw new HoldedTransientException("Holded response missing id");
+            return id;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            throw new HoldedPermanentException(
+                "Holded create-purchase response could not be read.", ex);
+        }
     }
 
     public async Task UploadAttachmentAsync(
@@ -159,7 +168,18 @@ internal sealed class HoldedClient : IHoldedClient
             HttpMethod.Post, $"/api/v2/purchases/{documentId}/approve")
         { Content = new ByteArrayContent([]) };
         AttachAuth(req);
-        using var resp = await SendAsync(req, ct);
+        try
+        {
+            using var resp = await SendAsync(req, ct);
+        }
+        // The goal state already holds. A retried push re-approves the docs an earlier attempt
+        // approved, and the single-GET's approved_at did not stop it in production — without this
+        // the retry writes the whole push off.
+        catch (HoldedPermanentException ex) when (ex.StatusCode == 400
+            && ex.ResponseBody?.Contains("Document already approved", StringComparison.Ordinal) == true)
+        {
+            _logger.LogWarning("Holded purchase document {DocumentId} was already approved — treated as success", documentId);
+        }
     }
 
     public async Task<string> PayPurchaseDocumentAsync(
@@ -265,7 +285,7 @@ internal sealed class HoldedClient : IHoldedClient
             return items.Select(n => new HoldedExpenseAccountDto
             {
                 Id = Prop(n, "id")?.GetValue<string>() ?? "",
-                AccountNum = ReadInt(Prop(n, "account_num")) ?? 0,
+                AccountNum = ReadRequiredInt(Prop(n, "account_num"), "account_num"),
                 Name = Prop(n, "name")?.GetValue<string>() ?? "",
             }).ToList();
         }
@@ -359,11 +379,20 @@ internal sealed class HoldedClient : IHoldedClient
         AttachAuth(req);
 
         using var resp = await SendAsync(req, ct);
-        var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
-            ?? throw new HoldedTransientException("Holded returned empty body");
-        return node["id"]?.GetValue<string>()
-            ?? input.ExistingContactId
-            ?? throw new HoldedTransientException("Holded contact upsert response missing id");
+        try
+        {
+            var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
+                ?? throw new HoldedTransientException("Holded returned empty body");
+            return node["id"]?.GetValue<string>()
+                ?? input.ExistingContactId
+                ?? throw new HoldedTransientException("Holded contact upsert response missing id");
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            throw new HoldedPermanentException(
+                "Holded contact-upsert response could not be read.", ex);
+        }
     }
 
     /// <summary>The v2 path segment for a sales-document kind. Both kinds share the same payload
@@ -384,10 +413,19 @@ internal sealed class HoldedClient : IHoldedClient
         AttachAuth(req);
 
         using var resp = await SendAsync(req, ct);
-        var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
-            ?? throw new HoldedTransientException("Holded returned empty body");
-        return Prop(node, "id")?.GetValue<string>()
-            ?? throw new HoldedTransientException("Holded sales-document response missing id");
+        try
+        {
+            var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
+                ?? throw new HoldedTransientException("Holded returned empty body");
+            return Prop(node, "id")?.GetValue<string>()
+                ?? throw new HoldedTransientException("Holded sales-document response missing id");
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            throw new HoldedPermanentException(
+                "Holded create-sales-document response could not be read.", ex);
+        }
     }
 
     public async Task ApproveSalesDocumentAsync(
@@ -566,30 +604,64 @@ internal sealed class HoldedClient : IHoldedClient
         var items = await GetPagedAsync(query, pageSafetyCap, ct);
         try
         {
-            return items.Select(n => new HoldedBankMovementDto
+            var movements = new List<HoldedBankMovementDto>();
+            var skipped = 0;
+            foreach (var n in items)
             {
-                Id = ReadRequiredString(Prop(n, "id"), "id"),
-                AccountId = ReadRequiredString(Prop(n, "account"), "account"),
-                Date = ParseBankMovementDate(Prop(n, "date")?.GetValue<string>() ?? ""),
-                Amount = ReadRequiredDecimalV2(Prop(n, "amount"), "amount"),
-                Description = Prop(n, "description")?.GetValue<string>(),
-                // Never defaulted: "pending" is the one status the SEPA sweep reads as "nothing is
-                // tied to this line yet, it may be booked", so manufacturing it for an absent field
-                // would let a response shape change turn an already-settled line into a bookable
-                // one. Absent means unreadable, like 'id' and 'account' above. An unknown *present*
-                // value needs no guard — anything but "pending" already fails closed.
-                Status = ReadRequiredString(Prop(n, "status"), "status").ToLowerInvariant(),
-                Origin = Prop(n, "origin")?.GetValue<string>(),
-            })
-            .Where(m => m.Date >= from && m.Date <= to)
-            .ToList();
+                LocalDate date;
+                try
+                {
+                    date = ParseBankMovementDate(Prop(n, "date")?.GetValue<string>() ?? "");
+                }
+                catch (Exception ex) when (ex is HoldedPermanentException or InvalidOperationException
+                    or FormatException)
+                {
+                    // A line with no readable date (an empty string on a Sabadell line,
+                    // peterdrier/Humans#1861) cannot be placed in the from/to window. Leaving it out is
+                    // safe only if it can never be a SEPA candidate: Finance's rival checks count every
+                    // pending outgoing line, so dropping one of those would hide a rival and let an
+                    // ambiguous booking through. Those still fail the page; the rest are skipped.
+                    if (ReadRequiredDecimalV2(Prop(n, "amount"), "amount") < 0m
+                        && string.Equals(ReadRequiredString(Prop(n, "status"), "status"), "pending",
+                            StringComparison.OrdinalIgnoreCase))
+                        throw new HoldedPermanentException(
+                            $"Holded bank movement '{Prop(n, "id")?.GetValue<string>()}' in account "
+                            + $"{treasuryAccountId} is a pending outgoing line with no readable date.", ex);
+                    if (skipped == 0)
+                        _logger.LogWarning("Unreadable Holded bank movement date; skipping the line.");
+                    skipped++;
+                    continue;
+                }
+
+                if (date < from || date > to) continue;
+
+                movements.Add(new HoldedBankMovementDto
+                {
+                    Id = ReadRequiredString(Prop(n, "id"), "id"),
+                    Date = date,
+                    Amount = ReadRequiredDecimalV2(Prop(n, "amount"), "amount"),
+                    Description = Prop(n, "description")?.GetValue<string>(),
+                    // Never defaulted: "pending" is the one status the SEPA sweep reads as "nothing is
+                    // tied to this line yet, it may be booked", so manufacturing it for an absent field
+                    // would let a response shape change turn an already-settled line into a bookable
+                    // one. Absent means unreadable, like 'id' above. An unknown *present*
+                    // value needs no guard — anything but "pending" already fails closed.
+                    Status = ReadRequiredString(Prop(n, "status"), "status").ToLowerInvariant(),
+                    Origin = Prop(n, "origin")?.GetValue<string>(),
+                });
+            }
+
+            if (skipped > 0)
+                _logger.LogWarning(
+                    "Skipped {Skipped} Holded bank movement(s) with an unreadable date in account {AccountId}.",
+                    skipped, treasuryAccountId);
+            return movements;
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException or UnparsableValueException)
         {
-            // Same rule as ledger lines: a silently dropped outgoing line reads as "no bank line
-            // yet" and delays a booking, but a *manufactured* one would book against a movement
-            // that does not exist. Either way the whole page fails rather than skipping the line.
+            // Same rule as ledger lines for every other field: a *manufactured* line would book
+            // against a movement that does not exist, so an unreadable id/amount/status fails the page.
             throw new HoldedPermanentException(
                 $"Holded bank-movements {from}..{to} for account {treasuryAccountId} could not be read.",
                 ex);
@@ -621,7 +693,7 @@ internal sealed class HoldedClient : IHoldedClient
 
     /// <summary>Bank-movement dates are unverified against the probe's ledger-entry finding
     /// (`DD/MM/YYYY`), so both that shape and ISO are accepted; neither parsing throws
-    /// <c>HoldedPermanentException</c> for the caller.</summary>
+    /// <c>HoldedPermanentException</c>, which the caller skips a non-candidate line on.</summary>
     private static LocalDate ParseBankMovementDate(string s)
     {
         var iso = LocalDatePattern.Iso.Parse(s);
@@ -721,7 +793,7 @@ internal sealed class HoldedClient : IHoldedClient
         {
             return items.Select(n => new HoldedAccountDto
             {
-                Id = Prop(n, "id")?.GetValue<string>() ?? "",
+                Id = ReadRequiredString(Prop(n, "id"), "id"),
                 // Required, like the ledger line's `account`: the number IS the account's identity
                 // here — it keys the mirror, picks the PGC group and drives the POV flip. A
                 // manufactured 0 would enter the chart as an "Unclassified" account with a
@@ -729,9 +801,9 @@ internal sealed class HoldedClient : IHoldedClient
                 Number = ReadRequiredInt(Prop(n, "number"), "number"),
                 Name = Prop(n, "name")?.GetValue<string>() ?? "",
                 Group = Prop(n, "group")?.GetValue<string>(),
-                Debit = ReadDecimalV2(Prop(n, "debit")),
-                Credit = ReadDecimalV2(Prop(n, "credit")),
-                Balance = ReadDecimalV2(Prop(n, "balance")),
+                Debit = ReadRequiredDecimalV2(Prop(n, "debit"), "debit"),
+                Credit = ReadRequiredDecimalV2(Prop(n, "credit"), "credit"),
+                Balance = ReadRequiredDecimalV2(Prop(n, "balance"), "balance"),
                 Archived = Prop(n, "archived")?.GetValue<bool>() ?? false,
             }).ToList();
         }
@@ -860,7 +932,7 @@ internal sealed class HoldedClient : IHoldedClient
     /// <see cref="Arr"/> rather than the raw indexer, for the reason spelled out on those two.</summary>
     private static HoldedPurchaseDocListItemDto ParsePurchaseDoc(JsonNode? n) => new()
     {
-        Id = Prop(n, "id")?.GetValue<string>() ?? "",
+        Id = ReadRequiredString(Prop(n, "id"), "id"),
         DocNumber = Prop(n, "document_number")?.GetValue<string>() ?? "",
         ContactId = Prop(n, "contact_id")?.GetValue<string>(),
         ContactName = Prop(n, "contact_name")?.GetValue<string>() ?? "",
@@ -994,9 +1066,16 @@ internal sealed class HoldedClient : IHoldedClient
     private static decimal ReadDecimalV2(JsonNode? node) =>
         decimal.Parse(node?.GetValue<string>() ?? "0", CultureInfo.InvariantCulture);
 
-    // GetValue<decimal> (not <long>) so a JSON float token like 40000001.0 parses; cast truncates.
-    private static int? ReadInt(JsonNode? node) =>
-        node is null ? null : (int?)node.GetValue<decimal>();
+    // Holded may encode an integer as a JSON float (40000001.0). Accept that shape,
+    // but never truncate a fractional identifier onto a different account or ledger row.
+    private static int? ReadInt(JsonNode? node)
+    {
+        if (node is null) return null;
+        var value = node.GetValue<decimal>();
+        if (value != decimal.Truncate(value))
+            throw new FormatException("Holded integer field contains a fractional value.");
+        return (int)value;
+    }
 
     private static int ReadRequiredInt(JsonNode? node, string field) =>
         ReadInt(node) ?? throw new HoldedPermanentException(

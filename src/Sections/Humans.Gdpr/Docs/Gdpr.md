@@ -73,6 +73,8 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
   failing the download. Erasure holds the same rule — a contributor that throws
   aborts `EraseForUserAsync`, so the caller leaves its deletion markers set and
   the whole cascade retries the next day rather than leaving data behind.
+- A request-aborted guest export propagates cancellation rather than redirecting
+  with a failed-download message; other export failures retain that message.
 - **Erasure runs the identity collapse last, and takes only an id.**
   The contributor whose `ErasesLast` is `true` erases last, so sections
   that still need the human's addresses to reach an external processor (the

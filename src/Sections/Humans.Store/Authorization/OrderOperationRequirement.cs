@@ -22,6 +22,12 @@ internal sealed class OrderOperationRequirement : IAuthorizationRequirement
     public static readonly OrderOperationRequirement Delete = new(nameof(Delete));
     /// <summary>Issue the order's Holded factura. Admin-only, and never on a non-billable team order.</summary>
     public static readonly OrderOperationRequirement IssueInvoice = new(nameof(IssueInvoice));
+    /// <summary>Record a deposit return or a refund against the order. Admin-only, and never on a non-billable team order.</summary>
+    public static readonly OrderOperationRequirement RecordPayment = new(nameof(RecordPayment));
+    /// <summary>Record a <c>Refund</c> payment (money sent back out). Finance admin and Admin only — narrower than <see cref="RecordPayment"/>, which Store admins hold for deposit returns.</summary>
+    public static readonly OrderOperationRequirement Refund = new(nameof(Refund));
+    /// <summary>Hard-delete a payment row. Full Admin only — not FinanceAdmin, not StoreAdmin — and never on a team order.</summary>
+    public static readonly OrderOperationRequirement DeletePayment = new(nameof(DeletePayment));
 
     public string OperationName { get; }
 

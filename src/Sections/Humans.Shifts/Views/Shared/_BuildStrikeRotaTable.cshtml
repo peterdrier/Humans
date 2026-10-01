@@ -140,7 +140,7 @@ else
                             @string.Format(Localizer["Shifts_ConfirmSignup_Title"].Value,
                                 rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant())
                         </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@SharedLocalizer["Common_Close"]"></button>
                     </div>
                     <div class="modal-body">
                         <p class="js-phase-line">

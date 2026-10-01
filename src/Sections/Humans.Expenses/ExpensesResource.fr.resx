@@ -109,4 +109,133 @@
 &lt;p&gt;Le paiement sera effectué par virement bancaire sur le compte se terminant par {2}. Nous te préviendrons dès que le virement aura été envoyé.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{3}"&gt;Voir ta note de frais&lt;/a&gt;&lt;/p&gt;</value></data>
   <data name="Expenses_Email_Approved_Subject" xml:space="preserve"><value>Ta note de frais a été approuvée</value></data>
+  <data name="Expenses_Flash_LoadIndexFailed" xml:space="preserve"><value>Impossible de charger les rapports de dépenses.</value></data>
+  <data name="Expenses_Flash_NoActiveYearCategories" xml:space="preserve"><value>Aucune année budgétaire active avec catégories n'existe. Contacte un administrateur financier.</value></data>
+  <data name="Expenses_Flash_LoadFormFailed" xml:space="preserve"><value>Impossible de charger le formulaire.</value></data>
+  <data name="Expenses_Flash_DraftCreated" xml:space="preserve"><value>Brouillon créé.</value></data>
+  <data name="Expenses_Flash_CreateFailed" xml:space="preserve"><value>Impossible de créer le brouillon.</value></data>
+  <data name="Expenses_Flash_LoadReportFailed" xml:space="preserve"><value>Impossible de charger le rapport de dépenses.</value></data>
+  <data name="Expenses_Flash_NotEditable" xml:space="preserve"><value>Ce rapport ne peut plus être modifié.</value></data>
+  <data name="Expenses_Flash_LoadEditFailed" xml:space="preserve"><value>Impossible de charger le formulaire de modification.</value></data>
+  <data name="Expenses_Flash_ReportUpdated" xml:space="preserve"><value>Rapport mis à jour.</value></data>
+  <data name="Expenses_Flash_ReportUpdateFailed" xml:space="preserve"><value>Impossible de mettre à jour le rapport.</value></data>
+  <data name="Expenses_Flash_LineUpdated" xml:space="preserve"><value>Ligne mise à jour.</value></data>
+  <data name="Expenses_Flash_UpdateLineFailed" xml:space="preserve"><value>Impossible de mettre à jour la ligne</value></data>
+  <data name="Expenses_Flash_LineRemoved" xml:space="preserve"><value>Ligne supprimée.</value></data>
+  <data name="Expenses_Flash_RemoveLineFailed" xml:space="preserve"><value>Impossible de supprimer la ligne</value></data>
+  <data name="Expenses_Flash_AttachmentUploaded" xml:space="preserve"><value>Pièce jointe téléversée.</value></data>
+  <data name="Expenses_Flash_UploadAttachmentFailed" xml:space="preserve"><value>Impossible de téléverser la pièce jointe.</value></data>
+  <data name="Expenses_Flash_ReportSubmitted" xml:space="preserve"><value>Rapport soumis.</value></data>
+  <data name="Expenses_Flash_SubmitFailed" xml:space="preserve"><value>Impossible de soumettre le rapport.</value></data>
+  <data name="Expenses_Flash_ReportWithdrawn" xml:space="preserve"><value>Rapport retiré.</value></data>
+  <data name="Expenses_Flash_WithdrawFailed" xml:space="preserve"><value>Impossible de retirer ce rapport.</value></data>
+  <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Données de ligne non valides.</value></data>
+  <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Reçu ajouté.</value></data>
+  <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Facture ajoutée. Ajoute maintenant les reçus qui la justifient.</value></data>
+  <data name="Expenses_Flash_LineAdded" xml:space="preserve"><value>Ligne ajoutée.</value></data>
+  <data name="Expenses_Flash_SelectFile" xml:space="preserve"><value>Veuillez sélectionner un fichier.</value></data>
+  <data name="Expenses_Flash_AttachmentRemoved" xml:space="preserve"><value>Pièce jointe supprimée.</value></data>
+  <data name="Expenses_Flash_LoadIbanFailed" xml:space="preserve"><value>Impossible de charger le formulaire IBAN.</value></data>
+  <data name="Expenses_Flash_InvalidMaximum" xml:space="preserve"><value>Montant maximal non valide.</value></data>
+  <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>Un motif de rejet est requis.</value></data>
+  <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>Impossible de charger la file de révision.</value></data>
+  <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Données d'approbation non valides.</value></data>
+  <!-- Submitter expense-edit page -->
+  <data name="Expenses_EditReport" xml:space="preserve"><value>Modifier le rapport de dépenses</value></data>
+  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
+  <data name="Expenses_Edit" xml:space="preserve"><value>Modifier</value></data>
+  <data name="Expenses_ReportHeader" xml:space="preserve"><value>En-tête du rapport</value></data>
+  <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Catégorie budgétaire</value></data>
+  <data name="Expenses_CategoryChangeWarning" xml:space="preserve"><value>Changer de catégorie après l’envoi exige de retirer puis de soumettre à nouveau le rapport.</value></data>
+  <data name="Expenses_Optional" xml:space="preserve"><value>(facultatif)</value></data>
+  <data name="Expenses_SaveHeader" xml:space="preserve"><value>Enregistrer l’en-tête</value></data>
+  <data name="Expenses_ExpenseLines" xml:space="preserve"><value>Lignes de dépenses</value></data>
+  <data name="Expenses_NoLinesYet" xml:space="preserve"><value>Aucune ligne pour le moment. Ajoutez ci-dessous votre premier reçu ou facture.</value></data>
+  <data name="Expenses_Mileage" xml:space="preserve"><value>Indemnité kilométrique</value></data>
+  <data name="Expenses_PerDiem" xml:space="preserve"><value>Indemnité journalière</value></data>
+  <data name="Expenses_Invoice" xml:space="preserve"><value>Facture</value></data>
+  <data name="Expenses_ProofCountSingular" xml:space="preserve"><value>1 reçu associé</value></data>
+  <data name="Expenses_ProofCountPlural" xml:space="preserve"><value>{0} reçus associés</value></data>
+  <data name="Expenses_ReceiptAttached" xml:space="preserve"><value>Reçu joint</value></data>
+  <data name="Expenses_NeedsReceipt" xml:space="preserve"><value>Reçu requis</value></data>
+  <data name="Expenses_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Expenses_AddLine" xml:space="preserve"><value>Ajouter une ligne</value></data>
+  <data name="Expenses_BackToReport" xml:space="preserve"><value>Retour au rapport</value></data>
+  <data name="Expenses_WhatAreYouAdding" xml:space="preserve"><value>Qu’ajoutez-vous ?</value></data>
+  <data name="Expenses_Preferred" xml:space="preserve"><value>préférée</value></data>
+  <data name="Expenses_Receipt" xml:space="preserve"><value>Reçu</value></data>
+  <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Une entreprise facture l’association pour le travail ou les biens. La facture doit être établie au nom de la NCA. C’est fortement préférable : l’association peut récupérer la TVA et économiser 21 %. Vous joindrez la facture, puis les reçus qui la justifient pour la personne qui approuve.</value></data>
+  <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Vous avez payé quelque chose vous-même et souhaitez être remboursé. Les reçus ne sont approuvés que dans certaines circonstances, généralement lorsqu’une facture n’était pas possible ou que le montant est faible.</value></data>
+  <data name="Expenses_Cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="Expenses_AddInvoice" xml:space="preserve"><value>Ajouter une facture</value></data>
+  <data name="Expenses_AddReceipt" xml:space="preserve"><value>Ajouter un reçu</value></data>
+  <data name="Expenses_InvoiceAddDescription" xml:space="preserve"><value>La facture de l’entreprise, établie au nom de la NCA. Après l’enregistrement, vous ajouterez les reçus qui la justifient afin que la personne qui approuve voie ce que couvre le montant facturé.</value></data>
+  <data name="Expenses_ReceiptAddDescription" xml:space="preserve"><value>Quelque chose que vous avez payé vous-même et souhaitez vous faire rembourser. Décrivez-le, saisissez le montant et joignez une photo ou un PDF du reçu.</value></data>
+  <data name="Expenses_InvoicePurpose" xml:space="preserve"><value>À quoi correspond la facture ?</value></data>
+  <data name="Expenses_ReceiptPurpose" xml:space="preserve"><value>Qu’avez-vous acheté ?</value></data>
+  <data name="Expenses_InvoicePlaceholder" xml:space="preserve"><value>ex. main-d’œuvre de l’équipe de montage, facture 2026-042</value></data>
+  <data name="Expenses_ReceiptPlaceholder" xml:space="preserve"><value>ex. bois pour la structure d’ombrage</value></data>
+  <data name="Expenses_AmountEur" xml:space="preserve"><value>Montant (EUR)</value></data>
+  <data name="Expenses_InvoiceFile" xml:space="preserve"><value>La facture (PDF ou photo)</value></data>
+  <data name="Expenses_ReceiptFile" xml:space="preserve"><value>Le reçu (photo ou PDF)</value></data>
+  <data name="Expenses_SaveAndAddReceipts" xml:space="preserve"><value>Enregistrer et ajouter des reçus</value></data>
+  <data name="Expenses_SaveReceipt" xml:space="preserve"><value>Enregistrer le reçu</value></data>
+  <data name="Expenses_NotAnInvoice" xml:space="preserve"><value>Ce n’est pas une facture ?</value></data>
+  <data name="Expenses_NotAReceipt" xml:space="preserve"><value>Ce n’est pas un reçu ?</value></data>
+  <data name="Expenses_ChangeType" xml:space="preserve"><value>Changer de type</value></data>
+  <data name="Expenses_ReceiptsBehindInvoice" xml:space="preserve"><value>Reçus associés à la facture</value></data>
+  <data name="Expenses_ReceiptsBehindIt" xml:space="preserve"><value>Reçus associés</value></data>
+  <data name="Expenses_ProofAmountOf" xml:space="preserve"><value>{0} sur {1}</value></data>
+  <data name="Expenses_NoProofsYet" xml:space="preserve"><value>Aucun pour le moment. Ajoutez les reçus qui montrent ce que couvre le montant facturé ; ils sont vérifiés avec le rapport mais ne sont pas envoyés au système comptable.</value></data>
+  <data name="Expenses_AddReceiptFile" xml:space="preserve"><value>ajouter le fichier du reçu</value></data>
+  <data name="Expenses_RemoveReceiptConfirm" xml:space="preserve"><value>Supprimer ce reçu ?</value></data>
+  <data name="Expenses_Remove" xml:space="preserve"><value>Supprimer</value></data>
+  <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>De quoi s’agissait-il ?</value></data>
+  <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>ex. matériel de la quincaillerie</value></data>
+  <data name="Expenses_Done" xml:space="preserve"><value>Terminé</value></data>
+  <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nouveau rapport de dépenses</value></data>
+  <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Sélectionnez une catégorie —</value></data>
+  <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(facultatif, 500 caractères max.)</value></data>
+  <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Décrivez la dépense…</value></data>
+  <data name="Expenses_CreateDraft" xml:space="preserve"><value>Créer un brouillon</value></data>
+  <data name="Expenses_HowItWorks" xml:space="preserve"><value>Fonctionnement</value></data>
+  <data name="Expenses_HowItWorksStep1" xml:space="preserve"><value>Créez un brouillon et ajoutez des lignes de dépenses avec leurs montants.</value></data>
+  <data name="Expenses_HowItWorksStep2" xml:space="preserve"><value>Joignez un reçu ou une facture à chaque ligne.</value></data>
+  <data name="Expenses_HowItWorksStep3" xml:space="preserve"><value>Renseignez votre IBAN de paiement si ce n’est pas déjà fait.</value></data>
+  <data name="Expenses_HowItWorksStep4" xml:space="preserve"><value>Soumettez le rapport pour examen par la coordination ou FinanceAdmin.</value></data>
+  <data name="Expenses_HowItWorksStep5" xml:space="preserve"><value>Après approbation, vous recevrez un virement SEPA.</value></data>
+  <data name="Expenses_BackToInvoiceReceipts" xml:space="preserve"><value>Retour aux reçus de la facture</value></data><data name="Expenses_Description" xml:space="preserve"><value>Description</value></data><data name="Expenses_EditLine" xml:space="preserve"><value>Modifier la ligne</value></data><data name="Expenses_FileRequiredBeforeSubmit" xml:space="preserve"><value>Obligatoire avant l'envoi du rapport.</value></data><data name="Expenses_Line" xml:space="preserve"><value>Ligne</value></data><data name="Expenses_NoFileAttached" xml:space="preserve"><value>Aucun fichier joint.</value></data><data name="Expenses_ReceiptsBehindThisInvoice" xml:space="preserve"><value>Reçus de cette facture</value></data><data name="Expenses_RemoveFile" xml:space="preserve"><value>Supprimer le fichier</value></data><data name="Expenses_RemoveFileConfirm" xml:space="preserve"><value>Supprimer ce fichier ? Vous devrez en téléverser un autre avant l'envoi.</value></data><data name="Expenses_RemoveInvoiceConfirm" xml:space="preserve"><value>Supprimer cette facture et tous ses reçus ?</value></data><data name="Expenses_RemoveLine" xml:space="preserve"><value>Supprimer la ligne</value></data><data name="Expenses_RemoveLineConfirm" xml:space="preserve"><value>Supprimer cette ligne et son fichier ?</value></data><data name="Expenses_TravelLineReadOnly" xml:space="preserve"><value>Les lignes de déplacement sont calculées à partir de leurs données et ne peuvent pas être modifiées. Supprimez la ligne du rapport et ajoutez-la de nouveau pour la modifier.</value></data><data name="Expenses_Upload" xml:space="preserve"><value>Téléverser</value></data>
+  <data name="Expenses_CurrentIban" xml:space="preserve"><value>IBAN actuel</value></data><data name="Expenses_Iban" xml:space="preserve"><value>IBAN</value></data><data name="Expenses_IbanEnter" xml:space="preserve"><value>Saisissez votre IBAN complet sans espaces.</value></data><data name="Expenses_IbanEnterOrRemove" xml:space="preserve"><value>Saisissez votre IBAN complet sans espaces. Laissez vide pour le supprimer.</value></data><data name="Expenses_IbanPrivacy" xml:space="preserve"><value>Votre IBAN sert à traiter les virements de remboursement SEPA. Il n'est jamais montré à d'autres personnes.</value></data><data name="Expenses_IbanStored" xml:space="preserve"><value>Votre IBAN est stocké de manière sécurisée et n'est accessible à FinanceAdmin que dans le cadre de vos notes de frais.</value></data><data name="Expenses_NewIban" xml:space="preserve"><value>Nouvel IBAN</value></data><data name="Expenses_NewIbanOrRemove" xml:space="preserve"><value>Nouvel IBAN (ou laissez vide pour le supprimer)</value></data><data name="Expenses_PaymentIban" xml:space="preserve"><value>IBAN de paiement</value></data>
+  <data name="Expenses_Flash_AddLineFailed" xml:space="preserve"><value>Impossible d’ajouter la ligne.</value></data>
+  <data name="Expenses_Flash_RemoveAttachmentFailed" xml:space="preserve"><value>Impossible de supprimer la pièce jointe.</value></data>
+  <data name="Expenses_Save" xml:space="preserve"><value>Enregistrer</value></data>
+  <data name="Expenses_ReceiptBehindInvoice" xml:space="preserve"><value>Reçu de la facture</value></data>
+  <data name="Expenses_Iban_ReportNotFound" xml:space="preserve"><value>Note de frais introuvable.</value></data>
+  <data name="Expenses_Iban_InvalidFormat" xml:space="preserve"><value>Format IBAN invalide.</value></data>
+  <data name="Expenses_Iban_RequiredForPendingReport" xml:space="preserve"><value>Cette note de frais est en attente de paiement et nécessite un IBAN. Remplace-le au lieu de le supprimer.</value></data>
+  <data name="Expenses_Iban_SaveFailed" xml:space="preserve"><value>Impossible d’enregistrer l’IBAN.</value></data>
+  <data name="Expenses_Iban_Removed" xml:space="preserve"><value>IBAN supprimé.</value></data>
+  <data name="Expenses_Iban_Saved" xml:space="preserve"><value>IBAN enregistré.</value></data>
+  <data name="Expenses_Validation_CategoryNotFound" xml:space="preserve"><value>Catégorie introuvable.</value></data>
+  <data name="Expenses_Validation_CategoryDifferentBudgetYear" xml:space="preserve"><value>Cette catégorie appartient à un exercice budgétaire différent de celui de ce rapport.</value></data>
+  <data name="Expenses_Validation_ProofRowsMustBeReceipts" xml:space="preserve"><value>Les lignes justificatives doivent être des lignes de reçu.</value></data>
+  <data name="Expenses_Validation_ParentLineNotFound" xml:space="preserve"><value>La ligne parente est introuvable dans ce rapport.</value></data>
+  <data name="Expenses_Validation_ProofRowsRequireInvoice" xml:space="preserve"><value>Les lignes justificatives ne peuvent être ajoutées qu’à une ligne de facture.</value></data>
+  <data name="Expenses_Validation_OnlyReceiptAndInvoiceLines" xml:space="preserve"><value>Seules les lignes de reçu et de facture peuvent être ajoutées.</value></data>
+  <data name="Expenses_Validation_LineNotOnReport" xml:space="preserve"><value>La ligne n’appartient pas au rapport indiqué.</value></data>
+  <data name="Expenses_Validation_TravelLinesComputedCannotEdit" xml:space="preserve"><value>Les lignes de déplacement sont calculées à partir des informations saisies et ne peuvent pas être modifiées. Supprimez la ligne et ajoutez-la à nouveau pour la modifier.</value></data>
+  <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>Fichier trop volumineux. La taille maximale est de {0} Mo.</value></data>
+  <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>Le nom du fichier doit comporter au maximum {0} caractères.</value></data>
+  <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Type de fichier non pris en charge. Téléversez un fichier PDF, JPEG, PNG ou HEIC.</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Seule la personne qui a déposé le rapport peut le soumettre.</value></data>
+  <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>Le rapport doit comporter au moins une ligne.</value></data>
+  <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Les lignes de reçu et de facture doivent avoir une pièce jointe avant l’envoi.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>La personne qui soumet le rapport doit avoir un IBAN enregistré dans son profil.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>La personne qui soumet le rapport doit avoir ses nom et prénom renseignés dans son profil.</value></data>
+  <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>Impossible de soumettre le rapport. Il n’est peut-être plus à l’état de brouillon.</value></data>
+  <data name="Expenses_Validation_SubmissionFailed" xml:space="preserve"><value>Échec de l’envoi</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Seule la personne qui a déposé le rapport peut le retirer.</value></data>
+  <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Échec du retrait</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Seule la personne qui a déposé le rapport peut modifier ce rapport.</value></data>
+  <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Ce rapport ne peut pas être modifié lorsqu’il est au statut {0}.</value></data>
 </root>

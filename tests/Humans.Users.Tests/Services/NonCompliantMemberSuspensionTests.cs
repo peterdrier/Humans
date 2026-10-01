@@ -1,3 +1,4 @@
+using Xunit;
 using Humans.GoogleIntegration.Contracts;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -185,6 +186,29 @@ public class NonCompliantMemberSuspensionTests : IDisposable
                 && m.HtmlBody.Contains("consent", StringComparison.Ordinal)
                 && m.Subject.EndsWith("#en", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ExecuteAsync_LocalizesSuspensionNoticeAndEmailReasonForMember()
+    {
+        var user = SetupUser();
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
+            { [user.Id] = user.ToUserInfo() with { PreferredLanguage = "de" } }));
+        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<Guid> { user.Id });
+        StubSuspendSucceeds([user.Id]);
+
+        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var args = _notificationService.ReceivedCalls().Single().GetArguments();
+        Assert.Equal("Dein Konto wurde gesperrt", args[3]);
+        Assert.Equal("Dein Zugang ist gesperrt, bis du die erforderlichen rechtlichen Einwilligungen abschließt.", args[5]);
+        Assert.Equal("/Consent", args[6]);
+        Assert.Equal("Erforderliche Einwilligungen prüfen", args[7]);
+        var email = Assert.IsType<EmailMessage>(_emailService.ReceivedCalls().Single().GetArguments()[0]);
+        Assert.Contains("Erforderliche Einwilligung fehlt (Nachfrist abgelaufen)", email.HtmlBody, StringComparison.Ordinal);
+        Assert.EndsWith("#de", email.Subject, StringComparison.Ordinal);
     }
 
     [HumansFact]

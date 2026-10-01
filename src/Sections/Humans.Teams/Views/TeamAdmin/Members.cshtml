@@ -237,7 +237,7 @@
                                                        placeholder="username" required style="max-width: 120px;" />
                                                 <span class="input-group-text">@@nobodies.team</span>
                                                 <button type="submit" class="btn btn-sm btn-outline-primary"
-                                                        data-confirm="Provision a new @@nobodies.team account for @member.DisplayName?">
+                                                        data-confirm="Provision a new @@nobodies.team account?">
                                                     <i class="fa-solid fa-plus"></i>
                                                 </button>
                                             </div>
@@ -325,7 +325,7 @@ else
                         <div class="card-body py-2">
                             <strong>This action will be recorded:</strong>
                             <em id="sensitiveAuditPreview">
-                                @Model.ActorDisplayName granting <span id="sensitiveTargetName">this human</span> access to @Model.TeamName on @DateTime.UtcNow.ToDate() at @DateTime.UtcNow.ToTime() UTC
+                                <vc:human user-id="@Model.ActorUserId" link="Admin" /> granting <span id="sensitiveTargetName">this human</span> access to @Model.TeamName
                             </em>
                         </div>
                     </div>

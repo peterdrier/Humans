@@ -1,3 +1,5 @@
+using NodaTime;
+
 namespace Humans.GoogleIntegration.Services.Workspace;
 
 /// <summary>
@@ -8,7 +10,9 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 /// <see cref="Humans.GoogleIntegration.Services.GoogleWorkspaceUserService"/>
 /// runs against this stub — there is no separate stub service.
 /// </summary>
-internal sealed class StubWorkspaceUserDirectoryClient(ILogger<StubWorkspaceUserDirectoryClient> logger)
+internal sealed class StubWorkspaceUserDirectoryClient(
+    ILogger<StubWorkspaceUserDirectoryClient> logger,
+    IClock clock)
     : IWorkspaceUserDirectoryClient
 {
     private readonly List<WorkspaceUserAccount> _accounts =
@@ -53,7 +57,7 @@ internal sealed class StubWorkspaceUserDirectoryClient(ILogger<StubWorkspaceUser
     {
         logger.LogInformation("[Stub] Provisioned fake account: {Email}", primaryEmail);
         var account = new WorkspaceUserAccount(
-            primaryEmail, firstName, lastName, false, DateTime.UtcNow, null,
+            primaryEmail, firstName, lastName, false, clock.GetCurrentInstant().ToDateTimeUtc(), null,
             IsEnrolledIn2Sv: false,
             RecoveryEmail: recoveryEmail);
         _accounts.Add(account);

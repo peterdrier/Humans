@@ -11,6 +11,7 @@ using Humans.Teams.Contracts;
 using Humans.Expenses.Services.Dtos;
 using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 using System.Globalization;
 using Humans.Expenses.Contracts;
@@ -21,9 +22,8 @@ using Humans.Users.Contracts;
 namespace Humans.Expenses.Services;
 
 /// <summary>
-/// Application-layer orchestrator for Expense Reports. Coordinates
-/// <see cref="IExpenseRepository"/>, audit logging, IBAN snapshots, and
-/// cross-section reads via interfaces — never imports EF Core directly.
+/// Expenses' application service: the report state machine over the section's repository,
+/// plus the Holded outbox drain and the GDPR export contributor.
 /// </summary>
 [CrossSectionWrite("Writes the reimbursement IBAN onto the claimant profile.")]
 internal sealed class ExpenseReportService(
@@ -40,7 +40,8 @@ internal sealed class ExpenseReportService(
     IHoldedFinanceService holdedFinance,
     IClock clock,
     ILogger<ExpenseReportService> logger,
-    IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportService,
+    IOptions<TravelReimbursementConfig> travelConfig,
+    IStringLocalizer<ExpensesResource> localizer) : IExpenseReportService,
         IExpenseReportBackgroundProcessor, IUserDataContributor
 {
     internal const string ExpenseReports = "ExpenseReports";
@@ -311,10 +312,10 @@ internal sealed class ExpenseReportService(
         if (IsPendingApproval(report.Status))
         {
             var snapshot = await budgetService.GetCategoryByIdAsync(budgetCategoryId)
-                ?? throw new ExpenseValidationException("Category not found.");
+                ?? throw new ExpenseValidationException(localizer["Expenses_Validation_CategoryNotFound"]);
             if (snapshot.BudgetGroup?.BudgetYearId != report.BudgetYearId)
                 throw new ExpenseValidationException(
-                    "That category belongs to a different budget year than this report.");
+                    localizer["Expenses_Validation_CategoryDifferentBudgetYear"]);
             categoryName = snapshot.Name;
             budgetYearId = report.BudgetYearId;
         }
@@ -351,7 +352,7 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
         Guid budgetCategoryId, string? note,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             await UpdateDraftAsync(reportId, actorUserId, actorIsFinanceAdmin, budgetCategoryId, note, ct);
             return ExpenseMutationResult.Success;
@@ -385,11 +386,11 @@ internal sealed class ExpenseReportService(
         {
             // A proof row is a Receipt backing an Invoice line on the same report. One level only.
             if (lineType != ExpenseLineType.Receipt)
-                throw new ExpenseValidationException("Proof rows must be receipt lines.");
+                throw new ExpenseValidationException(localizer["Expenses_Validation_ProofRowsMustBeReceipts"]);
             var parent = report.Lines.FirstOrDefault(l => l.Id == parentId)
-                ?? throw new ExpenseValidationException("Parent line not found on this report.");
+                ?? throw new ExpenseValidationException(localizer["Expenses_Validation_ParentLineNotFound"]);
             if (parent.LineType != ExpenseLineType.Invoice)
-                throw new ExpenseValidationException("Proof rows can only be added to an invoice line.");
+                throw new ExpenseValidationException(localizer["Expenses_Validation_ProofRowsRequireInvoice"]);
         }
 
         var line = new ExpenseLine
@@ -420,7 +421,7 @@ internal sealed class ExpenseReportService(
             // Travel lines are computed and can no longer be created; this path takes free-text
             // amounts, so it accepts only the receipt-backed types.
             if (lineType is not (ExpenseLineType.Receipt or ExpenseLineType.Invoice))
-                throw new ExpenseValidationException("Only receipt and invoice lines can be added.");
+                throw new ExpenseValidationException(localizer["Expenses_Validation_OnlyReceiptAndInvoiceLines"]);
             // Validate the file before creating anything, so a bad upload leaves no half-made line.
             if (file is not null)
                 ValidateAttachmentUpload(file.FileName, file.ContentType, file.Content);
@@ -446,7 +447,16 @@ internal sealed class ExpenseReportService(
                 $"Added {(parentLineId is null ? "line" : "proof row")} \"{description}\" €{amount}", ct);
             return new ExpenseAddLineResult(true, null, lineId);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (ExpenseValidationException ex)
+        {
+            logger.LogWarning("Error adding line to report {ReportId}: {Reason}", reportId, ex.Message);
+            return new ExpenseAddLineResult(false, ex.Message, null);
+        }
+        catch (UnauthorizedAccessException ex)
         {
             logger.LogWarning("Error adding line to report {ReportId}: {Reason}", reportId, ex.Message);
             return new ExpenseAddLineResult(false, ex.Message, null);
@@ -454,7 +464,7 @@ internal sealed class ExpenseReportService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error adding line to report {ReportId}", reportId);
-            return new ExpenseAddLineResult(false, ex.Message, null);
+            return new ExpenseAddLineResult(false, null, null);
         }
     }
 
@@ -462,7 +472,7 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid submitterUserId,
         string origin, string destination, decimal km,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var rate = _travel.MileageRatePerKm;
             var amount = Math.Round(km * rate, 2, MidpointRounding.AwayFromZero);
@@ -479,7 +489,7 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid submitterUserId,
         PerDiemKind kind, int days, string? note,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var rate = kind == PerDiemKind.Overnight ? _travel.PerDiemOvernightRate : _travel.PerDiemDayTripRate;
             var amount = Math.Round(days * rate, 2, MidpointRounding.AwayFromZero);
@@ -503,14 +513,14 @@ internal sealed class ExpenseReportService(
         var report = await RequireEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
 
         var existing = report.Lines.FirstOrDefault(l => l.Id == lineId)
-            ?? throw new UnauthorizedAccessException("Line does not belong to the specified report.");
+            ?? throw new UnauthorizedAccessException(localizer["Expenses_Validation_LineNotOnReport"]);
         // Travel lines carry computed amounts (mileage km×rate, per-diem days×rate) and waive the
         // receipt requirement on that basis. A free-text amount/description edit here would let a
         // submitter claim an arbitrary unreceipted amount on a Mileage/PerDiem line. To change one,
         // remove it and re-add so the amount is always recomputed from its inputs.
         if (existing.LineType is ExpenseLineType.Mileage or ExpenseLineType.PerDiem)
             throw new ExpenseValidationException(
-                "Travel lines are computed from their inputs and cannot be edited. Remove the line and add it again to change it.");
+                localizer["Expenses_Validation_TravelLinesComputedCannotEdit"]);
 
         var line = new ExpenseLine
         {
@@ -530,7 +540,7 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
         Guid lineId, string description, decimal amount,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             await UpdateLineAsync(reportId, actorUserId, actorIsFinanceAdmin, lineId, description, amount, ct);
             return ExpenseMutationResult.Success;
@@ -574,30 +584,37 @@ internal sealed class ExpenseReportService(
     public Task<ExpenseMutationResult> RemoveLineWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             await RemoveLineAsync(reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
             return ExpenseMutationResult.Success;
         }, "Error removing line {LineId} from report {ReportId}", null, lineId, reportId);
 
     private const long AttachmentMaxBytes = 20 * 1024 * 1024;
+    private const int AttachmentFileNameMaxLength = 255;
 
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "application/pdf", "image/jpeg", "image/jpg", "image/png", "image/heic"
     };
 
-    private static void ValidateAttachmentUpload(
+    private string ValidateAttachmentUpload(
         string originalFileName, string contentType, Stream content)
     {
         if (content is null || content.Length == 0)
-            throw new ExpenseValidationException("Please select a file.");
+            throw new ExpenseValidationException(localizer["Expenses_Flash_SelectFile"]);
         if (content.Length > AttachmentMaxBytes)
-            throw new ExpenseValidationException($"File too large. Maximum size is {AttachmentMaxBytes / (1024 * 1024)} MB.");
+            throw new ExpenseValidationException(localizer["Expenses_Validation_FileTooLarge", AttachmentMaxBytes / (1024 * 1024)]);
 
-        var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
+        var fileName = Path.GetFileName(originalFileName);
+        if (fileName.Length > AttachmentFileNameMaxLength)
+            throw new ExpenseValidationException(localizer["Expenses_Validation_FilenameTooLong", AttachmentFileNameMaxLength]);
+
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
         if (!AllowedContentTypes.Contains(contentType) || !AllowedExtensions.Contains(extension))
-            throw new ExpenseValidationException("Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.");
+            throw new ExpenseValidationException(localizer["Expenses_Validation_UnsupportedFileType"]);
+
+        return extension;
     }
 
     internal async Task<Guid> AttachFileToLineAsync(
@@ -605,13 +622,12 @@ internal sealed class ExpenseReportService(
         Guid lineId, string originalFileName, string contentType,
         Stream content, CancellationToken ct = default)
     {
-        ValidateAttachmentUpload(originalFileName, contentType, content);
-        var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
+        var extension = ValidateAttachmentUpload(originalFileName, contentType, content);
 
         var report = await RequireEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
 
         var line = report.Lines.FirstOrDefault(l => l.Id == lineId)
-            ?? throw new UnauthorizedAccessException("Line does not belong to the specified report.");
+            ?? throw new UnauthorizedAccessException(localizer["Expenses_Validation_LineNotOnReport"]);
         var previousAttachmentId = line.AttachmentId;
 
         var attachmentId = Guid.NewGuid();
@@ -685,7 +701,7 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
         Guid lineId, string originalFileName, string contentType,
         Stream content, CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             await AttachFileToLineAsync(
                 reportId, actorUserId, actorIsFinanceAdmin, lineId, originalFileName, contentType, content, ct);
@@ -700,7 +716,7 @@ internal sealed class ExpenseReportService(
 
         var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
         if (line is null)
-            throw new UnauthorizedAccessException("Line does not belong to the specified report.");
+            throw new UnauthorizedAccessException(localizer["Expenses_Validation_LineNotOnReport"]);
 
         if (line.Attachment is null) return; // idempotent
 
@@ -734,29 +750,29 @@ internal sealed class ExpenseReportService(
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return false;
         if (!actorIsFinanceAdmin && report.SubmitterUserId != actorUserId)
-            throw new UnauthorizedAccessException("Only the submitter can submit.");
+            throw new UnauthorizedAccessException(localizer["Expenses_Validation_OnlySubmitterCanSubmit"]);
         if (report.Status != ExpenseReportStatus.Draft) return false;
 
         if (!report.Lines.Any())
-            throw new ExpenseValidationException("Report must have at least one line.");
+            throw new ExpenseValidationException(localizer["Expenses_Validation_ReportNeedsLine"]);
 
         // Receipt lines (proof rows included) need their receipt; invoice lines need the invoice file.
         if (report.Lines.Any(l => l.LineType is ExpenseLineType.Receipt or ExpenseLineType.Invoice
                                   && l.AttachmentId is null))
-            throw new ExpenseValidationException("Receipt and invoice lines must have an attachment before submitting.");
+            throw new ExpenseValidationException(localizer["Expenses_Validation_ReceiptInvoiceNeedAttachment"]);
 
         // The payee is whoever the report belongs to — never the person pressing Submit. An admin
         // submitting on a member's behalf must snapshot the *member's* IBAN and legal name, or the
         // money goes to the wrong account.
         var profile = (await userService.GetUserInfoAsync(report.SubmitterUserId, ct))?.Profile;
         if (profile?.Iban is null)
-            throw new ExpenseValidationException("Submitter must have an IBAN set on their profile.");
+            throw new ExpenseValidationException(localizer["Expenses_Validation_SubmitterNeedsIban"]);
 
         // Financial records use legal name (not BurnerName). See memory/architecture/burnername-is-the-display-name.md.
         var legalName = $"{profile.FirstName} {profile.LastName}".Trim();
         if (string.IsNullOrWhiteSpace(legalName))
         {
-            throw new ExpenseValidationException("Submitter must have first and last name set on their profile.");
+            throw new ExpenseValidationException(localizer["Expenses_Validation_SubmitterNeedsFirstAndLastName"]);
         }
         var payeeIban = profile.Iban;
 
@@ -779,13 +795,13 @@ internal sealed class ExpenseReportService(
 
     public Task<ExpenseMutationResult> SubmitWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var submitted = await SubmitAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
             return submitted
                 ? ExpenseMutationResult.Success
-                : ExpenseMutationResult.Failure("Could not submit the report. Receipt lines need an attachment and your payment IBAN must be set.");
-        }, "Error submitting expense report {ReportId}", "Submission failed", reportId);
+                : ExpenseMutationResult.Failure(localizer["Expenses_Validation_CouldNotSubmitReport"]);
+        }, "Error submitting expense report {ReportId}", localizer["Expenses_Validation_SubmissionFailed"], reportId);
 
     internal async Task<bool> WithdrawAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default)
@@ -793,7 +809,7 @@ internal sealed class ExpenseReportService(
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return false;
         if (report.SubmitterUserId != submitterUserId)
-            throw new UnauthorizedAccessException("Only the submitter can withdraw.");
+            throw new UnauthorizedAccessException(localizer["Expenses_Validation_OnlySubmitterCanWithdraw"]);
 
         var now = clock.GetCurrentInstant();
         var ok = await repo.WithdrawAsync(reportId, now, ct);
@@ -809,26 +825,26 @@ internal sealed class ExpenseReportService(
     }
     public Task<ExpenseMutationResult> WithdrawWithResultAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var withdrawn = await WithdrawAsync(reportId, submitterUserId, ct);
             return withdrawn
                 ? ExpenseMutationResult.Success
-                : ExpenseMutationResult.Failure("Could not withdraw this report.");
-        }, "Error withdrawing expense report {ReportId}", "Withdrawal failed", reportId);
+                : ExpenseMutationResult.Failure(localizer["Expenses_Flash_WithdrawFailed"]);
+        }, "Error withdrawing expense report {ReportId}", localizer["Expenses_Validation_WithdrawalFailed"], reportId);
 
     public async Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
         Guid reportId, Guid actorUserId, string? iban, CancellationToken ct = default)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null)
-            return IbanFailure("Report not found.", isValidationError: false);
+            return IbanFailure("Expenses_Iban_ReportNotFound", isValidationError: false);
         var submitterUserId = report.SubmitterUserId;
 
         var ibanValue = string.IsNullOrWhiteSpace(iban) ? null : iban.Trim();
 
         if (ibanValue is not null && !IbanValidator.IsValid(ibanValue))
-            return IbanFailure("Invalid IBAN format.", isValidationError: true);
+            return IbanFailure("Expenses_Iban_InvalidFormat", isValidationError: true);
 
         var normalized = ibanValue is null ? null : IbanValidator.Normalize(ibanValue);
 
@@ -840,14 +856,14 @@ internal sealed class ExpenseReportService(
         var snapshotIsLive = IsPendingApproval(report.Status);
         if (normalized is null && snapshotIsLive)
             return IbanFailure(
-                "This report is awaiting payment and needs an IBAN. Replace it instead of removing it.",
+                "Expenses_Iban_RequiredForPendingReport",
                 isValidationError: true);
 
         try
         {
             var saved = await userService.SetProfileIbanAsync(submitterUserId, normalized, ct);
             if (!saved)
-                return IbanFailure("Failed to save IBAN.", isValidationError: false);
+                return IbanFailure("Expenses_Iban_SaveFailed", isValidationError: false);
 
             if (snapshotIsLive)
                 await RefreshPayeeIbanSnapshotAsync(report, actorUserId, normalized!, ct);
@@ -873,17 +889,21 @@ internal sealed class ExpenseReportService(
             return new ExpenseIbanSaveResult(
                 Succeeded: true,
                 IsValidationError: false,
-                Message: normalized is null ? "IBAN removed." : "IBAN saved.");
+                MessageKey: normalized is null ? "Expenses_Iban_Removed" : "Expenses_Iban_Saved");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error setting IBAN for user {UserId}", submitterUserId);
-            return IbanFailure("Failed to save IBAN.", isValidationError: false);
+            return IbanFailure("Expenses_Iban_SaveFailed", isValidationError: false);
         }
     }
 
-    private static ExpenseIbanSaveResult IbanFailure(string message, bool isValidationError) =>
-        new(Succeeded: false, IsValidationError: isValidationError, Message: message);
+    private static ExpenseIbanSaveResult IbanFailure(string messageKey, bool isValidationError) =>
+        new(Succeeded: false, IsValidationError: isValidationError, MessageKey: messageKey);
 
     /// <summary>
     /// Submitted but not yet approved — the window where a report is real enough to have a payee
@@ -954,6 +974,7 @@ internal sealed class ExpenseReportService(
     }
 
     private async Task<ExpenseMutationResult> RunMutationAsync(
+        CancellationToken ct,
         Func<Task<ExpenseMutationResult>> mutation,
         string logMessage,
         string? exceptionPrefix,
@@ -963,7 +984,11 @@ internal sealed class ExpenseReportService(
         {
             return await mutation();
         }
-        catch (ExpenseValidationException ex)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is ExpenseValidationException or UnauthorizedAccessException)
         {
             // Expected, user-driven rejection — log at Warning with no stack trace so it doesn't
             // pollute the Error log, but keep the caller's structured identifiers (report/line IDs)
@@ -976,20 +1001,21 @@ internal sealed class ExpenseReportService(
         catch (Exception ex)
         {
             logger.LogError(ex, logMessage, logArgs);
-            return ExpenseMutationResult.Failure(exceptionPrefix is null
-                ? ex.Message
-                : $"{exceptionPrefix}: {ex.Message}");
+            // Unexpected diagnostics belong in the log; controllers supply the
+            // localized fallback for a failed mutation with no validation detail.
+            return new ExpenseMutationResult(Succeeded: false, ErrorMessage: null);
         }
     }
 
     internal async Task<bool> CoordinatorEndorseAsync(
-        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
         CancellationToken ct = default)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return false;
 
-        await RequireCoordinatorForCategoryAsync(report.BudgetCategoryId, coordinatorUserId, ct);
+        if (!actorIsFinanceAdmin)
+            await RequireCoordinatorForCategoryAsync(report.BudgetCategoryId, coordinatorUserId, ct);
 
         var now = clock.GetCurrentInstant();
         var ok = await repo.CoordinatorEndorseAsync(reportId, coordinatorUserId, maxAmount, now, ct);
@@ -998,7 +1024,8 @@ internal sealed class ExpenseReportService(
         await auditLogService.LogAsync(
             AuditAction.ExpenseEndorse,
             AuditEntityTypes.Report, reportId,
-            "Coordinator endorsed expense report." + MaxAmountDetail(maxAmount),
+            (actorIsFinanceAdmin ? "Finance admin" : "Coordinator")
+                + " endorsed expense report." + MaxAmountDetail(maxAmount),
             coordinatorUserId);
 
         return true;
@@ -1011,24 +1038,25 @@ internal sealed class ExpenseReportService(
             : "";
 
     public Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
-            var endorsed = await CoordinatorEndorseAsync(reportId, coordinatorUserId, maxAmount, ct);
+            var endorsed = await CoordinatorEndorseAsync(reportId, coordinatorUserId, actorIsFinanceAdmin, maxAmount, ct);
             return endorsed
                 ? ExpenseMutationResult.Success
                 : ExpenseMutationResult.Failure("Could not endorse the report. It may no longer be in Submitted status.");
         }, "Error endorsing expense report {ReportId}", "Endorsement failed", reportId);
 
     internal async Task<bool> CoordinatorRejectAsync(
-        Guid reportId, Guid coordinatorUserId, string reason,
+        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
         CancellationToken ct = default)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return false;
 
-        await RequireCoordinatorForCategoryAsync(report.BudgetCategoryId, coordinatorUserId, ct);
+        if (!actorIsFinanceAdmin)
+            await RequireCoordinatorForCategoryAsync(report.BudgetCategoryId, coordinatorUserId, ct);
 
         var now = clock.GetCurrentInstant();
         var ok = await repo.CoordinatorRejectAsync(reportId, coordinatorUserId, reason, now, ct);
@@ -1037,18 +1065,18 @@ internal sealed class ExpenseReportService(
         await auditLogService.LogAsync(
             AuditAction.ExpenseCoordinatorReject,
             AuditEntityTypes.Report, reportId,
-            $"Coordinator rejected expense report: {reason}",
+            $"{(actorIsFinanceAdmin ? "Finance admin" : "Coordinator")} rejected expense report: {reason}",
             coordinatorUserId);
 
         return true;
     }
 
     public Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, string reason,
+        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
-            var rejected = await CoordinatorRejectAsync(reportId, coordinatorUserId, reason, ct);
+            var rejected = await CoordinatorRejectAsync(reportId, coordinatorUserId, actorIsFinanceAdmin, reason, ct);
             return rejected
                 ? ExpenseMutationResult.Success
                 : ExpenseMutationResult.Failure("Could not reject the report. It may no longer be in Submitted status.");
@@ -1082,7 +1110,16 @@ internal sealed class ExpenseReportService(
                 actorUserId);
         }
 
-        await SendApprovedEmailAsync(reportId, ct);
+        // The approval is committed and its Holded push queued; a failed notice must not
+        // report it as a failed approval.
+        try
+        {
+            await SendApprovedEmailAsync(reportId, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Expense report {ReportId} approved but the approval email failed", reportId);
+        }
 
         return true;
     }
@@ -1117,7 +1154,7 @@ internal sealed class ExpenseReportService(
     public Task<ExpenseMutationResult> ApproveWithResultAsync(
         Guid reportId, Guid actorUserId, Guid? overrideCategoryId, decimal? maxAmount,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var approved = await ApproveAsync(reportId, actorUserId, overrideCategoryId, maxAmount, ct);
             return approved
@@ -1148,7 +1185,7 @@ internal sealed class ExpenseReportService(
     public Task<ExpenseMutationResult> FinanceRejectWithResultAsync(
         Guid reportId, Guid actorUserId, string reason,
         CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var rejected = await FinanceRejectAsync(reportId, actorUserId, reason, ct);
             return rejected
@@ -1156,8 +1193,8 @@ internal sealed class ExpenseReportService(
                 : ExpenseMutationResult.Failure("Could not reject the report. It may not be in a rejectable status.");
         }, "Error finance-rejecting expense report {ReportId}", "Rejection failed", reportId);
 
-    public Task<int> CountFailedHoldedPushesAsync(CancellationToken ct = default)
-        => repo.CountFailedOutboxAsync(ct);
+    public Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(CancellationToken ct = default)
+        => repo.GetFailedOutboxReportIdsAsync(ct);
 
     internal async Task<bool> RequeueHoldedPushAsync(
         Guid reportId, Guid actorUserId, CancellationToken ct = default)
@@ -1176,7 +1213,7 @@ internal sealed class ExpenseReportService(
 
     public Task<ExpenseMutationResult> RequeueHoldedPushWithResultAsync(
         Guid reportId, Guid actorUserId, CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        RunMutationAsync(ct, async () =>
         {
             var requeued = await RequeueHoldedPushAsync(reportId, actorUserId, ct);
             return requeued
@@ -1593,9 +1630,9 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct)
     {
         var report = await repo.GetByIdAsync(reportId, ct)
-            ?? throw new ExpenseValidationException("Report not found.");
+            ?? throw new ExpenseValidationException(localizer["Expenses_Iban_ReportNotFound"]);
         if (!actorIsFinanceAdmin && report.SubmitterUserId != actorUserId)
-            throw new UnauthorizedAccessException("Only the submitter can edit this report.");
+            throw new UnauthorizedAccessException(localizer["Expenses_Validation_OnlySubmitterCanEdit"]);
 
         var editable = actorIsFinanceAdmin
             ? report.Status is ExpenseReportStatus.Draft
@@ -1604,7 +1641,7 @@ internal sealed class ExpenseReportService(
             : report.Status is ExpenseReportStatus.Draft;
         if (!editable)
             throw new ExpenseValidationException(
-                $"This report cannot be edited when it is in status {report.Status}.");
+                localizer["Expenses_Validation_ReportCannotBeEditedInStatus", localizer.EnumDisplay(report.Status)]);
         return report;
     }
 

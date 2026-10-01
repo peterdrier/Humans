@@ -181,6 +181,20 @@ public class OnboardingReviewControllerTests
     }
 
     [HumansFact]
+    public async Task BulkClear_CancelledRequest_PropagatesCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        _onboarding.BulkClearConsentChecksAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), _reviewerId, cancellation.Token)
+            .Returns(Task.FromException<BulkOnboardingResult>(new OperationCanceledException(cancellation.Token)));
+
+        var act = () => BuildSut().BulkClear([_subjectId], cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task Reject_WithNoSignedInUser_DoesNotReachTheService()
     {
         var ctrl = BuildSut(signedIn: false);

@@ -1,0 +1,48 @@
+@using Microsoft.AspNetCore.Html
+@model IReadOnlyList<PaymentMethodRepairRow>
+@{
+    ViewData["Title"] = "Store payment method repair";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Store payment method repair</h1>
+    <div class="btn-group">
+        <a asp-action="Payments" class="btn btn-outline-secondary">Payments</a>
+        <a asp-controller="Store" asp-action="Index" class="btn btn-outline-secondary">Back to Store</a>
+    </div>
+</div>
+
+<p class="text-muted">
+    Payment methods are moving from an int column to a string one. New payments write both; every
+    payment listed below predates the string column and has its method copied across on confirm.
+</p>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-success">Every payment has its string method set.</div>
+}
+else
+{
+    <form asp-action="RepairPaymentMethods" method="post" class="mb-3">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-warning"
+                data-confirm="Copy the method into the string column on @Model.Count payment(s)?">
+            Copy method on @Model.Count payment(s)
+        </button>
+    </form>
+
+    Func<PaymentMethodRepairRow, IHtmlContent> orderCell = @<text>
+        <a asp-controller="Store" asp-action="Order" asp-route-id="@item.OrderId"><code>@item.OrderId</code></a>
+    </text>;
+    Func<PaymentMethodRepairRow, IHtmlContent> methodCell = @<text>@item.Method</text>;
+    Func<PaymentMethodRepairRow, IHtmlContent> amountCell = @<text>@item.AmountEur.ToEuro()</text>;
+    Func<PaymentMethodRepairRow, IHtmlContent> receivedCell = @<text>@item.ReceivedAt.ToInvariantTimestamp() UTC</text>;
+    var rows = Model.OrderBy(row => row.ReceivedAt).ToList();
+    var table = TableModel.For(rows)
+        .Template("Order", orderCell)
+        .Template("Method", methodCell)
+        .Template("Amount", amountCell)
+        .Template("Received", receivedCell)
+        .Build();
+    <partial name="_Table" model="table" />
+}

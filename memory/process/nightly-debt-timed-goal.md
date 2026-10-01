@@ -1,6 +1,6 @@
 ---
 name: Nightly debt runs use the whole work window
-description: Nightly debt work prioritizes production-code fixes, uses tests only to support fixes, uses the full timed goal, and publishes one PR.
+description: Nightly debt work uses Sol with optional Luna helpers, batches simple corrections, prioritizes production fixes, and uses the full timed goal.
 ---
 
 Work actively for the full configured window, then finish the current task
@@ -23,6 +23,23 @@ candidates. Counts describe the result; they never determine when to stop.
 **Production work first:** Standalone coverage, controller-policy pins, test
 scaffolding, and test cleanup are never sweep objectives. Add or update focused
 tests when a production-code fix warrants them, as part of that fix; prefer
-existing coverage when sufficient. Never weaken checks. Run scoped validation
-per change and the full non-integration suite once in the final wrapper gate,
+existing coverage when sufficient. Never weaken checks. Batch simple, verified
+instances of the same correction into one coherent commit; validate all affected sections and applicable rung
+checks once per completed batch. Keep complex or approval-dependent changes
+separate. Freeze membership before editing and stop adding candidates at the
+deadline. Run the full non-integration suite once in the final wrapper gate,
 not repeatedly per commit. Test-only work cannot qualify a run for publication.
+
+**Model routing:** Require Codex CLI 0.159.2 or newer. Default to
+`gpt-6.1-sol` / medium for the coordinator.
+Optional `gpt-6-luna` / medium helpers get narrow, fresh-context briefs for
+bounded discovery, localization, or decided mechanical edits. The coordinator
+verifies findings, reviews edits, and owns builds/tests, Git, and the goal.
+Keep helper edits disjoint and finish them before validation; use direct work
+when delegation adds overhead or is unavailable.
+
+**Spend visibility:** After creating the PR, post the Codex spend skill report
+using recorded, explicit cleanup and gate-repair session IDs. Include linked
+subagents; never infer the run from the reporting chat's current session. Keep
+repair breakdowns separate. Label costs as Standard API equivalents, not actual
+subscription charges. Reporting failure must not block fix publication.

@@ -472,6 +472,10 @@ internal sealed class CampaignService(
                     BuildCampaignCodeRequest(campaign, user, recipientEmail, code.Code, grant.Id)),
                     ct);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex,
@@ -499,6 +503,10 @@ internal sealed class CampaignService(
                 grantedUserIds,
                 body: "Check your email for your campaign code.",
                 cancellationToken: ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -637,6 +645,10 @@ internal sealed class CampaignService(
                         user, recipientEmail, grant.CodeString, grant.GrantId, campaignId)),
                     ct);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex,
@@ -660,18 +672,9 @@ internal sealed class CampaignService(
 
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
         Campaign campaign, UserInfo user, string recipientEmail, string code, Guid grantId)
-    {
-        return new CampaignCodeEmailRequest(
-            UserId: user.Id,
-            CampaignGrantId: grantId,
-            CampaignId: campaign.Id,
-            RecipientEmail: recipientEmail,
-            RecipientName: user.BurnerName,
-            Subject: campaign.EmailSubject,
-            MarkdownBody: campaign.EmailBodyTemplate,
-            Code: code,
-            ReplyTo: campaign.ReplyToAddress);
-    }
+        => BuildCampaignCodeRequest(
+            campaign.EmailSubject, campaign.EmailBodyTemplate, campaign.ReplyToAddress,
+            user, recipientEmail, code, grantId, campaign.Id);
 
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
         string emailSubject, string emailBody, string? replyToAddress,

@@ -20,10 +20,11 @@
 # diff-mode.sh test 7 already covers read-only verification by hand; this
 # flag exists for scripting a preview of what this script would change).
 #
-# Exit code is always 0 — this is sweep hygiene, not a CI gate (per the
+# Findings exit 0 — this is sweep hygiene, not a CI gate (per the
 # issue's Problem/Motivation: "a dead trigger glob doesn't break anything at
 # runtime ... caught and repaired by the sweep itself, not gated in CI").
-# Callers read stdout, not the exit code.
+# Callers read stdout for findings. Operational failure to read the catalog
+# or enumerate its docs exits nonzero rather than reporting a clean scan.
 #
 # Output, one line per finding:
 #   REPAIRED <doc> | <old> -> <new>
@@ -35,6 +36,8 @@
 # Phase 4 unions FORCE-DIRTY docs into its dirty list regardless of whether
 # anything in the diff window matches — an unresolved dead trigger means the
 # doc needs a human-legible review this run, not silent skipping.
+# Failed target searches or file replacements remain UNRESOLVED; only
+# successful writes (or proposed --check repairs) count as REPAIRED.
 
 set -uo pipefail  # deliberately no -e: one bad doc must not silence the rest
                    # (docs/freshness/last-report.md, 2026-08-18 sweep — "the
@@ -76,14 +79,14 @@ resolve_target() {
       suffix="${glob#"$prefix"}"
       seg="${prefix%/}"; seg="${seg##*/}"
       [ -z "$seg" ] && return
-      hits=$(find src -type d -name "$seg" -not -path '*/obj/*' -not -path '*/bin/*' 2>/dev/null)
+      hits=$(find src -type d -name "$seg" -not -path '*/obj/*' -not -path '*/bin/*' 2>/dev/null) || return
       n=$(printf '%s\n' "$hits" | sed '/^$/d' | wc -l)
       [ "$n" -ne 1 ] && return
       echo "${hits}/${suffix}"
       ;;
     *)
       base="${glob##*/}"
-      hits=$(find src -name "$base" -not -path '*/obj/*' -not -path '*/bin/*' 2>/dev/null)
+      hits=$(find src -name "$base" -not -path '*/obj/*' -not -path '*/bin/*' 2>/dev/null) || return
       n=$(printf '%s\n' "$hits" | sed '/^$/d' | wc -l)
       [ "$n" -ne 1 ] && return
       echo "$hits"
@@ -112,7 +115,9 @@ repair_line() {
       }
       print line
     }
-  ' "$file" > "$file.verify-triggers.tmp" && mv "$file.verify-triggers.tmp" "$file"
+  ' "$file" > "$file.verify-triggers.tmp" && mv "$file.verify-triggers.tmp" "$file" && return 0
+  rm -f "$file.verify-triggers.tmp"
+  return 1
 }
 
 repaired=0
@@ -124,19 +129,25 @@ declare -A dirty_docs
 dirty_docs["__seed__"]=1
 unset "dirty_docs[__seed__]"
 
-for f in $(editorial_docs); do
-  triggers=$(doc_trigger_lines "$f")
+if ! docs=$(editorial_docs); then
+  echo "ERROR: could not enumerate editorial docs; no trigger repairs attempted." >&2
+  exit 1
+fi
+for f in $docs; do
+  if ! triggers=$(doc_trigger_lines "$f"); then
+    echo "UNRESOLVED $f | could not read triggers"
+    unresolved=$((unresolved + 1))
+    dirty_docs["$f"]=1
+    continue
+  fi
   [ -z "$triggers" ] && continue
   while IFS= read -r glob; do
     [ -z "$glob" ] && continue
     if trigger_is_dead "$glob"; then
-      target=$(resolve_target "$glob")
-      if [ -n "$target" ]; then
+      if target=$(resolve_target "$glob") && [ -n "$target" ] &&
+          { [ "$MODE" = "check" ] || repair_line "$f" "$glob" "$target"; }; then
         echo "REPAIRED $f | $glob -> $target"
         repaired=$((repaired + 1))
-        if [ "$MODE" = "repair" ]; then
-          repair_line "$f" "$glob" "$target"
-        fi
       else
         echo "UNRESOLVED $f | $glob"
         unresolved=$((unresolved + 1))

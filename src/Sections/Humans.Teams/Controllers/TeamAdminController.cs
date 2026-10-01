@@ -124,7 +124,6 @@ internal sealed class TeamAdminController(
                 return new TeamMemberViewModel
                 {
                     UserId = m.UserId,
-                    DisplayName = m.DisplayName,
                     Email = m.Email ?? "",
                     Role = m.Role,
                     JoinedAt = m.JoinedAt.ToDateTimeUtc(),
@@ -182,7 +181,7 @@ internal sealed class TeamAdminController(
             ParentDepartmentName = parentDepartmentName,
             ParentDepartmentSlug = parentDepartmentSlug,
             IsSensitive = team.IsSensitive,
-            ActorDisplayName = user.BurnerName
+            ActorUserId = user.Id
         };
 
         return View(viewModel);
@@ -411,7 +410,7 @@ internal sealed class TeamAdminController(
             TeamName = team.Name,
             TeamSlug = team.Slug,
             ServiceAccountEmail = serviceAccountEmail,
-            Resources = resources.Select(r => new GoogleResourceViewModel
+            Resources = resources.OrderBy(r => r.ProvisionedAt).Select(r => new GoogleResourceViewModel
             {
                 Id = r.Id,
                 ResourceType = r.ResourceType switch

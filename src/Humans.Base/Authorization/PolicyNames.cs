@@ -108,4 +108,13 @@ public static class PolicyNames
     /// the gate without naming the requirement type, which lives inside the section.
     /// </summary>
     public const string RoleAssignmentManage = nameof(RoleAssignmentManage);
+
+    /// <summary>
+    /// May view an expense report (the resource): submitter, its budget category's coordinator,
+    /// or FinanceAdmin/Admin. Registered by Expenses' <c>SectionPolicies</c>, wrapping its internal
+    /// <c>ExpenseReportOperationRequirement(View)</c>/handler, so an external caller — Backdoor's
+    /// finance read API (peterdrier/Humans#1838) — can reach the same check
+    /// <c>ExpensesController</c> uses without the requirement type leaving the section.
+    /// </summary>
+    public const string ExpenseReportView = nameof(ExpenseReportView);
 }

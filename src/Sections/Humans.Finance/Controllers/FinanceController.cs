@@ -163,12 +163,14 @@ internal sealed class FinanceController(
         var files = rows
             .GroupBy(r => r.FileId)
             .Select(g => new SepaPayoutFileVm(
+                g.Key,
                 g.First().FileName,
                 g.First().GeneratedAt,
                 Name(g.First().GeneratedByUserId),
                 g.OrderBy(r => r.SupplierAccountNum)
                  .Select(r => new SepaTransferVm(r, Name(r.UserId), r.BookedByUserId is null ? null : Name(r.BookedByUserId)))
-                 .ToList()))
+                 .ToList(),
+                g.First().BatchLine))
             .OrderByDescending(f => f.GeneratedAt)
             .ToList();
 
@@ -185,6 +187,20 @@ internal sealed class FinanceController(
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
 
         var result = await holdedConnector.BookSepaTransferAsync(transferId, bankMovementId, actorUserId);
+        if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
+
+        return RedirectToAction(nameof(Sepa));
+    }
+
+    /// <summary>Books a whole file against the one Sabadell line the bank debited it as — the
+    /// Process button. No <c>CancellationToken</c>, as for a single booking.</summary>
+    [HttpPost("Sepa/BookFile")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BookSepaFile(Guid fileId, string bankMovementId)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+
+        var result = await holdedConnector.BookSepaFileAsync(fileId, bankMovementId, actorUserId);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
 
         return RedirectToAction(nameof(Sepa));

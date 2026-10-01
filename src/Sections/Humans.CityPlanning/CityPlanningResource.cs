@@ -10,7 +10,7 @@ namespace Humans.CityPlanning;
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers via
 /// <c>GetExportedTypes()</c>; an internal marker is skipped in silence
-/// (G5-SECTION-TEMPLATE.md step 3b). Shell's <c>Views/Camp/Details.cshtml</c> also injects
+/// (G5-SECTION-TEMPLATE.md step 3b). Camps' <c>Views/Camp/Details.cshtml</c> also injects
 /// <c>IStringLocalizer&lt;CityPlanningResource&gt;</c> for the placement-phase strip.
 /// </remarks>
 public class CityPlanningResource;

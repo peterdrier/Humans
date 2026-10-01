@@ -41,3 +41,17 @@ public sealed record HoldedExpenseAccountRef(int AccountNum, string AccountId, s
 /// Cache reads only — never a Holded call.</summary>
 public sealed record HoldedExpenseAccountOption(
     int AccountNum, string AccountId, string Label, bool IsBudgetCategory, bool IsActive);
+
+/// <summary>One live <c>holded_category_map</c> row — what a budget category is actually booked to
+/// today, as opposed to the plan <c>/Finance/HoldedAccounts</c> renders.</summary>
+/// <param name="CategoryName">Null when the category is not in the active budget year — a row whose
+/// category was deleted or belongs to an earlier year. The provisioning page calls that an Orphan.</param>
+public sealed record HoldedCategoryMapRow(
+    Guid BudgetCategoryId,
+    string? CategoryName,
+    string? GroupName,
+    int HoldedAccountNumber,
+    string HoldedAccountId,
+    string Tag,
+    bool IsActive,
+    Instant UpdatedAt);

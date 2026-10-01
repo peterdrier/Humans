@@ -121,10 +121,51 @@ public class AgentPreloadCorpusBuilderTests
         after.Should().Contain("**FAQ-comms**");
     }
 
-    private static IAgentPreloadCorpusBuilder MakeBuilder(IReadOnlyList<string>? communityFiles = null)
+    [HumansTheory]
+    [Xunit.InlineData("topic")]
+    [Xunit.InlineData("Onboarding")]
+    [Xunit.InlineData("listing")]
+    public async Task Incomplete_corpus_recovers_after_a_transient_fetch_failure(string failingRead)
+    {
+        var source = new StubSource { CommunityFiles = ["topic"], FailingRead = failingRead };
+        var builder = MakeBuilder(source: source);
+
+        var degraded = await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken);
+        degraded.Should().NotContain(string.Equals(failingRead, "Onboarding", StringComparison.Ordinal) ? "**Onboarding**" : "**topic**");
+        source.FailingRead = null;
+        var recovered = await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken);
+        recovered.Should().ContainAll("**Onboarding**", "**topic**");
+        source.FailingRead = "listing";
+        (await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeSameAs(recovered, "complete corpora remain cached");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("topic")]
+    [Xunit.InlineData("listing")]
+    public async Task Failed_reload_keeps_the_previous_complete_corpus(string failingRead)
+    {
+        var files = new List<string> { "topic" };
+        var source = new StubSource { CommunityFiles = files };
+        var builder = MakeBuilder(source: source);
+        var original = await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken);
+        files.Add("new-topic");
+        source.FailingRead = failingRead;
+
+        (await builder.ReloadAllAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
+
+        (await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeSameAs(original);
+        source.FailingRead = null;
+        (await builder.ReloadAllAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        (await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken))
+            .Should().Contain("**new-topic**");
+    }
+
+    private static IAgentPreloadCorpusBuilder MakeBuilder(IReadOnlyList<string>? communityFiles = null, StubSource? source = null)
     {
         var cache = new MemoryCache(new MemoryCacheOptions());
-        var source = new StubSource { CommunityFiles = communityFiles ?? [] };
+        source ??= new StubSource { CommunityFiles = communityFiles ?? [] };
         var reader = new AgentSectionDocReader(
             source, cache, NullLogger<AgentSectionDocReader>.Instance);
         var community = new CommunityFaqReader(source, cache, NullLogger<CommunityFaqReader>.Instance);
@@ -147,17 +188,19 @@ public class AgentPreloadCorpusBuilderTests
     private sealed class StubSource : IGuideContentSource
     {
         public IReadOnlyList<string> CommunityFiles { get; init; } = [];
+        public string? FailingRead { get; set; }
 
         public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
             Task.FromResult($"# {fileStem}\n\nTagline for {fileStem}.");
 
         public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default) =>
-            Task.FromResult(
+            string.Equals(FailingRead, fileStem, StringComparison.Ordinal) ? Task.FromException<string>(new IOException("temporary outage")) : Task.FromResult(
                 string.Equals(folderPath, CommunityFaqReader.FolderPath, StringComparison.Ordinal)
                     ? $"# {fileStem} title\nLast updated: 2026-02-01\n\n## Overview\nCommunity summary for {fileStem}.\n\n## Keywords\nkw-{fileStem}, alpha, beta"
                     : $"# {fileStem}\n\nTagline for {fileStem}.");
 
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
+            string.Equals(FailingRead, "listing", StringComparison.Ordinal) ? Task.FromException<IReadOnlyList<string>>(new IOException("temporary outage")) :
             Task.FromResult(string.Equals(folderPath, CommunityFaqReader.FolderPath, StringComparison.Ordinal) ? CommunityFiles : []);
 
         public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>

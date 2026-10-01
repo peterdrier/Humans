@@ -208,252 +208,282 @@ internal sealed class CachingCampService(
 
     // Writes — delegate then invalidate
 
-    public async Task<Camp> CreateCampAsync(
+    public Task<Camp> CreateCampAsync(
         Guid createdByUserId, string name, string contactEmail, string contactPhone,
         string? webOrSocialUrl, List<CampLink>? links, bool isSwissCamp, int timesAtNowhere,
         CampSeasonData seasonData, List<string>? historicalNames, int year,
-        CancellationToken cancellationToken = default)
-    {
-        var camp = await WithInner(inner => inner.CreateCampAsync(
-            createdByUserId, name, contactEmail, contactPhone, webOrSocialUrl,
-            links, isSwissCamp, timesAtNowhere, seasonData, historicalNames, year,
-            cancellationToken));
-        await InvalidateCampAsync(camp.Id, cancellationToken);
-        return camp;
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            var camp = await WithInner(inner => inner.CreateCampAsync(
+                createdByUserId, name, contactEmail, contactPhone, webOrSocialUrl,
+                links, isSwissCamp, timesAtNowhere, seasonData, historicalNames, year,
+                cancellationToken));
+            await InvalidateCampAsync(camp.Id, cancellationToken);
+            return camp;
+        });
 
-    public async Task<CampSeason> OptInToSeasonAsync(
-        Guid campId, int year, CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.OptInToSeasonAsync(campId, year, cancellationToken));
-        await InvalidateCampAsync(campId, cancellationToken);
-        return result;
-    }
-
-    public async Task UpdateSeasonAsync(
-        Guid scopedCampId, Guid seasonId, CampSeasonData data, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.UpdateSeasonAsync(scopedCampId, seasonId, data, cancellationToken));
-        await InvalidateBySeasonAsync(seasonId, cancellationToken);
-    }
-
-    public async Task ApproveSeasonAsync(
-        Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.ApproveSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
-        await InvalidateBySeasonAsync(seasonId, cancellationToken);
-    }
-
-    public async Task RejectSeasonAsync(
-        Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.RejectSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
-        await InvalidateBySeasonAsync(seasonId, cancellationToken);
-    }
-
-    public async Task WithdrawSeasonAsync(
-        Guid scopedCampId, Guid seasonId, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.WithdrawSeasonAsync(scopedCampId, seasonId, cancellationToken));
-        await InvalidateBySeasonAsync(seasonId, cancellationToken);
-    }
-
-    public async Task ReactivateSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.ReactivateSeasonAsync(seasonId, cancellationToken));
-        await InvalidateBySeasonAsync(seasonId, cancellationToken);
-    }
-
-    public async Task SetSeasonStatusAsync(
-        Guid scopedCampId, Guid seasonId, CampSeasonStatus status, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.SetSeasonStatusAsync(scopedCampId, seasonId, status, cancellationToken));
-        await InvalidateBySeasonAsync(seasonId, cancellationToken);
-    }
-
-    public async Task<CampUpdateResult> UpdateCampAsync(
-        CampUpdateInput input, CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.UpdateCampAsync(input, cancellationToken));
-        if (result.Succeeded)
-            await InvalidateCampAsync(input.CampId, cancellationToken);
-        return result;
-    }
-
-    public async Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.DeleteCampAsync(campId, cancellationToken));
-        // Tombstone without flipping warmth — preserves the all-rows invariant.
-        DeleteKey(campId);
-    }
-
-    public async Task AddHistoricalNameAsync(
-        Guid campId, string name, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.AddHistoricalNameAsync(campId, name, cancellationToken));
-        await InvalidateCampAsync(campId, cancellationToken);
-    }
-
-    public async Task RemoveHistoricalNameAsync(
-        Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.RemoveHistoricalNameAsync(scopedCampId, historicalNameId, cancellationToken));
-        await InvalidateCampAsync(scopedCampId, cancellationToken);
-    }
-
-    public async Task<CampImageUploadResult> UploadImageAsync(
-        Guid campId, Stream fileStream, string fileName, string contentType, long length,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.UploadImageAsync(
-            campId, fileStream, fileName, contentType, length, cancellationToken));
-        if (result.Succeeded)
+    public Task<CampSeason> OptInToSeasonAsync(
+        Guid campId, int year, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInner(inner => inner.OptInToSeasonAsync(campId, year, cancellationToken));
             await InvalidateCampAsync(campId, cancellationToken);
-        return result;
-    }
+            return result;
+        });
 
-    public async Task DeleteImageAsync(
-        Guid scopedCampId, Guid imageId, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.DeleteImageAsync(scopedCampId, imageId, cancellationToken));
-        await InvalidateCampAsync(scopedCampId, cancellationToken);
-    }
+    public Task UpdateSeasonAsync(
+        Guid scopedCampId, Guid seasonId, CampSeasonData data, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.UpdateSeasonAsync(scopedCampId, seasonId, data, cancellationToken));
+            await InvalidateBySeasonAsync(seasonId, cancellationToken);
+        });
 
-    public async Task ReorderImagesAsync(
-        Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken));
-        await InvalidateCampAsync(campId, cancellationToken);
-    }
+    public Task ApproveSeasonAsync(
+        Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.ApproveSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
+            await InvalidateBySeasonAsync(seasonId, cancellationToken);
+        });
 
-    public async Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.OpenSeasonAsync(year, cancellationToken));
-        await InvalidateSettingsAsync(cancellationToken);
-    }
+    public Task RejectSeasonAsync(
+        Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.RejectSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
+            await InvalidateBySeasonAsync(seasonId, cancellationToken);
+        });
 
-    public async Task CloseSeasonAsync(int year, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.CloseSeasonAsync(year, cancellationToken));
-        await InvalidateSettingsAsync(cancellationToken);
-    }
+    public Task WithdrawSeasonAsync(
+        Guid scopedCampId, Guid seasonId, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.WithdrawSeasonAsync(scopedCampId, seasonId, cancellationToken));
+            await InvalidateBySeasonAsync(seasonId, cancellationToken);
+        });
 
-    public async Task SetNameLockDateAsync(
-        int year, LocalDate lockDate, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.SetNameLockDateAsync(year, lockDate, cancellationToken));
-        // Touches every season in the year — RefreshAll.
-        RefreshAll();
-        await InvalidateSettingsAsync(cancellationToken);
-    }
+    public Task ReactivateSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.ReactivateSeasonAsync(seasonId, cancellationToken));
+            await InvalidateBySeasonAsync(seasonId, cancellationToken);
+        });
 
-    public async Task ChangeSeasonNameAsync(
-        Guid scopedCampId, Guid seasonId, string newName, CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.ChangeSeasonNameAsync(scopedCampId, seasonId, newName, cancellationToken));
-        await InvalidateBySeasonAsync(seasonId, cancellationToken);
-    }
+    public Task SetSeasonStatusAsync(
+        Guid scopedCampId, Guid seasonId, CampSeasonStatus status, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.SetSeasonStatusAsync(scopedCampId, seasonId, status, cancellationToken));
+            await InvalidateBySeasonAsync(seasonId, cancellationToken);
+        });
+
+    public Task<CampUpdateResult> UpdateCampAsync(
+        CampUpdateInput input, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInner(inner => inner.UpdateCampAsync(input, cancellationToken));
+            // The inner can report failure after committing camp fields.
+            await InvalidateCampAsync(input.CampId, cancellationToken);
+            return result;
+        });
+
+    public Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.DeleteCampAsync(campId, cancellationToken));
+            // Tombstone without flipping warmth — preserves the all-rows invariant.
+            DeleteKey(campId);
+        });
+
+    public Task AddHistoricalNameAsync(
+        Guid campId, string name, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.AddHistoricalNameAsync(campId, name, cancellationToken));
+            await InvalidateCampAsync(campId, cancellationToken);
+        });
+
+    public Task RemoveHistoricalNameAsync(
+        Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.RemoveHistoricalNameAsync(scopedCampId, historicalNameId, cancellationToken));
+            await InvalidateCampAsync(scopedCampId, cancellationToken);
+        });
+
+    public Task<CampImageUploadResult> UploadImageAsync(
+        Guid campId, Stream fileStream, string fileName, string contentType, long length,
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInner(inner => inner.UploadImageAsync(
+                campId, fileStream, fileName, contentType, length, cancellationToken));
+            if (result.Succeeded)
+                await InvalidateCampAsync(campId, cancellationToken);
+            return result;
+        });
+
+    public Task DeleteImageAsync(
+        Guid scopedCampId, Guid imageId, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.DeleteImageAsync(scopedCampId, imageId, cancellationToken));
+            await InvalidateCampAsync(scopedCampId, cancellationToken);
+        });
+
+    public Task ReorderImagesAsync(
+        Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken));
+            await InvalidateCampAsync(campId, cancellationToken);
+        });
+
+    public Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.OpenSeasonAsync(year, cancellationToken));
+            await InvalidateSettingsAsync(cancellationToken);
+        });
+
+    public Task CloseSeasonAsync(int year, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.CloseSeasonAsync(year, cancellationToken));
+            await InvalidateSettingsAsync(cancellationToken);
+        });
+
+    public Task SetNameLockDateAsync(
+        int year, LocalDate lockDate, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.SetNameLockDateAsync(year, lockDate, cancellationToken));
+            // Touches every season in the year — RefreshAll.
+            RefreshAll();
+            await InvalidateSettingsAsync(cancellationToken);
+        });
+
+    public Task ChangeSeasonNameAsync(
+        Guid scopedCampId, Guid seasonId, string newName, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.ChangeSeasonNameAsync(scopedCampId, seasonId, newName, cancellationToken));
+            await InvalidateBySeasonAsync(seasonId, cancellationToken);
+        });
 
     // Membership writes — invalidate the parent camp (EeGrantedCount + MemberCount move).
 
-    public async Task<CampMemberRequestResult> RequestCampMembershipAsync(
-        Guid campId, Guid userId, CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.RequestCampMembershipAsync(campId, userId, cancellationToken));
-        await InvalidateCampAsync(campId, cancellationToken);
-        return result;
-    }
+    public Task<CampMemberRequestResult> RequestCampMembershipAsync(
+        Guid campId, Guid userId, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInner(inner => inner.RequestCampMembershipAsync(campId, userId, cancellationToken));
+            await InvalidateCampAsync(campId, cancellationToken);
+            return result;
+        });
 
-    public async Task ApproveCampMemberAsync(
+    public Task ApproveCampMemberAsync(
         Guid scopedCampId, Guid campMemberId, Guid approvedByUserId,
-        CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.ApproveCampMemberAsync(scopedCampId, campMemberId, approvedByUserId, cancellationToken));
-        await InvalidateCampAsync(scopedCampId, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.ApproveCampMemberAsync(scopedCampId, campMemberId, approvedByUserId, cancellationToken));
+            await InvalidateCampAsync(scopedCampId, cancellationToken);
+        });
 
-    public async Task RejectCampMemberAsync(
+    public Task RejectCampMemberAsync(
         Guid scopedCampId, Guid campMemberId, Guid rejectedByUserId,
-        CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.RejectCampMemberAsync(scopedCampId, campMemberId, rejectedByUserId, cancellationToken));
-        await InvalidateCampAsync(scopedCampId, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.RejectCampMemberAsync(scopedCampId, campMemberId, rejectedByUserId, cancellationToken));
+            await InvalidateCampAsync(scopedCampId, cancellationToken);
+        });
 
-    public async Task RemoveCampMemberAsync(
+    public Task RemoveCampMemberAsync(
         Guid scopedCampId, Guid campMemberId, Guid removedByUserId,
-        CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.RemoveCampMemberAsync(scopedCampId, campMemberId, removedByUserId, cancellationToken));
-        await InvalidateCampAsync(scopedCampId, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.RemoveCampMemberAsync(scopedCampId, campMemberId, removedByUserId, cancellationToken));
+            await InvalidateCampAsync(scopedCampId, cancellationToken);
+        });
 
-    public async Task<AddCampMemberOutcome> AddCampMemberToActiveSeasonAsync(
+    public Task<AddCampMemberOutcome> AddCampMemberToActiveSeasonAsync(
         Guid campId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.AddCampMemberToActiveSeasonAsync(
-            campId, userId, actorUserId, cancellationToken));
-        await InvalidateCampAsync(campId, cancellationToken);
-        return result;
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInner(inner => inner.AddCampMemberToActiveSeasonAsync(
+                campId, userId, actorUserId, cancellationToken));
+            await InvalidateCampAsync(campId, cancellationToken);
+            return result;
+        });
 
-    public async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
+    public Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.AddMemberAndAssignRoleInActiveSeasonAsync(
-            campId, roleDefinitionId, userId, actorUserId, cancellationToken));
-        await InvalidateCampAsync(campId, cancellationToken);
-        return result;
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInner(inner => inner.AddMemberAndAssignRoleInActiveSeasonAsync(
+                campId, roleDefinitionId, userId, actorUserId, cancellationToken));
+            await InvalidateCampAsync(campId, cancellationToken);
+            return result;
+        });
 
-    public async Task WithdrawCampMembershipRequestAsync(
-        Guid campMemberId, Guid userId, CancellationToken cancellationToken = default)
-    {
-        // No campId on the API surface — RefreshAll.
-        await WithInner(inner => inner.WithdrawCampMembershipRequestAsync(campMemberId, userId, cancellationToken));
-        RefreshAll();
-    }
-
-    public async Task<CampMembershipMutationResult> LeaveCampAsync(
-        Guid campMemberId, Guid userId, CancellationToken cancellationToken = default)
-    {
-        // No campId on the API surface; can move EeGrantedCount — RefreshAll on success.
-        var result = await WithInner(inner => inner.LeaveCampAsync(campMemberId, userId, cancellationToken));
-        if (result.Succeeded)
+    public Task WithdrawCampMembershipRequestAsync(
+        Guid campMemberId, Guid userId, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            // No campId on the API surface — RefreshAll.
+            await WithInner(inner => inner.WithdrawCampMembershipRequestAsync(campMemberId, userId, cancellationToken));
             RefreshAll();
-        return result;
-    }
+        });
 
-    public async Task SetCampSeasonEeSlotCountAsync(
+    public Task<CampMembershipMutationResult> LeaveCampAsync(
+        Guid campMemberId, Guid userId, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            // No campId on the API surface; can move EeGrantedCount — RefreshAll on success.
+            var result = await WithInner(inner => inner.LeaveCampAsync(campMemberId, userId, cancellationToken));
+            if (result.Succeeded)
+                RefreshAll();
+            return result;
+        });
+
+    public Task SetCampSeasonEeSlotCountAsync(
         Guid campSeasonId, int slotCount, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        await WithInner(inner => inner.SetCampSeasonEeSlotCountAsync(campSeasonId, slotCount, actorUserId, cancellationToken));
-        await InvalidateBySeasonAsync(campSeasonId, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.SetCampSeasonEeSlotCountAsync(campSeasonId, slotCount, actorUserId, cancellationToken));
+            await InvalidateBySeasonAsync(campSeasonId, cancellationToken);
+        });
 
-    public async Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
+    public Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
         Guid scopedCampId, Guid campMemberId, bool granted, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.SetEarlyEntryAsync(
-            scopedCampId, campMemberId, granted, actorUserId, cancellationToken));
-        await InvalidateCampAsync(scopedCampId, cancellationToken);
-        return result;
-    }
+        CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInner(inner => inner.SetEarlyEntryAsync(
+                scopedCampId, campMemberId, granted, actorUserId, cancellationToken));
+            await InvalidateCampAsync(scopedCampId, cancellationToken);
+            return result;
+        });
 
     // IUserMerge
 
-    public async Task ReassignAsync(
+    public Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
-        CancellationToken ct)
-    {
-        await WithInnerMerge(inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
-        // Lead reassignment can touch any camp — RefreshAll.
-        RefreshAll();
-    }
+        CancellationToken ct) =>
+        MutateAsync(async () =>
+        {
+            await WithInnerMerge(inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
+            // Lead reassignment can touch any camp — RefreshAll.
+            RefreshAll();
+        });
 
     // ICampInfoInvalidator
 
@@ -616,6 +646,36 @@ internal sealed class CachingCampService(
     {
         var activeEvent = await WithSettings(settings => settings.GetActiveEventSettingsAsync(ct));
         return activeEvent?.Year > 0 ? activeEvent.Year : SystemClockYear();
+    }
+
+    // Writes and their invalidation can fail after committing. Clear both cache shapes
+    // before propagating the original failure; cleanup must survive request cancellation.
+    private async Task<T> MutateAsync<T>(Func<Task<T>> mutation)
+    {
+        try
+        {
+            return await mutation();
+        }
+        catch
+        {
+            RefreshAll();
+            await InvalidateSettingsAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
+    private async Task MutateAsync(Func<Task> mutation)
+    {
+        try
+        {
+            await mutation();
+        }
+        catch
+        {
+            RefreshAll();
+            await InvalidateSettingsAsync(CancellationToken.None);
+            throw;
+        }
     }
 
     private async Task<T> WithInner<T>(Func<ICampService, Task<T>> work)

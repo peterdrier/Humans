@@ -812,6 +812,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var result = await _service.RequestCampMembershipAsync(camp.Id, userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(CampMemberRequestOutcome.Created);
+        result.MessageKey.Should().Be("Camps_Flash_RequestCreated");
         result.NoticeLevel.Should().Be(CampMemberRequestNoticeLevel.Success);
         var member = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == result.CampMemberId, Xunit.TestContext.Current.CancellationToken);
         member.Status.Should().Be(CampMemberStatus.Pending);
@@ -829,7 +830,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var result = await _service.RequestCampMembershipAsync(camp.Id, userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(CampMemberRequestOutcome.NoOpenSeason);
-        result.Message.Should().Be("Camp is not open for membership this year.");
+        result.MessageKey.Should().Be("Camps_Flash_RequestNoOpenSeason");
         result.NoticeLevel.Should().Be(CampMemberRequestNoticeLevel.Error);
         // The creator is an Active member; assert no row was created for the requester.
         (await CampsDb.CampMembers.AsNoTracking().AnyAsync(m => m.UserId == userId, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
@@ -852,6 +853,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var result = await _service.RequestCampMembershipAsync(camp.Id, userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(CampMemberRequestOutcome.Created);
+        result.MessageKey.Should().Be("Camps_Flash_RequestCreated");
         result.NoticeLevel.Should().Be(CampMemberRequestNoticeLevel.Success);
         var member = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == result.CampMemberId, Xunit.TestContext.Current.CancellationToken);
         member.Status.Should().Be(CampMemberStatus.Pending);
@@ -871,6 +873,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var second = await _service.RequestCampMembershipAsync(camp.Id, userId, Xunit.TestContext.Current.CancellationToken);
 
         second.Outcome.Should().Be(CampMemberRequestOutcome.AlreadyPending);
+        second.MessageKey.Should().Be("Camps_Flash_RequestAlreadyPending");
         second.NoticeLevel.Should().Be(CampMemberRequestNoticeLevel.Info);
         second.CampMemberId.Should().Be(first.CampMemberId);
         // Scope to the requester — the camp creator also has an Active member row.
@@ -1514,6 +1517,22 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var stillThere = await CampsDb.CampImages.AsNoTracking().FirstOrDefaultAsync(i => i.Id == upload.Image!.Id, Xunit.TestContext.Current.CancellationToken);
         stillThere.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task UploadImageAsync_RejectsOverlongFilenameBeforeWriting()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        var fileName = new string('a', 253) + ".jpg";
+
+        var result = await _service.UploadImageAsync(
+            camp.Id, Stream.Null, fileName, "image/jpeg", 1,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("256 characters or fewer");
+        (await CampsDb.CampImages.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]

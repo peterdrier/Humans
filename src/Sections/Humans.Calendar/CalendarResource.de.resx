@@ -63,7 +63,6 @@
   <data name="Calendar_AllDayEvent" xml:space="preserve"><value>Ganztägige Veranstaltung</value></data>
   <data name="Calendar_AllDayLabel" xml:space="preserve"><value>Ganztägig</value></data>
   <data name="Calendar_AllTeamsMonthView" xml:space="preserve"><value>Alle Teams (Monatsansicht)</value></data>
-  <data name="Calendar_AllTimesShownIn" xml:space="preserve"><value>Alle Zeiten werden in {0} angezeigt.</value></data>
   <data name="Calendar_BackToCalendar" xml:space="preserve"><value>Zurück zum Kalender</value></data>
   <data name="Calendar_CancelOccurrenceConfirm" xml:space="preserve"><value>Nur diesen Termin absagen?</value></data>
   <data name="Calendar_CancelThisOccurrence" xml:space="preserve"><value>Diesen absagen</value></data>
@@ -80,6 +79,12 @@
   <data name="Calendar_End" xml:space="preserve"><value>Ende</value></data>
   <data name="Calendar_EndDate" xml:space="preserve"><value>Enddatum</value></data>
   <data name="Calendar_EndDateHelp" xml:space="preserve"><value>Einschließlich — leer lassen für eine eintägige Veranstaltung.</value></data>
+  <data name="Calendar_StartDateRequired" xml:space="preserve"><value>Ein Startdatum ist erforderlich.</value></data>
+  <data name="Calendar_EndDateBeforeStart" xml:space="preserve"><value>Das Enddatum muss am oder nach dem Startdatum liegen.</value></data>
+  <data name="Calendar_UnknownTimezone" xml:space="preserve"><value>Unbekannte IANA-Zeitzone.</value></data>
+  <data name="Calendar_StartRequired" xml:space="preserve"><value>Ein Startzeitpunkt ist erforderlich.</value></data>
+  <data name="Calendar_EndBeforeStart" xml:space="preserve"><value>Das Ende muss am oder nach dem Start liegen.</value></data>
+  <data name="Calendar_SaveFailed" xml:space="preserve"><value>Kalenderereignis konnte nicht gespeichert werden.</value></data>
   <data name="Calendar_EventTitle" xml:space="preserve"><value>Veranstaltung</value></data>
   <data name="Calendar_FirstStart" xml:space="preserve"><value>Erster Beginn</value></data>
   <data name="Calendar_FormTitle" xml:space="preserve"><value>Titel</value></data>
@@ -99,12 +104,35 @@
   <data name="Calendar_OwningTeam" xml:space="preserve"><value>Verantwortliches Team</value></data>
   <data name="Calendar_Prev" xml:space="preserve"><value>Zurück</value></data>
   <data name="Calendar_Recurrence" xml:space="preserve"><value>Wiederholung</value></data>
-  <data name="Calendar_RecurrenceTimezoneHelpPrefix" xml:space="preserve"><value>IANA-Zeitzone, z. B.</value></data>
-  <data name="Calendar_RecurrenceTimezoneLabel" xml:space="preserve"><value>Zeitzone der Wiederholung</value></data>
+  <data name="Calendar_TimeZoneLabel" xml:space="preserve"><value>Zeitzone</value></data>
   <data name="Calendar_RecurrenceTimezoneNote" xml:space="preserve"><value>Zeitzone: {0}</value></data>
-  <data name="Calendar_RecurringEvent" xml:space="preserve"><value>Wiederkehrende Veranstaltung</value></data>
   <data name="Calendar_RRule" xml:space="preserve"><value>RRULE</value></data>
   <data name="Calendar_RRuleHelpPrefix" xml:space="preserve"><value>RFC 5545 RRULE. Leer lassen für eine einzelne Veranstaltung. Beispiel:</value></data>
+  <data name="Calendar_Repeats" xml:space="preserve"><value>Wiederholung</value></data>
+  <data name="Calendar_RepeatNone" xml:space="preserve"><value>Keine Wiederholung</value></data>
+  <data name="Calendar_RepeatDaily" xml:space="preserve"><value>Täglich</value></data>
+  <data name="Calendar_RepeatWeekly" xml:space="preserve"><value>Wöchentlich</value></data>
+  <data name="Calendar_RepeatMonthly" xml:space="preserve"><value>Monatlich</value></data>
+  <data name="Calendar_RepeatYearly" xml:space="preserve"><value>Jährlich</value></data>
+  <data name="Calendar_RepeatCustom" xml:space="preserve"><value>Benutzerdefiniert (RRULE)</value></data>
+  <data name="Calendar_RepeatEvery" xml:space="preserve"><value>Wiederholen alle</value></data>
+  <data name="Calendar_RepeatUnitDay" xml:space="preserve"><value>Tag(e)</value></data>
+  <data name="Calendar_RepeatUnitWeek" xml:space="preserve"><value>Woche(n)</value></data>
+  <data name="Calendar_RepeatUnitMonth" xml:space="preserve"><value>Monat(e)</value></data>
+  <data name="Calendar_RepeatUnitYear" xml:space="preserve"><value>Jahr(e)</value></data>
+  <data name="Calendar_RepeatOn" xml:space="preserve"><value>Wiederholen am</value></data>
+  <data name="Calendar_RepeatMonthlyLegend" xml:space="preserve"><value>Monatlich am</value></data>
+  <data name="Calendar_RepeatMonthlyDay" xml:space="preserve"><value>Am {0}. Tag</value></data>
+  <data name="Calendar_RepeatMonthlyNth1" xml:space="preserve"><value>Am ersten {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth2" xml:space="preserve"><value>Am zweiten {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth3" xml:space="preserve"><value>Am dritten {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth4" xml:space="preserve"><value>Am vierten {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNthLast" xml:space="preserve"><value>Am letzten {0}</value></data>
+  <data name="Calendar_RepeatEnds" xml:space="preserve"><value>Endet</value></data>
+  <data name="Calendar_RepeatEndsNever" xml:space="preserve"><value>Nie</value></data>
+  <data name="Calendar_RepeatEndsOn" xml:space="preserve"><value>Am</value></data>
+  <data name="Calendar_RepeatEndsAfter" xml:space="preserve"><value>Nach</value></data>
+  <data name="Calendar_RepeatOccurrences" xml:space="preserve"><value>Wiederholungen</value></data>
   <data name="Calendar_SaveOverride" xml:space="preserve"><value>Überschreibung speichern</value></data>
   <data name="Calendar_Start" xml:space="preserve"><value>Beginn</value></data>
   <data name="Calendar_StartDate" xml:space="preserve"><value>Startdatum</value></data>

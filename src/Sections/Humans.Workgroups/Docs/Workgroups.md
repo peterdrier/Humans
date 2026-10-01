@@ -394,6 +394,11 @@ should end is the Board's decision, taken on the register in front of them.
 `workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`
 **Status:** (A) Migrated — new section, built in this shape from day one.
 
+`MyWorkgroupsViewComponent` supplies the member-dashboard list and passes
+`HttpContext.RequestAborted` to its owned `GetForMemberAsync` read.
+`GovernanceWorkgroupsViewComponent` does the same for its register and coordinator
+display-name reads.
+
 ### Cross-section read interface
 
 | Read interface | Methods | Notes |

@@ -194,6 +194,7 @@ internal sealed class ProfileController(
 
     [HttpPost("Me/Edit")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(21 * 1024 * 1024)] // 20 MB picture plus multipart overhead; upload validation enforces the file cap.
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
         // Tag catalog not posted back — repopulate up front so validation-failure rerenders the picker.
@@ -543,7 +544,7 @@ internal sealed class ProfileController(
         }
 
         using var uploadStream = new MemoryStream();
-        await upload.CopyToAsync(uploadStream);
+        await upload.CopyToAsync(uploadStream, HttpContext.RequestAborted);
         var result = ResizeProfilePicture(uploadStream.ToArray());
         if (result is null)
         {
@@ -789,11 +790,12 @@ internal sealed class ProfileController(
                         actorUserId: null,
                         flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
                     if (!result.Success)
-                        SetError(result.Error ?? "Shift signup failed.");
+                        SetError(result.Error ?? localizer["Users_Profile_ShiftSignupFailed"].Value);
                     else
                         SetSuccess(result.Warning is not null
-                            ? $"Signed up successfully. Note: {result.Warning}"
-                            : "Signed up successfully!");
+                            ? string.Format(CultureInfo.CurrentCulture,
+                                localizer["Users_Profile_ShiftSignupSucceededWithWarning"].Value, result.Warning)
+                            : localizer["Users_Profile_ShiftSignupSucceeded"].Value);
                     return RedirectToAction("Index", "Shifts");
                 }
             case "signuprange" when model.RotaId is { } rid
@@ -811,11 +813,12 @@ internal sealed class ProfileController(
                         actorUserId: null,
                         flags: flags);
                     if (!result.Success)
-                        SetError(result.Error ?? "Shift range signup failed.");
+                        SetError(result.Error ?? localizer["Users_Profile_ShiftRangeSignupFailed"].Value);
                     else
                         SetSuccess(result.Warning is not null
-                            ? $"Signed up for date range. Note: {result.Warning}"
-                            : "Signed up for date range!");
+                            ? string.Format(CultureInfo.CurrentCulture,
+                                localizer["Users_Profile_ShiftRangeSignupSucceededWithWarning"].Value, result.Warning)
+                            : localizer["Users_Profile_ShiftRangeSignupSucceeded"].Value);
                     return RedirectToAction("Index", "Shifts");
                 }
             case "shifts":
@@ -857,7 +860,7 @@ internal sealed class ProfileController(
                 return Unauthorized();
 
             if (category.IsAlwaysOn())
-                return BadRequest("Cannot change always-on categories.");
+                return BadRequest(localizer["Users_Profile_AlwaysOnCategoryCannotChange"].Value);
 
             await commPrefService.UpdatePreferenceAsync(
                 user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Profile");
@@ -892,6 +895,10 @@ internal sealed class ProfileController(
             var fileName = $"nobodies-profiles-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
 
             return File(bytes, "application/json", fileName);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

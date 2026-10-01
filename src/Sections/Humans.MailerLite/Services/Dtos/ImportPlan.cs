@@ -25,4 +25,28 @@ internal sealed record ImportPlanCounts(
     int VerifiedKeepHumansPref,
     int ResetMarketingFlag,
     int AmbiguousMultipleVerified,
-    int UnconfirmedSkipped);
+    int UnconfirmedSkipped)
+{
+    /// <summary>
+    /// True when any outcome's count moved more than 10% from <paramref name="preview"/> (or
+    /// became non-zero from zero) — the plan an admin confirmed is no longer the plan that
+    /// would be applied.
+    /// </summary>
+    public bool DriftedMoreThanTenPercentFrom(ImportPlanCounts preview)
+    {
+        static bool D(int prev, int now)
+        {
+            if (prev == 0) return now > 0;
+            return Math.Abs(now - prev) / (double)prev > 0.10;
+        }
+        return D(preview.CreateNewHuman, CreateNewHuman)
+            || D(preview.ReplaceUnverifiedEmail, ReplaceUnverifiedEmail)
+            || D(preview.VerifiedPrefsAlreadyMatch, VerifiedPrefsAlreadyMatch)
+            || D(preview.VerifiedFlipToOptIn, VerifiedFlipToOptIn)
+            || D(preview.VerifiedFlipToOptOut, VerifiedFlipToOptOut)
+            || D(preview.VerifiedKeepHumansPref, VerifiedKeepHumansPref)
+            || D(preview.ResetMarketingFlag, ResetMarketingFlag)
+            || D(preview.AmbiguousMultipleVerified, AmbiguousMultipleVerified)
+            || D(preview.UnconfirmedSkipped, UnconfirmedSkipped);
+    }
+}

@@ -120,6 +120,10 @@ internal sealed class CalendarService(
             return CalendarEventMutationResult.Failed(ex.Message.StartsWith("Calendar_", StringComparison.Ordinal)
                 ? ex.Message : dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : ex.Message);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to create calendar event");
@@ -255,7 +259,7 @@ internal sealed class CalendarService(
         return last is null ? null : LocalDate.FromDateTime(last.Period.StartTime.Value).PlusDays(days);
     }
 
-    private async Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
+    private async Task<CalendarEvent> UpdateEventAsync(Guid id, CreateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
     {
         ValidateRecurrenceRule(dto.RecurrenceRule);
         ValidateTimezone(dto.RecurrenceTimezone);
@@ -328,7 +332,7 @@ internal sealed class CalendarService(
 
     public async Task<CalendarEventMutationResult> UpdateEventWithResultAsync(
         Guid id,
-        UpdateCalendarEventDto dto,
+        CreateCalendarEventDto dto,
         Guid updatedByUserId,
         CancellationToken ct = default)
     {
@@ -353,6 +357,10 @@ internal sealed class CalendarService(
             logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
             return CalendarEventMutationResult.Failed(ex.Message.StartsWith("Calendar_", StringComparison.Ordinal)
                 ? ex.Message : dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : ex.Message);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

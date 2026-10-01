@@ -753,12 +753,22 @@ internal sealed class EventsController(
         try
         {
             using var reader = new StreamReader(file.OpenReadStream(), System.Text.Encoding.UTF8);
-            rows = BulkEventCsvParser.Parse(await reader.ReadToEndAsync());
+            rows = BulkEventCsvParser.Parse(await reader.ReadToEndAsync(HttpContext.RequestAborted), localizer);
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (FormatException ex)
+        {
+            logger.LogWarning("Bulk CSV parse failed for camp slug {Slug}: {Message}", slug, ex.Message);
+            SetError(localizer["Events_Upload_ParseErrorDetail", ex.Message].Value);
+            return RedirectToAction(nameof(MySubmissions));
         }
         catch (Exception ex)
         {
             logger.LogWarning("Bulk CSV parse failed for camp slug {Slug}: {Message}", slug, ex.Message);
-            SetError($"Could not parse CSV: {ex.Message}");
+            SetError(localizer["Events_Upload_ParseFailed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 

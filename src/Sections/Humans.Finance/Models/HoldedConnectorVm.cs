@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using Humans.Finance.Domain;
 using NodaTime;
 
@@ -13,7 +14,7 @@ namespace Humans.Finance.Models;
 internal sealed record HoldedConnectorVm(
     HoldedDocSyncVm DocSync,
     int CreditorBindingCount,
-    IReadOnlyList<HoldedCategoryMapVm> CategoryMap,
+    IReadOnlyList<HoldedCategoryMapRow> CategoryMap,
     IReadOnlyList<HoldedManagedAccountVm> ManagedAccounts,
     IReadOnlyList<HoldedDocVm> Docs)
 {
@@ -52,20 +53,6 @@ internal sealed record HoldedDocSyncVm(
     /// <summary>The nightly job runs at 03:00, so 36 h is one missed run plus half a day of grace.</summary>
     public static readonly Duration StaleAfter = Duration.FromHours(36);
 }
-
-/// <summary>One live <c>holded_category_map</c> row — what a budget category is actually booked to
-/// today, as opposed to the plan <c>/Finance/HoldedAccounts</c> renders.</summary>
-/// <param name="CategoryName">Null when the category is not in the active budget year — a row whose
-/// category was deleted or belongs to an earlier year. The provisioning page calls that an Orphan.</param>
-internal sealed record HoldedCategoryMapVm(
-    Guid BudgetCategoryId,
-    string? CategoryName,
-    string? GroupName,
-    int HoldedAccountNumber,
-    string HoldedAccountId,
-    string Tag,
-    bool IsActive,
-    Instant UpdatedAt);
 
 /// <summary>One Finance-managed expense account (created outside the budget map) as the connector
 /// index lists it.</summary>

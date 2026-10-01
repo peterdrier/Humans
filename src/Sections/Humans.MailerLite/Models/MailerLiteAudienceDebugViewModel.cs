@@ -3,15 +3,15 @@ using NodaTime;
 namespace Humans.MailerLite.Models;
 
 /// <summary>
-/// Per-audience debug snapshot — five tables comparing Humans-side audience
-/// membership against the live MailerLite group state. Issue #773.
+/// Per-audience debug snapshot — tables comparing Humans-side audience
+/// membership against the live MailerLite group state (nobodies-collective/Humans#773).
 ///
 /// Sources:
 /// 1. Expected — <c>IMailerLiteAudience.ComputeMemberUserIdsAsync</c> resolved to
 ///    notification-target emails. Read from cached UserInfo.
 /// 2. Currently in ML — subscribers in <c>ListSubscribersAsync</c> whose
 ///    GroupIds contain the audience's target group.
-/// 3/4. To add / To remove — set diff by normalized email.
+/// 3/4. To add / To remove — set diff by normalized email, predicting Sync on suppressed subscribers.
 /// 5. Non-primary subscribed — diagnostic pairing for the Frank-pattern.
 /// </summary>
 internal sealed record MailerLiteAudienceDebugViewModel(

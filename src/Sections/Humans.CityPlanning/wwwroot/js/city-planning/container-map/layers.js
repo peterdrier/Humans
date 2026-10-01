@@ -1,5 +1,5 @@
 // MapLibre layer setup for the container placement map.
-// addBackgroundLayers mirrors the read-only styling from city-planning/layers.js.
+// addBackgroundLayers mirrors the read-only styling from city-planning/barrio-map/layers.js.
 // addContainerLayers adds container-specific sources and layers.
 import { addOfficialZonesLayers } from '../shared/official-zones-layer.js';
 import { SOUND_ZONE_FILL_EXPR, SOUND_ZONE_LINE_EXPR } from '../shared/sound-zone-colors.js';

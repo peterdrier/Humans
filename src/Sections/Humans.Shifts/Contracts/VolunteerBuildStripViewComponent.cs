@@ -40,6 +40,10 @@ public sealed class VolunteerBuildStripViewComponent(
 
             return View("~/Views/VolunteerTracking/_VolunteerHeatmap.cshtml", model);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading build strip for user {UserId}", userId);

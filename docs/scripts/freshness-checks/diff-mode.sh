@@ -23,6 +23,7 @@
 #   8. trigger_is_dead (the function test 7 relies on) is proven in BOTH
 #      directions with synthetic input, not just whatever today's real docs
 #      happen to contain (nobodies-collective/Humans#1021).
+#   9. Trigger repairs report failures truthfully and continue to later docs.
 #
 # Test 7 exists because a dead trigger glob is SILENT: it makes a doc look
 # *clean* rather than *unchecked*, so the doc drops out of the sweep's dirty
@@ -113,8 +114,9 @@ INPROJ=$(find src/Sections -path '*/Docs/*.md' -not -path '*/Docs/20*.md' -not -
 SINGLES=$(awk '/^editorial_trees:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" \
           | grep -E '^[[:space:]]+- ' | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//' \
           | while IFS= read -r e; do if [ -f "$e" ]; then echo "$e"; fi; done | wc -l)
-TOTAL=$(editorial_docs | wc -l)
-UNRESOLVED=$(editorial_entries_unresolved || true)
+EDITORIAL_DOCS=$(editorial_docs)
+TOTAL=$(printf '%s\n' "$EDITORIAL_DOCS" | sed '/^$/d' | wc -l)
+UNRESOLVED=$(editorial_entries_unresolved)
 N_UNRESOLVED=0
 if [ -n "$UNRESOLVED" ]; then
   N_UNRESOLVED=$(printf '%s\n' "$UNRESOLVED" | sed '/^$/d' | wc -l)
@@ -131,7 +133,7 @@ fi
 
 # ─── Test 4: Marker syntax well-formedness on every editorial doc ─────
 malformed=0
-for f in $(editorial_docs); do
+for f in $EDITORIAL_DOCS; do
   has_triggers=$(grep -c '<!-- freshness:triggers' "$f" || true)
   close_count=$(grep -cE '^-->' "$f" || true)
   if [ "$has_triggers" -gt 0 ] && [ "$close_count" -lt "$has_triggers" ]; then
@@ -239,8 +241,8 @@ fi
 dead_globs=0
 dead_docs=0
 checked_docs=0
-for f in $(editorial_docs); do
-  # `doc_trigger_lines` already `|| true`-guards the no-marker case — see its
+for f in $EDITORIAL_DOCS; do
+  # `doc_trigger_lines` already guards grep's no-marker status — see its
   # definition for why that matters under `set -o pipefail`.
   triggers=$(doc_trigger_lines "$f")
   if [ -z "$triggers" ]; then continue; fi
@@ -307,6 +309,78 @@ else
 fi
 
 echo ""
+# ─── Test 9: Failed trigger repairs remain dirty ────────────────────────
+if python3 - "$SCRIPT_DIR/verify-triggers.sh" <<'PYTEST'
+from pathlib import Path
+import tempfile, shutil, subprocess, os
+import sys
+script=Path(sys.argv[1]).resolve()
+def case(mode, failure=None):
+    with tempfile.TemporaryDirectory() as tmp:
+        p=Path(tmp)
+        (p/'docs/architecture').mkdir(parents=True)
+        (p/'src/new').mkdir(parents=True)
+        (p/'src/new/Thing.cs').write_text('target')
+        (p/'src/new/Other.cs').write_text('target')
+        (p/'docs/architecture/freshness-catalog.yml').write_text('editorial_trees:\n  - docs/one.md\n  - docs/two.md\nignore:\n  - ignored/**\n')
+        original='<!-- freshness:triggers\n  src/old/Thing.cs\n-->\n'
+        (p/'docs/one.md').write_text(original)
+        (p/'docs/two.md').write_text(original.replace('Thing','Other'))
+        (p/'docs/empty.md').write_text('No trigger marker.\n')
+        if failure == 'empty-ignore':
+            (p/'docs/architecture/freshness-catalog.yml').write_text('editorial_trees:\n  - docs/\nignore:\n')
+        if failure == 'walk-find':
+            (p/'docs/architecture/freshness-catalog.yml').write_text('editorial_trees:\n  - docs/\nignore:\n  - ignored/**\n')
+        env=os.environ.copy()
+        if failure and failure != 'empty-ignore':
+            (p/'bin').mkdir()
+            command={'walk-find':'find', 'ignore-awk':'awk', 'read-awk':'awk'}.get(failure, failure)
+            real=shutil.which(command)
+            # Fail only first doc, or return a plausible partial target with error.
+            code=(f'#!/bin/bash\nif [[ "$*" == *one.md* ]]; then exit 42; fi\nexec {real} "$@"\n' if failure=='mv' else
+                  f'#!/bin/bash\nif [[ "$*" == *"-v old="*Thing* ]]; then printf partial; exit 42; fi\nexec {real} "$@"\n' if failure=='awk' else
+                  f'#!/bin/bash\n{real} "$@"\nexit 42\n')
+            if failure == 'walk-find':
+                code=f'#!/bin/bash\n{real} "$@"\nif [[ "$1" == docs ]]; then exit 42; fi\n'
+            elif failure == 'ignore-awk':
+                code=f'#!/bin/bash\nif [[ "$1" == *"/^ignore:/"* ]]; then printf "ignored/**\\n"; exit 42; fi\nexec {real} "$@"\n'
+            elif failure == 'read-awk':
+                code=f'#!/bin/bash\nif [[ "$*" == *one.md* && "$1" != -v ]]; then printf "src/old/Thing.cs\\n"; exit 42; fi\nexec {real} "$@"\n'
+            tool=p/'bin'/command;tool.write_text(code);tool.chmod(0o755)
+            env['PATH']=str(p/'bin')+':'+env['PATH']
+        result=subprocess.run(['bash',str(script)]+(['--check'] if mode=='check' else []),cwd=p,env=env,text=True,capture_output=True)
+        if failure in ('walk-find', 'ignore-awk'):
+            assert result.returncode != 0, result
+            assert 'ERROR' in result.stdout + result.stderr, result
+            assert 'SUMMARY' not in result.stdout, result.stdout
+            assert (p/'docs/one.md').read_text() == original
+            assert (p/'docs/two.md').read_text() == original.replace('Thing', 'Other')
+            print('PASS', mode, failure)
+            return
+        assert result.returncode==0,result
+        if failure and failure != 'empty-ignore':
+            assert 'UNRESOLVED docs/one.md' in result.stdout,result.stdout
+            assert 'FORCE-DIRTY docs/one.md' in result.stdout,result.stdout
+            assert (p/'docs/one.md').read_text()==original
+            assert 'REPAIRED docs/one.md' not in result.stdout,result.stdout
+            if failure!='find':
+                assert 'REPAIRED docs/two.md' in result.stdout,result.stdout
+                assert 'repaired=1 unresolved=1 docs_forced_dirty=1' in result.stdout,result.stdout
+            assert not list((p/'docs').glob('*.tmp'))
+        else:
+            assert 'repaired=2 unresolved=0 docs_forced_dirty=0' in result.stdout,result.stdout
+            assert (p/'docs/one.md').read_text()==(original if mode=='check' else original.replace('old','new'))
+        print('PASS',mode,failure or 'normal')
+for args in [('repair',None),('check',None),('repair','mv'),('repair','awk'),('repair','find'),('repair','walk-find'),('repair','ignore-awk'),('repair','read-awk'),('repair','empty-ignore')]:case(*args)
+PYTEST
+then
+  echo "PASS [test 9]: repair/preview and empty markers/lists work; producer failures cannot pass clean"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 9]: trigger repair failure handling"
+  FAIL=$((FAIL+1))
+fi
+
 echo "═══ Summary ═══"
 echo "Passed: $PASS"
 echo "Failed: $FAIL"

@@ -226,6 +226,8 @@ When adding a new page that needs client-side data loading, add it to this list 
 <!-- wheat: docs/superpowers/specs/2026-06-09-team-early-entry-ticket-lookup-design.md §1 Shared picker -->
 Extra result sources are wired into `<vc:human-search>` as **opt-in URL attributes** (`ticket-lookup-url` on the Teams Early Entry page), never by widening the shared `/api/profiles/search` endpoint — that endpoint is Users-owned and shared by ~8 pickers. When such an attribute is set the picker fires a second fetch in parallel and concatenates rows of the same `{ userId, displayName, detail, profilePictureUrl }` shape; each fetch resolves to `[]` on error so a partial failure still renders the other source. With the attribute unset (the default) behaviour is byte-for-byte unchanged, and a query that resolves to nothing stays silent — no non-selectable "not found" row.
 
+Editing the picker's visible text immediately clears its hidden selected user id and old results. Only responses for the current input may render; clearing or changing the query invalidates outstanding lookups.
+
 ## List Tables
 
 <!-- wheat: docs/superpowers/specs/2026-06-10-table-component-design.md -->

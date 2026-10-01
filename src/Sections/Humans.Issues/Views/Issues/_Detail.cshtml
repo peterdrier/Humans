@@ -165,15 +165,15 @@
                             @Html.AntiForgeryToken()
                             <select name="Section" class="form-select form-select-sm detail-auto-submit">
                                 <option value="">@Localizer["Issue_Unspecified"]</option>
-                                @foreach (var kvp in AreaLabelMap.Map)
+                                @foreach (var kvp in AreaLabelMap.Map.OrderBy(p => Localizer[p.Value].Value, StringComparer.CurrentCultureIgnoreCase))
                                 {
                                     if (string.Equals(Model.Section, kvp.Key, StringComparison.Ordinal))
                                     {
-                                        <option value="@kvp.Key" selected>@kvp.Value</option>
+                                        <option value="@kvp.Key" selected>@Localizer[kvp.Value]</option>
                                     }
                                     else
                                     {
-                                        <option value="@kvp.Key">@kvp.Value</option>
+                                        <option value="@kvp.Key">@Localizer[kvp.Value]</option>
                                     }
                                 }
                             </select>

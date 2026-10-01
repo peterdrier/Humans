@@ -1,3 +1,5 @@
+using Humans.Tickets.Services.Dtos;
+using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;
@@ -26,6 +28,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ISettingsService _shiftManagementService = Substitute.For<ISettingsService>();
     private readonly ITicketCacheInvalidator _cacheInvalidator = Substitute.For<ITicketCacheInvalidator>();
+    private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly TicketQueryService _service;
 
     public TicketQueryServiceTests()
@@ -45,6 +48,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             _teamService,
             _shiftManagementService,
             _cacheInvalidator,
+            _auditLog,
             SystemClock.Instance);
 
         // Defaults for the Volunteers team lookup — tests that care override them.
@@ -918,6 +922,68 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         rows[0].Date.Should().Be("2026-03-01");
         rows[1].Date.Should().Be("2026-01-01");
         rows[0].AttendeeCount.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task GetOrderExportDataAsync_CarriesOrderIdAndVipDonationOverLiveSeats()
+    {
+        // Two live VIP seats at 400 (85 above the 315 threshold each); a voided 1000 seat must not count.
+        var order = MakeOrder("ord_vip", TicketPaymentStatus.Paid,
+            Instant.FromUtc(2026, 3, 1, 10, 0), 900m, 100m, 57.27m, 2, 85m);
+        order.Attendees.Add(new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = "ord_vip_void",
+            TicketOrderId = order.Id,
+            TicketOrder = null!,
+            AttendeeName = "Voided",
+            TicketTypeName = "VIP",
+            Price = 1000m,
+            Status = TicketAttendeeStatus.Void,
+            VendorEventId = "ev_test",
+            SyncedAt = order.PurchasedAt,
+        });
+        TicketsDb.TicketOrders.Add(order);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = (await _service.GetOrderExportDataAsync()).Single();
+
+        row.VendorOrderId.Should().Be("ord_vip");
+        row.DonationAmount.Should().Be(100m);
+        row.VipDonations.Should().Be(170m);
+    }
+
+    [HumansFact]
+    public async Task GetDonationExportDataAsync_PaidDonorsOldestFirst_AndAudited()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        TicketsDb.TicketOrders.Add(MakeOrder("ord_plain", TicketPaymentStatus.Paid,
+            Instant.FromUtc(2026, 3, 1, 10, 0), 315m, 0m, 28.64m, 1, 0m));
+        TicketsDb.TicketOrders.Add(MakeOrder("ord_vip", TicketPaymentStatus.Paid,
+            Instant.FromUtc(2026, 4, 1, 10, 0), 400m, 0m, 28.64m, 1, 85m));
+        TicketsDb.TicketOrders.Add(MakeOrder("ord_gift", TicketPaymentStatus.Paid,
+            Instant.FromUtc(2026, 3, 15, 10, 0), 365m, 50m, 28.64m, 1, 0m));
+        TicketsDb.TicketOrders.Add(MakeOrder("ord_refunded", TicketPaymentStatus.Refunded,
+            Instant.FromUtc(2026, 3, 20, 10, 0), 400m, 0m, 28.64m, 1, 85m));
+        // Both kinds on one order; bought 23:30 UTC on 31 Mar = 01:30 on 1 Apr in Europe/Madrid.
+        TicketsDb.TicketOrders.Add(MakeOrder("ord_both", TicketPaymentStatus.Paid,
+            Instant.FromUtc(2026, 3, 31, 23, 30), 450m, 50m, 28.64m, 1, 85m));
+        await SaveAllAsync(ct);
+        var actor = Guid.NewGuid();
+
+        var rows = await _service.GetDonationExportDataAsync(actor);
+
+        rows.Select(r => (r.VendorOrderId, r.Type, r.Amount)).Should().Equal(
+            ("ord_gift", DonationExportRow.SeparateDonation, 50m),
+            ("ord_both", DonationExportRow.VipTicket, 85m),
+            ("ord_both", DonationExportRow.SeparateDonation, 50m),
+            ("ord_vip", DonationExportRow.VipTicket, 85m));
+        rows[1].Date.Should().Be("2026-04-01");
+        rows[0].BuyerEmail.Should().Be("buyer@example.com");
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.TicketDonationsExported, "Tickets", Guid.Empty,
+            Arg.Is<string>(d => d.Contains("4 donation rows", StringComparison.Ordinal) && d.Contains("270.00", StringComparison.Ordinal)),
+            actor, null, null);
     }
 
     // ====================================================================

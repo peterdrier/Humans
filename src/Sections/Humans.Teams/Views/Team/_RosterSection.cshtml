@@ -10,21 +10,21 @@
 {
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Roles</h5>
+            <h5 class="mb-0">@Localizer["Teams_TeamDetail_Roles"]</h5>
             @if (canManage)
             {
                 <a href="@Url.Action("Roles", "TeamAdmin", new { slug = ViewData["Slug"] })"
-                   class="btn btn-sm btn-outline-primary">Edit Roles</a>
+                   class="btn btn-sm btn-outline-primary">@Localizer["TeamDetail_ManageRoles"]</a>
             }
         </div>
         <div class="card-body p-0">
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>Role</th>
-                        <th>Slot</th>
-                        <th>Priority</th>
-                        <th>Assigned To</th>
+                        <th>@Localizer["Roster_ColRole"]</th>
+                        <th>@Localizer["Roster_ColSlot"]</th>
+                        <th>@Localizer["Roster_ColPriority"]</th>
+                        <th>@Localizer["Roster_ColAssignedTo"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -47,20 +47,20 @@
                                                 RolePeriod.Strike => "bg-secondary",
                                                 _ => "bg-light text-dark"
                                             };
-                                            <span class="badge @rpBadge ms-1">@role.Period</span>
+                                            <span class="badge @rpBadge ms-1">@SharedLocalizer[$"Enum_RolePeriod_{role.Period}"]</span>
                                         }
                                         @if (!string.IsNullOrEmpty(role.Description))
                                         {
                                             <br />
                                             <a class="text-muted small text-decoration-none" data-bs-toggle="collapse"
                                                href="#@collapseId" role="button" aria-expanded="false" aria-controls="@collapseId">
-                                                <i class="fa-solid fa-chevron-down role-desc-chevron"></i> Details
+                                                <i class="fa-solid fa-chevron-down role-desc-chevron"></i> @SharedLocalizer["GoogleSync_Details"]
                                             </a>
                                         }
                                     </td>
                                 }
                                 <td>@(slot.SlotIndex + 1)</td>
-                                <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == SlotPriority.NiceToHave ? "Nice to Have" : slot.Priority.ToString())</span></td>
+                                <td><span class="badge @slot.PriorityBadgeClass">@SharedLocalizer[$"Enum_SlotPriority_{slot.Priority}"]</span></td>
                                 <td>
                                     @if (slot.IsFilled && slot.AssignedUserId.HasValue)
                                     {
@@ -68,7 +68,7 @@
                                     }
                                     else
                                     {
-                                        <span class="text-muted fst-italic">Open</span>
+                                        <span class="text-muted fst-italic">@Localizer["Roster_SlotOpen"]</span>
                                     }
                                 </td>
                             </tr>

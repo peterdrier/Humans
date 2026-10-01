@@ -1,5 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Gate/**
+  src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs
   src/Sections/Humans.Tickets.Contracts/**
   src/Sections/Humans.EarlyEntry/**
   src/Sections/Humans.Shifts.Contracts/**

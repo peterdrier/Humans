@@ -7,7 +7,7 @@ namespace Humans.CityPlanning;
 
 /// <summary>
 /// Help-widget access matrices for the city map overview, the barrio placement map and the
-/// container placement map — three rows in Base's deleted table. All three are this section's
+/// container placement map. All three are this section's
 /// pages: <c>CityPlanningController</c> serves <c>ContainerMap</c> too, even though the container
 /// records themselves belong to Containers.
 /// </summary>

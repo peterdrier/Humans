@@ -46,7 +46,7 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
 
         _controller = new CityPlanningController(
             _service, _campService, Substitute.For<IContainerService>(), _userService,
-            NullLogger<CityPlanningController>.Instance);
+            MapAdminAuthorization(_service), NullLogger<CityPlanningController>.Instance);
 
         var claims = new[]
         {

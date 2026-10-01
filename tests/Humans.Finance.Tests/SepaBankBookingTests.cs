@@ -970,6 +970,249 @@ public class SepaBankBookingTests
     }
 
 
+    // ─── One bank line for a whole file: the manual Process ─────────────────────
+
+    private static readonly Guid BatchFileId = Guid.Parse("44444444-4444-4444-4444-444444444444");
+    private const string BatchMovementId = "mov-batch";
+
+    /// <summary>The Friday test: 10, 20, 30 and 40 to four members, debited by Sabadell as one
+    /// €100 line whose text names no creditor account.</summary>
+    private static readonly (Guid Id, Guid User, int Account, decimal Amount)[] Batch =
+    [
+        (Guid.Parse("a0000000-0000-0000-0000-000000000001"), Guid.NewGuid(), 40000011, 10m),
+        (Guid.Parse("a0000000-0000-0000-0000-000000000002"), Guid.NewGuid(), 40000012, 20m),
+        (Guid.Parse("a0000000-0000-0000-0000-000000000003"), Guid.NewGuid(), 40000013, 30m),
+        (Guid.Parse("a0000000-0000-0000-0000-000000000004"), Guid.NewGuid(), 40000014, 40m),
+    ];
+
+    private void SeedBatch(string description = "TRANSFERENCIAS SEPA", Guid? bookedFirst = null)
+    {
+        SeedRows(Batch.Select(t => Row(
+                t.Id, t.User, t.Account, t.Amount, fileId: BatchFileId,
+                bookedAt: t.Id == bookedFirst ? FixedNow : null,
+                movementId: t.Id == bookedFirst ? BatchMovementId : null))
+            .ToArray());
+        foreach (var t in Batch)
+        {
+            SeedTransfer(t.Amount, t.Id, t.User, t.Account);
+            SeedBinding(t.User, t.Account);
+        }
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            Batch.Select(t => new HoldedCreditorContact
+            {
+                UserId = t.User,
+                HoldedContactId = "c1",
+                SupplierAccountNum = t.Account,
+                Source = CreditorContactSource.Auto,
+            }).ToList());
+        SeedOwed(0m, Batch.Select(t => (t.Account, t.Amount)).ToArray());
+        SeedMovements(Movement(BatchMovementId, -100m, description));
+        _client.PostLedgerEntryAsync(
+                Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<decimal>(),
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ci => "e-" + ci.ArgAt<int>(1));
+    }
+
+    [HumansFact]
+    public async Task Page_LineForTheWholeFile_IsOfferedOnThatFile_NotInThePanel()
+    {
+        SeedBatch();
+
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        unmatched.Should().BeEmpty();
+        rows.Should().HaveCount(4).And.OnlyContain(r => r.BatchLine != null && !r.CanBook);
+        var line = rows[0].BatchLine!;
+        line.MovementId.Should().Be(BatchMovementId);
+        line.Amount.Should().Be(-100m);
+        line.QuotesFileReference.Should().BeFalse();
+        line.NotProcessableReason.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Page_LineQuotingTheFileMsgId_SaysSo()
+    {
+        SeedBatch("TRANSF SEPA M" + BatchFileId.ToString("N").ToUpperInvariant());
+
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        rows[0].BatchLine!.QuotesFileReference.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Page_TwoFilesWithTheLinesTotal_OffersNeither_AndSurfacesTheLine()
+    {
+        SeedBatch();
+        var otherFile = Guid.NewGuid();
+        var rows = Batch.Select(t => Row(t.Id, t.User, t.Account, t.Amount, fileId: BatchFileId))
+            .Concat([
+                Row(Guid.NewGuid(), _userId, Account, 50m, fileId: otherFile),
+                Row(Guid.NewGuid(), _userId, Account, 50m, fileId: otherFile),
+            ])
+            .ToArray();
+        SeedRows(rows);
+
+        var (result, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().OnlyContain(r => r.BatchLine == null);
+        unmatched.Should().ContainSingle().Which.Reason.Should().Contain("2 payout files total 100.00 EUR");
+    }
+
+    [HumansFact]
+    public async Task TwoLinesWithTheFilesTotal_NeitherIsOffered_AndProcessRefuses()
+    {
+        SeedBatch();
+        SeedMovements(
+            Movement(BatchMovementId, -100m, "TRANSFERENCIAS SEPA"),
+            Movement("mov-batch-2", -100m, "TRANSFERENCIAS SEPA"));
+
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+        var result = await MakeService().BookSepaFileAsync(BatchFileId, BatchMovementId, Guid.NewGuid());
+
+        rows.Should().OnlyContain(r => r.BatchLine == null);
+        unmatched.Should().HaveCount(2)
+            .And.OnlyContain(m => m.Reason.Contains("matches that file's total too"));
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("2 Sabadell lines could each be this file's debit");
+        await AssertNothingPosted();
+    }
+
+    [HumansFact]
+    public async Task ATransferWithALineOfItsOwn_TheFileIsNotOffered_AndProcessRefuses()
+    {
+        // The bank debited per transfer after all; a €100 line on the same feed is another payment.
+        SeedBatch();
+        SeedMovements(
+            Movement(BatchMovementId, -100m, "TRANSFERENCIAS SEPA"),
+            Movement("mov-own", -10m, "TRANSF 40000011 - NCA - ANA RUIZ"));
+
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+        var result = await MakeService().BookSepaFileAsync(BatchFileId, BatchMovementId, Guid.NewGuid());
+
+        rows.Should().OnlyContain(r => r.BatchLine == null);
+        rows.Single(r => r.TransferId == Batch[0].Id).CandidateBankMovementId.Should().Be("mov-own");
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("has a Sabadell line of its own");
+        await AssertNothingPosted();
+    }
+
+    [HumansFact]
+    public async Task Page_FileWithAnUnboundTransfer_SaysWhyItCannotBeProcessed()
+    {
+        SeedBatch();
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            Batch.Skip(1).Select(t => new HoldedCreditorContact
+            {
+                UserId = t.User,
+                HoldedContactId = "c1",
+                SupplierAccountNum = t.Account,
+                Source = CreditorContactSource.Auto,
+            }).ToList());
+
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        rows[0].BatchLine!.NotProcessableReason.Should().Contain("40000011").And.Contain("no Holded contact binding");
+    }
+
+    [HumansFact]
+    public async Task Process_BooksEveryTransferAgainstTheLine_AndReconcilesItOnce()
+    {
+        SeedBatch();
+        var actor = Guid.NewGuid();
+
+        var result = await MakeService().BookSepaFileAsync(BatchFileId, BatchMovementId, actor);
+
+        result.Succeeded.Should().BeTrue(result.Message);
+        foreach (var t in Batch)
+        {
+            await _client.Received(1).PostLedgerEntryAsync(
+                LineDate, t.Account, 57200001, t.Amount, "SEPA payout E" + t.Id.ToString("N"),
+                Arg.Any<CancellationToken>());
+            await _repo.Received(1).SaveSepaTransferBookingAsync(
+                t.Id, FixedNow, actor, BatchMovementId, null, Arg.Any<CancellationToken>());
+            await _repo.Received(1).MarkSepaTransferReconciledAsync(
+                t.Id, FixedNow, Arg.Any<CancellationToken>());
+        }
+        await _client.Received(1).ReconcileBankMovementAsync(
+            "treasury-1", BatchMovementId,
+            Arg.Is<IReadOnlyList<HoldedReconcileDocumentRef>>(d =>
+                d.Count == 4 && d.All(x => x.DocumentType == HoldedReconcileDocumentType.LedgerEntry)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Process_LineIsNotTheFilesTotal_RefusesAndPostsNothing()
+    {
+        SeedBatch();
+        SeedMovements(Movement(BatchMovementId, -90m, "TRANSFERENCIAS SEPA"));
+
+        var result = await MakeService().BookSepaFileAsync(BatchFileId, BatchMovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("not the 100.00 EUR this file totals");
+        await AssertNothingPosted();
+    }
+
+    [HumansFact]
+    public async Task Process_OneTransferUnbound_RefusesBeforePostingAnything()
+    {
+        SeedBatch();
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            Batch.Take(3).Select(t => new HoldedCreditorContact
+            {
+                UserId = t.User,
+                HoldedContactId = "c1",
+                SupplierAccountNum = t.Account,
+                Source = CreditorContactSource.Auto,
+            }).ToList());
+
+        var result = await MakeService().BookSepaFileAsync(BatchFileId, BatchMovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("40000014");
+        await AssertNothingPosted();
+    }
+
+    [HumansFact]
+    public async Task Process_AfterAPartialRun_BooksOnlyTheRest_AndStampsOnlyWhenHoldedSaysReconciled()
+    {
+        SeedBatch(bookedFirst: Batch[0].Id);
+        var reads = 0;
+        _client.ListBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+                [Movement(BatchMovementId, -100m, "TRANSFERENCIAS SEPA", reads++ == 0 ? "pending" : "reconciled")]);
+
+        var result = await MakeService().BookSepaFileAsync(BatchFileId, BatchMovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue(result.Message);
+        await _repo.DidNotReceive().SaveSepaTransferBookingAsync(
+            Batch[0].Id, Arg.Any<Instant>(), Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(),
+            Arg.Any<CancellationToken>());
+        await _repo.Received(3).SaveSepaTransferBookingAsync(
+            Arg.Any<Guid>(), FixedNow, Arg.Any<Guid?>(), BatchMovementId, null, Arg.Any<CancellationToken>());
+        // The earlier run's transfer is part of the same line, so it is stamped too.
+        await _repo.Received(1).MarkSepaTransferReconciledAsync(
+            Batch[0].Id, FixedNow, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Sweep_NeverBooksALineForAWholeFile()
+    {
+        SeedBatch();
+
+        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await AssertNothingPosted();
+    }
+
     // ─── Seeding ────────────────────────────────────────────────────────────────
 
     private async Task AssertNothingPosted()
@@ -1063,8 +1306,8 @@ public class SepaBankBookingTests
     private static SepaPayoutTransferRow Row(
         Guid id, Guid userId, int account = Account, decimal amount = 30m,
         Instant? bookedAt = null, string? movementId = null, Instant? reconciledAt = null,
-        Instant? generatedAt = null) =>
-        new(id, Guid.NewGuid(), "payout.xml", generatedAt ?? FixedNow - Duration.FromDays(3), Guid.NewGuid(),
+        Instant? generatedAt = null, Guid? fileId = null) =>
+        new(id, fileId ?? Guid.NewGuid(), "payout.xml", generatedAt ?? FixedNow - Duration.FromDays(3), Guid.NewGuid(),
             userId, account, "c1", "Ana Ruiz", AnaIbanMasked, amount, bookedAt, null, movementId,
             reconciledAt, null, null);
 
@@ -1074,7 +1317,6 @@ public class SepaBankBookingTests
         new()
         {
             Id = id,
-            AccountId = "treasury-1",
             Date = date ?? LineDate,
             Amount = amount,
             Description = description,

@@ -361,6 +361,33 @@ internal sealed class Service(
         return repaired;
     }
 
+    public async Task<IReadOnlyList<PaymentMethodRepairRow>> GetPaymentMethodRepairRowsAsync(CancellationToken ct = default)
+    {
+        var payments = await repo.GetPaymentsMissingMethodNameAsync(ct);
+        return payments
+            .Select(p => new PaymentMethodRepairRow(p.Id, p.OrderId, p.Method, p.AmountEur, p.ReceivedAt))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Copies each legacy payment's int <see cref="Payment.Method"/> into its string
+    /// <see cref="Payment.MethodName"/>, one audit entry per row. Rescans at run time.
+    /// </summary>
+    public async Task<int> RepairPaymentMethodNamesAsync(Guid actorUserId, CancellationToken ct = default)
+    {
+        var payments = await repo.GetPaymentsMissingMethodNameAsync(ct);
+        foreach (var payment in payments)
+        {
+            await repo.SetPaymentMethodNameAsync(payment.Id, payment.Method, ct);
+            await audit.LogAsync(
+                AuditAction.StorePaymentMethodBackfilled, AuditEntityTypes.Payment, payment.Id,
+                $"Copied payment method {payment.Method} into the string column",
+                actorUserId, payment.OrderId, AuditEntityTypes.Order);
+        }
+
+        return payments.Count;
+    }
+
     private async Task<bool> ResolveLegacyOrderYearAsync(
         Order order,
         Guid actorUserId,
@@ -435,6 +462,12 @@ internal sealed class Service(
             throw new InvalidOperationException(
                 $"Order {orderId} has been invoiced; an invoiced order cannot be deleted.");
 
+        // Payments cascade on delete, and a paid-in-full or pending-only order reads zero-balance —
+        // any payment row, whatever its status, is a money record that must outlive the order.
+        if (order.Payments.Count > 0)
+            throw new InvalidOperationException(
+                $"Order {orderId} has payments recorded; an order with payments cannot be deleted.");
+
         var currentPrices = await LoadCurrentPricesAsync(ct);
         var balance = BalanceCalculator.Compute(order, currentPrices).BalanceEur;
         if (balance != 0m)
@@ -478,17 +511,6 @@ internal sealed class Service(
             $"Created store order for team '{team.Name}' ({year})",
             actorUserId);
         return order.Id;
-    }
-
-    public async Task<OrderDto?> GetOrderForTeamAsync(Guid teamId, CancellationToken ct = default)
-    {
-        var year = await GetCurrentEventYearAsync();
-        var order = await repo.GetOrderForTeamAsync(teamId, year, ct);
-        if (order is null) return null;
-        var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
-        var productNames = await LoadProductNamesAsync(productIds, ct);
-        var currentPrices = await LoadCurrentPricesAsync(ct);
-        return await MapOrderAsync(order, productNames, currentPrices, ct);
     }
 
     public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
@@ -652,7 +674,7 @@ internal sealed class Service(
     }
 
     /// <summary>Returns the active event's catalog year, falling back to the current UTC year before it exists.</summary>
-    private async Task<int> GetCurrentEventYearAsync()
+    public async Task<int> GetCurrentEventYearAsync()
     {
         var activeEvent = await settingsService.GetActiveEventSettingsAsync();
         return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
@@ -717,6 +739,7 @@ internal sealed class Service(
             OrderId = orderId,
             AmountEur = amountEur,
             Method = PaymentMethod.Stripe,
+            MethodName = PaymentMethod.Stripe,
             Status = status,
             StripePaymentIntentId = paymentIntentId,
             ReceivedAt = clock.GetCurrentInstant(),
@@ -731,6 +754,92 @@ internal sealed class Service(
             $"{settlement} of EUR {amountEur:0.00} on order {orderId} (PI {paymentIntentId})",
             "StripeWebhook",
             orderId, AuditEntityTypes.Order);
+    }
+
+    /// <summary>
+    /// Records a Store-admin ledger entry: a <see cref="PaymentMethod.DepositReturn"/> credits a
+    /// returned deposit (full or partial) back to the order; a <see cref="PaymentMethod.Refund"/>
+    /// books money sent back out (issued by hand in the Stripe dashboard). The admin enters a
+    /// positive amount; a refund is stored negative and must cite its reference. A refund has no cap — a camp may have
+    /// overpaid — but deposit returns can never add up to more than the order's deposits.
+    /// </summary>
+    public async Task RecordAdminPaymentAsync(
+        Guid orderId,
+        PaymentMethod method,
+        decimal amountEur,
+        string? externalRef,
+        string? notes,
+        Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        if (method is not (PaymentMethod.DepositReturn or PaymentMethod.Refund))
+            throw new InvalidOperationException($"Only deposit returns and refunds can be recorded by hand, not {method}.");
+        if (amountEur <= 0)
+            throw new InvalidOperationException("Amount must be greater than zero.");
+        if (method == PaymentMethod.Refund && string.IsNullOrWhiteSpace(externalRef))
+            throw new InvalidOperationException("A refund needs a reference (e.g. the Stripe refund id).");
+
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
+            ?? throw new InvalidOperationException("Order not found.");
+        if (order.TeamId is not null)
+            throw new InvalidOperationException("Team orders are non-billable.");
+
+        if (method == PaymentMethod.DepositReturn)
+        {
+            var depositTotal = BalanceCalculator.Compute(order, await LoadCurrentPricesAsync(ct)).DepositTotalEur;
+            var alreadyReturned = order.Payments
+                .Where(p => p.Method == PaymentMethod.DepositReturn && p.Status == PaymentStatus.Paid)
+                .Sum(p => p.AmountEur);
+            var remaining = depositTotal - alreadyReturned;
+            if (amountEur > remaining)
+                throw new InvalidOperationException(
+                    $"Deposit return of EUR {amountEur:0.00} exceeds the EUR {remaining:0.00} of deposit still held "
+                    + $"(EUR {depositTotal:0.00} deposited, EUR {alreadyReturned:0.00} already returned).");
+        }
+
+        var signed = method == PaymentMethod.Refund ? -amountEur : amountEur;
+        var payment = new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            AmountEur = signed,
+            Method = method,
+            MethodName = method,
+            Status = PaymentStatus.Paid,
+            ExternalRef = string.IsNullOrWhiteSpace(externalRef) ? null : externalRef.Trim(),
+            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
+            ReceivedAt = clock.GetCurrentInstant(),
+            RecordedByUserId = actorUserId,
+        };
+        await repo.AddPaymentAsync(payment, ct);
+        await audit.LogAsync(
+            AuditAction.StorePaymentRecorded, AuditEntityTypes.Payment, payment.Id,
+            $"Recorded {method} of EUR {signed:0.00} on order {orderId}"
+                + (payment.ExternalRef is null ? string.Empty : $" (ref {payment.ExternalRef})"),
+            actorUserId, orderId, AuditEntityTypes.Order);
+    }
+
+    /// <summary>
+    /// Admin-only hard delete of one payment row of any method or status, for a row recorded in
+    /// error (e.g. a mistaken refund — no money moved in Stripe). The row is gone for good, so the
+    /// audit entry carries everything needed to reconstruct it. The order balance is computed, so
+    /// it follows by itself.
+    /// </summary>
+    public async Task DeletePaymentAsync(
+        Guid orderId, Guid paymentId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
+            ?? throw new InvalidOperationException("Order not found.");
+        var payment = order.Payments.FirstOrDefault(p => p.Id == paymentId)
+            ?? throw new InvalidOperationException("Payment not found on this order.");
+
+        await repo.DeletePaymentAsync(paymentId, ct);
+        await audit.LogAsync(
+            AuditAction.StorePaymentDeleted, AuditEntityTypes.Payment, payment.Id,
+            $"Deleted {payment.Method} payment of EUR {payment.AmountEur:0.00} ({payment.Status}) on order {orderId}, "
+                + $"received {payment.ReceivedAt}, ref {payment.ExternalRef ?? "none"}, PI {payment.StripePaymentIntentId ?? "none"}, "
+                + $"recorded by {payment.RecordedByUserId?.ToString() ?? "none"}, notes {payment.Notes ?? "none"}",
+            actorUserId, orderId, AuditEntityTypes.Order);
     }
 
     public async Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default)
@@ -915,6 +1024,8 @@ internal sealed class Service(
             logger.LogError(ex,
                 "Failed to record Stripe payment for order {OrderId} (session {SessionId})",
                 orderId, session.SessionId);
+            // A failed recording must not become a successful webhook acknowledgement.
+            throw;
         }
     }
 
@@ -1030,6 +1141,8 @@ internal sealed class Service(
     /// <see cref="StoreSectionOptions.SimplifiedInvoiceThresholdEur"/> a receipt is not legal,
     /// so a counterparty-less order that large is refused rather than downgraded.
     ///
+    /// Only issuable at a zero balance: a camp that still owes, or is owed, settles first.
+    ///
     /// Idempotent on both sides: an order that already carries an <c>IssuedInvoiceId</c> throws
     /// without calling Holded, and — because a document approved by an attempt that then failed
     /// locally leaves no trace here — Holded is searched for a document already tagged with this
@@ -1061,6 +1174,9 @@ internal sealed class Service(
         // document and the order agree forever after. BalanceCalculator already computed the
         // effective prices for an Open order — reuse them rather than re-deriving.
         var totals = BalanceCalculator.Compute(order, await LoadCurrentPricesAsync(ct));
+        if (totals.BalanceEur != 0m)
+            throw new InvalidOperationException(
+                $"An invoice can only be issued when the order balance is zero (currently EUR {totals.BalanceEur:0.00}).");
         var totalsByLine = totals.Lines.ToDictionary(t => t.LineId);
         foreach (var line in order.Lines)
         {
@@ -1683,7 +1799,7 @@ internal sealed class Service(
 
         var payments = o.Payments
             .Select(p => new OrderPaymentDto(
-                p.AmountEur, p.Method, p.Status, p.StripePaymentIntentId, p.ExternalRef, p.ReceivedAt, p.Notes))
+                p.Id, p.AmountEur, p.Method, p.Status, p.StripePaymentIntentId, p.ExternalRef, p.ReceivedAt, p.Notes))
             .ToList();
 
         var counterpartyType = o.TeamId is not null

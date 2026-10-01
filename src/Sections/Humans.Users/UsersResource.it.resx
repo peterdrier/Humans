@@ -1162,4 +1162,17 @@
   <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Richiesta di eliminazione registrata. Il tuo account verrà eliminato definitivamente il {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Richiesta di eliminazione registrata. Poiché hai biglietti per un prossimo evento, il tuo account verrà eliminato dopo il {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>Impossibile annullare la richiesta di eliminazione. Riprova.</value></data>
+  <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Ha un account email @nobodies.team</value></data>
+  <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importato · nessun profilo ancora</value></data>
+  <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Questa persona esiste nel sistema ma non ha ancora completato un profilo (per esempio, è stata importata da una mailing list o dal ticketing).</value></data>
+  <data name="Users_Profile_ShiftSignupFailed" xml:space="preserve"><value>Non è stato possibile iscriversi al turno.</value></data>
+  <data name="Users_Profile_ShiftSignupSucceeded" xml:space="preserve"><value>Iscrizione al turno riuscita!</value></data>
+  <data name="Users_Profile_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>Iscrizione al turno riuscita. Nota: {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Users_Profile_ShiftRangeSignupFailed" xml:space="preserve"><value>Non è stato possibile iscriversi all'intervallo di turni.</value></data>
+  <data name="Users_Profile_ShiftRangeSignupSucceeded" xml:space="preserve"><value>Iscrizione all'intervallo di date riuscita!</value></data>
+  <data name="Users_Profile_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Iscrizione all'intervallo di date riuscita. Nota: {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Le categorie sempre attive non possono essere modificate.</value></data>
+  <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Il tuo accesso è stato sospeso: {0}</value></data>
+  <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Visualizza profilo</value></data>
+  <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Consenso ai documenti richiesti mancante (periodo di grazia scaduto)</value></data>
 </root>

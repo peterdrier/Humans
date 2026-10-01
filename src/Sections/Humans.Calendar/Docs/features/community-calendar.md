@@ -19,7 +19,7 @@ Nobodies Collective teams coordinate through meetings, workshops, and gatherings
 - Cancel or override individual occurrences without deleting the entire series
 - Team-owned events; any authenticated human can create, edit, or delete events for any team
 - Changes captured in the audit log (who / when / what) rather than gated by upfront authorization
-- NodaTime and IANA timezone-aware recurrence expansion (occurrences expand in their configured timezone and render in the org default, `Europe/Madrid`; a per-viewer zone is not built)
+- NodaTime and IANA timezone-aware recurrence expansion (occurrences expand in their configured timezone and render in the viewer's browser-reported timezone, falling back to `Europe/Madrid`)
 
 ## Out of Scope — Post-v1 Slices
 
@@ -76,7 +76,7 @@ is a separate call on the same interface and is unaffected.
 
 **Acceptance Criteria:**
 - Form with: title, description (optional), team (pre-selected if viewing team), date/time, timezone
-- Support single event or recurring (select recurrence frequency, interval, until date)
+- Support single event or recurring via a friendly picker (repeats daily/weekly/monthly/yearly, every N, weekdays, monthly day or nth weekday, ends never/on date/after N); "Custom" exposes the raw RRULE for anything else, and existing rules the picker cannot represent open as Custom
 - Save creates the event and redirects to event details
 - Required fields: title, team, start date/time
 
@@ -177,7 +177,7 @@ Every timed recurring event is tied to an IANA timezone (e.g., `"Europe/Madrid"`
 1. Recurrence rule is expanded in the event's configured timezone using `Ical.Net`
 2. Each occurrence start/end is calculated in that timezone, respecting DST transitions
 3. Occurrences are stored/queried in UTC (`StartUtc`, `EndUtc`)
-4. Rendering converts back with `NodaTime`, server-side, into the org default `Europe/Madrid` (`CalendarController.GetViewerZone`) — every viewer sees Madrid time, labelled as such. Deriving the zone from the browser or the profile is an unbuilt seam.
+4. Rendering converts back with `NodaTime`, server-side, into the viewer's zone (`CalendarController.GetViewerZone`): the browser-reported session timezone when it is a valid IANA id, otherwise the org default `Europe/Madrid`. The zone is labelled on the page.
 
 This ensures a recurring "19:00 weekly on Monday" stays at 19:00 local time even when daylight saving changes occur.
 

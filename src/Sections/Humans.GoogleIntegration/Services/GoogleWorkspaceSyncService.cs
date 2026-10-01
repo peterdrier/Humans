@@ -773,7 +773,7 @@ internal sealed class GoogleWorkspaceSyncService(
             // expected member whose stored email carries a "+tag".
             var email = CanonicalizeDriveEmail(permission.EmailAddress);
 
-            if (IsAnyUserPermission(permission))
+            if (DrivePermissionRoleMapper.IsAnyUserPermission(permission))
             {
                 snapshot.AllEmails.Add(email);
                 if (!string.IsNullOrEmpty(permission.Role))
@@ -837,7 +837,7 @@ internal sealed class GoogleWorkspaceSyncService(
             return MemberSyncState.Inherited;
 
         permissionSnapshot.RoleByEmail.TryGetValue(email, out var currentRole);
-        var currentLevel = ParseApiRole(currentRole);
+        var currentLevel = DrivePermissionRoleMapper.Parse(currentRole);
         return currentLevel.HasValue && currentLevel.Value < memberMaxLevel
             ? MemberSyncState.WrongRole
             : MemberSyncState.Correct;
@@ -900,7 +900,7 @@ internal sealed class GoogleWorkspaceSyncService(
     {
         try
         {
-            var memberLevel = ParseApiRole(member.ExpectedRole) ?? DrivePermissionLevel.Contributor;
+            var memberLevel = DrivePermissionRoleMapper.Parse(member.ExpectedRole) ?? DrivePermissionLevel.Contributor;
             await AddUserToDriveAsync(
                 primary, member.Email, member.UserId, memberLevel, syncSource, cancellationToken);
         }
@@ -1032,7 +1032,10 @@ internal sealed class GoogleWorkspaceSyncService(
         }
 
         var activeResources = await resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
-        var existingGroup = activeResources.FirstOrDefault(r => r.ResourceType == GoogleResourceType.Group);
+        var existingGroup = activeResources
+            .Where(r => r.ResourceType == GoogleResourceType.Group)
+            .OrderBy(r => r.ProvisionedAt)
+            .FirstOrDefault();
 
         if (team.GoogleGroupPrefix is null)
         {
@@ -1871,26 +1874,11 @@ internal sealed class GoogleWorkspaceSyncService(
                 .FirstOrDefault();
     }
 
-    private static bool IsAnyUserPermission(DrivePermission perm)
-    {
-        if (!string.Equals(perm.Type, "user", StringComparison.OrdinalIgnoreCase))
-            return false;
-        if (string.IsNullOrEmpty(perm.EmailAddress))
-            return false;
-        if (perm.EmailAddress.EndsWith(".iam.gserviceaccount.com", StringComparison.OrdinalIgnoreCase))
-            return false;
-        return true;
-    }
-
     private static bool IsDirectManagedPermission(DrivePermission perm)
     {
-        if (!string.Equals(perm.Type, "user", StringComparison.OrdinalIgnoreCase))
+        if (!DrivePermissionRoleMapper.IsAnyUserPermission(perm))
             return false;
         if (string.Equals(perm.Role, "owner", StringComparison.OrdinalIgnoreCase))
-            return false;
-        if (string.IsNullOrEmpty(perm.EmailAddress))
-            return false;
-        if (perm.EmailAddress.EndsWith(".iam.gserviceaccount.com", StringComparison.OrdinalIgnoreCase))
             return false;
 
         // Issue nobodies-collective/Humans#945 — a permission with ANY
@@ -1915,16 +1903,6 @@ internal sealed class GoogleWorkspaceSyncService(
     /// </summary>
     private static string CanonicalizeDriveEmail(string? email) =>
         email is null ? string.Empty : EmailNormalization.CanonicalizeGmail(email);
-
-    private static DrivePermissionLevel? ParseApiRole(string? role) => role switch
-    {
-        "reader" => DrivePermissionLevel.Viewer,
-        "commenter" => DrivePermissionLevel.Commenter,
-        "writer" => DrivePermissionLevel.Contributor,
-        "fileOrganizer" => DrivePermissionLevel.ContentManager,
-        "organizer" => DrivePermissionLevel.Manager,
-        _ => null
-    };
 
     private GroupSettingsExpected BuildExpectedGroupSettings() =>
         GroupSettingsPolicy.BuildExpected(_options.Groups);

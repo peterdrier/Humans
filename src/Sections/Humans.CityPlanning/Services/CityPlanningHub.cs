@@ -7,7 +7,7 @@ using Humans.Users.Contracts;
 namespace Humans.CityPlanning.Services;
 
 /// <summary>
-/// Live cursor presence for the barrio and container maps. <c>internal</c> like the rest
+/// Live cursor presence for the barrio map. <c>internal</c> like the rest
 /// of the section (HUM0034): its only consumers are this section's
 /// <c>SectionEndpoints</c>, which maps it, and <c>CityPlanningApiController</c>'s
 /// <c>IHubContext&lt;CityPlanningHub&gt;</c> — both in this assembly. Keep it that way;

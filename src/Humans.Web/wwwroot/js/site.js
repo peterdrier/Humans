@@ -213,17 +213,16 @@ document.addEventListener('click', function (e) {
     });
 })();
 
-// Timezone detection — send browser IANA timezone to server session (once per session)
+// Timezone detection — send browser IANA timezone whenever the server session lacks one
+// (the layout renders <meta name="tz-needed">), so an expired session is repopulated.
 (function () {
     try {
         var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        if (tz && !sessionStorage.getItem('tz_sent')) {
+        if (tz && document.querySelector('meta[name="tz-needed"]')) {
             fetch('/api/timezone', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ timeZone: tz })
-            }).then(function (r) {
-                if (r.ok) sessionStorage.setItem('tz_sent', '1');
             });
         }
     } catch (_) { /* Intl not supported — fall back to server default */ }
@@ -521,6 +520,69 @@ function showToast(message, type) {
         });
 })();
 
+// Member top nav (site.css: <900px the links become a horizontal scrolling
+// strip with a mask-image edge fade — no hamburger). Same active-into-view
+// contract as the admin sidebar/tabs strip above, plus a fix for dropdowns
+// (the Events menu) nested inside the strip: Bootstrap positions a navbar
+// dropdown-menu absolute with no Popper, so the strip's overflow-x clips it.
+// Escape that by switching it to position:fixed while open.
+(function () {
+    var scroller = document.querySelector('.navbar-links');
+    if (!scroller) return;
+
+    // Edge fade only when the links actually overflow the strip.
+    function updateOverflow() {
+        scroller.classList.toggle('is-overflowing', scroller.scrollWidth > scroller.clientWidth + 1);
+    }
+    updateOverflow();
+    if (window.ResizeObserver) {
+        new ResizeObserver(updateOverflow).observe(scroller);
+    } else {
+        window.addEventListener('resize', updateOverflow);
+    }
+
+    var active = scroller.querySelector('.nav-link.active');
+    if (active) {
+        var prevBehavior = scroller.style.scrollBehavior;
+        scroller.style.scrollBehavior = 'auto';
+        // Rect diff, not offsetLeft: .navbar-links isn't the links' offsetParent.
+        var linkRect = active.getBoundingClientRect();
+        scroller.scrollLeft += linkRect.left - scroller.getBoundingClientRect().left
+            - (scroller.clientWidth - linkRect.width) / 2;
+        scroller.style.scrollBehavior = prevBehavior;
+    }
+
+    scroller.querySelectorAll('.dropdown').forEach(function (dropdown) {
+        var toggle = dropdown.querySelector('.dropdown-toggle');
+        var menu = dropdown.querySelector('.dropdown-menu');
+        if (!toggle || !menu) return;
+
+        dropdown.addEventListener('show.bs.dropdown', function () {
+            scroller.classList.add('dropdown-open');
+            var rect = toggle.getBoundingClientRect();
+            menu.style.position = 'fixed';
+            menu.style.top = rect.bottom + 'px';
+            menu.style.left = rect.left + 'px';
+            menu.style.right = 'auto';
+        });
+
+        // The menu isn't rendered (so has no measurable width) until it's shown —
+        // clamp it back on screen now that it does, for a toggle near the edge.
+        dropdown.addEventListener('shown.bs.dropdown', function () {
+            var maxLeft = Math.max(8, window.innerWidth - menu.offsetWidth - 8);
+            menu.style.left = Math.max(8, Math.min(parseFloat(menu.style.left), maxLeft)) + 'px';
+        });
+
+        dropdown.addEventListener('hidden.bs.dropdown', function () {
+            scroller.classList.remove('dropdown-open');
+            menu.style.position = '';
+            menu.style.top = '';
+            menu.style.left = '';
+            menu.style.right = '';
+        });
+    });
+})();
+
 // Expand/collapse compressed date ranges in _BuildStrikeRotaTable.
 // Used by /Shifts/Index and /OnboardingWidget/Shifts; no-op elsewhere.
 (function () {
@@ -542,9 +604,8 @@ function showToast(message, type) {
 
 // Favourite hearts (Events): toggle the favourite in place — or remove the row
 // on My Schedule — via the JSON favourites API, so the action never reloads the
-// page and the user's filters/scroll survive. The JS contract is rendered by
-// Views/Shared/_FavouriteButton.cshtml. The API is same-origin + cookie-auth and
-// carries no antiforgery requirement.
+// page and the user's filters/scroll survive. The JS contract (including its
+// antiforgery token) is rendered by Views/Shared/_FavouriteButton.cshtml.
 (function () {
     function removeRow(btn) {
         // A whole-event unfavourite (empty data-day) deletes every occurrence
@@ -581,9 +642,13 @@ function showToast(message, type) {
         var url = '/api/events/favourites/' + encodeURIComponent(btn.getAttribute('data-event-id'));
         var day = btn.getAttribute('data-day');
         if (day !== null && day !== '') url += '?day=' + encodeURIComponent(day);
+        var token = btn.closest('form').querySelector('input[name="__RequestVerificationToken"]').value;
 
         btn.disabled = true;
-        fetch(url, { method: favourited ? 'DELETE' : 'POST' })
+        fetch(url, {
+            method: favourited ? 'DELETE' : 'POST',
+            headers: { RequestVerificationToken: token }
+        })
             .then(function (r) {
                 if (!r.ok) throw new Error(r.status);
                 if (btn.getAttribute('data-remove-row') === 'true') { removeRow(btn); return; }

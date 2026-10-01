@@ -1,5 +1,6 @@
 using Humans.Camps.Contracts;
 using Humans.Store.Contracts;
+using Humans.Store.Domain;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
 using Humans.Base.Authorization;
@@ -79,12 +80,14 @@ internal sealed class StoreController(
         var canPay = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Pay)).Succeeded;
         var canDeleteAuth = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Delete)).Succeeded;
         var canIssueAuth = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.IssueInvoice)).Succeeded;
+        var canRecordPayment = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordPayment)).Succeeded;
         var pageData = await storeService.GetOrderPageDataAsync(order, canEdit, canPay, ct);
         var (catalog, removableLineIds) = await FilterLineEditAffordancesAsync(order, pageData.Catalog, canEdit, ct);
         return View(OrderViewModel.FromPageData(
             pageData,
             canDeleteAuth && order.BalanceEur == 0m && order.State == OrderState.Open,
             canIssueAuth && order.State == OrderState.Open && order.Lines.Count > 0,
+            canRecordPayment,
             catalog,
             removableLineIds));
     }
@@ -201,6 +204,60 @@ internal sealed class StoreController(
         {
             logger.LogError(ex, "Holded invoice issuance failed for order {OrderId}", id);
             SetError(localizer["Store_InvoiceFailed"].Value);
+        }
+        return RedirectToAction(nameof(Order), new { id });
+    }
+
+    [HttpPost("Order/{id:guid}/RecordPayment")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RecordPayment(
+        Guid id, PaymentMethod method, decimal amountEur, string? externalRef, string? notes, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var order = await storeService.GetOrderAsync(id, ct);
+        if (order is null) return NotFound();
+
+        var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordPayment);
+        if (!auth.Succeeded) return Forbid();
+        if (method == PaymentMethod.Refund
+            && !(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Refund)).Succeeded)
+            return Forbid();
+
+        try
+        {
+            await storeService.RecordAdminPaymentAsync(id, method, amountEur, externalRef, notes, user.Id, CancellationToken.None);
+            SetSuccess(localizer["Store_PaymentRecorded"].Value);
+        }
+        catch (InvalidOperationException ex)
+        {
+            SetError(ex.Message);
+        }
+        return RedirectToAction(nameof(Order), new { id });
+    }
+
+    [HttpPost("Order/{id:guid}/Payment/{paymentId:guid}/Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeletePayment(Guid id, Guid paymentId, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var order = await storeService.GetOrderAsync(id, ct);
+        if (order is null) return NotFound();
+
+        var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.DeletePayment);
+        if (!auth.Succeeded) return Forbid();
+
+        try
+        {
+            await storeService.DeletePaymentAsync(id, paymentId, user.Id, CancellationToken.None);
+            SetSuccess("Payment deleted."); // Admin-only action: exempt from localization.
+        }
+        catch (InvalidOperationException ex)
+        {
+            SetError(ex.Message);
         }
         return RedirectToAction(nameof(Order), new { id });
     }

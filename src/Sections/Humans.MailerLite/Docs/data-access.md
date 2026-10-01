@@ -20,12 +20,11 @@ and provisions matching accounts. No cache.
 ### MailerLiteService (Singleton, class `MailerLiteClient`)
 
 No repository. `MailerLiteClient` is the MailerLite HTTP port, built over
-`IHttpClientFactory`: account and group reads (`GetAccountSummaryAsync`,
-`ListGroupsAsync`, `CreateGroupAsync`), subscriber reads
-(`ListSubscribersAsync`), and the group-membership
-writes the audience sync drives (`AssignSubscriberToGroupAsync`,
+`IHttpClientFactory`: reads (`GetAccountSummaryAsync`, `ListGroupsAsync`,
+`ListSubscribersAsync`) plus `RefreshAsync` (re-fetches the snapshot); writes
+(`CreateGroupAsync`, `AssignSubscriberToGroupAsync`,
 `UnassignSubscriberFromGroupAsync`, `BulkImportSubscribersToGroupAsync`,
-`RefreshAsync`). Retry timing uses `IClock`. No DB access, no `IMemoryCache`
+`DeleteSubscriberAsync` for GDPR erasure). Retry timing uses `IClock`. No DB access, no `IMemoryCache`
 (the client holds its own in-process subscriber/group state as a Singleton).
 
 ### MailerLiteGdprContributor (Scoped)
@@ -33,7 +32,7 @@ writes the audience sync drives (`AssignSubscriberToGroupAsync`,
 No repository, no cache. Implements `IUserDataContributor` — the section owns
 no user-scoped tables, so `ContributeForUserAsync` (Article 15) always
 returns empty; `EraseForUserAsync` (Article 17) deletes the MailerLite
-subscriber under every verified address via `IMailerLiteService`. Depends on
+subscriber under every verified address plus the primary via `IMailerLiteService`. Depends on
 `IMailerLiteService`, `IUserEmailService`.
 
 ### MailerLiteAudienceSyncService (Scoped)
@@ -46,7 +45,7 @@ slice — pushes computed audiences back to MailerLite groups. No cache.
 
 ### Audience definitions (`IMailerLiteAudience`)
 
-Audience-membership computation classes under `MailerLite/Audiences/`:
+Audience-membership computation classes under `Services/Audiences/`:
 `HasShiftAudience`, `HasShiftSetupAudience`, `HasShiftEventAudience`,
 `HasShiftStrikeAudience`, `HasTicketAudience`, `MarketingAudience`,
 `MarketingNoTicketAudience`, `TicketNoShiftsAudience`, `MailerLiteAudienceBase`,

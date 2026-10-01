@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Humans.Backdoor.Filters;
+using Humans.Base.Extensions;
 using Humans.Base.Controllers;
 using Humans.Surveys.Contracts;
 using Humans.Users.Contracts;
@@ -122,7 +123,7 @@ internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUs
 
         // Offset-based opaque cursor over the filtered, time-ordered rows.
         var offset = DecodeCursor(cursor);
-        var pageSize = Math.Clamp(limit, 1, MaxLimit);
+        var pageSize = limit.ClampPageSize(max: MaxLimit);
         var page = filtered.Skip(offset).Take(pageSize).ToList();
         var nextOffset = offset + page.Count;
         var nextCursor = nextOffset < filtered.Count ? EncodeCursor(nextOffset) : null;

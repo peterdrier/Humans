@@ -4,10 +4,10 @@
     <div class="d-flex align-items-center gap-2">
         <i class="fa-solid fa-bell"></i>
         <span>@Localizer["Notification_Popup_Title"]</span>
-        @if (Model.ActionableCount > 0)
+        @if (Model.Actionable.Count > 0)
         {
             <span class="badge rounded-pill notification-action-pill">
-                @Model.ActionableCount @Localizer["Notification_Popup_NeedAction"]
+                @Model.Actionable.Count @Localizer["Notification_Popup_NeedAction"]
             </span>
         }
     </div>

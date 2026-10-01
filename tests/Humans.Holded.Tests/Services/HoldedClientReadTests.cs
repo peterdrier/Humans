@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json.Nodes;
 using AwesomeAssertions;
 using Humans.Holded.Contracts;
 using Humans.Holded.Services;
@@ -23,7 +24,7 @@ public class HoldedClientReadTests
     [HumansFact]
     public async Task ListExpenseAccounts_parses_num_and_name()
     {
-        var json = """{"items":[{"id":"a1","name":"Otros servicios","account_num":62900000,"archived":false}],"cursor":null,"has_more":false}""";
+        var json = """{"items":[{"id":"a1","name":"Otros servicios","account_num":62900000.0,"archived":false}],"cursor":null,"has_more":false}""";
         var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, json));
 
         var client = Make(handler);
@@ -33,6 +34,76 @@ public class HoldedClientReadTests
         accounts[0].Id.Should().Be("a1");
         accounts[0].Name.Should().Be("Otros servicios");
         accounts[0].AccountNum.Should().Be(62900000);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("expense", "account_num", "missing")]
+    [Xunit.InlineData("expense", "account_num", "null")]
+    [Xunit.InlineData("chart", "id", "missing")]
+    [Xunit.InlineData("chart", "id", "null")]
+    [Xunit.InlineData("chart", "id", "empty")]
+    [Xunit.InlineData("chart", "id", "whitespace")]
+    public async Task Account_reads_refuse_missing_identity(string endpoint, string field, string shape)
+    {
+        var body = JsonNode.Parse("""
+            {"items":[{"id":"a1","name":"Capital","account_num":62900000,"number":10000000,
+              "debit":"0.00","credit":"1000.00","balance":"-1000.00"}],
+             "cursor":null,"has_more":false}
+            """)!;
+        var account = body["items"]![0]!.AsObject();
+        if (string.Equals(shape, "missing", StringComparison.Ordinal))
+            account.Remove(field);
+        else
+            account[field] = shape switch { "null" => null, "empty" => "", _ => "   " };
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, body.ToJsonString())));
+
+        var act = async () =>
+        {
+            if (string.Equals(endpoint, "expense", StringComparison.Ordinal))
+                await client.ListExpenseAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+            else
+                await client.ListAccountingAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        };
+
+        await act.Should().ThrowAsync<HoldedPermanentException>().WithMessage($"*'{field}'*");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("expense", "account_num", 62900000.5)]
+    [Xunit.InlineData("chart", "number", 10000000.5)]
+    [Xunit.InlineData("ledger", "entry_number", 2064.5)]
+    [Xunit.InlineData("ledger", "line", 2.5)]
+    [Xunit.InlineData("ledger", "account", 40000004.5)]
+    public async Task Account_and_ledger_reads_refuse_fractional_identifiers(
+        string endpoint, string field, double value)
+    {
+        var body = JsonNode.Parse("""
+            {"items":[{"id":"a1","name":"Capital","account_num":62900000,"number":10000000,
+              "entry_number":2064,"line":2,"date":"09/02/2026","account":40000004,
+              "debit":"0.00","credit":"1000.00","balance":"-1000.00"}],
+             "cursor":null,"has_more":false}
+            """)!;
+        body["items"]![0]![field] = value;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, body.ToJsonString())));
+
+        var act = async () =>
+        {
+            switch (endpoint)
+            {
+                case "expense":
+                    await client.ListExpenseAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+                    break;
+                case "chart":
+                    await client.ListAccountingAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+                    break;
+                case "ledger":
+                    await client.ListLedgerEntriesAsync(new LocalDate(2026, 1, 1), new LocalDate(2026, 12, 31),
+                        ct: Xunit.TestContext.Current.CancellationToken);
+                    break;
+            }
+        };
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
     [HumansFact]
@@ -54,7 +125,7 @@ public class HoldedClientReadTests
           {
             "id":"doc-1","document_number":"F001","contact_name":"Alice",
             "date":"2026-05-14",
-            "subtotal":"100.00","tax":"21.00","total":"121.00",
+            "subtotal":"100.00","tax":"21.00","total":"121.00","payments_pending":"21.00",
             "currency":"eur","tags":["adminstaff"],
             "lines":[
               {"price":"100.00","account":"acc-629","tags":["adminstaff"]}
@@ -70,6 +141,7 @@ public class HoldedClientReadTests
         docs.Should().HaveCount(1);
         var doc = docs[0];
         doc.Id.Should().Be("doc-1");
+        doc.PaymentsPending.Should().Be(21.00m);
         doc.Date.Should().Be(
             new LocalDate(2026, 5, 14)
                 .AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"])
@@ -81,6 +153,25 @@ public class HoldedClientReadTests
         line.AccountId.Should().Be("acc-629");
         line.Tags.Should().ContainSingle("adminstaff");
         line.Amount.Should().Be(100.0m);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("id", null, false)]
+    [Xunit.InlineData("id", null, true)]
+    [Xunit.InlineData("id", "", true)]
+    [Xunit.InlineData("id", " ", true)]
+    public async Task ListPurchaseDocuments_refuses_missing_or_blank_id(
+        string field, string? value, bool present)
+    {
+        var doc = JsonNode.Parse("""{"id":"doc-1","date":"2026-05-14","total":"121.00","payments_pending":"121.00","draft":false}""")!.AsObject();
+        if (present) doc[field] = value;
+        else doc.Remove(field);
+        var json = new JsonObject { ["items"] = new JsonArray(doc), ["has_more"] = false };
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json.ToJsonString())));
+
+        var act = async () => await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>().WithMessage($"*'{field}'*");
     }
 
     [HumansFact]
@@ -104,12 +195,13 @@ public class HoldedClientReadTests
     {
         // Holded sends an absent sub-record as an empty array (#994) and is equally free to send an
         // absent collection as something other than an array; AsArray() throws on both.
-        var json = """{"items":[{"id":"doc-1","document_number":"F001","date":"2026-05-14","total":"121.00","lines":{},"tags":""}],"cursor":null,"has_more":false}""";
+        var json = """{"items":[{"id":"doc-1","document_number":"F001","date":"2026-05-14","total":"121.00","payments_pending":"0.00","lines":{},"tags":""}],"cursor":null,"has_more":false}""";
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
 
         var docs = await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
 
         docs.Should().ContainSingle();
+        docs[0].PaymentsPending.Should().Be(0m);
         docs[0].Lines.Should().BeEmpty();
         docs[0].Tags.Should().BeEmpty();
     }
@@ -132,9 +224,9 @@ public class HoldedClientReadTests
     {
         var json = """
         {"items":[
-          {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","description":"ER: Tent pegs"},
-          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","description":null},
-          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00"}
+          {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","payments_pending":"0.00","description":"ER: Tent pegs"},
+          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","payments_pending":"0.00","description":null},
+          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00","payments_pending":"0.00"}
         ],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -152,9 +244,9 @@ public class HoldedClientReadTests
         // field in the one full pull instead of a second sweep.
         var json = """
         {"items":[
-          {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","draft":false},
-          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","draft":true},
-          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00"}
+          {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","payments_pending":"0.00","draft":false},
+          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","payments_pending":"0.00","draft":true},
+          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00","payments_pending":"0.00"}
         ],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -170,8 +262,8 @@ public class HoldedClientReadTests
     public async Task ListLedgerEntries_parses_ddMMyyyy_dates_and_string_decimals()
     {
         var json = """
-        {"items":[{"entry_number":2064,"line":2,"date":"09/02/2026","type":"payment",
-          "description":"","doc_description":"","account":40000004,"debit":"0.00",
+        {"items":[{"entry_number":2064.0,"line":2.0,"date":"09/02/2026","type":"payment",
+          "description":"","doc_description":"","account":40000004.0,"debit":"0.00",
           "credit":"1200.00","tags":[],"checked":false}],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -352,11 +444,38 @@ public class HoldedClientReadTests
         await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("debit", false)]
+    [Xunit.InlineData("debit", true)]
+    [Xunit.InlineData("credit", false)]
+    [Xunit.InlineData("credit", true)]
+    [Xunit.InlineData("balance", false)]
+    [Xunit.InlineData("balance", true)]
+    public async Task ListAccountingAccounts_refuses_missing_totals(string field, bool explicitNull)
+    {
+        var body = JsonNode.Parse("""
+            {"items":[{"id":"a1","number":10000000,"name":"Capital",
+              "debit":"0.00","credit":"1000.00","balance":"-1000.00"}],
+             "cursor":null,"has_more":false}
+            """)!;
+        var account = body["items"]![0]!.AsObject();
+        if (explicitNull)
+            account[field] = null;
+        else
+            account.Remove(field);
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, body.ToJsonString())));
+
+        var act = async () => await client.ListAccountingAccountsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>().WithMessage($"*'{field}'*");
+    }
+
     [HumansFact]
     public async Task ListAccountingAccounts_parses_totals()
     {
         var json = """
-        {"items":[{"id":"a1","color":"#fff","number":10000000,"name":"Capital",
+        {"items":[{"id":"a1","color":"#fff","number":10000000.0,"name":"Capital",
           "description":"","group":"Equity","debit":"0.00","credit":"1000.00",
           "balance":"-1000.00","archived":false,"non_deductible":false}],
          "cursor":null,"has_more":false}

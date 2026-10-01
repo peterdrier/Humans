@@ -36,7 +36,7 @@ internal sealed class TeamsEmails(
     /// <summary>The team's resource list — omitted entirely rather than rendered as an empty list.</summary>
     private string ResourcesSection(IEnumerable<(string Name, string? Url)> resources)
     {
-        var items = resources.ToList();
+        var items = resources.OrderBy(r => r.Name, StringComparer.Ordinal).ToList();
         return items.Count > 0
             ? Lf("Teams_Email_ResourcesSection",
                 string.Join("\n", items.Select(r =>

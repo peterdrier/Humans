@@ -1,3 +1,6 @@
+using System.Globalization;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options;
 using AwesomeAssertions;
 using Humans.Base.Csv;
 using Humans.Email.Contracts;
@@ -18,6 +21,10 @@ namespace Humans.Events.Tests.Services;
 
 public sealed class EventServiceTests
 {
+    private readonly IStringLocalizer<EventsResource> _localizer =
+        new StringLocalizer<EventsResource>(new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
+
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
     private readonly FakeEventRepository _repo = new();
     private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
@@ -28,7 +35,7 @@ public sealed class EventServiceTests
 
     public EventServiceTests()
     {
-        _service = new EventService(_repo, _burnSettings, _userService, _emailService, _emailMessages, _clock, NullLogger<EventService>.Instance);
+        _service = new EventService(_repo, _burnSettings, _userService, _emailService, _emailMessages, _clock, NullLogger<EventService>.Instance, _localizer);
     }
 
     [HumansTheory]
@@ -438,19 +445,91 @@ public sealed class EventServiceTests
         slices[0].Data.Should().NotBeNull();
     }
 
+    [HumansTheory]
+    [InlineData("en", "Title is required.")]
+    [InlineData("es", "El campo Title es obligatorio.")]
+    [InlineData("de", "Title ist erforderlich.")]
+    [InlineData("it", "Il campo Title è obbligatorio.")]
+    [InlineData("fr", "Le champ Title est obligatoire.")]
+    [InlineData("ca", "El camp Title és obligatori.")]
+    public async Task BulkImportAsync_InvalidRow_ReturnsErrorsAndWritesNothing_UsesUploaderCulture(string culture, string expectedError)
+    {
+        var originalCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+            var campId = Guid.NewGuid();
+            _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true });
+
+            var result = await _service.BulkImportAsync(
+                campId, Guid.NewGuid(), [Row(title: "")],
+                new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+            result.HasErrors.Should().BeTrue();
+            result.Errors.Should().ContainSingle(e => e.Errors.Contains(expectedError));
+            _repo.Events.Should().BeEmpty();
+            _repo.SaveChangesCount.Should().Be(0);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = originalCulture;
+        }
+    }
+
     [HumansFact]
-    public async Task BulkImportAsync_InvalidRow_ReturnsErrorsAndWritesNothing()
+    public async Task BulkImportAsync_AmbiguousCategory_ReturnsErrorsAndWritesNothing()
+    {
+        var campId = Guid.NewGuid();
+        _repo.Categories.AddRange(
+            new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop-a", IsActive = true },
+            new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop-b", IsActive = true });
+
+        var result = await _service.BulkImportAsync(
+            campId, Guid.NewGuid(), [Row()],
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeTrue();
+        result.Errors.Should().ContainSingle(error =>
+            error.Errors.Contains("Category 'Workshop' matches more than one active category."));
+        _repo.Events.Should().BeEmpty();
+        _repo.SaveChangesCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task BulkImportAsync_InvalidRecurrenceDay_ReturnsErrorsAndWritesNothing()
     {
         var campId = Guid.NewGuid();
         _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true });
 
         var result = await _service.BulkImportAsync(
-            campId, Guid.NewGuid(), [Row(title: "")],
+            campId, Guid.NewGuid(), [Row(isRecurring: true, recurrenceDays: "Mon Funday")],
             new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
 
         result.HasErrors.Should().BeTrue();
-        result.Errors.Should().ContainSingle(e => e.Errors.Contains("Title is required."));
+        result.Errors.Should().ContainSingle(error =>
+            error.Errors.Contains("RecurrenceDays must contain only Mon Tue Wed Thu Fri Sat Sun."));
         _repo.Events.Should().BeEmpty();
+        _repo.SaveChangesCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task BulkImportAsync_DuplicateExistingId_ReturnsErrorsAndWritesNothing()
+    {
+        var campId = Guid.NewGuid();
+        var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.Add(category);
+        var existing = ExistingEvent(campId, category.Id, EventStatus.Approved);
+        _repo.Events.Add(existing);
+
+        var result = await _service.BulkImportAsync(
+            campId, Guid.NewGuid(),
+            [Row(id: existing.Id, title: "First", rowNumber: 2), Row(id: existing.Id, title: "Second", rowNumber: 3)],
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeTrue();
+        result.Errors.Should().HaveCount(2)
+            .And.OnlyContain(error => error.Errors.Contains($"Event {existing.Id} appears more than once in the upload."));
+        existing.Title.Should().Be("My Event");
         _repo.SaveChangesCount.Should().Be(0);
     }
 
@@ -502,7 +581,7 @@ public sealed class EventServiceTests
         _repo.Events.Add(existing);
 
         var bytes = await _service.BuildBulkUploadTemplateAsync(campId, "Fire Barrio", TestContext.Current.CancellationToken);
-        var rows = BulkEventCsvParser.Parse(HumansCsv.Utf8WithBom.GetString(bytes).TrimStart('\uFEFF'));
+        var rows = BulkEventCsvParser.Parse(HumansCsv.Utf8WithBom.GetString(bytes).TrimStart('\uFEFF'), _localizer);
 
         rows.Should().ContainSingle().Which.PriorityRank.Should().BeNull();
     }

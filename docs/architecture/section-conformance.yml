@@ -75,8 +75,8 @@ rules:
     notes: >-
       Known hits at seeding (2026-08-18), recorded so a run reports them as pre-existing
       rather than new: Helpers/ in Events, Shifts and Users; Extensions/ in Users;
-      HoldedSectionOptions.cs loose at Humans.Holded's root; no Docs/ in Settings or
-      TicketTailor. 2026-09-14 (Peter, answering /section-doctor on Events): the folder
+      HoldedSectionOptions.cs loose at Humans.Holded's root. 2026-09-14 (Peter, answering
+      /section-doctor on Events): the folder
       check was an allow-list and reported Helpers/ and Extensions/ as violations. We want
       sections consistent with each other, not restricted in which folders they carry —
       one section having Helpers/ and another not is fine; one spelling it Db/ while the

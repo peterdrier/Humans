@@ -74,7 +74,8 @@ public interface ITicketVendorService : IApplicationService
     /// Record a check-in for an issued ticket at the vendor (TicketTailor
     /// <c>POST /v1/check_ins</c>). A best-effort mirror fired after a gate admit
     /// so the vendor dashboard / vendor check-in app stays consistent — the Gate
-    /// section's own <c>gate_scan_events</c> remains the dedupe authority. Safe to retry.
+    /// section's own <c>gate_scan_events</c> remains the dedupe authority. This write is
+    /// not idempotent: each POST creates a record, so callers must never retry it.
     /// </summary>
     [ExternalWrite]
     Task CreateCheckInAsync(

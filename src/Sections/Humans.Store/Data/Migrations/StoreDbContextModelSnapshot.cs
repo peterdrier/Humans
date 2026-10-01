@@ -184,6 +184,10 @@ namespace Humans.Store.Data.Migrations
                     b.Property<int>("Method")
                         .HasColumnType("integer");
 
+                    b.Property<string>("MethodName")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");

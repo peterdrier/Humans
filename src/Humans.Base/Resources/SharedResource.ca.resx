@@ -94,9 +94,6 @@
   <data name="Common_ExportGeoJson" xml:space="preserve">
     <value>Exporta GeoJSON</value>
   </data>
-  <data name="Common_Submit" xml:space="preserve">
-    <value>Envia</value>
-  </data>
   <data name="Common_NotProvided" xml:space="preserve">
     <value>No proporcionat</value>
   </data>
@@ -263,83 +260,15 @@
     <value>Benvingut/da, {0}</value>
     <comment>{0} = display name</comment>
   </data>
-  <data name="Dashboard_PendingConsentsAlert" xml:space="preserve">
-    <value>&lt;strong&gt;Acció requerida:&lt;/strong&gt; Tens {0} consentiment(s) pendent(s). &lt;a href="/Consent" class="alert-link"&gt;Revisa'ls i atorga el teu consentiment&lt;/a&gt; per mantenir el teu estat de voluntari actiu.</value>
-    <comment>{0} = pending consent count</comment>
-  </data>
-  <data name="Dashboard_IncompleteProfileAlert" xml:space="preserve">
-    <value>&lt;strong&gt;Completa el teu perfil:&lt;/strong&gt; El teu perfil està incomplet. &lt;a href="/Profile/Me/Edit" class="alert-link"&gt;Afegeix la teva informació&lt;/a&gt; perquè et puguem conèixer millor.</value>
-  </data>
   <data name="Dashboard_ProfileCard" xml:space="preserve">
     <value>Perfil</value>
-  </data>
-  <data name="Dashboard_ProfileComplete" xml:space="preserve">
-    <value>El teu perfil està complet.</value>
-  </data>
-  <data name="Dashboard_ProfileIncomplete" xml:space="preserve">
-    <value>Completa el teu perfil perquè et puguem conèixer millor.</value>
   </data>
   <data name="Dashboard_ProfileCompletionPercent" xml:space="preserve">
     <value>Perfil completat al {0}%</value>
     <comment>{0} = percentage 0-99</comment>
   </data>
-  <data name="Dashboard_FinishProfile" xml:space="preserve">
-    <value>Completa el teu perfil</value>
-  </data>
-  <data name="Dashboard_ViewProfile" xml:space="preserve">
-    <value>Veure perfil</value>
-  </data>
   <data name="Dashboard_ConsentsCard" xml:space="preserve">
     <value>Acords</value>
-  </data>
-  <data name="Dashboard_ConsentsNeeded" xml:space="preserve">
-    <value>&lt;strong&gt;{0}&lt;/strong&gt; de {1} documents necessiten el teu consentiment.</value>
-    <comment>{0} = pending count, {1} = total required</comment>
-  </data>
-  <data name="Dashboard_ReviewConsents" xml:space="preserve">
-    <value>Revisa els acords</value>
-  </data>
-  <data name="Dashboard_ConsentsUpToDate" xml:space="preserve">
-    <value>Tots els consentiments estan al dia.</value>
-  </data>
-  <data name="Dashboard_ViewConsents" xml:space="preserve">
-    <value>Veure acords</value>
-  </data>
-  <data name="Dashboard_NoConsentsRequired" xml:space="preserve">
-    <value>No es requereix consentiment en aquest moment.</value>
-  </data>
-  <data name="Dashboard_LatestApplication" xml:space="preserve">
-    <value>Última sol·licitud:</value>
-  </data>
-  <data name="Dashboard_ViewApplicationHistory" xml:space="preserve">
-    <value>Veure historial de sol·licituds</value>
-  </data>
-  <data name="Dashboard_GovernanceDescription" xml:space="preserve">
-    <value>Els associats són humans amb dret a vot que participen en les decisions de governança com assemblees i eleccions. Això està destinat a líders comunitaris i humans compromesos a llarg termini.</value>
-  </data>
-  <data name="Dashboard_GovernanceOptional" xml:space="preserve">
-    <value>La participació en la governança és opcional i no afecta l'accés als recursos.</value>
-  </data>
-  <data name="Dashboard_LearnMore" xml:space="preserve">
-    <value>Més informació</value>
-  </data>
-  <data name="Dashboard_OnboardingTitle" xml:space="preserve">
-    <value>Primers passos</value>
-  </data>
-  <data name="Dashboard_OnboardingDescription" xml:space="preserve">
-    <value>Completa aquests passos per ser voluntari:</value>
-  </data>
-  <data name="Dashboard_Step_Profile" xml:space="preserve">
-    <value>Completa el teu perfil</value>
-  </data>
-  <data name="Dashboard_Step_Consents" xml:space="preserve">
-    <value>Revisa i accepta els documents requerits</value>
-  </data>
-  <data name="Dashboard_Step_Approval" xml:space="preserve">
-    <value>La junta revisa i aprova el teu compte</value>
-  </data>
-  <data name="Dashboard_Step_ConsentCheck" xml:space="preserve">
-    <value>Un coordinador revisa i aprova els teus documents</value>
   </data>
   <data name="Dashboard_MembershipTier" xml:space="preserve">
     <value>Nivell de membres</value>
@@ -350,26 +279,8 @@
   <data name="Dashboard_TierActive" xml:space="preserve">
     <value>El teu nivell de membres està actiu.</value>
   </data>
-  <data name="Dashboard_YourMembership" xml:space="preserve">
-    <value>El teu estat de voluntari</value>
-  </data>
-  <data name="Dashboard_MemberSince" xml:space="preserve">
-    <value>Membre des de</value>
-  </data>
-  <data name="Dashboard_LastLogin" xml:space="preserve">
-    <value>Últim accés</value>
-  </data>
-  <data name="Dashboard_QuickLinks" xml:space="preserve">
-    <value>Accesos ràpids</value>
-  </data>
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Revisar acords</value>
-  </data>
-  <data name="Dashboard_PendingAgreementsSingular" xml:space="preserve">
-    <value>{0} acord per revisar</value>
-  </data>
-  <data name="Dashboard_PendingAgreementsPlural" xml:space="preserve">
-    <value>{0} acords per revisar</value>
   </data>
   <data name="Dashboard_RejectedTitle" xml:space="preserve">
     <value>Registre rebutjat</value>
@@ -567,12 +478,6 @@
   <data name="MyTeams_View" xml:space="preserve">
     <value>Veure</value>
   </data>
-  <data name="AdminDashboard_Title" xml:space="preserve">
-    <value>Panell d'administració</value>
-  </data>
-  <data name="AdminGoogleSync_Title" xml:space="preserve">
-    <value>Estat de sincronització amb Google</value>
-  </data>
   <data name="Admin_CannotStartReview" xml:space="preserve">
     <value>No es pot iniciar la revisió. La sol·licitud no està en estat Enviada.</value>
   </data>
@@ -761,32 +666,8 @@
   <data name="AdminApp_Review" xml:space="preserve">
     <value>Revisar</value>
   </data>
-  <data name="GoogleSync_SyncNow" xml:space="preserve">
-    <value>Sincronitza ara</value>
-  </data>
-  <data name="GoogleSync_TotalResources" xml:space="preserve">
-    <value>Recursos totals</value>
-  </data>
-  <data name="GoogleSync_InSync" xml:space="preserve">
-    <value>Sincronitzat</value>
-  </data>
-  <data name="GoogleSync_Drifted" xml:space="preserve">
-    <value>Desviat</value>
-  </data>
-  <data name="GoogleSync_Errors" xml:space="preserve">
-    <value>Errors</value>
-  </data>
-  <data name="GoogleSync_NoResources" xml:space="preserve">
-    <value>No s'han trobat recursos actius de Google.</value>
-  </data>
-  <data name="GoogleSync_Resource" xml:space="preserve">
-    <value>Recurs</value>
-  </data>
   <data name="GoogleSync_Details" xml:space="preserve">
     <value>Detalls</value>
-  </data>
-  <data name="GoogleSync_BackToDashboard" xml:space="preserve">
-    <value>Torna al panell d'administració</value>
   </data>
   <data name="Nav_City" xml:space="preserve">
     <value>Mapa</value>
@@ -834,9 +715,6 @@
   </data>
   <data name="Camp_Plural" xml:space="preserve">
     <value>Barris</value>
-  </data>
-  <data name="Agent_WidgetButton" xml:space="preserve">
-    <value>Obrir l'assistent</value>
   </data>
   <data name="Login_MagicLink_Title" xml:space="preserve">
     <value>O inicia la sessió amb correu</value>
@@ -937,9 +815,6 @@
   </data>
   <data name="Todo_Profile_Done" xml:space="preserve">
     <value>El teu perfil està complet.</value>
-  </data>
-  <data name="Todo_Profile_Pending" xml:space="preserve">
-    <value>Afegeix la teva informació perquè la comunitat et pugui conèixer.</value>
   </data>
   <data name="Todo_Profile_Action" xml:space="preserve">
     <value>Edita el perfil</value>
@@ -1299,7 +1174,6 @@
   <data name="About_Staff_Intro" xml:space="preserve"><value>Tot col·lectiu necessita els seus guardians. Aquests són els humans que dediquen el seu temps i la seva energia a mantenir Nobodies en marxa — de la governança al suport tècnic, de la confiança i seguretat a l'alquímia de les entrades.</value></data>
   <data name="About_Staff_Title" xml:space="preserve"><value>Els humans darrere de la cortina</value></data>
   <data name="About_Title" xml:space="preserve"><value>Sobre Humans</value></data>
-  <data name="Common_Actions" xml:space="preserve"><value>Accions</value></data>
   <data name="Common_Admin" xml:space="preserve"><value>Administrador</value></data>
   <data name="Common_Amount" xml:space="preserve"><value>Import</value></data>
   <data name="Common_Clear" xml:space="preserve"><value>Esborra</value></data>

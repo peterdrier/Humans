@@ -353,7 +353,7 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task CountFailedOutboxAsync_CountsOnlyWrittenOffEvents()
+    public async Task GetFailedOutboxReportIdsAsync_ReturnsOnlyWrittenOffReports()
     {
         var a = MakeReport(status: ExpenseReportStatus.Approved);
         var b = MakeReport(status: ExpenseReportStatus.Approved);
@@ -366,13 +366,13 @@ public class ExpenseRepositoryTests
             NewOutbox(c.Id, retryCount: 2, lastError: "timeout"),
             NewOutbox(d.Id, processedAt: Instant.FromUtc(2026, 5, 5, 0, 0)));
 
-        var count = await _sut.CountFailedOutboxAsync(Xunit.TestContext.Current.CancellationToken);
+        var ids = await _sut.GetFailedOutboxReportIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
-        count.Should().Be(2);
+        ids.Should().BeEquivalentTo([a.Id, b.Id]);
     }
 
     [HumansFact]
-    public async Task CountFailedOutboxAsync_SkipsReportsFinanceCannotAction()
+    public async Task GetFailedOutboxReportIdsAsync_SkipsReportsFinanceCannotAction()
     {
         // Withdrawn after approval: absent from the review queue, and RequeueHoldedPush refuses it.
         // Counting it would leave a banner nobody can clear.
@@ -383,11 +383,13 @@ public class ExpenseRepositoryTests
             NewOutbox(withdrawn.Id, failedPermanently: true),
             NewOutbox(approved.Id, failedPermanently: true,
                 eventType: HoldedExpenseOutboxEventType.UpdateIncomingDocTag),
+            NewOutbox(approved.Id, failedPermanently: true),
             NewOutbox(approved.Id, failedPermanently: true));
 
-        var count = await _sut.CountFailedOutboxAsync(Xunit.TestContext.Current.CancellationToken);
+        var ids = await _sut.GetFailedOutboxReportIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
-        count.Should().Be(1);
+        // One entry per report, however many of its create events were written off.
+        ids.Should().Equal(approved.Id);
     }
 
     [HumansFact]

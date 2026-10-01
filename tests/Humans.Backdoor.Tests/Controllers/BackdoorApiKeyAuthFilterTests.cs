@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
 using NSubstitute;
+using System.Reflection;
 using System.Security.Claims;
 
 namespace Humans.Backdoor.Tests.Controllers;
@@ -24,6 +25,19 @@ public class BackdoorApiKeyAuthFilterTests
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
 
     public BackdoorApiKeyAuthFilterTests() => WithRoles();
+
+    [HumansFact]
+    public void Every_machine_controller_hangs_off_this_filter()
+    {
+        var machineControllers = typeof(BackdoorApiKeyAuthFilter).Assembly.GetTypes()
+            .Where(t => t.GetCustomAttributes<RouteAttribute>(inherit: false)
+                .Any(r => r.Template.StartsWith("api/backdoor", StringComparison.Ordinal)))
+            .ToList();
+
+        machineControllers.Should().NotBeEmpty();
+        machineControllers.Should().AllSatisfy(t => t.GetCustomAttributes<ServiceFilterAttribute>(inherit: false)
+            .Should().ContainSingle(f => f.ServiceType == typeof(BackdoorApiKeyAuthFilter), t.Name));
+    }
 
     [HumansFact]
     public async Task Missing_header_is_401()

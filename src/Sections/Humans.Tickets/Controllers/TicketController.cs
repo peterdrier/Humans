@@ -421,6 +421,33 @@ internal sealed class TicketController(
         return File(bytes, "text/csv", "ticket-income-by-month.csv");
     }
 
+    /// <summary>
+    /// Donor list for the accountant: one row per donation on a paid order — the
+    /// part of a VIP ticket above the threshold, or a separate checkout donation —
+    /// with the buyer's name and email. Admin only; each download is audited.
+    /// </summary>
+    [HttpGet("Export/Donations")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    public async Task<IActionResult> ExportDonations()
+    {
+        var actorId = GetCurrentUserId();
+        if (actorId is null)
+            return Forbid();
+
+        var rows = await ticketQueryService.GetDonationExportDataAsync(actorId.Value);
+
+        var bytes = HumansCsv.WriteBytes(csv =>
+        {
+            csv.WriteRow("Date", "Order ID", "Name", "Email", "Type", "Amount");
+            foreach (var r in rows)
+            {
+                csv.WriteRow(r.Date, r.VendorOrderId, r.BuyerName, r.BuyerEmail, r.Type, r.Amount);
+            }
+            csv.WriteRow("Total", "", "", "", "", rows.Sum(r => r.Amount));
+        });
+        return File(bytes, "text/csv", "ticketing-donations.csv");
+    }
+
     private static void WriteAccountantRow(CsvWriter csv, string label, int orders, int tickets, decimal gross,
         decimal donations, decimal vipDonations, decimal ticketIncomeInclVat, decimal vat,
         decimal ticketIncomeExVat, decimal stripeFees, decimal ttFees, decimal refundedGross)

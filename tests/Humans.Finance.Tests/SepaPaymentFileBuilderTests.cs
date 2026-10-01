@@ -53,6 +53,7 @@ public class SepaPaymentFileBuilderTests
 
         var pmtInf = doc.Root!.Element(Ns + "CstmrCdtTrfInitn")!.Element(Ns + "PmtInf")!;
         pmtInf.Element(Ns + "PmtMtd")!.Value.Should().Be("TRF");
+        pmtInf.Element(Ns + "BtchBookg")!.Value.Should().Be("false");
         pmtInf.Element(Ns + "PmtTpInf")!.Element(Ns + "SvcLvl")!.Element(Ns + "Cd")!.Value.Should().Be("SEPA");
         pmtInf.Element(Ns + "ReqdExctnDt")!.Element(Ns + "Dt")!.Value.Should().Be("2026-08-25");
         pmtInf.Element(Ns + "DbtrAcct")!.Descendants(Ns + "IBAN").Single().Value.Should().Be(OrgIban);

@@ -14,9 +14,8 @@ public interface ICityPlanningService : ICityPlanningServiceRead, IApplicationSe
     /// <summary>
     /// Deletes every polygon and history row belonging to the given camp seasons.
     /// Returns the number of rows removed. Called by the Camps section when a Camp
-    /// is deleted, before its seasons go — the <c>Restrict</c> FK that used to make
-    /// the database refuse that delete was dropped by
-    /// nobodies-collective/Humans#992.
+    /// is deleted, before its seasons go; no FK ties these rows to a season, so
+    /// nothing else removes them.
     /// </summary>
     Task<int> DeleteCampPolygonsForSeasonsAsync(
         IReadOnlyCollection<Guid> campSeasonIds, CancellationToken cancellationToken = default);

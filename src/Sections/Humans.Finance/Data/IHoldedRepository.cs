@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces.Repositories;
+using Humans.Finance.Contracts;
 using Humans.Finance.Domain;
 using Humans.Finance.Models;
 using NodaTime;

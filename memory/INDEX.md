@@ -90,6 +90,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`authorization-conventions`](code/authorization-conventions.md) — Controllers/routes use `[Authorize(Policy = PolicyNames.X)]`; views use `authorize-policy` or `IAuthorizationService`. Never `[Authorize(Roles=...)]` or `User.IsInRole` chains.
 - [`auth-in-views-self-resolving`](code/auth-in-views-self-resolving.md) — In reusable views/components, resolve auth via injected `IAuthorizationService` in the template — don't pass `Can…` auth booleans on the view model.
 - [`audit-pii-subject-allowed`](code/audit-pii-subject-allowed.md) — An audit entry may show PII unmasked only when the PII belongs to that entry's own subject.
+- [`data-exports-are-audited`](code/data-exports-are-audited.md) — HARD RULE. Every bulk export/download of personal data writes an audit entry (actor, what, row count) and carries the narrowest role; adding one is a decision for Peter first.
 - [`controller-base-conventions`](code/controller-base-conventions.md) — MVC controllers extend `HumansControllerBase`; API controllers extend `ApiControllerBase` — never direct `_userManager.GetUserAsync` or `TempData[...]` calls.
 - [`comments-stay-short`](code/comments-stay-short.md) — Code comments and doc blocks get 1-3 lines stating what's true now and why — never a history of the decision.
 - [`clamp-page-size`](code/clamp-page-size.md) — Use `ClampPageSize()` for page-size clamping instead of scattering inline `Math.Clamp(pageSize, ...)` calls.
@@ -143,7 +144,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 
 ## process/
 
-- [`nightly-debt-timed-goal`](process/nightly-debt-timed-goal.md) — Nightly debt work prioritizes production-code fixes, uses tests only to support fixes, uses the full timed goal, and publishes one PR.
+- [`nightly-debt-timed-goal`](process/nightly-debt-timed-goal.md) — Nightly debt work uses Sol with optional Luna helpers, batches simple corrections, uses the full timed goal, and reports cleanup/repair/subagent spend.
 
 - [`about-page-license-attribution`](process/about-page-license-attribution.md) — After any NuGet package update, add new package versions + licenses to `Views/About/Index.cshtml`.
 - [`after-prod-merge-reset`](process/after-prod-merge-reset.md) — After a PR merges to `nobodies-collective/Humans`, reset origin's `main` to `upstream/main` and force-with-lease push.
@@ -180,7 +181,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`issue-refs-qualified`](process/issue-refs-qualified.md) — Two repos with overlapping issue numbers. Bare #N is ambiguous — always write `peterdrier#N` (fork) or `nobodies-collective#N` (upstream), and pass `--repo` to every `gh` call.
 - [`issue-tracking`](process/issue-tracking.md) — After commit: close resolved GitHub issues with `gh issue close <N> -c "comment"` including a brief summary and commit hash.
 - [`issues-need-section`](process/issues-need-section.md) — Every GitHub issue must state which section it belongs to — a `section:{name}` label, or an explicit "Section: TBD" if genuinely unknown. Never omit silently.
-- [`integration-tests-are-not-ci-tests`](process/integration-tests-are-not-ci-tests.md) — HARD RULE. `Humans.Integration.Tests` is local-only and self-skips under CI/cloud — skipped entries are the design; never mention, investigate, count, or CI-gate it. Exclude it from nightly debt runs and manual runner trials too.
+- [`integration-tests-are-not-ci-tests`](process/integration-tests-are-not-ci-tests.md) — HARD RULE. `Humans.Integration.Tests` is opt-in (`HUMANS_INTEGRATION_TESTS=1`) and never runs in a default `dotnet test` — agents never opt in unless Peter explicitly asks; never mention, investigate, count, or CI-gate it.
 - [`lanes-branch-off-main`](process/lanes-branch-off-main.md) — When splitting an epic into parallel PRs, cut every lane from `origin/main` — never stack lane N on lane N-1 (causes rebase storms, duplicate-line merges, wrong-base merges).
 - [`maintenance-log-update`](process/maintenance-log-update.md) — After context cleanup, freshness sweep, NuGet check, /simplify pass, etc., update `docs/architecture/maintenance-log.md` with the current date and next-due date.
 - [`freshness-sweep-owns-its-verifier`](process/freshness-sweep-owns-its-verifier.md) — `/freshness-sweep` may fix `docs/scripts/freshness-checks/**` in-run without asking, even though those files sit outside the catalog and editorial trees.

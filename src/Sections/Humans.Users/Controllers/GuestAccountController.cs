@@ -68,7 +68,7 @@ internal sealed class GuestAccountController(
                 return Unauthorized();
 
             if (!CanUpdatePreference(category))
-                return BadRequest("Cannot change always-on categories.");
+                return BadRequest(localizer["Users_Profile_AlwaysOnCategoryCannotChange"].Value);
 
             await commPrefService.UpdatePreferenceAsync(
                 userId.Value, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, GetPreferenceUpdateSource(fromToken));

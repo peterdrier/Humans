@@ -1093,6 +1093,34 @@ public class ServiceTests
     }
 
     [HumansFact]
+    public async Task CreateStripeCheckoutSessionAsync_rejects_while_a_payment_is_pending()
+    {
+        // A captured-but-uncleared mandate does not count as paid, so the balance still
+        // looks open — the pending row alone must stop a second payment.
+        var order = MakeOrderDto(balanceEur: 50m) with
+        {
+            Payments =
+            [
+                new OrderPaymentDto(Guid.NewGuid(), 30m, PaymentMethod.Stripe, PaymentStatus.Pending, "pi_pending", null, Instant.FromUtc(2026, 5, 1, 0, 0), null)
+            ]
+        };
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+
+        var act = () => _service.CreateStripeCheckoutSessionAsync(order, 20m, "https://humans.test/order", TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("A payment on this order is pending settlement*");
+        await _stripeService.DidNotReceive().CreateCheckoutSessionAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<decimal>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string?>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task CreateStripeCheckoutSessionAsync_rejects_amount_above_balance()
     {
         var order = MakeOrderDto(balanceEur: 10m);
@@ -1140,9 +1168,159 @@ public class ServiceTests
                 p.AmountEur == 42.50m &&
                 p.Method == PaymentMethod.Stripe &&
                 p.StripePaymentIntentId == paymentIntentId &&
+                p.MethodName == PaymentMethod.Stripe &&
                 p.RecordedByUserId == null),
             Arg.Any<CancellationToken>());
     }
+
+    [HumansTheory]
+    [InlineData(nameof(PaymentMethod.DepositReturn), 150.00, 150.00)]
+    [InlineData(nameof(PaymentMethod.Refund), 80.00, -80.00)]
+    public async Task RecordAdminPaymentAsync_stores_deposit_return_positive_and_refund_negative(
+        string methodName, decimal entered, decimal stored)
+    {
+        var method = Enum.Parse<PaymentMethod>(methodName);
+        var orderId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(MakeDepositOrder(orderId, depositTotal: 150m));
+
+        await _service.RecordAdminPaymentAsync(orderId, method, entered, " re_123 ", "2 of 3 fences back", actor, TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).AddPaymentAsync(
+            Arg.Is<Payment>(p =>
+                p.OrderId == orderId &&
+                p.AmountEur == stored &&
+                p.Method == method &&
+                p.MethodName == method &&
+                p.Status == PaymentStatus.Paid &&
+                p.ExternalRef == "re_123" &&
+                p.Notes == "2 of 3 fences back" &&
+                p.RecordedByUserId == actor),
+            Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StorePaymentRecorded, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            actor, orderId, Arg.Any<string>());
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(PaymentMethod.Stripe))]
+    [InlineData(nameof(PaymentMethod.Manual))]
+    public async Task RecordAdminPaymentAsync_rejects_other_methods(string methodName)
+    {
+        var method = Enum.Parse<PaymentMethod>(methodName);
+        var act = () => _service.RecordAdminPaymentAsync(Guid.NewGuid(), method, 10m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public async Task RecordAdminPaymentAsync_rejects_non_positive_amount(decimal amount)
+    {
+        var act = () => _service.RecordAdminPaymentAsync(Guid.NewGuid(), PaymentMethod.Refund, amount, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    public async Task RecordAdminPaymentAsync_rejects_refund_without_reference(string? externalRef)
+    {
+        var act = () => _service.RecordAdminPaymentAsync(Guid.NewGuid(), PaymentMethod.Refund, 10m, externalRef, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("A refund needs a reference*");
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RecordAdminPaymentAsync_allows_deposit_return_without_reference()
+    {
+        var orderId = Guid.NewGuid();
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(MakeDepositOrder(orderId, depositTotal: 50m));
+
+        await _service.RecordAdminPaymentAsync(orderId, PaymentMethod.DepositReturn, 50m, "  ", null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).AddPaymentAsync(
+            Arg.Is<Payment>(p => p.Method == PaymentMethod.DepositReturn && p.ExternalRef == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RepairPaymentMethodNamesAsync_copies_int_method_and_audits_each_row()
+    {
+        var actor = Guid.NewGuid();
+        var stripe = new Payment { Id = Guid.NewGuid(), OrderId = Guid.NewGuid(), Method = PaymentMethod.Stripe };
+        var refund = new Payment { Id = Guid.NewGuid(), OrderId = Guid.NewGuid(), Method = PaymentMethod.Refund };
+        _repo.GetPaymentsMissingMethodNameAsync(Arg.Any<CancellationToken>()).Returns([stripe, refund]);
+
+        var repaired = await _service.RepairPaymentMethodNamesAsync(actor, TestContext.Current.CancellationToken);
+
+        repaired.Should().Be(2);
+        await _repo.Received(1).SetPaymentMethodNameAsync(stripe.Id, PaymentMethod.Stripe, Arg.Any<CancellationToken>());
+        await _repo.Received(1).SetPaymentMethodNameAsync(refund.Id, PaymentMethod.Refund, Arg.Any<CancellationToken>());
+        await _audit.Received(2).LogAsync(
+            AuditAction.StorePaymentMethodBackfilled, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            actor, Arg.Any<Guid?>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task RecordAdminPaymentAsync_rejects_team_order()
+    {
+        var orderId = Guid.NewGuid();
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(new Order { Id = orderId, TeamId = Guid.NewGuid() });
+
+        var act = () => _service.RecordAdminPaymentAsync(orderId, PaymentMethod.DepositReturn, 10m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Team orders are non-billable.");
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RecordAdminPaymentAsync_rejects_deposit_return_beyond_deposit_still_held()
+    {
+        // €100 deposited, €30 already returned → at most €70 can still come back.
+        var orderId = Guid.NewGuid();
+        var order = MakeDepositOrder(orderId, depositTotal: 100m);
+        order.Payments.Add(new Payment { Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 30m, Method = PaymentMethod.DepositReturn, Status = PaymentStatus.Paid });
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+
+        var act = () => _service.RecordAdminPaymentAsync(orderId, PaymentMethod.DepositReturn, 70.01m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Deposit return of EUR 70.01 exceeds the EUR 70.00 of deposit still held*");
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+
+        await _service.RecordAdminPaymentAsync(orderId, PaymentMethod.DepositReturn, 70m, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).AddPaymentAsync(Arg.Is<Payment>(p => p.AmountEur == 70m), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RecordAdminPaymentAsync_refund_has_no_cap()
+    {
+        var orderId = Guid.NewGuid();
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(MakeDepositOrder(orderId, depositTotal: 100m));
+
+        await _service.RecordAdminPaymentAsync(orderId, PaymentMethod.Refund, 5000m, "re_123", null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).AddPaymentAsync(Arg.Is<Payment>(p => p.AmountEur == -5000m), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>An issued camp order with one line carrying exactly <paramref name="depositTotal"/> in deposit.</summary>
+    private static Order MakeDepositOrder(Guid orderId, decimal depositTotal) => new()
+    {
+        Id = orderId,
+        CampSeasonId = Guid.NewGuid(),
+        State = OrderState.InvoiceIssued,
+        Lines = { new OrderLine { Id = Guid.NewGuid(), OrderId = orderId, ProductId = Guid.NewGuid(), Qty = 1, UnitPriceSnapshot = 10m, VatRateSnapshot = 21m, DepositAmountSnapshot = depositTotal } },
+    };
 
     [HumansFact]
     public async Task RecordStripePaymentAsync_no_ops_when_payment_intent_id_already_exists()
@@ -1233,6 +1411,45 @@ public class ServiceTests
                 p.AmountEur == 50m &&
                 p.Status == PaymentStatus.Pending),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task CompletedCheckout_FailedRecordingPropagates_AndRetryRecordsOnce(bool paid, bool cancelled)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var orderId = Guid.NewGuid();
+        var recorded = new List<Payment>();
+        _repo.StripePaymentIntentExistsAsync("pi_retry", ct).Returns(_ => recorded.Count > 0);
+        Exception failure = cancelled
+            ? new OperationCanceledException(ct)
+            : new InvalidOperationException("Payment storage unavailable");
+        _repo.AddPaymentAsync(Arg.Any<Payment>(), ct).Returns(Task.FromException(failure));
+        var evt = new StoreCheckoutWebhookEvent("evt_retry", StoreCheckoutEventKind.CheckoutSessionCompleted,
+            new StoreCheckoutSessionData("cs_retry", orderId, "pi_retry", 42.50m, PaymentStatus: paid ? "paid" : "unpaid"));
+
+        Func<Task> process = () => _service.HandleStripeCheckoutWebhookEventAsync(evt, ct);
+        (await process.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
+        recorded.Should().BeEmpty();
+        _repo.AddPaymentAsync(Arg.Any<Payment>(), ct).Returns(call =>
+        {
+            recorded.Add(call.Arg<Payment>());
+            return Task.CompletedTask;
+        });
+
+        await process();
+        await process();
+
+        var payment = recorded.Should().ContainSingle().Subject;
+        payment.OrderId.Should().Be(orderId);
+        payment.StripePaymentIntentId.Should().Be("pi_retry");
+        payment.AmountEur.Should().Be(42.50m);
+        payment.Status.Should().Be(paid ? PaymentStatus.Paid : PaymentStatus.Pending);
+        await _audit.Received(1).LogAsync(AuditAction.StorePaymentRecorded, AuditEntityTypes.Payment,
+            payment.Id, Arg.Any<string>(), "StripeWebhook", orderId, AuditEntityTypes.Order);
     }
 
     [HumansFact]

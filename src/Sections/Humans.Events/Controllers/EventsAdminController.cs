@@ -347,7 +347,7 @@ internal sealed class EventsAdminController(IEventService guide, ILogger<EventsA
     private async Task<List<EventSettingsOptionViewModel>> BuildEventSettingsOptionsAsync()
     {
         var options = await guide.GetEventSettingsOptionsAsync();
-        return options.Select(e => new EventSettingsOptionViewModel { Id = e.Id, EventName = e.EventName }).ToList();
+        return EventSettingsOptionViewModel.From(options);
     }
 
 }

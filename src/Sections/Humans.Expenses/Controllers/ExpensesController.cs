@@ -1,15 +1,16 @@
 using Humans.Budget.Contracts;
+using Humans.Expenses.Authorization;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
 using Humans.Base.Helpers;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
-using Humans.Expenses.Authorization;
 using Humans.Expenses.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.Expenses.Controllers;
 
@@ -17,12 +18,12 @@ namespace Humans.Expenses.Controllers;
 [Route("Expenses")]
 internal sealed class ExpensesController(
     IUserServiceRead userService,
-    IExpenseReportServiceRead expenseReadService,
     IExpenseReportService service,
     IBudgetServiceRead budgetService,
     IHoldedFinanceServiceRead holdedFinance,
     IAuthorizationService authService,
-    ILogger<ExpensesController> logger) : HumansControllerBase(userService)
+    ILogger<ExpensesController> logger,
+    IStringLocalizer<ExpensesResource> localizer) : HumansControllerBase(userService)
 {
     private readonly IUserServiceRead _userService = userService;
 
@@ -34,7 +35,7 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            var reports = await expenseReadService.GetForSubmitterAsync(user.Id);
+            var reports = await service.GetForSubmitterAsync(user.Id);
             var activeYear = await budgetService.GetActiveYearAsync();
             var info = await _userService.GetUserInfoAsync(user.Id);
 
@@ -43,7 +44,7 @@ internal sealed class ExpensesController(
                 .ToDictionary(x => x.Id, x => x.Display)
                 ?? new Dictionary<Guid, string>();
 
-            var coordinatorQueue = await expenseReadService.GetCoordinatorQueueAsync(user.Id);
+            var coordinatorQueue = await service.GetCoordinatorQueueAsync(user.Id);
             var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
 
             // The member's own Holded creditor-account statement (read-only, real ledger lines). Own
@@ -83,7 +84,7 @@ internal sealed class ExpensesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading expense reports index for user");
-            SetError("Failed to load expense reports.");
+            SetError(localizer["Expenses_Flash_LoadIndexFailed"]);
             return View(new ExpensesIndexViewModel
             {
                 Reports = [],
@@ -104,7 +105,7 @@ internal sealed class ExpensesController(
             var categories = await BuildCategoryOptionsAsync();
             if (categories.Count == 0)
             {
-                SetInfo("No active budget year with categories exists. Please contact a FinanceAdmin.");
+                SetInfo(localizer["Expenses_Flash_NoActiveYearCategories"]);
                 return RedirectToAction(nameof(Index));
             }
 
@@ -117,7 +118,7 @@ internal sealed class ExpensesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading new expense report form");
-            SetError("Failed to load the form.");
+            SetError(localizer["Expenses_Flash_LoadFormFailed"]);
             return RedirectToAction(nameof(Index));
         }
     }
@@ -146,13 +147,13 @@ internal sealed class ExpensesController(
 
             var id = await service.CreateDraftAsync(
                 submitterUserId, user.Id, model.BudgetCategoryId, model.Note);
-            SetSuccess("Draft created.");
+            SetSuccess(localizer["Expenses_Flash_DraftCreated"]);
             return RedirectToAction(nameof(Edit), new { id });
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error creating draft expense report for user {UserId}", submitterUserId);
-            SetError("Failed to create draft.");
+            SetError(localizer["Expenses_Flash_CreateFailed"]);
             model.Categories = await BuildCategoryOptionsAsync();
             return View(model);
         }
@@ -163,15 +164,8 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.View);
             if (errorResult is not null) return errorResult;
-
-            var report = await expenseReadService.GetAsync(id);
-            if (report is null) return NotFound();
-
-            var authResult = await authService.AuthorizeAsync(User, report,
-                new ExpenseReportOperationRequirement(ExpenseReportOperation.View));
-            if (!authResult.Succeeded) return Forbid();
 
             var category = await budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
             var categoryName = category is not null
@@ -193,7 +187,7 @@ internal sealed class ExpensesController(
             // The submitter reads the payment half of the timeline; the finance admin reads the push
             // half and is the only one who can act on a failed push.
             var timeline = isSubmitter || isFinanceAdmin
-                ? await expenseReadService.GetHoldedTimelineAsync(report)
+                ? await service.GetHoldedTimelineAsync(report)
                 : null;
             var creditor = await GetCreditorBindingViewAsync(report.SubmitterUserId, isFinanceAdmin);
 
@@ -226,7 +220,7 @@ internal sealed class ExpensesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading expense report {ReportId}", id);
-            SetError("Failed to load the expense report.");
+            SetError(localizer["Expenses_Flash_LoadReportFailed"]);
             return RedirectToAction(nameof(Index));
         }
     }
@@ -236,17 +230,14 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, user, report) = await RequireReportAsync(id);
             if (errorResult is not null) return errorResult;
-
-            var report = await expenseReadService.GetAsync(id);
-            if (report is null) return NotFound();
             if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
             {
                 // Someone who may read the report but not change it is told why; everyone else is
                 // refused outright.
                 if (!await AllowsAsync(report, ExpenseReportOperation.View)) return Forbid();
-                SetError("This report can no longer be edited.");
+                SetError(localizer["Expenses_Flash_NotEditable"]);
                 return RedirectToAction(nameof(Detail), new { id });
             }
 
@@ -261,7 +252,7 @@ internal sealed class ExpensesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading edit form for report {ReportId}", id);
-            SetError("Failed to load the edit form.");
+            SetError(localizer["Expenses_Flash_LoadEditFailed"]);
             return RedirectToAction(nameof(Detail), new { id });
         }
     }
@@ -270,12 +261,8 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(Guid id, ExpenseEditViewModel model)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         if (!ModelState.IsValid)
         {
@@ -287,11 +274,13 @@ internal sealed class ExpensesController(
             id, user.Id, await IsFinanceAdminAsync(), model.BudgetCategoryId, model.Note);
         if (result.Succeeded)
         {
-            SetSuccess("Report updated.");
+            SetSuccess(localizer["Expenses_Flash_ReportUpdated"]);
             return RedirectToAction(nameof(Edit), new { id });
         }
 
-        SetError($"Failed to update: {result.ErrorMessage}");
+        SetError(result.ErrorMessage is null
+            ? localizer["Expenses_Flash_ReportUpdateFailed"]
+            : $"{localizer["Expenses_Flash_ReportUpdateFailed"]} {result.ErrorMessage}");
         await PopulateEditModelAsync(model, report);
         return View(model);
     }
@@ -299,15 +288,12 @@ internal sealed class ExpensesController(
     [HttpGet("{id:guid}/Lines/New")]
     public async Task<IActionResult> NewLine(Guid id, ExpenseLineType? type = null)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
         if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
         {
             if (!await AllowsAsync(report, ExpenseReportOperation.View)) return Forbid();
-            SetError("This report can no longer be edited.");
+            SetError(localizer["Expenses_Flash_NotEditable"]);
             return RedirectToAction(nameof(Detail), new { id });
         }
 
@@ -324,12 +310,8 @@ internal sealed class ExpensesController(
     [RequestSizeLimit(25 * 1024 * 1024)] // 25 MB limit on request; service enforces 20 MB + content type
     public async Task<IActionResult> AddLine(Guid id, AddLineInputModel input, IFormFile? file)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         // Where the submitter came from — and returns to on a validation error.
         IActionResult BackToForm() => input.ParentLineId is { } parent
@@ -338,7 +320,7 @@ internal sealed class ExpensesController(
 
         if (!ModelState.IsValid)
         {
-            SetError("Invalid line data.");
+            SetError(localizer["Expenses_Flash_InvalidLineData"]);
             return BackToForm();
         }
 
@@ -353,32 +335,31 @@ internal sealed class ExpensesController(
 
         if (!result.Succeeded)
         {
-            SetError(result.ErrorMessage is null ? "Failed to add line" : $"Failed to add line: {result.ErrorMessage}");
+            SetError(result.ErrorMessage is null
+                ? localizer["Expenses_Flash_AddLineFailed"]
+                : $"{localizer["Expenses_Flash_AddLineFailed"]} {result.ErrorMessage}");
             return BackToForm();
         }
 
         if (input.ParentLineId is { } parentId)
         {
-            SetSuccess("Receipt added.");
+            SetSuccess(localizer["Expenses_Flash_ReceiptAdded"]);
             return RedirectToAction(nameof(LineProofs), new { id, lineId = parentId });
         }
         if (input.LineType == ExpenseLineType.Invoice)
         {
-            SetSuccess("Invoice added. Now add the receipts behind it.");
+            SetSuccess(localizer["Expenses_Flash_InvoiceAdded"]);
             return RedirectToAction(nameof(LineProofs), new { id, lineId = result.LineId });
         }
-        SetSuccess("Line added.");
+        SetSuccess(localizer["Expenses_Flash_LineAdded"]);
         return RedirectToAction(nameof(Edit), new { id });
     }
 
     [HttpGet("{id:guid}/Lines/{lineId:guid}")]
     public async Task<IActionResult> LineEdit(Guid id, Guid lineId)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
         var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user.Id);
         if (!allowed) return Forbid();
 
@@ -396,11 +377,8 @@ internal sealed class ExpensesController(
     [HttpGet("{id:guid}/Lines/{lineId:guid}/Proofs")]
     public async Task<IActionResult> LineProofs(Guid id, Guid lineId)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
         var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user.Id);
         if (!allowed) return Forbid();
 
@@ -420,32 +398,22 @@ internal sealed class ExpensesController(
         });
     }
 
-    // Mileage and per-diem lines can no longer be created: the Add mileage / Add per diem forms and
-    // their POST endpoints are gone. The service-layer plumbing
-    // (AddMileageLineWithResultAsync / AddPerDiemLineWithResultAsync, ExpenseLineType.Mileage/PerDiem,
-    // TravelReimbursementConfig) is retained so existing travel lines keep rendering and so the
-    // feature can be turned back on by restoring the two actions and the two Edit.cshtml forms.
-
     [HttpPost("{id:guid}/Lines/Update")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateLine(Guid id, EditLineInputModel input)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         if (!ModelState.IsValid)
         {
-            SetError("Invalid line data.");
+            SetError(localizer["Expenses_Flash_InvalidLineData"]);
             return RedirectToAction(nameof(LineEdit), new { id, lineId = input.LineId });
         }
 
         var result = await service.UpdateLineWithResultAsync(
             id, user.Id, await IsFinanceAdminAsync(), input.LineId, input.Description, input.Amount);
-        SetMutationResultWithDetails(result, "Line updated.", "Failed to update line");
+        SetMutationResultWithDetails(result, localizer["Expenses_Flash_LineUpdated"], localizer["Expenses_Flash_UpdateLineFailed"]);
 
         return RedirectToAction(nameof(LineEdit), new { id, lineId = input.LineId });
     }
@@ -454,19 +422,15 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveLine(Guid id, Guid lineId)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         // A removed proof row returns the submitter to its invoice's proofs page.
         var parentLineId = report.Lines.FirstOrDefault(l => l.Id == lineId)?.ParentLineId;
 
         var result = await service.RemoveLineWithResultAsync(
             id, user.Id, await IsFinanceAdminAsync(), lineId);
-        SetMutationResultWithDetails(result, "Line removed.", "Failed to remove line");
+        SetMutationResultWithDetails(result, localizer["Expenses_Flash_LineRemoved"], localizer["Expenses_Flash_RemoveLineFailed"]);
 
         return parentLineId is { } parent
             ? RedirectToAction(nameof(LineProofs), new { id, lineId = parent })
@@ -478,16 +442,12 @@ internal sealed class ExpensesController(
     [RequestSizeLimit(25 * 1024 * 1024)] // 25 MB limit on request; service enforces 20 MB + content type
     public async Task<IActionResult> AttachFile(Guid id, Guid lineId, IFormFile? file)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         if (file is null || file.Length == 0)
         {
-            SetError("Please select a file.");
+            SetError(localizer["Expenses_Flash_SelectFile"]);
             return RedirectToAction(nameof(LineEdit), new { id, lineId });
         }
 
@@ -495,7 +455,7 @@ internal sealed class ExpensesController(
         var result = await service.AttachFileToLineWithResultAsync(
             id, user.Id, await IsFinanceAdminAsync(), lineId, file.FileName, file.ContentType, stream);
 
-        SetMutationResult(result, "Attachment uploaded.", "Failed to upload attachment.");
+        SetMutationResult(result, localizer["Expenses_Flash_AttachmentUploaded"], localizer["Expenses_Flash_UploadAttachmentFailed"]);
 
         return RedirectToAction(nameof(LineEdit), new { id, lineId });
     }
@@ -504,22 +464,18 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveAttachment(Guid id, Guid lineId)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-        if (!await AllowsAsync(report, ExpenseReportOperation.Edit)) return Forbid();
 
         try
         {
             await service.RemoveAttachmentFromLineAsync(id, user.Id, await IsFinanceAdminAsync(), lineId);
-            SetSuccess("Attachment removed.");
+            SetSuccess(localizer["Expenses_Flash_AttachmentRemoved"]);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error removing attachment from line {LineId} on report {ReportId}", lineId, id);
-            SetError($"Failed to remove attachment: {ex.Message}");
+            SetError(localizer["Expenses_Flash_RemoveAttachmentFailed"]);
         }
         return RedirectToAction(nameof(LineEdit), new { id, lineId });
     }
@@ -528,15 +484,11 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Submit(Guid id)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Submit);
         if (errorResult is not null) return errorResult;
 
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-        if (!await AllowsAsync(report, ExpenseReportOperation.Submit)) return Forbid();
-
         var result = await service.SubmitWithResultAsync(id, user.Id, await IsFinanceAdminAsync());
-        SetMutationResult(result, "Report submitted.", "Could not submit the report.");
+        SetMutationResult(result, localizer["Expenses_Flash_ReportSubmitted"], localizer["Expenses_Flash_SubmitFailed"]);
 
         return RedirectToAction(nameof(Detail), new { id });
     }
@@ -545,15 +497,12 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid id)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
         var result = await service.WithdrawWithResultAsync(id, user.Id);
-        SetMutationResult(result, "Report withdrawn.", "Could not withdraw this report.");
+        SetMutationResult(result, localizer["Expenses_Flash_ReportWithdrawn"], localizer["Expenses_Flash_WithdrawFailed"]);
         return RedirectToAction(nameof(Detail), new { id });
     }
 
@@ -562,11 +511,8 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, user, report) = await RequireReportAsync(id);
             if (errorResult is not null) return errorResult;
-
-            var report = await expenseReadService.GetAsync(id);
-            if (report is null) return NotFound();
             if (!await CanSetReportIbanAsync(report, user.Id)) return Forbid();
 
             // The IBAN on this page is always the report submitter's — the page sets who gets paid
@@ -587,7 +533,7 @@ internal sealed class ExpensesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading IBAN modal for report {ReportId}", id);
-            SetError("Failed to load IBAN form.");
+            SetError(localizer["Expenses_Flash_LoadIbanFailed"]);
             return RedirectToAction(nameof(Detail), new { id });
         }
     }
@@ -596,25 +542,22 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Iban(Guid id, ExpenseIbanViewModel model)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
         if (!await CanSetReportIbanAsync(report, user.Id)) return Forbid();
 
         var result = await service.SaveSubmitterIbanWithResultAsync(
             id, user.Id, model.Iban);
         if (result.Succeeded)
         {
-            SetSuccess(result.Message);
+            SetSuccess(localizer[result.MessageKey]);
             return RedirectToAction(nameof(Detail), new { id });
         }
 
         if (result.IsValidationError)
-            ModelState.AddModelError(nameof(model.Iban), result.Message);
+            ModelState.AddModelError(nameof(model.Iban), localizer[result.MessageKey]);
         else
-            SetError(result.Message);
+            SetError(localizer[result.MessageKey]);
 
         var iban = await GetIbanViewAsync(report.SubmitterUserId);
         model.ReportId = id;
@@ -645,14 +588,14 @@ internal sealed class ExpensesController(
             if (errorResult is not null) return errorResult;
 
             // Visibility = report's View handler grant. NotFound on both miss + denial (no leak).
-            var owningReport = await expenseReadService.GetReportOwningAttachmentAsync(attachmentId);
+            var owningReport = await service.GetReportOwningAttachmentAsync(attachmentId);
             if (owningReport is null) return NotFound();
 
             var authResult = await authService.AuthorizeAsync(User, owningReport,
                 new ExpenseReportOperationRequirement(ExpenseReportOperation.View));
             if (!authResult.Succeeded) return NotFound();
 
-            var attachment = await expenseReadService.TryReadAttachmentAsync(owningReport, attachmentId);
+            var attachment = await service.TryReadAttachmentAsync(owningReport, attachmentId);
             if (attachment is null) return NotFound();
 
             // Inline only for the browser-renderable subset of the upload whitelist — no filename
@@ -673,23 +616,17 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Endorse(Guid id, EndorseInputModel input)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Endorse);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-
-        var authResult = await authService.AuthorizeAsync(User, report,
-            new ExpenseReportOperationRequirement(ExpenseReportOperation.Endorse));
-        if (!authResult.Succeeded) return Forbid();
 
         if (!ModelState.IsValid)
         {
-            SetError("Invalid maximum amount.");
+            SetError(localizer["Expenses_Flash_InvalidMaximum"]);
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await service.CoordinatorEndorseWithResultAsync(id, user.Id, input.MaxAmount);
+        var result = await service.CoordinatorEndorseWithResultAsync(
+            id, user.Id, await IsFinanceAdminAsync(), input.MaxAmount);
         SetMutationResult(result, "Report endorsed.", "Could not endorse the report.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -699,23 +636,17 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CoordinatorReject(Guid id, CoordinatorRejectInputModel input)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.CoordinatorReject);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-
-        var authResult = await authService.AuthorizeAsync(User, report,
-            new ExpenseReportOperationRequirement(ExpenseReportOperation.CoordinatorReject));
-        if (!authResult.Succeeded) return Forbid();
 
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(input.Reason))
         {
-            SetError("A rejection reason is required.");
+            SetError(localizer["Expenses_Flash_RejectionReasonRequired"]);
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await service.CoordinatorRejectWithResultAsync(id, user.Id, input.Reason);
+        var result = await service.CoordinatorRejectWithResultAsync(
+            id, user.Id, await IsFinanceAdminAsync(), input.Reason);
         SetMutationResult(result, "Report rejected.", "Could not reject the report.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -734,7 +665,7 @@ internal sealed class ExpensesController(
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
-            var reports = await expenseReadService.GetReviewQueueAsync(user.Id, isFinanceAdmin);
+            var reports = await service.GetReviewQueueAsync(user.Id, isFinanceAdmin);
             var submitterNames = await ResolveSubmitterNamesAsync(reports);
             return View(new ExpenseReviewViewModel
             {
@@ -742,14 +673,16 @@ internal sealed class ExpensesController(
                 SubmitterNames = submitterNames,
                 DepartmentNames = await ResolveDepartmentNamesAsync(),
                 // Finance admins are the only ones who can act on a written-off push, and the
-                // count is queue-wide rather than scoped, so it stays with them.
-                FailedHoldedPushCount = isFinanceAdmin ? await service.CountFailedHoldedPushesAsync() : 0,
+                // list is queue-wide rather than scoped, so it stays with them.
+                FailedHoldedPushReportIds = isFinanceAdmin
+                    ? (await service.GetFailedHoldedPushReportIdsAsync()).ToHashSet()
+                    : [],
             });
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error loading expense review queue");
-            SetError("Failed to load the review queue.");
+            SetError(localizer["Expenses_Flash_LoadReviewQueueFailed"]);
             return RedirectToAction(nameof(Index));
         }
     }
@@ -759,19 +692,12 @@ internal sealed class ExpensesController(
     [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
     public async Task<IActionResult> Approve(Guid id, ApproveInputModel input)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Approve);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-
-        var authResult = await authService.AuthorizeAsync(User, report,
-            new ExpenseReportOperationRequirement(ExpenseReportOperation.Approve));
-        if (!authResult.Succeeded) return Forbid();
 
         if (!ModelState.IsValid)
         {
-            SetError("Invalid approval input.");
+            SetError(localizer["Expenses_Flash_InvalidApprovalInput"]);
             return RedirectToAction(nameof(Detail), new { id });
         }
 
@@ -787,19 +713,12 @@ internal sealed class ExpensesController(
     [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
     public async Task<IActionResult> Reject(Guid id, FinanceRejectInputModel input)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.FinanceReject);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-
-        var authResult = await authService.AuthorizeAsync(User, report,
-            new ExpenseReportOperationRequirement(ExpenseReportOperation.FinanceReject));
-        if (!authResult.Succeeded) return Forbid();
 
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(input.Reason))
         {
-            SetError("A rejection reason is required.");
+            SetError(localizer["Expenses_Flash_RejectionReasonRequired"]);
             return RedirectToAction(nameof(Detail), new { id });
         }
 
@@ -814,15 +733,8 @@ internal sealed class ExpensesController(
     [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
     public async Task<IActionResult> HoldedRetry(Guid id)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.RequeueHoldedPush);
         if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-
-        var authResult = await authService.AuthorizeAsync(User, report,
-            new ExpenseReportOperationRequirement(ExpenseReportOperation.RequeueHoldedPush));
-        if (!authResult.Succeeded) return Forbid();
 
         var result = await service.RequeueHoldedPushWithResultAsync(id, user.Id);
         SetMutationResult(result,
@@ -871,6 +783,23 @@ internal sealed class ExpensesController(
             // The handler already restricts both coordinator operations to Submitted.
             Endorse: await AllowsAsync(report, ExpenseReportOperation.Endorse),
             CoordinatorReject: await AllowsAsync(report, ExpenseReportOperation.CoordinatorReject));
+    }
+
+    /// <summary>Resolve the actor and report before any action-specific work. On failure the
+    /// action must return ErrorResult; User and Report are valid only on success, matching
+    /// RequireCurrentUserAsync's contract. Special access rules stay with their actions.</summary>
+    private async Task<(IActionResult? ErrorResult, UserInfo User, ExpenseReportDto Report)>
+        RequireReportAsync(Guid id, ExpenseReportOperation? operation = null)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return (errorResult, null!, null!);
+
+        var report = await service.GetAsync(id);
+        if (report is null) return (NotFound(), null!, null!);
+        if (operation is { } required && !await AllowsAsync(report, required))
+            return (Forbid(), null!, null!);
+
+        return (null, user, report);
     }
 
     private async Task<bool> AllowsAsync(ExpenseReportDto report, ExpenseReportOperation operation) =>
@@ -934,10 +863,6 @@ internal sealed class ExpensesController(
     {
         model.Report = report;
         model.Categories = await BuildCategoryOptionsAsync(report);
-        model.CanEditHeader = true;
-        // Only the Edit grant reaches this page, and it already encodes who may change lines in
-        // which status — for the submitter that is still their own Draft and nothing else.
-        model.CanEditLines = await AllowsAsync(report, ExpenseReportOperation.Edit);
     }
 
     /// <param name="report">

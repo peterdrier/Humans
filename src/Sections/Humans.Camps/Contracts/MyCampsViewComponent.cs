@@ -11,12 +11,13 @@ public class MyCampsViewComponent(ICampServiceRead campService, ILogger<MyCampsV
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
             if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Content(string.Empty);
 
-            var settings = await campService.GetSettingsAsync();
+            var settings = await campService.GetSettingsAsync(ct);
             var years = settings.OpenSeasons
                 .Append(settings.PublicYear)
                 .Distinct()
@@ -26,7 +27,7 @@ public class MyCampsViewComponent(ICampServiceRead campService, ILogger<MyCampsV
             var memberships = new List<(int Year, string CampSlug, string CampName, CampMemberStatus Status)>();
             foreach (var year in years)
             {
-                var camps = await campService.GetCampsForYearAsync(year);
+                var camps = await campService.GetCampsForYearAsync(year, ct);
                 memberships.AddRange(camps
                     .SelectMany(camp => camp.Seasons.Where(season => season.Year == year)
                         .SelectMany(season => season.Members
@@ -59,6 +60,10 @@ public class MyCampsViewComponent(ICampServiceRead campService, ILogger<MyCampsV
                 .ToList();
 
             return View(new MyCampsViewModel { Years = byYear });
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

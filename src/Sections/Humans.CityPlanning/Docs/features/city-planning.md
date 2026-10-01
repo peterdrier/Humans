@@ -3,6 +3,9 @@
   src/Sections/Humans.CityPlanning.Contracts/**
   src/Sections/Humans.Containers/Controllers/ContainerController.cs
   src/Sections/Humans.Containers/Domain/Container.cs
+  src/Sections/Humans.Containers/Domain/ContainerPlacement.cs
+  src/Sections/Humans.Containers/Authorization/ContainerAuthorizationHandler.cs
+  src/Sections/Humans.Containers/Contracts/ContainerOperationRequirement.cs
   src/Sections/Humans.CityPlanning/Services/CityPlanningHub.cs
   src/Humans.Base/Authorization/RoleChecks.cs
 -->
@@ -47,13 +50,13 @@ City Planning organizes the physical layout of the event site across these phase
 - **US-38.13: Admin — Upload/Delete Official Zones** — Read-only named overlay (dark gray, labeled); each Feature requires a `name` property; download/delete supported
 - **US-38.14: Admin — Export All Placements** — Download all polygons as a GeoJSON FeatureCollection
 - **US-38.15: Admin — Add Polygon on Behalf of a Camp** — Place a polygon for any unmapped camp season via admin dropdown
-- **US-38.16: Distance Measuring Tool** — Any authenticated user can toggle a two-point ruler. First click drops a point and starts a live rubber-band line with a distance label; second click locks the measurement; a third click starts a new one. Distance shows as `NNN m` under 1 km and `N.NN km` at or above. Escape or re-clicking the button exits and clears all measure layers.
+- **US-38.16: Distance Measuring Tool** — Any authenticated user can toggle a two-point ruler. First click drops a point and starts a live rubber-band line with a distance label; second click completes the measurement and exits measure mode (click the button again to measure again). Distance shows as `NNN m` under 1 km and `N.NN km` at or above. Escape exits without completing a pending measurement. Completed measurements stay on the map; in measure mode, right-clicking one removes it, and the clear-all button removes them all.
 - **US-38.24: Admin — Bulk Import Polygons from GeoJSON** — Map admins upload a GeoJSON FeatureCollection (10 MB cap) on the admin panel; features are matched to camp seasons by name, previewed, then saved one polygon at a time through the existing polygon `PUT`. Entirely client-side (`barrio-map/admin-import.js`) — no dedicated import endpoint.
 
 ### Containers
-- **US-38.17: Manage Containers (admin)** — Map admins create, edit, and delete containers for the whole event year via `/CityPlanning/BarrioMap/Admin/Containers/{year}`. Each container has a name, description, and an optional photo.
+- **US-38.17: Manage Containers (admin)** — Map admins create, edit, and delete containers for the whole event year via `/CityPlanning/BarrioMap/Admin/Containers/{year}`. Each container has a name, description, and optional photos.
 - **US-38.18: Manage Containers (barrio lead)** — Barrio leads manage the containers owned by their camp via `/Camp/{slug}/Containers`. Same fields; scoped to own camp. Containers persist year-over-year; per-year placements are separate.
-- **US-38.19: Container Photos** — Each container can have one image uploaded/replaced/deleted. Stored on the filesystem with DB fallback.
+- **US-38.19: Container Photos** — Each container has a photo gallery — images can be uploaded, added to, and deleted. Stored on the filesystem with DB fallback.
 - **US-38.20: Placed Badge** — Container list views show a "Placed" badge next to containers that have a location set.
 - **US-38.21: Export Containers as GeoJSON** — Map admins can download all placed containers for the year as a GeoJSON FeatureCollection. Barrio leads download only their own camp's containers.
 - **US-38.22: Place Containers on Map** — During the container placement phase, barrio leads (own containers) and map admins (all containers) place containers on the map by dragging from the sidebar. Containers are represented as rotatable rectangles with configurable dimensions.
@@ -66,10 +69,10 @@ City Planning organizes the physical layout of the event site across these phase
 ```
 CampPolygon
 ├── Id: Guid
-├── CampSeasonId: Guid (FK → CampSeason, unique — one polygon per season)
+├── CampSeasonId: Guid (id of the CampSeason, unique — one polygon per season; no DB-level FK)
 ├── GeoJson: string (GeoJSON Feature, single Polygon geometry)
 ├── AreaSqm: double
-├── LastModifiedByUserId: Guid (FK → User)
+├── LastModifiedByUserId: Guid (id of the User; no DB-level FK)
 └── LastModifiedAt: Instant
 ```
 
@@ -77,10 +80,10 @@ CampPolygon
 ```
 CampPolygonHistory
 ├── Id: Guid
-├── CampSeasonId: Guid (FK → CampSeason)
+├── CampSeasonId: Guid (id of the CampSeason; no DB-level FK)
 ├── GeoJson: string
 ├── AreaSqm: double
-├── ModifiedByUserId: Guid (FK → User)
+├── ModifiedByUserId: Guid (id of the User; no DB-level FK)
 ├── ModifiedAt: Instant
 └── Note: string — open-ended, persisted as the caller sends it. Examples: "Saved" (the fallback when none is sent); "Restored from {ISO timestamp} UTC" (composed server-side by a restore); "Imported {timestamp}" (what the bulk import sends)
 ```
@@ -204,7 +207,7 @@ Full-screen map with a sidebar listing placed/unplaced containers. Containers ar
 | Place / remove containers on map, edit placement notes/sketch | Map admin (all), barrio lead (own camp) + `IsContainerPlacementOpen` — enforced by `ContainerOperationRequirement.Place` |
 | Export container GeoJSON | Map admin (all), barrio lead (own camp) |
 
-Map admin = `RoleChecks.IsCampAdmin(User)` **or** member of the City Planning team (`ICityPlanningServiceRead.IsCityPlanningTeamMemberAsync`).
+Map admin = the `CityPlanningMapAdmin` policy: `Admin` or `CampAdmin`, **or** member of the City Planning team (`ICityPlanningServiceRead.IsCityPlanningTeamMemberAsync`).
 
 ## URL Structure
 

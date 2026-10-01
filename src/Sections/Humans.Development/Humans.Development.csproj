@@ -42,17 +42,13 @@
   <ItemGroup>
     <!--
       No Humans.Infrastructure reference (Scanner's and Cantina's shape, not Debug's):
-      Development owns no tables, and every write the seeders make goes through a
-      Humans.Application or contracts-leaf interface — IUserService, IProfileEditorService,
-      ITeamService, ICampService, IShiftManagementService, IConsentSubmission,
-      IMembershipCalculatorRead, IBudgetDemoSeeder. The one framework type it names directly is
-      UserManager<User>, which is Identity's, not Infrastructure's (docs/sections/Users.md's
-      §2a exception). Decide the reference from what the section names
-      (G5-SECTION-TEMPLATE.md, Preconditions).
-
-      The four contracts leaves the seeders and DevSeedController name — Budget, CityPlanning,
-      Consent and Governance — arrived transitively through Humans.Application until G5 lane
-      5c dropped that reference; they are declared below.
+      Development owns no tables, and every write the seeders make goes through another
+      section's service interface or contracts leaf (the list is Docs/Development.md's
+      Cross-Section Dependencies table). The one framework type it names directly is
+      UserManager<User>, which is Identity's, not Infrastructure's
+      (src/Sections/Humans.Users/Docs/Users.md's §2a exception). Decide the reference from what
+      the section names (G5-SECTION-TEMPLATE.md, Preconditions). Every contracts leaf the
+      section names is declared below.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />

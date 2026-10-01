@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Resources;
+using Humans.Base.Extensions;
 using Humans.Base.Attributes;
 using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
@@ -31,6 +34,8 @@ internal sealed class OnboardingService(
     IAuditLogService auditLogService,
     ILogger<OnboardingService> logger) : IOnboardingService
 {
+    private static readonly ResourceManager NoticeResources = new(typeof(OnboardingResource));
+
     // --- Queries: review queue ---
 
     public async Task<ReviewQueueData> GetReviewQueueAsync(CancellationToken ct = default)
@@ -191,6 +196,8 @@ internal sealed class OnboardingService(
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
 
         var rejectUser = await userService.GetUserInfoAsync(userId, ct);
+        var language = rejectUser?.PreferredLanguage;
+        var culture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
 
         try
         {
@@ -198,7 +205,7 @@ internal sealed class OnboardingService(
                 rejectUser?.Email ?? string.Empty,
                 rejectUser?.BurnerName ?? string.Empty,
                 reason,
-                rejectUser?.PreferredLanguage ?? "en"));
+                culture.Name));
         }
         catch (Exception ex)
         {
@@ -211,13 +218,14 @@ internal sealed class OnboardingService(
                 NotificationSource.ProfileRejected,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                "Your signup has been reviewed",
+                NoticeResources.GetString("Onboarding_Notification_ProfileRejectedTitle", culture)!,
                 [userId],
                 body: string.IsNullOrWhiteSpace(reason)
-                    ? "Your signup could not be approved at this time."
-                    : $"Your signup could not be approved: {reason}",
+                    ? NoticeResources.GetString("Onboarding_Notification_ProfileRejectedBody", culture)!
+                    : string.Format(culture,
+                        NoticeResources.GetString("Onboarding_Notification_ProfileRejectedWithReason", culture)!, reason),
                 actionUrl: "/Profile",
-                actionLabel: "View profile",
+                actionLabel: NoticeResources.GetString("Onboarding_Notification_ViewProfile", culture)!,
                 cancellationToken: ct);
         }
         catch (Exception ex)

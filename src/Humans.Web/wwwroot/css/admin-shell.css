@@ -195,7 +195,7 @@ body.admin-shell .main {
 
 body.admin-shell .crumb {
     font-family: var(--h-font-body);
-    font-size: 0.78rem;
+    font-size: 0.85rem;
     color: var(--h-sepia);
     display: flex;
     align-items: center;
@@ -375,13 +375,38 @@ body.admin-shell .stat .delta.bad {
     color: var(--h-rust);
 }
 
+/* ── Sign-in method dial (Google share of sign-ins) ───────────────────── */
+
+body.admin-shell .login-method-dial {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: conic-gradient(
+        var(--h-chart-success) 0 var(--pct, 0%),
+        var(--h-chart-muted) 0 100%
+    );
+}
+
+body.admin-shell .login-method-dial span {
+    display: grid;
+    place-items: center;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: var(--h-bg-card);
+    font-family: var(--h-font-display);
+    font-weight: 700;
+}
+
 /* ── Cards ────────────────────────────────────────────────────────────── */
 
+/* background/border/border-radius/box-shadow now match site.css's global .card (W-a)
+   at the same values (--h-bg-card resolves to --h-warm-white) — only the admin-specific
+   spacing and overflow clip stay here. */
 body.admin-shell .card {
-    background: var(--h-warm-white);
-    border: 1px solid var(--h-border);
-    border-radius: var(--h-radius-lg);
-    box-shadow: var(--h-shadow-sm);
     margin-bottom: 22px;
     overflow: hidden;
 }

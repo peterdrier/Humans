@@ -23,6 +23,7 @@ public class AccountController(
     IMagicLinkService magicLinkService,
     IAccountProvisioningService accountProvisioningService,
     GateLoginThrottle gateThrottle,
+    LoginMethodCounter loginMethods,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
     [HttpGet]
@@ -65,6 +66,9 @@ public class AccountController(
             isPersistent: true,
             bypassTwoFactor: true);
 
+        // Already signed in means this callback links a Google account, not a sign-in.
+        var wasAuthenticated = IsAuthenticated();
+
         // Deliberately not passing HttpContext.RequestAborted: a client disconnect
         // mid-provisioning would abort past the rollback and strand a half-built
         // account. The callback runs to completion once Identity has answered.
@@ -73,7 +77,7 @@ public class AccountController(
                 info,
                 result.Succeeded,
                 result.IsLockedOut,
-                IsAuthenticated() ? GetCurrentUserId() : null));
+                wasAuthenticated ? GetCurrentUserId() : null));
 
         if (completion.SignInUser is not null)
             await signInManager.SignInAsync(completion.SignInUser, isPersistent: true);
@@ -81,6 +85,8 @@ public class AccountController(
         switch (completion.Outcome)
         {
             case ExternalLoginOutcome.SignedIn:
+                if (!wasAuthenticated)
+                    loginMethods.RecordGoogle();
                 return RedirectToLocal(returnUrl);
 
             case ExternalLoginOutcome.LinkToCurrentUserFailed:
@@ -189,6 +195,7 @@ public class AccountController(
         await userService.RecordLoginAsync(user.Id);
 
         await signInManager.SignInAsync(user, isPersistent: true);
+        loginMethods.RecordMagicLink();
         logger.LogInformation("User {UserId} logged in via magic link", user.Id);
 
         return RedirectToLocal(returnUrl);
@@ -272,11 +279,20 @@ public class AccountController(
                 lastName,
                 HttpContext.RequestAborted);
         }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            // The reservation must still be released: no account may have been created, and a
+            // retry either completes signup or finds the account this request already created.
+            magicLinkService.ReleaseSignupToken(token);
+            logger.LogDebug("Magic link signup request was cancelled for {Email}; " +
+                "the signup token reservation was released", redeemedEmail);
+            throw;
+        }
         catch (Exception ex)
         {
-            // Provisioning threw — a cancelled request, a database failure. Hand the link
-            // back before the exception surfaces: if it created nothing, the retry signs
-            // them up; if it got as far as the account, the retry finds it and signs them in.
+            // Provisioning failed. Hand the link back before the exception surfaces: if it
+            // created nothing, the retry signs them up; if it got as far as the account, the
+            // retry finds it and signs them in.
             magicLinkService.ReleaseSignupToken(token);
             logger.LogError(ex, "Magic link signup: provisioning threw for {Email}; " +
                 "the signup token reservation was released", redeemedEmail);
@@ -295,6 +311,7 @@ public class AccountController(
 
         await signInManager.SignInAsync(result.User, isPersistent: true);
 #pragma warning restore CS0618
+        loginMethods.RecordMagicLink();
 
         return RedirectToLocal(returnUrl);
     }

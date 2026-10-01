@@ -151,6 +151,13 @@
   <data name="Camp_Index_NoFilterResults" xml:space="preserve"><value>No s'ha trobat cap {0} per als filtres seleccionats.</value></data>
   <data name="Camp_Index_NoSearchResults" xml:space="preserve"><value>Cap {0} coincideix amb la teva cerca.</value></data>
   <data name="Camp_Index_PendingApproval" xml:space="preserve"><value>pendent d'aprovació</value></data>
+  <data name="Camps_MyCamps_Title" xml:space="preserve"><value>Els meus barris</value></data>
+  <data name="Camps_MyCamps_Active" xml:space="preserve"><value>Actiu</value></data>
+  <data name="Camps_MyCamps_Pending" xml:space="preserve"><value>Pendent</value></data>
+  <data name="Camps_RolesCard_Roles" xml:space="preserve"><value>Rols</value></data>
+  <data name="Camps_RolesCard_Leads" xml:space="preserve"><value>Responsables</value></data>
+  <data name="Camps_RolesCard_OpenSlot" xml:space="preserve"><value>plaça lliure</value></data>
+  <data name="Camps_RolesCard_OpenSlots" xml:space="preserve"><value>places lliures</value></data>
   <data name="Camp_Index_SearchLabel" xml:space="preserve"><value>Cerca</value></data>
   <data name="Camp_Index_SearchPlaceholder" xml:space="preserve"><value>Escriu el nom d'un {0}…</value></data>
   <data name="Camp_Index_ShowLeadPositions" xml:space="preserve"><value>Mostra les posicions de lideratge</value></data>
@@ -199,6 +206,7 @@
   <data name="Camp_Details_AlsoKnownAs" xml:space="preserve"><value>També conegut com:</value></data>
   <data name="Camp_Details_SwissCampBadge" xml:space="preserve"><value>Swiss Camp</value></data>
   <data name="Camp_Details_RosterEmpty" xml:space="preserve"><value>Encara no hi ha humans registrats per a aquesta temporada.</value></data>
+  <data name="Camps_Details_Roster" xml:space="preserve"><value>Llista {0}</value></data>
   <data name="Camp_Members_NoRolesDefined" xml:space="preserve"><value>Encara no hi ha rols de barri definits.</value></data>
   <data name="Camp_Members_NoRolesAdminHint" xml:space="preserve"><value>CampAdmin pot afegir-los a</value></data>
   <data name="Camp_Members_NoRolesAdminHintLink" xml:space="preserve"><value>Rols de barri</value></data>
@@ -208,4 +216,97 @@
   <data name="Camp_Members_RoleOverCapacityTitle" xml:space="preserve"><value>Més assignacions que el nombre de places configurat.</value></data>
   <data name="Camp_Members_AddMemberSearchHelp" xml:space="preserve"><value>Cerca per nom. El human s'afegeix a la temporada oberta del barri com a Actiu.</value></data>
   <data name="Camp_Members_NoPendingRequests" xml:space="preserve"><value>No hi ha sol·licituds pendents.</value></data>
+  <data name="Camps_Members_Members" xml:space="preserve"><value>Membres</value></data>
+  <data name="Camps_Members_Roles" xml:space="preserve"><value>Rols</value></data>
+  <data name="Camps_Members_ShowDescription" xml:space="preserve"><value>Mostra la descripció</value></data>
+  <data name="Camps_Members_AddToRole" xml:space="preserve"><value>Afegeix al rol</value></data>
+  <data name="Camps_Members_RemoveAssignment" xml:space="preserve"><value>Elimina aquesta assignació</value></data>
+  <data name="Camps_Members_RemoveAssignmentConfirm" xml:space="preserve"><value>Vols eliminar aquesta assignació?</value></data>
+  <data name="Camps_Members_AssignHelp" xml:space="preserve"><value>Assigna — afegeix al barri si encara no n'és membre</value></data>
+  <data name="Camps_Members_AddActiveMember" xml:space="preserve"><value>Afegeix un membre actiu</value></data>
+  <data name="Camps_Members_SeasonHumans" xml:space="preserve"><value>Humans aquesta temporada</value></data>
+  <data name="Camps_Members_PendingRequests" xml:space="preserve"><value>Sol·licituds pendents</value></data>
+  <data name="Camps_Members_RejectConfirm" xml:space="preserve"><value>Vols rebutjar aquesta sol·licitud?</value></data>
+  <data name="Camps_Members_ActiveHumans" xml:space="preserve"><value>Humans actius</value></data>
+  <data name="Camps_Members_EeSlotsHelp" xml:space="preserve"><value>Places d'entrada anticipada concedides / assignades a aquest barri per a {0}</value></data>
+  <data name="Camps_Members_RevokeEarlyEntry" xml:space="preserve"><value>Revoca l'entrada anticipada</value></data>
+  <data name="Camps_Members_GrantEarlyEntry" xml:space="preserve"><value>Concedeix l'entrada anticipada</value></data>
+  <data name="Camps_Members_GrantEe" xml:space="preserve"><value>Concedeix EE</value></data>
+  <data name="Camps_Members_RemoveHumanConfirm" xml:space="preserve"><value>Vols eliminar aquest human?</value></data>
+  <data name="Camps_Members_RecordHelp" xml:space="preserve"><value>Aquest és un registre perquè l'aplicació sàpiga qui pertany a cada barri. Aprovar aquí no admet ningú al teu barri; això es fa mitjançant el procés propi del teu barri.</value></data>
+  <data name="Camps_Members_Approve" xml:space="preserve"><value>Aprova</value></data>
+  <data name="Camps_Members_Reject" xml:space="preserve"><value>Rebutja</value></data>
+  <!-- Controller feedback -->
+  <data name="Camps_Flash_RegistrationClosed" xml:space="preserve"><value>El registre està tancat actualment.</value></data>
+  <data name="Camps_Flash_RegistrationPendingReview" xml:space="preserve"><value>El teu campament s'ha registrat i està pendent de revisió.</value></data>
+  <data name="Camps_Flash_RegistrationFailed" xml:space="preserve"><value>No hem pogut registrar el teu campament ara. Torna-ho a provar o contacta amb un administrador si el problema continua.</value></data>
+  <data name="Camps_Flash_NoSeason" xml:space="preserve"><value>No s'ha trobat cap temporada per a aquest campament.</value></data>
+  <data name="Camps_Flash_UnknownHuman" xml:space="preserve"><value>(desconegut)</value></data>
+  <data name="Camps_Flash_UpdateFailed" xml:space="preserve"><value>No s'ha pogut actualitzar el campament.</value></data>
+  <data name="Camps_Flash_Updated" xml:space="preserve"><value>Campament actualitzat correctament.</value></data>
+  <data name="Camps_Flash_OptedIn" xml:space="preserve"><value>Inscrit a la temporada {0}.</value></data>
+  <data name="Camps_Flash_SeasonWithdrawn" xml:space="preserve"><value>Temporada retirada.</value></data>
+  <data name="Camps_Flash_SeasonFull" xml:space="preserve"><value>Temporada marcada com a plena.</value></data>
+  <data name="Camps_Flash_NameRequired" xml:space="preserve"><value>El nom no pot estar buit.</value></data>
+  <data name="Camps_Flash_HistoricalNameAdded" xml:space="preserve"><value>Nom històric afegit.</value></data>
+  <data name="Camps_Flash_HistoricalNameRemoved" xml:space="preserve"><value>Nom històric eliminat.</value></data>
+  <data name="Camps_Flash_ImageRequired" xml:space="preserve"><value>Selecciona un fitxer per pujar.</value></data>
+  <data name="Camps_Flash_ImageUploaded" xml:space="preserve"><value>Imatge pujada.</value></data>
+  <data name="Camps_Flash_ImageUploadFailed" xml:space="preserve"><value>No s'ha pogut pujar la imatge.</value></data>
+  <data name="Camps_Flash_ImageDeleted" xml:space="preserve"><value>Imatge eliminada.</value></data>
+  <data name="Camps_Flash_ImageOrderUpdated" xml:space="preserve"><value>Ordre d'imatges actualitzat.</value></data>
+  <data name="Camps_Flash_RequestWithdrawn" xml:space="preserve"><value>La teva sol·licitud pendent s'ha retirat.</value></data>
+  <data name="Camps_Flash_MembershipLeft" xml:space="preserve"><value>Has deixat aquest campament per a aquesta temporada.</value></data>
+  <data name="Camps_Flash_MembershipLeaveFailed" xml:space="preserve"><value>No s'ha pogut deixar aquest campament.</value></data>
+  <data name="Camps_Flash_MembershipApproved" xml:space="preserve"><value>Membresia aprovada.</value></data>
+  <data name="Camps_Flash_RequestRejected" xml:space="preserve"><value>Sol·licitud rebutjada.</value></data>
+  <data name="Camps_Flash_MemberRemoved" xml:space="preserve"><value>Membre eliminat.</value></data>
+  <data name="Camps_Flash_EarlyEntryGranted" xml:space="preserve"><value>Entrada anticipada concedida.</value></data>
+  <data name="Camps_Flash_EarlyEntryRevoked" xml:space="preserve"><value>Entrada anticipada revocada.</value></data>
+  <data name="Camps_Flash_EarlyEntryCapReached" xml:space="preserve"><value>No es pot concedir l'entrada anticipada: s'ha assolit el límit de places d'aquest campament.</value></data>
+  <data name="Camps_Flash_EarlyEntryActiveMembersOnly" xml:space="preserve"><value>Només els membres actius del campament poden tenir entrada anticipada.</value></data>
+  <data name="Camps_Flash_EarlyEntryAlreadyEntered" xml:space="preserve"><value>No es pot revocar l'entrada anticipada: aquest membre ja ha entrat a l'esdeveniment i la seva plaça està utilitzada.</value></data>
+  <data name="Camps_Flash_HumanRequired" xml:space="preserve"><value>Cerca i selecciona primer un human.</value></data>
+  <data name="Camps_Flash_NoActiveSeason" xml:space="preserve"><value>No hi ha cap temporada activa per a aquest campament.</value></data>
+  <data name="Camps_Flash_HumanAdded" xml:space="preserve"><value>Human afegit al campament.</value></data>
+  <data name="Camps_Flash_HumanAddFailed" xml:space="preserve"><value>No s'ha pogut afegir el human al campament.</value></data>
+  <data name="Camps_Flash_RoleAssignFailed" xml:space="preserve"><value>No s'ha pogut assignar el rol.</value></data>
+  <data name="Camps_Flash_RoleAssigned" xml:space="preserve"><value>Rol assignat.</value></data>
+  <data name="Camps_Flash_RoleNotFound" xml:space="preserve"><value>No s'ha trobat la definició del rol.</value></data>
+  <data name="Camps_Flash_RoleDeactivated" xml:space="preserve"><value>Aquest rol està desactivat.</value></data>
+  <data name="Camps_Flash_RoleMemberNotFound" xml:space="preserve"><value>No s'ha trobat el membre del campament.</value></data>
+  <data name="Camps_Flash_RoleActiveMembersOnly" xml:space="preserve"><value>Només els membres actius del campament poden tenir rols.</value></data>
+  <data name="Camps_Flash_RoleMemberSeasonMismatch" xml:space="preserve"><value>El membre no és en aquesta temporada.</value></data>
+  <data name="Camps_Flash_RoleSlotsFilled" xml:space="preserve"><value>Totes les places d'aquest rol estan cobertes.</value></data>
+  <data name="Camps_Flash_RoleAlreadyHeld" xml:space="preserve"><value>Aquest human ja té aquest rol.</value></data>
+  <data name="Camps_Flash_RoleSeasonNotFound" xml:space="preserve"><value>No s'ha trobat la temporada.</value></data>
+  <data name="Camps_Flash_UnknownError" xml:space="preserve"><value>Error desconegut.</value></data>
+  <data name="Camps_Flash_RoleUnassigned" xml:space="preserve"><value>Rol desassignat.</value></data>
+  <data name="Camps_Flash_AssignmentNotFound" xml:space="preserve"><value>No s'ha trobat l'assignació.</value></data>
+  <data name="Camps_Details_Breadcrumb" xml:space="preserve"><value>Ruta de navegació</value></data>
+  <data name="Camps_Details_Slide" xml:space="preserve"><value>Diapositiva {0}</value></data>
+  <data name="Camps_Details_Previous" xml:space="preserve"><value>Anterior</value></data>
+  <data name="Camps_Details_Next" xml:space="preserve"><value>Següent</value></data>
+  <data name="Camps_Details_SeasonLink" xml:space="preserve"><value>Veure la pàgina de la temporada {0}</value></data>
+  <data name="Camps_Details_MyMembership" xml:space="preserve"><value>La meva pertinença</value></data>
+  <data name="Camps_Details_MembershipHelp" xml:space="preserve"><value>Això no t’incorpora al campament. Uneix-t’hi primer mitjançant el procés del mateix campament i després informa Humans per accedir als rols del campament, les assignacions d’Entrada Anticipada i les notificacions.</value></data>
+  <data name="Camps_Details_FullSeason" xml:space="preserve"><value>Aquest campament indica que està complet per al {0} — encara pots sol·licitar unir-t’hi.</value></data>
+  <data name="Camps_Details_RequestJoin" xml:space="preserve"><value>Sol·licitar unir-m’hi per al {0}</value></data>
+  <data name="Camps_Details_PendingApproval" xml:space="preserve"><value>Pendent d’aprovació dels responsables per al {0}.</value></data>
+  <data name="Camps_Details_WithdrawConfirm" xml:space="preserve"><value>Vols retirar la teva sol·licitud pendent?</value></data>
+  <data name="Camps_Details_WithdrawRequest" xml:space="preserve"><value>Retirar sol·licitud</value></data>
+  <data name="Camps_Details_ActiveMembership" xml:space="preserve"><value>Formes part del campament per al {0}.</value></data>
+  <data name="Camps_Details_LeaveConfirm" xml:space="preserve"><value>Vols sortir d’aquest campament per a aquesta temporada?</value></data>
+  <data name="Camps_Details_LeaveCamp" xml:space="preserve"><value>Sortir del campament</value></data>
+  <data name="Camps_Details_Containers" xml:space="preserve"><value>Contenidors</value></data>
+  <data name="Camps_Flash_RequestNoOpenSeason" xml:space="preserve"><value>Aquest campament no accepta sol·licituds d’incorporació aquest any.</value></data>
+  <data name="Camps_Flash_RequestCreated" xml:space="preserve"><value>La teva sol·licitud d’incorporació s’ha enviat als responsables del campament.</value></data>
+  <data name="Camps_Flash_RequestAlreadyActive" xml:space="preserve"><value>Ja ets membre actiu d’aquest campament.</value></data>
+  <data name="Camps_Flash_RequestAlreadyPending" xml:space="preserve"><value>Ja tens una sol·licitud pendent per a aquest campament.</value></data>
+  <data name="Camps_Details_EditAndAssignRoles" xml:space="preserve"><value>Edita {0} / Assigna rols</value></data>
+  <data name="Camps_Details_ManageEvents" xml:space="preserve"><value>Gestiona els esdeveniments</value></data>
+  <data name="Camps_Details_WithdrawSeasonConfirm" xml:space="preserve"><value>Segur que vols retirar el Barrio d'aquesta temporada?</value></data>
+  <data name="Camps_Details_WithdrawSeason" xml:space="preserve"><value>Retira el Barrio de la temporada</value></data>
+  <data name="Camps_Details_MarkFullConfirm" xml:space="preserve"><value>Vols marcar aquesta temporada com a plena? Només indica a les visites que sembla que no queden places; encara poden demanar d'unir-s'hi.</value></data>
+  <data name="Camps_Details_MarkFull" xml:space="preserve"><value>Marca la temporada com a plena</value></data>
 </root>

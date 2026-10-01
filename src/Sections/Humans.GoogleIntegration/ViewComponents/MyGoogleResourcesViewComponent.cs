@@ -12,6 +12,7 @@ public sealed class MyGoogleResourcesViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
             if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
@@ -19,11 +20,11 @@ public sealed class MyGoogleResourcesViewComponent(
 
             // Volunteer-only, and the section owns the gate: the member-dashboard slot is
             // shared, so Shell must not decide this on GoogleIntegration's behalf.
-            var snapshot = await membershipCalculatorRead.GetMembershipSnapshotAsync(userId);
+            var snapshot = await membershipCalculatorRead.GetMembershipSnapshotAsync(userId, ct);
             if (!snapshot.IsVolunteerMember)
                 return Content(string.Empty);
 
-            var resources = await teamResourceService.GetUserTeamResourcesAsync(userId);
+            var resources = await teamResourceService.GetUserTeamResourcesAsync(userId, ct);
 
             if (resources.Count == 0)
                 return Content(string.Empty);
@@ -44,6 +45,10 @@ public sealed class MyGoogleResourcesViewComponent(
             };
 
             return View(model);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

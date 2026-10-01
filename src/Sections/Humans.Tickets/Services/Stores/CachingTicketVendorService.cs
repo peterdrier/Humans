@@ -24,7 +24,9 @@ internal sealed class CachingTicketVendorService : ITicketVendorService, ITicket
         ILogger<CachingTicketVendorService> logger)
     {
         _scopeFactory = scopeFactory;
-        _eventSummaries = new EventSummaryCache(scopeFactory, clock, EventSummaryCacheTtl, logger);
+        _eventSummaries = new EventSummaryCache(
+            (eventId, ct) => WithInner(inner => inner.GetEventSummaryAsync(eventId, ct)),
+            clock, EventSummaryCacheTtl, logger);
     }
 
     public ICacheStats EventSummaryCacheStats => _eventSummaries;
@@ -84,7 +86,7 @@ internal sealed class CachingTicketVendorService : ITicketVendorService, ITicket
     }
 
     private sealed class EventSummaryCache(
-        IServiceScopeFactory scopeFactory,
+        Func<string, CancellationToken, Task<VendorEventSummaryDto>> loadSummary,
         IClock clock,
         Duration ttl,
         ILogger logger)
@@ -107,15 +109,8 @@ internal sealed class CachingTicketVendorService : ITicketVendorService, ITicket
 
         protected override async ValueTask<CachedVendorEventSummary?> LoadRowAsync(string eventId, CancellationToken ct)
         {
-            var summary = await WithInner(inner => inner.GetEventSummaryAsync(eventId, ct));
+            var summary = await loadSummary(eventId, ct);
             return new CachedVendorEventSummary(summary, clock.GetCurrentInstant() + ttl);
-        }
-
-        private async Task<TResult> WithInner<TResult>(Func<ITicketVendorService, Task<TResult>> action)
-        {
-            await using var scope = scopeFactory.CreateAsyncScope();
-            var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketVendorService>(TicketVendorServiceKeys.InnerServiceKey);
-            return await action(inner);
         }
     }
 

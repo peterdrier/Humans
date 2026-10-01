@@ -20,9 +20,9 @@ internal static class ShiftFilterResolver
     }
 
     /// <summary>
-    /// Maps a preset period to its concrete date range on a given event.
+    /// Maps a preset period to its inclusive date range; null covers Build through Strike.
     /// </summary>
-    internal static (LocalDate From, LocalDate To) ResolvePeriodRange(ShiftPeriod period, BurnSettingsInfo es) =>
+    internal static (LocalDate From, LocalDate To) ResolvePeriodRange(ShiftPeriod? period, BurnSettingsInfo es) =>
         period switch
         {
             ShiftPeriod.Build => (

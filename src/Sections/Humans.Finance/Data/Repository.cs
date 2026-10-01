@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using Humans.Finance.Domain;
 using Humans.Finance.Models;
 using Microsoft.EntityFrameworkCore;

@@ -109,4 +109,146 @@
 &lt;p&gt;Payment will follow by bank transfer to the account ending {2}. We will let you know when the transfer has been sent.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{3}"&gt;View your expense report&lt;/a&gt;&lt;/p&gt;</value></data>
   <data name="Expenses_Email_Approved_Subject" xml:space="preserve"><value>Your expense report has been approved</value></data>
+  <data name="Expenses_Flash_LoadIndexFailed" xml:space="preserve"><value>Failed to load expense reports.</value></data>
+  <data name="Expenses_Flash_NoActiveYearCategories" xml:space="preserve"><value>No active budget year with categories exists. Please contact a FinanceAdmin.</value></data>
+  <data name="Expenses_Flash_LoadFormFailed" xml:space="preserve"><value>Failed to load the form.</value></data>
+  <data name="Expenses_Flash_DraftCreated" xml:space="preserve"><value>Draft created.</value></data>
+  <data name="Expenses_Flash_CreateFailed" xml:space="preserve"><value>Failed to create draft.</value></data>
+  <data name="Expenses_Flash_LoadReportFailed" xml:space="preserve"><value>Failed to load the expense report.</value></data>
+  <data name="Expenses_Flash_NotEditable" xml:space="preserve"><value>This report can no longer be edited.</value></data>
+  <data name="Expenses_Flash_LoadEditFailed" xml:space="preserve"><value>Failed to load the edit form.</value></data>
+  <data name="Expenses_Flash_ReportUpdated" xml:space="preserve"><value>Report updated.</value></data>
+  <data name="Expenses_Flash_ReportUpdateFailed" xml:space="preserve"><value>Failed to update the report.</value></data>
+  <data name="Expenses_Flash_LineUpdated" xml:space="preserve"><value>Line updated.</value></data>
+  <data name="Expenses_Flash_UpdateLineFailed" xml:space="preserve"><value>Failed to update line</value></data>
+  <data name="Expenses_Flash_LineRemoved" xml:space="preserve"><value>Line removed.</value></data>
+  <data name="Expenses_Flash_RemoveLineFailed" xml:space="preserve"><value>Failed to remove line</value></data>
+  <data name="Expenses_Flash_AttachmentUploaded" xml:space="preserve"><value>Attachment uploaded.</value></data>
+  <data name="Expenses_Flash_UploadAttachmentFailed" xml:space="preserve"><value>Failed to upload attachment.</value></data>
+  <data name="Expenses_Flash_ReportSubmitted" xml:space="preserve"><value>Report submitted.</value></data>
+  <data name="Expenses_Flash_SubmitFailed" xml:space="preserve"><value>Could not submit the report.</value></data>
+  <data name="Expenses_Flash_ReportWithdrawn" xml:space="preserve"><value>Report withdrawn.</value></data>
+  <data name="Expenses_Flash_WithdrawFailed" xml:space="preserve"><value>Could not withdraw this report.</value></data>
+  <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Invalid line data.</value></data>
+  <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Receipt added.</value></data>
+  <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Invoice added. Now add the receipts behind it.</value></data>
+  <data name="Expenses_Flash_LineAdded" xml:space="preserve"><value>Line added.</value></data>
+  <data name="Expenses_Flash_SelectFile" xml:space="preserve"><value>Please select a file.</value></data>
+  <data name="Expenses_Flash_AttachmentRemoved" xml:space="preserve"><value>Attachment removed.</value></data>
+  <data name="Expenses_Flash_LoadIbanFailed" xml:space="preserve"><value>Failed to load IBAN form.</value></data>
+  <data name="Expenses_Flash_InvalidMaximum" xml:space="preserve"><value>Invalid maximum amount.</value></data>
+  <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>A rejection reason is required.</value></data>
+  <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>Failed to load the review queue.</value></data>
+  <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Invalid approval input.</value></data>
+  <!-- Submitter expense-edit page -->
+  <data name="Expenses_EditReport" xml:space="preserve"><value>Edit Expense Report</value></data>
+  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
+  <data name="Expenses_Edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="Expenses_ReportHeader" xml:space="preserve"><value>Report header</value></data>
+  <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Budget Category</value></data>
+  <data name="Expenses_CategoryChangeWarning" xml:space="preserve"><value>Changing the category after submission requires a withdraw and re-file.</value></data>
+  <data name="Expenses_Optional" xml:space="preserve"><value>(optional)</value></data>
+  <data name="Expenses_SaveHeader" xml:space="preserve"><value>Save Header</value></data>
+  <data name="Expenses_ExpenseLines" xml:space="preserve"><value>Expense lines</value></data>
+  <data name="Expenses_NoLinesYet" xml:space="preserve"><value>No lines yet. Add your first receipt or invoice below.</value></data>
+  <data name="Expenses_Mileage" xml:space="preserve"><value>Mileage</value></data>
+  <data name="Expenses_PerDiem" xml:space="preserve"><value>Per diem</value></data>
+  <data name="Expenses_Invoice" xml:space="preserve"><value>Invoice</value></data>
+  <data name="Expenses_ProofCountSingular" xml:space="preserve"><value>1 receipt behind it</value></data>
+  <data name="Expenses_ProofCountPlural" xml:space="preserve"><value>{0} receipts behind it</value></data>
+  <data name="Expenses_ReceiptAttached" xml:space="preserve"><value>Receipt attached</value></data>
+  <data name="Expenses_NeedsReceipt" xml:space="preserve"><value>Needs receipt</value></data>
+  <data name="Expenses_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Expenses_AddLine" xml:space="preserve"><value>Add line</value></data>
+  <data name="Expenses_BackToReport" xml:space="preserve"><value>Back to report</value></data>
+  <data name="Expenses_WhatAreYouAdding" xml:space="preserve"><value>What are you adding?</value></data>
+  <data name="Expenses_Preferred" xml:space="preserve"><value>preferred</value></data>
+  <data name="Expenses_Receipt" xml:space="preserve"><value>Receipt</value></data>
+  <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>A business (ZZP / autónomo) invoices the association for the work or goods. The invoice must be made out to the NCA. Much preferred — the association can reclaim the VAT, saving 21%. You’ll attach the invoice, then the receipts behind it for the approver.</value></data>
+  <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>You paid for something yourself and want to be reimbursed. Receipts are only approved in certain circumstances — generally when an invoice wasn’t possible, or the amount is small.</value></data>
+  <data name="Expenses_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Expenses_AddInvoice" xml:space="preserve"><value>Add Invoice</value></data>
+  <data name="Expenses_AddReceipt" xml:space="preserve"><value>Add Receipt</value></data>
+  <data name="Expenses_InvoiceAddDescription" xml:space="preserve"><value>The company’s invoice, made out to the NCA. After saving you’ll add the receipts behind it, so the approver can see what the invoiced amount covers.</value></data>
+  <data name="Expenses_ReceiptAddDescription" xml:space="preserve"><value>Something you paid for yourself and want reimbursed. Describe it, enter the amount, and attach a photo or PDF of the receipt.</value></data>
+  <data name="Expenses_InvoicePurpose" xml:space="preserve"><value>What is the invoice for?</value></data>
+  <data name="Expenses_ReceiptPurpose" xml:space="preserve"><value>What did you buy?</value></data>
+  <data name="Expenses_InvoicePlaceholder" xml:space="preserve"><value>e.g. Build crew labour, invoice 2026-042</value></data>
+  <data name="Expenses_ReceiptPlaceholder" xml:space="preserve"><value>e.g. Timber for the shade structure</value></data>
+  <data name="Expenses_AmountEur" xml:space="preserve"><value>Amount (EUR)</value></data>
+  <data name="Expenses_InvoiceFile" xml:space="preserve"><value>The invoice (PDF or photo)</value></data>
+  <data name="Expenses_ReceiptFile" xml:space="preserve"><value>The receipt (photo or PDF)</value></data>
+  <data name="Expenses_SaveAndAddReceipts" xml:space="preserve"><value>Save &amp; add receipts</value></data>
+  <data name="Expenses_SaveReceipt" xml:space="preserve"><value>Save receipt</value></data>
+  <data name="Expenses_NotAnInvoice" xml:space="preserve"><value>Not an invoice?</value></data>
+  <data name="Expenses_NotAReceipt" xml:space="preserve"><value>Not a receipt?</value></data>
+  <data name="Expenses_ChangeType" xml:space="preserve"><value>Change type</value></data>
+  <data name="Expenses_ReceiptsBehindInvoice" xml:space="preserve"><value>Receipts Behind the Invoice</value></data>
+  <data name="Expenses_ReceiptsBehindIt" xml:space="preserve"><value>Receipts behind it</value></data>
+  <data name="Expenses_ProofAmountOf" xml:space="preserve"><value>{0} of {1}</value></data>
+  <data name="Expenses_NoProofsYet" xml:space="preserve"><value>None yet. Add the receipts that show what the invoiced amount covers — they’re checked with the report but not sent to the accountant’s system.</value></data>
+  <data name="Expenses_AddReceiptFile" xml:space="preserve"><value>add the receipt file</value></data>
+  <data name="Expenses_RemoveReceiptConfirm" xml:space="preserve"><value>Remove this receipt?</value></data>
+  <data name="Expenses_Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>What was it?</value></data>
+  <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>e.g. Materials from the hardware store</value></data>
+  <data name="Expenses_Done" xml:space="preserve"><value>Done</value></data>
+  <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>New Expense Report</value></data>
+  <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Select a category —</value></data>
+  <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(optional, max 500 chars)</value></data>
+  <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Describe the expense…</value></data>
+  <data name="Expenses_CreateDraft" xml:space="preserve"><value>Create Draft</value></data>
+  <data name="Expenses_HowItWorks" xml:space="preserve"><value>How it works</value></data>
+  <data name="Expenses_HowItWorksStep1" xml:space="preserve"><value>Create a draft and add expense lines with amounts.</value></data>
+  <data name="Expenses_HowItWorksStep2" xml:space="preserve"><value>Attach a receipt or invoice to each line.</value></data>
+  <data name="Expenses_HowItWorksStep3" xml:space="preserve"><value>Set your payment IBAN if you haven’t already.</value></data>
+  <data name="Expenses_HowItWorksStep4" xml:space="preserve"><value>Submit for coordinator / FinanceAdmin review.</value></data>
+  <data name="Expenses_HowItWorksStep5" xml:space="preserve"><value>On approval you receive a SEPA bank transfer.</value></data>
+  <data name="Expenses_BackToInvoiceReceipts" xml:space="preserve"><value>Back to invoice receipts</value></data>
+  <data name="Expenses_Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Expenses_EditLine" xml:space="preserve"><value>Edit line</value></data>
+  <data name="Expenses_FileRequiredBeforeSubmit" xml:space="preserve"><value>Required before the report can be submitted.</value></data>
+  <data name="Expenses_Line" xml:space="preserve"><value>Line</value></data>
+  <data name="Expenses_NoFileAttached" xml:space="preserve"><value>No file attached.</value></data>
+  <data name="Expenses_ReceiptsBehindThisInvoice" xml:space="preserve"><value>Receipts behind this invoice</value></data>
+  <data name="Expenses_RemoveFile" xml:space="preserve"><value>Remove file</value></data>
+  <data name="Expenses_RemoveFileConfirm" xml:space="preserve"><value>Remove this file? You'll need to upload another before submitting.</value></data>
+  <data name="Expenses_RemoveInvoiceConfirm" xml:space="preserve"><value>Remove this invoice and all the receipts behind it?</value></data>
+  <data name="Expenses_RemoveLine" xml:space="preserve"><value>Remove line</value></data>
+  <data name="Expenses_RemoveLineConfirm" xml:space="preserve"><value>Remove this line and its file?</value></data>
+  <data name="Expenses_TravelLineReadOnly" xml:space="preserve"><value>Travel lines are computed from their inputs and cannot be edited. Remove the line from the report and add it again to change it.</value></data>
+  <data name="Expenses_Upload" xml:space="preserve"><value>Upload</value></data>
+  <data name="Expenses_CurrentIban" xml:space="preserve"><value>Current IBAN</value></data><data name="Expenses_Iban" xml:space="preserve"><value>IBAN</value></data><data name="Expenses_IbanEnter" xml:space="preserve"><value>Enter your full IBAN without spaces.</value></data><data name="Expenses_IbanEnterOrRemove" xml:space="preserve"><value>Enter your full IBAN without spaces. Leave empty to remove.</value></data><data name="Expenses_IbanPrivacy" xml:space="preserve"><value>Your IBAN is used to process reimbursement transfers via SEPA. It is never shown to other humans.</value></data><data name="Expenses_IbanStored" xml:space="preserve"><value>Your IBAN is stored securely and only accessible to FinanceAdmin in the context of your expense reports.</value></data><data name="Expenses_NewIban" xml:space="preserve"><value>New IBAN</value></data><data name="Expenses_NewIbanOrRemove" xml:space="preserve"><value>New IBAN (or leave empty to remove)</value></data><data name="Expenses_PaymentIban" xml:space="preserve"><value>Payment IBAN</value></data>
+  <data name="Expenses_Flash_AddLineFailed" xml:space="preserve"><value>Failed to add line.</value></data>
+  <data name="Expenses_Flash_RemoveAttachmentFailed" xml:space="preserve"><value>Failed to remove attachment.</value></data>
+  <data name="Expenses_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Expenses_ReceiptBehindInvoice" xml:space="preserve"><value>Receipt behind the invoice</value></data>
+  <data name="Expenses_Iban_ReportNotFound" xml:space="preserve"><value>Report not found.</value></data>
+  <data name="Expenses_Iban_InvalidFormat" xml:space="preserve"><value>Invalid IBAN format.</value></data>
+  <data name="Expenses_Iban_RequiredForPendingReport" xml:space="preserve"><value>This report is awaiting payment and needs an IBAN. Replace it instead of removing it.</value></data>
+  <data name="Expenses_Iban_SaveFailed" xml:space="preserve"><value>Failed to save IBAN.</value></data>
+  <data name="Expenses_Iban_Removed" xml:space="preserve"><value>IBAN removed.</value></data>
+  <data name="Expenses_Iban_Saved" xml:space="preserve"><value>IBAN saved.</value></data>
+  <data name="Expenses_Validation_CategoryNotFound" xml:space="preserve"><value>Category not found.</value></data>
+  <data name="Expenses_Validation_CategoryDifferentBudgetYear" xml:space="preserve"><value>That category belongs to a different budget year than this report.</value></data>
+  <data name="Expenses_Validation_ProofRowsMustBeReceipts" xml:space="preserve"><value>Proof rows must be receipt lines.</value></data>
+  <data name="Expenses_Validation_ParentLineNotFound" xml:space="preserve"><value>Parent line not found on this report.</value></data>
+  <data name="Expenses_Validation_ProofRowsRequireInvoice" xml:space="preserve"><value>Proof rows can only be added to an invoice line.</value></data>
+  <data name="Expenses_Validation_OnlyReceiptAndInvoiceLines" xml:space="preserve"><value>Only receipt and invoice lines can be added.</value></data>
+  <data name="Expenses_Validation_LineNotOnReport" xml:space="preserve"><value>Line does not belong to the specified report.</value></data>
+  <data name="Expenses_Validation_TravelLinesComputedCannotEdit" xml:space="preserve"><value>Travel lines are computed from their inputs and cannot be edited. Remove the line and add it again to change it.</value></data>
+  <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>File too large. Maximum size is {0} MB.</value></data>
+  <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>Filename must be {0} characters or fewer.</value></data>
+  <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Only the submitter can submit.</value></data>
+  <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>Report must have at least one line.</value></data>
+  <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Receipt and invoice lines must have an attachment before submitting.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>Submitter must have an IBAN set on their profile.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>Submitter must have first and last name set on their profile.</value></data>
+  <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>Could not submit the report. It may no longer be a draft.</value></data>
+  <data name="Expenses_Validation_SubmissionFailed" xml:space="preserve"><value>Submission failed</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Only the submitter can withdraw.</value></data>
+  <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Withdrawal failed</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Only the submitter can edit this report.</value></data>
+  <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>This report cannot be edited when it is in status {0}.</value></data>
 </root>

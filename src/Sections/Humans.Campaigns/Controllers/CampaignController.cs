@@ -128,6 +128,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [HttpPost("{id:guid}/ImportCodes")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.AdminOnly)]
+    [RequestSizeLimit(1 * 1024 * 1024)] // Code CSV is read into memory before duplicate filtering.
     public async Task<IActionResult> ImportCodes(Guid id, IFormFile? file)
     {
         if (file is null || file.Length == 0)
@@ -137,7 +138,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
         }
 
         using var reader = new StreamReader(file.OpenReadStream());
-        var content = await reader.ReadToEndAsync();
+        var content = await reader.ReadToEndAsync(HttpContext.RequestAborted);
         var codes = content
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(line => line.Trim())
