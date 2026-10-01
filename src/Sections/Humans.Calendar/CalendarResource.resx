@@ -63,7 +63,6 @@
   <data name="Calendar_AllDayEvent" xml:space="preserve"><value>All-day event</value></data>
   <data name="Calendar_AllDayLabel" xml:space="preserve"><value>All-day</value></data>
   <data name="Calendar_AllTeamsMonthView" xml:space="preserve"><value>All teams (month view)</value></data>
-  <data name="Calendar_AllTimesShownIn" xml:space="preserve"><value>All times shown in {0}.</value></data>
   <data name="Calendar_BackToCalendar" xml:space="preserve"><value>Back to calendar</value></data>
   <data name="Calendar_CancelOccurrenceConfirm" xml:space="preserve"><value>Cancel just this occurrence?</value></data>
   <data name="Calendar_CancelThisOccurrence" xml:space="preserve"><value>Cancel this</value></data>
@@ -105,8 +104,7 @@
   <data name="Calendar_OwningTeam" xml:space="preserve"><value>Owning team</value></data>
   <data name="Calendar_Prev" xml:space="preserve"><value>Prev</value></data>
   <data name="Calendar_Recurrence" xml:space="preserve"><value>Recurrence</value></data>
-  <data name="Calendar_RecurrenceTimezoneHelpPrefix" xml:space="preserve"><value>IANA TZ, e.g.</value></data>
-  <data name="Calendar_RecurrenceTimezoneLabel" xml:space="preserve"><value>Recurrence timezone</value></data>
+  <data name="Calendar_TimeZoneLabel" xml:space="preserve"><value>Time zone</value></data>
   <data name="Calendar_RecurrenceTimezoneNote" xml:space="preserve"><value>Timezone: {0}</value></data>
   <data name="Calendar_RRule" xml:space="preserve"><value>RRULE</value></data>
   <data name="Calendar_RRuleHelpPrefix" xml:space="preserve"><value>RFC 5545 RRULE. Leave blank for single event. Example:</value></data>

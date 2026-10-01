@@ -63,7 +63,6 @@
   <data name="Calendar_AllDayEvent" xml:space="preserve"><value>Événement sur toute la journée</value></data>
   <data name="Calendar_AllDayLabel" xml:space="preserve"><value>Toute la journée</value></data>
   <data name="Calendar_AllTeamsMonthView" xml:space="preserve"><value>Toutes les équipes (vue mensuelle)</value></data>
-  <data name="Calendar_AllTimesShownIn" xml:space="preserve"><value>Tous les horaires sont affichés en {0}.</value></data>
   <data name="Calendar_BackToCalendar" xml:space="preserve"><value>Retour au calendrier</value></data>
   <data name="Calendar_CancelOccurrenceConfirm" xml:space="preserve"><value>Annuler uniquement cette occurrence ?</value></data>
   <data name="Calendar_CancelThisOccurrence" xml:space="preserve"><value>Annuler celle-ci</value></data>
@@ -105,8 +104,7 @@
   <data name="Calendar_OwningTeam" xml:space="preserve"><value>Équipe propriétaire</value></data>
   <data name="Calendar_Prev" xml:space="preserve"><value>Préc.</value></data>
   <data name="Calendar_Recurrence" xml:space="preserve"><value>Récurrence</value></data>
-  <data name="Calendar_RecurrenceTimezoneHelpPrefix" xml:space="preserve"><value>TZ IANA, p. ex.</value></data>
-  <data name="Calendar_RecurrenceTimezoneLabel" xml:space="preserve"><value>Fuseau horaire de la récurrence</value></data>
+  <data name="Calendar_TimeZoneLabel" xml:space="preserve"><value>Fuseau horaire</value></data>
   <data name="Calendar_RecurrenceTimezoneNote" xml:space="preserve"><value>Fuseau horaire : {0}</value></data>
   <data name="Calendar_RRule" xml:space="preserve"><value>RRULE</value></data>
   <data name="Calendar_RRuleHelpPrefix" xml:space="preserve"><value>RRULE RFC 5545. Laissez vide pour un événement unique. Exemple :</value></data>

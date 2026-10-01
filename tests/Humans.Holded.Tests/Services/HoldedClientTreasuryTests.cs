@@ -3,6 +3,8 @@ using System.Text;
 using AwesomeAssertions;
 using Humans.Holded.Contracts;
 using Humans.Holded.Services;
+using Humans.Testing;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -12,11 +14,11 @@ namespace Humans.Holded.Tests.Services;
 
 public class HoldedClientTreasuryTests
 {
-    private static HoldedClient Make(StubHandler handler) =>
+    private static HoldedClient Make(StubHandler handler, ILogger<HoldedClient>? logger = null) =>
         new(
             new HttpClient(handler) { BaseAddress = new Uri("https://api.holded.com") },
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
-            NullLogger<HoldedClient>.Instance,
+            logger ?? NullLogger<HoldedClient>.Instance,
             new HoldedCallLog(),
             new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
 
@@ -127,11 +129,39 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task ListBankMovementsAsync_UnparsableLine_IsPermanent()
+    public async Task ListBankMovementsAsync_NonCandidateLineWithUnreadableDate_IsSkipped_AndLogged()
     {
+        // An empty `date` on one Sabadell line failed every SEPA sweep (peterdrier/Humans#1861).
+        // Incoming or already-touched lines can never be a SEPA candidate, so they are skipped.
         var json = """
-        {"items":[{"id":"m1","account":"tr-1","date":"not-a-date","amount":"-10.00","status":"pending"}],
-         "cursor":null,"has_more":false}
+        {"items":[
+          {"id":"m1","account":"tr-1","date":"","amount":"10.00","status":"pending"},
+          {"id":"m2","account":"tr-1","date":"not-a-date","amount":"-10.00","status":"reconciled"},
+          {"id":"m3","account":"tr-1","date":"2026-08-18","amount":"-20.00","status":"pending"}
+        ],"cursor":null,"has_more":false}
+        """;
+        var logger = new CapturingLogger<HoldedClient>();
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)), logger);
+
+        var movements = await client.ListBankMovementsAsync(
+            "tr-1", new LocalDate(2026, 8, 1), new LocalDate(2026, 8, 31),
+            Xunit.TestContext.Current.CancellationToken);
+
+        movements.Select(m => m.Id).Should().Equal("m3");
+        logger.Entries.Should().Contain(e =>
+            e.Level == LogLevel.Warning && e.Message.Contains("Skipped 2 Holded bank movement(s)"));
+    }
+
+    [HumansFact]
+    public async Task ListBankMovementsAsync_PendingOutgoingLineWithUnreadableDate_IsPermanent()
+    {
+        // Dropping the undated line would leave m2 with no visible rival, so the sweep could book the
+        // transfer against the wrong one of two same-amount lines. The page fails instead.
+        var json = """
+        {"items":[
+          {"id":"m1","account":"tr-1","date":"","amount":"-20.00","status":"pending"},
+          {"id":"m2","account":"tr-1","date":"2026-08-18","amount":"-20.00","status":"pending"}
+        ],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
 

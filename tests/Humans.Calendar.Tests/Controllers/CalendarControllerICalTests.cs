@@ -80,6 +80,44 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
+    public async Task Edit_renders_a_one_off_event_in_the_viewers_zone()
+    {
+        _session.SetString(DateTimeDisplayExtensions.SessionKey, "Asia/Tokyo");
+        var id = Guid.NewGuid();
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Talk", null, null, null, Guid.NewGuid(),
+            Instant.FromUtc(2026, 6, 1, 10, 0), Instant.FromUtc(2026, 6, 1, 11, 0),
+            IsAllDay: false, RecurrenceRule: null, RecurrenceTimezone: null, _now, _now));
+
+        var result = await CreateController().Edit(id, Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
+        model.StartLocal.Should().Be(new DateTime(2026, 6, 1, 19, 0, 0));
+        model.RecurrenceTimezone.Should().Be("Asia/Tokyo");
+    }
+
+    [HumansFact]
+    public async Task EditOccurrence_reads_override_times_in_the_posted_zone()
+    {
+        var id = Guid.NewGuid();
+        var original = Instant.FromUtc(2026, 6, 2, 17, 0);
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Weekly", null, null, null, Guid.NewGuid(), original, original.Plus(Duration.FromHours(1)),
+            IsAllDay: false, RecurrenceRule: "FREQ=WEEKLY", RecurrenceTimezone: "Europe/Madrid", _now, _now));
+
+        await CreateController().EditOccurrence(id, "2026-06-02T17:00:00Z", new OccurrenceOverrideFormViewModel
+        {
+            OverrideStartLocal = new DateTime(2026, 6, 3, 19, 0, 0),
+            RecurrenceTimezone = "Asia/Tokyo",
+        }, Xunit.TestContext.Current.CancellationToken);
+
+        await _calendar.Received(1).OverrideOccurrenceAsync(id, original,
+            Arg.Is<OverrideOccurrenceDto>(d => d.OverrideStartUtc == Instant.FromUtc(2026, 6, 3, 10, 0)),
+            _viewer, Arg.Any<CancellationToken>(), null);
+    }
+
+    [HumansFact]
     public async Task Index_asks_for_the_viewers_token_and_renders_it_as_the_feed_url()
     {
         StubViewer();

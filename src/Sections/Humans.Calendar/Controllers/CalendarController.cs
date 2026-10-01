@@ -242,10 +242,9 @@ internal sealed class CalendarController : HumansControllerBase
         var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        // Fall back to Europe/Madrid for unknown tz so the form renders (admin can correct).
-        var tzId = ev.RecurrenceTimezone ?? "Europe/Madrid";
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tzId)
-            ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        // One-off events store no zone: render them in the viewer's zone, as the calendar
+        // pages do. An unknown stored zone falls back the same way so the form still renders.
+        var zone = CalendarEventFormViewModel.TryResolveZone(ev.RecurrenceTimezone) ?? GetViewerZone();
         var startDate = ev.StartDate ?? ev.StartUtc!.Value.InZone(zone).Date;
         var endDateInclusive = ev.EndDateExclusive is { } endDate
             ? CalendarService.AllDayInclusiveEndDate(endDate) : startDate;
@@ -264,7 +263,7 @@ internal sealed class CalendarController : HumansControllerBase
             IsAllDay = ev.IsAllDay,
             IsRecurring = ev.RecurrenceRule is not null,
             RecurrenceRule = ev.RecurrenceRule,
-            RecurrenceTimezone = ev.RecurrenceTimezone ?? "Europe/Madrid",
+            RecurrenceTimezone = zone.Id,
             TeamOptions = await GetSelectableTeamsAsync(ct),
         });
     }
@@ -388,7 +387,7 @@ internal sealed class CalendarController : HumansControllerBase
             EventId = id,
             IsAllDay = ev.IsAllDay,
             OriginalOccurrenceStartUtc = originalStartUtc,
-            RecurrenceTimezone = ev.RecurrenceTimezone ?? "Europe/Madrid",
+            RecurrenceTimezone = (CalendarEventFormViewModel.TryResolveZone(ev.RecurrenceTimezone) ?? GetViewerZone()).Id,
         });
     }
 
@@ -405,7 +404,7 @@ internal sealed class CalendarController : HumansControllerBase
         form.EventId = id;
         form.OriginalOccurrenceStartUtc = originalStartUtc;
         form.IsAllDay = ev.IsAllDay;
-        var zone = CalendarEventFormViewModel.TryResolveZone(ev.RecurrenceTimezone ?? "Europe/Madrid");
+        var zone = CalendarEventFormViewModel.TryResolveZone(form.RecurrenceTimezone);
         if (!ModelState.IsValid) return View("OccurrenceEdit", form);
         if (zone is null || !form.TryBuildOverride(zone, out var dto))
         {

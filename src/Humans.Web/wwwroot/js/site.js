@@ -213,17 +213,16 @@ document.addEventListener('click', function (e) {
     });
 })();
 
-// Timezone detection — send browser IANA timezone to server session (once per session)
+// Timezone detection — send browser IANA timezone whenever the server session lacks one
+// (the layout renders <meta name="tz-needed">), so an expired session is repopulated.
 (function () {
     try {
         var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        if (tz && !sessionStorage.getItem('tz_sent')) {
+        if (tz && document.querySelector('meta[name="tz-needed"]')) {
             fetch('/api/timezone', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ timeZone: tz })
-            }).then(function (r) {
-                if (r.ok) sessionStorage.setItem('tz_sent', '1');
             });
         }
     } catch (_) { /* Intl not supported — fall back to server default */ }
