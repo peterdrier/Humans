@@ -329,8 +329,23 @@ internal sealed partial class WorkgroupService
         if (ids.Count == 0)
             return;
 
-        var addresses = await userEmails.GetNotificationTargetEmailsAsync(ids, ct);
-        var infos = await users.GetUserInfosAsync(ids, ct);
+        IReadOnlyDictionary<Guid, string> addresses;
+        IReadOnlyDictionary<Guid, UserInfo> infos;
+        try
+        {
+            addresses = await userEmails.GetNotificationTargetEmailsAsync(ids, ct);
+            infos = await users.GetUserInfosAsync(ids, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to resolve recipients for the workgroup {Kind} notice on {WorkgroupSlug}",
+                kind, w.Slug);
+            return;
+        }
 
         foreach (var id in ids)
         {
@@ -351,8 +366,20 @@ internal sealed partial class WorkgroupService
     private async Task EmailBoardAsync(
         WorkgroupNoticeKind kind, WorkgroupInfo w, string? detail, CancellationToken ct)
     {
-        var boardUserIds = await roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct);
-        await EmailAsync(boardUserIds, kind, w, detail, ct);
+        try
+        {
+            var boardUserIds = await roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct);
+            await EmailAsync(boardUserIds, kind, w, detail, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to resolve the Board for the workgroup {Kind} notice on {WorkgroupSlug}",
+                kind, w.Slug);
+        }
     }
 
     private async Task SendNoticeAsync(WorkgroupNoticeRequest request, CancellationToken ct)

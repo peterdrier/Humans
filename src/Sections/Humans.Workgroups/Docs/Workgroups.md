@@ -407,4 +407,7 @@ display-name reads.
   registered in `Section.Register`) lists one sample per kind at `/Email/EmailPreview`.
   Email supplies transport only — `IEmailService.SendAsync`
   (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
+  Email recipient lookup and queue failures are logged without failing a committed
+  lifecycle change or preventing its subsequent Drive access sync. Individual sends
+  remain independent; cancellation of recipient lookups still propagates.
 - **Architecture test** — `tests/Humans.Workgroups.Tests` carries no `Architecture/` folder.
