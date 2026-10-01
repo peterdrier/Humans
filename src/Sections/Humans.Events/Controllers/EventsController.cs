@@ -64,7 +64,7 @@ internal sealed class EventsController(
                 SubmittedCount = summary.SubmittedCount,
                 ApprovedCount = summary.ApprovedCount,
                 PendingCount = summary.PendingCount,
-                Events = summary.Events.Select(e => new CampEventRowViewModel
+                Events = summary.Events.OrderByDescending(e => e.SubmittedAt).Select(e => new CampEventRowViewModel
                 {
                     Id = e.Id,
                     Title = e.Title,

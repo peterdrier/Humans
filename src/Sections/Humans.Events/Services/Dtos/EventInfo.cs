@@ -159,9 +159,8 @@ internal sealed record ApprovedEventsExportInfo(
     EventGuideSettingsView? Settings);
 
 /// <summary>
-/// A camp's submissions bucketed by moderation status, with the events sorted
-/// most-recently-submitted-first — feeds the barrio block on the submitter's
-/// "My Submissions" dashboard.
+/// A camp's submissions bucketed by moderation status. Presentation consumers
+/// choose the display order for the events.
 /// </summary>
 internal sealed record CampSubmissionsSummary(
     int SubmittedCount,

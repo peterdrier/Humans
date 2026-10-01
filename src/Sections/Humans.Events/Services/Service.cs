@@ -182,7 +182,7 @@ internal sealed class EventService(
             SubmittedCount: events.Count,
             ApprovedCount: events.Count(e => e.Status == EventStatus.Approved),
             PendingCount: events.Count(e => e.Status == EventStatus.Pending),
-            Events: events.OrderByDescending(e => e.SubmittedAt).ToList());
+            Events: events);
     }
 
     public async Task SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default)

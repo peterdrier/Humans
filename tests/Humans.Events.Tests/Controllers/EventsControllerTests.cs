@@ -7,11 +7,13 @@ using Humans.Events.Controllers;
 using Humans.Events.Domain;
 using Humans.Events.Models;
 using Humans.Events.Services;
+using Humans.Events.Services.Dtos;
 using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Localization;
 using NodaTime;
@@ -105,6 +107,47 @@ public class EventsControllerTests
         var result = await controller.Update(eventId, new IndividualEventFormViewModel());
 
         result.Should().BeOfType<ForbidResult>();
+    }
+
+    [HumansFact]
+    public async Task MySubmissions_OrdersCampEventsMostRecentlySubmittedFirst()
+    {
+        var userId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        var season = new CampSeasonInfo(
+            Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
+            default, default, default, default, 1, null, null, null, 0, null, null)
+        {
+            LeadUserIds = [userId]
+        };
+        var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([camp]);
+        StubEditableGuideSettings();
+        var settings = await _guide.GetGuideSettingsAsync();
+        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings! with
+        {
+            SubmissionOpenAt = Instant.FromUtc(2026, 5, 1, 0, 0),
+            SubmissionCloseAt = Instant.FromUtc(2026, 6, 1, 0, 0)
+        });
+        _guide.GetUserSubmissionsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        var older = new EventInfo(
+            Guid.NewGuid(), campId, null, userId, Guid.NewGuid(), "Music", "music", false,
+            null, "Older", "", null, null, Instant.FromUtc(2026, 8, 1, 18, 0), 60, false,
+            null, null, EventStatus.Pending, Instant.FromUtc(2026, 5, 1, 12, 0),
+            Instant.FromUtc(2026, 5, 1, 12, 0), []);
+        var newer = older with { Id = Guid.NewGuid(), Title = "Newer", SubmittedAt = older.SubmittedAt + Duration.FromDays(1) };
+        _guide.GetCampSubmissionsSummaryAsync(campId, Arg.Any<CancellationToken>())
+            .Returns(new CampSubmissionsSummary(2, 0, 2, [older, newer]));
+        var controller = BuildController(userId);
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+
+        var result = await controller.MySubmissions();
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<MySubmissionsViewModel>().Subject;
+        model.Barrios.Should().ContainSingle().Which.Events.Select(e => e.Title)
+            .Should().Equal("Newer", "Older");
     }
 
     private Guid StubEvent(Guid submitterId, Guid? campId, EventStatus status)

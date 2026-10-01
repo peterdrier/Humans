@@ -712,7 +712,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task GetCampSubmissionsSummaryAsync_BucketsByStatusAndSortsMostRecentFirst()
+    public async Task GetCampSubmissionsSummaryAsync_BucketsByStatusAndIncludesOnlyCampEvents()
     {
         var campId = Guid.NewGuid();
         var older = new Event
@@ -746,7 +746,7 @@ public sealed class EventServiceTests
         summary.SubmittedCount.Should().Be(2);
         summary.ApprovedCount.Should().Be(1);
         summary.PendingCount.Should().Be(1);
-        summary.Events.Select(e => e.Title).Should().Equal("Newer", "Older");
+        summary.Events.Select(e => e.Title).Should().BeEquivalentTo(["Newer", "Older"]);
     }
 
     [HumansFact]
