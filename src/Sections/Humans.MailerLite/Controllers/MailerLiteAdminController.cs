@@ -52,14 +52,10 @@ internal sealed class MailerLiteAdminController(
 
         var last = await import.GetLastReconciliationAsync(ct);
 
-        IReadOnlyList<AudienceCardRow> audienceRows;
+        IReadOnlyList<AudienceStats> audienceRows;
         try
         {
-            var stats = await audienceSync.ComputeAllStatsAsync(ct);
-            audienceRows = stats.Select(s => new AudienceCardRow(
-                s.Key, s.DisplayName, s.MailerLiteGroupName,
-                s.Candidates, s.ExcludedUnsubscribed, s.CurrentlyInGroup,
-                s.LastSyncAt, s.LastSyncSummary)).ToList();
+            audienceRows = await audienceSync.ComputeAllStatsAsync(ct);
         }
         catch (HttpRequestException ex)
         {
@@ -296,21 +292,12 @@ internal sealed class MailerLiteAdminController(
     public async Task<IActionResult> Import(CancellationToken ct)
     {
         var plan = await import.BuildPlanAsync(ct);
-        var rows = ProjectRows(plan);
 
         // Snapshot counts in TempData for the >10% delta check on Commit.
         TempData["PlanCountsSnapshot"] = JsonSerializer.Serialize(plan.Counts);
 
-        return View("~/Views/MailerLite/Admin/Import.cshtml",
-            new MailerLiteImportPreviewViewModel(plan, rows));
+        return View("~/Views/MailerLite/Admin/Import.cshtml", plan);
     }
-
-    private static IReadOnlyList<SubscriberDecisionRow> ProjectRows(ImportPlan plan) =>
-        plan.Decisions.Select(d => new SubscriberDecisionRow(
-            Email: d.Email,
-            MlStatus: d.Status,
-            MatchedUserId: d.TargetUserId,
-            Outcome: d.Outcome)).ToList();
 
     private async Task<DriftReport> ComputeDriftAsync(CancellationToken ct)
     {

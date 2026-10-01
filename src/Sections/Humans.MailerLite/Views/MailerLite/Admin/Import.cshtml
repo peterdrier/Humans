@@ -1,4 +1,4 @@
-@model Humans.MailerLite.Models.MailerLiteImportPreviewViewModel
+@model Humans.MailerLite.Services.Dtos.ImportPlan
 @{
     ViewData["Title"] = "Import Preview";
 }
@@ -23,43 +23,43 @@
             <tbody>
                 <tr>
                     <td>Create new human</td>
-                    <td class="text-end">@Model.Plan.Counts.CreateNewHuman.ToString("N0")</td>
+                    <td class="text-end">@Model.Counts.CreateNewHuman.ToString("N0")</td>
                 </tr>
                 <tr>
                     <td>Human exists with unverified email — replace</td>
-                    <td class="text-end">@Model.Plan.Counts.ReplaceUnverifiedEmail.ToString("N0")</td>
+                    <td class="text-end">@Model.Counts.ReplaceUnverifiedEmail.ToString("N0")</td>
                 </tr>
                 <tr>
                     <td>Human exists — Marketing prefs already match (no-op)</td>
-                    <td class="text-end">@Model.Plan.Counts.VerifiedPrefsAlreadyMatch.ToString("N0")</td>
+                    <td class="text-end">@Model.Counts.VerifiedPrefsAlreadyMatch.ToString("N0")</td>
                 </tr>
                 <tr>
                     <td>Human exists — flip Marketing to opt-in (ML wins)</td>
-                    <td class="text-end">@Model.Plan.Counts.VerifiedFlipToOptIn.ToString("N0")</td>
+                    <td class="text-end">@Model.Counts.VerifiedFlipToOptIn.ToString("N0")</td>
                 </tr>
                 <tr>
                     <td>Human exists — flip Marketing to opt-out (ML wins)</td>
-                    <td class="text-end">@Model.Plan.Counts.VerifiedFlipToOptOut.ToString("N0")</td>
+                    <td class="text-end">@Model.Counts.VerifiedFlipToOptOut.ToString("N0")</td>
                 </tr>
                 <tr>
                     <td>Human exists — keep Humans' pref (user touched recently)</td>
-                    <td class="text-end">@Model.Plan.Counts.VerifiedKeepHumansPref.ToString("N0")</td>
+                    <td class="text-end">@Model.Counts.VerifiedKeepHumansPref.ToString("N0")</td>
                 </tr>
                 <tr>
                     <td>Human exists — reset marketing flag (opt-in, not in Website group → null)</td>
-                    <td class="text-end">@Model.Plan.Counts.ResetMarketingFlag.ToString("N0")</td>
+                    <td class="text-end">@Model.Counts.ResetMarketingFlag.ToString("N0")</td>
                 </tr>
                 <tr class="text-muted">
                     <td>Skipped — same email on multiple humans</td>
-                    <td class="text-end">@Model.Plan.Counts.AmbiguousMultipleVerified.ToString("N0")</td>
+                    <td class="text-end">@Model.Counts.AmbiguousMultipleVerified.ToString("N0")</td>
                 </tr>
                 <tr class="text-muted">
                     <td>Skipped — unconfirmed in ML</td>
-                    <td class="text-end">@Model.Plan.Counts.UnconfirmedSkipped.ToString("N0")</td>
+                    <td class="text-end">@Model.Counts.UnconfirmedSkipped.ToString("N0")</td>
                 </tr>
                 <tr class="table-light fw-semibold">
                     <td>Total pulled from MailerLite</td>
-                    <td class="text-end">@Model.Plan.TotalPulled.ToString("N0")</td>
+                    <td class="text-end">@Model.TotalPulled.ToString("N0")</td>
                 </tr>
             </tbody>
         </table>
@@ -83,7 +83,7 @@
 
 @foreach (var cat in categories)
 {
-    var catRows = Model.Rows.Where(r => r.Outcome == cat.Outcome).ToList();
+    var catRows = Model.Decisions.Where(r => r.Outcome == cat.Outcome).ToList();
     if (catRows.Count == 0) continue;
 
     var collapseId = $"collapse-{cat.Outcome}";
@@ -122,12 +122,10 @@
                             {
                                 <tr>
                                     <td class="font-monospace">@row.Email</td>
-                                    <td>@row.MlStatus</td>
+                                    <td>@row.Status</td>
                                     @if (cat.Outcome == SubscriberOutcome.AmbiguousMultipleVerified)
                                     {
-                                        var ambiguous = Model.Plan.Decisions
-                                            .FirstOrDefault(d => d.Email == row.Email)
-                                            ?.AmbiguousUserIds ?? [];
+                                        var ambiguous = row.AmbiguousUserIds ?? [];
                                         <td>
                                             @foreach (var uid in ambiguous)
                                             {
@@ -139,7 +137,7 @@
                                           && cat.Outcome != SubscriberOutcome.UnconfirmedSkipped)
                                     {
                                         <td>
-                                            @if (row.MatchedUserId is Guid uid)
+                                            @if (row.TargetUserId is Guid uid)
                                             {
                                                 <vc:human user-id="@uid" link="Admin" />
                                             }

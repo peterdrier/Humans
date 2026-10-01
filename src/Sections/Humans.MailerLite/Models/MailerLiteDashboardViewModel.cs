@@ -14,7 +14,7 @@ internal sealed record MailerLiteDashboardViewModel(
     DriftReport? Drift,
     string? MlError,
     Instant? CacheFetchedAt,
-    IReadOnlyList<AudienceCardRow> Audiences);
+    IReadOnlyList<AudienceStats> Audiences);
 
 internal sealed record DriftReport(
     int HumansOptedOutMlActive,           // legal-trouble row
