@@ -4,6 +4,11 @@ using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Feedback.Services;
+using Humans.Feedback.Controllers;
+using Humans.Feedback.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
+using System.Security.Claims;
 using Humans.Feedback.Tests.Infrastructure;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
@@ -489,7 +494,7 @@ public sealed class FeedbackServiceTests
     }
 
     [HumansFact]
-    public async Task GetDistinctReportersAsync_ResolvesNamesFromUserService_AndOrdersAlphabetically()
+    public async Task ReporterDropdown_ResolvesNamesAndCounts_AndOrdersAlphabeticallyInTheController()
     {
         var bobId = Guid.NewGuid();
         var aliceId = Guid.NewGuid();
@@ -534,10 +539,29 @@ public sealed class FeedbackServiceTests
         var reporters = await _service.GetDistinctReportersAsync(Xunit.TestContext.Current.CancellationToken);
 
         reporters.Should().HaveCount(2);
-        reporters[0].DisplayName.Should().Be("Alice");
-        reporters[0].Count.Should().Be(1);
-        reporters[1].DisplayName.Should().Be("Bob");
-        reporters[1].Count.Should().Be(2);
+        reporters.Should().ContainSingle(r => r.UserId == aliceId && r.DisplayName == "Alice" && r.Count == 1);
+        reporters.Should().ContainSingle(r => r.UserId == bobId && r.DisplayName == "Bob" && r.Count == 2);
+
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(bobId, Arg.Any<CancellationToken>()).Returns(_people[bobId]);
+        users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(_people.Values.ToList());
+        var teams = Substitute.For<ITeamServiceRead>();
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var controller = new FeedbackController(_service, teams, users, NullLogger<FeedbackController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, bobId.ToString())], "test"))
+                }
+            }
+        };
+        var result = await controller.Index(null, null, null, null, null, false, null,
+            Xunit.TestContext.Current.CancellationToken);
+        var model = Assert.IsType<FeedbackPageViewModel>(Assert.IsType<ViewResult>(result).Model);
+        model.Reporters.Select(r => r.DisplayName).Should().Equal("Alice", "Bob");
     }
 
     private async Task<FeedbackReport> CreateTestReport(FeedbackStatus status = FeedbackStatus.Open)

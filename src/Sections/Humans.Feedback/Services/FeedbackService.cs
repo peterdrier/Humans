@@ -321,7 +321,6 @@ internal sealed class FeedbackService(
                 var name = displayUsers.TryGetValue(r.UserId, out var displayUser) ? displayUser.Name : r.UserId.ToString();
                 return (r.UserId, name, r.Count);
             })
-            .OrderBy(r => r.name, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 

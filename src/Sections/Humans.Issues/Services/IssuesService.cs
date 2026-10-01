@@ -761,7 +761,6 @@ internal sealed class IssuesService(
                 r.UserId,
                 users1.TryGetValue(r.UserId, out var u) ? u.BurnerName : r.UserId.ToString(),
                 r.Count))
-            .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 

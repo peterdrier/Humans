@@ -92,6 +92,7 @@ internal sealed class IssuesController(
         {
             var distinct = await issues.GetDistinctReportersAsync();
             reporterOptions = distinct
+                .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .Select(r => new ReporterDropdownItem
                 {
                     UserId = r.UserId,

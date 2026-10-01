@@ -64,12 +64,14 @@ internal sealed class FeedbackController(
         var assigneeOptions = await GetActiveAssigneeOptionsAsync(ct);
 
         var distinctReporters = await feedbackService.GetDistinctReportersAsync(ct);
-        var reporters = distinctReporters.Select(r => new ReporterDropdownItem
-        {
-            UserId = r.UserId,
-            DisplayName = r.DisplayName,
-            Count = r.Count
-        }).ToList();
+        var reporters = distinctReporters
+            .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Select(r => new ReporterDropdownItem
+            {
+                UserId = r.UserId,
+                DisplayName = r.DisplayName,
+                Count = r.Count
+            }).ToList();
 
         var viewModel = new FeedbackPageViewModel
         {

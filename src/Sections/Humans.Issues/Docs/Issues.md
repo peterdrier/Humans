@@ -101,7 +101,7 @@ Two controllers serve this section:
 - `IssuesController` (`/Issues`, `/Issues/New`, `/Issues/{id}`, `/Issues/{id}/Comments`, `/Issues/{id}/Status`, `/Issues/{id}/Assignee`, `/Issues/{id}/Section`, `/Issues/{id}/GitHubIssue`) — cookie-authenticated humans.
 - `BackdoorIssuesController` (`/api/backdoor/issues/*`) — API-key authenticated; the key resolves to its owner, who becomes the request principal. Used by Claude Code agents and external integrations.
 
-Known area labels in the member submission form, issue list and detail view use the viewer’s UI culture. Dropdowns sort the localized labels; stored `Issue.Section` routing keys stay unchanged.
+Known area labels in the member submission form, issue list and detail view use the viewer’s UI culture. Dropdowns sort the localized labels; stored `Issue.Section` routing keys stay unchanged. The index controller also orders the admin reporter dropdown alphabetically; the service returns names and counts without display ordering.
 
 `Issue.Section` selects which roles see the issue in their queue (see `IssueSectionRouting.RolesFor`); a null section is Admin-only. Section is editable by handlers as long as the issue is non-terminal — re-routing an issue is just changing its `Section` string.
 
