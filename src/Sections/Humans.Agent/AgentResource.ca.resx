@@ -138,4 +138,9 @@
   </data>
   <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>No he pogut preparar una resposta per a això. Podries reformular la pregunta o tornar-ho a intentar?</value></data>
   <data name="Agent_AbuseRefusal" xml:space="preserve"><value>No et puc ajudar amb això. Si estàs en una situació d’angoixa, contacta amb una persona coordinadora o amb els serveis d’emergència.</value></data>
+  <data name="Agent_HttpError" xml:space="preserve"><value>Error: {0}</value></data>
+  <data name="Agent_NetworkError" xml:space="preserve"><value>Error de xarxa.</value></data>
+  <data name="Agent_DisabledReply" xml:space="preserve"><value>(L’assistent està desactivat actualment.)</value></data>
+  <data name="Agent_RateLimitedReply" xml:space="preserve"><value>(Has arribat al límit diari — torna-ho a intentar demà.)</value></data>
+  <data name="Agent_TurnErrorReply" xml:space="preserve"><value>(S’ha produït un error en respondre. Torna-ho a intentar.)</value></data>
 </root>

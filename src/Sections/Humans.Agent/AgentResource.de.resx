@@ -138,4 +138,9 @@
   </data>
   <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>Ich konnte dazu keine Antwort zusammenstellen — kannst du die Frage umformulieren oder es noch einmal versuchen?</value></data>
   <data name="Agent_AbuseRefusal" xml:space="preserve"><value>Dabei kann ich dir nicht helfen. Wenn du in einer Notlage bist, wende dich bitte an eine koordinierende Person oder den Rettungsdienst.</value></data>
+  <data name="Agent_HttpError" xml:space="preserve"><value>Fehler: {0}</value></data>
+  <data name="Agent_NetworkError" xml:space="preserve"><value>Netzwerkfehler.</value></data>
+  <data name="Agent_DisabledReply" xml:space="preserve"><value>(Der Assistent ist derzeit deaktiviert.)</value></data>
+  <data name="Agent_RateLimitedReply" xml:space="preserve"><value>(Tageslimit erreicht — versuche es morgen erneut.)</value></data>
+  <data name="Agent_TurnErrorReply" xml:space="preserve"><value>(Beim Beantworten ist etwas schiefgegangen. Bitte versuche es erneut.)</value></data>
 </root>

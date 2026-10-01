@@ -86,4 +86,9 @@
   <data name="Help_Agent_IssueProposed" xml:space="preserve"><value>I can't answer this myself. I've drafted an issue for the team — please review and submit it.</value></data>
   <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>I wasn't able to put together an answer for that — could you try rephrasing or asking again?</value></data>
   <data name="Agent_AbuseRefusal" xml:space="preserve"><value>This isn't something I can help with. If you're in distress, please contact a coordinator or emergency services.</value></data>
+  <data name="Agent_HttpError" xml:space="preserve"><value>Error: {0}</value></data>
+  <data name="Agent_NetworkError" xml:space="preserve"><value>Network error.</value></data>
+  <data name="Agent_DisabledReply" xml:space="preserve"><value>(The agent is currently disabled.)</value></data>
+  <data name="Agent_RateLimitedReply" xml:space="preserve"><value>(Daily limit reached — try again tomorrow.)</value></data>
+  <data name="Agent_TurnErrorReply" xml:space="preserve"><value>(Something went wrong answering that. Please try again.)</value></data>
 </root>

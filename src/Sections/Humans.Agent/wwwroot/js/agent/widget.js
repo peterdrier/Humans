@@ -103,7 +103,7 @@
                 body: JSON.stringify({ conversationId: currentConversationId, message: message })
             });
             if (!resp.ok) {
-                bubble.textContent = 'Error: ' + resp.status;
+                bubble.textContent = panel.dataset.httpErrorText.replace('{0}', resp.status);
                 return;
             }
             const reader = resp.body.getReader();
@@ -121,7 +121,7 @@
                 }
             }
         } catch (err) {
-            bubble.textContent = 'Network error.';
+            bubble.textContent = panel.dataset.networkErrorText;
         } finally {
             sendBtn.disabled = false;
         }
@@ -153,15 +153,15 @@
             // already streamed — only fall back to the canned "I drafted
             // an issue" text when the bubble is empty (escalate-only turn).
             if (!bubble.dataset.rawMarkdown.trim()) {
-                bubble.textContent = panel.dataset.issueProposedText || 'I drafted an issue for you. Please review and submit.';
+                bubble.textContent = panel.dataset.issueProposedText;
             }
             messagesEl.scrollTop = messagesEl.scrollHeight;
             openIssueModalPrefilled(parsed.issueProposal);
         } else if (event === 'final' && parsed.finalizer) {
             const reason = parsed.finalizer.stopReason;
             // Final-frame placeholders are trusted strings — render as plain text.
-            if (reason === 'disabled') bubble.textContent = '(The agent is currently disabled.)';
-            if (reason === 'rate_limited') bubble.textContent = '(Daily limit reached — try again tomorrow.)';
+            if (reason === 'disabled') bubble.textContent = panel.dataset.disabledText;
+            if (reason === 'rate_limited') bubble.textContent = panel.dataset.rateLimitedText;
             // A turn that threw mid-stream now finishes as a well-formed 200/SSE
             // 'error' finalizer instead of a broken connection, so neither the
             // !resp.ok branch nor the catch below fires — the user must be told
@@ -171,7 +171,7 @@
             // finish. The bubble starts as appendMessage('assistant', ''), so
             // textContent is only non-empty once one of those branches filled it.
             if (reason === 'error') {
-                const errorText = '(Something went wrong answering that. Please try again.)';
+                const errorText = panel.dataset.turnErrorText;
                 if (!bubble.dataset.rawMarkdown.trim() && !bubble.textContent.trim()) {
                     bubble.textContent = errorText;
                 } else {

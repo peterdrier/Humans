@@ -1,4 +1,5 @@
 @model Humans.Agent.ViewComponents.HelpWidgetModel
+@inject IStringLocalizer<SharedResource> SharedLocalizer
 
 <!-- Floating "Help" bubble + popover menu -->
 <div class="help-widget position-fixed" style="bottom: 24px; right: 24px; z-index: 1050;">
@@ -35,6 +36,11 @@
 {
     <div class="agent-panel position-fixed shadow-lg" id="agentPanel"
          data-issue-proposed-text="@Localizer["Help_Agent_IssueProposed"]"
+         data-http-error-text="@Localizer["Agent_HttpError"]"
+         data-network-error-text="@Localizer["Agent_NetworkError"]"
+         data-disabled-text="@Localizer["Agent_DisabledReply"]"
+         data-rate-limited-text="@Localizer["Agent_RateLimitedReply"]"
+         data-turn-error-text="@Localizer["Agent_TurnErrorReply"]"
          style="display: none; bottom: 92px; right: 24px; width: 420px; max-height: 70vh;
                 z-index: 1050; background: white; border-radius: 12px; overflow: hidden;">
         <div class="agent-header d-flex justify-content-between align-items-center p-3 border-bottom">
@@ -45,7 +51,7 @@
                    title="@Localizer["Agent_ViewHistory"]">
                     @Localizer["Agent_ViewHistory"]
                 </a>
-                <button type="button" class="btn-close" id="agentPanelClose" aria-label="Close"></button>
+                <button type="button" class="btn-close" id="agentPanelClose" aria-label="@SharedLocalizer["Common_Close"]"></button>
             </div>
         </div>
         <div class="agent-body" id="agentBody" style="display: flex; flex-direction: column;">
