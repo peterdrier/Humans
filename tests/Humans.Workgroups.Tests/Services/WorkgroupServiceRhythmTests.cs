@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
+using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;
@@ -17,6 +18,33 @@ namespace Humans.Workgroups.Tests.Services;
 /// </summary>
 public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
 {
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task UpdateNudge_UsesTheResolvedRecipientsLanguage_AndDeduplicatesAliases(bool includeSurvivor)
+    {
+        var formerId = SeedUser("Former account");
+        var survivorId = SeedUser("Survivor", language: "es");
+        var survivor = (await Users.GetUserInfoAsync(survivorId, Ct))!;
+        var workgroup = await SeedWorkgroupAsync(coordinatorUserId: formerId,
+            registeredAt: Clock.GetCurrentInstant().Minus(Duration.FromDays(30)));
+        if (includeSurvivor)
+            await AddMemberAsync(workgroup.Id, survivorId, WorkgroupMemberRole.Coordinator);
+        // Users' batched read retains requested keys while resolving their values.
+        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => (IReadOnlyDictionary<Guid, UserInfo>)call.Arg<IReadOnlyCollection<Guid>>()
+                .ToDictionary(id => id, _ => survivor));
+
+        await NewService().RunDailyRhythmAsync(Ct);
+
+        await Notifications.Received(1).SendAsync(
+            NotificationSource.WorkgroupReportingDue, Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+            "Actualización mensual pendiente: " + workgroup.Name,
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == survivorId),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task ThirtyDaysSilent_NudgesCoordinators_AndAudits()
     {

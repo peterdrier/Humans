@@ -343,6 +343,8 @@ should end is the Board's decision, taken on the register in front of them.
   actor authored it before writing the log entry. One-way: Surveys never references Workgroups.
 - **Notifications, Email, AuditLog**: crosscuts, per Triggers above. Member notifications
   use existing localized labels, grouped by recipient language; authored content is unchanged.
+  A merged-member alias carries both the resolved live id and its language into grouping,
+  with one delivery per live recipient even when multiple requested ids resolve to them.
 - **Gdpr**: `IUserDataContributor`, `IUserMerge` — see GDPR below.
 
 ## GDPR
