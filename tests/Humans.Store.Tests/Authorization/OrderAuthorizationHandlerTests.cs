@@ -154,6 +154,21 @@ public class OrderAuthorizationHandlerTests
         AssertOutcome(role, MakeOrder(team: true), OrderOperationRequirement.Refund, expectAllowed: false);
 
     [HumansFact]
+    public Task Admin_can_delete_a_payment_on_camp_order() =>
+        AssertOutcome(RoleNames.Admin, MakeOrder(team: false), OrderOperationRequirement.DeletePayment, expectAllowed: true);
+
+    [HumansTheory]
+    [InlineData(RoleNames.StoreAdmin)]
+    [InlineData(RoleNames.FinanceAdmin)]
+    [InlineData(RoleNames.TeamsAdmin)]
+    public Task Only_full_admin_can_delete_a_payment(string role) =>
+        AssertOutcome(role, MakeOrder(team: false), OrderOperationRequirement.DeletePayment, expectAllowed: false);
+
+    [HumansFact]
+    public Task CampLead_cannot_delete_a_payment_on_own_camp_order() =>
+        AssertLeadOperation(OrderOperationRequirement.DeletePayment, expectAllowed: false);
+
+    [HumansFact]
     public Task CampLead_cannot_record_payment_on_own_camp_order() =>
         AssertLeadOperation(OrderOperationRequirement.RecordPayment, expectAllowed: false);
 

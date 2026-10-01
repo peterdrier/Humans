@@ -1101,7 +1101,7 @@ public class ServiceTests
         {
             Payments =
             [
-                new OrderPaymentDto(30m, PaymentMethod.Stripe, PaymentStatus.Pending, "pi_pending", null, Instant.FromUtc(2026, 5, 1, 0, 0), null)
+                new OrderPaymentDto(Guid.NewGuid(), 30m, PaymentMethod.Stripe, PaymentStatus.Pending, "pi_pending", null, Instant.FromUtc(2026, 5, 1, 0, 0), null)
             ]
         };
         _stripeService.IsStoreCheckoutConfigured.Returns(true);

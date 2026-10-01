@@ -11,6 +11,7 @@
         .Sum(p => p.AmountEur);
     var canRefund = Model.CanRecordPayment
         && (await AuthService.AuthorizeAsync(User, order, OrderOperationRequirement.Refund)).Succeeded;
+    var canDeletePayment = (await AuthService.AuthorizeAsync(User, order, OrderOperationRequirement.DeletePayment)).Succeeded;
 }
 
 <nav aria-label="breadcrumb" class="mb-3">
@@ -209,6 +210,10 @@ else
                     <th>@Localizer["Store_ColStatus"]</th>
                     <th>@Localizer["Store_ColReference"]</th>
                     <th class="text-end">@Localizer["Store_ColAmount"]</th>
+                    @if (canDeletePayment)
+                    {
+                        <th></th>
+                    }
                 </tr>
             </thead>
             <tbody>
@@ -250,6 +255,17 @@ else
                                 <div class="text-muted small">@Localizer["Store_PendingSettlement"]</div>
                             }
                         </td>
+                        @if (canDeletePayment)
+                        {
+                            @* Admin-only control (localization-admin-exempt): plain strings. *@
+                            <td class="text-end">
+                                <form asp-action="DeletePayment" asp-route-id="@order.Id" asp-route-paymentId="@payment.Id" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            data-confirm="Permanently delete this payment? The row is removed and the order balance changes.">Delete</button>
+                                </form>
+                            </td>
+                        }
                     </tr>
                 }
             </tbody>
@@ -257,6 +273,10 @@ else
                 <tr class="fw-bold">
                     <td colspan="4" class="text-end">@Localizer["Store_TotalClearedPayments"]</td>
                     <td class="text-end">@order.PaymentsTotalEur.ToEuro()</td>
+                    @if (canDeletePayment)
+                    {
+                        <td></td>
+                    }
                 </tr>
             </tfoot>
         </table>

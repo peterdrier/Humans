@@ -132,6 +132,7 @@ public enum AuditAction
     StorePaymentSettled,
     StorePaymentFailed,
     StorePaymentExpired,
+    StorePaymentDeleted,
     TicketTransferRequested,
     TicketTransferApproved,
     TicketTransferRejected,

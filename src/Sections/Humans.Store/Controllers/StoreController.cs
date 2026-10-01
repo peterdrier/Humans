@@ -237,6 +237,31 @@ internal sealed class StoreController(
         return RedirectToAction(nameof(Order), new { id });
     }
 
+    [HttpPost("Order/{id:guid}/Payment/{paymentId:guid}/Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeletePayment(Guid id, Guid paymentId, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var order = await storeService.GetOrderAsync(id, ct);
+        if (order is null) return NotFound();
+
+        var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.DeletePayment);
+        if (!auth.Succeeded) return Forbid();
+
+        try
+        {
+            await storeService.DeletePaymentAsync(id, paymentId, user.Id, CancellationToken.None);
+            SetSuccess("Payment deleted."); // Admin-only action: exempt from localization.
+        }
+        catch (InvalidOperationException ex)
+        {
+            SetError(ex.Message);
+        }
+        return RedirectToAction(nameof(Order), new { id });
+    }
+
     [HttpPost("Order/Create/{campSeasonId:guid}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Guid campSeasonId, CancellationToken ct)

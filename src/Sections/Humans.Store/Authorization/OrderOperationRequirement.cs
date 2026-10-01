@@ -26,6 +26,8 @@ internal sealed class OrderOperationRequirement : IAuthorizationRequirement
     public static readonly OrderOperationRequirement RecordPayment = new(nameof(RecordPayment));
     /// <summary>Record a <c>Refund</c> payment (money sent back out). Finance admin and Admin only — narrower than <see cref="RecordPayment"/>, which Store admins hold for deposit returns.</summary>
     public static readonly OrderOperationRequirement Refund = new(nameof(Refund));
+    /// <summary>Hard-delete a payment row. Full Admin only — not FinanceAdmin, not StoreAdmin — and never on a team order.</summary>
+    public static readonly OrderOperationRequirement DeletePayment = new(nameof(DeletePayment));
 
     public string OperationName { get; }
 

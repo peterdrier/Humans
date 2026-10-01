@@ -23,7 +23,7 @@ public class OrderViewModelBalanceBoxTests
     };
 
     private static OrderPaymentDto Payment(decimal amount, PaymentMethod method, PaymentStatus status = PaymentStatus.Paid) =>
-        new(amount, method, status, null, null, Instant.FromUtc(2026, 1, 1, 0, 0), null);
+        new(Guid.NewGuid(), amount, method, status, null, null, Instant.FromUtc(2026, 1, 1, 0, 0), null);
 
     [HumansFact]
     public void Camp_owing_the_org_reads_balance_owed_with_the_amount()

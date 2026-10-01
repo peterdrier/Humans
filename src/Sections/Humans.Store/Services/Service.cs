@@ -819,6 +819,28 @@ internal sealed class Service(
             actorUserId, orderId, AuditEntityTypes.Order);
     }
 
+    /// <summary>
+    /// Admin-only hard delete of one payment row of any method or status, for a row recorded in
+    /// error (e.g. a mistaken refund — no money moved in Stripe). The row is gone for good, so the
+    /// audit entry carries everything needed to reconstruct it. The order balance is computed, so
+    /// it follows by itself.
+    /// </summary>
+    public async Task DeletePaymentAsync(
+        Guid orderId, Guid paymentId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
+            ?? throw new InvalidOperationException("Order not found.");
+        var payment = order.Payments.FirstOrDefault(p => p.Id == paymentId)
+            ?? throw new InvalidOperationException("Payment not found on this order.");
+
+        await repo.DeletePaymentAsync(paymentId, ct);
+        await audit.LogAsync(
+            AuditAction.StorePaymentDeleted, AuditEntityTypes.Payment, payment.Id,
+            $"Deleted {payment.Method} payment of EUR {payment.AmountEur:0.00} ({payment.Status}) on order {orderId}, "
+                + $"received {payment.ReceivedAt}, ref {payment.ExternalRef ?? "none"}, PI {payment.StripePaymentIntentId ?? "none"}",
+            actorUserId, orderId, AuditEntityTypes.Order);
+    }
+
     public async Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default)
     {
         var sessionsOrNull = await stripeService.ListStoreCheckoutSessionsAsync(ct);
@@ -1776,7 +1798,7 @@ internal sealed class Service(
 
         var payments = o.Payments
             .Select(p => new OrderPaymentDto(
-                p.AmountEur, p.Method, p.Status, p.StripePaymentIntentId, p.ExternalRef, p.ReceivedAt, p.Notes))
+                p.Id, p.AmountEur, p.Method, p.Status, p.StripePaymentIntentId, p.ExternalRef, p.ReceivedAt, p.Notes))
             .ToList();
 
         var counterpartyType = o.TeamId is not null
