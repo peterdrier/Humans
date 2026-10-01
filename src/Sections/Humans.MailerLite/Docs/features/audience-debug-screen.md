@@ -47,7 +47,7 @@ A per-audience debug screen on the existing MailerLite admin section that previe
 ## Caching
 
 - Audience compute reads cached interfaces only — `IShiftView` + `ITicketServiceRead` (both decorated by their caching layers). No DB queries during page render.
-- Name/email rendering reads cached `UserInfo` via `IUserService.GetAllUserInfosAsync`. Pinned by `MailerLiteAudienceDebugSnapshotBuilderTests.Build_NoDbQueries_OnlyCachedUserInfoAndMlReads`.
+- Name/email rendering reads cached `UserInfo` via `IUserServiceRead.GetAllUserInfosAsync`. Pinned by `MailerLiteAudienceDebugSnapshotBuilderTests.Build_NoDbQueries_OnlyCachedUserInfoAndMlReads`.
 - MailerLite reads are live (we're diffing against the remote we don't own).
 
 ## Paging + Sorting
