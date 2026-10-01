@@ -109,8 +109,7 @@ internal sealed class TeamController(
         string? pageContentHtml = null;
         if (!string.IsNullOrEmpty(team.PageContent))
         {
-            var sanitizer = new Ganss.Xss.HtmlSanitizer();
-            pageContentHtml = sanitizer.Sanitize(Markdig.Markdown.ToHtml(team.PageContent));
+            pageContentHtml = SanitizedMarkdownRenderer.Render(team.PageContent);
         }
 
         var members = teamPage.Members

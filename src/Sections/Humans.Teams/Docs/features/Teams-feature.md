@@ -131,7 +131,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 **Acceptance Criteria:**
 - Edit page at `/Teams/{slug}/EditPage`
 - Toggle public visibility (only for departments, not sub-teams or system teams)
-- Write page content in markdown format
+- Write page content in markdown format; render through the shared sanitizer with no inline styles and HTTPS-only images
 - Configure up to 3 call-to-action buttons (text + URL + style)
 - Only one CTA can be styled as Primary
 - Changes are audit-logged with `TeamPageContentUpdated`
