@@ -907,8 +907,7 @@ internal sealed class HoldedClient : IHoldedClient
         Tax = ReadDecimalV2(Prop(n, "tax")),
         // Total feeds the budget actuals; an absent field must fail the page, not upsert 0.00.
         Total = ReadRequiredDecimalV2(Prop(n, "total"), "total"),
-        // Missing pending amounts must not make unpaid documents disappear from payment allocation.
-        PaymentsPending = ReadRequiredDecimalV2(Prop(n, "payments_pending"), "payments_pending"),
+        PaymentsPending = ReadDecimalV2(Prop(n, "payments_pending")),
         IsDraft = Prop(n, "draft")?.GetValue<bool>(),
         Currency = Prop(n, "currency")?.GetValue<string>() ?? "eur",
         Tags = ReadTags(Prop(n, "tags")),

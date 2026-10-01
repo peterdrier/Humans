@@ -41,7 +41,7 @@ public class HoldedClientTests
         Func<Task<string>> act = operation switch
         {
             "purchase" => () => client.CreatePurchaseDocumentAsync(new()
-                { ContactId = "contact-1", ContactName = "Alice", Date = date, Lines = [] },
+            { ContactId = "contact-1", ContactName = "Alice", Date = date, Lines = [] },
                 Xunit.TestContext.Current.CancellationToken),
             "contact" => () => client.UpsertContactAsync(new() { Name = "Alice" },
                 Xunit.TestContext.Current.CancellationToken),

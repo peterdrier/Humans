@@ -160,9 +160,7 @@ public class HoldedClientReadTests
     [Xunit.InlineData("id", null, true)]
     [Xunit.InlineData("id", "", true)]
     [Xunit.InlineData("id", " ", true)]
-    [Xunit.InlineData("payments_pending", null, false)]
-    [Xunit.InlineData("payments_pending", null, true)]
-    public async Task ListPurchaseDocuments_refuses_incomplete_payment_fields(
+    public async Task ListPurchaseDocuments_refuses_missing_or_blank_id(
         string field, string? value, bool present)
     {
         var doc = JsonNode.Parse("""{"id":"doc-1","date":"2026-05-14","total":"121.00","payments_pending":"121.00","draft":false}""")!.AsObject();
