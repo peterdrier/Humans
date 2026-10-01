@@ -355,8 +355,6 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         return o;
     }
 
-    // FirstName/LastName are null at runtime — ML stores them under nested "fields", not top-level.
-
     private sealed record SubscriberListEnvelope(
         [property: JsonPropertyName("data")] IReadOnlyList<MailerLiteSubscriber> Data,
         [property: JsonPropertyName("meta")] SubscriberMeta Meta);

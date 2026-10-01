@@ -3,8 +3,8 @@ using NodaTime;
 namespace Humans.MailerLite.Models;
 
 /// <summary>
-/// Per-audience debug snapshot — five tables comparing Humans-side audience
-/// membership against the live MailerLite group state. Issue #773.
+/// Per-audience debug snapshot — tables comparing Humans-side audience
+/// membership against the live MailerLite group state (nobodies-collective/Humans#773).
 ///
 /// Sources:
 /// 1. Expected — <c>IMailerLiteAudience.ComputeMemberUserIdsAsync</c> resolved to

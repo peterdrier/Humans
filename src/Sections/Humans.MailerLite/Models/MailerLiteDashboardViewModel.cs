@@ -18,4 +18,4 @@ internal sealed record MailerLiteDashboardViewModel(
 
 internal sealed record DriftReport(
     int HumansOptedOutMlActive,           // legal-trouble row
-    int? HumansOptedInMlAbsent);          // service-quality row (null = not yet computed)
+    int? HumansOptedInMlAbsent);          // service-quality row (never computed — a seam, see health.md)

@@ -6,8 +6,7 @@ namespace Humans.MailerLite.Domain;
 /// Current sync state for one <see cref="Services.IMailerLiteAudience"/> — or for the import
 /// reconciliation run, under <see cref="MailerLiteSyncKeys.Reconciliation"/>. One row per key,
 /// overwritten on every run: this is current state, not history
-/// (nobodies-collective/Humans#1082 — it used to be serialized into an
-/// <c>audit_log</c> description and read back out).
+/// (nobodies-collective/Humans#1082).
 /// </summary>
 /// <remarks>
 /// <see cref="Id"/> is what gives the sync's audit row a real subject to point at, so it must

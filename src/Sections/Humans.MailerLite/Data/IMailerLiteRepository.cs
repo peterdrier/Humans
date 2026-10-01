@@ -6,7 +6,7 @@ namespace Humans.MailerLite.Data;
 /// <summary>The only type allowed to touch <c>mailerlite_sync_states</c>.</summary>
 internal interface IMailerLiteRepository : IRepository
 {
-    /// <summary>Every sync state — nine rows at most, so the caller matches by key in memory.</summary>
+    /// <summary>Every sync state — one row per audience plus the import's, so the caller matches by key in memory.</summary>
     Task<IReadOnlyList<MailerLiteSyncState>> GetSyncStatesAsync(CancellationToken ct = default);
 
     /// <summary>One sync state, or null when that key has never synced.</summary>

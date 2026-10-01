@@ -9,7 +9,7 @@ namespace Humans.MailerLite.Services;
 
 /// <summary>
 /// Orchestrates audience computation, ML state diffing, and the apply step.
-/// Lives in the Application layer; the section's sync state goes through
+/// The section's sync state goes through
 /// <see cref="IMailerLiteRepository"/>.
 /// </summary>
 internal sealed class MailerLiteAudienceSyncService(

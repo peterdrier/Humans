@@ -5,16 +5,13 @@ using Humans.MailerLite.Services.Dtos;
 namespace Humans.MailerLite.Services;
 
 /// <summary>
-/// Splits import into a plan-build step and an apply step. Future
-/// Hangfire / webhook callers reuse the same pair: build a plan
-/// (possibly single-decision in the webhook case), then apply it.
+/// Splits import into a plan-build step and an apply step, stateless between them.
 /// </summary>
 internal interface IMailerLiteImportService : IApplicationService
 {
     /// <summary>
     /// When reconciliation last ran and what it did, or null before the first run.
-    /// Read from the section's own table — the dashboard used to scan <c>audit_log</c> for this
-    /// (nobodies-collective/Humans#1082).
+    /// Read from the section's own table (nobodies-collective/Humans#1082).
     /// </summary>
     Task<MailerLiteSyncSnapshot?> GetLastReconciliationAsync(CancellationToken ct = default);
 

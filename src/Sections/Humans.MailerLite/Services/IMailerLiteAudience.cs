@@ -11,7 +11,7 @@ internal interface IMailerLiteAudience
     /// <summary>Stable URL-safe key (e.g. "ticket-no-shifts").</summary>
     string Key { get; }
 
-    /// <summary>Display name shown on the dashboard card.</summary>
+    /// <summary>Human-readable name for the debug picker, the admin banners and the sync's audit entry.</summary>
     string DisplayName { get; }
 
     /// <summary>Target MailerLite group name. Must start with "Humans - ".</summary>

@@ -7,8 +7,9 @@ namespace Humans.MailerLite.Services;
 
 /// <summary>
 /// MailerLite client surface. Reads cover account summary, groups, and
-/// subscribers. Writes are narrow: limited to creating "Humans - "-prefixed
-/// groups and managing membership in those groups. Pinned by
+/// subscribers. Writes are narrow: creating "Humans - "-prefixed groups,
+/// managing membership in those groups, and deleting a subscriber on GDPR
+/// erasure. Pinned by
 /// <c>MailerLiteArchitectureTests.IMailerLiteService_OnlyAllowsAudienceWrites</c>.
 ///
 /// Implementations cache subscribers, groups, and the derived account

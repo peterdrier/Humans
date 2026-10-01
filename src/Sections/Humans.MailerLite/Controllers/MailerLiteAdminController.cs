@@ -174,7 +174,7 @@ internal sealed class MailerLiteAdminController(
         }
         catch (TaskCanceledException)
         {
-            // Nothing cancels the sync any more, so this can only be an
+            // No caller token is passed, so this can only be an
             // HttpClient timeout.
             logger.LogWarning("Audience sync timed out for {Audience}", key);
             TempData["Banner"] = $"{audience.DisplayName}: sync timed out. Try again shortly.";
@@ -206,7 +206,7 @@ internal sealed class MailerLiteAdminController(
         }
         catch (TaskCanceledException)
         {
-            // Nothing cancels the sync any more, so this can only be an
+            // No caller token is passed, so this can only be an
             // HttpClient timeout.
             logger.LogWarning("Push All timed out");
             TempData["Banner"] = "Push All timed out. Some audiences may have synced; try again shortly.";
