@@ -72,17 +72,17 @@ ones the target leans on are enforced.
   `MailerLiteClient.cs:69` (create) and `MailerLiteClient.cs:172` (assign, unassign, bulk).
   The sync refuses a mis-prefixed audience before any write, because its per-write catches
   would otherwise turn the client's refusal into an error count —
-  `MailerLiteAudienceSyncService.cs:87`.
+  `MailerLiteAudienceSyncService.cs:74`.
 - Every list drops people who explicitly said no to marketing —
   `MailerLiteAudienceBase.cs:28`.
 - A subscriber MailerLite reports as unsubscribed, bounced or spam-flagged is never added to a
-  list — `MailerLiteAudienceSyncService.cs:126`, reading `MailerLiteSubscriber.cs:29`.
+  list — `MailerLiteAudienceSyncService.cs:113`, reading `MailerLiteSubscriber.cs:29`.
 - The import reads only the `Website` list and refuses to run without it —
   `MailerLiteImportService.cs:342`.
 - A marketing reset re-checks the person at apply time, so a preference changed after the
   preview is not clobbered — `MailerLiteImportService.cs:379`.
 - A push or import an admin started finishes even if the admin leaves the page —
-  `MailerLiteAdminController.cs:171`, `:198`, `:272`.
+  `MailerLiteAdminController.cs:167`, `:194`, `:268`.
 - Every admin route is admin-only — `MailerLiteAdminController.cs:14`.
 - Erasure deletes the subscriber under every verified address and the primary —
   `MailerLiteGdprContributor.cs:71`.
@@ -131,3 +131,4 @@ Reserve the places; don't build them.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-08-25 | Debug picker always showed the last list; Apply confirmed twice; dead client surface deleted; shared audience rules defined once | peterdrier/Humans#1513 |
+| section-doctor | 2026-10-01 | The section has no cross-section surface; admin views render the service records; docs and comments say what the code does | pending |
