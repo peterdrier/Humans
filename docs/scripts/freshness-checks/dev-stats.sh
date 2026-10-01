@@ -28,7 +28,10 @@ if [ -z "$LATEST_DATE" ]; then
 fi
 
 # Last data row of the doc (last line that starts with `| 2`).
-LAST_ROW=$(grep -E '^\| [0-9]{4}-[0-9]{2}-[0-9]{2} \|' "$DOC" | tail -1 || true)
+if ! LAST_ROW=$({ grep -E '^\| [0-9]{4}-[0-9]{2}-[0-9]{2} \|' "$DOC" || [ "$?" -eq 1 ]; } | tail -1); then
+  echo "FAIL [dev-stats]: could not read Codebase Growth rows from $DOC"
+  exit 1
+fi
 if [ -z "$LAST_ROW" ]; then
   echo "FAIL [dev-stats]: no date rows found in Codebase Growth table"
   exit 1

@@ -486,6 +486,57 @@ else
   FAIL=$((FAIL+1))
 fi
 
+# History/statistics inputs must be read successfully, including when a failed
+# producer emitted enough valid-looking rows to otherwise pass the check.
+if python3 - "$SCRIPT_DIR/dev-stats.sh" "$SCRIPT_DIR/reforge-history.sh" <<'PYTEST'
+import os, pathlib, shutil, subprocess, sys, tempfile
+for script_path in sys.argv[1:]:
+    script = pathlib.Path(script_path).resolve()
+    is_stats = script.name == 'dev-stats.sh'
+    for mode in ('valid', 'empty', 'partial', 'failed'):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            (root / 'docs').mkdir()
+            probes = root / 'probes'
+            probes.mkdir()
+            git = probes / 'git'
+            date_output = '' if mode == 'empty' and not is_stats else 'echo 2026-10-01; '
+            git.write_text('#!/bin/bash\nif [[ "$1" == rev-parse ]]; then exit 0; fi\n'
+                           + 'if [[ "$1" == log ]]; then ' + date_output + 'exit 0; fi\nexit 2\n')
+            git.chmod(0o755)
+            if is_stats:
+                row = '| 2026-10-01 | ' + ' | '.join(['1'] * 19) + ' |\n'
+                (root / 'docs/development-stats.md').write_text('No rows\n' if mode == 'empty' else row)
+                command, match = 'grep', '[[ "$1" == -E ]]'
+            else:
+                row = 'commit_date,a,b,c,d\n' + ('' if mode == 'empty' else '2026-10-01,1,2,3,4\n')
+                (root / 'docs/reforge-history.csv').write_text(row)
+                command, match = 'tail', '[[ "$1" == -n && "$2" == +2 ]]'
+            if mode in ('failed', 'partial'):
+                real_command = shutil.which(command)
+                probe = probes / command
+                probe.write_text('#!/bin/bash\nif ' + match + '; then\n'
+                                 + (f'{real_command} "$@"\n' if mode == 'partial' else '')
+                                 + 'exit 42\nfi\n' + f'exec {real_command} "$@"\n')
+                probe.chmod(0o755)
+            env = os.environ.copy()
+            env['PATH'] = str(probes) + ':' + env['PATH']
+            result = subprocess.run(['bash', str(script)], cwd=root, env=env, capture_output=True, text=True)
+            if mode == 'valid' or (mode == 'empty' and not is_stats):
+                assert result.returncode == 0 and 'PASS [' in result.stdout, result
+            else:
+                assert result.returncode != 0 and 'PASS [' not in result.stdout, result
+                if mode in ('failed', 'partial'):
+                    assert 'could not read' in result.stdout, result
+PYTEST
+then
+  echo "PASS [test 13]: statistics and history verifiers reject failed and partial input scans"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 13]: statistics/history input failure handling"
+  FAIL=$((FAIL+1))
+fi
+
 echo "═══ Summary ═══"
 echo "Passed: $PASS"
 echo "Failed: $FAIL"

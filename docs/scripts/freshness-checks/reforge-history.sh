@@ -68,6 +68,10 @@ BAD_ROWS=""
 BAD_ROW_COUNT=0
 LINE_NO=1
 ROWS=0
+if ! DATA_ROWS=$(tail -n +2 "$CSV"); then
+  echo "FAIL [reforge-history]: could not read data rows from $CSV"
+  exit 1
+fi
 while IFS= read -r ROW || [ -n "$ROW" ]; do
   LINE_NO=$((LINE_NO + 1))
   [ -z "$ROW" ] && continue
@@ -85,7 +89,7 @@ while IFS= read -r ROW || [ -n "$ROW" ]; do
 "
     BAD_ROW_COUNT=$((BAD_ROW_COUNT + 1))
   fi
-done < <(tail -n +2 "$CSV")
+done <<< "$DATA_ROWS"
 
 FAIL=false
 
