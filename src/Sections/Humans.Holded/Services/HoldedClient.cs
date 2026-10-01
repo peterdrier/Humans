@@ -276,7 +276,7 @@ internal sealed class HoldedClient : IHoldedClient
             return items.Select(n => new HoldedExpenseAccountDto
             {
                 Id = Prop(n, "id")?.GetValue<string>() ?? "",
-                AccountNum = ReadInt(Prop(n, "account_num")) ?? 0,
+                AccountNum = ReadRequiredInt(Prop(n, "account_num"), "account_num"),
                 Name = Prop(n, "name")?.GetValue<string>() ?? "",
             }).ToList();
         }
@@ -731,7 +731,7 @@ internal sealed class HoldedClient : IHoldedClient
         {
             return items.Select(n => new HoldedAccountDto
             {
-                Id = Prop(n, "id")?.GetValue<string>() ?? "",
+                Id = ReadRequiredString(Prop(n, "id"), "id"),
                 // Required, like the ledger line's `account`: the number IS the account's identity
                 // here — it keys the mirror, picks the PGC group and drives the POV flip. A
                 // manufactured 0 would enter the chart as an "Unclassified" account with a

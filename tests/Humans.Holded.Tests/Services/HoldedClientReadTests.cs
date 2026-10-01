@@ -37,6 +37,38 @@ public class HoldedClientReadTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("expense", "account_num", "missing")]
+    [Xunit.InlineData("expense", "account_num", "null")]
+    [Xunit.InlineData("chart", "id", "missing")]
+    [Xunit.InlineData("chart", "id", "null")]
+    [Xunit.InlineData("chart", "id", "empty")]
+    [Xunit.InlineData("chart", "id", "whitespace")]
+    public async Task Account_reads_refuse_missing_identity(string endpoint, string field, string shape)
+    {
+        var body = JsonNode.Parse("""
+            {"items":[{"id":"a1","name":"Capital","account_num":62900000,"number":10000000,
+              "debit":"0.00","credit":"1000.00","balance":"-1000.00"}],
+             "cursor":null,"has_more":false}
+            """)!;
+        var account = body["items"]![0]!.AsObject();
+        if (string.Equals(shape, "missing", StringComparison.Ordinal))
+            account.Remove(field);
+        else
+            account[field] = shape switch { "null" => null, "empty" => "", _ => "   " };
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, body.ToJsonString())));
+
+        var act = async () =>
+        {
+            if (string.Equals(endpoint, "expense", StringComparison.Ordinal))
+                await client.ListExpenseAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+            else
+                await client.ListAccountingAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        };
+
+        await act.Should().ThrowAsync<HoldedPermanentException>().WithMessage($"*'{field}'*");
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("expense", "account_num", 62900000.5)]
     [Xunit.InlineData("chart", "number", 10000000.5)]
     [Xunit.InlineData("ledger", "entry_number", 2064.5)]
