@@ -42,6 +42,7 @@ public class AccountControllerOAuthReconcileTests
     private readonly IStringLocalizer<Base.SharedResource> _localizer =
         Substitute.For<IStringLocalizer<Base.SharedResource>>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
+    private readonly Web.Services.LoginMethodCounter _loginMethods = new();
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
     private readonly AccountController _controller;
@@ -90,6 +91,7 @@ public class AccountControllerOAuthReconcileTests
                 new Microsoft.Extensions.Caching.Memory.MemoryCache(
                     new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()),
                 _clock),
+            _loginMethods,
             _localizer);
         _controller.Url = Substitute.For<IUrlHelper>();
         _controller.Url.IsLocalUrl(Arg.Any<string?>()).Returns(false);
@@ -158,6 +160,9 @@ public class AccountControllerOAuthReconcileTests
         // Controller writes no audit on the OAuth path — audit is service-owned.
         // (The controller no longer takes an IAuditLogService dependency,
         // so it is structurally impossible to write one from this branch.)
+
+        _loginMethods.Google.Should().Be(1);
+        _loginMethods.MagicLink.Should().Be(0);
     }
 
     [HumansFact]
@@ -224,6 +229,9 @@ public class AccountControllerOAuthReconcileTests
         // Already-authenticated link keeps the existing session — no re-issue.
         await _signInManager.DidNotReceive().SignInAsync(
             Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
+
+        // ...and linking is not a sign-in, so the dashboard tally doesn't move.
+        _loginMethods.Google.Should().Be(0);
     }
 
     // ─── Path 3: lockout-relink ──────────────────────────────────────────────

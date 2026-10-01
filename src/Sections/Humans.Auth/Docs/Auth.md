@@ -48,6 +48,8 @@ All under `/Account`. Anti-forgery on every POST.
 | POST | `Logout` | (any) | Sign-out and redirect to `Home/Index` |
 | GET | `AccessDenied` | (any) | Renders the access-denied page |
 
+Successful Google and magic-link sign-ins (including magic-link signup) bump Shell's in-memory `LoginMethodCounter`, shown as the "Sign-in method" dial on `/Admin`. Nothing is stored — a restart zeroes it. Linking a Google account while signed in, the gate terminal, and dev logins are not counted.
+
 ## Data Model
 
 ### RoleAssignment

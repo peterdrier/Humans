@@ -93,6 +93,9 @@ builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 // moved to Humans.Tickets with /Tickets/Admin/Gate (nobodies-collective/Humans#1091).
 builder.Services.AddSingleton<GateLoginThrottle>();
 
+// Since-startup sign-in tally by method, shown on the /Admin dashboard. In-memory only.
+builder.Services.AddSingleton<LoginMethodCounter>();
+
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);

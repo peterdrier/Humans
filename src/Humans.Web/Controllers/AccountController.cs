@@ -23,6 +23,7 @@ public class AccountController(
     IMagicLinkService magicLinkService,
     IAccountProvisioningService accountProvisioningService,
     GateLoginThrottle gateThrottle,
+    LoginMethodCounter loginMethods,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
     [HttpGet]
@@ -65,6 +66,9 @@ public class AccountController(
             isPersistent: true,
             bypassTwoFactor: true);
 
+        // Already signed in means this callback links a Google account, not a sign-in.
+        var wasAuthenticated = IsAuthenticated();
+
         // Deliberately not passing HttpContext.RequestAborted: a client disconnect
         // mid-provisioning would abort past the rollback and strand a half-built
         // account. The callback runs to completion once Identity has answered.
@@ -73,7 +77,7 @@ public class AccountController(
                 info,
                 result.Succeeded,
                 result.IsLockedOut,
-                IsAuthenticated() ? GetCurrentUserId() : null));
+                wasAuthenticated ? GetCurrentUserId() : null));
 
         if (completion.SignInUser is not null)
             await signInManager.SignInAsync(completion.SignInUser, isPersistent: true);
@@ -81,6 +85,8 @@ public class AccountController(
         switch (completion.Outcome)
         {
             case ExternalLoginOutcome.SignedIn:
+                if (!wasAuthenticated)
+                    loginMethods.RecordGoogle();
                 return RedirectToLocal(returnUrl);
 
             case ExternalLoginOutcome.LinkToCurrentUserFailed:
@@ -189,6 +195,7 @@ public class AccountController(
         await userService.RecordLoginAsync(user.Id);
 
         await signInManager.SignInAsync(user, isPersistent: true);
+        loginMethods.RecordMagicLink();
         logger.LogInformation("User {UserId} logged in via magic link", user.Id);
 
         return RedirectToLocal(returnUrl);
@@ -304,6 +311,7 @@ public class AccountController(
 
         await signInManager.SignInAsync(result.User, isPersistent: true);
 #pragma warning restore CS0618
+        loginMethods.RecordMagicLink();
 
         return RedirectToLocal(returnUrl);
     }

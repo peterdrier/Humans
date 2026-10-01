@@ -375,6 +375,32 @@ body.admin-shell .stat .delta.bad {
     color: var(--h-rust);
 }
 
+/* ── Sign-in method dial (Google share of sign-ins) ───────────────────── */
+
+body.admin-shell .login-method-dial {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: conic-gradient(
+        var(--h-chart-success) 0 var(--pct, 0%),
+        var(--h-chart-muted) 0 100%
+    );
+}
+
+body.admin-shell .login-method-dial span {
+    display: grid;
+    place-items: center;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: var(--h-bg-card);
+    font-family: var(--h-font-display);
+    font-weight: 700;
+}
+
 /* ── Cards ────────────────────────────────────────────────────────────── */
 
 /* background/border/border-radius/box-shadow now match site.css's global .card (W-a)

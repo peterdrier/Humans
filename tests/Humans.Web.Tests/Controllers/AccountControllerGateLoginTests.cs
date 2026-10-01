@@ -75,6 +75,7 @@ public class AccountControllerGateLoginTests
             Substitute.For<IMagicLinkService>(),
             Substitute.For<IAccountProvisioningService>(),
             _throttle,
+            new LoginMethodCounter(),
             localizer);
 
         var tempDataProvider = Substitute.For<ITempDataProvider>();

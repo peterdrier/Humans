@@ -1,0 +1,23 @@
+@model Humans.Web.ViewComponents.LoginMethodCardViewModel
+
+<div class="card mb-4">
+    <div class="card-header">Sign-in method <span class="text-muted small">since last restart</span></div>
+    <div class="card-body">
+        @if (Model.Total == 0)
+        {
+            <span class="text-muted">No sign-ins yet.</span>
+        }
+        else
+        {
+            <div class="d-flex align-items-center gap-3">
+                <div class="login-method-dial" style="--pct: @(Model.GooglePercent)%;">
+                    <span>@Model.GooglePercent%</span>
+                </div>
+                <div>
+                    <div><i class="fa-brands fa-google me-1"></i>Google: <strong>@Model.Google</strong></div>
+                    <div><i class="fa-solid fa-envelope me-1"></i>Email link: <strong>@Model.MagicLink</strong></div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
