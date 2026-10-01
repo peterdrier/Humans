@@ -837,7 +837,8 @@ internal sealed class Service(
         await audit.LogAsync(
             AuditAction.StorePaymentDeleted, AuditEntityTypes.Payment, payment.Id,
             $"Deleted {payment.Method} payment of EUR {payment.AmountEur:0.00} ({payment.Status}) on order {orderId}, "
-                + $"received {payment.ReceivedAt}, ref {payment.ExternalRef ?? "none"}, PI {payment.StripePaymentIntentId ?? "none"}",
+                + $"received {payment.ReceivedAt}, ref {payment.ExternalRef ?? "none"}, PI {payment.StripePaymentIntentId ?? "none"}, "
+                + $"recorded by {payment.RecordedByUserId?.ToString() ?? "none"}, notes {payment.Notes ?? "none"}",
             actorUserId, orderId, AuditEntityTypes.Order);
     }
 

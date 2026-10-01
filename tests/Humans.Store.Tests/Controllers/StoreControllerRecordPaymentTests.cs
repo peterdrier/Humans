@@ -148,8 +148,13 @@ public sealed class StoreControllerRecordPaymentTests
     {
         var payment = new Payment
         {
-            Id = Guid.NewGuid(), OrderId = _order.Id, AmountEur = amount, Method = method,
-            Status = PaymentStatus.Paid, ExternalRef = "ref-1", ReceivedAt = Instant.FromUtc(2026, 8, 1, 9, 30),
+            Id = Guid.NewGuid(),
+            OrderId = _order.Id,
+            AmountEur = amount,
+            Method = method,
+            Status = PaymentStatus.Paid,
+            ExternalRef = "ref-1",
+            ReceivedAt = Instant.FromUtc(2026, 8, 1, 9, 30),
         };
         _order.Payments.Add(payment);
         return payment;
@@ -185,6 +190,9 @@ public sealed class StoreControllerRecordPaymentTests
         ];
         AddPayment(100m, PaymentMethod.Stripe);
         var mistaken = AddPayment(-3m, PaymentMethod.Refund);
+        var recorder = Guid.NewGuid();
+        mistaken.RecordedByUserId = recorder;
+        mistaken.Notes = "wrong order";
         _repo.DeletePaymentAsync(mistaken.Id, Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask)
             .AndDoes(_ => _order.Payments.Remove(mistaken));
@@ -198,7 +206,8 @@ public sealed class StoreControllerRecordPaymentTests
         await _audit.Received(1).LogAsync(
             AuditAction.StorePaymentDeleted, AuditEntityTypes.Payment, mistaken.Id,
             Arg.Is<string>(d => d.Contains("Refund") && d.Contains("-3.00") && d.Contains("Paid")
-                && d.Contains(_order.Id.ToString()) && d.Contains("ref-1") && d.Contains("2026-08-01")),
+                && d.Contains(_order.Id.ToString()) && d.Contains("ref-1") && d.Contains("2026-08-01")
+                && d.Contains(recorder.ToString()) && d.Contains("wrong order")),
             _userId, _order.Id, AuditEntityTypes.Order);
         (await _service.GetOrderAsync(_order.Id, TestContext.Current.CancellationToken))!.BalanceEur.Should().Be(0m);
     }

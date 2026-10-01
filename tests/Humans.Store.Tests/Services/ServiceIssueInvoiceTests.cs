@@ -154,8 +154,11 @@ public class ServiceIssueInvoiceTests
             }).BalanceEur;
             order.Payments.Add(new Payment
             {
-                Id = Guid.NewGuid(), OrderId = order.Id, AmountEur = due,
-                Method = PaymentMethod.BankTransfer, Status = PaymentStatus.Paid,
+                Id = Guid.NewGuid(),
+                OrderId = order.Id,
+                AmountEur = due,
+                Method = PaymentMethod.BankTransfer,
+                Status = PaymentStatus.Paid,
             });
         }
         _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
