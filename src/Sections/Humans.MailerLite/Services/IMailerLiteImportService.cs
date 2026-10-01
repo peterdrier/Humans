@@ -18,6 +18,13 @@ internal interface IMailerLiteImportService : IApplicationService
     Task<ImportPlan> BuildPlanAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// The dashboard's drift report: builds a fresh plan and counts the people Humans has opted
+    /// out of marketing whom the <c>Website</c> list still holds as active.
+    /// <see cref="DriftReport.HumansOptedInMlAbsent"/> is a seam and stays null.
+    /// </summary>
+    Task<DriftReport> ComputeDriftAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Applies the plan. When <paramref name="maxPerOutcome"/> is set to a
     /// positive value, processes at most that many decisions per
     /// <see cref="Dtos.SubscriberOutcome"/> bucket (in plan order), holding the

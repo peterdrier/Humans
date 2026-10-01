@@ -78,9 +78,9 @@ ones the target leans on are enforced.
 - A subscriber MailerLite reports as unsubscribed, bounced or spam-flagged is never added to a
   list — `MailerLiteAudienceSyncService.cs:113`, reading `MailerLiteSubscriber.cs:29`.
 - The import reads only the `Website` list and refuses to run without it —
-  `MailerLiteImportService.cs:342`.
+  `MailerLiteImportService.cs:361`.
 - A marketing reset re-checks the person at apply time, so a preference changed after the
-  preview is not clobbered — `MailerLiteImportService.cs:379`.
+  preview is not clobbered — `MailerLiteImportService.cs:398`.
 - A push or import an admin started finishes even if the admin leaves the page —
   `MailerLiteAdminController.cs:167`, `:194`, `:268`.
 - Every admin route is admin-only — `MailerLiteAdminController.cs:14`.
@@ -123,8 +123,9 @@ Reserve the places; don't build them.
   snapshot for the whole run and per-write invalidation would burn the rate limit.
 - **The `Website` list is read by name and never written to.** It is a source; the `"Humans - "`
   write guard exists so nothing can start writing to it.
-- **The dashboard builds a full import plan on every load** to compute the drift row. Expensive
-  for a dashboard, cheap at this scale, and the only source of that number.
+- **The dashboard builds a full import plan on every load** to compute the drift row
+  (`IMailerLiteImportService.ComputeDriftAsync`). Expensive for a dashboard, cheap at this scale,
+  and the only source of that number.
 
 ## History
 

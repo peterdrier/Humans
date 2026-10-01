@@ -37,7 +37,7 @@ internal sealed class MailerLiteAdminController(
         {
             summary = await ml.GetAccountSummaryAsync(ct);
             groups = await ml.ListGroupsAsync(ct);
-            drift = await ComputeDriftAsync(ct);
+            drift = await import.ComputeDriftAsync(ct);
         }
         catch (HttpRequestException ex)
         {
@@ -255,7 +255,7 @@ internal sealed class MailerLiteAdminController(
         if (TempData["PlanCountsSnapshot"] is string snapshotJson)
         {
             var snapshot = JsonSerializer.Deserialize<ImportPlanCounts>(snapshotJson);
-            if (snapshot is not null && DriftedMoreThanTenPercent(snapshot, fresh.Counts))
+            if (snapshot is not null && fresh.Counts.DriftedMoreThanTenPercentFrom(snapshot))
             {
                 TempData["Banner"] = "Plan changed since preview — review and re-confirm.";
                 return RedirectToAction(nameof(Import));
@@ -270,24 +270,6 @@ internal sealed class MailerLiteAdminController(
         return RedirectToAction(nameof(Index));
     }
 
-    private static bool DriftedMoreThanTenPercent(ImportPlanCounts a, ImportPlanCounts b)
-    {
-        bool D(int prev, int now)
-        {
-            if (prev == 0) return now > 0;
-            return Math.Abs(now - prev) / (double)prev > 0.10;
-        }
-        return D(a.CreateNewHuman, b.CreateNewHuman)
-            || D(a.ReplaceUnverifiedEmail, b.ReplaceUnverifiedEmail)
-            || D(a.VerifiedPrefsAlreadyMatch, b.VerifiedPrefsAlreadyMatch)
-            || D(a.VerifiedFlipToOptIn, b.VerifiedFlipToOptIn)
-            || D(a.VerifiedFlipToOptOut, b.VerifiedFlipToOptOut)
-            || D(a.VerifiedKeepHumansPref, b.VerifiedKeepHumansPref)
-            || D(a.ResetMarketingFlag, b.ResetMarketingFlag)
-            || D(a.AmbiguousMultipleVerified, b.AmbiguousMultipleVerified)
-            || D(a.UnconfirmedSkipped, b.UnconfirmedSkipped);
-    }
-
     [HttpGet("Import")]
     public async Task<IActionResult> Import(CancellationToken ct)
     {
@@ -297,31 +279,5 @@ internal sealed class MailerLiteAdminController(
         TempData["PlanCountsSnapshot"] = JsonSerializer.Serialize(plan.Counts);
 
         return View("~/Views/MailerLite/Admin/Import.cshtml", plan);
-    }
-
-    private async Task<DriftReport> ComputeDriftAsync(CancellationToken ct)
-    {
-        var plan = await import.BuildPlanAsync(ct);
-
-        int humansOutMlIn = 0;
-        foreach (var d in plan.Decisions.Where(d => d.Outcome
-            is SubscriberOutcome.VerifiedPrefsAlreadyMatch
-            or SubscriberOutcome.VerifiedFlipToOptIn
-            or SubscriberOutcome.VerifiedFlipToOptOut
-            or SubscriberOutcome.VerifiedKeepHumansPref))
-        {
-            if (d.TargetUserId is not Guid uid) continue;
-            if (!string.Equals(d.Status, "active", StringComparison.OrdinalIgnoreCase)) continue;
-            var isOptedOut = await prefs.IsOptedOutAsync(uid, MessageCategory.Marketing, ct);
-            if (isOptedOut) humansOutMlIn++;
-        }
-
-        // Humans-opted-in / ML-absent half left null — adding a new service method
-        // for one admin page is durable debt per memory/architecture/interface-method-additions-are-debt.md.
-        int? humansInMlAbsent = null;
-
-        return new DriftReport(
-            HumansOptedOutMlActive: humansOutMlIn,
-            HumansOptedInMlAbsent: humansInMlAbsent);
     }
 }

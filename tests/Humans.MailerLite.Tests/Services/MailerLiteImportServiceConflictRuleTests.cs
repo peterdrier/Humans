@@ -157,6 +157,13 @@ internal sealed class ApplyHarness
             .Returns(Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>([UserEmailFixtures.Row(userId, email)]));
     }
 
+    /// <summary>Wires IsOptedOutAsync for one user's Marketing preference.</summary>
+    public void SetMarketingOptedOut(Guid userId, bool optedOut)
+    {
+        _prefs.IsOptedOutAsync(userId, MessageCategory.Marketing, Arg.Any<CancellationToken>())
+            .Returns(optedOut);
+    }
+
     /// <summary>Wires GetPreferenceOrNullAsync to return a Marketing pref with the given shape.</summary>
     public void SetHumansPref(Guid userId, MessageCategory category, bool optedOut,
         string updateSource, Instant updatedAt)

@@ -25,6 +25,25 @@ internal sealed class MailerLiteImportService(
         return state is null ? null : new MailerLiteSyncSnapshot(state.LastSyncAt, state.Summary);
     }
 
+    public async Task<DriftReport> ComputeDriftAsync(CancellationToken ct = default)
+    {
+        var plan = await BuildPlanAsync(ct);
+
+        int humansOutMlIn = 0;
+        foreach (var d in plan.Decisions.Where(d => d.Outcome
+            is SubscriberOutcome.VerifiedPrefsAlreadyMatch
+            or SubscriberOutcome.VerifiedFlipToOptIn
+            or SubscriberOutcome.VerifiedFlipToOptOut
+            or SubscriberOutcome.VerifiedKeepHumansPref))
+        {
+            if (d.TargetUserId is not Guid uid) continue;
+            if (!string.Equals(d.Status, "active", StringComparison.OrdinalIgnoreCase)) continue;
+            if (await prefs.IsOptedOutAsync(uid, MessageCategory.Marketing, ct)) humansOutMlIn++;
+        }
+
+        return new DriftReport(HumansOptedOutMlActive: humansOutMlIn, HumansOptedInMlAbsent: null);
+    }
+
     // The erroneous import pulled the whole MailerLite account; it must only ever
     // ingest the "Website" group. Resolved by name at runtime (group ids aren't
     // stable across environments). Reads of this group bypass the client's
