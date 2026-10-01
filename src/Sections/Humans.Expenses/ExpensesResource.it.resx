@@ -238,4 +238,34 @@
   <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Ritiro non riuscito</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Solo chi presenta il rendiconto può modificarlo.</value></data>
   <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Questo rendiconto non può essere modificato quando è nello stato {0}.</value></data>
+  <data name="Expenses_ReportTitle" xml:space="preserve"><value>Nota spese</value></data>
+  <data name="Expenses_Withdraw" xml:space="preserve"><value>Ritira</value></data>
+  <data name="Expenses_Detail_WithdrawConfirm" xml:space="preserve"><value>Ritirare questa nota spese? Questa azione non può essere annullata.</value></data>
+  <data name="Expenses_Detail_ReturnedForRevision" xml:space="preserve"><value>Restituita per revisione:</value></data>
+  <data name="Expenses_Details" xml:space="preserve"><value>Dettagli</value></data>
+  <data name="Expenses_Detail_ReceiptsTotal" xml:space="preserve"><value>Totale dei giustificativi</value></data>
+  <data name="Expenses_Detail_NoLines" xml:space="preserve"><value>Non ci sono ancora voci.</value></data>
+  <data name="Expenses_Attachment" xml:space="preserve"><value>Allegato</value></data>
+  <data name="Expenses_Download" xml:space="preserve"><value>Scarica</value></data>
+  <data name="Expenses_Detail_ProofOfExpenses" xml:space="preserve"><value>Giustificativi delle spese:</value></data>
+  <data name="Expenses_Detail_InvoicedProofAmount" xml:space="preserve"><value>{0} su {1} fatturati</value></data>
+  <data name="Expenses_Detail_ProofsReviewedOnly" xml:space="preserve"><value>solo verificati, non inviati a Holded.</value></data>
+  <data name="Expenses_Payee" xml:space="preserve"><value>Beneficiario</value></data>
+  <data name="Expenses_ChangeIban" xml:space="preserve"><value>Modifica IBAN</value></data>
+  <data name="Expenses_Detail_IbanRequired" xml:space="preserve"><value>Nessun IBAN impostato. È obbligatorio prima dell’invio.</value></data>
+  <data name="Expenses_SetIban" xml:space="preserve"><value>Imposta IBAN</value></data>
+  <data name="Expenses_PaymentStatus" xml:space="preserve"><value>Stato del pagamento</value></data>
+  <data name="Expenses_Detail_SubmittedApproved" xml:space="preserve"><value>Inviata e approvata</value></data>
+  <data name="Expenses_Detail_RegisteredInHolded" xml:space="preserve"><value>Registrata in Holded</value></data>
+  <data name="Expenses_Detail_OwedToYou" xml:space="preserve"><value>Ti sono dovuti {0}</value></data>
+  <data name="Expenses_Detail_OtherAmount" xml:space="preserve"><value>Include {0} per altre voci (anticipi / rettifiche in Holded)</value></data>
+  <data name="Expenses_Detail_Paid" xml:space="preserve"><value>Pagati {0} — saldo 0 €</value></data>
+  <data name="Expenses_Detail_PaidOn" xml:space="preserve"><value>Pagati {0} il {1} — saldo 0 €</value></data>
+  <data name="Expenses_Detail_AwaitingPayment" xml:space="preserve"><value>In attesa di pagamento</value></data>
+  <data name="Expenses_Detail_ReadyToSubmit" xml:space="preserve"><value>Pronta per l’invio?</value></data>
+  <data name="Expenses_Detail_SubmitGuidance" xml:space="preserve"><value>Assicurati che tutte le voci abbiano un allegato e che il tuo IBAN sia impostato.</value></data>
+  <data name="Expenses_SubmitReport" xml:space="preserve"><value>Invia nota spese</value></data>
+  <data name="Expenses_Detail_History" xml:space="preserve"><value>Cronologia</value></data>
+  <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Non è stato ancora registrato nulla.</value></data>
+  <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(categoria sconosciuta)</value></data>
 </root>

@@ -238,4 +238,34 @@
   <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Error al retirar</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Solo quien presenta el informe puede editarlo.</value></data>
   <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Este informe no se puede editar cuando está en estado {0}.</value></data>
+  <data name="Expenses_ReportTitle" xml:space="preserve"><value>Informe de gastos</value></data>
+  <data name="Expenses_Withdraw" xml:space="preserve"><value>Retirar</value></data>
+  <data name="Expenses_Detail_WithdrawConfirm" xml:space="preserve"><value>¿Retirar este informe? Esta acción no se puede deshacer.</value></data>
+  <data name="Expenses_Detail_ReturnedForRevision" xml:space="preserve"><value>Devuelto para revisión:</value></data>
+  <data name="Expenses_Details" xml:space="preserve"><value>Detalles</value></data>
+  <data name="Expenses_Detail_ReceiptsTotal" xml:space="preserve"><value>Total de justificantes</value></data>
+  <data name="Expenses_Detail_NoLines" xml:space="preserve"><value>Aún no hay líneas.</value></data>
+  <data name="Expenses_Attachment" xml:space="preserve"><value>Archivo adjunto</value></data>
+  <data name="Expenses_Download" xml:space="preserve"><value>Descargar</value></data>
+  <data name="Expenses_Detail_ProofOfExpenses" xml:space="preserve"><value>Justificantes de gastos:</value></data>
+  <data name="Expenses_Detail_InvoicedProofAmount" xml:space="preserve"><value>{0} de {1} facturados</value></data>
+  <data name="Expenses_Detail_ProofsReviewedOnly" xml:space="preserve"><value>solo se revisan; no se envían a Holded.</value></data>
+  <data name="Expenses_Payee" xml:space="preserve"><value>Beneficiario</value></data>
+  <data name="Expenses_ChangeIban" xml:space="preserve"><value>Cambiar IBAN</value></data>
+  <data name="Expenses_Detail_IbanRequired" xml:space="preserve"><value>No hay ningún IBAN. Es obligatorio antes de enviar el informe.</value></data>
+  <data name="Expenses_SetIban" xml:space="preserve"><value>Añadir IBAN</value></data>
+  <data name="Expenses_PaymentStatus" xml:space="preserve"><value>Estado del pago</value></data>
+  <data name="Expenses_Detail_SubmittedApproved" xml:space="preserve"><value>Enviado y aprobado</value></data>
+  <data name="Expenses_Detail_RegisteredInHolded" xml:space="preserve"><value>Registrado en Holded</value></data>
+  <data name="Expenses_Detail_OwedToYou" xml:space="preserve"><value>Se te deben {0}</value></data>
+  <data name="Expenses_Detail_OtherAmount" xml:space="preserve"><value>Incluye {0} por otros conceptos (anticipos / ajustes en Holded)</value></data>
+  <data name="Expenses_Detail_Paid" xml:space="preserve"><value>Pagado {0} — saldo 0 €</value></data>
+  <data name="Expenses_Detail_PaidOn" xml:space="preserve"><value>Pagado {0} el {1} — saldo 0 €</value></data>
+  <data name="Expenses_Detail_AwaitingPayment" xml:space="preserve"><value>Pendiente de pago</value></data>
+  <data name="Expenses_Detail_ReadyToSubmit" xml:space="preserve"><value>¿Listo para enviar?</value></data>
+  <data name="Expenses_Detail_SubmitGuidance" xml:space="preserve"><value>Asegúrate de que todas las líneas tengan un archivo adjunto y de que hayas añadido tu IBAN.</value></data>
+  <data name="Expenses_SubmitReport" xml:space="preserve"><value>Enviar informe</value></data>
+  <data name="Expenses_Detail_History" xml:space="preserve"><value>Historial</value></data>
+  <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Aún no hay nada registrado.</value></data>
+  <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(categoría desconocida)</value></data>
 </root>

@@ -180,6 +180,7 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 **`GuestAccountController`** (`/Guest/*`, profileless-account self-service):
 - `GET /Guest/CommunicationPreferences`, `POST /Guest/CommunicationPreferences/Update` — `[AllowAnonymous]`; accept an unsubscribe token in place of a session
 - `POST /Guest/RequestDeletion`, `POST /Guest/CancelDeletion` — `[Authorize]`; same orchestrator as the `/Profile/Me/Privacy` flow
+- The `/Profile/Me/Privacy` account-deletion dialog uses the shared localized Close label for its accessible dismiss button.
 
 ## Actors & Roles
 

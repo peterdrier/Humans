@@ -1,27 +1,27 @@
 @model Humans.Expenses.Models.ExpenseDetailViewModel
 @{
-    ViewData["Title"] = "Expense Report";
+    ViewData["Title"] = Localizer["Expenses_ReportTitle"].Value;
     var r = Model.Report;
     var badgeClass = r.Status.GetBadgeClass();
 }
 
-<nav aria-label="breadcrumb" class="mb-3">
+<nav aria-label="@Localizer["Expenses_BreadcrumbNavigation"].Value" class="mb-3">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">My Expense Reports</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Report</li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Expenses_MyReportsTitle"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Expenses_ColReport"]</li>
     </ol>
 </nav>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="d-flex align-items-center gap-2">
-        <h1 class="mb-0">Expense Report</h1>
-        <span class="badge @badgeClass fs-6">@r.Status</span>
+        <h1 class="mb-0">@Localizer["Expenses_ReportTitle"]</h1>
+        <span class="badge @badgeClass fs-6">@Localizer[$"Enum_ExpenseReportStatus_{r.Status}"]</span>
     </div>
     <div class="d-flex gap-2">
         @if (Model.CanEdit)
         {
             <a asp-action="Edit" asp-route-id="@r.Id" class="btn btn-outline-primary">
-                <i class="fa-solid fa-pen me-1"></i>Edit
+                <i class="fa-solid fa-pen me-1"></i>@Localizer["Expenses_Edit"]
             </a>
         }
         @if (Model.CanWithdraw)
@@ -29,7 +29,7 @@
             <form asp-action="Withdraw" asp-route-id="@r.Id" method="post" class="d-inline">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-outline-danger"
-                        data-confirm="Withdraw this report? This cannot be undone.">Withdraw</button>
+                        data-confirm="@Localizer["Expenses_Detail_WithdrawConfirm"].Value">@Localizer["Expenses_Withdraw"]</button>
             </form>
         }
     </div>
@@ -39,40 +39,40 @@
 @if (Model.LastRejectionReason is not null)
 {
     <div class="alert alert-warning mb-4">
-        <strong>Returned for revision:</strong> @Model.LastRejectionReason
+        <strong>@Localizer["Expenses_Detail_ReturnedForRevision"]</strong> @Model.LastRejectionReason
     </div>
 }
 
 <div class="row mb-4">
     <div class="col-md-8">
         <div class="card mb-3">
-            <div class="card-header"><strong>Details</strong></div>
+            <div class="card-header"><strong>@Localizer["Expenses_Details"]</strong></div>
             <div class="card-body">
                 <dl class="row mb-0">
-                    <dt class="col-sm-4">Category</dt>
+                    <dt class="col-sm-4">@Localizer["Expenses_BudgetCategory"]</dt>
                     <dd class="col-sm-8">@Model.CategoryDisplayName</dd>
 
-                    <dt class="col-sm-4">Subject</dt>
+                    <dt class="col-sm-4">@Localizer["Expenses_ColSubject"]</dt>
                     <dd class="col-sm-8">@(string.IsNullOrEmpty(r.Note) ? "—" : r.Note)</dd>
 
-                    <dt class="col-sm-4">Receipts total</dt>
+                    <dt class="col-sm-4">@Localizer["Expenses_Detail_ReceiptsTotal"]</dt>
                     <dd class="col-sm-8">@r.Total.ToEuro()</dd>
 
                     @if (r.MaxAmount is { } cap)
                     {
-                        <dt class="col-sm-4">Authorized maximum</dt>
+                        <dt class="col-sm-4">@Localizer["Expenses_MaxAmount"]</dt>
                         <dd class="col-sm-8">@cap.ToEuro()</dd>
                     }
 
-                    <dt class="col-sm-4">Payable</dt>
+                    <dt class="col-sm-4">@Localizer["Expenses_ColPayable"]</dt>
                     <dd class="col-sm-8 fw-semibold">@r.Payable.ToEuro()</dd>
 
-                    <dt class="col-sm-4">Created</dt>
+                    <dt class="col-sm-4">@SharedLocalizer["Common_Created"]</dt>
                     <dd class="col-sm-8">@r.CreatedAt.ToDateTime()</dd>
 
                     @if (r.SubmittedAt.HasValue)
                     {
-                        <dt class="col-sm-4">Submitted</dt>
+                        <dt class="col-sm-4">@Localizer["Expenses_ColSubmitted"]</dt>
                         <dd class="col-sm-8">@r.SubmittedAt.Value.ToDateTime()</dd>
                     }
                 </dl>
@@ -80,10 +80,10 @@
         </div>
 
         <div class="card mb-3">
-            <div class="card-header"><strong>Lines</strong></div>
+            <div class="card-header"><strong>@Localizer["Expenses_ExpenseLines"]</strong></div>
             @if (r.Lines.Count == 0)
             {
-                <div class="card-body text-muted">No lines yet.</div>
+                <div class="card-body text-muted">@Localizer["Expenses_Detail_NoLines"]</div>
             }
             else
             {
@@ -92,9 +92,9 @@
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>Description</th>
-                                <th class="text-end">Amount</th>
-                                <th>Attachment</th>
+                                <th>@Localizer["Expenses_Description"]</th>
+                                <th class="text-end">@SharedLocalizer["Common_Amount"]</th>
+                                <th>@Localizer["Expenses_Attachment"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -113,7 +113,7 @@
                                 {
                                     if (line.LineType is ExpenseLineType.Mileage or ExpenseLineType.PerDiem)
                                     {
-                                        <span class="badge bg-info text-dark">@(line.LineType == ExpenseLineType.Mileage ? "Mileage" : "Per diem")</span>
+                                        <span class="badge bg-info text-dark">@Localizer[line.LineType == ExpenseLineType.Mileage ? "Expenses_Mileage" : "Expenses_PerDiem"]</span>
                                     }
                                     else if (line.Attachment is not null)
                                     {
@@ -132,14 +132,14 @@
                                         if (line.Attachment.IsInlineViewable)
                                         {
                                             <a href="@Url.Action("Attachment", new { attachmentId = line.Attachment.Id })"
-                                               class="text-decoration-none small text-muted ms-1" title="Download">
+                                               class="text-decoration-none small text-muted ms-1" title="@Localizer["Expenses_Download"].Value">
                                                 <i class="fa-solid fa-download"></i>
                                             </a>
                                         }
                                     }
                                     else
                                     {
-                                        <span class="text-warning small"><i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment</span>
+                                        <span class="text-warning small"><i class="fa-solid fa-triangle-exclamation me-1"></i>@Localizer["Expenses_NoFileAttached"]</span>
                                     }
                                 }
                             }
@@ -150,7 +150,7 @@
                                     <td>
                                         @if (line.LineType == ExpenseLineType.Invoice)
                                         {
-                                            <span class="badge bg-primary me-1">Invoice</span>
+                                            <span class="badge bg-primary me-1">@Localizer["Expenses_Invoice"]</span>
                                         }
                                         @line.Description
                                     </td>
@@ -188,11 +188,11 @@
                                         <td></td>
                                         <td class="ps-4 text-muted" colspan="2">
                                             @* Display-only for the approvers: VAT and fees mean the proofs need not match. *@
-                                            Proof of expenses:
+                                            @Localizer["Expenses_Detail_ProofOfExpenses"]
                                             <span class="badge @(proofTotal >= line.Amount ? "bg-success" : "bg-warning text-dark")">
-                                                @proofTotal.ToEuro() of @line.Amount.ToEuro() invoiced
+                                                @Localizer["Expenses_Detail_InvoicedProofAmount", proofTotal.ToEuro(), line.Amount.ToEuro()]
                                             </span>
-                                            — reviewed only, not sent to Holded.
+                                            — @Localizer["Expenses_Detail_ProofsReviewedOnly"]
                                         </td>
                                         <td></td>
                                     </tr>
@@ -201,7 +201,7 @@
                         </tbody>
                         <tfoot>
                             <tr class="fw-semibold">
-                                <td colspan="2" class="text-end">Total</td>
+                                <td colspan="2" class="text-end">@Localizer["Expenses_Total"]</td>
                                 <td class="text-end">@r.Total.ToEuro()</td>
                                 <td></td>
                             </tr>
@@ -306,7 +306,7 @@
         @if (Model.PayeeName is not null || Model.PayeeMaskedIban is not null || Model.CanEditIban)
         {
             <div class="card mb-3">
-                <div class="card-header"><strong>Payee</strong></div>
+                <div class="card-header"><strong>@Localizer["Expenses_Payee"]</strong></div>
                 <div class="card-body">
                     @* Snapshot taken at submit — who Holded pays, regardless of later profile edits. *@
                     @if (Model.PayeeName is not null)
@@ -324,12 +324,12 @@
                         @if (Model.HasIban)
                         {
                             <p class="mb-1 font-monospace">@Model.MaskedIban</p>
-                            <a asp-action="Iban" asp-route-id="@r.Id" class="btn btn-sm btn-outline-secondary">Change IBAN</a>
+                            <a asp-action="Iban" asp-route-id="@r.Id" class="btn btn-sm btn-outline-secondary">@Localizer["Expenses_ChangeIban"]</a>
                         }
                         else
                         {
-                            <p class="text-muted small mb-2">No IBAN set. Required before submitting.</p>
-                            <a asp-action="Iban" asp-route-id="@r.Id" class="btn btn-sm btn-primary">Set IBAN</a>
+                            <p class="text-muted small mb-2">@Localizer["Expenses_Detail_IbanRequired"]</p>
+                            <a asp-action="Iban" asp-route-id="@r.Id" class="btn btn-sm btn-primary">@Localizer["Expenses_SetIban"]</a>
                         }
                     }
                 </div>
@@ -341,39 +341,41 @@
         @if (Model.IsSubmitter && Model.HoldedTimeline is { RegisteredInHolded: true } tl)
         {
             <div class="card mb-3">
-                <div class="card-header"><strong>Payment status</strong></div>
+                <div class="card-header"><strong>@Localizer["Expenses_PaymentStatus"]</strong></div>
                 <div class="card-body">
                     <ul class="list-unstyled mb-0 small">
                         <li class="mb-2">
                             <i class="fa-solid fa-circle-check text-success me-1"></i>
-                            Submitted &amp; approved
+                            @Localizer["Expenses_Detail_SubmittedApproved"]
                         </li>
                         <li class="mb-2">
                             <i class="fa-solid fa-building-columns text-info me-1"></i>
-                            Registered in Holded
+                            @Localizer["Expenses_Detail_RegisteredInHolded"]
                             @if (tl.OwedToMember > 0)
                             {
-                                <span class="fw-semibold">&mdash; @tl.OwedToMember.ToEuro() owed to you</span>
+                                <span class="fw-semibold">&mdash; @Localizer["Expenses_Detail_OwedToYou", tl.OwedToMember.ToEuro()]</span>
                             }
                         </li>
                         @if (tl.OtherAmount > 0)
                         {
                             <li class="mb-2 text-muted">
                                 <i class="fa-solid fa-circle-info me-1"></i>
-                                Includes @tl.OtherAmount.ToEuro() other (fronted / adjustments in Holded)
+                                @Localizer["Expenses_Detail_OtherAmount", tl.OtherAmount.ToEuro()]
                             </li>
                         }
                         @if (tl.Paid)
                         {
                             <li class="mb-0">
                                 <i class="fa-solid fa-money-bill-wave text-success me-1"></i>
-                                Paid&nbsp;@tl.TotalPaid.ToEuro()@(tl.PaidOn is { } d ? $" on {d.ToInvariantDate()}" : "") &mdash; balance &euro;0
+                                @(tl.PaidOn is { } d
+                                    ? Localizer["Expenses_Detail_PaidOn", tl.TotalPaid.ToEuro(), d.ToInvariantDate()]
+                                    : Localizer["Expenses_Detail_Paid", tl.TotalPaid.ToEuro()])
                             </li>
                         }
                         else
                         {
                             <li class="mb-0 text-muted">
-                                <i class="fa-regular fa-clock me-1"></i>Awaiting payment
+                                <i class="fa-regular fa-clock me-1"></i>@Localizer["Expenses_Detail_AwaitingPayment"]
                             </li>
                         }
                     </ul>
@@ -544,12 +546,12 @@
         {
             <div class="card border-primary">
                 <div class="card-body">
-                    <h6 class="card-title">Ready to submit?</h6>
-                    <p class="small text-muted">Make sure all lines have an attachment and your IBAN is set.</p>
+                    <h6 class="card-title">@Localizer["Expenses_Detail_ReadyToSubmit"]</h6>
+                    <p class="small text-muted">@Localizer["Expenses_Detail_SubmitGuidance"]</p>
                     <form asp-action="Submit" asp-route-id="@r.Id" method="post">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-primary w-100">
-                            <i class="fa-solid fa-paper-plane me-1"></i>Submit Report
+                            <i class="fa-solid fa-paper-plane me-1"></i>@Localizer["Expenses_SubmitReport"]
                         </button>
                     </form>
                 </div>
@@ -562,7 +564,7 @@
    any rejection all land here (peterdrier/Humans#1447). Everyone who may open the report sees it:
    the entries are that report's own history. *@
 <vc:audit-log entity-type="@AuditEntityTypes.Report" entity-id="@r.Id"
-              limit="50" title="History" empty-text="Nothing recorded yet." />
+              limit="50" title="@Localizer["Expenses_Detail_History"].Value" empty-text="@Localizer["Expenses_Detail_NoHistory"].Value" />
 
 @if (Model.CanFinanceReject || Model.CanCoordinatorReject)
 {

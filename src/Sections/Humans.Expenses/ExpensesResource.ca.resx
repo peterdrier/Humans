@@ -238,4 +238,34 @@
   <data name="Expenses_Validation_WithdrawalFailed" xml:space="preserve"><value>Ha fallat la retirada</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Només qui presenta l'informe el pot editar.</value></data>
   <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Aquest informe no es pot editar quan és en estat {0}.</value></data>
+  <data name="Expenses_ReportTitle" xml:space="preserve"><value>Informe de despeses</value></data>
+  <data name="Expenses_Withdraw" xml:space="preserve"><value>Retirar</value></data>
+  <data name="Expenses_Detail_WithdrawConfirm" xml:space="preserve"><value>Vols retirar aquest informe? Aquesta acció no es pot desfer.</value></data>
+  <data name="Expenses_Detail_ReturnedForRevision" xml:space="preserve"><value>Retornat per a revisió:</value></data>
+  <data name="Expenses_Details" xml:space="preserve"><value>Detalls</value></data>
+  <data name="Expenses_Detail_ReceiptsTotal" xml:space="preserve"><value>Total dels justificants</value></data>
+  <data name="Expenses_Detail_NoLines" xml:space="preserve"><value>Encara no hi ha línies.</value></data>
+  <data name="Expenses_Attachment" xml:space="preserve"><value>Fitxer adjunt</value></data>
+  <data name="Expenses_Download" xml:space="preserve"><value>Descarregar</value></data>
+  <data name="Expenses_Detail_ProofOfExpenses" xml:space="preserve"><value>Justificants de despeses:</value></data>
+  <data name="Expenses_Detail_InvoicedProofAmount" xml:space="preserve"><value>{0} de {1} facturats</value></data>
+  <data name="Expenses_Detail_ProofsReviewedOnly" xml:space="preserve"><value>només es revisen; no s’envien a Holded.</value></data>
+  <data name="Expenses_Payee" xml:space="preserve"><value>Beneficiari</value></data>
+  <data name="Expenses_ChangeIban" xml:space="preserve"><value>Canviar l’IBAN</value></data>
+  <data name="Expenses_Detail_IbanRequired" xml:space="preserve"><value>No hi ha cap IBAN. És obligatori abans d’enviar l’informe.</value></data>
+  <data name="Expenses_SetIban" xml:space="preserve"><value>Afegir l’IBAN</value></data>
+  <data name="Expenses_PaymentStatus" xml:space="preserve"><value>Estat del pagament</value></data>
+  <data name="Expenses_Detail_SubmittedApproved" xml:space="preserve"><value>Enviat i aprovat</value></data>
+  <data name="Expenses_Detail_RegisteredInHolded" xml:space="preserve"><value>Registrat a Holded</value></data>
+  <data name="Expenses_Detail_OwedToYou" xml:space="preserve"><value>Se’t deuen {0}</value></data>
+  <data name="Expenses_Detail_OtherAmount" xml:space="preserve"><value>Inclou {0} per altres conceptes (bestretes / ajustos a Holded)</value></data>
+  <data name="Expenses_Detail_Paid" xml:space="preserve"><value>Pagat {0} — saldo 0 €</value></data>
+  <data name="Expenses_Detail_PaidOn" xml:space="preserve"><value>Pagat {0} el {1} — saldo 0 €</value></data>
+  <data name="Expenses_Detail_AwaitingPayment" xml:space="preserve"><value>Pendent de pagament</value></data>
+  <data name="Expenses_Detail_ReadyToSubmit" xml:space="preserve"><value>A punt per enviar?</value></data>
+  <data name="Expenses_Detail_SubmitGuidance" xml:space="preserve"><value>Assegura’t que totes les línies tinguin un fitxer adjunt i que hagis afegit el teu IBAN.</value></data>
+  <data name="Expenses_SubmitReport" xml:space="preserve"><value>Enviar informe</value></data>
+  <data name="Expenses_Detail_History" xml:space="preserve"><value>Historial</value></data>
+  <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Encara no hi ha res registrat.</value></data>
+  <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(categoria desconeguda)</value></data>
 </root>

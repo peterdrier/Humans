@@ -170,7 +170,7 @@ internal sealed class ExpensesController(
             var category = await budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
             var categoryName = category is not null
                 ? $"{category.BudgetGroup?.Name} / {category.Name}"
-                : "(unknown category)";
+                : localizer["Expenses_Detail_UnknownCategory"].Value;
             var isSubmitter = report.SubmitterUserId == user.Id;
             var canWithdraw = report.Status is ExpenseReportStatus.Submitted
                 or ExpenseReportStatus.CoordinatorEndorsed
