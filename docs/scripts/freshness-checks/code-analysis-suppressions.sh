@@ -20,18 +20,19 @@ fi
 # Extract codes from <NoWarn>$(NoWarn);A;B;C</NoWarn> (semicolon-separated).
 extract_nowarn() {
   local file="$1"
-  [ -f "$file" ] || return 0
-  grep -oE '<NoWarn>[^<]*</NoWarn>' "$file" \
+  [ -f "$file" ] || return 1
+  { grep -oE '<NoWarn>[^<]*</NoWarn>' "$file" || [ "$?" -eq 1 ]; } \
     | sed -E 's/<\/?NoWarn>//g' \
     | tr ';' '\n' \
     | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' \
-    | grep -E '^[A-Z]+[0-9]+$' || true
+    | { grep -E '^[A-Z]+[0-9]+$' || [ "$?" -eq 1 ]; }
 }
 
-CODES=$(
+# No NoWarn entries is valid; a missing input or failed scan is not.
+if ! CODES=$(
   {
-    extract_nowarn Directory.Build.props
-    extract_nowarn tests/Directory.Build.props
+    extract_nowarn Directory.Build.props || exit 1
+    extract_nowarn tests/Directory.Build.props || exit 1
     # tests/BannedSymbols.txt is enforced by Microsoft.CodeAnalysis.BannedApiAnalyzers,
     # which raises rule RS0030. The doc covers RS0030 in the test attribute
     # policy section.
@@ -39,7 +40,10 @@ CODES=$(
       echo "RS0030"
     fi
   } | sort -u
-)
+); then
+  echo "FAIL [code-analysis-suppressions]: could not enumerate analyzer suppressions"
+  exit 1
+fi
 
 # Extract the suppressions block.
 BLOCK=$(awk '/freshness:auto id="suppressions"/,/\/freshness:auto/' "$DOC")

@@ -25,6 +25,7 @@
 #      happen to contain (nobodies-collective/Humans#1021).
 #   9. Trigger repairs report failures truthfully and continue to later docs.
 #  10. Authorization inventory rejects failed handler scans.
+#  11. Suppression inventory distinguishes empty inputs from failed scans.
 #
 # Test 7 exists because a dead trigger glob is SILENT: it makes a doc look
 # *clean* rather than *unchecked*, so the doc drops out of the sweep's dirty
@@ -408,6 +409,50 @@ then
   PASS=$((PASS+1))
 else
   echo "FAIL [test 10]: authorization handler scan failure handling"
+  FAIL=$((FAIL+1))
+fi
+
+# A missing props file or failed NoWarn producer cannot reduce the population
+# to zero and pass. Real empty NoWarn input is still valid.
+if python3 - "$SCRIPT_DIR/code-analysis-suppressions.sh" <<'PYTEST'
+import os, pathlib, shutil, subprocess, sys, tempfile
+script = pathlib.Path(sys.argv[1]).resolve()
+real_grep = shutil.which('grep')
+for mode in ('empty', 'failed', 'partial', 'missing-root', 'missing-tests'):
+    with tempfile.TemporaryDirectory() as directory:
+        root = pathlib.Path(directory)
+        (root / 'docs/architecture').mkdir(parents=True)
+        (root / 'tests').mkdir()
+        (root / 'docs/architecture/code-analysis.md').write_text(
+            '<!-- freshness:auto id="suppressions" -->\nCS0618\n<!-- /freshness:auto -->\n')
+        props = '<Project />\n' if mode == 'empty' else '<NoWarn>CS0618</NoWarn>\n'
+        if mode != 'missing-root':
+            (root / 'Directory.Build.props').write_text(props)
+        if mode != 'missing-tests':
+            (root / 'tests/Directory.Build.props').write_text(props)
+        env = os.environ.copy()
+        if mode in ('failed', 'partial'):
+            probe = root / 'grep'
+            probe.write_text(
+                '#!/bin/bash\nif [[ "$1" == -oE ]]; then\n'
+                + (f'{real_grep} "$@"\n' if mode == 'partial' else '')
+                + 'exit 42\nfi\n' + f'exec {real_grep} "$@"\n')
+            probe.chmod(0o755)
+            env['PATH'] = directory + ':' + env['PATH']
+        result = subprocess.run(['bash', str(script)], cwd=root, env=env, capture_output=True, text=True)
+        if mode == 'empty':
+            assert result.returncode == 0, result
+            assert 'all 0 suppression codes' in result.stdout, result.stdout
+        else:
+            assert result.returncode != 0, result.stdout
+            assert 'could not enumerate analyzer suppressions' in result.stdout, result
+            assert 'PASS [code-analysis-suppressions]' not in result.stdout, result.stdout
+PYTEST
+then
+  echo "PASS [test 11]: suppression inventory accepts empty input and rejects missing/failed/partial scans"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 11]: analyzer suppression scan failure handling"
   FAIL=$((FAIL+1))
 fi
 
