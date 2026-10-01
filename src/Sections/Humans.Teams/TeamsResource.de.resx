@@ -402,6 +402,7 @@
   <data name="TeamDetail_TeamCoordinators" xml:space="preserve">
     <value>Koordinatoren</value>
   </data>
+  <data name="Teams_Detail_SubteamLeads" xml:space="preserve"><value>Unterteam-Leitungen ({0})</value></data>
   <data name="TeamDetail_AboutTeam" xml:space="preserve">
     <value>Über</value>
   </data>

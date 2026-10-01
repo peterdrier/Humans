@@ -153,6 +153,7 @@
   <data name="TeamAdmin_LastSynced" xml:space="preserve"><value>Last Synced</value></data>
   <data name="TeamAdmin_NoResources" xml:space="preserve"><value>No resources linked to this team yet. Use the forms below to link a Google Drive folder or Google Group.</value></data>
   <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Coordinators</value></data>
+  <data name="Teams_Detail_SubteamLeads" xml:space="preserve"><value>Subteam Leads ({0})</value></data>
   <data name="TeamDetail_AboutTeam" xml:space="preserve"><value>About</value></data>
   <data name="TeamDetail_EditPage" xml:space="preserve"><value>Edit Page</value></data>
   <data name="TeamDetail_LastUpdated" xml:space="preserve"><value>Last updated</value></data>
