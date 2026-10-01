@@ -136,4 +136,6 @@
   <data name="Help_Agent_IssueProposed" xml:space="preserve">
     <value>Das kann ich selbst nicht beantworten. Ich habe einen Vorgang für das Team entworfen — bitte prüfe und sende ihn ab.</value>
   </data>
+  <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>Ich konnte dazu keine Antwort zusammenstellen — kannst du die Frage umformulieren oder es noch einmal versuchen?</value></data>
+  <data name="Agent_AbuseRefusal" xml:space="preserve"><value>Dabei kann ich dir nicht helfen. Wenn du in einer Notlage bist, wende dich bitte an eine koordinierende Person oder den Rettungsdienst.</value></data>
 </root>

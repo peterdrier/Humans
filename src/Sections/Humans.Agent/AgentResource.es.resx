@@ -136,4 +136,6 @@
   <data name="Help_Agent_IssueProposed" xml:space="preserve">
     <value>No puedo responder a esto por mí mismo. He redactado una incidencia para el equipo — revísala y envíala, por favor.</value>
   </data>
+  <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>No he podido preparar una respuesta para eso. ¿Podrías reformular la pregunta o intentarlo de nuevo?</value></data>
+  <data name="Agent_AbuseRefusal" xml:space="preserve"><value>No puedo ayudarte con esto. Si estás en una situación de angustia, contacta con un coordinador o con los servicios de emergencia.</value></data>
 </root>

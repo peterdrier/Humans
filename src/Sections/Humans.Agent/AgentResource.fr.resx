@@ -136,4 +136,6 @@
   <data name="Help_Agent_IssueProposed" xml:space="preserve">
     <value>Je ne peux pas répondre à cela moi-même. J'ai rédigé un signalement pour l'équipe — relis-le et envoie-le, s'il te plaît.</value>
   </data>
+  <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>Je n'ai pas réussi à formuler une réponse — peux-tu reformuler ta question ou réessayer ?</value></data>
+  <data name="Agent_AbuseRefusal" xml:space="preserve"><value>Je ne peux pas t’aider avec cela. Si tu es en détresse, contacte une personne coordinatrice ou les services d’urgence.</value></data>
 </root>

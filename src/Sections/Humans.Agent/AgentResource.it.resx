@@ -136,4 +136,6 @@
   <data name="Help_Agent_IssueProposed" xml:space="preserve">
     <value>Non posso rispondere a questo da solo. Ho preparato una segnalazione per il team — controllala e inviala, per favore.</value>
   </data>
+  <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>Non sono riuscito a mettere insieme una risposta — puoi riformulare la domanda o riprovare?</value></data>
+  <data name="Agent_AbuseRefusal" xml:space="preserve"><value>Non posso aiutarti con questo. Se sei in difficoltà, contatta un coordinatore o i servizi di emergenza.</value></data>
 </root>

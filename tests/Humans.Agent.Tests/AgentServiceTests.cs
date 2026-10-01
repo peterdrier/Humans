@@ -17,6 +17,28 @@ namespace Humans.Agent.Tests;
 
 public class AgentServiceTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("en")]
+    [Xunit.InlineData("es")]
+    [Xunit.InlineData("de")]
+    [Xunit.InlineData("it")]
+    [Xunit.InlineData("fr")]
+    [Xunit.InlineData("ca")]
+    public async Task Ask_localizes_the_abuse_refusal_in_the_requested_culture(string locale)
+    {
+        var (svc, _) = await BuildService(s => s.Enabled = true);
+        var tokens = new List<AgentTurnToken>();
+        await foreach (var token in svc.AskAsync(new AgentTurnRequest(
+            ConversationId: Guid.Empty, UserId: Guid.NewGuid(), Message: "hurt myself", Locale: locale),
+            Xunit.TestContext.Current.CancellationToken))
+            tokens.Add(token);
+
+        var resources = new System.Resources.ResourceManager(typeof(AgentResource));
+        string.Concat(tokens.Select(t => t.TextDelta)).Should().Be(
+            resources.GetString("Agent_AbuseRefusal", System.Globalization.CultureInfo.GetCultureInfo(locale)));
+        tokens.Last().Finalizer!.StopReason.Should().Be("abuse_flag");
+    }
+
     [HumansFact]
     public async Task Ask_returns_rate_limit_finalizer_when_over_daily_cap()
     {
