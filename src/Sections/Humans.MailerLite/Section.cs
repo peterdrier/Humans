@@ -2,7 +2,6 @@ using System.Net.Http.Headers;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
-using Humans.MailerLite.Contracts;
 using Humans.MailerLite.Data;
 using Humans.MailerLite.Jobs;
 using Humans.MailerLite.Services;
@@ -85,9 +84,7 @@ public sealed class Section : ISection
         // Audience framework — orchestrator + audience registrations.
         // Audiences are Scoped because their dependencies (ITicketServiceRead,
         // IShiftView) are Scoped/decorated-Singleton.
-        services.AddScoped<MailerLiteAudienceSyncService>();
-        services.AddScoped<IMailerLiteAudienceSyncService>(sp => sp.GetRequiredService<MailerLiteAudienceSyncService>());
-        services.AddScoped<IMailerLiteAudienceSync>(sp => sp.GetRequiredService<MailerLiteAudienceSyncService>());
+        services.AddScoped<IMailerLiteAudienceSyncService, MailerLiteAudienceSyncService>();
         services.AddScoped<IMailerLiteAudience, TicketNoShiftsAudience>();
         services.AddScoped<IMailerLiteAudience, HasShiftAudience>();
         services.AddScoped<IMailerLiteAudience, HasShiftSetupAudience>();

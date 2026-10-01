@@ -2,7 +2,6 @@ using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Data;
 using Humans.MailerLite.Domain;
 using Humans.MailerLite.Services.Dtos;
-using Humans.MailerLite.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
 
@@ -20,7 +19,7 @@ internal sealed class MailerLiteAudienceSyncService(
     IMailerLiteRepository repository,
     IClock clock,
     IEnumerable<IMailerLiteAudience> audiences,
-    ILogger<MailerLiteAudienceSyncService> logger) : IMailerLiteAudienceSyncService, IMailerLiteAudienceSync
+    ILogger<MailerLiteAudienceSyncService> logger) : IMailerLiteAudienceSyncService
 {
     private const string HumansGroupPrefix = "Humans - ";
     private const string JobName = nameof(MailerLiteAudienceSyncService);
@@ -41,18 +40,6 @@ internal sealed class MailerLiteAudienceSyncService(
             }
         }
         return results;
-    }
-
-    /// <summary>
-    /// The <see cref="IMailerLiteAudienceSync"/> half, driven by <c>MailerLiteAudienceSyncJob</c>.
-    /// The scheduled run has no actor, and the job logs only how many audiences completed —
-    /// so the contracts leaf carries an <c>int</c> rather than the section's
-    /// <see cref="AudienceSyncResult"/> list.
-    /// </summary>
-    public async Task<int> SyncAllAudiencesAsync(CancellationToken cancellationToken = default)
-    {
-        var results = await SyncAllAsync(actorUserId: null, cancellationToken);
-        return results.Count;
     }
 
     public async Task<IReadOnlyList<AudienceStats>> ComputeAllStatsAsync(CancellationToken ct = default)
