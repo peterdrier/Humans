@@ -52,6 +52,7 @@ internal sealed class TicketTailorService : ITicketVendorService
     {
         var orders = new List<VendorOrderDto>();
         string? cursor = null;
+        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
 
         do
         {
@@ -71,8 +72,14 @@ internal sealed class TicketTailorService : ITicketVendorService
                 body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtOrder>>(JsonOptions, ct);
             }
 
-            if (body?.Data is null || body.Data.Count == 0)
+            if (body?.Data is null)
+                throw new HttpRequestException("TicketTailor pagination response is missing data.");
+            if (body.Data.Count == 0)
+            {
+                if (body.Links?.Next is not null)
+                    throw new HttpRequestException("TicketTailor pagination returned an empty nonterminal page.");
                 break;
+            }
 
             foreach (var order in body.Data)
             {
@@ -99,6 +106,9 @@ internal sealed class TicketTailorService : ITicketVendorService
             }
 
             cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
+            if (body.Links?.Next is not null
+                && (string.IsNullOrWhiteSpace(cursor) || !seenCursors.Add(cursor)))
+                throw new HttpRequestException("TicketTailor pagination returned a missing or repeated cursor.");
         } while (cursor is not null);
 
         _logger.LogInformation("Fetched {Count} orders from TicketTailor for event {EventId}",
@@ -113,6 +123,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         using var _ = _logger.TimeOperation();
         var tickets = new List<VendorTicketDto>();
         string? cursor = null;
+        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
 
         do
         {
@@ -126,12 +137,21 @@ internal sealed class TicketTailorService : ITicketVendorService
             response.EnsureSuccessStatusCode();
 
             var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtIssuedTicket>>(JsonOptions, ct);
-            if (body?.Data is null || body.Data.Count == 0)
+            if (body?.Data is null)
+                throw new HttpRequestException("TicketTailor pagination response is missing data.");
+            if (body.Data.Count == 0)
+            {
+                if (body.Links?.Next is not null)
+                    throw new HttpRequestException("TicketTailor pagination returned an empty nonterminal page.");
                 break;
+            }
 
             tickets.AddRange(body.Data.Select(ToVendorTicket));
 
             cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
+            if (body.Links?.Next is not null
+                && (string.IsNullOrWhiteSpace(cursor) || !seenCursors.Add(cursor)))
+                throw new HttpRequestException("TicketTailor pagination returned a missing or repeated cursor.");
         } while (cursor is not null);
 
         _logger.LogInformation("Fetched {Count} issued tickets from TicketTailor for event {EventId}",
@@ -146,6 +166,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         using var _ = _logger.TimeOperation();
         var records = new List<TtCheckIn>();
         string? cursor = null;
+        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
 
         do
         {
@@ -161,12 +182,21 @@ internal sealed class TicketTailorService : ITicketVendorService
             response.EnsureSuccessStatusCode();
 
             var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtCheckIn>>(JsonOptions, ct);
-            if (body?.Data is null || body.Data.Count == 0)
+            if (body?.Data is null)
+                throw new HttpRequestException("TicketTailor pagination response is missing data.");
+            if (body.Data.Count == 0)
+            {
+                if (body.Links?.Next is not null)
+                    throw new HttpRequestException("TicketTailor pagination returned an empty nonterminal page.");
                 break;
+            }
 
             records.AddRange(body.Data);
 
             cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
+            if (body.Links?.Next is not null
+                && (string.IsNullOrWhiteSpace(cursor) || !seenCursors.Add(cursor)))
+                throw new HttpRequestException("TicketTailor pagination returned a missing or repeated cursor.");
         } while (cursor is not null);
 
         var checkIns = NetCheckIns(records);

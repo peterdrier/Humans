@@ -391,6 +391,63 @@ public class TicketTailorServiceTests
         urls[2].Should().Contain("/check_ins?event_id=ev_test").And.Contain("created_at.gte=1700000000");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("orders", "repeat")]
+    [Xunit.InlineData("tickets", "repeat")]
+    [Xunit.InlineData("check-ins", "repeat")]
+    [Xunit.InlineData("orders", "cycle")]
+    [Xunit.InlineData("tickets", "cycle")]
+    [Xunit.InlineData("check-ins", "cycle")]
+    [Xunit.InlineData("orders", "missing-cursor")]
+    [Xunit.InlineData("tickets", "missing-cursor")]
+    [Xunit.InlineData("check-ins", "missing-cursor")]
+    [Xunit.InlineData("orders", "empty-continuation")]
+    [Xunit.InlineData("tickets", "empty-continuation")]
+    [Xunit.InlineData("check-ins", "empty-continuation")]
+    [Xunit.InlineData("orders", "missing-data")]
+    [Xunit.InlineData("tickets", "missing-data")]
+    [Xunit.InlineData("check-ins", "missing-data")]
+    public async Task Paging_RejectsInvalidContinuationWithoutReturningPartialData(string endpoint, string shape)
+    {
+        var handler = new RecordingHttpHandler();
+        var expectedRequests = 1;
+        if (string.Equals(shape, "missing-data", StringComparison.Ordinal))
+            handler.EnqueueResponse(HttpStatusCode.OK, new { links = new { next = "more" } });
+        else if (string.Equals(shape, "empty-continuation", StringComparison.Ordinal))
+            handler.EnqueueResponse(HttpStatusCode.OK, new { data = Array.Empty<object>(), links = new { next = "more" } });
+        else
+        {
+            var pageIds = shape switch
+            {
+                "repeat" => new string?[] { "page-a", "page-a" },
+                "cycle" => ["page-a", "page-b", "page-a"],
+                _ => [null],
+            };
+            expectedRequests = pageIds.Length;
+            foreach (var id in pageIds)
+                handler.EnqueueResponse(HttpStatusCode.OK, new
+                {
+                    data = new[] { new { id, created_at = 1716811200L } },
+                    links = new { next = "more" }
+                });
+        }
+        // A faulty loop could otherwise hang the test; this terminal page lets it return a wrong result.
+        handler.EnqueueResponse(HttpStatusCode.OK, new { data = Array.Empty<object>(), links = new { next = (string?)null } });
+        var service = TicketTailorTestHost.CreateService(handler);
+        Func<Task> act = async () =>
+        {
+            if (string.Equals(endpoint, "orders", StringComparison.Ordinal))
+                await service.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+            else if (string.Equals(endpoint, "tickets", StringComparison.Ordinal))
+                await service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+            else
+                await service.GetCheckInsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+        };
+
+        await act.Should().ThrowAsync<HttpRequestException>().WithMessage("*pagination*");
+        handler.RequestCount.Should().Be(expectedRequests);
+    }
+
     [HumansFact]
     public async Task Paging_FollowsLinksNextByStartingAfterTheLastId()
     {
