@@ -24,6 +24,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     private readonly IUserService _userService;
     private readonly ISettingsService _shiftManagementService;
     private readonly ITicketRepository _ticketRepository;
+    private readonly ITicketCacheInvalidator _ticketCache;
     private readonly ITicketVendorCacheInvalidator _vendorCache;
     private readonly TicketSyncService _service;
 
@@ -49,6 +50,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
 
         _ticketRepository = new TicketRepository(TicketsDbFactory, Clock);
         _vendorCache = Substitute.For<ITicketVendorCacheInvalidator>();
+        _ticketCache = Substitute.For<ITicketCacheInvalidator>();
 
         _service = new TicketSyncService(
             _ticketRepository,
@@ -58,7 +60,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             Clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
-            Substitute.For<ITicketCacheInvalidator>(),
+            _ticketCache,
             _vendorCache,
             _userService,
             _userService,
@@ -118,6 +120,31 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
         _vendorCache.Received(1).InvalidateEventSummary("ev_test_123");
+        _ticketCache.Received(1).InvalidateAll();
+    }
+
+    [HumansFact]
+    public async Task SyncOrdersAndAttendeesAsync_ClearsTicketSnapshotsWhenRedemptionFailsAfterWrites()
+    {
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns([MakeOrderDto("ord_partial", "Buyer", "buyer@example.com", discountCode: "discount10")]);
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns([MakeTicketDto("ti_partial", "ord_partial", "Attendee", "attendee@example.com")]);
+        _campaignService.MarkGrantsRedeemedAsync(
+                Arg.Any<IReadOnlyCollection<DiscountCodeRedemption>>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("redemption storage unavailable"));
+
+        var act = () => _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("redemption storage unavailable");
+
+        // Orders and attendees have already committed; readers must reload those rows.
+        (await TicketsDb.TicketOrders.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
+            .VendorOrderId.Should().Be("ord_partial");
+        (await TicketsDb.TicketAttendees.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
+            .VendorTicketId.Should().Be("ti_partial");
+        (await TicketsDb.TicketSyncStates.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
+            .SyncStatus.Should().Be(TicketSyncStatus.Error);
+        _ticketCache.Received(1).InvalidateAll();
     }
 
     // ==========================================================================

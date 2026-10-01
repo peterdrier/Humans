@@ -146,7 +146,6 @@ internal sealed class TicketSyncService(
             await ticketRepository.PersistSyncStateAsync(syncState, ct);
 
             vendorCache.InvalidateEventSummary(eventId);
-            ticketCache.InvalidateAll();
 
             var result = new TicketSyncResult(ordersSynced, attendeesSynced,
                 ordersMatched, attendeesMatched, codesRedeemed);
@@ -190,6 +189,11 @@ internal sealed class TicketSyncService(
             await ticketRepository.PersistSyncStateAsync(syncState, CancellationToken.None);
 
             throw;
+        }
+        finally
+        {
+            // A later stage can fail after orders/attendees have committed.
+            ticketCache.InvalidateAll();
         }
     }
 
