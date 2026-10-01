@@ -11,7 +11,7 @@ namespace Humans.MailerLite.Models;
 ///    notification-target emails. Read from cached UserInfo.
 /// 2. Currently in ML — subscribers in <c>ListSubscribersAsync</c> whose
 ///    GroupIds contain the audience's target group.
-/// 3/4. To add / To remove — set diff by normalized email.
+/// 3/4. To add / To remove — set diff by normalized email, predicting Sync on suppressed subscribers.
 /// 5. Non-primary subscribed — diagnostic pairing for the Frank-pattern.
 /// </summary>
 internal sealed record MailerLiteAudienceDebugViewModel(

@@ -90,18 +90,20 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
             expected.Add(new DebugExpectedRow(uid, u.BurnerName, email));
         }
 
-        // §2 Currently in ML — subscribers whose GroupIds include our group.
-        // Mirror MailerLiteAudienceSyncService's status filter: unsubscribed /
-        // bounced / junk are skipped by Sync via MailerLiteSubscriber.IsSuppressed, so they must
-        // not appear in the diff preview either or §3/§4 counts will lie
-        // about what Apply will do.
+        // §2 Currently in ML — every subscriber whose GroupIds include our group,
+        // suppressed ones too: they are really on the list, and Sync unassigns them.
         var currentlyInMl = new List<DebugMlRow>();
+        var suppressedEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (subscribers is not null)
+        {
+            foreach (var s in subscribers.Where(s => s.IsSuppressed))
+                suppressedEmails.Add(MailerLiteEmailNormalization.Normalize(s.Email));
+        }
         if (subscribers is not null && group is not null)
         {
             foreach (var s in subscribers)
             {
                 if (!s.GroupIds.Contains(group.Id, StringComparer.Ordinal)) continue;
-                if (s.IsSuppressed) continue;
                 emailToUser.TryGetValue(s.Email, out var matchedUser);
                 var name = matchedUser?.BurnerName ?? "—";
                 currentlyInMl.Add(new DebugMlRow(
@@ -113,7 +115,9 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
             }
         }
 
-        // §3/§4 set-diff by normalized email.
+        // §3/§4 set-diff by normalized email, mirroring MailerLiteAudienceSyncService: a
+        // suppressed subscriber (MailerLiteSubscriber.IsSuppressed) is never added, and a
+        // suppressed group member is removed even when expected.
         var expectedByEmail = expected
             .GroupBy(r => MailerLiteEmailNormalization.Normalize(r.Email), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
@@ -122,10 +126,12 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         var toAdd = expected
-            .Where(r => !mlByEmail.ContainsKey(MailerLiteEmailNormalization.Normalize(r.Email)))
+            .Where(r => !mlByEmail.ContainsKey(MailerLiteEmailNormalization.Normalize(r.Email))
+                && !suppressedEmails.Contains(MailerLiteEmailNormalization.Normalize(r.Email)))
             .ToList();
         var toRemove = currentlyInMl
-            .Where(r => !expectedByEmail.ContainsKey(MailerLiteEmailNormalization.Normalize(r.Email)))
+            .Where(r => !expectedByEmail.ContainsKey(MailerLiteEmailNormalization.Normalize(r.Email))
+                || suppressedEmails.Contains(MailerLiteEmailNormalization.Normalize(r.Email)))
             .ToList();
 
         // §5 Non-primary — subscriber matches a verified UserEmail but the

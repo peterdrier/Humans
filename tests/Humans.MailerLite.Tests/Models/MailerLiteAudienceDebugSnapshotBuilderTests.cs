@@ -103,11 +103,10 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
     }
 
     [HumansFact]
-    public async Task Build_CurrentlyInMl_SkipsSuppressedStatuses()
+    public async Task Build_SuppressedSubscribers_DiffMatchesSync()
     {
-        // Subscribers with status unsubscribed/bounced/junk are filtered by
-        // MailerLiteAudienceSyncService and must be filtered here too so the
-        // diff preview doesn't lie about what Apply will do.
+        // MailerLiteAudienceSyncService never adds a suppressed subscriber and unassigns every
+        // suppressed group member, expected or not. The preview must predict exactly that.
         var aliceId = Guid.NewGuid();
         var bobId = Guid.NewGuid();
         var carolId = Guid.NewGuid();
@@ -118,29 +117,34 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
         var carol = MakeUserInfo(carolId, "Carol", primary: "carol@example.com");
         var dario = MakeUserInfo(darioId, "Dario", primary: "dario@example.com");
 
-        static MailerLiteSubscriber Sub(string id, string email, string status) =>
+        static MailerLiteSubscriber Sub(string id, string email, string status, string[] groups) =>
             new(id, email, status, "manual",
                 SubscribedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
                 UnsubscribedAt: null, OptedInAt: null,
                 FirstName: null, LastName: null,
-                GroupIds: ["g1"]);
+                GroupIds: groups);
 
-        var audience = StubAudience("k", "Humans - k", members: [aliceId]);
+        // Expected: Alice (active member), Carol (bounced member), Dario (junk, not a member).
+        // Bob is an unsubscribed member nobody expects.
+        var audience = StubAudience("k", "Humans - k", members: [aliceId, carolId, darioId]);
         var ml = StubMl(
-            groups: [new MailerLiteGroup("g1", "Humans - k", 4, 0, 0, 0, 0)],
+            groups: [new MailerLiteGroup("g1", "Humans - k", 3, 0, 0, 0, 0)],
             subscribers: [
-                Sub("s-alice", "alice@example.com", "active"),
-                Sub("s-bob", "bob@example.com", "unsubscribed"),
-                Sub("s-carol", "carol@example.com", "bounced"),
-                Sub("s-dario", "dario@example.com", "junk"),
+                Sub("s-alice", "alice@example.com", "active", ["g1"]),
+                Sub("s-bob", "bob@example.com", "unsubscribed", ["g1"]),
+                Sub("s-carol", "carol@example.com", "bounced", ["g1"]),
+                Sub("s-dario", "dario@example.com", "junk", []),
             ]);
         var users = StubUsers([alice, bob, carol, dario]);
 
         var snap = await MailerLiteAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, NullLogger.Instance, Xunit.TestContext.Current.CancellationToken);
 
-        snap.CurrentlyInMl.Should().ContainSingle().Which.Email.Should().Be("alice@example.com");
-        snap.ToRemove.Should().BeEmpty("suppressed-status subscribers must not appear as removable");
-        snap.ToAdd.Should().BeEmpty("Alice is already in §2 and is the only expected member");
+        snap.CurrentlyInMl.Select(r => r.Email).Should().BeEquivalentTo(
+            ["alice@example.com", "bob@example.com", "carol@example.com"]);
+        snap.ToRemove.Select(r => r.Email).Should().BeEquivalentTo(
+            ["bob@example.com", "carol@example.com"],
+            "Sync unassigns every suppressed member, expected or not");
+        snap.ToAdd.Should().BeEmpty("Sync never adds a suppressed subscriber, and Alice is already on");
     }
 
     [HumansFact]
