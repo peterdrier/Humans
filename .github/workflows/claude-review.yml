@@ -67,6 +67,10 @@ name: claude-review
 # silently changes review quality or cost. Opus-class matches what the
 # unpinned default ran before the pin. The `run-report` step logs turns and
 # the SDK's API-equivalent cost per run — measure before changing the pin.
+# CLAUDE_CODE_SUBAGENT_MODEL pins the same model on any subagent the
+# reviewer spawns: the base checkout's project hooks run here too, and
+# .claude/block-inherited-subagent-model.sh rejects a spawn that names no
+# model unless that variable is set. Keep the two pins equal.
 #
 # Reviewer tools: Read/Grep/Glob inside the checkout plus the read-only
 # `gh` and `git show` sub-commands in `claude_args` below. The file tools
@@ -243,6 +247,8 @@ jobs:
 
       - id: claude
         uses: anthropics/claude-code-action@v1
+        env:
+          CLAUDE_CODE_SUBAGENT_MODEL: claude-opus-5-5
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Skips the OIDC exchange (see #713 in the header).
