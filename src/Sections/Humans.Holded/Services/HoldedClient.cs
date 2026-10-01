@@ -89,11 +89,20 @@ internal sealed class HoldedClient : IHoldedClient
 
         using var resp = await SendAsync(req, ct);
         var body = await resp.Content.ReadAsStringAsync(ct);
-        var node = JsonNode.Parse(body)
-            ?? throw new HoldedTransientException("Holded returned empty body");
-        var id = node["id"]?.GetValue<string>()
-            ?? throw new HoldedTransientException("Holded response missing id");
-        return id;
+        try
+        {
+            var node = JsonNode.Parse(body)
+                ?? throw new HoldedTransientException("Holded returned empty body");
+            var id = node["id"]?.GetValue<string>()
+                ?? throw new HoldedTransientException("Holded response missing id");
+            return id;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            throw new HoldedPermanentException(
+                "Holded create-purchase response could not be read.", ex);
+        }
     }
 
     public async Task UploadAttachmentAsync(
@@ -370,11 +379,20 @@ internal sealed class HoldedClient : IHoldedClient
         AttachAuth(req);
 
         using var resp = await SendAsync(req, ct);
-        var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
-            ?? throw new HoldedTransientException("Holded returned empty body");
-        return node["id"]?.GetValue<string>()
-            ?? input.ExistingContactId
-            ?? throw new HoldedTransientException("Holded contact upsert response missing id");
+        try
+        {
+            var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
+                ?? throw new HoldedTransientException("Holded returned empty body");
+            return node["id"]?.GetValue<string>()
+                ?? input.ExistingContactId
+                ?? throw new HoldedTransientException("Holded contact upsert response missing id");
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            throw new HoldedPermanentException(
+                "Holded contact-upsert response could not be read.", ex);
+        }
     }
 
     /// <summary>The v2 path segment for a sales-document kind. Both kinds share the same payload
@@ -395,10 +413,19 @@ internal sealed class HoldedClient : IHoldedClient
         AttachAuth(req);
 
         using var resp = await SendAsync(req, ct);
-        var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
-            ?? throw new HoldedTransientException("Holded returned empty body");
-        return Prop(node, "id")?.GetValue<string>()
-            ?? throw new HoldedTransientException("Holded sales-document response missing id");
+        try
+        {
+            var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
+                ?? throw new HoldedTransientException("Holded returned empty body");
+            return Prop(node, "id")?.GetValue<string>()
+                ?? throw new HoldedTransientException("Holded sales-document response missing id");
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            throw new HoldedPermanentException(
+                "Holded create-sales-document response could not be read.", ex);
+        }
     }
 
     public async Task ApproveSalesDocumentAsync(

@@ -20,6 +20,43 @@ public class HoldedClientTests
             new HoldedCallLog(),
             new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
 
+    [HumansTheory]
+    [Xunit.InlineData("purchase", "{malformed")]
+    [Xunit.InlineData("purchase", "{\"id\":42}")]
+    [Xunit.InlineData("contact", "{malformed")]
+    [Xunit.InlineData("contact", "{\"id\":42}")]
+    [Xunit.InlineData("invoice", "{malformed")]
+    [Xunit.InlineData("invoice", "{\"id\":42}")]
+    [Xunit.InlineData("receipt", "{malformed")]
+    [Xunit.InlineData("receipt", "{\"id\":42}")]
+    public async Task CreationResponses_normalize_unreadable_success_without_retrying(string operation, string json)
+    {
+        var calls = 0;
+        var client = Make(new StubHandler(_ =>
+        {
+            calls++;
+            return Respond(HttpStatusCode.Created, json);
+        }));
+        var date = Instant.FromUtc(2026, 5, 10, 0, 0);
+        Func<Task<string>> act = operation switch
+        {
+            "purchase" => () => client.CreatePurchaseDocumentAsync(new()
+                { ContactId = "contact-1", ContactName = "Alice", Date = date, Lines = [] },
+                Xunit.TestContext.Current.CancellationToken),
+            "contact" => () => client.UpsertContactAsync(new() { Name = "Alice" },
+                Xunit.TestContext.Current.CancellationToken),
+            _ => () => client.CreateSalesDocumentAsync(
+                string.Equals(operation, "invoice", StringComparison.Ordinal)
+                    ? HoldedSalesDocumentKind.Invoice : HoldedSalesDocumentKind.SalesReceipt,
+                new() { ContactId = "contact-1", Date = date, Lines = [] },
+                Xunit.TestContext.Current.CancellationToken),
+        };
+
+        var failure = await act.Should().ThrowAsync<HoldedPermanentException>();
+        failure.Which.InnerException.Should().NotBeNull();
+        calls.Should().Be(1);
+    }
+
     [HumansFact]
     public async Task CreatePurchaseDocumentAsync_PostsExpectedJson_AndReturnsId()
     {
