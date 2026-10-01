@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using NodaTime;
@@ -201,33 +202,32 @@ internal sealed class SetIssueGitHubIssueModel
 }
 
 /// <summary>
-/// Friendly labels for each <see cref="IssueSectionRouting"/> value, used by the
+/// Resource keys for friendly <see cref="IssueSectionRouting"/> labels, used by the
 /// New-issue form's "Area" select and by the Index/Detail "area" chip.
 /// </summary>
 internal static class AreaLabelMap
 {
-    // Order matters: New.cshtml and _Detail.cshtml iterate Map directly to
-    // populate the Area dropdown. Keep entries sorted alphabetically by label.
+    // Resource keys for the Area dropdowns; rendering consumers sort the localized labels.
     public static readonly IReadOnlyDictionary<string, string> Map =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["Camps"] = "Barrios",
-            ["Budget"] = "Budget",
-            ["CityPlanning"] = "City planning",
-            ["Legal"] = "Legal & consent",
-            ["Onboarding"] = "Onboarding",
-            ["Profiles"] = "Profile & onboarding",
-            ["Scanner"] = "Scanner",
-            ["Shifts"] = "Shifts & volunteering",
-            ["Teams"] = "Teams",
-            ["Tickets"] = "Tickets",
-            ["Governance"] = "Voting & governance",
+            ["Camps"] = "Issues_Area_Camps",
+            ["Budget"] = "Issues_Area_Budget",
+            ["CityPlanning"] = "Issues_Area_CityPlanning",
+            ["Legal"] = "Issues_Area_Legal",
+            ["Onboarding"] = "Issues_Area_Onboarding",
+            ["Profiles"] = "Issues_Area_Profiles",
+            ["Scanner"] = "Issues_Area_Scanner",
+            ["Shifts"] = "Issues_Area_Shifts",
+            ["Teams"] = "Issues_Area_Teams",
+            ["Tickets"] = "Issues_Area_Tickets",
+            ["Governance"] = "Issues_Area_Governance",
         };
 
-    /// <summary>Returns the friendly label for a section, or "General" when unmapped/null.</summary>
-    public static string LabelFor(string? section)
+    /// <summary>Localizes known labels and the null/General fallback; unknown routing keys keep their spelling.</summary>
+    public static string LabelFor(string? section, IStringLocalizer<IssuesResource> localizer)
     {
-        if (section is null) return "General";
-        return Map.TryGetValue(section, out var label) ? label : section;
+        if (section is null) return localizer["Issues_Area_General"].Value;
+        return Map.TryGetValue(section, out var key) ? localizer[key].Value : section;
     }
 }

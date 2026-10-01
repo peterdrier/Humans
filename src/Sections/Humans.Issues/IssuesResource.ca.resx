@@ -175,6 +175,18 @@
   <data name="Issue_Area_Hint" xml:space="preserve">
     <value>Deixa-ho en blanc per detectar-ho des de la pàgina actual.</value>
   </data>
+  <data name="Issues_Area_Camps" xml:space="preserve"><value>Barrios</value></data>
+  <data name="Issues_Area_Budget" xml:space="preserve"><value>Pressupost</value></data>
+  <data name="Issues_Area_CityPlanning" xml:space="preserve"><value>Planificació urbana</value></data>
+  <data name="Issues_Area_Legal" xml:space="preserve"><value>Aspectes legals i consentiment</value></data>
+  <data name="Issues_Area_Onboarding" xml:space="preserve"><value>Acollida</value></data>
+  <data name="Issues_Area_Profiles" xml:space="preserve"><value>Perfil i acollida</value></data>
+  <data name="Issues_Area_Scanner" xml:space="preserve"><value>Escàner</value></data>
+  <data name="Issues_Area_Shifts" xml:space="preserve"><value>Torns i voluntariat</value></data>
+  <data name="Issues_Area_Teams" xml:space="preserve"><value>Equips</value></data>
+  <data name="Issues_Area_Tickets" xml:space="preserve"><value>Entrades</value></data>
+  <data name="Issues_Area_Governance" xml:space="preserve"><value>Votacions i governança</value></data>
+  <data name="Issues_Area_General" xml:space="preserve"><value>General</value></data>
   <data name="Issue_Description" xml:space="preserve">
     <value>Descripció</value>
   </data>

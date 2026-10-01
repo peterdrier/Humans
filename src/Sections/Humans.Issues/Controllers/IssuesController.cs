@@ -83,8 +83,8 @@ internal sealed class IssuesController(
             : routing.SectionsForRoles(viewer.Roles).ToList();
 
         var sectionOptions = allowedSections
-            .Select(s => new SectionOption { Section = s, Label = AreaLabelMap.LabelFor(s) })
-            .OrderBy(o => o.Label, StringComparer.OrdinalIgnoreCase)
+            .Select(s => new SectionOption { Section = s, Label = AreaLabelMap.LabelFor(s, localizer) })
+            .OrderBy(o => o.Label, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
         var reporterOptions = new List<ReporterDropdownItem>();
@@ -426,12 +426,12 @@ internal sealed class IssuesController(
         return RedirectToAction(nameof(Index), new { selected = id });
     }
 
-    private static IssueListItemViewModel MapListItem(IssueListSnapshot i) => new()
+    private IssueListItemViewModel MapListItem(IssueListSnapshot i) => new()
     {
         Id = i.Id,
         Status = i.Status,
         Category = i.Category,
-        AreaLabel = AreaLabelMap.LabelFor(i.Section),
+        AreaLabel = AreaLabelMap.LabelFor(i.Section, localizer),
         Title = i.Title,
         ReporterUserId = i.ReporterUserId,
         LastUpdate = i.UpdatedAt.ToDateTimeUtc(),
@@ -440,7 +440,7 @@ internal sealed class IssuesController(
         GitHubIssueNumber = i.GitHubIssueNumber
     };
 
-    private static IssueDetailViewModel MapDetailViewModel(
+    private IssueDetailViewModel MapDetailViewModel(
         IssueDetail i,
         IReadOnlyList<IssueThreadEvent> thread,
         IReadOnlyDictionary<Guid, UserInfo> displayUsers,
@@ -453,7 +453,7 @@ internal sealed class IssuesController(
             Status = i.Status,
             Category = i.Category,
             Section = i.Section,
-            AreaLabel = AreaLabelMap.LabelFor(i.Section),
+            AreaLabel = AreaLabelMap.LabelFor(i.Section, localizer),
             Title = i.Title,
             Description = i.Description,
             PageUrl = i.PageUrl,
