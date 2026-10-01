@@ -178,7 +178,10 @@ internal static class CalendarOccurrenceExpander
 
     private static bool OverlapsWindow(CalendarOccurrence o, Instant from, Instant to, LocalDate fromDate, LocalDate toDate) =>
         o.IsAllDay ? o.StartDate < toDate && o.EndDateExclusive > fromDate
-            : o.OccurrenceStartUtc < to && (o.OccurrenceEndUtc ?? o.OccurrenceStartUtc) > from;
+            : o.OccurrenceStartUtc < to &&
+                (o.OccurrenceEndUtc is null || o.OccurrenceEndUtc == o.OccurrenceStartUtc
+                    ? o.OccurrenceStartUtc >= from
+                    : o.OccurrenceEndUtc > from);
 
     /// <summary>Conservative prefilter; exceptions may move occurrences beyond either series boundary.</summary>
     public static List<CalendarEventInfo> FilterForWindow(IEnumerable<CalendarEventInfo> snapshot,

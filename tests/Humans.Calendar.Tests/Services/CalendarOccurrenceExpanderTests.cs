@@ -8,6 +8,30 @@ namespace Humans.Calendar.Tests.Services;
 
 public sealed class CalendarOccurrenceExpanderTests
 {
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public void Expand_IncludesZeroDurationEventAtWindowStart(bool recurring)
+    {
+        var from = Instant.FromUtc(2026, 6, 1, 10, 0);
+        var to = from.Plus(Duration.FromHours(1));
+        var rule = recurring ? "FREQ=DAILY;COUNT=1" : null;
+        var atStart = BuildInfo(start: from, end: from, recurrenceRule: rule);
+        var before = from.Minus(Duration.FromMinutes(1));
+        var events = new[]
+        {
+            atStart,
+            BuildInfo(start: before, end: before, recurrenceRule: rule),
+            BuildInfo(start: to, end: to, recurrenceRule: rule),
+            BuildInfo(start: before, end: from, recurrenceRule: rule),
+        };
+
+        var results = CalendarOccurrenceExpander.Expand(events, from, to,
+            new Dictionary<Guid, string>(), NullLogger.Instance);
+
+        results.Should().ContainSingle().Which.EventId.Should().Be(atStart.Id);
+    }
+
     [HumansFact]
     public void Expand_DropsCancelledRecurringOccurrence()
     {
