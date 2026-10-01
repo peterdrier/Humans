@@ -739,9 +739,9 @@ internal sealed class HoldedClient : IHoldedClient
                 Number = ReadRequiredInt(Prop(n, "number"), "number"),
                 Name = Prop(n, "name")?.GetValue<string>() ?? "",
                 Group = Prop(n, "group")?.GetValue<string>(),
-                Debit = ReadDecimalV2(Prop(n, "debit")),
-                Credit = ReadDecimalV2(Prop(n, "credit")),
-                Balance = ReadDecimalV2(Prop(n, "balance")),
+                Debit = ReadRequiredDecimalV2(Prop(n, "debit"), "debit"),
+                Credit = ReadRequiredDecimalV2(Prop(n, "credit"), "credit"),
+                Balance = ReadRequiredDecimalV2(Prop(n, "balance"), "balance"),
                 Archived = Prop(n, "archived")?.GetValue<bool>() ?? false,
             }).ToList();
         }

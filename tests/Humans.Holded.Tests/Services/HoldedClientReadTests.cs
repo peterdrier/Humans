@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json.Nodes;
 using AwesomeAssertions;
 using Humans.Holded.Contracts;
 using Humans.Holded.Services;
@@ -350,6 +351,33 @@ public class HoldedClientReadTests
             Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("debit", false)]
+    [Xunit.InlineData("debit", true)]
+    [Xunit.InlineData("credit", false)]
+    [Xunit.InlineData("credit", true)]
+    [Xunit.InlineData("balance", false)]
+    [Xunit.InlineData("balance", true)]
+    public async Task ListAccountingAccounts_refuses_missing_totals(string field, bool explicitNull)
+    {
+        var body = JsonNode.Parse("""
+            {"items":[{"id":"a1","number":10000000,"name":"Capital",
+              "debit":"0.00","credit":"1000.00","balance":"-1000.00"}],
+             "cursor":null,"has_more":false}
+            """)!;
+        var account = body["items"]![0]!.AsObject();
+        if (explicitNull)
+            account[field] = null;
+        else
+            account.Remove(field);
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, body.ToJsonString())));
+
+        var act = async () => await client.ListAccountingAccountsAsync(
+            Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>().WithMessage($"*'{field}'*");
     }
 
     [HumansFact]

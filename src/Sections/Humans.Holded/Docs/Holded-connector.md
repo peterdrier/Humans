@@ -43,6 +43,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 - Cursor pagination (`{items, cursor, has_more}`, `limit` ≤ 200) runs to completion or
   **throws** — a truncated list is never returned, because list results feed replace-semantics
   reconciliation where a short fetch would delete live rows.
+- Accounting-account debit, credit and balance are required decimal strings. Missing or null totals reject the complete page with `HoldedPermanentException`; they never become fabricated zero balances.
 - `ledger-entries` dates arrive as `DD/MM/YYYY` (parsed via `HoldedLedgerDatePattern` in
   `DateFormattingExtensions`); purchases/contacts dates are ISO. Decimals arrive as strings.
 - The live `ledger-entries` API's `end_date` is **exclusive** — an entry dated `end_date` itself
