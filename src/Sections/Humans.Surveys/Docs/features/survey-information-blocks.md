@@ -55,7 +55,8 @@ Bytes use the shared `IFileStorage` under:
 `uploads/surveys/{surveyId}/{questionId}/{imageId}.{extension}`
 
 No private download endpoint or new storage abstraction is introduced. Replacing an image writes a
-fresh key before the database update. Newly written files are cleaned up best-effort if validation or
+fresh key before the database update. Reserved public slugs are rejected before writing any image file.
+Newly written files are cleaned up best-effort if validation or
 persistence fails. Removed/replaced files are retained: deleting them during an ordinary update can
 race with another in-flight editor that still references the previous key. A future storage
 maintenance job may garbage-collect keys after proving they are no longer referenced.

@@ -685,6 +685,38 @@ public class SurveyServiceTests
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reserved_slug_is_rejected_before_uploading_information_images(bool existing)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var survey = SurveyWith(SurveyStatus.Draft, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        await using var content = new MemoryStream([1, 2, 3]);
+        var information = new QuestionInput(
+            Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
+            L("Conditions"), L("Context"), false, null, null,
+            LocalizedText.Empty, LocalizedText.Empty, null, [],
+            InformationImages:
+            [new InformationImageInput(null, L("Forecast"), L("Forecast table"),
+                Upload: new SurveyImageUpload(content, "image/png", "forecast.png", 3))]);
+        var input = Input(information) with { PublicSlug = " Admin " };
+        var service = CreateService();
+        var act = async () =>
+        {
+            if (existing)
+                await service.UpdateAsync(survey.Id, input, Board(Guid.NewGuid()), ct);
+            else
+                await service.CreateAsync(input, Guid.NewGuid(), ct);
+        };
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Slug 'admin' is reserved.");
+        await _fileStorage.DidNotReceive().SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task CreateAsync_accepts_non_reserved_slug_and_normalises_it()
     {

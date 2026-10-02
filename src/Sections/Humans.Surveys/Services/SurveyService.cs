@@ -180,6 +180,7 @@ internal sealed class SurveyService(
         ValidateInvitationEmailCopy(invitationEmailSubject, invitationEmailMessage);
         var now = clock.GetCurrentInstant();
         var surveyId = Guid.NewGuid();
+        var publicSlug = NormalizeSlug(input.PublicSlug);
         var prepared = await PrepareInformationImagesAsync(surveyId, input, existing: null, ct);
         List<SurveyQuestion> questions;
         try
@@ -212,7 +213,7 @@ internal sealed class SurveyService(
             AudienceType = input.AudienceType,
             AudienceTeamId = input.AudienceTeamId,
             AudienceLoggedInSince = input.AudienceLoggedInSince,
-            PublicSlug = NormalizeSlug(input.PublicSlug),
+            PublicSlug = publicSlug,
             CreatedByUserId = actorUserId,
             CreatedAt = now,
             UpdatedAt = now,
@@ -270,6 +271,7 @@ internal sealed class SurveyService(
             throw new InvalidOperationException(
                 "Asociado vote mode cannot change after the survey has opened.");
         }
+        var publicSlug = NormalizeSlug(input.PublicSlug);
         var prepared = await PrepareInformationImagesAsync(surveyId, input, existing, ct);
         List<SurveyQuestion> questions;
         try
@@ -317,7 +319,7 @@ internal sealed class SurveyService(
             AudienceType = input.AudienceType,
             AudienceTeamId = input.AudienceTeamId,
             AudienceLoggedInSince = input.AudienceLoggedInSince,
-            PublicSlug = NormalizeSlug(input.PublicSlug),
+            PublicSlug = publicSlug,
             UpdatedAt = now,
             Questions = questions,
         };
