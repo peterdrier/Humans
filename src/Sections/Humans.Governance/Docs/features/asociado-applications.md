@@ -254,7 +254,7 @@ When an Application is approved:
 5. `Profile.MembershipTier` → Application's tier
 6. User added to Colaboradors or Asociados system team
 7. Individual BoardVote records deleted
-8. Approval notification email sent
+8. Approval email attempted best-effort, including recipient lookup; email failure does not skip the in-app notice.
 
 ## Business Rules
 

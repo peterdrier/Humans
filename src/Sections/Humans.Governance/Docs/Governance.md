@@ -253,6 +253,7 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 - On approval, the term expiry is set to December 31 of the current cycle's odd year (the approval year if odd, otherwise the following year); from 1 October of an odd year it is the next cycle's, so a renewal approved in the reminder window is not born expired.
 - On approval, the human's membership tier is updated and they are added to the corresponding system team (Colaboradors or Asociados).
 - On finalization (approval or rejection), all individual Board vote records for that application are deleted. Only the collective decision note and Board meeting date survive.
+- Decision emails are best-effort after finalization: recipient lookup, address resolution, message preparation and enqueue failures are logged without turning the committed decision into failure or skipping the in-app notice. Caller cancellation still propagates; audit, tier update and system-team sync remain outside this email boundary.
 - Admin can assign all roles. Board and HumanAdmin can assign all roles except Admin (per `RoleAssignmentAuthorizationHandler` + `RoleNames.BoardManageableRoles`).
 - Role assignments track temporal membership with valid-from and optional valid-to dates. See `Auth.md` for the role-assignment entity.
 - Volunteer onboarding is never blocked by tier applications — they are separate, parallel paths.

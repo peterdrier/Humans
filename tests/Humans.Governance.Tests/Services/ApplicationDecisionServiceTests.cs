@@ -466,6 +466,52 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.ErrorKey.Should().Be("NotFound");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    public async Task FinalizeAsync_EmailLookupFailureKeepsDecisionSuccessfulAndDispatchesNotice(
+        bool approve, bool addressLookup)
+    {
+        var userId = Guid.NewGuid();
+        var reviewerId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId);
+        await SeedBoardVoteAsync(app.Id);
+        if (addressLookup)
+        {
+            var user = new User { Id = userId, BurnerName = "Applicant", PreferredLanguage = "en" };
+            _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user.ToUserInfo());
+            _userEmailService.GetNotificationTargetEmailsAsync(
+                    Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<IReadOnlyDictionary<Guid, string>>(new IOException("address lookup unavailable")));
+        }
+        else
+        {
+            _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(Task.FromException<UserInfo?>(new IOException("user lookup unavailable"))));
+        }
+
+        var result = approve
+            ? await _service.ApproveAsync(app.Id, reviewerId, null, null, Xunit.TestContext.Current.CancellationToken)
+            : await _service.RejectAsync(app.Id, reviewerId, "Reason", null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        ClearAllTrackers();
+        var persisted = await GovernanceDb.Applications.FindAsync(app.Id, Xunit.TestContext.Current.CancellationToken);
+        persisted!.Status.Should().Be(approve ? ApplicationStatus.Approved : ApplicationStatus.Rejected);
+        await AuditLog.Received(1).LogAsync(
+            approve ? AuditAction.TierApplicationApproved : AuditAction.TierApplicationRejected,
+            AuditEntityTypes.Application, app.Id, Arg.Any<string>(), reviewerId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _notificationService.Received(1).SendAsync(
+            approve ? NotificationSource.ApplicationApproved : NotificationSource.ApplicationRejected,
+            NotificationClass.Informational, NotificationPriority.Normal, Arg.Any<string>(),
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == userId),
+            Arg.Any<string?>(), "/Governance/Applications", "View application",
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task ApproveAsync_EmailsApplicantViaUserServiceLookup()
     {

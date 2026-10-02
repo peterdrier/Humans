@@ -742,31 +742,35 @@ internal sealed class ApplicationDecisionService(
         Func<string, UserInfo, EmailMessage> buildMessage,
         CancellationToken cancellationToken)
     {
-        var user = await userService.GetUserInfoAsync(application.UserId, cancellationToken);
-        if (user is null)
-            return;
-
-        var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(
-            [application.UserId], cancellationToken);
-        if (notificationEmails.TryGetValue(application.UserId, out var recipientEmail)
-            && !string.IsNullOrWhiteSpace(recipientEmail))
+        try
         {
-            try
+            var user = await userService.GetUserInfoAsync(application.UserId, cancellationToken);
+            if (user is null)
+                return;
+
+            var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(
+                [application.UserId], cancellationToken);
+            if (notificationEmails.TryGetValue(application.UserId, out var recipientEmail)
+                && !string.IsNullOrWhiteSpace(recipientEmail))
             {
                 await emailService.SendAsync(buildMessage(recipientEmail, user));
             }
-            catch (Exception ex)
+            else
             {
-                logger.LogError(ex,
-                    "Failed to send {DecisionName} email for {ApplicationId}",
-                    decisionName, application.Id);
+                logger.LogWarning(
+                    "Skipping {DecisionName} email for application {ApplicationId} because user {UserId} has no notification-target email",
+                    decisionName, application.Id, application.UserId);
             }
         }
-        else
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(
-                "Skipping {DecisionName} email for application {ApplicationId} because user {UserId} has no notification-target email",
-                decisionName, application.Id, application.UserId);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to send {DecisionName} email for {ApplicationId}",
+                decisionName, application.Id);
         }
     }
 

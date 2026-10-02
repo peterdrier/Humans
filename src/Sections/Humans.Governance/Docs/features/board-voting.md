@@ -63,11 +63,11 @@ Board voting only applies to tier applications (Colaborador and Asociado). Volun
   - Application.TermExpiresAt set (Dec 31 of appropriate odd year)
   - Profile.MembershipTier updated
   - Added to Colaboradors/Asociados system team
-  - Approval notification email sent
+  - Approval email attempted best-effort, including recipient lookup; email failure does not skip the in-app notice.
 - On reject:
   - Application.Status → Rejected
   - Decision note required (applicant deserves to know why)
-  - Rejection notification email sent
+  - Rejection email attempted best-effort, including recipient lookup; email failure does not skip the in-app notice.
   - No tier change — the applicant keeps whatever tier they already held
 - **Individual votes are deleted** after finalization (GDPR data minimization)
 - Cannot finalize if no Board members have voted
