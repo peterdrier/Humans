@@ -699,32 +699,15 @@ internal sealed class TicketTransferService(
     private static string TicketLabel(string attendeeName, string vendorTicketId) =>
         string.IsNullOrEmpty(vendorTicketId) ? attendeeName : $"{attendeeName} ({vendorTicketId})";
 
-    private async Task<TicketTransferRowDto> BuildRowDtoAsync(TicketTransferRequest r, CancellationToken ct)
-    {
-        var users = await userService.GetUserInfosAsync(
-            r.DecidedByUserId is null
-                ? new[] { r.SenderUserId }
-                : new[] { r.SenderUserId, r.DecidedByUserId.Value },
-            ct);
-        return BuildRowDto(r, users, await ResolveAttendeeAsync(r, ct));
-    }
+    private async Task<TicketTransferRowDto> BuildRowDtoAsync(TicketTransferRequest r, CancellationToken ct) =>
+        BuildRowDto(r, await ResolveAttendeeAsync(r, ct));
 
     private async Task<IReadOnlyList<TicketTransferRowDto>> BuildRowDtosAsync(
         IReadOnlyList<TicketTransferRequest> rows, CancellationToken ct)
     {
-        if (rows.Count == 0) return [];
-
-        var userIds = new HashSet<Guid>();
-        foreach (var r in rows)
-        {
-            userIds.Add(r.SenderUserId);
-            if (r.DecidedByUserId is { } decider) userIds.Add(decider);
-        }
-        var users = await userService.GetUserInfosAsync(userIds, ct);
-
         var result = new List<TicketTransferRowDto>(rows.Count);
         foreach (var r in rows)
-            result.Add(BuildRowDto(r, users, await ResolveAttendeeAsync(r, ct)));
+            result.Add(BuildRowDto(r, await ResolveAttendeeAsync(r, ct)));
         return result;
     }
 
@@ -736,13 +719,8 @@ internal sealed class TicketTransferService(
 
     private static TicketTransferRowDto BuildRowDto(
         TicketTransferRequest r,
-        IReadOnlyDictionary<Guid, UserInfo> users,
         TicketAttendee attendee)
     {
-        users.TryGetValue(r.SenderUserId, out var sender);
-        UserInfo? decider = null;
-        if (r.DecidedByUserId is { } deciderId) users.TryGetValue(deciderId, out decider);
-
         return new TicketTransferRowDto(
             Id: r.Id,
             OriginalAttendeeId: r.OriginalTicketAttendeeId,
@@ -751,7 +729,6 @@ internal sealed class TicketTransferService(
             OriginalAttendeeStatus: attendee.Status,
             OriginalAttendeeCheckedInAt: attendee.CheckedInAt,
             SenderUserId: r.SenderUserId,
-            SenderDisplayName: sender?.BurnerName ?? "(unknown)",
             ReceiverUserId: r.ReceiverUserId,
             ReceiverLegalName: r.ReceiverLegalName,
             ReceiverEmail: r.ReceiverEmail,
@@ -760,7 +737,6 @@ internal sealed class TicketTransferService(
             VendorResult: r.VendorResult,
             VendorMessage: r.VendorMessage,
             DecidedByUserId: r.DecidedByUserId,
-            DecidedByDisplayName: decider?.BurnerName,
             AdminNotes: r.AdminNotes,
             RequestedAt: r.RequestedAt,
             DecidedAt: r.DecidedAt);

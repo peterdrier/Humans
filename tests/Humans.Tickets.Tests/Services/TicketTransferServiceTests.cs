@@ -70,15 +70,7 @@ public sealed class TicketTransferServiceTests
         _transferRepo.GetBySenderAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
-                IReadOnlyDictionary<Guid, UserInfo> dict = ids.ToDictionary(
-                    id => id,
-                    id => MakeUser(id, id.ToString()).ToUserInfo());
-                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
-            });
+
     }
 
     // ── GetConfirmationAsync ────────────────────────────────────────────────────
@@ -160,6 +152,40 @@ public sealed class TicketTransferServiceTests
                 && m.HtmlBody.Contains("alice@example.com", StringComparison.Ordinal)
                 && m.HtmlBody.Contains("Going abroad", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task TransferRows_NameLookupFailurePreservesTransferData(bool afterWrite)
+    {
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                Task.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("name lookup unavailable"))));
+        TicketTransferRowDto row;
+        if (afterWrite)
+        {
+            row = await _service.CreateRequestAsync(
+                new TicketTransferRequestDto(_attendeeId, _receiverId, "Reason"), _senderId, Xunit.TestContext.Current.CancellationToken);
+            await _transferRepo.Received(1).AddAsync(
+                Arg.Is<TicketTransferRequest>(r => r.Id == row.Id && r.Status == TicketTransferStatus.Pending),
+                Arg.Any<CancellationToken>());
+            await _auditLog.Received(1).LogAsync(
+                AuditAction.TicketTransferRequested, Arg.Any<string>(), row.Id,
+                Arg.Any<string>(), _senderId, _receiverId, Arg.Any<string>());
+        }
+        else
+        {
+            _transferRepo.GetBySenderAsync(_senderId, Arg.Any<CancellationToken>()).Returns([MakePending(Guid.NewGuid())]);
+            row = (await _service.GetBySenderAsync(_senderId, Xunit.TestContext.Current.CancellationToken)).Should().ContainSingle().Subject;
+        }
+
+        row.SenderUserId.Should().Be(_senderId);
+        row.OriginalAttendeeId.Should().Be(_attendeeId);
+        row.OriginalAttendeeName.Should().Be("Ticket Holder");
+        row.ReceiverLegalName.Should().Be("Alice Smith");
+        row.Status.Should().Be(TicketTransferStatus.Pending);
     }
 
     [HumansFact]

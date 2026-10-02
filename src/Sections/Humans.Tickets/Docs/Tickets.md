@@ -83,6 +83,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 ## Invariants
 
 - Member transfer Submit/Cancel validation errors resolve through Tickets resources in all six cultures. Unknown failure text stays in logs; the wizard and cancellation toast use translated fallbacks.
+- Transfer row DTOs carry sender/decider IDs; their names are rendered by the existing human components. Row assembly does not load unused user-name snapshots, so a profile lookup cannot fail a committed response or prevent a transfer list from loading. Transfer/attendee reads remain required.
 
 - `TicketHoldingsViewComponent` is contributed (`Humans.Tickets/SectionUserParts.cs`, `IUserPart`) to Users' `user-profile-sidebar` and `user-admin-detail-sidebar` slots. It renders nothing for `ProfileCardViewMode.Public` — its only visibility check — and shows an empty-holdings card only for `Admin`.
 - Ticket orders and attendees are synced from the external vendor — they cannot be manually created or edited from this app.

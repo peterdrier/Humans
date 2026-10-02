@@ -25,7 +25,6 @@ internal sealed record TicketTransferRowDto(
     TicketAttendeeStatus OriginalAttendeeStatus,
     Instant? OriginalAttendeeCheckedInAt,
     Guid SenderUserId,
-    string SenderDisplayName,
     Guid ReceiverUserId,
     string ReceiverLegalName,
     string ReceiverEmail,
@@ -34,7 +33,6 @@ internal sealed record TicketTransferRowDto(
     TicketTransferVendorResult VendorResult,
     string? VendorMessage,
     Guid? DecidedByUserId,
-    string? DecidedByDisplayName,
     string? AdminNotes,
     Instant RequestedAt,
     Instant? DecidedAt);
