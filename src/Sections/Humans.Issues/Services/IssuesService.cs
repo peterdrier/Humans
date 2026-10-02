@@ -1101,6 +1101,15 @@ internal sealed class IssuesService(
         {
             var culture = CultureInfo.GetCultureInfo(group.Key);
             var (title, body) = content(culture);
+            // Notices are previews; the action link retains access to the full issue/thread.
+            if (title.EnumerateRunes().Count() > 200)
+            {
+                body = body is null ? title : string.Concat(title, "\n\n", body);
+                title = string.Concat(title.EnumerateRunes().Take(199)) + "…";
+            }
+            if (body is not null && body.EnumerateRunes().Count() > 2000)
+                body = string.Concat(body.EnumerateRunes().Take(1999)) + "…";
+
             await notifications.SendAsync(
                 source, notificationClass, priority, title, group.ToList(), body,
                 actionUrl: actionUrl,
