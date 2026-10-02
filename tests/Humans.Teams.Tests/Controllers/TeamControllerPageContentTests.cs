@@ -30,6 +30,81 @@ namespace Humans.Teams.Tests.Controllers;
 public class TeamControllerPageContentTests
 {
     [HumansTheory]
+    [Xunit.InlineData("birthdays", "viewer")]
+    [Xunit.InlineData("my", "viewer")]
+    [Xunit.InlineData("join", "viewer")]
+    [Xunit.InlineData("join", "entity")]
+    [Xunit.InlineData("join", "info")]
+    [Xunit.InlineData("join", "pending")]
+    public async Task Member_gets_cancel_at_each_read_boundary(string action, string boundary)
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        using var request = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var users = Substitute.For<IUserServiceRead>();
+        var teams = Substitute.For<ITeamManagementService>();
+        var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha", IsActive = true };
+        void CheckCancellation(string read, CancellationToken ct)
+        {
+            if (string.Equals(boundary, read, StringComparison.Ordinal))
+                ct.ThrowIfCancellationRequested();
+        }
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            CheckCancellation("viewer", call.Arg<CancellationToken>());
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+        });
+        teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            CheckCancellation("entity", call.Arg<CancellationToken>());
+            return Task.FromResult<Team?>(team);
+        });
+        teams.GetTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            CheckCancellation("info", call.Arg<CancellationToken>());
+            return Task.FromResult<TeamInfo?>(null);
+        });
+        teams.GetUserPendingRequestAsync(team.Id, userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            CheckCancellation("pending", call.Arg<CancellationToken>());
+            return Task.FromResult<TeamJoinRequestSnapshot?>(null);
+        });
+        users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<UserInfo>());
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        teams.GetMyTeamMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<MyTeamMembershipSummary>());
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            RequestAborted = request.Token,
+            Session = Substitute.For<ISession>(),
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var controller = new TeamController(
+            teams, Substitute.For<ITeamPageService>(), users,
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
+            new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
+            NullLogger<TeamController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        Task<IActionResult> ReadAsync() => action switch
+        {
+            "birthdays" => controller.Birthdays(1, request.Token),
+            "my" => controller.MyTeams(request.Token),
+            _ => controller.Join(team.Slug)
+        };
+
+        (await ReadAsync()).Should().BeOfType<ViewResult>();
+        await request.CancelAsync();
+        Func<Task> abandonedRead = async () => await ReadAsync();
+        await abandonedRead.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("Join", false)]
     [Xunit.InlineData("Join", true)]
     [Xunit.InlineData("Leave", false)]

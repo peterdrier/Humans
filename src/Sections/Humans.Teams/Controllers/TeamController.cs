@@ -221,7 +221,7 @@ internal sealed class TeamController(
     [HttpGet("Birthdays")]
     public async Task<IActionResult> Birthdays(int? month, CancellationToken ct)
     {
-        var (currentUserError, _) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, _) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
         if (currentUserError is not null)
         {
             return currentUserError;
@@ -343,7 +343,7 @@ internal sealed class TeamController(
     [HttpGet("My")]
     public async Task<IActionResult> MyTeams(CancellationToken ct)
     {
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
         if (currentUserError is not null)
         {
             return currentUserError;
@@ -375,13 +375,14 @@ internal sealed class TeamController(
     [HttpGet("{slug}/Join")]
     public async Task<IActionResult> Join(string slug)
     {
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var ct = HttpContext.RequestAborted;
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
         if (currentUserError is not null)
         {
             return currentUserError;
         }
 
-        var team = await teamService.GetTeamEntityBySlugAsync(slug);
+        var team = await teamService.GetTeamEntityBySlugAsync(slug, ct);
         if (team is null || !team.IsActive)
         {
             return NotFound();
@@ -398,7 +399,7 @@ internal sealed class TeamController(
             return NotFound();
         }
 
-        var teamInfo = await teamService.GetTeamAsync(team.Id);
+        var teamInfo = await teamService.GetTeamAsync(team.Id, ct);
         var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == user.Id);
         if (isMember)
         {
@@ -406,7 +407,7 @@ internal sealed class TeamController(
             return RedirectToAction(nameof(Details), new { slug });
         }
 
-        var pendingRequest = await teamService.GetUserPendingRequestAsync(team.Id, user.Id);
+        var pendingRequest = await teamService.GetUserPendingRequestAsync(team.Id, user.Id, ct);
         if (pendingRequest is not null)
         {
             SetError(localizer["Team_AlreadyPendingRequest"].Value);
