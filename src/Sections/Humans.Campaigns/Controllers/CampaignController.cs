@@ -18,7 +18,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Index()
     {
-        var campaigns = await campaignService.GetAllAsync();
+        var campaigns = await campaignService.GetAllAsync(HttpContext.RequestAborted);
         return View(campaigns);
     }
 
@@ -64,7 +64,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Edit(Guid id)
     {
-        var campaign = await campaignService.GetByIdAsync(id);
+        var campaign = await campaignService.GetByIdAsync(id, HttpContext.RequestAborted);
         if (campaign is null) return NotFound();
         return View(campaign);
     }
@@ -115,7 +115,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> Detail(Guid id)
     {
-        var page = await campaignService.GetDetailPageAsync(id);
+        var page = await campaignService.GetDetailPageAsync(id, HttpContext.RequestAborted);
         if (page is null) return NotFound();
 
         return View(new CampaignDetailViewModel
@@ -222,7 +222,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SendWave(Guid id, Guid? teamId)
     {
-        var page = await campaignService.GetSendWavePageAsync(id, teamId);
+        var page = await campaignService.GetSendWavePageAsync(id, teamId, HttpContext.RequestAborted);
         if (page is null) return NotFound();
 
         if (page.Campaign.Status != CampaignStatus.Active)

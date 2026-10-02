@@ -97,6 +97,8 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 ## Invariants
 
+- Index, edit, detail and Send Wave GETs pass request cancellation to their read-only service/repository calls, so abandoned pages stop loading data. Mutating requests retain their existing cancellation boundaries.
+
 - Campaign status follows: Draft then Active then Completed. `ActivateAsync` requires Draft + at least one code; `CompleteAsync` requires Active; `SendWaveAsync` requires Active. Wrong-state attempts (double-clicks, stale forms, the Send Wave GET on a non-Active campaign) return error results the controller surfaces as an error toast + redirect, never a 500.
 - Vendor-generated codes can only be created while the campaign is in Draft status (service enforces). CSV code import has no service-side status guard — the Campaign Detail view exposes the import form in both Draft and Active. The admin CSV upload is capped at 1 MB and its in-memory read observes request cancellation.
 - Each code is unique per campaign (DB-enforced via unique `(CampaignId, Code)` index) and can be assigned to at most one human (DB-enforced via unique `CampaignCodeId` on grants).

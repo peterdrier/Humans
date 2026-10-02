@@ -1,4 +1,7 @@
 using AwesomeAssertions;
+using Humans.Campaigns.Controllers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
@@ -96,6 +99,36 @@ public sealed class CampaignServiceTests
             _ticketDiscountCodes,
             Clock,
             NullLogger<CampaignServiceImpl>.Instance);
+    }
+
+    [HumansFact]
+    public async Task AbandonedAdminPages_CancelRepositoryReads()
+    {
+        var campaign = await SeedCampaignAsync(CampaignStatus.Active);
+        using var request = new CancellationTokenSource();
+        var controller = new CampaignController(_service, Substitute.For<IUserServiceRead>())
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { RequestAborted = request.Token }
+            }
+        };
+        Func<Task<IActionResult>>[] pages =
+        [
+            () => controller.Index(),
+            () => controller.Edit(campaign.Id),
+            () => controller.Detail(campaign.Id),
+            () => controller.SendWave(campaign.Id, null)
+        ];
+        foreach (var page in pages)
+            (await page()).Should().BeOfType<ViewResult>();
+
+        await request.CancelAsync();
+        foreach (var page in pages)
+        {
+            Func<Task> read = async () => await page();
+            await read.Should().ThrowAsync<OperationCanceledException>();
+        }
     }
 
     [HumansFact]
