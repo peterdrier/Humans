@@ -667,28 +667,48 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         }
 
         // Closing a season drops pending requests from the lead-meter count.
-        await InvalidateLeadBadgesAsync(campId, cancellationToken);
-
-        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
-        var campName = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug ?? "a camp";
+        var camp = await InvalidateLeadBadgesAsync(campId, cancellationToken);
+        var name = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug;
         var slug = camp?.Slug;
 
         try
         {
-            await _notificationEmitter.SendAsync(
-                NotificationSource.CampMembershipSeasonClosed,
-                NotificationClass.Informational,
-                NotificationPriority.Normal,
-                $"The {year} season for {campName} is no longer open",
-                pendingUserIds,
-                body: "Your pending request to join this camp won't be reviewed because the season was withdrawn or rejected.",
-                actionUrl: slug is null ? null : $"/Barrios/{slug}",
-                actionLabel: slug is null ? null : "View camp",
-                cancellationToken: cancellationToken);
+            var recipientsByCulture = new Dictionary<CultureInfo, List<Guid>>();
+            foreach (var userId in pendingUserIds)
+            {
+                var culture = await GetRecipientCultureAsync(userId, cancellationToken);
+                if (!recipientsByCulture.TryGetValue(culture, out var recipients))
+                {
+                    recipients = [];
+                    recipientsByCulture.Add(culture, recipients);
+                }
+                recipients.Add(userId);
+            }
+            foreach (var (culture, recipients) in recipientsByCulture)
+            {
+                try
+                {
+                    var campName = name ?? NoticeResources.GetString("Camps_Notification_GenericCamp", culture)!;
+                    await _notificationEmitter.SendAsync(
+                        NotificationSource.CampMembershipSeasonClosed,
+                        NotificationClass.Informational,
+                        NotificationPriority.Normal,
+                        string.Format(culture, NoticeResources.GetString("Camps_Notification_SeasonClosed", culture)!, year, campName),
+                        recipients,
+                        body: NoticeResources.GetString("Camps_Notification_SeasonClosedBody", culture),
+                        actionUrl: slug is null ? null : $"/Barrios/{slug}",
+                        actionLabel: slug is null ? null : NoticeResources.GetString("Camps_Notification_ViewCamp", culture),
+                        cancellationToken: cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send CampMembershipSeasonClosed notification for season {SeasonId} in {Culture}", seasonId, culture.Name);
+                }
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send CampMembershipSeasonClosed notification for season {SeasonId}", seasonId);
+            _logger.LogError(ex, "Failed to prepare CampMembershipSeasonClosed notifications for season {SeasonId}", seasonId);
         }
     }
 

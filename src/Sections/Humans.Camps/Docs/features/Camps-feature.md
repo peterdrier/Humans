@@ -299,8 +299,9 @@ CampMember
   authorizing camp id: a member id belonging to a different camp resolves to
   "not found" rather than being mutated cross-camp.
 - When a season is rejected or withdrawn, pending requesters receive a
-  `CampMembershipSeasonClosed` notification. Membership rows are not
-  auto-mutated — if the season is reactivated the pending request is still live.
+  `CampMembershipSeasonClosed` notification in their saved supported language
+  (English fallback), grouped by culture with delivery failures isolated per
+  group. Membership rows are not auto-mutated — if the season is reactivated the pending request is still live.
 
 ### CampRoleDefinition (catalogue of per-camp roles, issue nobodies-collective#489)
 

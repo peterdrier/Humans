@@ -262,4 +262,6 @@
   <data name="Camps_Notification_MembershipRejected" xml:space="preserve"><value>Your request to join {0} was not approved</value></data>
   <data name="Camps_Notification_ViewCamp" xml:space="preserve"><value>View camp</value></data>
   <data name="Camps_Notification_GenericCamp" xml:space="preserve"><value>a camp</value></data>
+  <data name="Camps_Notification_SeasonClosed" xml:space="preserve"><value>The {0} season for {1} is no longer open</value></data>
+  <data name="Camps_Notification_SeasonClosedBody" xml:space="preserve"><value>Your pending request to join this camp won't be reviewed because the season was withdrawn or rejected.</value></data>
 </root>

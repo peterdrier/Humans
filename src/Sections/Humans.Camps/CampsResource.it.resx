@@ -313,4 +313,6 @@
   <data name="Camps_Notification_MembershipRejected" xml:space="preserve"><value>La tua richiesta di unirti a {0} non è stata approvata</value></data>
   <data name="Camps_Notification_ViewCamp" xml:space="preserve"><value>Visualizza il camp</value></data>
   <data name="Camps_Notification_GenericCamp" xml:space="preserve"><value>un camp</value></data>
+  <data name="Camps_Notification_SeasonClosed" xml:space="preserve"><value>La stagione {0} per {1} non è più aperta</value></data>
+  <data name="Camps_Notification_SeasonClosedBody" xml:space="preserve"><value>La tua richiesta in sospeso di unirti a questo camp non verrà esaminata perché la stagione è stata ritirata o respinta.</value></data>
 </root>

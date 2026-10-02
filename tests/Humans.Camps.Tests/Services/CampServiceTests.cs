@@ -1404,6 +1404,62 @@ public sealed class CampServiceTests : CampsTestHarness
             memberId, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    public async Task WithdrawSeasonAsync_NotifiesEachLanguageGroup(bool lookupFailure, bool deliveryFailure)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var englishId = Guid.NewGuid();
+        var spanishIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        var recipients = spanishIds.Append(englishId).ToArray();
+        foreach (var userId in recipients)
+        {
+            await SeedUserAsync(userId, "Requester");
+            await _service.RequestCampMembershipAsync(camp.Id, userId, ct);
+            _userServiceRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User
+                {
+                    Id = userId, PreferredLanguage = userId == englishId ? "en" : "es"
+                }, [], [], [], null, [])));
+        }
+        if (lookupFailure)
+            _userServiceRead.GetUserInfoAsync(englishId, Arg.Any<CancellationToken>())
+                .Returns(ValueTask.FromException<UserInfo?>(new IOException("Language lookup unavailable")));
+        var season = camp.Seasons.Single();
+        Notifier.ClearReceivedCalls();
+
+        if (deliveryFailure)
+            Notifier.SendAsync(NotificationSource.CampMembershipSeasonClosed,
+                Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(), Arg.Any<string>(),
+                Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException(new IOException("First language group unavailable")), Task.CompletedTask);
+
+        await _service.WithdrawSeasonAsync(camp.Id, season.Id, ct);
+
+        var notices = Notifier.ReceivedCalls()
+            .Where(call => call.GetArguments()[0] is NotificationSource source && source == NotificationSource.CampMembershipSeasonClosed)
+            .Select(call => call.GetArguments()).ToList();
+        notices.Should().HaveCount(2);
+        var spanish = notices.Single(args => ((IReadOnlyList<Guid>)args[4]!).Contains(spanishIds[0]));
+        ((IReadOnlyList<Guid>)spanish[4]!).Should().BeEquivalentTo(spanishIds);
+        spanish[3].Should().Be($"La temporada {season.Year} de {season.Name} ya no está abierta");
+        spanish[5].Should().Be("Tu solicitud pendiente para unirte a este campamento no se revisará porque la temporada fue retirada o rechazada.");
+        spanish[6].Should().Be($"/Barrios/{camp.Slug}");
+        spanish[7].Should().Be("Ver campamento");
+        var english = notices.Single(args => ((IReadOnlyList<Guid>)args[4]!).Contains(englishId));
+        ((IReadOnlyList<Guid>)english[4]!).Should().ContainSingle().Which.Should().Be(englishId);
+        english[3].Should().Be($"The {season.Year} season for {season.Name} is no longer open");
+        english[7].Should().Be("View camp");
+        (await CampsDb.CampMembers.AsNoTracking().Where(member => recipients.Contains(member.UserId))
+            .Select(member => member.Status).ToListAsync(ct)).Should().OnlyContain(status => status == CampMemberStatus.Pending);
+    }
+
     [HumansFact]
     public async Task WithdrawSeasonAsync_NotifiesPendingRequesters_DoesNotChangeMemberStatus()
     {
