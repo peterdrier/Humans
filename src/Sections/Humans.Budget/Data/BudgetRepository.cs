@@ -208,7 +208,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId, ct);
+        var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId && !y.IsDeleted, ct);
         if (year is null)
             return false;
 

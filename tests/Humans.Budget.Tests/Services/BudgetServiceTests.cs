@@ -413,8 +413,10 @@ public sealed class BudgetServiceTests
 
     // ─── UpdateYearStatusAsync auto-closes previously active years ──────────
 
-    [HumansFact]
-    public async Task UpdateYearStatusAsync_activating_closes_other_active_years()
+    [HumansTheory]
+    [InlineData(BudgetYearStatus.Draft)]
+    [InlineData(BudgetYearStatus.Closed)]
+    public async Task UpdateYearStatusAsync_activating_closes_other_active_years(BudgetYearStatus initialStatus)
     {
         await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
@@ -430,7 +432,7 @@ public sealed class BudgetServiceTests
                 Id = _yearId,
                 Year = "2026",
                 Name = "Budget 2026",
-                Status = BudgetYearStatus.Draft
+                Status = initialStatus
             });
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
@@ -449,6 +451,41 @@ public sealed class BudgetServiceTests
             .Where(a => a.FieldName == nameof(BudgetYear.Status))
             .ToListAsync(TestContext.Current.CancellationToken);
         auditEntries.Should().HaveCount(2);
+    }
+
+    [HumansFact]
+    public async Task UpdateYearStatusAsync_archived_year_cannot_replace_the_active_year()
+    {
+        var activeYearId = Guid.NewGuid();
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        {
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = activeYearId, Year = "2026", Name = "Current budget", Status = BudgetYearStatus.Active
+            });
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = _yearId, Year = "2025", Name = "Old budget", Status = BudgetYearStatus.Closed
+            });
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+        await _service.DeleteYearAsync(_yearId, Guid.NewGuid());
+        var existingAudit = await _repository.GetAuditLogAsync(_yearId);
+
+        // A Reactivate form opened while Closed may be submitted after archiving.
+        var reactivate = () => _service.UpdateYearStatusAsync(_yearId, BudgetYearStatus.Active, Guid.NewGuid());
+        await reactivate.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+
+        var active = await _service.GetActiveYearAsync();
+        active.Should().NotBeNull();
+        active!.Id.Should().Be(activeYearId);
+        await using var verify = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var archived = await verify.BudgetYears.SingleAsync(y => y.Id == _yearId, TestContext.Current.CancellationToken);
+        archived.IsDeleted.Should().BeTrue();
+        archived.Status.Should().Be(BudgetYearStatus.Closed);
+        (await _repository.GetAuditLogAsync(_yearId)).Should().BeEquivalentTo(existingAudit);
+        (await verify.BudgetAuditLogs.CountAsync(a => a.BudgetYearId == activeYearId, TestContext.Current.CancellationToken))
+            .Should().Be(0);
     }
 
     [HumansFact]
