@@ -110,7 +110,7 @@ public sealed class ServiceImageTests
             NewImages: FakeImages(6)), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*at most 5 images*");
+            .WithMessage("Containers_Error_TooManyImages");
     }
 
     [HumansFact]
@@ -126,7 +126,7 @@ public sealed class ServiceImageTests
             NewImages: [image]), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*256 characters or fewer*");
+            .WithMessage("Containers_Error_ImageFileNameLength");
         await _fileStorage.DidNotReceive().SaveAsync(
             Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
@@ -157,7 +157,7 @@ public sealed class ServiceImageTests
             NewImages: FakeImages(2)), actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*at most 5 images*");
+            .WithMessage("Containers_Error_TooManyImages");
     }
 
     [HumansFact]
@@ -172,7 +172,7 @@ public sealed class ServiceImageTests
             NewImages: FakeImages(1)), actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*at most 5 images*");
+            .WithMessage("Containers_Error_TooManyImages");
     }
 
     [HumansFact]
@@ -328,7 +328,7 @@ public sealed class ServiceImageTests
             Description: null), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*must not contain*");
+            .WithMessage("Containers_Error_InvalidName");
     }
 
     [HumansFact]
@@ -341,7 +341,7 @@ public sealed class ServiceImageTests
             NewImages: [new(Stream.Null, "image/jpeg", "trojan.html", 1024)]), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*end in .jpg*");
+            .WithMessage("Containers_Error_ImageExtension");
     }
 
     [HumansFact]
@@ -354,7 +354,7 @@ public sealed class ServiceImageTests
             NewImages: [new(Stream.Null, "image/jpeg", "big.jpg", 10 * 1024 * 1024 + 1)]), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*under 10 MB*");
+            .WithMessage("Containers_Error_ImageSize");
         await _fileStorage.DidNotReceive().SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
 
@@ -369,6 +369,6 @@ public sealed class ServiceImageTests
             ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*JPEG, PNG, and WebP*");
+            .WithMessage("Containers_Error_ImageType");
     }
 }

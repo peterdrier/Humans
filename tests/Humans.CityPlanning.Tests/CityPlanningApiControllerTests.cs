@@ -1,3 +1,8 @@
+using Humans.Containers;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Authorization;
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -21,6 +26,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using NodaTime;
+using Xunit;
 
 namespace Humans.CityPlanning.Tests;
 
@@ -30,6 +36,9 @@ namespace Humans.CityPlanning.Tests;
 /// </summary>
 public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
 {
+    private readonly IContainerService _containers = Substitute.For<IContainerService>();
+    private IStringLocalizer<ContainersResource> _containersLocalizer = Substitute.For<IStringLocalizer<ContainersResource>>();
+    private IAuthorizationService _authorization;
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly IClientProxy _allClients = Substitute.For<IClientProxy>();
@@ -48,6 +57,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
             _campService, _teamService, Substitute.For<IUserServiceRead>(), Substitute.For<IAuditLogService>());
+        _authorization = MapAdminAuthorization(_service);
     }
 
     private CityPlanningApiController CreateController(params string[] roles)
@@ -64,8 +74,8 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var claims = roles.Select(r => new Claim(ClaimTypes.Role, r))
             .Append(new Claim(ClaimTypes.NameIdentifier, _userId.ToString()));
         var controller = new CityPlanningApiController(
-            _service, _campService, Substitute.For<IContainerService>(),
-            MapAdminAuthorization(_service), hubContext, userManager,
+            _service, _campService, _containers, _containersLocalizer,
+            _authorization, hubContext, userManager,
             NullLogger<CityPlanningApiController>.Instance)
         {
             ControllerContext = new ControllerContext
@@ -77,6 +87,36 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
             },
         };
         return controller;
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task PlacementImageErrors_AreLocalized(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        _containersLocalizer = services.GetRequiredService<IStringLocalizer<ContainersResource>>();
+        _authorization = Substitute.For<IAuthorizationService>();
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var id = Guid.NewGuid();
+        _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
+            new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
+        const string key = "Containers_Error_ImageSize";
+        _containers.UpdatePlacementNotesAsync(id, 2026, null, null, false, _userId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException(key));
+
+        var result = await CreateController().UpdateContainerPlacementNotes(
+            id, 2026, new UpdateContainerPlacementNotesRequest(), Xunit.TestContext.Current.CancellationToken);
+
+        var expected = _containersLocalizer[key];
+        expected.ResourceNotFound.Should().BeFalse();
+        result.Should().BeOfType<UnprocessableEntityObjectResult>().Which.Value.Should().Be(expected.Value);
     }
 
     private const string Square = """{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[0,0]]]}""";

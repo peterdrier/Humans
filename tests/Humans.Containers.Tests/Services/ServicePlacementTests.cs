@@ -190,7 +190,7 @@ public sealed class ServicePlacementTests
         var act = async () => await _sut.UpdatePlacementNotesAsync(container.Id, Year, null, tooBig, removeImage: false, ActorUserId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*under 10 MB*");
+            .WithMessage("Containers_Error_ImageSize");
         await _fileStorage.DidNotReceive().SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
 

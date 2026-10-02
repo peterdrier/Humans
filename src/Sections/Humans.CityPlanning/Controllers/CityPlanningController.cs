@@ -1,3 +1,5 @@
+using Humans.Containers;
+using Microsoft.Extensions.Localization;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Services;
@@ -17,6 +19,7 @@ internal sealed class CityPlanningController(
     CityPlanningService cityPlanningService,
     ICampServiceRead campService,
     IContainerService containerService,
+    IStringLocalizer<ContainersResource> containersLocalizer,
     IUserServiceRead userService,
     IAuthorizationService authorizationService,
     ILogger<CityPlanningController> logger) : HumansControllerBase(userService)
@@ -372,7 +375,7 @@ internal sealed class CityPlanningController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Container create failed for camp {CampId}, year {Year}: {Message}", campId, year, ex.Message);
-            SetError(ex.Message);
+            SetError(containersLocalizer[ex.Message].Value);
             return RedirectToAction(nameof(Containers), new { year });
         }
 
@@ -412,7 +415,7 @@ internal sealed class CityPlanningController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Container update failed for id {ContainerId}, camp {CampId}, year {Year}: {Message}", id, campId, year, ex.Message);
-            SetError(ex.Message);
+            SetError(containersLocalizer[ex.Message].Value);
             return RedirectToAction(nameof(Containers), new { year });
         }
 

@@ -1315,4 +1315,5 @@
   <data name="Validation_Required" xml:space="preserve"><value>Questo campo è obbligatorio.</value></data>
   <data name="Validation_MaxLength" xml:space="preserve"><value>Inserisci al massimo {1} caratteri.</value></data>
   <data name="Validation_Range" xml:space="preserve"><value>Inserisci un valore compreso tra {1} e {2}.</value></data>
+  <data name="Validation_InvalidCharacters" xml:space="preserve"><value>Questo campo contiene caratteri non validi.</value></data>
 </root>

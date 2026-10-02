@@ -129,4 +129,10 @@
   <data name="Containers_Carousel_Next" xml:space="preserve">
     <value>Següent</value>
   </data>
+  <data name="Containers_Error_InvalidName" xml:space="preserve"><value>El nom del contenidor no ha de contenir &lt;, &gt; ni $.</value></data>
+  <data name="Containers_Error_TooManyImages" xml:space="preserve"><value>Un contenidor pot tenir com a màxim 5 imatges.</value></data>
+  <data name="Containers_Error_ImageType" xml:space="preserve"><value>Només s’admeten imatges JPEG, PNG i WebP.</value></data>
+  <data name="Containers_Error_ImageSize" xml:space="preserve"><value>La imatge ha de tenir menys de 10 MB.</value></data>
+  <data name="Containers_Error_ImageFileNameLength" xml:space="preserve"><value>El nom del fitxer d’imatge no pot tenir més de 256 caràcters.</value></data>
+  <data name="Containers_Error_ImageExtension" xml:space="preserve"><value>El nom del fitxer d’imatge ha d’acabar en .jpg, .jpeg, .png o .webp.</value></data>
 </root>

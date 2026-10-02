@@ -1315,4 +1315,5 @@
   <data name="Validation_Required" xml:space="preserve"><value>Aquest camp és obligatori.</value></data>
   <data name="Validation_MaxLength" xml:space="preserve"><value>Introdueix com a màxim {1} caràcters.</value></data>
   <data name="Validation_Range" xml:space="preserve"><value>Introdueix un valor entre {1} i {2}.</value></data>
+  <data name="Validation_InvalidCharacters" xml:space="preserve"><value>Aquest camp conté caràcters no vàlids.</value></data>
 </root>

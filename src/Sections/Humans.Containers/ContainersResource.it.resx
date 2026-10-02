@@ -129,4 +129,10 @@
   <data name="Containers_Carousel_Next" xml:space="preserve">
     <value>Successiva</value>
   </data>
+  <data name="Containers_Error_InvalidName" xml:space="preserve"><value>Il nome del contenitore non deve contenere &lt;, &gt; o $.</value></data>
+  <data name="Containers_Error_TooManyImages" xml:space="preserve"><value>Un contenitore può avere al massimo 5 immagini.</value></data>
+  <data name="Containers_Error_ImageType" xml:space="preserve"><value>Sono consentite solo immagini JPEG, PNG e WebP.</value></data>
+  <data name="Containers_Error_ImageSize" xml:space="preserve"><value>L’immagine deve essere inferiore a 10 MB.</value></data>
+  <data name="Containers_Error_ImageFileNameLength" xml:space="preserve"><value>Il nome del file immagine non può superare i 256 caratteri.</value></data>
+  <data name="Containers_Error_ImageExtension" xml:space="preserve"><value>Il nome del file immagine deve terminare con .jpg, .jpeg, .png o .webp.</value></data>
 </root>

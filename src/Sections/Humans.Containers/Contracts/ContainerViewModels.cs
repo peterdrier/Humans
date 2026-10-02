@@ -15,12 +15,12 @@ public class ContainerIndexViewModel
 
 public class ContainerFormModel
 {
-    [Required]
-    [StringLength(256)]
-    [RegularExpression(@"[^<>$]*", ErrorMessage = "Container name must not contain <, > or $.")]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(256, ErrorMessage = "Validation_MaxLength")]
+    [RegularExpression(@"[^<>$]*", ErrorMessage = "Validation_InvalidCharacters")]
     public string Name { get; set; } = string.Empty;
 
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string? Description { get; set; }
 
     public List<IFormFile> Images { get; set; } = [];

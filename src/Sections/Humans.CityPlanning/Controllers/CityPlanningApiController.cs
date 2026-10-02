@@ -1,3 +1,5 @@
+using Humans.Containers;
+using Microsoft.Extensions.Localization;
 using Humans.Base.Authorization;
 using System.Text.Json;
 using Humans.Camps.Contracts;
@@ -19,6 +21,7 @@ internal sealed class CityPlanningApiController(
     CityPlanningService cityPlanningService,
     ICampServiceRead campService,
     IContainerService containerService,
+    IStringLocalizer<ContainersResource> containersLocalizer,
     IAuthorizationService authorizationService,
     IHubContext<CityPlanningHub> hubContext,
     UserManager<User> userManager,
@@ -323,7 +326,7 @@ internal sealed class CityPlanningApiController(
         }
         catch (InvalidOperationException ex)
         {
-            return UnprocessableEntity(ex.Message);
+            return UnprocessableEntity(containersLocalizer[ex.Message].Value);
         }
     }
 

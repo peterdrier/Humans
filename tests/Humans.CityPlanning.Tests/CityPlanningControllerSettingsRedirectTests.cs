@@ -1,3 +1,5 @@
+using Humans.Containers;
+using Microsoft.Extensions.Localization;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -45,7 +47,7 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
             _campService, Substitute.For<ITeamServiceRead>(), _userService, Substitute.For<IAuditLogService>());
 
         _controller = new CityPlanningController(
-            _service, _campService, Substitute.For<IContainerService>(), _userService,
+            _service, _campService, Substitute.For<IContainerService>(), Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,
             MapAdminAuthorization(_service), NullLogger<CityPlanningController>.Instance);
 
         var claims = new[]
