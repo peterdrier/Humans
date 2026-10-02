@@ -55,7 +55,7 @@ client-supplied id
 
 **Acceptance Criteria:**
 - `GET /api/profiles/burner-name-count` takes only `name`; the user to exclude is
-  resolved server-side via `ResolveCurrentUserOrUnauthorizedAsync()`.
+  resolved server-side via `ResolveCurrentUserOrUnauthorizedAsync(ct)`, honoring request cancellation.
 - The endpoint is `[Authorize]`; an unresolvable session fails closed.
 
 ## Endpoints

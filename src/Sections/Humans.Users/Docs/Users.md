@@ -622,6 +622,8 @@ Admin-only flows for the section's cross-account hygiene (the `/Profile/Admin/*`
 
 ## Invariants
 
+- Profile API search, burner-name count and user-id lookup carry request cancellation through current-user resolution as well as their subsequent reads.
+
 - Outbox, privacy and dietary/medical GETs carry request cancellation through their current-user reads and, for outbox, email history. Dietary load errors remain localized; an abandoned request propagates cancellation.
 
 - Dietary/medical page titles, preference choices, section labels and save/load feedback, plus profile and dietary Other-description prompts, render in all six supported cultures.
