@@ -230,8 +230,6 @@ export async function loadHistory(campSeasonId, canEdit = false) {
     const id = campSeasonId ?? appState.activeCampSeasonId;
     if (!id) return;
 
-    const resp = await fetch(`/api/city-planning/camp-polygons/${id}/history`);
-
     if (appState.currentPopup) { appState.currentPopup.remove(); appState.currentPopup = null; }
 
     const campName = appState.campMap.campPolygons.find(p => p.campSeasonId === id)?.campName;
@@ -240,13 +238,17 @@ export async function loadHistory(campSeasonId, canEdit = false) {
 
     const list = document.getElementById('history-list');
 
-    if (!resp.ok) {
+    let history;
+    try {
+        const resp = await fetch(`/api/city-planning/camp-polygons/${id}/history`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        history = await resp.json();
+    } catch (error) {
+        console.error('Failed to load barrio polygon history', error);
         list.innerHTML = `<p class="text-danger text-center py-4">${escHtml(CONFIG.HISTORY_LOAD_FAILED)}</p>`;
         bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('history-panel')).show();
         return;
     }
-
-    const history = await resp.json();
     if (!history.length) {
         list.innerHTML = `<p class="text-muted text-center py-4">${escHtml(CONFIG.HISTORY_EMPTY)}</p>`;
     } else {
@@ -292,10 +294,17 @@ export async function restoreVersion(historyId, campSeasonId) {
     if (!confirm('Restore this version?')) return;
 
     const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
-    const resp = await fetch(`/api/city-planning/camp-polygons/${id}/restore/${historyId}`, {
-        method: 'POST',
-        headers: { 'RequestVerificationToken': token },
-    });
+    let resp;
+    try {
+        resp = await fetch(`/api/city-planning/camp-polygons/${id}/restore/${historyId}`, {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': token },
+        });
+    } catch (error) {
+        console.error('Failed to restore barrio polygon', error);
+        alert('Restore failed.');
+        return;
+    }
     if (resp.ok) {
         bootstrap.Offcanvas.getInstance(document.getElementById('history-panel'))?.hide();
         exitEditMode();
