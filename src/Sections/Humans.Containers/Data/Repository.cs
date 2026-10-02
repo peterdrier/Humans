@@ -31,18 +31,28 @@ internal sealed class Repository(IDbContextFactory<ContainersDbContext> factory)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 
-    public async Task<Container> AddAsync(Container container, CancellationToken ct = default)
+    public async Task<Container> AddAsync(Container container, IReadOnlyCollection<ContainerImage> images, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Containers.Add(container);
+        ctx.ContainerImages.AddRange(images);
         await ctx.SaveChangesAsync(ct);
         return container;
     }
 
-    public async Task<Container> UpdateAsync(Container container, CancellationToken ct = default)
+    public async Task<Container> UpdateAsync(Container container, IReadOnlyCollection<ContainerImage> newImages,
+        IReadOnlyCollection<Guid> removeImageIds, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Containers.Update(container);
+        if (removeImageIds.Count > 0)
+        {
+            var removed = await ctx.ContainerImages
+                .Where(i => i.ContainerId == container.Id && removeImageIds.Contains(i.Id))
+                .ToListAsync(ct);
+            ctx.ContainerImages.RemoveRange(removed);
+        }
+        ctx.ContainerImages.AddRange(newImages);
         await ctx.SaveChangesAsync(ct);
         return container;
     }

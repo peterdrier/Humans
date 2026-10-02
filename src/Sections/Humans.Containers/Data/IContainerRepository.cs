@@ -10,8 +10,9 @@ internal interface IContainerRepository : IRepository
     Task<IReadOnlyList<Container>> GetByCampAsync(Guid campId, CancellationToken ct = default);
     Task<IReadOnlyList<Container>> GetAllAsync(CancellationToken ct = default);
     Task<Container?> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<Container> AddAsync(Container container, CancellationToken ct = default);
-    Task<Container> UpdateAsync(Container container, CancellationToken ct = default);
+    Task<Container> AddAsync(Container container, IReadOnlyCollection<ContainerImage> images, CancellationToken ct = default);
+    Task<Container> UpdateAsync(Container container, IReadOnlyCollection<ContainerImage> newImages,
+        IReadOnlyCollection<Guid> removeImageIds, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 
     Task<IReadOnlyList<ContainerImage>> GetImagesAsync(

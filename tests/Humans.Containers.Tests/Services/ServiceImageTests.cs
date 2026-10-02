@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Xunit;
 
 namespace Humans.Containers.Tests.Services;
@@ -191,6 +192,67 @@ public sealed class ServiceImageTests
 
         updated.Images.Should().HaveCount(5);
         updated.Images.Select(i => i.Id).Should().NotContain(existing.Images[0].Id);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UpdateAsync_FailedUploadPreservesGalleryAndMetadata(bool legacy)
+    {
+        var container = await SeedContainerAsync(legacy ? "uploads/containers/legacy.jpg" : null, galleryImages: 2);
+        var before = await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken);
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("Disk full"));
+
+        var act = () => _sut.UpdateAsync(container.Id, new ContainerData(container.CampId, "Changed", "New description",
+            NewImages: FakeImages(1), RemoveImageIds: before!.Images.Select(i => i.Id).ToList()),
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<IOException>();
+        (await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken)).Should().BeEquivalentTo(before);
+        await _fileStorage.DidNotReceive().DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _auditLog.DidNotReceive().LogAsync(AuditAction.ContainerUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task CreateAsync_FailedUploadDoesNotLeaveAnUnauditedContainer(int failedUpload)
+    {
+        var uploadCount = 0;
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ++uploadCount == failedUpload ? Task.FromException(new IOException("Disk full")) : Task.CompletedTask);
+
+        var act = () => _sut.CreateAsync(new ContainerData(CampId, "New container", null, NewImages: FakeImages(2)),
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<IOException>();
+        (await _sut.GetAllAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
+        await _auditLog.DidNotReceive().LogAsync(AuditAction.ContainerCreated, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task UpdateAsync_CleanupFailurePreservesCommittedGalleryAndAttemptsEveryFile()
+    {
+        var container = await SeedContainerAsync("uploads/containers/legacy.jpg", galleryImages: 2);
+        var before = await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken);
+        var paths = before!.Images.Select(i => i.Url.TrimStart('/')).ToList();
+        _fileStorage.DeleteAsync(paths[1], Arg.Any<CancellationToken>()).ThrowsAsync(new IOException("File locked"));
+
+        var updated = await _sut.UpdateAsync(container.Id, new ContainerData(container.CampId, "Changed", "New description",
+            NewImages: FakeImages(1), RemoveImageIds: before.Images.Select(i => i.Id).ToList()),
+            actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
+
+        updated.Name.Should().Be("Changed");
+        updated.Images.Should().ContainSingle();
+        updated.Images.Select(i => i.Id).Should().NotIntersectWith(before.Images.Select(i => i.Id));
+        (await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken)).Should().BeEquivalentTo(updated);
+        foreach (var path in paths)
+            await _fileStorage.Received(1).DeleteAsync(path, CancellationToken.None);
+        await _auditLog.Received(1).LogAsync(AuditAction.ContainerUpdated, Arg.Any<string>(), container.Id,
+            Arg.Any<string>(), Arg.Any<Guid>(), container.CampId, Arg.Any<string?>());
     }
 
     [HumansFact]

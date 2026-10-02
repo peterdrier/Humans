@@ -112,8 +112,8 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 ## Triggers
 
-- Images uploaded during Create/Edit append to the gallery; nothing is replaced. Exceeding 5 rejects the whole write.
-- Ticking an image's "Remove" checkbox deletes its file from disk and its `container_images` row — or, for `Guid.Empty`, nulls the three legacy columns on `containers`.
+- Images uploaded during Create/Edit append to the gallery; nothing is replaced. Exceeding 5 rejects the whole write. Uploads are staged before any database write. Creation saves the container and gallery rows together; editing commits metadata, gallery additions/removals and legacy-image clearing together in one repository save. A failed upload leaves the existing container/gallery unchanged and creates no new container. Uploaded files may be orphaned if a later upload or database write fails; no pre-existing file is removed on those failures.
+- Ticking an image's "Remove" checkbox deletes its file from disk and its `container_images` row — or, for `Guid.Empty`, nulls the three legacy columns on `containers`. File cleanup follows the committed write and audit, attempts every distinct path without request cancellation, and logs failures without reversing the successful edit.
 - Container deletion commits the container/gallery/placement removal and writes its audit before attempting gallery and legacy file cleanup. A failed database deletion leaves all files intact. Cleanup attempts every distinct image path independently after commit; unexpected failures are logged as errors and do not reverse the deletion.
 - Placement save (`SavePlacementAsync(containerId, year, geoJson)`) upserts a `ContainerPlacement` row, preserving any existing notes/image.
 - Placement-image replacement saves the new file before committing metadata; removal clears metadata before deleting the old file. Only after the write and its audit succeed is the superseded file deleted, independently of request cancellation. Cleanup failures are logged and leave an orphan file, while the committed placement remains usable. A failed replacement save or metadata write preserves the previous file.

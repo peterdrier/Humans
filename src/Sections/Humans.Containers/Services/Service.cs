@@ -70,8 +70,8 @@ internal sealed class Service(
             UpdatedAt = now
         };
 
-        var created = await repo.AddAsync(container, ct);
-        await AddImagesAsync(id, uploads, firstSortOrder: 0, now, ct);
+        var images = await SaveImagesAsync(id, uploads, firstSortOrder: 0, now, ct);
+        var created = await repo.AddAsync(container, images, ct);
 
         await auditLog.LogAsync(
             AuditAction.ContainerCreated, AuditEntityTypes.Container, created.Id,
@@ -108,29 +108,35 @@ internal sealed class Service(
             + (container.ImageStoragePath is not null && !removeLegacy ? 1 : 0);
         ValidateImageCount(keptCount + uploads.Count);
 
+        var obsoletePaths = removed.Select(i => i.StoragePath).ToList();
         if (removeLegacy)
         {
-            await fileStorage.DeleteAsync(container.ImageStoragePath!, ct);
+            obsoletePaths.Add(container.ImageStoragePath!);
             container.ImageStoragePath = null;
             container.ImageContentType = null;
             container.ImageFileName = null;
         }
 
-        foreach (var image in removed)
-        {
-            await fileStorage.DeleteAsync(image.StoragePath, ct);
-        }
-        await repo.DeleteImagesAsync(id, removed.Select(i => i.Id).ToList(), ct);
-
         var nextSortOrder = existing.Except(removed).Select(i => i.SortOrder + 1).DefaultIfEmpty(0).Max();
-        await AddImagesAsync(id, uploads, nextSortOrder, now, ct);
+        var images = await SaveImagesAsync(id, uploads, nextSortOrder, now, ct);
 
-        var updated = await repo.UpdateAsync(container, ct);
+        var updated = await repo.UpdateAsync(container, images, removed.Select(i => i.Id).ToList(), ct);
         await auditLog.LogAsync(
             AuditAction.ContainerUpdated, AuditEntityTypes.Container, updated.Id,
             $"Updated container '{updated.Name}'",
             actorUserId,
             relatedEntityId: updated.CampId, relatedEntityType: AuditEntityTypes.Camp);
+        foreach (var path in obsoletePaths.Distinct(StringComparer.Ordinal))
+        {
+            try
+            {
+                await fileStorage.DeleteAsync(path, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to delete image file {StoragePath} after container {ContainerId} was updated", path, id);
+            }
+        }
         return ToDto(updated, await repo.GetImagesAsync([id], ct));
     }
 
@@ -354,14 +360,14 @@ internal sealed class Service(
         return key;
     }
 
-    private async Task AddImagesAsync(
+    private async Task<IReadOnlyCollection<ContainerImage>> SaveImagesAsync(
         Guid containerId,
         IReadOnlyList<ContainerImageUpload> uploads,
         int firstSortOrder,
         Instant now,
         CancellationToken ct)
     {
-        if (uploads.Count == 0) return;
+        if (uploads.Count == 0) return [];
 
         var rows = new List<ContainerImage>(uploads.Count);
         for (var i = 0; i < uploads.Count; i++)
@@ -378,7 +384,7 @@ internal sealed class Service(
                 CreatedAt = now,
             });
         }
-        await repo.AddImagesAsync(rows, ct);
+        return rows;
     }
 
     private static string DisplayFileName(string fileName) =>
