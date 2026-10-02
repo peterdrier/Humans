@@ -55,7 +55,7 @@ Pages:
 - Create / Edit campaign form (title, description, email subject, email body template, optional reply-to address)
 - Import codes (CSV upload) or generate codes via the ticket vendor API
 - Activate / Send Wave / Complete actions
-- Per-grant Resend and campaign-wide Retry All Failed for failed email deliveries
+- Per-grant Resend and campaign-wide Retry All Failed for failed email deliveries. A failed single-grant resend restores Failed status (including recipient lookup and message preparation failures) and propagates the error; it remains eligible for Retry All Failed.
 
 ## Unsubscribe
 

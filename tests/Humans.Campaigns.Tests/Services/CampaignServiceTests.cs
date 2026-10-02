@@ -581,6 +581,38 @@ public sealed class CampaignServiceTests
         updatedGrant!.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("user")]
+    [Xunit.InlineData("address")]
+    [Xunit.InlineData("enqueue")]
+    public async Task ResendToGrantAsync_FailureLeavesGrantRetryableAndPropagates(string failure)
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(["RESEND-FAILED"]);
+        var user = SeedUser();
+        var team = SeedTeam("Resend");
+        SeedTeamMember(team.Id, user.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var grant = await CampaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        grant.LatestEmailStatus = EmailOutboxStatus.Failed;
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        _emailService.ClearReceivedCalls();
+        if (string.Equals(failure, "user", StringComparison.Ordinal))
+            _people.Remove(user.Id);
+        else if (string.Equals(failure, "address", StringComparison.Ordinal))
+            _people[user.Id] = user with { IdentityEmailColumn = null };
+        else
+            _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException(new InvalidOperationException("enqueue unavailable")));
+
+        var act = () => _service.ResendToGrantAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+
+        ClearAllTrackers();
+        var persisted = await CampaignsDb.CampaignGrants.FindAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
+        persisted!.LatestEmailStatus.Should().Be(EmailOutboxStatus.Failed);
+    }
+
     [HumansFact]
     public async Task RetryAllFailedAsync_EnqueuesEmailsForFailedGrantsOnly()
     {

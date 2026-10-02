@@ -524,20 +524,33 @@ internal sealed class CampaignService(
         var now = clock.GetCurrentInstant();
         await repository.UpdateGrantStatusAsync(grantId, EmailOutboxStatus.Queued, now, ct);
 
-        var user = await userService.GetUserInfoAsync(grant.UserId, ct)
-            ?? throw new InvalidOperationException($"User {grant.UserId} for grant {grantId} not found.");
-        var emails = await userEmailService.GetNotificationTargetEmailsAsync([grant.UserId], ct);
-        if (!emails.TryGetValue(grant.UserId, out var recipientEmail))
-            throw new InvalidOperationException(
-                $"No notification email resolved for user {grant.UserId} when resending grant {grantId}.");
+        try
+        {
+            var user = await userService.GetUserInfoAsync(grant.UserId, ct)
+                ?? throw new InvalidOperationException($"User {grant.UserId} for grant {grantId} not found.");
+            var emails = await userEmailService.GetNotificationTargetEmailsAsync([grant.UserId], ct);
+            if (!emails.TryGetValue(grant.UserId, out var recipientEmail))
+                throw new InvalidOperationException(
+                    $"No notification email resolved for user {grant.UserId} when resending grant {grantId}.");
 
-        await emailService.SendAsync(emailMessages.CampaignCode(
-            BuildCampaignCodeRequest(
-                grant.CampaignEmailSubject,
-                grant.CampaignEmailBodyTemplate,
-                grant.CampaignReplyToAddress,
-                user, recipientEmail, grant.CodeString, grant.GrantId, grant.CampaignId)),
-            ct);
+            await emailService.SendAsync(emailMessages.CampaignCode(
+                BuildCampaignCodeRequest(
+                    grant.CampaignEmailSubject,
+                    grant.CampaignEmailBodyTemplate,
+                    grant.CampaignReplyToAddress,
+                    user, recipientEmail, grant.CodeString, grant.GrantId, grant.CampaignId)),
+                ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to resend campaign code email for grant {GrantId}", grantId);
+            await repository.UpdateGrantStatusAsync(grantId, EmailOutboxStatus.Failed, now, ct);
+            throw;
+        }
 
         logger.LogInformation("Resent campaign email for grant {GrantId}", grantId);
     }
