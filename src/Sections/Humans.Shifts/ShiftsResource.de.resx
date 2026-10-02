@@ -1215,4 +1215,10 @@
   <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Alle Schichten in diesem Zeitraum überschneiden sich mit bestehenden Anmeldungen.</value></data>
   <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Alle Schichten in diesem Zeitraum sind voll belegt.</value></data>
   <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Eine oder mehrere Schichten in diesem Zeitraum sind Koordinatoren und Administratoren vorbehalten.</value></data>
+  <data name="Shifts_Signup_RangeDuplicate" xml:space="preserve"><value>Du bist bereits für eine oder mehrere Schichten in diesem Zeitraum angemeldet.</value></data>
+  <data name="Shifts_Signup_RangeDuplicateWarning" xml:space="preserve"><value>Für folgende Tage bist du bereits angemeldet: {0}.</value></data>
+  <data name="Shifts_Signup_RangeConflictDays" xml:space="preserve"><value>Zeitkonflikt an folgenden Tagen: {0}.</value></data>
+  <data name="Shifts_Signup_RangeCapacityDays" xml:space="preserve"><value>An folgenden Tagen sind alle Plätze belegt: {0}.</value></data>
+  <data name="Shifts_Signup_RangeEarlyEntryCapacityDays" xml:space="preserve"><value>Die Kapazität für den Früheinlass ist an folgenden Tagen erreicht: {0}.</value></data>
+  <data name="Shifts_Signup_RangeNothingToAdd" xml:space="preserve"><value>Nichts hinzuzufügen.</value></data>
 </root>

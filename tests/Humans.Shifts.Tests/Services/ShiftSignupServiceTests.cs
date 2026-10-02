@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using Humans.Shifts.Domain;
 using Humans.Auth.Contracts;
 using Humans.Teams.Domain;
@@ -71,6 +73,21 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         _viewInvalidator = Substitute.For<IShiftViewInvalidator>();
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var resources = new ResourceManager(typeof(ShiftsResource));
+        var english = CultureInfo.GetCultureInfo("en");
+        foreach (var key in new[] {
+            "Shifts_Signup_RangeDuplicate",
+            "Shifts_Signup_RangeDuplicateWarning",
+            "Shifts_Signup_RangeConflictDays",
+            "Shifts_Signup_RangeCapacityDays",
+            "Shifts_Signup_RangeEarlyEntryCapacityDays",
+            "Shifts_Signup_RangeNothingToAdd",
+        })
+        {
+            _localizer[key].Returns(new LocalizedString(key, resources.GetString(key, english)!));
+            _localizer[key, Arg.Any<object[]>()].Returns(call => new LocalizedString(key,
+                string.Format(english, resources.GetString(key, english)!, call.Arg<object[]>())));
+        }
         _service = new ShiftSignupService(
             _repo,
             Substitute.For<IVolunteerTrackingRepository>(),
@@ -86,6 +103,43 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             NullLogger<ShiftSignupService>.Instance,
             _users,
             _localizer);
+    }
+
+    [HumansTheory]
+    [InlineData("blocked")]
+    [InlineData("partial")]
+    [InlineData("empty")]
+    public async Task SignUpRange_LocalizesDuplicateAndEmptySummaries(string scenario)
+    {
+        var resources = new ResourceManager(typeof(ShiftsResource));
+        var spanish = CultureInfo.GetCultureInfo("es");
+        foreach (var key in new[] { "Shifts_Signup_RangeDuplicate", "Shifts_Signup_RangeNothingToAdd" })
+            _localizer[key].Returns(new LocalizedString(key, resources.GetString(key, spanish)!));
+        const string warningKey = "Shifts_Signup_RangeDuplicateWarning";
+        _localizer[warningKey, Arg.Any<object[]>()].Returns(call => new LocalizedString(warningKey,
+            string.Format(spanish, resources.GetString(warningKey, spanish)!, call.Arg<object[]>())));
+        var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Build;
+        var first = SeedAllDayShift(rota, -3);
+        if (string.Equals(scenario, "partial", StringComparison.Ordinal))
+            SeedAllDayShift(rota, -2);
+        var userId = Guid.NewGuid();
+        SeedSignup(userId, first.Id, SignupStatus.Confirmed);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -2,
+            flags: string.Equals(scenario, "blocked", StringComparison.Ordinal)
+                ? ShiftSignupRequestFlags.None : ShiftSignupRequestFlags.SkipConflicts);
+
+        if (string.Equals(scenario, "blocked", StringComparison.Ordinal))
+            result.Error.Should().Be(resources.GetString("Shifts_Signup_RangeDuplicate", spanish));
+        else if (string.Equals(scenario, "empty", StringComparison.Ordinal))
+            result.Error.Should().Contain(resources.GetString("Shifts_Signup_RangeNothingToAdd", spanish)!);
+        else
+        {
+            result.Success.Should().BeTrue();
+            result.Warning.Should().StartWith("Ya te has apuntado para estos días:");
+        }
     }
 
     // ============================================================

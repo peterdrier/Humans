@@ -592,7 +592,7 @@ internal sealed class ShiftSignupService(
         shiftsInRange = conflictSelection.Shifts;
         if (shiftsInRange.Count == 0)
             return conflictSelection.Warnings.Count > 0
-                ? SignupResult.Fail(string.Join(" ", conflictSelection.Warnings) + " Nothing to add.")
+                ? SignupResult.Fail(string.Join(" ", conflictSelection.Warnings) + " " + localizer["Shifts_Signup_RangeNothingToAdd"].Value)
                 : SignupResult.Fail(localizer["Shifts_Signup_RangeEmpty"]);
 
         var capacitySelection = await SelectCapacityAvailableRangeShiftsAsync(shiftsInRange);
@@ -605,7 +605,7 @@ internal sealed class ShiftSignupService(
         if (capacitySelection.FullDayOffsets.Count > 0)
         {
             var dayList = FormatRangeDayList(calendar, capacitySelection.FullDayOffsets);
-            warning = AppendRangeWarning(warning, $"Day(s) {dayList} are at capacity.");
+            warning = AppendRangeWarning(warning, localizer["Shifts_Signup_RangeCapacityDays", dayList].Value);
         }
 
         var availableShifts = capacitySelection.AvailableShifts;
@@ -637,7 +637,7 @@ internal sealed class ShiftSignupService(
         return SignupResult.Ok(createdSignups.LastSignup.Id, warning);
     }
 
-    private static RangeSignupCandidateSelection PruneDuplicateRangeShifts(
+    private RangeSignupCandidateSelection PruneDuplicateRangeShifts(
         List<Shift> shiftsInRange,
         IReadOnlyCollection<ShiftSignup> existingSignups,
         EventSettingsInfo eventSettings,
@@ -656,14 +656,14 @@ internal sealed class ShiftSignupService(
             return new RangeSignupCandidateSelection(
                 shiftsInRange,
                 [],
-                SignupResult.Fail("Already signed up for one or more shifts in this range."));
+                SignupResult.Fail(localizer["Shifts_Signup_RangeDuplicate"]));
 
         var alreadySignedUpDays = shiftsInRange
             .Where(s => activeShiftIds.Contains(s.Id))
             .Select(s => s.DayOffset)
             .ToList();
         var dayList = FormatRangeDayList(eventSettings, alreadySignedUpDays);
-        var warnings = new List<string> { $"Already signed up for day(s): {dayList}." };
+        var warnings = new List<string> { localizer["Shifts_Signup_RangeDuplicateWarning", dayList].Value };
         var remainingShifts = shiftsInRange
             .Where(s => !activeShiftIds.Contains(s.Id))
             .ToList();
@@ -687,9 +687,9 @@ internal sealed class ShiftSignupService(
             return new RangeSignupCandidateSelection(
                 shiftsInRange,
                 existingWarnings.ToList(),
-                SignupResult.Fail($"Time conflict on day(s): {dayList}."));
+                SignupResult.Fail(localizer["Shifts_Signup_RangeConflictDays", dayList].Value));
 
-        var warnings = existingWarnings.Append($"Time conflict on day(s): {dayList}.").ToList();
+        var warnings = existingWarnings.Append(localizer["Shifts_Signup_RangeConflictDays", dayList].Value).ToList();
         var remainingShifts = shiftsInRange
             .Where(s => !conflictingDays.Contains(s.DayOffset))
             .ToList();
@@ -764,7 +764,7 @@ internal sealed class ShiftSignupService(
             return warning;
 
         var eeDayList = FormatRangeDayList(eventSettings, fullEeDays);
-        return AppendRangeWarning(warning, $"Early entry capacity reached for day(s): {eeDayList}.");
+        return AppendRangeWarning(warning, localizer["Shifts_Signup_RangeEarlyEntryCapacityDays", eeDayList].Value);
     }
 
     private static string AppendRangeWarning(string? warning, string nextWarning)

@@ -1215,4 +1215,10 @@
   <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Tutti i turni dell’intervallo si sovrappongono a iscrizioni esistenti.</value></data>
   <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Tutti i turni di questo intervallo sono al completo.</value></data>
   <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Uno o più turni di questo intervallo sono riservati a coordinatori e amministratori.</value></data>
+  <data name="Shifts_Signup_RangeDuplicate" xml:space="preserve"><value>Hai già dato la disponibilità per uno o più turni in questo intervallo.</value></data>
+  <data name="Shifts_Signup_RangeDuplicateWarning" xml:space="preserve"><value>Hai già dato la disponibilità per questi giorni: {0}.</value></data>
+  <data name="Shifts_Signup_RangeConflictDays" xml:space="preserve"><value>Conflitto di orario nei giorni: {0}.</value></data>
+  <data name="Shifts_Signup_RangeCapacityDays" xml:space="preserve"><value>I turni sono al completo nei giorni: {0}.</value></data>
+  <data name="Shifts_Signup_RangeEarlyEntryCapacityDays" xml:space="preserve"><value>È stata raggiunta la capienza per l’ingresso anticipato nei giorni: {0}.</value></data>
+  <data name="Shifts_Signup_RangeNothingToAdd" xml:space="preserve"><value>Niente da aggiungere.</value></data>
 </root>

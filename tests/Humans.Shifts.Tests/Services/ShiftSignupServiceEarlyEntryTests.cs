@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using Humans.Shifts.Domain;
 using Humans.Auth.Contracts;
 using Humans.Teams.Domain;
@@ -55,6 +57,12 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
         var users = Substitute.For<IUserServiceRead>();
         users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfoStubHelpers.MakeUserInfo(call.Arg<Guid>()) with { State = UserState.Active });
+        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+        const string warningKey = "Shifts_Signup_RangeEarlyEntryCapacityDays";
+        localizer[warningKey, Arg.Any<object[]>()].Returns(call => new LocalizedString(warningKey,
+            string.Format(CultureInfo.InvariantCulture,
+                new ResourceManager(typeof(ShiftsResource)).GetString(warningKey, CultureInfo.GetCultureInfo("en"))!,
+                call.Arg<object[]>())));
         _service = new ShiftSignupService(
             _repo,
             Substitute.For<IVolunteerTrackingRepository>(),
@@ -69,7 +77,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
             Clock,
             NullLogger<ShiftSignupService>.Instance,
             users,
-            Substitute.For<IStringLocalizer<ShiftsResource>>());
+            localizer);
     }
 
     [HumansFact]

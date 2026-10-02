@@ -429,4 +429,10 @@
   <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>All shifts in range have time conflicts with existing signups.</value></data>
   <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>All shifts in this range are at capacity.</value></data>
   <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>One or more shifts in this range are restricted to coordinators and admins.</value></data>
+  <data name="Shifts_Signup_RangeDuplicate" xml:space="preserve"><value>Already signed up for one or more shifts in this range.</value></data>
+  <data name="Shifts_Signup_RangeDuplicateWarning" xml:space="preserve"><value>Already signed up for day(s): {0}.</value></data>
+  <data name="Shifts_Signup_RangeConflictDays" xml:space="preserve"><value>Time conflict on day(s): {0}.</value></data>
+  <data name="Shifts_Signup_RangeCapacityDays" xml:space="preserve"><value>Day(s) {0} are at capacity.</value></data>
+  <data name="Shifts_Signup_RangeEarlyEntryCapacityDays" xml:space="preserve"><value>Early entry capacity reached for day(s): {0}.</value></data>
+  <data name="Shifts_Signup_RangeNothingToAdd" xml:space="preserve"><value>Nothing to add.</value></data>
 </root>

@@ -1215,4 +1215,10 @@
   <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Tous les créneaux de cette période chevauchent des inscriptions existantes.</value></data>
   <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Tous les créneaux de cette période sont complets.</value></data>
   <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Un ou plusieurs créneaux de cette période sont réservés aux coordinateurs et aux administrateurs.</value></data>
+  <data name="Shifts_Signup_RangeDuplicate" xml:space="preserve"><value>Vous avez déjà une inscription pour un ou plusieurs créneaux de cette période.</value></data>
+  <data name="Shifts_Signup_RangeDuplicateWarning" xml:space="preserve"><value>Une inscription existe déjà pour les jours suivants : {0}.</value></data>
+  <data name="Shifts_Signup_RangeConflictDays" xml:space="preserve"><value>Conflit d’horaire pour les jours suivants : {0}.</value></data>
+  <data name="Shifts_Signup_RangeCapacityDays" xml:space="preserve"><value>Les jours suivants sont complets : {0}.</value></data>
+  <data name="Shifts_Signup_RangeEarlyEntryCapacityDays" xml:space="preserve"><value>La capacité d’accès anticipé est atteinte pour les jours suivants : {0}.</value></data>
+  <data name="Shifts_Signup_RangeNothingToAdd" xml:space="preserve"><value>Rien à ajouter.</value></data>
 </root>

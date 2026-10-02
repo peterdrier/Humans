@@ -1215,4 +1215,10 @@
   <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Tots els torns de l’interval se superposen amb inscripcions existents.</value></data>
   <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Tots els torns d’aquest interval estan complets.</value></data>
   <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Un o més torns d’aquest interval estan reservats a coordinadors i administradors.</value></data>
+  <data name="Shifts_Signup_RangeDuplicate" xml:space="preserve"><value>Ja t’has apuntat a un o més torns d’aquest interval.</value></data>
+  <data name="Shifts_Signup_RangeDuplicateWarning" xml:space="preserve"><value>Ja t’has apuntat per a aquests dies: {0}.</value></data>
+  <data name="Shifts_Signup_RangeConflictDays" xml:space="preserve"><value>Hi ha un conflicte d’horari aquests dies: {0}.</value></data>
+  <data name="Shifts_Signup_RangeCapacityDays" xml:space="preserve"><value>Aquests dies estan complets: {0}.</value></data>
+  <data name="Shifts_Signup_RangeEarlyEntryCapacityDays" xml:space="preserve"><value>S’ha assolit el límit d’accés anticipat per a aquests dies: {0}.</value></data>
+  <data name="Shifts_Signup_RangeNothingToAdd" xml:space="preserve"><value>No hi ha res a afegir.</value></data>
 </root>
