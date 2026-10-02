@@ -129,6 +129,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Create and update result wrappers preserve caller cancellation; they do not turn a canceled operation into an ordinary validation or persistence failure.
 - Title is required (non-null, non-empty).
 - Create/edit form required, length and URL validation errors use shared resources in all six cultures; input limits and URL validation are unchanged.
+- Occurrence override text stays optional. The form enforces the stored title/description/location/URL limits (200/4000/500/2000), validates URLs, and redisplays localized errors before writing an exception.
 - Calendar form parse and fallback validation messages use `CalendarResource` in every supported culture. Timed service validation results also return resource keys for malformed recurrence, unknown timezone, and invalid event fields, while detailed diagnostics stay in server logs. Recurrence errors remain attached to their specific form field.
 - Timed events require `StartUtc <= EndUtc` and have no date fields. All-day writes require `StartDate < EndDateExclusive` and have no start/end instants.
 - Zero-duration timed occurrences are included when their start is in `[from, to)`, including the window's start. Positive-duration occurrences must overlap the window; an occurrence ending exactly at `from` is excluded.

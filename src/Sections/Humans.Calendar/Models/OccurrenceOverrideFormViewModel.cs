@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using NodaTime;
 using NodaTime.Text;
 
@@ -16,9 +17,13 @@ internal sealed class OccurrenceOverrideFormViewModel
 
     public DateTime? OverrideStartLocal { get; set; }
     public DateTime? OverrideEndLocal { get; set; }
+    [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string? OverrideTitle { get; set; }
+    [StringLength(4000, ErrorMessage = "Validation_MaxLength")]
     public string? OverrideDescription { get; set; }
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? OverrideLocation { get; set; }
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength"), Url(ErrorMessage = "Validation_InvalidValue")]
     public string? OverrideLocationUrl { get; set; }
 
     public string RecurrenceTimezone { get; set; } = "Europe/Madrid";

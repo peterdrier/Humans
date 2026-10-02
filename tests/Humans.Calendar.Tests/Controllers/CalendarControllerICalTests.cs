@@ -4,6 +4,7 @@ using Humans.Calendar.Controllers;
 using Humans.Calendar.Models;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
+using Humans.Base;
 using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Teams.Contracts;
@@ -12,6 +13,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using NodaTime.Testing;
@@ -115,6 +118,73 @@ public class CalendarControllerICalTests
         await _calendar.Received(1).OverrideOccurrenceAsync(id, original,
             Arg.Is<OverrideOccurrenceDto>(d => d.OverrideStartUtc == Instant.FromUtc(2026, 6, 3, 10, 0)),
             _viewer, Arg.Any<CancellationToken>(), null);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("en")]
+    [Xunit.InlineData("es")]
+    [Xunit.InlineData("de")]
+    [Xunit.InlineData("it")]
+    [Xunit.InlineData("fr")]
+    [Xunit.InlineData("ca")]
+    public async Task EditOccurrence_rejects_invalid_text_before_writing_in_every_culture(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+        var id = Guid.NewGuid();
+        var original = Instant.FromUtc(2026, 6, 2, 17, 0);
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Weekly", null, null, null, Guid.NewGuid(), original, original.Plus(Duration.FromHours(1)),
+            IsAllDay: false, RecurrenceRule: "FREQ=WEEKLY", RecurrenceTimezone: "Europe/Madrid", _now, _now));
+
+        async Task AssertRejected(OccurrenceOverrideFormViewModel form, string field, string key, params object[] arguments)
+        {
+            var controller = CreateController();
+            controller.HttpContext.RequestServices = services;
+            controller.Url = Substitute.For<IUrlHelper>();
+            validator.Validate(controller.ControllerContext, null, "", form);
+            controller.ModelState.ContainsKey(field).Should().BeTrue();
+            var expected = localizer[key, arguments];
+            expected.ResourceNotFound.Should().BeFalse();
+            controller.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
+            var result = await controller.EditOccurrence(id, "2026-06-02T17:00:00Z", form,
+                Xunit.TestContext.Current.CancellationToken);
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
+        }
+
+        await AssertRejected(new() { OverrideTitle = new string('x', 201) }, "OverrideTitle", "Validation_MaxLength", "", 200);
+        await AssertRejected(new() { OverrideDescription = new string('x', 4001) }, "OverrideDescription", "Validation_MaxLength", "", 4000);
+        await AssertRejected(new() { OverrideLocation = new string('x', 501) }, "OverrideLocation", "Validation_MaxLength", "", 500);
+        await AssertRejected(new() { OverrideLocationUrl = "https://example.com/" + new string('x', 2000) }, "OverrideLocationUrl", "Validation_MaxLength", "", 2000);
+        await AssertRejected(new() { OverrideLocationUrl = "invalid" }, "OverrideLocationUrl", "Validation_InvalidValue");
+        await _calendar.DidNotReceive().OverrideOccurrenceAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(),
+            Arg.Any<OverrideOccurrenceDto>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<LocalDate?>());
+
+        foreach (var form in new[]
+        {
+            new OccurrenceOverrideFormViewModel(),
+            new OccurrenceOverrideFormViewModel
+            {
+                OverrideTitle = new string('x', 200), OverrideDescription = new string('x', 4000),
+                OverrideLocation = new string('x', 500), OverrideLocationUrl = "https://example.com/" + new string('x', 2000 - "https://example.com/".Length),
+            },
+        })
+        {
+            var controller = CreateController();
+            controller.HttpContext.RequestServices = services;
+            controller.Url = Substitute.For<IUrlHelper>();
+            validator.Validate(controller.ControllerContext, null, "", form);
+            controller.ModelState.IsValid.Should().BeTrue();
+            (await controller.EditOccurrence(id, "2026-06-02T17:00:00Z", form,
+                Xunit.TestContext.Current.CancellationToken)).Should().BeOfType<RedirectToActionResult>();
+        }
+        await _calendar.Received(2).OverrideOccurrenceAsync(id, original,
+            Arg.Any<OverrideOccurrenceDto>(), _viewer, Arg.Any<CancellationToken>(), null);
     }
 
     [HumansFact]

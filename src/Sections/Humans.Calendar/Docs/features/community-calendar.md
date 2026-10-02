@@ -160,6 +160,8 @@ CalendarEventException
 └── Navigation: Event
 ```
 
+The occurrence editor keeps text overrides optional, enforces these stored length limits and URL syntax before saving, and displays validation errors in all six supported cultures.
+
 Timed identities are unique on `(EventId, OriginalOccurrenceStartUtc)`; date identities are unique on `(EventId, OriginalOccurrenceDate)`. `Validate()` requires the row to either cancel the occurrence or override at least one field. A query filter mirrors the parent event's soft-delete so exceptions of deleted events are never returned.
 
 ## Authorization
