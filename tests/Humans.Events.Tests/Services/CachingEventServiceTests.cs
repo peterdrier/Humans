@@ -47,6 +47,21 @@ public sealed class CachingEventServiceTests
                 null, null, null, null, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<ApprovedEventView>>(events));
 
+    [HumansTheory]
+    [InlineData(" \tSUNSET\n", false)]
+    [InlineData("\nbreathwork ", true)]
+    public async Task BrowseQuery_IgnoresSurroundingWhitespace(string query, bool descriptionMatch)
+    {
+        var expected = descriptionMatch
+            ? Approved("Movement", "Breathwork workshop")
+            : Approved("Sunset Yoga");
+        SeedApproved(expected, Approved("Fire Cooking", "Unrelated workshop"));
+
+        var results = await _service.GetApprovedEventsAsync(null, null, null, query, [], TestContext.Current.CancellationToken);
+
+        results.Should().ContainSingle().Which.Id.Should().Be(expected.Id);
+    }
+
     [HumansFact]
     public async Task SearchAsync_TitleExactMatch_ScoresTheExactTier()
     {

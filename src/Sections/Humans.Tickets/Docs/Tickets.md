@@ -127,7 +127,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 | `/Tickets` | GET | `TicketAdminBoardOrAdmin` | Summary dashboard |
 | `/Tickets/Orders` | GET | `TicketAdminBoardOrAdmin` | Paginated order list |
 | `/Tickets/Attendees` | GET | `TicketAdminBoardOrAdmin` | Paginated attendee list |
-| `/Tickets/Codes` | GET | `TicketAdminBoardOrAdmin` | Discount code redemption tracking |
+| `/Tickets/Codes` | GET | `TicketAdminBoardOrAdmin` | Discount code redemption tracking; code and recipient-name search ignores surrounding whitespace |
 | `/Tickets/WhoHasntBought` | GET | `TicketAdminBoardOrAdmin` | Active Volunteers without a ticket |
 | `/Tickets/SalesAggregates` | GET | `TicketAdminBoardOrAdmin` | Weekly + monthly + quarterly aggregate reports, by ticket type, discount codes by campaign |
 | `/Tickets/Sync` | POST | `TicketAdminOrAdmin` | Trigger incremental sync |

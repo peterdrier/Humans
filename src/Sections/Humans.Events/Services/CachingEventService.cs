@@ -312,6 +312,7 @@ internal sealed class CachingEventService(
             ? new HashSet<string>(excludedSlugs, StringComparer.Ordinal)
             : null;
 
+        var trimmed = q?.Trim();
         var results = new List<ApprovedEventView>();
         foreach (var view in _eventCache.Values)
         {
@@ -319,7 +320,7 @@ internal sealed class CachingEventService(
             if (categoryId.HasValue && view.CategoryId != categoryId.Value) continue;
             if (venueId.HasValue && view.GuideSharedVenueId != venueId.Value) continue;
             if (campId.HasValue && view.CampId != campId.Value) continue;
-            if (!string.IsNullOrWhiteSpace(q) && !MatchesQuery(view, q)) continue;
+            if (!string.IsNullOrEmpty(trimmed) && !MatchesQuery(view, trimmed)) continue;
 
             results.Add(view);
         }
