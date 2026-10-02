@@ -1099,23 +1099,30 @@ internal sealed class IssuesService(
                      id => people.GetValueOrDefault(id)?.PreferredLanguage ?? "en",
                      StringComparer.OrdinalIgnoreCase))
         {
-            var culture = CultureInfo.GetCultureInfo(group.Key);
-            var (title, body) = content(culture);
-            // Notices are previews; the action link retains access to the full issue/thread.
-            if (title.EnumerateRunes().Count() > 200)
+            try
             {
-                body = body is null ? title : string.Concat(title, "\n\n", body);
-                title = string.Concat(title.EnumerateRunes().Take(199)) + "…";
-            }
-            if (body is not null && body.EnumerateRunes().Count() > 2000)
-                body = string.Concat(body.EnumerateRunes().Take(1999)) + "…";
+                var culture = CultureInfo.GetCultureInfo(group.Key);
+                var (title, body) = content(culture);
+                // Notices are previews; the action link retains access to the full issue/thread.
+                if (title.EnumerateRunes().Count() > 200)
+                {
+                    body = body is null ? title : string.Concat(title, "\n\n", body);
+                    title = string.Concat(title.EnumerateRunes().Take(199)) + "…";
+                }
+                if (body is not null && body.EnumerateRunes().Count() > 2000)
+                    body = string.Concat(body.EnumerateRunes().Take(1999)) + "…";
 
-            await notifications.SendAsync(
-                source, notificationClass, priority, title, group.ToList(), body,
-                actionUrl: actionUrl,
-                actionLabel: Notice(culture, "Issue_Notice_Open"),
-                sourceKey: sourceKey,
-                cancellationToken: ct);
+                await notifications.SendAsync(
+                    source, notificationClass, priority, title, group.ToList(), body,
+                    actionUrl: actionUrl,
+                    actionLabel: Notice(culture, "Issue_Notice_Open"),
+                    sourceKey: sourceKey,
+                    cancellationToken: ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Failed to dispatch {Source} issue notices for language {Language}", source, group.Key);
+            }
         }
     }
 }
