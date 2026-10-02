@@ -1609,6 +1609,23 @@ public class HoldedFinanceServiceTests
             Arg.Is<HoldedCategoryMap>(m => m.HoldedAccountNumber == 6290010), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task Provision_MapSaveFailsAfterHoldedCreatedTheAccount_StillAuditsTheAccount()
+    {
+        var (catA, _) = TwoUnmappedCategories();
+        _client.CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("acc-6290010");
+        _repo.AddCategoryMapAsync(Arg.Any<HoldedCategoryMap>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("db down"));
+
+        var act = async () => await MakeService().ProvisionAsync(
+            blockStart: 6290010, addAll: false, actorUserId: Admin, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _audit.Received(1).LogAsync(AuditAction.HoldedCategoryAccountProvisioned, Arg.Any<string>(), catA,
+            Arg.Is<string>(d => d.Contains("6290010")), Admin, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
     /// <summary>An active year with two unmapped categories, "Alpha" then "Beta", and an empty map.</summary>
     private (Guid First, Guid Second) TwoUnmappedCategories()
     {

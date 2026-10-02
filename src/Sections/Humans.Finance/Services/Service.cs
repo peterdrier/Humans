@@ -161,6 +161,11 @@ internal sealed class Service(
             {
                 var accountName = $"{row.GroupName} / {row.CategoryName}";
                 var id = await client.CreateExpenseAccountAsync(row.ProposedAccountNum!.Value, accountName, ct);
+                // Audited as soon as Holded holds the account: a failed map save below must not hide it.
+                await audit.LogAsync(AuditAction.HoldedCategoryAccountProvisioned, HoldedExpenseAccount,
+                    row.BudgetCategoryId,
+                    $"Provisioned Holded expense account {row.ProposedAccountNum.Value} '{accountName}'",
+                    actorUserId);
                 await repo.AddCategoryMapAsync(new HoldedCategoryMap
                 {
                     Id = Guid.NewGuid(),
@@ -172,10 +177,6 @@ internal sealed class Service(
                     CreatedAt = now,
                     UpdatedAt = now,
                 }, ct);
-                await audit.LogAsync(AuditAction.HoldedCategoryAccountProvisioned, HoldedExpenseAccount,
-                    row.BudgetCategoryId,
-                    $"Provisioned Holded expense account {row.ProposedAccountNum.Value} '{accountName}'",
-                    actorUserId);
                 created++;
             }
             catch (Exception ex)

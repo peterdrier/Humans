@@ -123,62 +123,62 @@ What the shapes say about the inside:
 - Only `FinanceAdmin` or `Admin` reaches any `/Finance/*` route this section serves
   (`src/Sections/Humans.Finance/Controllers/FinanceController.cs:19`).
 - A purchase invoice is attributed as a whole, by its first line's booked account, then by tag, then
-  not at all; first match wins (`src/Sections/Humans.Finance/Services/Service.cs:391`,
+  not at all; first match wins (`src/Sections/Humans.Finance/Services/Service.cs:392`,
   `src/Sections/Humans.Finance/Services/HoldedMatcher.cs:56`).
 - An invoice counts toward a category's actuals only when Holded has approved it
-  (`src/Sections/Humans.Finance/Services/Service.cs:437`).
+  (`src/Sections/Humans.Finance/Services/Service.cs:438`).
 - An invoice booked to a managed account is matched with no category
-  (`src/Sections/Humans.Finance/Services/Service.cs:419`).
+  (`src/Sections/Humans.Finance/Services/Service.cs:420`).
 - Provisioning and the managed registry are additive in Holded: they create accounts and never
   delete or edit one (`src/Sections/Humans.Finance/Services/Service.cs:163`,
-  `src/Sections/Humans.Finance/Services/Service.cs:249`).
+  `src/Sections/Humans.Finance/Services/Service.cs:250`).
 - A creditor account, and the Holded contact behind it, belongs to at most one member. Every write
-  path checks with one predicate (`src/Sections/Humans.Finance/Services/Service.cs:779`); the manual
-  bind and the seed refuse (`src/Sections/Humans.Finance/Services/Service.cs:843`,
-  `src/Sections/Humans.Finance/Services/Service.cs:927`), the post-push number write records Holded's
-  fact and logs the collision (`src/Sections/Humans.Finance/Services/Service.cs:1013`).
+  path checks with one predicate (`src/Sections/Humans.Finance/Services/Service.cs:780`); the manual
+  bind and the seed refuse (`src/Sections/Humans.Finance/Services/Service.cs:844`,
+  `src/Sections/Humans.Finance/Services/Service.cs:928`), the post-push number write records Holded's
+  fact and logs the collision (`src/Sections/Humans.Finance/Services/Service.cs:1014`).
 - A member's binding is never downgraded from a hand-made link to an automatic one
-  (`src/Sections/Humans.Finance/Services/Service.cs:998`).
+  (`src/Sections/Humans.Finance/Services/Service.cs:999`).
 - A linked Holded contact is never updated from here — only a member with no contact gets one
-  created (`src/Sections/Humans.Finance/Services/Service.cs:946`).
+  created (`src/Sections/Humans.Finance/Services/Service.cs:947`).
 - Every read that draws on Holded's contact list for creditor accounts, and the manual bind, are
-  filtered to the `CreditorAccountMin`–`CreditorAccountMax` block (40000000–41999999) (`src/Sections/Humans.Finance/Services/Service.cs:637`,
-  `src/Sections/Humans.Finance/Services/Service.cs:835`).
+  filtered to the `CreditorAccountMin`–`CreditorAccountMax` block (40000000–41999999) (`src/Sections/Humans.Finance/Services/Service.cs:638`,
+  `src/Sections/Humans.Finance/Services/Service.cs:836`).
 - Balance keeps Holded's sign everywhere except the two admin views, which flip it once for display
   (`src/Sections/Humans.Finance/Controllers/FinanceController.cs:81`,
   `src/Sections/Humans.Finance/Models/CreditorStatementVm.cs:12`).
 - A Holded outage costs account names, never a page; anything that is not a vendor failure throws
-  (`src/Sections/Humans.Finance/Services/Service.cs:740`).
+  (`src/Sections/Humans.Finance/Services/Service.cs:741`).
 - A payout transfer pays only a singly-bound account, never more than is owed, never more than the
   posted cap, and only to the IBAN Holded holds for the contact the binding names
-  (`src/Sections/Humans.Finance/Services/Service.cs:1111`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1117`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1124`,
+  (`src/Sections/Humans.Finance/Services/Service.cs:1112`,
+  `src/Sections/Humans.Finance/Services/Service.cs:1118`,
+  `src/Sections/Humans.Finance/Services/Service.cs:1125`,
   `src/Sections/Humans.Finance/Services/SepaPaymentFileBuilder.cs:158`).
 - A generated file validates against the schema before it is stored, and is stored as sent
   (`src/Sections/Humans.Finance/Services/SepaPaymentFileBuilder.cs:107`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1179`).
+  `src/Sections/Humans.Finance/Services/Service.cs:1180`).
 - A transfer books at most once: the row's `BookedAt` refuses a second booking, and every booking on
-  the server runs one at a time (`src/Sections/Humans.Finance/Services/Service.cs:1694`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1549`).
+  the server runs one at a time (`src/Sections/Humans.Finance/Services/Service.cs:1695`,
+  `src/Sections/Humans.Finance/Services/Service.cs:1550`).
 - Booking re-pairs the bank line itself and refuses a binding that no longer names the transfer's
-  account or contact (`src/Sections/Humans.Finance/Services/Service.cs:1707`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1718`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1752`).
+  account or contact (`src/Sections/Humans.Finance/Services/Service.cs:1708`,
+  `src/Sections/Humans.Finance/Services/Service.cs:1719`,
+  `src/Sections/Humans.Finance/Services/Service.cs:1753`).
 - Booking writes two kinds of entry into the books and nothing else: a payment against an approved
   purchase document, and one journal entry for the remainder against the configured treasury ledger
-  account (`src/Sections/Humans.Finance/Services/Service.cs:1848`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1866`).
+  account (`src/Sections/Humans.Finance/Services/Service.cs:1849`,
+  `src/Sections/Humans.Finance/Services/Service.cs:1867`).
 - A booking is saved before the bank line is reconciled
-  (`src/Sections/Humans.Finance/Services/Service.cs:1903`).
+  (`src/Sections/Humans.Finance/Services/Service.cs:1904`).
 - The sweep books a transfer only against a line that names exactly one transfer; a whole-file line
-  is booked only by a person (`src/Sections/Humans.Finance/Services/Service.cs:1523`).
+  is booked only by a person (`src/Sections/Humans.Finance/Services/Service.cs:1524`).
 - A raw IBAN lives in the bank file, the transfer row and the contact create that hands it to Holded;
   audit entries and cross-section rows carry it masked
-  (`src/Sections/Humans.Finance/Services/Service.cs:1138`,
-  `src/Sections/Humans.Finance/Services/Service.cs:707`).
+  (`src/Sections/Humans.Finance/Services/Service.cs:1139`,
+  `src/Sections/Humans.Finance/Services/Service.cs:708`).
 - Erasure removes the member's contact link and nothing else
-  (`src/Sections/Humans.Finance/Services/Service.cs:2357`).
+  (`src/Sections/Humans.Finance/Services/Service.cs:2358`).
 
 ## 5. Seams
 
