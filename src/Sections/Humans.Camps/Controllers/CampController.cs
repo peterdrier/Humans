@@ -1333,7 +1333,7 @@ internal sealed class CampController(
         if (!string.IsNullOrWhiteSpace(phone) && !phone.TrimStart().StartsWith("+", StringComparison.Ordinal))
         {
             ModelState.AddModelError(fieldName,
-                sharedLocalizer["Validation_PhoneE164", "Contact Phone"].Value);
+                sharedLocalizer["Validation_PhoneE164", campsLocalizer["Camp_ContactPhoneLabel"].Value].Value);
         }
     }
 

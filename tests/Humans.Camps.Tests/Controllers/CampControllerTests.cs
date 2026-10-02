@@ -56,6 +56,36 @@ public class CampControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    public async Task Register_LocalizesThePhoneFieldInValidationErrors(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var campsLocalizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
+        var sharedLocalizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(2026, [2026]));
+        var controller = BuildController(Guid.NewGuid(), campsLocalizer, sharedLocalizer);
+        var model = new CampRegisterViewModel { ContactPhone = "612 345 678" };
+
+        var result = await controller.Register(model);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        var label = campsLocalizer["Camp_ContactPhoneLabel"];
+        label.ResourceNotFound.Should().BeFalse();
+        var expected = sharedLocalizer["Validation_PhoneE164", label.Value];
+        expected.ResourceNotFound.Should().BeFalse();
+        controller.ModelState[nameof(model.ContactPhone)]!.Errors.Should().ContainSingle()
+            .Which.ErrorMessage.Should().Be(expected.Value);
+        _camps.ReceivedCalls().Should().NotContain(call => call.GetMethodInfo().Name == "CreateCampAsync");
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
     public async Task UploadImage_LocalizesValidationFailures(string culture)
     {
         using var cultureScope = new CultureScope(culture);
@@ -581,7 +611,8 @@ public class CampControllerTests
             .Returns(Task.FromResult(camps));
     }
 
-    private CampController BuildController(Guid? userId = null, IStringLocalizer<CampsResource>? campsLocalizer = null)
+    private CampController BuildController(Guid? userId = null, IStringLocalizer<CampsResource>? campsLocalizer = null,
+        IStringLocalizer<SharedResource>? sharedLocalizer = null)
     {
         var controller = new CampController(
             _camps,
@@ -594,7 +625,7 @@ public class CampControllerTests
             _clock,
             NullLogger<CampController>.Instance,
             campsLocalizer ?? _campsLocalizer,
-            _sharedLocalizer);
+            sharedLocalizer ?? _sharedLocalizer);
 
         var services = new ServiceCollection();
         services.AddLogging();
