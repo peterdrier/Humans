@@ -2329,11 +2329,14 @@ internal sealed class TeamService(
     {
         if (team.IsHidden) return;
 
+        var culture = CultureInfo.GetCultureInfo("en");
         try
         {
             var users = await UserService.GetUserInfosAsync([userId], cancellationToken);
             if (!users.TryGetValue(userId, out var user))
                 return;
+
+            culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");
 
             var email = user.Email;
             if (string.IsNullOrEmpty(email))
@@ -2360,7 +2363,7 @@ internal sealed class TeamService(
 
         try
         {
-            var noticeCopy = PrepareNoticeCopy($"You were added to {team.Name}");
+            var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString("Teams_Email_AddedToTeam_Subject", culture)!, team.Name));
             await notificationService.SendAsync(
                 NotificationSource.TeamMemberAdded,
                 NotificationClass.Informational,

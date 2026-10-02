@@ -1210,6 +1210,42 @@ public sealed class TeamServiceTests : TeamsTestHarness
     // ==========================================================================
 
     [HumansTheory]
+    [Xunit.InlineData("normal")]
+    [Xunit.InlineData("email-prep-failure")]
+    [Xunit.InlineData("profile-lookup-failure")]
+    public async Task AddedMemberNotice_ReusesEmailRecipientLanguageAndSurvivesPreparationFailure(string mode)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        requester.PreferredLanguage = "es";
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await SaveAllAsync(ct);
+        if (string.Equals(mode, "email-prep-failure", StringComparison.Ordinal))
+            _teamResourceService.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<IReadOnlyList<GoogleResourceSnapshot>>(new IOException("Email resource lookup unavailable")));
+        if (string.Equals(mode, "profile-lookup-failure", StringComparison.Ordinal))
+            _userService.GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>())
+                .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("Profile lookup unavailable")));
+
+        await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, null, ct);
+
+        var args = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSource source
+                && source == NotificationSource.TeamMemberAdded
+                && ((IReadOnlyList<Guid>)call.GetArguments()[4]!).Contains(requester.Id))
+            .Single().GetArguments();
+        if (string.Equals(mode, "profile-lookup-failure", StringComparison.Ordinal))
+            ((string)args[3]!).Should().EndWith("added to Alpha");
+        else
+            args[3].Should().Be("Se le ha añadido al equipo Alpha");
+        args[6].Should().Be($"/Teams/{team.Slug}");
+        await _userService.Received(1).GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("approve")]
     [Xunit.InlineData("reject")]
     [Xunit.InlineData("remove")]
