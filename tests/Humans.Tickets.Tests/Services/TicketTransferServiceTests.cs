@@ -333,6 +333,54 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansFact]
+    public async Task Approve_EmailsEachPartyInTheirOwnLanguage()
+    {
+        var sender = MakeUser(_senderId, "Bob");
+        sender.PreferredLanguage = "es";
+        _userService.GetUserInfoAsync(_senderId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(sender, UserFixtures.Profile(burnerName: "Bob", firstName: "Bob", lastName: "Jones")));
+        var receiver = MakeUser(_receiverId, "Alice");
+        receiver.PreferredLanguage = "de";
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(receiver, UserFixtures.Profile(burnerName: "Alice", firstName: "Alice", lastName: "Smith")));
+        var req = MakePending(Guid.NewGuid());
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+
+        await _service.ApproveAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == "bob@example.com"
+                && m.Subject == "Transferencia de entrada completada"),
+            Arg.Any<CancellationToken>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == req.ReceiverEmail
+                && m.Subject == "Ticketübertragung abgeschlossen"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Approve_ReceiverLookupFails_StillEmailsReceiverInEnglish()
+    {
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("users down"));
+        var req = MakePending(Guid.NewGuid());
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+
+        // The acting admin's request culture must not leak into the receiver's copy.
+        using (new Humans.Base.Extensions.CultureScope("fr"))
+        {
+            await _service.ApproveAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        }
+
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == req.ReceiverEmail
+                && m.Subject == "Ticket transfer complete"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ApproveAsync_EvictsOrderProjectionCache()
     {
         var req = MakePending(Guid.NewGuid());

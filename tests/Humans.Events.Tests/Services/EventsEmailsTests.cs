@@ -52,6 +52,15 @@ public sealed class EventsEmailsTests
     }
 
     [HumansFact]
+    public void EventLifecycle_RendersInTheSubmittersCulture()
+    {
+        var msg = Create().EventLifecycle(
+            new EventLifecycleNotification(EventStatus.Approved, "Bob", "My Event", Culture: "es"), "bob@x.com");
+
+        msg.Subject.Should().Be("Tu evento ha sido aprobado");
+    }
+
+    [HumansFact]
     public void EventLifecycle_EncodesTheSubmitterNameAndTitle()
     {
         var msg = Create().EventLifecycle(

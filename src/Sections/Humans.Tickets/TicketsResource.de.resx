@@ -83,11 +83,11 @@
   <data name="Tickets_TicketHoldings_OrderPlural" xml:space="preserve"><value>Bestellungen</value></data>
   <data name="Tickets_TicketHoldings_Empty" xml:space="preserve"><value>Keine Tickets.</value></data>
   <data name="Tickets_MemberTicketStatus_Transfers" xml:space="preserve"><value>Übertragungen…</value></data>
-  <data name="TicketTransfer_Email_Requested_Subject" xml:space="preserve"><value>Ticketübertragung angefragt</value></data>
-  <data name="TicketTransfer_Email_Requested_Body" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Wir haben deine Anfrage erhalten, das Ticket &lt;strong&gt;{1}&lt;/strong&gt; auf &lt;strong&gt;{2}&lt;/strong&gt; zu übertragen.&lt;/p&gt;&lt;p&gt;Unser Ticketteam bearbeitet sie und meldet sich in Kürze. Du musst nichts weiter tun.&lt;/p&gt;</value></data>
-  <data name="TicketTransfer_Email_Completed_Subject" xml:space="preserve"><value>Ticketübertragung abgeschlossen</value></data>
-  <data name="TicketTransfer_Email_Completed_Body" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Die Übertragung des Tickets &lt;strong&gt;{1}&lt;/strong&gt; auf &lt;strong&gt;{2}&lt;/strong&gt; ist abgeschlossen.&lt;/p&gt;</value></data>
-  <data name="TicketTransfer_Email_Cancelled_Subject" xml:space="preserve"><value>Ticketübertragung abgebrochen</value></data>
-  <data name="TicketTransfer_Email_Cancelled_Body" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Die angefragte Übertragung des Tickets &lt;strong&gt;{1}&lt;/strong&gt; auf &lt;strong&gt;{2}&lt;/strong&gt; wurde nicht abgeschlossen.&lt;/p&gt;{3}&lt;p&gt;Wenn du Fragen hast, antworte auf diese E-Mail, und unser Ticketteam hilft dir weiter.&lt;/p&gt;</value></data>
-  <data name="TicketTransfer_Email_Cancelled_Reason" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Grund:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
+  <data name="Tickets_TicketTransfer_Email_Requested_Subject" xml:space="preserve"><value>Ticketübertragung angefragt</value></data>
+  <data name="Tickets_TicketTransfer_Email_Requested_Body" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Wir haben deine Anfrage erhalten, das Ticket &lt;strong&gt;{1}&lt;/strong&gt; auf &lt;strong&gt;{2}&lt;/strong&gt; zu übertragen.&lt;/p&gt;&lt;p&gt;Unser Ticketteam bearbeitet sie und meldet sich in Kürze. Du musst nichts weiter tun.&lt;/p&gt;</value></data>
+  <data name="Tickets_TicketTransfer_Email_Completed_Subject" xml:space="preserve"><value>Ticketübertragung abgeschlossen</value></data>
+  <data name="Tickets_TicketTransfer_Email_Completed_Body" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Die Übertragung des Tickets &lt;strong&gt;{1}&lt;/strong&gt; auf &lt;strong&gt;{2}&lt;/strong&gt; ist abgeschlossen.&lt;/p&gt;</value></data>
+  <data name="Tickets_TicketTransfer_Email_Cancelled_Subject" xml:space="preserve"><value>Ticketübertragung abgebrochen</value></data>
+  <data name="Tickets_TicketTransfer_Email_Cancelled_Body" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Die angefragte Übertragung des Tickets &lt;strong&gt;{1}&lt;/strong&gt; auf &lt;strong&gt;{2}&lt;/strong&gt; wurde nicht abgeschlossen.&lt;/p&gt;{3}&lt;p&gt;Wenn du Fragen hast, antworte auf diese E-Mail, und unser Ticketteam hilft dir weiter.&lt;/p&gt;</value></data>
+  <data name="Tickets_TicketTransfer_Email_Cancelled_Reason" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Grund:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
 </root>

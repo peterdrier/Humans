@@ -636,12 +636,13 @@ internal sealed class TicketTransferService(
         }
     }
 
-    // Best-effort like the rest of the notification path: a failed lookup falls back to the default culture.
-    private async Task<string?> SafeResolveReceiverCultureAsync(TicketTransferRequest request, CancellationToken ct)
+    // Best-effort like the rest of the notification path: a failed lookup falls back to English,
+    // never the acting admin's request culture.
+    private async Task<string> SafeResolveReceiverCultureAsync(TicketTransferRequest request, CancellationToken ct)
     {
         try
         {
-            return (await userService.GetUserInfoAsync(request.ReceiverUserId, ct))?.PreferredLanguage;
+            return (await userService.GetUserInfoAsync(request.ReceiverUserId, ct))?.PreferredLanguage ?? "en";
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -651,7 +652,7 @@ internal sealed class TicketTransferService(
         {
             logger.LogError(ex, "Failed to resolve receiver {ReceiverUserId} culture for transfer {TransferId} notification",
                 request.ReceiverUserId, request.Id);
-            return null;
+            return "en";
         }
     }
 
@@ -678,7 +679,7 @@ internal sealed class TicketTransferService(
         var info = await userService.GetUserInfoAsync(senderUserId, ct);
         var email = await userEmailService.GetPrimaryEmailAsync(senderUserId, ct);
         var name = info?.BurnerName;
-        return (email, string.IsNullOrWhiteSpace(name) ? "there" : name, info?.PreferredLanguage);
+        return (email, string.IsNullOrWhiteSpace(name) ? "there" : name, info?.PreferredLanguage ?? "en");
     }
 
     // VendorMessage is capped at 2000 chars and the vendor client embeds the raw TicketTailor

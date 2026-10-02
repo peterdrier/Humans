@@ -35,8 +35,8 @@ internal sealed class TicketsEmails(
         {
             return new EmailMessage(
                 senderEmail, senderName,
-                localizer["TicketTransfer_Email_Requested_Subject"].Value,
-                Lf("TicketTransfer_Email_Requested_Body", Encode(senderName), Encode(ticketLabel), Encode(receiverName)),
+                localizer["Tickets_TicketTransfer_Email_Requested_Subject"].Value,
+                Lf("Tickets_TicketTransfer_Email_Requested_Body", Encode(senderName), Encode(ticketLabel), Encode(receiverName)),
                 "ticket_transfer_requested", MessageCategory.System);
         }
     }
@@ -85,18 +85,18 @@ internal sealed class TicketsEmails(
             {
                 return new EmailMessage(
                     toEmail, toName,
-                    localizer["TicketTransfer_Email_Completed_Subject"].Value,
-                    Lf("TicketTransfer_Email_Completed_Body", name, ticket, receiver),
+                    localizer["Tickets_TicketTransfer_Email_Completed_Subject"].Value,
+                    Lf("Tickets_TicketTransfer_Email_Completed_Body", name, ticket, receiver),
                     "ticket_transfer_completed", MessageCategory.System);
             }
 
             var reasonHtml = string.IsNullOrWhiteSpace(reason)
                 ? ""
-                : Lf("TicketTransfer_Email_Cancelled_Reason", Encode(reason));
+                : Lf("Tickets_TicketTransfer_Email_Cancelled_Reason", Encode(reason));
             return new EmailMessage(
                 toEmail, toName,
-                localizer["TicketTransfer_Email_Cancelled_Subject"].Value,
-                Lf("TicketTransfer_Email_Cancelled_Body", name, ticket, receiver, reasonHtml),
+                localizer["Tickets_TicketTransfer_Email_Cancelled_Subject"].Value,
+                Lf("Tickets_TicketTransfer_Email_Cancelled_Body", name, ticket, receiver, reasonHtml),
                 "ticket_transfer_cancelled", MessageCategory.System);
         }
     }
