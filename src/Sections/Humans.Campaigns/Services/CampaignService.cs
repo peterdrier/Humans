@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
@@ -39,14 +40,9 @@ internal sealed class CampaignService(
         string emailSubject, string emailBodyTemplate, string? replyToAddress,
         Guid createdByUserId, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(title))
-            return new CampaignCreateResult(false, ErrorKey: "TitleRequired");
-
-        if (string.IsNullOrWhiteSpace(emailSubject))
-            return new CampaignCreateResult(false, ErrorKey: "EmailSubjectRequired");
-
-        if (string.IsNullOrWhiteSpace(emailBodyTemplate))
-            return new CampaignCreateResult(false, ErrorKey: "EmailBodyTemplateRequired");
+        var errorKey = ValidateCampaignInput(title, description, emailSubject, emailBodyTemplate, replyToAddress);
+        if (errorKey is not null)
+            return new CampaignCreateResult(false, ErrorKey: errorKey);
 
         var campaign = new Campaign
         {
@@ -65,6 +61,24 @@ internal sealed class CampaignService(
 
         logger.LogInformation("Campaign {CampaignId} created: {Title}", campaign.Id, title);
         return new CampaignCreateResult(true, campaign);
+    }
+
+    private static string? ValidateCampaignInput(string title, string? description,
+        string emailSubject, string emailBodyTemplate, string? replyToAddress)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return "TitleRequired";
+        if (string.IsNullOrWhiteSpace(emailSubject)) return "EmailSubjectRequired";
+        if (string.IsNullOrWhiteSpace(emailBodyTemplate)) return "EmailBodyTemplateRequired";
+        if (title.Trim().Length > 200) return "TitleTooLong";
+        if (description?.Trim().Length > 2000) return "DescriptionTooLong";
+        if (emailSubject.Trim().Length > 1000) return "EmailSubjectTooLong";
+        if (!string.IsNullOrWhiteSpace(replyToAddress))
+        {
+            var address = replyToAddress.Trim();
+            if (address.Length > 320) return "ReplyToAddressTooLong";
+            if (!new EmailAddressAttribute().IsValid(address)) return "ReplyToAddressInvalid";
+        }
+        return null;
     }
 
     public async Task<IReadOnlyList<CampaignGrantSummary>> GetActiveOrCompletedGrantsForUserAsync(
@@ -127,14 +141,9 @@ internal sealed class CampaignService(
         string? replyToAddress,
         CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(title))
-            return new CampaignUpdateResult(false, "TitleRequired");
-
-        if (string.IsNullOrWhiteSpace(emailSubject))
-            return new CampaignUpdateResult(false, "EmailSubjectRequired");
-
-        if (string.IsNullOrWhiteSpace(emailBodyTemplate))
-            return new CampaignUpdateResult(false, "EmailBodyTemplateRequired");
+        var errorKey = ValidateCampaignInput(title, description, emailSubject, emailBodyTemplate, replyToAddress);
+        if (errorKey is not null)
+            return new CampaignUpdateResult(false, errorKey);
 
         var campaign = await repository.FindForMutationAsync(id, ct);
         if (campaign is null)

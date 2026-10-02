@@ -41,12 +41,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
             title, description, emailSubject, emailBodyTemplate, replyToAddress, currentUser.Id);
         if (!result.Success)
         {
-            if (string.Equals(result.ErrorKey, "TitleRequired", StringComparison.Ordinal))
-                ModelState.AddModelError(nameof(title), "Title is required.");
-            else if (string.Equals(result.ErrorKey, "EmailSubjectRequired", StringComparison.Ordinal))
-                ModelState.AddModelError(nameof(emailSubject), "Email subject is required.");
-            else if (string.Equals(result.ErrorKey, "EmailBodyTemplateRequired", StringComparison.Ordinal))
-                ModelState.AddModelError(nameof(emailBodyTemplate), "Email body template is required.");
+            AddCampaignFormError(result.ErrorKey);
 
             ViewBag.Title2 = title;
             ViewBag.Description = description;
@@ -86,12 +81,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
 
         if (!updated.Success)
         {
-            if (string.Equals(updated.ErrorKey, "TitleRequired", StringComparison.Ordinal))
-                ModelState.AddModelError(nameof(title), "Title is required.");
-            else if (string.Equals(updated.ErrorKey, "EmailSubjectRequired", StringComparison.Ordinal))
-                ModelState.AddModelError(nameof(emailSubject), "Email subject is required.");
-            else if (string.Equals(updated.ErrorKey, "EmailBodyTemplateRequired", StringComparison.Ordinal))
-                ModelState.AddModelError(nameof(emailBodyTemplate), "Email body template is required.");
+            AddCampaignFormError(updated.ErrorKey);
 
             var campaign = await campaignService.GetByIdAsync(id);
             if (campaign is null)
@@ -109,6 +99,23 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
 
         SetSuccess("Campaign updated.");
         return RedirectToAction(nameof(Detail), new { id });
+    }
+
+    private void AddCampaignFormError(string? errorKey)
+    {
+        var error = errorKey switch
+        {
+            "TitleRequired" => ("title", "Title is required."),
+            "EmailSubjectRequired" => ("emailSubject", "Email subject is required."),
+            "EmailBodyTemplateRequired" => ("emailBodyTemplate", "Email body template is required."),
+            "TitleTooLong" => ("title", "Title must be at most 200 characters."),
+            "DescriptionTooLong" => ("description", "Description must be at most 2000 characters."),
+            "EmailSubjectTooLong" => ("emailSubject", "Email subject must be at most 1000 characters."),
+            "ReplyToAddressTooLong" => ("replyToAddress", "Reply-To address must be at most 320 characters."),
+            "ReplyToAddressInvalid" => ("replyToAddress", "Enter a valid Reply-To email address."),
+            _ => (string.Empty, "Campaign could not be saved."),
+        };
+        ModelState.AddModelError(error.Item1, error.Item2);
     }
 
     [HttpGet("{id:guid}")]

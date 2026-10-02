@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Campaigns.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
@@ -154,6 +156,79 @@ public sealed class CampaignServiceTests
         var inDb = await CampaignsDb.Campaigns.FindAsync(result.Campaign.Id, Xunit.TestContext.Current.CancellationToken);
         inDb.Should().NotBeNull();
         inDb.Status.Should().Be(CampaignStatus.Draft);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("TitleTooLong", "title")]
+    [Xunit.InlineData("DescriptionTooLong", "description")]
+    [Xunit.InlineData("EmailSubjectTooLong", "emailSubject")]
+    [Xunit.InlineData("ReplyToAddressTooLong", "replyToAddress")]
+    [Xunit.InlineData("ReplyToAddressInvalid", "replyToAddress")]
+    public async Task CampaignForms_RejectInvalidTextWithoutCreatingOrChangingStoredCampaign(string errorKey, string field)
+    {
+        var viewer = SeedUser();
+        var existing = await SeedCampaignAsync();
+        var title = string.Equals(errorKey, "TitleTooLong", StringComparison.Ordinal) ? new string('x', 201) : "Changed title";
+        var description = string.Equals(errorKey, "DescriptionTooLong", StringComparison.Ordinal) ? new string('x', 2001) : "Changed description";
+        var subject = string.Equals(errorKey, "EmailSubjectTooLong", StringComparison.Ordinal) ? new string('x', 1001) : "Changed subject";
+        var replyTo = errorKey switch
+        {
+            "ReplyToAddressTooLong" => new string('x', 310) + "@example.com",
+            "ReplyToAddressInvalid" => "not-an-email",
+            _ => "reply@example.com",
+        };
+        var userRead = Substitute.For<IUserServiceRead>();
+        userRead.GetUserInfoAsync(viewer.Id, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(viewer));
+        CampaignController Controller()
+        {
+            var http = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(ClaimTypes.NameIdentifier, viewer.Id.ToString())], "test")),
+            };
+            return new(_service, userRead)
+            {
+                ControllerContext = new ControllerContext { HttpContext = http },
+                TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+                Url = Substitute.For<IUrlHelper>(),
+            };
+        }
+
+        var create = Controller();
+        (await create.Create(title, description, subject, "Changed body", replyTo)).Should().BeOfType<ViewResult>();
+        create.ModelState.ContainsKey(field).Should().BeTrue();
+        create.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+        ((string)create.ViewBag.Title2).Should().Be(title);
+        ((string)create.ViewBag.ReplyToAddress).Should().Be(replyTo);
+        (await CampaignsDb.Campaigns.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+
+        var edit = Controller();
+        (await edit.Edit(existing.Id, title, description, subject, "Changed body", replyTo)).Should().BeOfType<ViewResult>();
+        edit.ModelState.ContainsKey(field).Should().BeTrue();
+        edit.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+        var stored = await _service.GetByIdAsync(existing.Id, Xunit.TestContext.Current.CancellationToken);
+        stored!.Title.Should().Be(existing.Title);
+        stored.Description.Should().Be(existing.Description);
+        stored.EmailSubject.Should().Be(existing.EmailSubject);
+        stored.EmailBodyTemplate.Should().Be(existing.EmailBodyTemplate);
+        stored.ReplyToAddress.Should().Be(existing.ReplyToAddress);
+    }
+
+    [HumansFact]
+    public async Task CampaignForms_AllowStoredLimitsAndTrimOptionalFields()
+    {
+        var title = new string('x', 200);
+        var description = new string('x', 2000);
+        var subject = new string('x', 1000);
+        var replyTo = new string('x', 308) + "@example.com";
+        var created = await _service.CreateAsync(" " + title + " ", " " + description + " ", " " + subject + " ",
+            "Body", " " + replyTo + " ", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        created.Success.Should().BeTrue();
+        created.Campaign!.ReplyToAddress.Should().Be(replyTo);
+        var updated = await _service.UpdateAsync(created.Campaign.Id, title, description, subject, "Body", "   ",
+            Xunit.TestContext.Current.CancellationToken);
+        updated.Success.Should().BeTrue();
+        (await _service.GetByIdAsync(created.Campaign.Id, Xunit.TestContext.Current.CancellationToken))!.ReplyToAddress.Should().BeNull();
     }
 
     [HumansFact]

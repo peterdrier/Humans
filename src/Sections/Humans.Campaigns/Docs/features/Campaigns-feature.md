@@ -52,7 +52,7 @@ Route: `/Campaigns/Admin` — Admin role, except the detail page and API code ge
 Pages:
 - Campaign list with status and code/grant counts
 - Campaign detail: stats (total codes, assigned, sent, failed), grant table
-- Create / Edit campaign form (title, description, email subject, email body template, optional reply-to address)
+- Create / Edit campaign form (title, description, email subject, email body template, optional reply-to address). Server validation enforces trimmed text storage limits and Reply-To email syntax; invalid edits leave the campaign unchanged.
 - Import codes (CSV upload) or generate codes via the ticket vendor API
 - Activate / Send Wave / Complete actions
 - Per-grant Resend and campaign-wide Retry All Failed for failed email deliveries. A failed single-grant resend restores Failed status (including recipient lookup and message preparation failures) and propagates the error; it remains eligible for Retry All Failed.
