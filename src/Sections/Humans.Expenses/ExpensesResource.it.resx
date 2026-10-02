@@ -268,4 +268,5 @@
   <data name="Expenses_Detail_History" xml:space="preserve"><value>Cronologia</value></data>
   <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Non è stato ancora registrato nulla.</value></data>
   <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(categoria sconosciuta)</value></data>
+  <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>ad es. ES7921000813610123456789</value></data>
 </root>

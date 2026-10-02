@@ -268,4 +268,5 @@
   <data name="Expenses_Detail_History" xml:space="preserve"><value>Historial</value></data>
   <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Encara no hi ha res registrat.</value></data>
   <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(categoria desconeguda)</value></data>
+  <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>p. ex. ES7921000813610123456789</value></data>
 </root>

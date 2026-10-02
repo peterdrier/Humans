@@ -49,7 +49,7 @@
                                 : Model.HasIban ? Localizer["Expenses_NewIban"] : Localizer["Expenses_Iban"])
                         </label>
                         <input asp-for="Iban" class="form-control font-monospace"
-                               placeholder="e.g. ES7921000813610123456789"
+                               placeholder="@Localizer["Expenses_IbanPlaceholder"].Value"
                                maxlength="34"
                                autocomplete="off"
                                autofocus />

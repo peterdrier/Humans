@@ -281,4 +281,5 @@
   <data name="Expenses_Detail_History" xml:space="preserve"><value>History</value></data>
   <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Nothing recorded yet.</value></data>
   <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(unknown category)</value></data>
+  <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>e.g. ES7921000813610123456789</value></data>
 </root>
