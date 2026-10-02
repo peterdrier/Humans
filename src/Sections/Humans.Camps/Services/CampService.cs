@@ -1483,10 +1483,10 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default)
     {
         var member = await _repo.GetMemberForOwnMutationAsync(campMemberId, userId, cancellationToken)
-            ?? throw new InvalidOperationException("Camp member record not found.");
+            ?? throw new InvalidOperationException("Camps_Flash_RoleMemberNotFound");
 
         if (member.Status != CampMemberStatus.Pending)
-            throw new InvalidOperationException($"Cannot withdraw a camp member request with status {member.Status}.");
+            throw new InvalidOperationException("Camps_Flash_WithdrawRequiresPending");
 
         await TransitionMemberToRemovedAsync(
             member, userId,
@@ -1504,12 +1504,12 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         var member = await _repo.GetMemberForOwnMutationAsync(campMemberId, userId, cancellationToken);
         if (member is null)
         {
-            return CampMembershipMutationResult.Failure("Camp member record not found.");
+            return CampMembershipMutationResult.Failure("Camps_Flash_RoleMemberNotFound");
         }
 
         if (member.Status != CampMemberStatus.Active)
         {
-            return CampMembershipMutationResult.Failure($"Cannot leave a camp membership with status {member.Status}.");
+            return CampMembershipMutationResult.Failure("Camps_Flash_LeaveRequiresActive");
         }
 
         await TransitionMemberToRemovedAsync(

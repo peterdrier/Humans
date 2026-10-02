@@ -879,7 +879,7 @@ internal sealed class CampController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning(ex, "Withdraw camp membership request failed for member {MemberId} and user {UserId}", campMemberId, user.Id);
-            SetError(ex.Message);
+            SetError(campsLocalizer[ex.Message].Value);
         }
 
         return RedirectToAction(nameof(Details), new { slug });
@@ -903,7 +903,7 @@ internal sealed class CampController(
         }
         else
         {
-            SetError(result.ErrorMessage ?? campsLocalizer["Camps_Flash_MembershipLeaveFailed"].Value);
+            SetError(campsLocalizer[result.ErrorMessage ?? "Camps_Flash_MembershipLeaveFailed"].Value);
         }
 
         return RedirectToAction(nameof(Details), new { slug });

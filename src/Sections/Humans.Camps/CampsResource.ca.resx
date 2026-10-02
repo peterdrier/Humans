@@ -321,4 +321,6 @@
   <data name="Camps_Validation_ImageSize" xml:space="preserve"><value>La imatge ha de tenir menys de 10 MB.</value></data>
   <data name="Camps_Validation_ImageFilenameLength" xml:space="preserve"><value>El nom del fitxer d’imatge no pot tenir més de 256 caràcters.</value></data>
   <data name="Camps_Validation_ImageExtension" xml:space="preserve"><value>El nom del fitxer d’imatge ha d’acabar en .jpg, .jpeg, .png o .webp.</value></data>
+  <data name="Camps_Flash_WithdrawRequiresPending" xml:space="preserve"><value>Només es pot retirar una sol·licitud de pertinença pendent.</value></data>
+  <data name="Camps_Flash_LeaveRequiresActive" xml:space="preserve"><value>Només es pot abandonar una pertinença activa al campament.</value></data>
 </root>

@@ -1141,7 +1141,33 @@ public sealed class CampServiceTests : CampsTestHarness
         var request = await _service.RequestCampMembershipAsync(camp.Id, userId, Xunit.TestContext.Current.CancellationToken);
 
         var act = () => _service.WithdrawCampMembershipRequestAsync(request.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_RoleMemberNotFound");
+    }
+
+    [HumansFact]
+    public async Task SelfMembershipRuleFailures_ReturnResourceKeysWithoutChangingStatus()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId, Xunit.TestContext.Current.CancellationToken);
+
+        var wrongUser = await _service.LeaveCampAsync(request.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        wrongUser.Succeeded.Should().BeFalse();
+        wrongUser.ErrorMessage.Should().Be("Camps_Flash_RoleMemberNotFound");
+        var pending = await _service.LeaveCampAsync(request.CampMemberId, userId, Xunit.TestContext.Current.CancellationToken);
+        pending.Succeeded.Should().BeFalse();
+        pending.ErrorMessage.Should().Be("Camps_Flash_LeaveRequiresActive");
+        (await CampsDb.CampMembers.AsNoTracking().SingleAsync(m => m.Id == request.CampMemberId, Xunit.TestContext.Current.CancellationToken))
+            .Status.Should().Be(CampMemberStatus.Pending);
+
+        await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var withdraw = () => _service.WithdrawCampMembershipRequestAsync(request.CampMemberId, userId, Xunit.TestContext.Current.CancellationToken);
+        await withdraw.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_WithdrawRequiresPending");
+        (await CampsDb.CampMembers.AsNoTracking().SingleAsync(m => m.Id == request.CampMemberId, Xunit.TestContext.Current.CancellationToken))
+            .Status.Should().Be(CampMemberStatus.Active);
     }
 
     [HumansFact]

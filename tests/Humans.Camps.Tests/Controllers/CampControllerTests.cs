@@ -94,6 +94,45 @@ public class CampControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    public async Task SelfMembershipActions_LocalizeRuleFailures(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var localizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
+        var userId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
+        var controller = BuildController(userId, localizer);
+
+        foreach (var key in new[] { "Camps_Flash_RoleMemberNotFound", "Camps_Flash_LeaveRequiresActive" })
+        {
+            _camps.LeaveCampAsync(memberId, userId, Arg.Any<CancellationToken>())
+                .Returns(CampMembershipMutationResult.Failure(key));
+            await controller.LeaveMembership(camp.Slug, memberId);
+            var expected = localizer[key];
+            expected.ResourceNotFound.Should().BeFalse();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
+        }
+        foreach (var key in new[] { "Camps_Flash_RoleMemberNotFound", "Camps_Flash_WithdrawRequiresPending" })
+        {
+            _camps.WithdrawCampMembershipRequestAsync(memberId, userId, Arg.Any<CancellationToken>())
+                .Returns(Task.FromException(new InvalidOperationException(key)));
+            await controller.WithdrawMembershipRequest(camp.Slug, memberId);
+            var expected = localizer[key];
+            expected.ResourceNotFound.Should().BeFalse();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
     public void ContactForm_LocalizesRequiredAndLengthMessages(string culture)
     {
         using var cultureScope = new CultureScope(culture);

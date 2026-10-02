@@ -270,4 +270,6 @@
   <data name="Camps_Validation_ImageSize" xml:space="preserve"><value>Image must be under 10 MB.</value></data>
   <data name="Camps_Validation_ImageFilenameLength" xml:space="preserve"><value>Image filename must be 256 characters or fewer.</value></data>
   <data name="Camps_Validation_ImageExtension" xml:space="preserve"><value>Image filename must end in .jpg, .jpeg, .png, or .webp.</value></data>
+  <data name="Camps_Flash_WithdrawRequiresPending" xml:space="preserve"><value>Only a pending membership request can be withdrawn.</value></data>
+  <data name="Camps_Flash_LeaveRequiresActive" xml:space="preserve"><value>Only an active camp membership can be left.</value></data>
 </root>

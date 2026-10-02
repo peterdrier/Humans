@@ -109,11 +109,11 @@ internal interface ICampService : ICampServiceRead, IApplicationService
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Throws if <paramref name="userId"/> is not the row's owner.</summary>
+    /// <summary>Throws a CampsResource key if the row is missing, belongs to another user, or is not Pending.</summary>
     Task WithdrawCampMembershipRequestAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>Returns failure if <paramref name="userId"/> is not the row's owner or the row cannot be left.</summary>
+    /// <summary>Returns a CampsResource error key if the row is missing, belongs to another user, or is not Active.</summary>
     Task<CampMembershipMutationResult> LeaveCampAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default);
 
