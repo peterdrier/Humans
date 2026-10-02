@@ -1,3 +1,6 @@
+using Humans.Finance.Controllers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -76,6 +79,58 @@ public class HoldedFinanceServiceTests
     private static HoldedLedgerLineInfo Line(int entry, int line, int account, Instant date,
         decimal debit = 0m, decimal credit = 0m, string? type = null) =>
         new(entry, line, account, date, type, null, debit, credit);
+
+    [HumansTheory]
+    [InlineData("preview")]
+    [InlineData("unmatched")]
+    [InlineData("creditors")]
+    [InlineData("statement")]
+    public async Task FinancePageReads_PropagateBrowserCancellation(string page)
+    {
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<HoldedCategoryMap>());
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<HoldedCreditorContact>());
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<HoldedContactDto>());
+        _client.ListExpenseAccountsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Array.Empty<HoldedExpenseAccountDto>();
+        });
+        _repo.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Array.Empty<HoldedExpenseDoc>();
+        });
+        _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (IReadOnlyDictionary<int, decimal>)new Dictionary<int, decimal>();
+        });
+        _holded.GetLedgerLinesAsync(40000001, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Array.Empty<HoldedLedgerLineInfo>();
+        });
+        var service = MakeService();
+        var controller = new FinanceController(_users, service, service, NullLogger<FinanceController>.Instance)
+        {
+            ControllerContext = new() { HttpContext = new DefaultHttpContext() }
+        };
+        Func<Task<IActionResult>> read = page switch
+        {
+            "preview" => () => controller.HoldedAccounts(),
+            "unmatched" => controller.HoldedUnmatched,
+            "creditors" => () => controller.Creditors(null, null),
+            _ => () => controller.CreditorStatement(40000001)
+        };
+        var result = await read();
+        if (string.Equals(page, "statement", StringComparison.Ordinal)) result.Should().BeOfType<NotFoundResult>();
+        else result.Should().BeOfType<ViewResult>();
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        controller.HttpContext.RequestAborted = aborted.Token;
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
 
     // ─── GetActualsForYear ────────────────────────────────────────────────────────
 

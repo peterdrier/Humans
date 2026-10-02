@@ -205,6 +205,8 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 | `POST /Finance/Sepa/Book` | Book one transfer against a specific bank line: pay the member's open Holded purchase documents, post the remainder, reconcile the line, and stamp the booking onto the transfer row |
 | `POST /Finance/Sepa/BookFile` | Process: book every unbooked transfer of one file against the single bank line the bank debited the whole file as, then reconcile that line once |
 
+The provisioning preview, unmatched queue, creditor overview (including member-name lookup), and creditor statement forward the browser abort token through their existing read APIs. Remote provisioning and payout writes remain independent of the browser connection.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
