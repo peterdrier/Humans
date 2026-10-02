@@ -112,17 +112,19 @@ def max_migrations_per_context(migration_files: list[str]) -> int:
 
 
 def parse_name_status(base: str, head: str) -> tuple[list[str], list[str], list[str]]:
-    raw = run_git(["diff", "--name-status", "--find-renames", "--find-copies", f"{base}...{head}"])
+    raw = run_git(["diff", "--name-status", "-z", "--find-renames", "--find-copies", f"{base}...{head}"])
     added_files: list[str] = []
     changed_files: list[str] = []
     migration_files: list[str] = []
 
-    for line in raw.splitlines():
-        parts = line.split("\t")
-        if not parts:
+    records = iter(raw.split("\0"))
+    for status in records:
+        if not status:
             continue
-        status = parts[0]
-        path = normalize(parts[-1])
+        path = next(records)
+        if status.startswith(("R", "C")):
+            path = next(records)  # Report the destination, not the display-form rename.
+        path = normalize(path)
         changed_files.append(path)
         # A = added; C<score> = copy destination, which is equally a new file —
         # --find-copies can classify a new migration that resembles an existing
@@ -137,13 +139,16 @@ def parse_name_status(base: str, head: str) -> tuple[list[str], list[str], list[
 
 
 def parse_numstat(base: str, head: str) -> dict[str, dict[str, int]]:
-    raw = run_git(["diff", "--numstat", "--find-renames", "--find-copies", f"{base}...{head}"])
+    raw = run_git(["diff", "--numstat", "-z", "--find-renames", "--find-copies", f"{base}...{head}"])
     counts: dict[str, dict[str, int]] = defaultdict(lambda: {"added": 0, "deleted": 0})
-    for line in raw.splitlines():
-        parts = line.split("\t")
-        if len(parts) < 3:
+    records = iter(raw.split("\0"))
+    for record in records:
+        if not record:
             continue
-        added_raw, deleted_raw, path_raw = parts[0], parts[1], parts[-1]
+        added_raw, deleted_raw, path_raw = record.split("\t", 2)
+        if not path_raw:
+            next(records)  # Rename/copy source.
+            path_raw = next(records)
         if added_raw == "-" or deleted_raw == "-":
             continue
         path = normalize(path_raw)
@@ -298,8 +303,8 @@ def groups_by_name(score: dict) -> dict[str, int]:
 
 
 def git_files(ref: str, prefixes: tuple[str, ...]) -> list[str]:
-    raw = run_git(["ls-tree", "-r", "--name-only", ref, "--", *prefixes])
-    return [normalize(line) for line in raw.splitlines() if line.endswith(".cs")]
+    raw = run_git(["ls-tree", "-r", "--name-only", "-z", ref, "--", *prefixes])
+    return [normalize(path) for path in raw.split("\0") if path.endswith(".cs")]
 
 
 def normalize_signature(signature: str) -> str:
