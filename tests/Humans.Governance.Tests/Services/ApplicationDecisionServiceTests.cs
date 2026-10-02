@@ -512,6 +512,39 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task DecisionNotices_UseRecipientLanguageEvenWhenEmailDeliveryFails(bool approve, bool emailFailure)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId);
+        await SeedBoardVoteAsync(app.Id);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = userId, BurnerName = "Applicant", PreferredLanguage = "es" }.ToUserInfo());
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string> { [userId] = "applicant@example.com" }));
+        if (emailFailure)
+            _emailService.SendAsync(Arg.Any<EmailMessage>())
+                .Returns(Task.FromException(new IOException("Email delivery unavailable")));
+
+        var result = approve
+            ? await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, ct)
+            : await _service.RejectAsync(app.Id, Guid.NewGuid(), "Reason", null, ct);
+
+        result.Success.Should().BeTrue();
+        var args = _notificationService.ReceivedCalls().Single().GetArguments();
+        args[0].Should().Be(approve ? NotificationSource.ApplicationApproved : NotificationSource.ApplicationRejected);
+        ((IReadOnlyList<Guid>)args[4]!).Should().ContainSingle().Which.Should().Be(userId);
+        args[3].Should().Be(approve ? "Tu solicitud de Colaborador ha sido aprobada" : "Tu solicitud de Colaborador no ha sido aprobada");
+        args[5].Should().Be(approve ? "¡Enhorabuena! Tu solicitud de Colaborador ha sido aprobada." : "Tu solicitud de Colaborador no ha sido aprobada.");
+        args[6].Should().Be("/Governance/Applications");
+        args[7].Should().Be("Ver solicitud");
+        await _userService.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task ApproveAsync_EmailsApplicantViaUserServiceLookup()
     {

@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using Humans.Base.Attributes;
 using Humans.Auth.Contracts;
 using Humans.Base.Caching;
@@ -42,6 +44,8 @@ internal sealed class ApplicationDecisionService(
     IClock clock,
     ILogger<ApplicationDecisionService> logger) : IApplicationDecisionService, IUserDataContributor, IUserMerge
 {
+    private static readonly ResourceManager NoticeResources = new(typeof(GovernanceResource));
+
     internal const string Applications = "Applications";
 
     private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
@@ -107,7 +111,7 @@ internal sealed class ApplicationDecisionService(
             await syncJob.SyncMembershipForUserAsync(
                 application.UserId, SystemTeamType.Asociados, cancellationToken);
 
-        await SendDecisionEmailAsync(
+        var culture = await SendDecisionEmailAsync(
             application,
             "approval",
             (recipientEmail, user) => emailMessages.ApplicationApproved(
@@ -120,9 +124,10 @@ internal sealed class ApplicationDecisionService(
         await SendDecisionNotificationAsync(
             application,
             NotificationSource.ApplicationApproved,
-            $"Your {application.MembershipTier} application has been approved",
-            $"Congratulations! Your {application.MembershipTier} application has been approved.",
+            "Governance_Notification_ApplicationApproved",
+            "Governance_Notification_ApplicationApprovedBody",
             "ApplicationApproved",
+            culture,
             cancellationToken);
 
         return new ApplicationDecisionResult(true);
@@ -173,7 +178,7 @@ internal sealed class ApplicationDecisionService(
             "Application {ApplicationId} rejected by {UserId}",
             application.Id, reviewerUserId);
 
-        await SendDecisionEmailAsync(
+        var culture = await SendDecisionEmailAsync(
             application,
             "rejection",
             (recipientEmail, user) => emailMessages.ApplicationRejected(
@@ -187,9 +192,10 @@ internal sealed class ApplicationDecisionService(
         await SendDecisionNotificationAsync(
             application,
             NotificationSource.ApplicationRejected,
-            $"Your {application.MembershipTier} application was not approved",
-            $"Your {application.MembershipTier} application was not approved.",
+            "Governance_Notification_ApplicationRejected",
+            "Governance_Notification_ApplicationRejectedBody",
             "ApplicationRejected",
+            culture,
             cancellationToken);
 
         return new ApplicationDecisionResult(true);
@@ -728,17 +734,20 @@ internal sealed class ApplicationDecisionService(
         return (reviewerName, history);
     }
 
-    private async Task SendDecisionEmailAsync(
+    private async Task<CultureInfo> SendDecisionEmailAsync(
         MemberApplication application,
         string decisionName,
         Func<string, UserInfo, EmailMessage> buildMessage,
         CancellationToken cancellationToken)
     {
+        var culture = CultureInfo.GetCultureInfo("en");
         try
         {
             var user = await userService.GetUserInfoAsync(application.UserId, cancellationToken);
             if (user is null)
-                return;
+                return culture;
+
+            culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");
 
             var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(
                 [application.UserId], cancellationToken);
@@ -764,14 +773,16 @@ internal sealed class ApplicationDecisionService(
                 "Failed to send {DecisionName} email for {ApplicationId}",
                 decisionName, application.Id);
         }
+        return culture;
     }
 
     private async Task SendDecisionNotificationAsync(
         MemberApplication application,
         NotificationSource source,
-        string title,
-        string body,
+        string titleKey,
+        string bodyKey,
         string logName,
+        CultureInfo culture,
         CancellationToken cancellationToken)
     {
         try
@@ -780,11 +791,11 @@ internal sealed class ApplicationDecisionService(
                 source,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                title,
+                string.Format(culture, NoticeResources.GetString(titleKey, culture)!, application.MembershipTier),
                 [application.UserId],
-                body: body,
+                body: string.Format(culture, NoticeResources.GetString(bodyKey, culture)!, application.MembershipTier),
                 actionUrl: "/Governance/Applications",
-                actionLabel: "View application",
+                actionLabel: NoticeResources.GetString("Governance_Notification_ViewApplication", culture),
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)

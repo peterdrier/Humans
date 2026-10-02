@@ -293,4 +293,9 @@
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = reason line HTML</comment></data>
   <data name="Governance_Email_AssemblyVote_IndicativeNote" xml:space="preserve"><value>&lt;p&gt;&lt;em&gt;Your ballot is indicative and will not be counted in the official result.&lt;/em&gt;&lt;/p&gt;</value></data>
   <data name="Governance_Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {0}&lt;/p&gt;</value><comment>{0} = reason text (HTML-encoded by caller)</comment></data>
+  <data name="Governance_Notification_ApplicationApproved" xml:space="preserve"><value>Your {0} application has been approved</value></data>
+  <data name="Governance_Notification_ApplicationApprovedBody" xml:space="preserve"><value>Congratulations! Your {0} application has been approved.</value></data>
+  <data name="Governance_Notification_ApplicationRejected" xml:space="preserve"><value>Your {0} application was not approved</value></data>
+  <data name="Governance_Notification_ApplicationRejectedBody" xml:space="preserve"><value>Your {0} application was not approved.</value></data>
+  <data name="Governance_Notification_ViewApplication" xml:space="preserve"><value>View application</value></data>
 </root>

@@ -733,4 +733,9 @@
     <value>&lt;p&gt;&lt;strong&gt;Grund:&lt;/strong&gt; {0}&lt;/p&gt;</value>
     <comment>{0} = reason text (HTML-encoded by caller)</comment>
   </data>
+  <data name="Governance_Notification_ApplicationApproved" xml:space="preserve"><value>Dein Antrag auf {0} wurde genehmigt</value></data>
+  <data name="Governance_Notification_ApplicationApprovedBody" xml:space="preserve"><value>Herzlichen Glückwunsch! Dein Antrag auf {0} wurde genehmigt.</value></data>
+  <data name="Governance_Notification_ApplicationRejected" xml:space="preserve"><value>Dein Antrag auf {0} wurde nicht genehmigt</value></data>
+  <data name="Governance_Notification_ApplicationRejectedBody" xml:space="preserve"><value>Dein Antrag auf {0} wurde nicht genehmigt.</value></data>
+  <data name="Governance_Notification_ViewApplication" xml:space="preserve"><value>Antrag ansehen</value></data>
 </root>
