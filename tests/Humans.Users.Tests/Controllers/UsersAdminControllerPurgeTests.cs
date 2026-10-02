@@ -1,3 +1,4 @@
+using Xunit;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -34,6 +35,7 @@ namespace Humans.Users.Tests.Controllers;
 public class UsersAdminControllerPurgeTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IAccountDeletionService _deletion = Substitute.For<IAccountDeletionService>();
     private readonly IHumanLifecycleService _lifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly IOnboardingIntake _onboarding = Substitute.For<IOnboardingIntake>();
@@ -63,7 +65,7 @@ public class UsersAdminControllerPurgeTests
     {
         var c = new UsersAdminController(
             _userService,
-            Substitute.For<IUserEmailService>(),
+            _userEmails,
             Substitute.For<IEmailOutboxServiceRead>(),
             _roleAssignments,
             Substitute.For<IApplicationServiceRead>(),
@@ -99,6 +101,34 @@ public class UsersAdminControllerPurgeTests
         c.TempData = new TempDataDictionary(httpContext, Substitute.For<ITempDataProvider>());
         c.Url = Substitute.For<IUrlHelper>();
         return c;
+    }
+
+    [HumansTheory]
+    [InlineData(" \tBare Human\n")]
+    [InlineData("  member@example.org\t")]
+    public async Task AdminList_SearchIgnoresWhitespaceForAccountsWithoutProfiles(string search)
+    {
+        var userId = Guid.NewGuid();
+        var target = new User { Id = userId, BurnerName = "Bare Human", CreatedAt = Instant.FromUtc(2026, 5, 1, 0, 0) }
+            .ToUserInfo([new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "member@example.org", IsVerified = true, IsPrimary = true }]);
+        var other = new User { Id = Guid.NewGuid(), BurnerName = "Someone Else" }.ToUserInfo();
+        // The ordinary person matcher excludes accounts with no profile; the admin fallback owns these rows.
+        PersonSearchMatcher.Match(target, search, PersonSearchFields.AdminAll).Should().BeNull();
+        _userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new[] { target, other });
+        _userService.SearchUsersAsync(Arg.Any<string>(), PersonSearchFields.AdminAll, int.MaxValue, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<HumanSearchResult>());
+        _userEmails.GetNotificationEmailsByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [userId] = "member@example.org" });
+
+        var controller = BuildController();
+        var cleanResult = await controller.AdminList(search.Trim(), null, ct: Xunit.TestContext.Current.CancellationToken);
+        cleanResult.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<AdminHumanListViewModel>()
+            .Subject.Humans.Should().ContainSingle().Which.UserId.Should().Be(userId);
+        var result = await controller.AdminList(search, null, ct: Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<AdminHumanListViewModel>().Subject;
+        model.Humans.Should().ContainSingle().Which.UserId.Should().Be(userId);
+        model.TotalCount.Should().Be(1);
     }
 
     [HumansFact]

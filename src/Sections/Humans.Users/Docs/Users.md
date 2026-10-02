@@ -583,7 +583,7 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/api/profiles/search` | API people search |
 | `/api/profiles/burner-name-count` | Live burner-name collision count, excluding the caller ([spec](features/burner-name-collision-warning.md)) |
 | `/api/profiles/by-userid/{userId}` | Profile lookup by user id |
-| `/Users/Admin` | Admin list of all humans |
+| `/Users/Admin` | Admin list of all humans; name/email search ignores surrounding whitespace, including the fallback for accounts without profiles |
 | `/Users/Admin/Roles` | System-wide role-assignment roster, filterable by role (`HumanAdminBoardOrAdmin`) — `role_assignments` is owned by Auth; the roster lives beside the per-human role management surface |
 | `/Users/Admin/{id}` | Admin detail view |
 | `/Users/Admin/{id}/RevealIban` | POST (`AdminOnly`) — reveal the person's IBAN on the detail page |
