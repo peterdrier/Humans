@@ -1,3 +1,4 @@
+using System.Reflection;
 using AwesomeAssertions;
 using Humans.Finance.Controllers;
 using Microsoft.AspNetCore.Authorization;
@@ -18,5 +19,17 @@ public class FinanceArchitectureTests
             .Cast<AuthorizeAttribute>()
             .Single().Policy
             .Should().Be("FinanceAdminOrAdmin");
+    }
+
+    [HumansFact]
+    public void NoFinanceControllerActionEscapesTheClassPolicy()
+    {
+        // An action-level [Authorize] only adds to the class policy; [AllowAnonymous] is the one
+        // attribute that would drop it for a single action.
+        typeof(FinanceController)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(m => m.GetCustomAttributes(inherit: true).OfType<IAllowAnonymous>().Any())
+            .Select(m => m.Name)
+            .Should().BeEmpty();
     }
 }
