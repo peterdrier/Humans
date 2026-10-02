@@ -46,6 +46,21 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
             NullLogger<CachingTeamService>.Instance);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task GetTeamDetailAsync_NonmemberCanJoinOnlyAnActiveTeam(bool isActive)
+    {
+        var team = MakeTeam("Alpha");
+        team.IsActive = isActive;
+        SeedTeams(team);
+
+        var result = await _service.GetTeamDetailAsync(team.Slug, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().NotBeNull();
+        result.CanCurrentUserJoin.Should().Be(isActive);
+    }
+
     [HumansFact]
     public async Task GetTeamDetailAsync_AnonymousVisible_DoesNotCallBypassedRepositoryReads()
     {

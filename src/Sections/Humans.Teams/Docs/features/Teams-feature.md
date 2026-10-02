@@ -49,7 +49,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 **So that** I can immediately participate
 
 **Acceptance Criteria:**
-- One-click join for open teams
+- One-click join for active open teams; deactivated teams cannot be joined, including through a stale form.
 - Immediately added as Member role
 - Redirected to team page
 - Google resources access granted
@@ -61,7 +61,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 
 **Acceptance Criteria:**
 - Can submit request with optional message (up to 2,000 characters); invalid input redisplays the form with a localized error and creates no request.
-- Request enters Pending status
+- Request enters Pending status; inactive teams reject new requests.
 - Cannot submit if already have pending request
 - Can withdraw pending request
 - Join, leave, and request-withdrawal failures use the selected UI language, with a translated fallback for unknown errors.

@@ -181,6 +181,14 @@ public class TeamControllerPageContentTests
         model.TeamId = Guid.NewGuid();
         (await controller.Join(team.Slug, model)).Should().BeOfType<BadRequestResult>();
         await teams.Received(1).JoinTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+
+        team.IsHidden = false;
+        team.IsActive = false;
+        model.TeamId = team.Id;
+        controller.ModelState.Clear();
+        (await controller.Join(team.Slug)).Should().BeOfType<NotFoundResult>();
+        (await controller.Join(team.Slug, model)).Should().BeOfType<NotFoundResult>();
+        await teams.Received(1).JoinTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

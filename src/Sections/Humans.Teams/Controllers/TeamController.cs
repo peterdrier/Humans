@@ -382,7 +382,7 @@ internal sealed class TeamController(
         }
 
         var team = await teamService.GetTeamEntityBySlugAsync(slug);
-        if (team is null)
+        if (team is null || !team.IsActive)
         {
             return NotFound();
         }
@@ -435,7 +435,7 @@ internal sealed class TeamController(
         }
 
         var team = await teamService.GetTeamEntityBySlugAsync(slug);
-        if (team is null)
+        if (team is null || !team.IsActive)
         {
             return NotFound();
         }

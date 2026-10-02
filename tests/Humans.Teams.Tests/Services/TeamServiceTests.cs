@@ -896,6 +896,29 @@ public sealed class TeamServiceTests : TeamsTestHarness
     // RequestToJoinTeamAsync
     // ==========================================================================
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task JoinTeamAsync_DeactivatedTeamCannotBeRejoined(bool requiresApproval)
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Closed Team", requiresApproval: requiresApproval);
+        SeedTeamMember(team.Id, user.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.DeleteTeamAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var join = () => _service.JoinTeamAsync(team.Id, user.Id, "Returning", Xunit.TestContext.Current.CancellationToken);
+        await join.Should().ThrowAsync<InvalidOperationException>().WithMessage("Teams_NotFound");
+
+        var detail = await _service.GetTeamDetailAsync(team.Slug, user.Id, Xunit.TestContext.Current.CancellationToken);
+        detail.Should().NotBeNull();
+        detail.CanCurrentUserJoin.Should().BeFalse();
+        (await TeamsDb.TeamMembers.AsNoTracking().CountAsync(m => m.TeamId == team.Id && m.LeftAt == null,
+            Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await TeamsDb.TeamJoinRequests.AsNoTracking().CountAsync(r => r.TeamId == team.Id,
+            Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
     [HumansFact]
     public async Task RequestToJoinTeamAsync_TeamNotFound_Throws()
     {

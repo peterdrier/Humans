@@ -268,7 +268,7 @@ internal sealed class CachingTeamService(
             IsAuthenticated: true,
             IsCurrentUserMember: isCurrentUserMember,
             IsCurrentUserCoordinator: isCurrentUserCoordinator,
-            CanCurrentUserJoin: !isCurrentUserMember && !team.IsSystemTeam && pendingRequest is null,
+            CanCurrentUserJoin: team.IsActive && !isCurrentUserMember && !team.IsSystemTeam && pendingRequest is null,
             CanCurrentUserLeave: isCurrentUserMember && !team.IsSystemTeam,
             CanCurrentUserManage: canManage,
             CanCurrentUserEditTeam: isBoardMember || isAdmin || isTeamsAdmin,

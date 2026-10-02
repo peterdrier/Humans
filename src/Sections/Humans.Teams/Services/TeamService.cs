@@ -293,7 +293,7 @@ internal sealed class TeamService(
             IsAuthenticated: true,
             IsCurrentUserMember: isCurrentUserMember,
             IsCurrentUserCoordinator: isCurrentUserCoordinator,
-            CanCurrentUserJoin: !isCurrentUserMember && !team.IsSystemTeam && pendingRequest is null,
+            CanCurrentUserJoin: team.IsActive && !isCurrentUserMember && !team.IsSystemTeam && pendingRequest is null,
             CanCurrentUserLeave: isCurrentUserMember && !team.IsSystemTeam,
             CanCurrentUserManage: canManage,
             CanCurrentUserEditTeam: isBoardMember || isAdmin || isTeamsAdmin,
@@ -671,6 +671,9 @@ internal sealed class TeamService(
         var team = await repo.GetByIdWithRelationsAsync(teamId, cancellationToken)
             ?? throw new InvalidOperationException("Teams_NotFound");
 
+        if (!team.IsActive)
+            throw new InvalidOperationException("Teams_NotFound");
+
         if (team.IsSystemTeam)
             throw new InvalidOperationException("Team_CannotJoinSystem");
 
@@ -713,6 +716,9 @@ internal sealed class TeamService(
     {
         var team = await repo.GetByIdWithRelationsAsync(teamId, cancellationToken)
             ?? throw new InvalidOperationException("Teams_NotFound");
+
+        if (!team.IsActive)
+            throw new InvalidOperationException("Teams_NotFound");
 
         if (team.IsSystemTeam)
             throw new InvalidOperationException("Team_CannotJoinSystem");
