@@ -298,4 +298,7 @@
   <data name="Governance_Notification_ApplicationRejected" xml:space="preserve"><value>Your {0} application was not approved</value></data>
   <data name="Governance_Notification_ApplicationRejectedBody" xml:space="preserve"><value>Your {0} application was not approved.</value></data>
   <data name="Governance_Notification_ViewApplication" xml:space="preserve"><value>View application</value></data>
+  <data name="Governance_Notification_TermRenewalReminder" xml:space="preserve"><value>Your {0} term expires {1}</value></data>
+  <data name="Governance_Notification_TermRenewalReminderBody" xml:space="preserve"><value>Submit a renewal application to maintain your membership tier.</value></data>
+  <data name="Governance_Notification_Renew" xml:space="preserve"><value>Renew →</value></data>
 </root>

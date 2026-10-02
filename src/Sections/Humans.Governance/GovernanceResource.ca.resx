@@ -738,4 +738,7 @@
   <data name="Governance_Notification_ApplicationRejected" xml:space="preserve"><value>No s’ha aprovat la teva sol·licitud de {0}</value></data>
   <data name="Governance_Notification_ApplicationRejectedBody" xml:space="preserve"><value>No s’ha aprovat la teva sol·licitud de {0}.</value></data>
   <data name="Governance_Notification_ViewApplication" xml:space="preserve"><value>Mostra la sol·licitud</value></data>
+  <data name="Governance_Notification_TermRenewalReminder" xml:space="preserve"><value>El teu període com a {0} venç el {1}</value></data>
+  <data name="Governance_Notification_TermRenewalReminderBody" xml:space="preserve"><value>Presenta una sol·licitud de renovació per mantenir la teva categoria de membresia.</value></data>
+  <data name="Governance_Notification_Renew" xml:space="preserve"><value>Renova →</value></data>
 </root>
