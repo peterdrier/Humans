@@ -48,34 +48,37 @@ internal sealed class LegalDocumentSyncRunner(
         IReadOnlyList<LegalDocument> updatedDocs,
         CancellationToken cancellationToken)
     {
-        var teamIds = updatedDocs.Select(d => d.TeamId).Distinct().ToList();
-
-        // Get active team members for affected teams (union across teams, de-duped).
-        var activeUserIds = new HashSet<Guid>();
-        foreach (var teamId in teamIds)
+        var requiredDocs = updatedDocs.Where(d => d.IsRequired).ToList();
+        var userDocuments = new Dictionary<Guid, List<LegalDocument>>();
+        foreach (var teamDocuments in requiredDocs.GroupBy(d => d.TeamId))
         {
-            var team = await teamService.GetTeamAsync(teamId, cancellationToken);
+            var team = await teamService.GetTeamAsync(teamDocuments.Key, cancellationToken);
             if (team is null)
                 continue;
 
-            foreach (var userId in team.Members.Select(m => m.UserId))
+            foreach (var userId in team.Members.Select(m => m.UserId).Distinct())
             {
-                activeUserIds.Add(userId);
+                if (!userDocuments.TryGetValue(userId, out var documents))
+                {
+                    documents = [];
+                    userDocuments.Add(userId, documents);
+                }
+                documents.AddRange(teamDocuments);
             }
         }
 
-        if (activeUserIds.Count == 0)
+        if (userDocuments.Count == 0)
         {
             logger.LogInformation("No team members to notify for re-consent");
             return;
         }
 
         // Consent check runs against the LATEST version of each updated doc.
-        var updatedDocVersionIds = updatedDocs
+        var updatedDocVersionIds = requiredDocs
             .Select(d => d.Versions.OrderByDescending(v => v.EffectiveFrom).First().Id)
             .ToList();
 
-        var activeUserIdList = activeUserIds.ToList();
+        var activeUserIdList = userDocuments.Keys.ToList();
         var consentPairs = await consentRepository.GetPairsForUsersAndVersionsAsync(
             activeUserIdList, updatedDocVersionIds, cancellationToken);
 
@@ -83,10 +86,13 @@ internal sealed class LegalDocumentSyncRunner(
             .GroupBy(c => c.UserId)
             .ToDictionary(g => g.Key, g => g.Select(c => c.DocumentVersionId).ToHashSet());
 
-        var usersToNotify = activeUserIdList
-            .Where(userId => !userConsents.TryGetValue(userId, out var consented) ||
-                             !updatedDocVersionIds.All(id => consented.Contains(id)))
-            .ToList();
+        var outstandingDocuments = userDocuments.ToDictionary(
+            entry => entry.Key,
+            entry => entry.Value.Where(d =>
+                !userConsents.TryGetValue(entry.Key, out var consented) ||
+                !consented.Contains(d.CurrentVersion!.Id)).ToList());
+        var usersToNotify = outstandingDocuments.Where(entry => entry.Value.Count > 0)
+            .Select(entry => entry.Key).ToList();
 
         if (usersToNotify.Count == 0)
         {
@@ -99,7 +105,6 @@ internal sealed class LegalDocumentSyncRunner(
         // User.GetEffectiveEmail).
         var users = await userService.GetUserInfosAsync(usersToNotify, cancellationToken);
 
-        var documentNames = updatedDocs.Where(d => d.IsRequired).Select(d => d.Name).ToList();
         var notificationCount = 0;
 
         foreach (var userId in usersToNotify)
@@ -118,7 +123,7 @@ internal sealed class LegalDocumentSyncRunner(
             await emailService.SendAsync(emailMessages.ReConsentsRequired(
                 effectiveEmail,
                 user.BurnerName,
-                documentNames,
+                outstandingDocuments[userId].Select(d => d.Name).ToList(),
                 user.PreferredLanguage),
                 cancellationToken);
 
@@ -127,6 +132,6 @@ internal sealed class LegalDocumentSyncRunner(
 
         logger.LogInformation(
             "Sent consolidated re-consent notifications to {Count} users for documents: {Documents}",
-            notificationCount, string.Join(", ", documentNames));
+            notificationCount, string.Join(", ", requiredDocs.Select(d => d.Name)));
     }
 }
