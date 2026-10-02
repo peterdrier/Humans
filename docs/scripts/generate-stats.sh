@@ -210,11 +210,22 @@ fi
 fmt() { echo "$1" | sed -e ':a' -e 's/\B[0-9]\{3\}\>/,&/' -e 'ta'; }
 to_kb() { awk -v b="$1" 'BEGIN { printf "%d\n", int((b + 512) / 1024) }'; }
 
+# Match exclusions against paths inside the snapshot, never the parent temp path.
+# Keep cat and find in the same subshell so relative filenames resolve correctly.
+snapshot_file_metrics() (
+  cd "$SNAPSHOT_WORKTREE" &&
+    find "$@" -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c
+)
+
+snapshot_file_count() (
+  cd "$SNAPSHOT_WORKTREE" && find "$@" 2>/dev/null | wc -l
+)
+
 # grep's no-match status is a valid zero; an input failure is not. Filter
 # matched paths in awk so an empty legacy type inventory emits exactly one zero.
 count_source_types() {
   local matches status
-  if matches=$(grep -rE "$1" --include='*.cs' "$SNAPSHOT_WORKTREE/src/" 2>/dev/null); then
+  if matches=$(cd "$SNAPSHOT_WORKTREE" || exit 2; grep -rE "$1" --include='*.cs' src/ 2>/dev/null); then
     :
   else
     status=$?
@@ -286,10 +297,10 @@ while IFS=' ' read -r day commit; do
   # into multiple wc invocations and each emits its own "total" line; `tail
   # -1` then only sees the last batch's count. `cat` merges content into a
   # single stream so wc sees the true total.
-  cs_data=$(find "$SNAPSHOT_WORKTREE/src" -type f -name '*.cs' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
-  cshtml_data=$(find "$SNAPSHOT_WORKTREE/src" -type f -name '*.cshtml' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
-  resx_data=$(find "$SNAPSHOT_WORKTREE/src" -type f -name '*.resx' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
-  js_data=$(find "$SNAPSHOT_WORKTREE/src" -type f -name '*.js' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
+  cs_data=$(snapshot_file_metrics src -type f -name '*.cs' ! -path '*/Migrations/*' ! -path '*Tests*')
+  cshtml_data=$(snapshot_file_metrics src -type f -name '*.cshtml' ! -path '*/Migrations/*' ! -path '*Tests*')
+  resx_data=$(snapshot_file_metrics src -type f -name '*.resx' ! -path '*/Migrations/*' ! -path '*Tests*')
+  js_data=$(snapshot_file_metrics src -type f -name '*.js' ! -path '*/Migrations/*' ! -path '*Tests*')
 
   cs_lines=$(echo "$cs_data" | awk '{print $1+0}')
   cshtml_lines=$(echo "$cshtml_data" | awk '{print $1+0}')
@@ -299,7 +310,7 @@ while IFS=' ' read -r day commit; do
   app_lines=$((cs_lines + cshtml_lines + resx_lines + js_lines))
   app_bytes=$(( $(echo "$cs_data" | awk '{print $2+0}') + $(echo "$cshtml_data" | awk '{print $2+0}') + $(echo "$resx_data" | awk '{print $2+0}') + $(echo "$js_data" | awk '{print $2+0}') ))
 
-  test_data=$(find "$SNAPSHOT_WORKTREE" -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' ! -path '*/.worktrees/*' ! -path '*/.claude/worktrees/*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
+  test_data=$(snapshot_file_metrics . -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' ! -path '*/.worktrees/*' ! -path '*/.claude/worktrees/*')
   test_lines=$(echo "$test_data" | awk '{print $1+0}')
   test_bytes=$(echo "$test_data" | awk '{print $2+0}')
 
@@ -307,8 +318,8 @@ while IFS=' ' read -r day commit; do
   app_kb=$(to_kb "$app_bytes")
   test_kb=$(to_kb "$test_bytes")
 
-  app_files=$(( $(find "$SNAPSHOT_WORKTREE/src" -type f \( -name '*.cs' -o -name '*.cshtml' -o -name '*.resx' -o -name '*.js' \) ! -path '*/Migrations/*' ! -path '*Tests*' 2>/dev/null | wc -l) ))
-  test_files=$(find "$SNAPSHOT_WORKTREE" -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' ! -path '*/.worktrees/*' ! -path '*/.claude/worktrees/*' 2>/dev/null | wc -l)
+  app_files=$(snapshot_file_count src -type f \( -name '*.cs' -o -name '*.cshtml' -o -name '*.resx' -o -name '*.js' \) ! -path '*/Migrations/*' ! -path '*Tests*')
+  test_files=$(snapshot_file_count . -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' ! -path '*/.worktrees/*' ! -path '*/.claude/worktrees/*')
   files=$((app_files + test_files))
 
   # Prefer reforge-derived (semantic) counts; fall back to regex if reforge
@@ -324,9 +335,9 @@ while IFS=' ' read -r day commit; do
     REFORGE_MISSES=$((REFORGE_MISSES+1))
   fi
 
-  controllers=$(find "$SNAPSHOT_WORKTREE/src" -name '*Controller.cs' ! -path '*/Migrations/*' 2>/dev/null | wc -l)
-  views=$(find "$SNAPSHOT_WORKTREE/src" -name '*.cshtml' 2>/dev/null | wc -l)
-  entities=$(find "$SNAPSHOT_WORKTREE/src" -path '*/Entities/*.cs' 2>/dev/null | wc -l)
+  controllers=$(snapshot_file_count src -name '*Controller.cs' ! -path '*/Migrations/*')
+  views=$(snapshot_file_count src -name '*.cshtml')
+  entities=$(snapshot_file_count src -path '*/Entities/*.cs')
   # Shared resources moved from the Shell to Base; historical snapshots can
   # still carry the old path or predate the resource file entirely.
   shared_resource="$SNAPSHOT_WORKTREE/src/Humans.Base/Resources/SharedResource.resx"
@@ -356,17 +367,17 @@ while IFS=' ' read -r day commit; do
   # Excludes vendored/tooling dirs and any sibling worktree the developer may
   # have created. Defensive — `.worktrees/` is gitignored so it shouldn't show
   # up in a clean checkout, but we exclude it anyway.
-  md_data=$(find "$SNAPSHOT_WORKTREE" -type f -name '*.md' \
+  md_data=$(snapshot_file_metrics . -type f -name '*.md' \
     -not -path '*/.git/*' -not -path '*/node_modules/*' \
     -not -path '*/.worktrees/*' -not -path '*/.claude/worktrees/*' \
     -not -path '*/bin/*' -not -path '*/obj/*' \
-    -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l)
+    )
   md_lines=$(echo "$md_data" | awk '{print $1+0}')
 
   # Migration lines — currently excluded from every other metric. Tracked
   # separately so the cost of accumulated EF migrations is visible (and we
   # know when they need consolidating).
-  migration_data=$(find "$SNAPSHOT_WORKTREE/src" -type f -name '*.cs' -path '*/Migrations/*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l)
+  migration_data=$(snapshot_file_metrics src -type f -name '*.cs' -path '*/Migrations/*')
   migration_lines=$(echo "$migration_data" | awk '{print $1+0}')
 
   commits="${cum_commits[$day]:-0}"
