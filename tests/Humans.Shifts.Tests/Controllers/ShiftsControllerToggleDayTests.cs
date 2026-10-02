@@ -137,6 +137,20 @@ public class ShiftsControllerToggleDayTests
             communicationPreferences: []);
     }
 
+    [HumansFact]
+    public async Task SaveAvailability_without_an_active_event_returns_the_localized_error_without_writing()
+    {
+        var userId = Guid.NewGuid();
+        var sut = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example", "vegan"));
+        _localizer["VolTrack_NoActiveEvent"].Returns(new LocalizedString("VolTrack_NoActiveEvent", "No hay ningún evento activo."));
+
+        var result = await sut.SaveAvailability([1, 2]);
+
+        result.Should().BeOfType<BadRequestObjectResult>().Which.Value.Should().Be("No hay ningún evento activo.");
+        await _volunteerTrackingService.DidNotReceive().SetAvailabilityAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<IReadOnlyList<int>>());
+    }
+
     // Stub the builder dependencies so BuildRowAsync returns a row for shiftId.
     // Mirrors ShiftBrowsePageBuilderRowTests: an all-day row with Shift.Id == shiftId.
     private void StubBrowseRow(Guid shiftId, Guid userId, SignupStatus? rowStatus)

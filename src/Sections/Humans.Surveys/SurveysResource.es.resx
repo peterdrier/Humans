@@ -339,4 +339,7 @@
     <comment>{0} = user name, {1} = survey title, {2} = answer URL</comment>
   </data>
   <data name="Survey_Admin_Builder_InvitationRecipients" xml:space="preserve"><value>Todas las personas a las que se envíe esta encuesta (se eligen al enviarla)</value></data>
+  <data name="Surveys_Created" xml:space="preserve"><value>Encuesta creada.</value></data>
+  <data name="Surveys_Saved" xml:space="preserve"><value>Encuesta guardada.</value></data>
+  <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>Correo de vista previa de la encuesta en cola para {0}.</value></data>
 </root>

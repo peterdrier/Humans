@@ -285,7 +285,7 @@ internal sealed class SurveyAdminController(
         try
         {
             var email = await previewEmailService.SendToUserAsync(id, actorId.Value, ct);
-            SetSuccess($"Survey preview email queued for {email}.");
+            SetSuccess(localizer["Surveys_PreviewEmailQueued", email]);
         }
         catch (InvalidOperationException ex)
         {
@@ -392,7 +392,7 @@ internal sealed class SurveyAdminController(
         }
         else
         {
-            SetSuccess(model.Id is null ? "Survey created." : "Survey saved.");
+            SetSuccess(localizer[model.Id is null ? "Surveys_Created" : "Surveys_Saved"]);
         }
 
         // Send is BoardOrAdmin: an author who posts save-review anyway lands back on the

@@ -325,4 +325,7 @@
 &lt;p&gt;&lt;a href="{2}"&gt;Ouvrir le sondage&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Merci,&lt;br/&gt;Nobodies Collective&lt;/p&gt;</value></data>
   <data name="Survey_Admin_Builder_InvitationRecipients" xml:space="preserve"><value>Toutes les personnes à qui ce sondage est envoyé (choisies à l'envoi)</value></data>
+  <data name="Surveys_Created" xml:space="preserve"><value>Sondage créé.</value></data>
+  <data name="Surveys_Saved" xml:space="preserve"><value>Sondage enregistré.</value></data>
+  <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>L’e-mail d’aperçu du sondage a été mise en file d’attente pour {0}.</value></data>
 </root>

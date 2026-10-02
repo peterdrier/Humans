@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
@@ -27,6 +29,52 @@ namespace Humans.Surveys.Tests.Controllers;
 
 public sealed class SurveyAdminControllerTests
 {
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Save_reports_localized_success_to_an_ordinary_author(bool existing)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var authorId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.CreateAsync(Arg.Any<SurveyEditInput>(), authorId, Arg.Any<CancellationToken>()).Returns(surveyId);
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Mine"), authorId));
+        var localizer = SpanishLocalizer();
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId, localizer: localizer);
+
+        var result = await sut.Save(new SurveyBuilderViewModel
+        {
+            Id = existing ? surveyId : null,
+            Title = new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "Mine" },
+        }, null, ct);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(SurveyAdminController.Edit));
+        sut.TempData[TempDataKeys.SuccessMessage].Should().Be(existing ? "Encuesta guardada." : "Encuesta creada.");
+    }
+
+    [HumansFact]
+    public async Task Preview_email_reports_localized_success_to_the_ordinary_author()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var authorId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Mine"), authorId));
+        var preview = Substitute.For<ISurveyPreviewEmailService>();
+        preview.SendToUserAsync(surveyId, authorId, Arg.Any<CancellationToken>()).Returns("author@example.org");
+        var localizer = SpanishLocalizer();
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId, localizer: localizer);
+
+        var result = await sut.SendPreviewEmail(surveyId, preview, ct);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(SurveyAdminController.Edit));
+        sut.TempData[TempDataKeys.SuccessMessage].Should().Be("Correo de vista previa de la encuesta en cola para author@example.org.");
+        await preview.Received(1).SendToUserAsync(surveyId, authorId, Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public void Save_allows_five_valid_information_images_without_accepting_a_larger_request()
     {
@@ -247,12 +295,24 @@ public sealed class SurveyAdminControllerTests
             .And.Contain("The vote is still open.");
     }
 
+    private static IStringLocalizer<SurveysResource> SpanishLocalizer()
+    {
+        var localizer = Substitute.For<IStringLocalizer<SurveysResource>>();
+        var resources = new ResourceManager(typeof(SurveysResource));
+        var culture = CultureInfo.GetCultureInfo("es");
+        localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), resources.GetString(ci.Arg<string>(), culture)!));
+        localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(ci =>
+            new LocalizedString(ci.Arg<string>(), string.Format(culture, resources.GetString(ci.Arg<string>(), culture)!, ci.Arg<object[]>())));
+        return localizer;
+    }
+
     private static SurveyAdminController CreateController(
         ISurveyService surveys,
         ITeamServiceRead? teams = null,
         IAuthorizationService? authorizationService = null,
         Guid? userId = null,
-        bool isBoardOrAdmin = false)
+        bool isBoardOrAdmin = false,
+        IStringLocalizer<SurveysResource>? localizer = null)
     {
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, (userId ?? Guid.NewGuid()).ToString()) };
         if (isBoardOrAdmin) claims.Add(new Claim(ClaimTypes.Role, RoleNames.Board));
@@ -262,7 +322,7 @@ public sealed class SurveyAdminControllerTests
             teams ?? Substitute.For<ITeamServiceRead>(),
             Substitute.For<IUserServiceRead>(),
             authorizationService ?? Substitute.For<IAuthorizationService>(),
-            Substitute.For<IStringLocalizer<SurveysResource>>(),
+            localizer ?? Substitute.For<IStringLocalizer<SurveysResource>>(),
             NullLogger<SurveyAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },

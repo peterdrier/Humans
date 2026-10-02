@@ -325,4 +325,7 @@
 &lt;p&gt;&lt;a href="{2}"&gt;Umfrage öffnen&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Vielen Dank,&lt;br/&gt;Das Nobodies Collective&lt;/p&gt;</value></data>
   <data name="Survey_Admin_Builder_InvitationRecipients" xml:space="preserve"><value>Alle, an die diese Umfrage gesendet wird (beim Versand festgelegt)</value></data>
+  <data name="Surveys_Created" xml:space="preserve"><value>Umfrage erstellt.</value></data>
+  <data name="Surveys_Saved" xml:space="preserve"><value>Umfrage gespeichert.</value></data>
+  <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>Vorschau-E-Mail zur Umfrage für {0} wurde in die Warteschlange gestellt.</value></data>
 </root>

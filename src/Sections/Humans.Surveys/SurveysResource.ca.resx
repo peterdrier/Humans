@@ -325,4 +325,7 @@
 &lt;p&gt;&lt;a href="{2}"&gt;Obre l'enquesta&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Gràcies,&lt;br/&gt;El Nobodies Collective&lt;/p&gt;</value></data>
   <data name="Survey_Admin_Builder_InvitationRecipients" xml:space="preserve"><value>Totes les persones a qui s'enviï aquesta enquesta (es trien en enviar-la)</value></data>
+  <data name="Surveys_Created" xml:space="preserve"><value>Enquesta creada.</value></data>
+  <data name="Surveys_Saved" xml:space="preserve"><value>Enquesta desada.</value></data>
+  <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>El correu de previsualització de l’enquesta s’ha posat a la cua per a {0}.</value></data>
 </root>
