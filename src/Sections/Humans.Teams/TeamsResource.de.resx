@@ -200,6 +200,27 @@
   <data name="Team_RequestWithdrawn" xml:space="preserve">
     <value>Ihre Anfrage wurde zurückgezogen.</value>
   </data>
+  <data name="Teams_NotFound" xml:space="preserve">
+    <value>Team nicht gefunden.</value>
+  </data>
+  <data name="Teams_CannotJoinHidden" xml:space="preserve">
+    <value>Du kannst einem versteckten Team nicht direkt beitreten.</value>
+  </data>
+  <data name="Teams_JoinPolicyChanged" xml:space="preserve">
+    <value>Die Beitrittsbedingungen des Teams haben sich geändert. Bitte versuche es erneut.</value>
+  </data>
+  <data name="Teams_CannotLeaveSystem" xml:space="preserve">
+    <value>Du kannst ein systemverwaltetes Team nicht direkt verlassen.</value>
+  </data>
+  <data name="Teams_NotMember" xml:space="preserve">
+    <value>Du bist kein Mitglied dieses Teams.</value>
+  </data>
+  <data name="Teams_RequestUnavailable" xml:space="preserve">
+    <value>Diese Beitrittsanfrage ist nicht verfügbar oder nicht mehr offen.</value>
+  </data>
+  <data name="Teams_ActionFailed" xml:space="preserve">
+    <value>Diese Teamaktion konnte nicht abgeschlossen werden. Bitte versuche es erneut.</value>
+  </data>
   <data name="TeamAdmin_RequestApproved" xml:space="preserve">
     <value>Anfrage genehmigt. Der Benutzer ist jetzt Teil des Teams.</value>
   </data>

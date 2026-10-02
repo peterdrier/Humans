@@ -200,6 +200,27 @@
   <data name="Team_RequestWithdrawn" xml:space="preserve">
     <value>Su solicitud ha sido retirada.</value>
   </data>
+  <data name="Teams_NotFound" xml:space="preserve">
+    <value>No se encontró el equipo.</value>
+  </data>
+  <data name="Teams_CannotJoinHidden" xml:space="preserve">
+    <value>No puedes unirte directamente a un equipo oculto.</value>
+  </data>
+  <data name="Teams_JoinPolicyChanged" xml:space="preserve">
+    <value>Han cambiado los requisitos para unirse al equipo. Inténtalo de nuevo.</value>
+  </data>
+  <data name="Teams_CannotLeaveSystem" xml:space="preserve">
+    <value>No puedes abandonar directamente un equipo gestionado por el sistema.</value>
+  </data>
+  <data name="Teams_NotMember" xml:space="preserve">
+    <value>No formas parte de este equipo.</value>
+  </data>
+  <data name="Teams_RequestUnavailable" xml:space="preserve">
+    <value>Esta solicitud para unirte no está disponible o ya no está pendiente.</value>
+  </data>
+  <data name="Teams_ActionFailed" xml:space="preserve">
+    <value>No se pudo completar esta acción del equipo. Inténtalo de nuevo.</value>
+  </data>
   <data name="TeamAdmin_RequestApproved" xml:space="preserve">
     <value>Solicitud aprobada. El human ya forma parte del equipo.</value>
   </data>

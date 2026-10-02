@@ -643,7 +643,7 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default)
     {
         var team = await repo.GetByIdWithRelationsAsync(teamId, cancellationToken)
-            ?? throw new InvalidOperationException($"Team {teamId} not found");
+            ?? throw new InvalidOperationException("Teams_NotFound");
 
         // The join policy is the team's decision, not the caller's: approval-required
         // teams queue a request, open teams join immediately.
@@ -664,25 +664,25 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default)
     {
         var team = await repo.GetByIdWithRelationsAsync(teamId, cancellationToken)
-            ?? throw new InvalidOperationException($"Team {teamId} not found");
+            ?? throw new InvalidOperationException("Teams_NotFound");
 
         if (team.IsSystemTeam)
-            throw new InvalidOperationException("Cannot request to join system team");
+            throw new InvalidOperationException("Team_CannotJoinSystem");
 
         if (team.IsHidden)
-            throw new InvalidOperationException("Cannot request to join a hidden team");
+            throw new InvalidOperationException("Teams_CannotJoinHidden");
 
         if (!team.RequiresApproval)
-            throw new InvalidOperationException("This team does not require approval. Use JoinTeamDirectlyAsync instead.");
+            throw new InvalidOperationException("Teams_JoinPolicyChanged");
 
         var existingRequest = await repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
         if (existingRequest is not null)
-            throw new InvalidOperationException("User already has a pending request for this team");
+            throw new InvalidOperationException("Team_AlreadyPendingRequest");
 
         var teamInfo = await GetTeamAsync(teamId, cancellationToken);
         var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == userId);
         if (isMember)
-            throw new InvalidOperationException("User is already a member of this team");
+            throw new InvalidOperationException("Team_AlreadyMember");
 
         var request = new TeamJoinRequest
         {
@@ -707,20 +707,20 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default)
     {
         var team = await repo.GetByIdWithRelationsAsync(teamId, cancellationToken)
-            ?? throw new InvalidOperationException($"Team {teamId} not found");
+            ?? throw new InvalidOperationException("Teams_NotFound");
 
         if (team.IsSystemTeam)
-            throw new InvalidOperationException("Cannot directly join system team");
+            throw new InvalidOperationException("Team_CannotJoinSystem");
 
         if (team.IsHidden)
-            throw new InvalidOperationException("Cannot directly join a hidden team");
+            throw new InvalidOperationException("Teams_CannotJoinHidden");
 
         if (team.RequiresApproval)
-            throw new InvalidOperationException("This team requires approval. Use RequestToJoinTeamAsync instead.");
+            throw new InvalidOperationException("Teams_JoinPolicyChanged");
 
         var existingMember = await repo.IsActiveMemberAsync(teamId, userId, cancellationToken);
         if (existingMember)
-            throw new InvalidOperationException("User is already a member of this team");
+            throw new InvalidOperationException("Team_AlreadyMember");
 
         var member = new TeamMember
         {
@@ -746,7 +746,7 @@ internal sealed class TeamService(
         }
 
         if (!success)
-            throw new InvalidOperationException("User is already a member of this team");
+            throw new InvalidOperationException("Team_AlreadyMember");
 
         await auditLogService.LogAsync(
             AuditAction.TeamJoinedDirectly, nameof(Team), teamId,
@@ -939,14 +939,14 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default)
     {
         var team = await repo.GetByIdAsync(teamId, cancellationToken)
-            ?? throw new InvalidOperationException($"Team {teamId} not found");
+            ?? throw new InvalidOperationException("Teams_NotFound");
 
         if (team.IsSystemTeam)
-            throw new InvalidOperationException("Cannot leave system team manually");
+            throw new InvalidOperationException("Teams_CannotLeaveSystem");
 
         var member = await repo.FindActiveMemberForMutationAsync(teamId, userId, cancellationToken);
         if (member is null)
-            throw new InvalidOperationException("User is not a member of this team");
+            throw new InvalidOperationException("Teams_NotMember");
 
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
@@ -982,7 +982,7 @@ internal sealed class TeamService(
         var now = clock.GetCurrentInstant();
         var withdrew = await repo.WithdrawRequestAsync(requestId, userId, now, cancellationToken);
         if (!withdrew)
-            throw new InvalidOperationException("Join request not found");
+            throw new InvalidOperationException("Teams_RequestUnavailable");
 
         notificationMeterInvalidator.Invalidate();
 

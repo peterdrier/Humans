@@ -461,8 +461,8 @@ internal sealed class TeamController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to join team {TeamId} for user {UserId}", team.Id, user.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to join team {TeamId} for user {UserId}: {Reason}", team.Id, user.Id, ex.Message);
+            SetMemberActionError(ex.Message);
             return RedirectToAction(nameof(Details), new { slug });
         }
     }
@@ -491,8 +491,8 @@ internal sealed class TeamController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to leave team {TeamId} for user {UserId}", team.Id, user.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to leave team {TeamId} for user {UserId}: {Reason}", team.Id, user.Id, ex.Message);
+            SetMemberActionError(ex.Message);
             return RedirectToAction(nameof(Details), new { slug });
         }
     }
@@ -514,11 +514,17 @@ internal sealed class TeamController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to withdraw join request {RequestId} for user {UserId}", id, user.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to withdraw join request {RequestId} for user {UserId}: {Reason}", id, user.Id, ex.Message);
+            SetMemberActionError(ex.Message);
         }
 
         return RedirectToAction(nameof(MyTeams));
+    }
+
+    private void SetMemberActionError(string error)
+    {
+        var message = localizer[error];
+        SetError(message.ResourceNotFound ? localizer["Teams_ActionFailed"].Value : message.Value);
     }
 
     [HttpGet("Summary")]

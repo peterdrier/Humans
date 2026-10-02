@@ -200,6 +200,27 @@
   <data name="Team_RequestWithdrawn" xml:space="preserve">
     <value>Votre demande a été retirée.</value>
   </data>
+  <data name="Teams_NotFound" xml:space="preserve">
+    <value>Équipe introuvable.</value>
+  </data>
+  <data name="Teams_CannotJoinHidden" xml:space="preserve">
+    <value>Vous ne pouvez pas rejoindre directement une équipe masquée.</value>
+  </data>
+  <data name="Teams_JoinPolicyChanged" xml:space="preserve">
+    <value>Les conditions d’adhésion à cette équipe ont changé. Veuillez réessayer.</value>
+  </data>
+  <data name="Teams_CannotLeaveSystem" xml:space="preserve">
+    <value>Vous ne pouvez pas quitter directement une équipe gérée par le système.</value>
+  </data>
+  <data name="Teams_NotMember" xml:space="preserve">
+    <value>Vous n’êtes pas membre de cette équipe.</value>
+  </data>
+  <data name="Teams_RequestUnavailable" xml:space="preserve">
+    <value>Cette demande d’adhésion n’est pas disponible ou n’est plus en attente.</value>
+  </data>
+  <data name="Teams_ActionFailed" xml:space="preserve">
+    <value>Impossible de terminer cette action sur l’équipe. Veuillez réessayer.</value>
+  </data>
   <data name="TeamAdmin_RequestApproved" xml:space="preserve">
     <value>Demande approuvée. L'utilisateur fait désormais partie de l'équipe.</value>
   </data>

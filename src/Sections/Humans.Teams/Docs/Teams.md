@@ -190,6 +190,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - System team membership is managed exclusively by an automated sync job. Manual add/remove is blocked for system teams.
 - Role definitions can be created on any team, including system teams (e.g. governance roles on the Board team). However, `AssignToRoleAsync` blocks assigning a **non-member** to a role on a system team — only existing sync-managed members can be assigned, so role assignment cannot become a backdoor for the manual-membership block above.
 - Joining a team that requires approval creates a join request (Pending). The request must be approved by a coordinator or TeamsAdmin before membership is granted. Teams that do not require approval add the human immediately.
+- Member join, leave, and request-withdrawal errors use the selected UI language. Validation guards return resource keys; unknown errors use a translated fallback while logs retain the reason.
 - Coordinator notifications after a saved join request or direct join are best-effort, including display-name lookup. Notification preparation failures are logged and do not fail the committed operation.
 - Coordinators can approve/reject join requests for their own department and any sub-teams within that department (enforced by `IsUserCoordinatorOfTeamAsync`).
 - All member additions and removals are audit-logged via `AuditLogEntry`.

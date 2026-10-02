@@ -200,6 +200,27 @@
   <data name="Team_RequestWithdrawn" xml:space="preserve">
     <value>La teva sol·licitud s'ha retirat.</value>
   </data>
+  <data name="Teams_NotFound" xml:space="preserve">
+    <value>No s’ha trobat l’equip.</value>
+  </data>
+  <data name="Teams_CannotJoinHidden" xml:space="preserve">
+    <value>No pots unir-te directament a un equip ocult.</value>
+  </data>
+  <data name="Teams_JoinPolicyChanged" xml:space="preserve">
+    <value>Els requisits per unir-se a l’equip han canviat. Torna-ho a provar.</value>
+  </data>
+  <data name="Teams_CannotLeaveSystem" xml:space="preserve">
+    <value>No pots deixar directament un equip gestionat pel sistema.</value>
+  </data>
+  <data name="Teams_NotMember" xml:space="preserve">
+    <value>No formes part d’aquest equip.</value>
+  </data>
+  <data name="Teams_RequestUnavailable" xml:space="preserve">
+    <value>Aquesta sol·licitud per unir-se a l’equip no està disponible o ja no està pendent.</value>
+  </data>
+  <data name="Teams_ActionFailed" xml:space="preserve">
+    <value>No s’ha pogut completar aquesta acció de l’equip. Torna-ho a provar.</value>
+  </data>
   <data name="TeamAdmin_RequestApproved" xml:space="preserve">
     <value>Sol·licitud aprovada. El human ja forma part de l'equip.</value>
   </data>

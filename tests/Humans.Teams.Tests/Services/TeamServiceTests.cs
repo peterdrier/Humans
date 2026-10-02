@@ -903,7 +903,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.RequestToJoinTeamAsync(Guid.NewGuid(), user.Id, null, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not found*");
+            .WithMessage("Teams_NotFound");
     }
 
     [HumansFact]
@@ -916,7 +916,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*system team*");
+            .WithMessage("Team_CannotJoinSystem");
     }
 
     [HumansFact]
@@ -930,7 +930,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*hidden*");
+            .WithMessage("Teams_CannotJoinHidden");
     }
 
     [HumansFact]
@@ -943,7 +943,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*does not require approval*");
+            .WithMessage("Teams_JoinPolicyChanged");
     }
 
     [HumansFact]
@@ -957,7 +957,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already has a pending request*");
+            .WithMessage("Team_AlreadyPendingRequest");
     }
 
     [HumansFact]
@@ -971,7 +971,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already a member*");
+            .WithMessage("Team_AlreadyMember");
     }
 
     [HumansFact]

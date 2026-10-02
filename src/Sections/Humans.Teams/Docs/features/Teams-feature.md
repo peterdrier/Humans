@@ -64,6 +64,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Request enters Pending status
 - Cannot submit if already have pending request
 - Can withdraw pending request
+- Join, leave, and request-withdrawal failures use the selected UI language, with a translated fallback for unknown errors.
 
 ### US-6.5: Approve/Reject Join Requests
 **As a** team coordinator or board member

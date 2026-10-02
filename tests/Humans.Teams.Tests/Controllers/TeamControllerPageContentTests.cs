@@ -1,3 +1,9 @@
+using System.Globalization;
+using System.Security.Claims;
+using Humans.Base.Constants;
+using Humans.Teams.Domain;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.DependencyInjection;
 using AwesomeAssertions;
 using Humans.Base;
 using Humans.Base.Configuration;
@@ -21,6 +27,80 @@ namespace Humans.Teams.Tests.Controllers;
 
 public class TeamControllerPageContentTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("Join", false)]
+    [Xunit.InlineData("Join", true)]
+    [Xunit.InlineData("Leave", false)]
+    [Xunit.InlineData("Leave", true)]
+    [Xunit.InlineData("Withdraw", false)]
+    [Xunit.InlineData("Withdraw", true)]
+    public async Task MemberActionErrors_UseSpanishResourcesAndUnknownFailureFallback(string action, bool unknown)
+    {
+        var originalCulture = CultureInfo.CurrentUICulture;
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es");
+        try
+        {
+            using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+            var userId = Guid.NewGuid();
+            var users = Substitute.For<IUserServiceRead>();
+            users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+                .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+            var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha" };
+            var teams = Substitute.For<ITeamManagementService>();
+            teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
+            var key = unknown ? "untranslated provider failure" : action switch
+            {
+                "Join" => "Team_AlreadyPendingRequest",
+                "Leave" => "Teams_NotMember",
+                _ => "Teams_RequestUnavailable"
+            };
+            teams.JoinTeamAsync(team.Id, userId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<TeamJoinOutcome>(new InvalidOperationException(key)));
+            teams.LeaveTeamAsync(team.Id, userId, Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<bool>(new InvalidOperationException(key)));
+            teams.WithdrawJoinRequestAsync(Arg.Any<Guid>(), userId, Arg.Any<CancellationToken>())
+                .Returns(Task.FromException(new InvalidOperationException(key)));
+            var http = new DefaultHttpContext
+            {
+                RequestServices = services,
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+            };
+            var controller = new TeamController(
+                teams, Substitute.For<ITeamPageService>(), users,
+                Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+                services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
+                new ConfigurationRegistry(), Substitute.For<IClock>(), Substitute.For<IAuthorizationService>(),
+                NullLogger<TeamController>.Instance)
+            {
+                ControllerContext = new ControllerContext { HttpContext = http },
+                TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+                Url = Substitute.For<IUrlHelper>()
+            };
+
+            var result = action switch
+            {
+                "Join" => await controller.Join(team.Slug, new JoinTeamViewModel { TeamId = team.Id }),
+                "Leave" => await controller.Leave(team.Slug),
+                _ => await controller.WithdrawRequest(Guid.NewGuid())
+            };
+
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(unknown
+                ? "No se pudo completar esta acción del equipo. Inténtalo de nuevo."
+                : action switch
+                {
+                    "Join" => "Ya tiene una solicitud pendiente para este equipo.",
+                    "Leave" => "No formas parte de este equipo.",
+                    _ => "Esta solicitud para unirte no está disponible o ya no está pendiente."
+                });
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = originalCulture;
+        }
+    }
+
     [HumansFact]
     public async Task Details_RendersPageContentWithSharedMarkdownProtections()
     {
