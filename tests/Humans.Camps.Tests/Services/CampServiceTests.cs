@@ -1710,8 +1710,48 @@ public sealed class CampServiceTests : CampsTestHarness
             Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("256 characters or fewer");
+        result.ErrorMessage.Should().Be("Camps_Validation_ImageFilenameLength");
         (await CampsDb.CampImages.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("image/gif", "camp.jpg", 1L, "Camps_Validation_ImageType")]
+    [Xunit.InlineData("image/jpeg", "camp.jpg", 10485761L, "Camps_Validation_ImageSize")]
+    [Xunit.InlineData("image/jpeg", "camp.html", 1L, "Camps_Validation_ImageExtension")]
+    public async Task UploadImageAsync_InvalidImageReturnsResourceKeyBeforeWriting(
+        string contentType, string fileName, long length, string key)
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+
+        var result = await _service.UploadImageAsync(camp.Id, Stream.Null, fileName, contentType, length,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be(key);
+        _fileStorage.Files.Should().BeEmpty();
+        (await CampsDb.CampImages.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task UploadImageAsync_FullGalleryReturnsCountResourceKey()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        for (var i = 0; i < 5; i++)
+        {
+            var accepted = await _service.UploadImageAsync(camp.Id, Stream.Null, $"camp{i}.jpg", "image/jpeg", 1,
+                Xunit.TestContext.Current.CancellationToken);
+            accepted.Succeeded.Should().BeTrue();
+        }
+
+        var result = await _service.UploadImageAsync(camp.Id, Stream.Null, "extra.jpg", "image/jpeg", 1,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Camps_Validation_ImageCount");
+        _fileStorage.Files.Should().HaveCount(5);
+        (await CampsDb.CampImages.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(5);
     }
 
     [HumansFact]

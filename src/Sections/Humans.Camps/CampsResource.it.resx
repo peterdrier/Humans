@@ -316,4 +316,9 @@
   <data name="Camps_Notification_SeasonClosed" xml:space="preserve"><value>La stagione {0} per {1} non è più aperta</value></data>
   <data name="Camps_Notification_SeasonClosedBody" xml:space="preserve"><value>La tua richiesta in sospeso di unirti a questo camp non verrà esaminata perché la stagione è stata ritirata o respinta.</value></data>
   <data name="Camps_Notification_RoleAssigned" xml:space="preserve"><value>Ti è stato assegnato il ruolo {0}.</value></data>
+  <data name="Camps_Validation_ImageCount" xml:space="preserve"><value>Un barrio può avere al massimo 5 immagini.</value></data>
+  <data name="Camps_Validation_ImageType" xml:space="preserve"><value>Sono consentite solo immagini JPEG, PNG e WebP.</value></data>
+  <data name="Camps_Validation_ImageSize" xml:space="preserve"><value>L’immagine deve essere inferiore a 10 MB.</value></data>
+  <data name="Camps_Validation_ImageFilenameLength" xml:space="preserve"><value>Il nome del file immagine non può superare i 256 caratteri.</value></data>
+  <data name="Camps_Validation_ImageExtension" xml:space="preserve"><value>Il nome del file immagine deve terminare con .jpg, .jpeg, .png o .webp.</value></data>
 </root>

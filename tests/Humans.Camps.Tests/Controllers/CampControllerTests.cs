@@ -6,6 +6,7 @@ using Humans.Shifts.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Constants;
 using Humans.Base;
+using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -45,6 +46,44 @@ public class CampControllerTests
             .GetField("_bytes", BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(limit)
             .Should().Be(11L * 1024 * 1024);
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task UploadImage_LocalizesValidationFailures(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var localizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
+        var userId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: userId);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var controller = BuildController(userId, localizer);
+        using var content = new MemoryStream([1]);
+        var file = new FormFile(content, 0, 1, "file", "camp.jpg") { Headers = new HeaderDictionary(), ContentType = "image/jpeg" };
+        foreach (var key in new[]
+        {
+            "Camps_Validation_ImageCount", "Camps_Validation_ImageType", "Camps_Validation_ImageSize",
+            "Camps_Validation_ImageFilenameLength", "Camps_Validation_ImageExtension"
+        })
+        {
+            _camps.UploadImageAsync(camp.Id, Arg.Any<Stream>(), "camp.jpg", "image/jpeg", 1, Arg.Any<CancellationToken>())
+                .Returns(CampImageUploadResult.Failure(key));
+
+            await controller.UploadImage(camp.Slug, file);
+
+            var expected = localizer[key];
+            expected.ResourceNotFound.Should().BeFalse();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
+        }
     }
 
     [HumansFact]
@@ -472,7 +511,7 @@ public class CampControllerTests
             .Returns(Task.FromResult(camps));
     }
 
-    private CampController BuildController(Guid? userId = null)
+    private CampController BuildController(Guid? userId = null, IStringLocalizer<CampsResource>? campsLocalizer = null)
     {
         var controller = new CampController(
             _camps,
@@ -484,7 +523,7 @@ public class CampControllerTests
             _authorization,
             _clock,
             NullLogger<CampController>.Instance,
-            _campsLocalizer,
+            campsLocalizer ?? _campsLocalizer,
             _sharedLocalizer);
 
         var services = new ServiceCollection();

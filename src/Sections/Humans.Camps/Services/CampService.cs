@@ -962,28 +962,28 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         var imageCount = await _repo.CountImagesAsync(campId, cancellationToken);
         if (imageCount >= 5)
         {
-            return CampImageUploadResult.Failure("Maximum 5 images per camp.");
+            return CampImageUploadResult.Failure("Camps_Validation_ImageCount");
         }
 
         if (!AllowedImageContentTypes.Contains(contentType))
         {
-            return CampImageUploadResult.Failure("Only JPEG, PNG, and WebP images are allowed.");
+            return CampImageUploadResult.Failure("Camps_Validation_ImageType");
         }
 
         if (length > 10 * 1024 * 1024)
         {
-            return CampImageUploadResult.Failure("Image must be under 10MB.");
+            return CampImageUploadResult.Failure("Camps_Validation_ImageSize");
         }
 
         // Security: extension whitelist prevents image/jpeg + .html (static middleware would serve as HTML).
         fileName = DisplayFileName(fileName);
         if (fileName.Length > MaxImageFileNameLength)
-            return CampImageUploadResult.Failure($"Image filename must be {MaxImageFileNameLength} characters or fewer.");
+            return CampImageUploadResult.Failure("Camps_Validation_ImageFilenameLength");
 
         var ext = Path.GetExtension(fileName);
         if (!AllowedImageExtensions.Contains(ext))
         {
-            return CampImageUploadResult.Failure("Image filename must end in .jpg, .jpeg, .png, or .webp.");
+            return CampImageUploadResult.Failure("Camps_Validation_ImageExtension");
         }
         var storageKey = $"uploads/camps/{campId}/{Guid.NewGuid()}{ext}";
         await _fileStorage.SaveAsync(storageKey, fileStream, cancellationToken);

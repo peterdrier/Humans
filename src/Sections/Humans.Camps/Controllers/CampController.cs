@@ -776,7 +776,7 @@ internal sealed class CampController(
         }
         else
         {
-            SetError(result.ErrorMessage ?? campsLocalizer["Camps_Flash_ImageUploadFailed"].Value);
+            SetError(campsLocalizer[result.ErrorMessage ?? "Camps_Flash_ImageUploadFailed"].Value);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });

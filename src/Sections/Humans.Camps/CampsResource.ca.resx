@@ -316,4 +316,9 @@
   <data name="Camps_Notification_SeasonClosed" xml:space="preserve"><value>La temporada {0} de {1} ja no està oberta</value></data>
   <data name="Camps_Notification_SeasonClosedBody" xml:space="preserve"><value>La teva sol·licitud pendent per unir-te a aquest camp no es revisarà perquè la temporada s’ha retirat o rebutjat.</value></data>
   <data name="Camps_Notification_RoleAssigned" xml:space="preserve"><value>T’han assignat el rol {0}.</value></data>
+  <data name="Camps_Validation_ImageCount" xml:space="preserve"><value>Un barri pot tenir com a màxim 5 imatges.</value></data>
+  <data name="Camps_Validation_ImageType" xml:space="preserve"><value>Només s’admeten imatges JPEG, PNG i WebP.</value></data>
+  <data name="Camps_Validation_ImageSize" xml:space="preserve"><value>La imatge ha de tenir menys de 10 MB.</value></data>
+  <data name="Camps_Validation_ImageFilenameLength" xml:space="preserve"><value>El nom del fitxer d’imatge no pot tenir més de 256 caràcters.</value></data>
+  <data name="Camps_Validation_ImageExtension" xml:space="preserve"><value>El nom del fitxer d’imatge ha d’acabar en .jpg, .jpeg, .png o .webp.</value></data>
 </root>
