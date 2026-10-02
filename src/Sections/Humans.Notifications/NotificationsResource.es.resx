@@ -76,6 +76,15 @@
   <data name="Notification_Section_WorkQueues" xml:space="preserve">
     <value>Colas de trabajo</value>
   </data>
+  <data name="Notifications_Meter_ConsentReviewsPending" xml:space="preserve"><value>Revisiones de consentimiento pendientes</value></data>
+  <data name="Notifications_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Solicitudes pendientes de tu voto</value></data>
+  <data name="Notifications_Meter_PendingAccountDeletions" xml:space="preserve"><value>Eliminaciones de cuentas pendientes</value></data>
+  <data name="Notifications_Meter_FailedGoogleSyncEvents" xml:space="preserve"><value>Sincronizaciones de Google fallidas</value></data>
+  <data name="Notifications_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Perfiles de incorporación pendientes</value></data>
+  <data name="Notifications_Meter_TeamJoinRequestsPending" xml:space="preserve"><value>Solicitudes de ingreso a equipos pendientes</value></data>
+  <data name="Notifications_Meter_TicketSyncError" xml:space="preserve"><value>Error de sincronización de entradas</value></data>
+  <data name="Notifications_Meter_CampJoinRequest" xml:space="preserve"><value>1 persona quiere unirse a tu barrio</value></data>
+  <data name="Notifications_Meter_CampJoinRequests" xml:space="preserve"><value>{0} personas quieren unirse a tu barrio</value></data>
   <data name="Notification_MarkAllRead" xml:space="preserve">
     <value>Marcar todo como leído</value>
   </data>

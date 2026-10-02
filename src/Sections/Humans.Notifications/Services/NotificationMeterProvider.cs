@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Localization;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Caching;
 using System.Security.Claims;
@@ -37,7 +38,8 @@ internal sealed class NotificationMeterProvider(
     IApplicationServiceRead applicationDecisionService,
     ICampServiceRead campService,
     IMemoryCache cache,
-    ILogger<NotificationMeterProvider> logger) : IOrchestrator
+    ILogger<NotificationMeterProvider> logger,
+    IStringLocalizer<NotificationsResource> localizer) : IOrchestrator
 {
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
 
@@ -56,7 +58,7 @@ internal sealed class NotificationMeterProvider(
         {
             meters.Add(new NotificationMeter
             {
-                Title = "Consent reviews pending",
+                Title = localizer["Notifications_Meter_ConsentReviewsPending"],
                 Count = counts.ConsentReviewsPending,
                 ActionUrl = "/OnboardingReview",
                 Priority = 10,
@@ -73,7 +75,7 @@ internal sealed class NotificationMeterProvider(
                 {
                     meters.Add(new NotificationMeter
                     {
-                        Title = "Applications pending your vote",
+                        Title = localizer["Notifications_Meter_ApplicationsPendingVote"],
                         Count = pendingVoteCount,
                         ActionUrl = "/Governance/BoardVoting",
                         Priority = 9,
@@ -86,7 +88,7 @@ internal sealed class NotificationMeterProvider(
         {
             meters.Add(new NotificationMeter
             {
-                Title = "Pending account deletions",
+                Title = localizer["Notifications_Meter_PendingAccountDeletions"],
                 Count = counts.PendingDeletions,
                 ActionUrl = "/Users/Admin?filter=deleting&sort=name&dir=asc",
                 Priority = 8,
@@ -97,7 +99,7 @@ internal sealed class NotificationMeterProvider(
         {
             meters.Add(new NotificationMeter
             {
-                Title = "Failed Google sync events",
+                Title = localizer["Notifications_Meter_FailedGoogleSyncEvents"],
                 Count = counts.FailedSyncEvents,
                 ActionUrl = "/Google/SyncOutbox",
                 Priority = 7,
@@ -110,7 +112,7 @@ internal sealed class NotificationMeterProvider(
         {
             meters.Add(new NotificationMeter
             {
-                Title = "Onboarding profiles pending",
+                Title = localizer["Notifications_Meter_OnboardingProfilesPending"],
                 Count = counts.ConsentReviewsPending,
                 ActionUrl = "/OnboardingReview",
                 Priority = 6,
@@ -123,7 +125,7 @@ internal sealed class NotificationMeterProvider(
         {
             meters.Add(new NotificationMeter
             {
-                Title = "Team join requests pending",
+                Title = localizer["Notifications_Meter_TeamJoinRequestsPending"],
                 Count = counts.TeamJoinRequestsPending,
                 ActionUrl = "/Teams/Summary",
                 Priority = 5,
@@ -134,7 +136,7 @@ internal sealed class NotificationMeterProvider(
         {
             meters.Add(new NotificationMeter
             {
-                Title = "Ticket sync error",
+                Title = localizer["Notifications_Meter_TicketSyncError"],
                 Count = 1,
                 ActionUrl = "/Tickets",
                 Priority = 4,
@@ -153,8 +155,8 @@ internal sealed class NotificationMeterProvider(
                     meters.Add(new NotificationMeter
                     {
                         Title = campLeadRequestsPending == 1
-                            ? "1 human wants to join your camp"
-                            : $"{campLeadRequestsPending} humans want to join your camp",
+                            ? localizer["Notifications_Meter_CampJoinRequest"]
+                            : localizer["Notifications_Meter_CampJoinRequests", campLeadRequestsPending],
                         Count = campLeadRequestsPending,
                         ActionUrl = "/Barrios",
                         Priority = 3,

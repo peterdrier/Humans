@@ -1,3 +1,6 @@
+using Humans.Base.Extensions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Humans.Notifications.Controllers;
 using Humans.Notifications.Models;
 using Microsoft.AspNetCore.Http;
@@ -30,6 +33,7 @@ public class NotificationMeterProviderTests : IDisposable
     private readonly ITicketSync _ticketSyncService = Substitute.For<ITicketSync>();
     private readonly IApplicationServiceRead _applicationDecisionService = Substitute.For<IApplicationServiceRead>();
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
+    private readonly ServiceProvider _localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
     private readonly IMemoryCache _cache;
     private readonly NotificationMeterProvider _provider;
 
@@ -44,12 +48,14 @@ public class NotificationMeterProviderTests : IDisposable
             _applicationDecisionService,
             _campService,
             _cache,
-            NullLogger<NotificationMeterProvider>.Instance);
+            NullLogger<NotificationMeterProvider>.Instance,
+            _localization.GetRequiredService<IStringLocalizer<NotificationsResource>>());
     }
 
     public void Dispose()
     {
         _cache.Dispose();
+        _localization.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -141,6 +147,61 @@ public class NotificationMeterProviderTests : IDisposable
             ? result.Should().BeOfType<PartialViewResult>().Subject.Model.Should().BeOfType<NotificationPopupViewModel>().Subject.Meters
             : result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<NotificationInboxViewModel>().Subject.Meters;
         meters.Should().Contain(m => m.Title == "Failed Google sync events" && m.Count == 3);
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task MeterTitles_FollowRequestCultureIncludingCampRequestCounts(string culture)
+    {
+        using var initialCulture = new CultureScope("en");
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var localizer = services.GetRequiredService<IStringLocalizer<NotificationsResource>>();
+        var userId = Guid.NewGuid();
+        var users = MakeNeedsConsentReview(1).Append(new User
+        {
+            Id = Guid.NewGuid(), DeletionRequestedAt = Instant.FromUtc(2026, 4, 1, 0, 0)
+        }.ToUserInfo()).ToList();
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
+        _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(3);
+        var teamId = Guid.NewGuid();
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>
+            {
+                [teamId] = new TeamInfo(teamId, "T", null, "t", true, false, SystemTeamType.None,
+                    true, false, false, false, Instant.FromUtc(2026, 1, 1, 0, 0), [], PendingRequestCount: 1)
+            }));
+        _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _applicationDecisionService.GetUnvotedApplicationCountAsync(userId, Arg.Any<CancellationToken>()).Returns(1);
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([MakeCampInfoWithPendingRequest(userId)]);
+        var principal = CreatePrincipalWithId(userId, RoleNames.Admin, RoleNames.Board, RoleNames.ConsentCoordinator);
+        var keys = new[]
+        {
+            "ConsentReviewsPending", "ApplicationsPendingVote", "PendingAccountDeletions",
+            "FailedGoogleSyncEvents", "OnboardingProfilesPending", "TeamJoinRequestsPending",
+            "TicketSyncError", "CampJoinRequest"
+        };
+
+        _ = await _provider.GetMetersForUserAsync(principal, TestContext.Current.CancellationToken);
+        using var requestCulture = new CultureScope(culture);
+        var meters = await _provider.GetMetersForUserAsync(principal, TestContext.Current.CancellationToken);
+
+        var expected = keys.Select(key => localizer["Notifications_Meter_" + key]).ToList();
+        expected.Should().OnlyContain(value => !value.ResourceNotFound);
+        meters.Select(m => m.Title).Should().Equal(expected.Select(value => value.Value));
+        _cache.Remove(CacheKeys.CampLeadJoinRequestsBadge(userId));
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([MakeCampInfoWithPendingRequest(userId), MakeCampInfoWithPendingRequest(userId)]);
+        meters = await _provider.GetMetersForUserAsync(principal, TestContext.Current.CancellationToken);
+        var plural = localizer["Notifications_Meter_CampJoinRequests", 2];
+        plural.ResourceNotFound.Should().BeFalse();
+        meters.Should().Contain(m => m.Count == 2 && m.Title == plural.Value);
     }
 
     [HumansFact]

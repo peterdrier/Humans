@@ -76,6 +76,15 @@
   <data name="Notification_Section_WorkQueues" xml:space="preserve">
     <value>Arbeitswarteschlangen</value>
   </data>
+  <data name="Notifications_Meter_ConsentReviewsPending" xml:space="preserve"><value>Ausstehende Einwilligungsprüfungen</value></data>
+  <data name="Notifications_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Anträge warten auf deine Stimme</value></data>
+  <data name="Notifications_Meter_PendingAccountDeletions" xml:space="preserve"><value>Ausstehende Kontolöschungen</value></data>
+  <data name="Notifications_Meter_FailedGoogleSyncEvents" xml:space="preserve"><value>Fehlgeschlagene Google-Synchronisierungen</value></data>
+  <data name="Notifications_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Ausstehende Anmeldeprofile</value></data>
+  <data name="Notifications_Meter_TeamJoinRequestsPending" xml:space="preserve"><value>Ausstehende Teamanfragen</value></data>
+  <data name="Notifications_Meter_TicketSyncError" xml:space="preserve"><value>Fehler bei der Ticket-Synchronisierung</value></data>
+  <data name="Notifications_Meter_CampJoinRequest" xml:space="preserve"><value>1 Person möchte deinem Camp beitreten</value></data>
+  <data name="Notifications_Meter_CampJoinRequests" xml:space="preserve"><value>{0} Personen möchten deinem Camp beitreten</value></data>
   <data name="Notification_MarkAllRead" xml:space="preserve">
     <value>Alle als gelesen markieren</value>
   </data>

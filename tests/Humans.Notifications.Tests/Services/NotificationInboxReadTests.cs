@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -30,6 +32,7 @@ public sealed class NotificationInboxReadTests : IDisposable
     private readonly IApplicationServiceRead _applications = Substitute.For<IApplicationServiceRead>();
     private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+    private readonly ServiceProvider _localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
     private readonly NotificationInboxRead _sut;
 
     public NotificationInboxReadTests()
@@ -48,10 +51,15 @@ public sealed class NotificationInboxReadTests : IDisposable
             _inbox,
             new NotificationMeterProvider(
                 _users, _google, _teams, _tickets, _applications, _camps, _cache,
-                NullLogger<NotificationMeterProvider>.Instance));
+                NullLogger<NotificationMeterProvider>.Instance,
+                _localization.GetRequiredService<IStringLocalizer<NotificationsResource>>()));
     }
 
-    public void Dispose() => _cache.Dispose();
+    public void Dispose()
+    {
+        _cache.Dispose();
+        _localization.Dispose();
+    }
 
     [HumansFact]
     public async Task Rows_come_from_the_unread_tab_newest_first_across_both_lists()
