@@ -55,3 +55,10 @@ internal sealed record CreditorsPageVm(
     string SortDir,
     SepaPayoutSettings Sepa);
 
+/// <summary>Outcome of a manual creditor-account bind: the failure message is admin-facing.</summary>
+internal sealed record CreditorBindResult(bool Succeeded, string? ErrorMessage)
+{
+    public static CreditorBindResult Success { get; } = new(true, null);
+
+    public static CreditorBindResult Failure(string message) => new(false, message);
+}

@@ -76,3 +76,11 @@ internal sealed record HoldedDocVm(
     string? BookedAccountId,
     string TagsJson,
     Instant LastSyncedAt);
+
+/// <summary>One budget category on the <c>/Finance/HoldedAccounts</c> plan.</summary>
+internal sealed record HoldedProvisioningRow(
+    Guid BudgetCategoryId, string CategoryName, string GroupName,
+    int? ExistingAccountNum, int? ProposedAccountNum, string Tag, string State); // Mapped|ToAdd|Orphan
+
+internal sealed record HoldedProvisioningPlan(
+    IReadOnlyList<HoldedProvisioningRow> Rows, int NextNumber);

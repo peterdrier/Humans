@@ -16,14 +16,6 @@ public sealed record HoldedCreditorAccountRow(
     IReadOnlyList<CreditorContactBinding> Bindings,
     string? IbanMasked = null);
 
-/// <summary>Outcome of a manual creditor-account bind: the failure message is admin-facing.</summary>
-public sealed record CreditorBindResult(bool Succeeded, string? ErrorMessage)
-{
-    public static CreditorBindResult Success { get; } = new(true, null);
-
-    public static CreditorBindResult Failure(string message) => new(false, message);
-}
-
 /// <summary>A member's binding to their Holded creditor account (DTO projection of the entity).</summary>
 public sealed record CreditorContactBinding(
     Guid UserId,

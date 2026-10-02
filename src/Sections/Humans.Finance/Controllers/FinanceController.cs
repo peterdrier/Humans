@@ -34,7 +34,7 @@ internal sealed class FinanceController(
     [HttpGet("HoldedAccounts")]
     public async Task<IActionResult> HoldedAccounts(int blockStart = 62900100)
     {
-        var plan = await holdedFinance.GetProvisioningPlanAsync(blockStart);
+        var plan = await holdedConnector.GetProvisioningPlanAsync(blockStart);
         ViewBag.BlockStart = blockStart;
         return View(plan);
     }
@@ -45,7 +45,7 @@ internal sealed class FinanceController(
     {
         try
         {
-            var n = await holdedFinance.ProvisionAsync(blockStart, addAll);
+            var n = await holdedConnector.ProvisionAsync(blockStart, addAll);
             SetSuccess($"Provisioned {n} Holded account(s).");
         }
         catch (Exception ex)
@@ -246,7 +246,7 @@ internal sealed class FinanceController(
     {
         try
         {
-            var result = await holdedFinance.SetCreditorContactAsync(userId, supplierAccountNum);
+            var result = await holdedConnector.SetCreditorContactAsync(userId, supplierAccountNum);
             if (result.Succeeded)
                 SetSuccess($"Bound member to creditor account {supplierAccountNum}.");
             else
@@ -269,7 +269,7 @@ internal sealed class FinanceController(
     {
         try
         {
-            if (await holdedFinance.ClearCreditorContactAsync(userId))
+            if (await holdedConnector.ClearCreditorContactAsync(userId))
                 SetSuccess("Cleared the member's creditor account binding.");
             else
                 SetError("That member has no creditor account binding to clear.");

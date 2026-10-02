@@ -57,7 +57,10 @@ unmatched and matched-for-year reads are each a filtered slice and neither
 composes into "all docs") and `HoldedCreditorContacts`, plus
 `IBudgetServiceRead` for category names. **No `IHoldedClient` call** — the
 index must not inherit the connector's 30 s timeout
-(nobodies-collective/Humans#976, #1000). The SEPA methods,
+(nobodies-collective/Humans#976, #1000). `GetProvisioningPlanAsync` /
+`ProvisionAsync` (`/Finance/HoldedAccounts`) and `SetCreditorContactAsync` /
+`ClearCreditorContactAsync` (Bind and Unbind on `/Finance/Creditors`) live here
+too: no other section calls them. The SEPA methods,
 `GetSepaPayoutSettings`, `GenerateSepaPayoutAsync`, `GetSepaPayoutsAsync` and
 `BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`, serve
 `/Finance/Creditors`' payout column, `POST /Finance/Sepa/Generate`,
