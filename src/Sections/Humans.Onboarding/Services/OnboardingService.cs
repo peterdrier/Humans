@@ -195,17 +195,21 @@ internal sealed class OnboardingService(
 
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
 
-        var rejectUser = await userService.GetUserInfoAsync(userId, ct);
-        var language = rejectUser?.PreferredLanguage;
-        var culture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
-
+        var culture = CultureInfo.GetCultureInfo("en");
         try
         {
+            var rejectUser = await userService.GetUserInfoAsync(userId, ct);
+            var language = rejectUser?.PreferredLanguage;
+            culture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
             await emailService.SendAsync(emailMessages.SignupRejected(
                 rejectUser?.Email ?? string.Empty,
                 rejectUser?.BurnerName ?? string.Empty,
                 reason,
                 culture.Name));
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

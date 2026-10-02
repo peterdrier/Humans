@@ -114,6 +114,42 @@ public sealed class OnboardingServiceTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RejectSignupAsync_RecipientLookupFailure_DoesNotMisreportCommittedRejection(bool cancelled)
+    {
+        var userId = Guid.NewGuid();
+        using var cancellation = new CancellationTokenSource();
+        if (cancelled) await cancellation.CancelAsync();
+        var failure = cancelled ? (Exception)new OperationCanceledException(cancellation.Token)
+            : new IOException("Recipient lookup unavailable");
+        _userService.ApplyProfileOnboardingMutationAsync(userId,
+            Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromException<UserInfo?>(failure));
+        OnboardingResult? result = null;
+
+        var error = await Xunit.Record.ExceptionAsync(async () =>
+            result = await BuildSut().RejectSignupAsync(userId, Guid.NewGuid(), null, cancellation.Token));
+
+        if (cancelled)
+            error.Should().BeSameAs(failure);
+        else
+        {
+            error.Should().BeNull();
+            result!.Success.Should().BeTrue();
+            _notificationService.ReceivedCalls().Should().ContainSingle();
+            var args = _notificationService.ReceivedCalls().Single().GetArguments();
+            args[0].Should().Be(NotificationSource.ProfileRejected);
+            args[3].Should().Be("Your signup has been reviewed");
+            await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        }
+        _auditLogService.ReceivedCalls().Should().ContainSingle();
+        _syncJob.ReceivedCalls().Should().HaveCount(3);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(null, "Tu inscripción no se ha podido aprobar en este momento.")]
     [Xunit.InlineData("Duplicate account", "Tu inscripción no se ha podido aprobar: Duplicate account")]
     public async Task RejectSignupAsync_LocalizesNotificationForRecipient(string? reason, string expectedBody)
