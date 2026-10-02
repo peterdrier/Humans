@@ -5,8 +5,8 @@ using NodaTime;
 namespace Humans.Finance.Models;
 
 /// <summary>
-/// The <c>/Finance/Holded</c> read model: the Finance-owned half of the Holded connector that had
-/// no screen at all (nobodies-collective/Humans#1000). Cache reads only — no Holded HTTP call is
+/// The <c>/Finance/Holded</c> read model: the Finance-owned half of the Holded connector
+/// (nobodies-collective/Humans#1000). Cache reads only — no Holded HTTP call is
 /// made building it, so the page never inherits the live-contacts latency <c>/Finance/Creditors</c>
 /// carries. The mirror's own health (API budget, ledger sweeps, chart of accounts) stays on
 /// <c>/Holded</c>; this page links there rather than restating it.
@@ -32,7 +32,7 @@ internal sealed record HoldedConnectorVm(
 /// </summary>
 /// <param name="LastSyncAt">Last <b>successful</b> completion, not last attempt: a failed run sets
 /// <paramref name="StatusChangedAt"/> and deliberately leaves this pointing at the older success.
-/// Labelling it "last run" is what made an erroring connector read as an idle one.</param>
+/// Labelling it "last run" would make an erroring connector read as an idle one.</param>
 /// <param name="StatusChangedAt">When the connector last entered <paramref name="Status"/> — for an
 /// Error row, when the failing attempt happened. Without it a week-old error and a five-minute-old
 /// one render identically.</param>

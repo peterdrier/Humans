@@ -31,7 +31,7 @@ internal sealed class Service(
     IHoldedClient client,
     // Cross-section read via the Budget section's read/write split contract.
     IBudgetServiceRead budget,
-    // The ledger mirror moved to the Holded section; all line/balance reads go through its contract.
+    // The ledger mirror is the Holded section's; all line/balance reads go through its contract.
     IHoldedService holded,
     IClock clock,
     IMemoryCache cache,
@@ -404,9 +404,8 @@ internal sealed class Service(
             Tax = doc.Tax,
             Total = doc.Total,
             Currency = doc.Currency,
-            // Strict equality, not `!= true`: an absent `draft` field is treated as NOT approved,
-            // the same caution the old draft-id sweep applied to a doc it couldn't place — a
-            // silently-approved doc leaks into the budget actuals, an unmatched-approval one just
+            // Strict equality, not `!= true`: an absent `draft` field is treated as NOT approved —
+            // a silently-approved doc leaks into the budget actuals, an unmatched-approval one just
             // stays a gap on the Unmatched queue.
             IsApproved = doc.IsDraft == false,
             TagsJson = JsonSerializer.Serialize(tags),
@@ -535,8 +534,8 @@ internal sealed class Service(
                 // Never having run is stale too: the actuals and the unmatched queue are empty for
                 // the same reason a stalled sync leaves them wrong, and both need the same alarm.
                 IsStale: age is null || age >= HoldedDocSyncVm.StaleAfter,
-                // A failed run moves only this: SyncAsync leaves LastSyncAt on the older success.
-                // Dropping it left an Error row unable to say when the failure actually happened.
+                // A failed run moves only this: SyncAsync leaves LastSyncAt on the older success,
+                // so this is what tells an Error row when the failure actually happened.
                 state.StatusChangedAt),
             bindings.Count,
             categoryMap,
@@ -577,7 +576,7 @@ internal sealed class Service(
 
     // ─── Creditor data (Feature 2) ──────────────────────────────────────────────
 
-    // A new ER-only contact still gets type "creditor" (Peter, 2026-08-25), which Holded mints
+    // A new ER-only contact still gets type "creditor", which Holded mints
     // in the 410-series rather than the 400-series proveedor accounts older members carry — so
     // the block spans both. Bindings, not the range, are what separate a member's account from
     // an ordinary org vendor's (the one-member-per-account conflict checks guard that).
@@ -607,8 +606,8 @@ internal sealed class Service(
             TotalPaid: payments.Sum(l => l.Debit));
     }
 
-    // Sign confirmed against live data (Daniela 40000001: credit 12720 − debit 9540 = 3180 owed,
-    // chart showed −3180). Payments out are the debit lines.
+    // Payments out are the debit lines; balance = Σdebit − Σcredit, so negative means the
+    // organisation owes the member.
     private static decimal LedgerBalance(IReadOnlyCollection<HoldedLedgerLineInfo> lines) =>
         lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
 
@@ -702,7 +701,7 @@ internal sealed class Service(
             }).ToList();
 
         // Accounts but not one name is the signature of an unusable contact list, which leaves the bind
-        // card as bare numbers. Silent until a human reported it (nobodies-collective/Humans#994). One
+        // card as bare numbers. Logged so it is not silent (nobodies-collective/Humans#994). One
         // missing name is a real gap in Holded, so only the all-or-nothing case is logged.
         if (rows.Count > 0 && rows.TrueForAll(r => string.IsNullOrWhiteSpace(r.Name)))
             logger.LogWarning(
@@ -930,7 +929,7 @@ internal sealed class Service(
         // A linked contact is used as is: the bound contact, else the one lazy-seeded from the
         // member's prior report. Never a PUT — Holded's v2 contact update is a full replacement, so
         // every field the body omits resets, supplier_record included, and the next purchase doc
-        // then mints the member a second creditor account next to their first (2026-09-21). A
+        // then mints the member a second creditor account next to their first. A
         // legal-name or IBAN change after the first push does not reach Holded until the
         // link-check sync exists (peterdrier/Humans#1777).
         string contactId;
@@ -1461,8 +1460,8 @@ internal sealed class Service(
 
         var byId = movements.ToLookup(m => m.Id, StringComparer.Ordinal);
 
-        // Retrying the reconcile call itself would need the posting ids, which this change
-        // deliberately does not store. So the retry asks the only question it can: has the line
+        // Retrying the reconcile call itself would need the posting ids, which are not stored. So
+        // the retry asks the only question it can: has the line
         // ended up reconciled — by a later sweep's booking, or by a human in the Holded GUI?
         foreach (var row in pending)
         {
@@ -1740,7 +1739,7 @@ internal sealed class Service(
         decimal posted;
         try
         {
-            // The live chart total, not the nightly mirror: the issue asks what is owed now.
+            // The live chart total, not the nightly mirror: booking needs what is owed now.
             owedNow = (await client.ListAccountingAccountsAsync(ct))
                 .Where(a => a.Number == transfer.SupplierAccountNum)
                 .Select(a => -a.Balance)
@@ -1967,8 +1966,8 @@ internal sealed class Service(
 
         // Whatever Holded already accepted is real money and is kept, but nothing is written to the
         // transfer row: the next attempt re-reads the tag sum and posts only the difference. That
-        // resumability is the whole point of nobodies-collective/Humans#1185 — there is no terminal
-        // partial state any more.
+        // resumability is the whole point of nobodies-collective/Humans#1185 — a partial booking is
+        // never terminal.
         async Task<SepaBookingResult> RefusedMidBookingAsync(Exception ex, string what, string where)
         {
             var landed = PostingSummary();

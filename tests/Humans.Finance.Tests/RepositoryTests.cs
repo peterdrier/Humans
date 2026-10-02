@@ -8,7 +8,7 @@ using NodaTime;
 namespace Humans.Finance.Tests;
 
 /// <summary>
-/// The repository owns all four Finance tables and had no test. What is pinned here is the part
+/// The repository owns every Finance table. What is pinned here is the part
 /// that is not a one-line query: what an upsert keeps, what it overwrites, and what it refuses to
 /// overwrite with nothing.
 /// </summary>
