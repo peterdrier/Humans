@@ -1,3 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Humans.Base.Extensions;
 using Humans.Users.Controllers;
 using Humans.Users.Services;
 using Humans.Users.Models;
@@ -154,6 +157,97 @@ public class ProfileControllerEditTests
         // The happy path now also writes meal-pref + allergies onto the shift
         // profile. Return a fresh profile by default so existing tests don't NRE
         // when the controller sets fields on it.
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void MemberProfileForms_LocalizeValidationMessages(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+
+        void AssertErrors(object model, params (string Field, string Key, object[] Arguments)[] errors)
+        {
+            var context = new ActionContext { HttpContext = new DefaultHttpContext { RequestServices = services } };
+            validator.Validate(context, null, "", model);
+            foreach (var (field, key, arguments) in errors)
+            {
+                var expected = localizer[key, arguments];
+                expected.ResourceNotFound.Should().BeFalse();
+                context.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
+            }
+        }
+
+        AssertErrors(new ProfileViewModel(),
+            ("BurnerName", "Validation_Required", []),
+            ("FirstName", "Validation_Required", []),
+            ("LastName", "Validation_Required", []));
+        AssertErrors(new ProfileViewModel
+        {
+            BurnerName = new string('x', 101),
+            FirstName = new string('x', 101),
+            LastName = new string('x', 101),
+            City = new string('x', 257),
+            CountryCode = new string('x', 3),
+            PlaceId = new string('x', 513),
+            Bio = new string('x', 1001),
+            Pronouns = new string('x', 101),
+            ContributionInterests = new string('x', 2001),
+            BoardNotes = new string('x', 2001),
+            EmergencyContactName = new string('x', 257),
+            EmergencyContactPhone = new string('x', 51),
+            EmergencyContactRelationship = new string('x', 101),
+            ApplicationMotivation = new string('x', 2001),
+            ApplicationAdditionalInfo = new string('x', 1001),
+            ApplicationSignificantContribution = new string('x', 2001),
+            ApplicationRoleUnderstanding = new string('x', 2001),
+            AllergyOtherText = new string('x', 501),
+            BirthdayMonth = 13,
+            BirthdayDay = 32,
+        },
+            ("BurnerName", "Validation_MaxLength", ["", 100]),
+            ("FirstName", "Validation_MaxLength", ["", 100]),
+            ("LastName", "Validation_MaxLength", ["", 100]),
+            ("City", "Validation_MaxLength", ["", 256]),
+            ("CountryCode", "Validation_MaxLength", ["", 2]),
+            ("PlaceId", "Validation_MaxLength", ["", 512]),
+            ("Bio", "Validation_MaxLength", ["", 1000]),
+            ("Pronouns", "Validation_MaxLength", ["", 100]),
+            ("ContributionInterests", "Validation_MaxLength", ["", 2000]),
+            ("BoardNotes", "Validation_MaxLength", ["", 2000]),
+            ("EmergencyContactName", "Validation_MaxLength", ["", 256]),
+            ("EmergencyContactPhone", "Validation_MaxLength", ["", 50]),
+            ("EmergencyContactRelationship", "Validation_MaxLength", ["", 100]),
+            ("ApplicationMotivation", "Validation_MaxLength", ["", 2000]),
+            ("ApplicationAdditionalInfo", "Validation_MaxLength", ["", 1000]),
+            ("ApplicationSignificantContribution", "Validation_MaxLength", ["", 2000]),
+            ("ApplicationRoleUnderstanding", "Validation_MaxLength", ["", 2000]),
+            ("AllergyOtherText", "Validation_MaxLength", ["", 500]),
+            ("BirthdayMonth", "Validation_Range", ["", 1, 12]),
+            ("BirthdayDay", "Validation_Range", ["", 1, 31]));
+        AssertErrors(new DietaryMedicalViewModel
+        {
+            AllergyOtherText = new string('x', 501),
+            IntoleranceOtherText = new string('x', 501),
+            MedicalConditions = new string('x', 4001),
+        },
+            ("DietaryPreference", "Validation_Required", []),
+            ("AllergyOtherText", "Validation_MaxLength", ["", 500]),
+            ("IntoleranceOtherText", "Validation_MaxLength", ["", 500]),
+            ("MedicalConditions", "Validation_MaxLength", ["", 4000]));
+        AssertErrors(new SendMessageViewModel(), ("Message", "Validation_Required", []));
+        AssertErrors(new SendMessageViewModel { Message = new string('x', 2001) },
+            ("Message", "Validation_MaxLength", ["", 2000]));
     }
 
     [HumansFact]
