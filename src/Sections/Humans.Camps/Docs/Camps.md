@@ -244,7 +244,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - When an existing camp opts into a newly-opened season (`OptInToSeasonAsync`, `/Camps/{slug}/OptIn/{year}`), the new season copies the previous season's details and is **auto-approved to `Active`** when the camp has any prior `Active`/`Full`/`Withdrawn` season (`HasApprovedSeasonAsync`). A camp with only `Pending`/`Rejected` history instead gets `Pending` and requires CampAdmin review.
 - Season approval or rejection is performed by CampAdmin.
 - Approving a membership request sends a `CampMembershipApproved` notification to the requester.
-- Rejecting a membership request sends a `CampMembershipRejected` notification to the requester.
+- Rejecting a membership request sends a `CampMembershipRejected` notification to the requester. Approval and rejection notices use the recipient’s supported saved language in all six cultures, with English fallback for missing/unsupported languages or a failed language lookup.
 - When a season is rejected or withdrawn, pending requesters receive a `CampMembershipSeasonClosed` notification. Their membership rows are **not** auto-mutated — the notification is the only side effect, so if the season is later reactivated the request is still live.
 - Camp leads do **not** receive a per-request stored notification when humans request to join. Instead a `NotificationMeter` ("N humans want to join your camp") shows the live pending count; it updates immediately on approve/reject/withdraw and drops to zero when the season is closed.
 - Active leads appear in the camp's active-members list automatically, tagged with an `IsLead` flag. They do not need a `CampMember` row to be shown as part of the camp.

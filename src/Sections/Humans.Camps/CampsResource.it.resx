@@ -309,4 +309,8 @@
   <data name="Camps_Details_WithdrawSeason" xml:space="preserve"><value>Ritira il Barrio dalla stagione</value></data>
   <data name="Camps_Details_MarkFullConfirm" xml:space="preserve"><value>Segnare questa stagione come al completo? Indica solo ai visitatori che il camp sembra al completo: possono comunque chiedere di unirsi.</value></data>
   <data name="Camps_Details_MarkFull" xml:space="preserve"><value>Segna la stagione come al completo</value></data>
+  <data name="Camps_Notification_MembershipApproved" xml:space="preserve"><value>La tua richiesta di unirti a {0} è stata approvata</value></data>
+  <data name="Camps_Notification_MembershipRejected" xml:space="preserve"><value>La tua richiesta di unirti a {0} non è stata approvata</value></data>
+  <data name="Camps_Notification_ViewCamp" xml:space="preserve"><value>Visualizza il camp</value></data>
+  <data name="Camps_Notification_GenericCamp" xml:space="preserve"><value>un camp</value></data>
 </root>

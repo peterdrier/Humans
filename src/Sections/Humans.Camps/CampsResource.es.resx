@@ -309,4 +309,8 @@
   <data name="Camps_Details_WithdrawSeason" xml:space="preserve"><value>Retirar temporada</value></data>
   <data name="Camps_Details_MarkFullConfirm" xml:space="preserve"><value>¿Marcar esta temporada como completa? Solo indica a las visitas que parece que no quedan plazas; aún pueden solicitar unirse.</value></data>
   <data name="Camps_Details_MarkFull" xml:space="preserve"><value>Marcar temporada como completa</value></data>
+  <data name="Camps_Notification_MembershipApproved" xml:space="preserve"><value>Se aprobó tu solicitud para unirte a {0}</value></data>
+  <data name="Camps_Notification_MembershipRejected" xml:space="preserve"><value>No se aprobó tu solicitud para unirte a {0}</value></data>
+  <data name="Camps_Notification_ViewCamp" xml:space="preserve"><value>Ver campamento</value></data>
+  <data name="Camps_Notification_GenericCamp" xml:space="preserve"><value>un campamento</value></data>
 </root>

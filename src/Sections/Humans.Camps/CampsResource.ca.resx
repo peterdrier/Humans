@@ -309,4 +309,8 @@
   <data name="Camps_Details_WithdrawSeason" xml:space="preserve"><value>Retira el Barrio de la temporada</value></data>
   <data name="Camps_Details_MarkFullConfirm" xml:space="preserve"><value>Vols marcar aquesta temporada com a plena? Només indica a les visites que sembla que no queden places; encara poden demanar d'unir-s'hi.</value></data>
   <data name="Camps_Details_MarkFull" xml:space="preserve"><value>Marca la temporada com a plena</value></data>
+  <data name="Camps_Notification_MembershipApproved" xml:space="preserve"><value>S’ha aprovat la teva sol·licitud per unir-te a {0}</value></data>
+  <data name="Camps_Notification_MembershipRejected" xml:space="preserve"><value>No s’ha aprovat la teva sol·licitud per unir-te a {0}</value></data>
+  <data name="Camps_Notification_ViewCamp" xml:space="preserve"><value>Mostra el camp</value></data>
+  <data name="Camps_Notification_GenericCamp" xml:space="preserve"><value>un camp</value></data>
 </root>

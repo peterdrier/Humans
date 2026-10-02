@@ -258,4 +258,8 @@
   <data name="Camps_Details_WithdrawSeason" xml:space="preserve"><value>Withdraw Season</value></data>
   <data name="Camps_Details_MarkFullConfirm" xml:space="preserve"><value>Mark this season full? This just tells visitors you look full — people can still request to join.</value></data>
   <data name="Camps_Details_MarkFull" xml:space="preserve"><value>Mark Season Full</value></data>
+  <data name="Camps_Notification_MembershipApproved" xml:space="preserve"><value>Your request to join {0} was approved</value></data>
+  <data name="Camps_Notification_MembershipRejected" xml:space="preserve"><value>Your request to join {0} was not approved</value></data>
+  <data name="Camps_Notification_ViewCamp" xml:space="preserve"><value>View camp</value></data>
+  <data name="Camps_Notification_GenericCamp" xml:space="preserve"><value>a camp</value></data>
 </root>

@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Resources;
+using Humans.Base.Extensions;
 using System.Transactions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
@@ -19,6 +22,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 {
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string CampRoleAssignments = "CampRoleAssignments";
+
+    private static readonly ResourceManager NoticeResources = new(typeof(CampsResource));
 
     private readonly ICampRepository _repo;
     private readonly IAuditLogService _auditLog;
@@ -1246,6 +1251,24 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         };
     }
 
+    private async Task<CultureInfo> GetRecipientCultureAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var language = (await _userServiceRead.GetUserInfoAsync(userId, cancellationToken))?.PreferredLanguage;
+            return CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve notification language for user {UserId}; using English", userId);
+            return CultureInfo.GetCultureInfo("en");
+        }
+    }
+
     public async Task ApproveCampMemberAsync(
         Guid scopedCampId, Guid campMemberId, Guid approvedByUserId,
         CancellationToken cancellationToken = default)
@@ -1271,18 +1294,20 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
 
         var camp = await InvalidateLeadBadgesAsync(scopedCampId, cancellationToken);
-        var campName = camp?.Seasons.FirstOrDefault(s => s.Id == member.CampSeasonId)?.Name ?? camp?.Slug ?? "a camp";
         var slug = camp?.Slug;
         try
         {
+            var culture = await GetRecipientCultureAsync(member.UserId, cancellationToken);
+            var campName = camp?.Seasons.FirstOrDefault(s => s.Id == member.CampSeasonId)?.Name ?? camp?.Slug
+                ?? NoticeResources.GetString("Camps_Notification_GenericCamp", culture)!;
             await _notificationEmitter.SendAsync(
                 NotificationSource.CampMembershipApproved,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                $"Your request to join {campName} was approved",
+                string.Format(culture, NoticeResources.GetString("Camps_Notification_MembershipApproved", culture)!, campName),
                 [member.UserId],
                 actionUrl: slug is null ? null : $"/Barrios/{slug}",
-                actionLabel: slug is null ? null : "View camp",
+                actionLabel: slug is null ? null : NoticeResources.GetString("Camps_Notification_ViewCamp", culture),
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)
@@ -1312,14 +1337,16 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             cancellationToken);
 
         var camp = await InvalidateLeadBadgesAsync(scopedCampId, cancellationToken);
-        var campName = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug ?? "a camp";
         try
         {
+            var culture = await GetRecipientCultureAsync(requesterUserId, cancellationToken);
+            var campName = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug
+                ?? NoticeResources.GetString("Camps_Notification_GenericCamp", culture)!;
             await _notificationEmitter.SendAsync(
                 NotificationSource.CampMembershipRejected,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                $"Your request to join {campName} was not approved",
+                string.Format(culture, NoticeResources.GetString("Camps_Notification_MembershipRejected", culture)!, campName),
                 [requesterUserId],
                 cancellationToken: cancellationToken);
         }

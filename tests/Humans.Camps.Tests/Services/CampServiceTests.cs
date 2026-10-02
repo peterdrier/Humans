@@ -28,6 +28,7 @@ public sealed class CampServiceTests : CampsTestHarness
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly ICampInfoInvalidator _campInfoInvalidator = Substitute.For<ICampInfoInvalidator>();
     private readonly ISettingsService _settingsService;
+    private readonly IUserServiceRead _userServiceRead = Substitute.For<IUserServiceRead>();
 
     public CampServiceTests()
         : base(Instant.FromUtc(2026, 3, 13, 12, 0))
@@ -62,7 +63,7 @@ public sealed class CampServiceTests : CampsTestHarness
             new Lazy<ICityPlanningService>(() => _cityPlanningService),
             _earlyEntryInvalidator,
             _campInfoInvalidator,
-            Substitute.For<IUserServiceRead>(),
+            _userServiceRead,
             _settingsService,
             Clock,
             NullLogger<CampService>.Instance);
@@ -878,6 +879,50 @@ public sealed class CampServiceTests : CampsTestHarness
         second.CampMemberId.Should().Be(first.CampMemberId);
         // Scope to the requester — the camp creator also has an Active member row.
         (await CampsDb.CampMembers.AsNoTracking().CountAsync(m => m.UserId == userId, Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("approve")]
+    [Xunit.InlineData("reject")]
+    [Xunit.InlineData("lookup-failure")]
+    public async Task MembershipNotices_UseRecipientLanguageWithLookupFailureFallback(string action)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId, ct);
+        _userServiceRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                new User { Id = userId, PreferredLanguage = "es" }, [], [], [], null, [])));
+        if (string.Equals(action, "lookup-failure", StringComparison.Ordinal))
+            _userServiceRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+                .Returns(ValueTask.FromException<UserInfo?>(new IOException("Language lookup unavailable")));
+
+        var rejected = string.Equals(action, "reject", StringComparison.Ordinal);
+        if (rejected)
+            await _service.RejectCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid(), ct);
+        else
+            await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid(), ct);
+
+        var source = rejected ? NotificationSource.CampMembershipRejected : NotificationSource.CampMembershipApproved;
+        var args = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSource value && value == source)
+            .Single().GetArguments();
+        ((IReadOnlyList<Guid>)args[4]!).Should().ContainSingle().Which.Should().Be(userId);
+        var name = camp.Seasons.Single().Name;
+        args[3].Should().Be(action switch
+        {
+            "approve" => $"Se aprobó tu solicitud para unirte a {name}",
+            "reject" => $"No se aprobó tu solicitud para unirte a {name}",
+            _ => $"Your request to join {name} was approved"
+        });
+        if (!rejected)
+        {
+            args[6].Should().Be($"/Barrios/{camp.Slug}");
+            args[7].Should().Be(string.Equals(action, "lookup-failure", StringComparison.Ordinal) ? "View camp" : "Ver campamento");
+        }
     }
 
     [HumansFact]

@@ -309,4 +309,8 @@
   <data name="Camps_Details_WithdrawSeason" xml:space="preserve"><value>Saison zurückziehen</value></data>
   <data name="Camps_Details_MarkFullConfirm" xml:space="preserve"><value>Diese Saison als voll markieren? Das zeigt Besuchenden nur, dass ihr vermutlich ausgebucht seid — sie können weiterhin um Aufnahme bitten.</value></data>
   <data name="Camps_Details_MarkFull" xml:space="preserve"><value>Saison als voll markieren</value></data>
+  <data name="Camps_Notification_MembershipApproved" xml:space="preserve"><value>Deine Anfrage, {0} beizutreten, wurde genehmigt</value></data>
+  <data name="Camps_Notification_MembershipRejected" xml:space="preserve"><value>Deine Anfrage, {0} beizutreten, wurde nicht genehmigt</value></data>
+  <data name="Camps_Notification_ViewCamp" xml:space="preserve"><value>Camp ansehen</value></data>
+  <data name="Camps_Notification_GenericCamp" xml:space="preserve"><value>ein Camp</value></data>
 </root>
