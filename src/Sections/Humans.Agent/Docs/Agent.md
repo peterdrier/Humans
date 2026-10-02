@@ -67,6 +67,8 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 
 `FeedbackReport.Source` (`FeedbackSource` enum: `UserReport`, `AgentUnresolved`) and `FeedbackReport.AgentConversationId` (plain nullable Guid column, no EF FK constraint, no nav property). Owned by Feedback section. The Agent no longer writes these — historical rows produced by the original `route_to_feedback` auto-create flow remain queryable through the Feedback admin filter. Cross-section linkage was by FK column only.
 
+The member history page uses localized labels, including the link to each transcript, in all six supported cultures.
+
 ## Actors & Roles
 
 | Actor | Capability |

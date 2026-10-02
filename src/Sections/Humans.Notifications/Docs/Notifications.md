@@ -69,6 +69,8 @@ The originating system for a notification, mapped to a `MessageCategory` for pre
 
 `NotificationMeterProvider.GetMetersForUserAsync(ClaimsPrincipal, …)` returns the meters visible to the current user, filtered by role. Titles use the current request’s UI culture in all six supported cultures, including singular/plural camp-request counts; only numeric counts are cached. Each meter calls into the owning section's service (`IUserServiceRead.GetAllUserInfosAsync` — consent-review pending, onboarding-pending, and pending-deletion counts are all derived in-memory from the loaded `UserInfo` snapshot, `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync`, `ITeamServiceRead.GetTeamsAsync` (the pending-requests count is summed in-memory from the returned team snapshots), `ITicketSync.IsInErrorStateAsync`, `IApplicationServiceRead.GetUnvotedApplicationCountAsync`, `ICampServiceRead.GetSettingsAsync` + `GetCampsForYearAsync` (the per-lead pending count is derived in-memory from the returned camp snapshots)). The inbox and popup GETs forward the browser abort token to both the inbox query and the meter reads; cancellation propagates without caching empty counts. Aggregate counts are cached in `IMemoryCache` for ~2 minutes (`CacheKeys.NotificationMeters`); per-user counts (board voting, camp lead requests) are cached per-user with the same TTL. Writes elsewhere invalidate via `INotificationMeterCacheInvalidator`.
 
+Inbox selection checkboxes have a localized accessible label in all six supported cultures.
+
 ## Actors & Roles
 
 | Actor | Capabilities |

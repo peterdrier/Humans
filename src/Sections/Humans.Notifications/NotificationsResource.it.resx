@@ -145,6 +145,7 @@
   <data name="Notification_Bulk_Selected" xml:space="preserve">
     <value>{0} selezionati</value>
   </data>
+  <data name="Notifications_SelectNotification" xml:space="preserve"><value>Seleziona notifica</value></data>
   <data name="Notification_Bulk_Resolve" xml:space="preserve">
     <value>Risolvi selezionati</value>
   </data>
