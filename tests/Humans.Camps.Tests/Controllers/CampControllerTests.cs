@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -83,6 +84,36 @@ public class CampControllerTests
             var expected = localizer[key];
             expected.ResourceNotFound.Should().BeFalse();
             controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void ContactForm_LocalizesRequiredAndLengthMessages(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+        foreach (var (message, key, arguments) in new (string, string, object[])[]
+        {
+            ("", "Validation_Required", ["Message"]),
+            (new string('x', 2001), "Validation_MaxLength", ["Message", 2000])
+        })
+        {
+            var context = new ActionContext { HttpContext = new DefaultHttpContext { RequestServices = services } };
+            validator.Validate(context, null, "", new CampContactViewModel { Message = message });
+            var expected = localizer[key, arguments];
+            expected.ResourceNotFound.Should().BeFalse();
+            context.ModelState["Message"]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
         }
     }
 

@@ -231,8 +231,8 @@ internal sealed class CampContactViewModel
     public string CampSlug { get; set; } = string.Empty;
     public string CampName { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(2000, MinimumLength = 1)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string Message { get; set; } = string.Empty;
 
     public bool IncludeContactInfo { get; set; } = true;
