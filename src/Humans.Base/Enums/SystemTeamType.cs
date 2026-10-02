@@ -35,10 +35,10 @@ public enum SystemTeamType
     Asociados = 4,
 
     /// <summary>
-    /// Colaboradors (active contributors) with approved applications.
+    /// Colaboradores (active contributors) with approved applications.
     /// Auto-synced based on Application status.
     /// </summary>
-    Colaboradors = 5,
+    Colaboradores = 5,
 
     /// <summary>
     /// All active camp leads across all camps.

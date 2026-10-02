@@ -13,7 +13,7 @@
 
 Teams are how humans organize around a shared purpose. A team is either a **department** (top-level, like Build or Kitchen) or a **sub-team** that lives under exactly one department. Each team can have coordinators, named role slots, and optionally a `@nobodies.team` Google Group plus a linked Shared Drive folder.
 
-A few teams are **system teams** (Volunteers, Coordinators, Board, Asociados, Colaboradors, Barrio Leads) — the app manages those automatically, so you cannot join or leave them by hand. Some teams are also **hidden**: privacy-sensitive groupings visible only to admins.
+A few teams are **system teams** (Volunteers, Coordinators, Board, Asociados, Colaboradores, Barrio Leads) — the app manages those automatically, so you cannot join or leave them by hand. Some teams are also **hidden**: privacy-sensitive groupings visible only to admins.
 
 ## Key pages at a glance
 
@@ -152,7 +152,7 @@ Toggle `IsHidden` on create or edit. Hidden teams do not appear in the directory
 
 ### System team sync
 
-Admins (TeamsAdmin / Board / Admin) view per-service sync mode at `/Google/SyncSettings` and (Admin only) trigger an immediate run via POST to `/Google/SyncSystemTeams`, with results landing on `/Google/SyncResults`. The hourly Hangfire job (`teams-system-sync`) keeps Volunteers (profiles carrying the required name fields and consents, not suspended or rejected), Coordinators (department-level management role assignments), Board, Asociados, Colaboradors, and Barrio Leads (active camp leads) aligned, also reconciling `TeamMember.Role` against `IsManagement` role assignments and backfilling `User.GoogleEmail` for verified `@nobodies.team` accounts.
+Admins (TeamsAdmin / Board / Admin) view per-service sync mode at `/Google/SyncSettings` and (Admin only) trigger an immediate run via POST to `/Google/SyncSystemTeams`, with results landing on `/Google/SyncResults`. The hourly Hangfire job (`teams-system-sync`) keeps Volunteers (profiles carrying the required name fields and consents, not suspended or rejected), Coordinators (department-level management role assignments), Board, Asociados, Colaboradores, and Barrio Leads (active camp leads) aligned, also reconciling `TeamMember.Role` against `IsManagement` role assignments and backfilling `User.GoogleEmail` for verified `@nobodies.team` accounts.
 
 ## Related sections
 

@@ -16,7 +16,7 @@ namespace Humans.Workgroups.Tests.Services.Contributors;
 /// <summary>
 /// Workgroups' half of the Drive access fan-out (design §9, §20): Active folders go
 /// Contributor for current members, Dormant folders go Viewer, and the configured root
-/// goes Viewer for the Board and approved Colaboradors/Asociados. A group with no folder
+/// goes Viewer for the Board and approved Colaboradores/Asociados. A group with no folder
 /// is not claimed, and a <c>folderId</c> filter returns at most that one entry.
 /// </summary>
 public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
@@ -70,7 +70,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task RootFolder_BoardMembers_AndApprovedColaboradorsAndAsociados_GetViewer()
+    public async Task RootFolder_BoardMembers_AndApprovedColaboradoresAndAsociados_GetViewer()
     {
         var boardUserId = Guid.NewGuid();
         Teams.GetTeamAsync(SystemTeamIds.Board, Arg.Any<CancellationToken>())

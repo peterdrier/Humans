@@ -17,7 +17,7 @@ Departments and sub-teams, join requests, role definitions, team pages, and link
 
 - A **Department** is a team with no parent.
 - A **Sub-Team** is a team within a department. Only one level of nesting is allowed.
-- **System teams** (Volunteers, Coordinators, Board, Asociados, Colaboradors, Barrio Leads) are managed automatically — members cannot be manually added or removed.
+- **System teams** (Volunteers, Coordinators, Board, Asociados, Colaboradores, Barrio Leads) are managed automatically — members cannot be manually added or removed.
 - A **Coordinator** is a team member assigned to the management role on a department. Coordinators have full authority over the department and all its sub-teams, including Google resource management. They are added to the Coordinators system team.
 - A **Sub-team Manager** is a team member assigned to the management role on a sub-team. Managers have scoped authority over their sub-team only: member management, join requests, roles, shifts, and team page editing. They **cannot** manage Google resources, the parent department, or sibling sub-teams. They are **not** added to the Coordinators system team.
 - A **Team Page** is a Markdown-based public or member-facing page for a department, with optional calls to action.
@@ -96,7 +96,7 @@ One early-entry (EE) grant: a human may enter on a `LocalDate` for a named proje
 | Coordinators | 2 | All department-level team coordinators |
 | Board | 3 | Board members |
 | Asociados | 4 | Approved Asociados with active terms |
-| Colaboradors | 5 | Approved Colaboradors with active terms |
+| Colaboradores | 5 | Approved Colaboradores with active terms (slug `colaboradores`; legacy `colaboradors` kept as `CustomSlug` alias) |
 | BarrioLeads | 6 | Active camp leads across all camps |
 
 ### SystemTeamIds (constants)
@@ -107,7 +107,7 @@ One early-entry (EE) grant: a human may enter on a `LocalDate` for a named proje
 | Coordinators | `00000000-0000-0000-0001-000000000002` |
 | Board | `00000000-0000-0000-0001-000000000003` |
 | Asociados | `00000000-0000-0000-0001-000000000004` |
-| Colaboradors | `00000000-0000-0000-0001-000000000005` |
+| Colaboradores | `00000000-0000-0000-0001-000000000005` |
 | BarrioLeads | `00000000-0000-0000-0001-000000000006` |
 
 ## Routing
@@ -225,7 +225,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - When a member is removed from a team, all their role assignments for that team are also removed.
 - When a member is added to a team, Google resource sync (Drive folder permissions, Group memberships) runs inline against the Google APIs (and rolls up to the parent department's resources for sub-team adds). Per-user removals are deferred to the daily reconciliation job rather than running inline. Failed sync calls fall through to the Google sync outbox, processed by `google-sync-outbox-process`.
 - When a department coordinator role assignment changes, the Coordinators system team membership is recalculated for the affected human. Sub-team manager changes do not affect the Coordinators system team.
-- The system team sync job runs hourly (Hangfire recurring job `teams-system-sync`), reconciling system team membership for Volunteers (consent compliance), Coordinators (department-level management role assignments), Board (active Board role assignments), Asociados/Colaboradors (approved tier applications with active terms), and Barrio Leads (active camp lead assignments). The job also reconciles `TeamMember.Role` against `IsManagement` role assignments and backfills `User.GoogleEmail` for verified `@nobodies.team` accounts. It ends with `IGoogleGroupSync.ReconcileAllAsync`, which it skips with a log line when Google Workspace is not configured (`IGoogleDriveActivityClient.IsConfigured`); the membership work itself always runs.
+- The system team sync job runs hourly (Hangfire recurring job `teams-system-sync`), reconciling system team membership for Volunteers (consent compliance), Coordinators (department-level management role assignments), Board (active Board role assignments), Asociados/Colaboradores (approved tier applications with active terms), and Barrio Leads (active camp lead assignments). The job also reconciles `TeamMember.Role` against `IsManagement` role assignments and backfills `User.GoogleEmail` for verified `@nobodies.team` accounts. It ends with `IGoogleGroupSync.ReconcileAllAsync`, which it skips with a log line when Google Workspace is not configured (`IGoogleDriveActivityClient.IsConfigured`); the membership work itself always runs.
 - When an account merge accepts, `ITeamService.ReassignToUserAsync` re-FKs `TeamMember`, `TeamJoinRequest`, and `TeamEarlyEntryGrant` rows from source to target, collapsing duplicates so the same target doesn't end up with two memberships of the same team. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 - Each Early Entry mutation writes an `AuditLogEntry` (`EarlyEntryGranted` on add, `EarlyEntryUpdated` on edit, `EarlyEntryRevoked` on remove) against the `TeamEarlyEntryGrant` and evicts the affected user's EE cache.
 - Right-to-erasure (`IUserDataContributor.EraseForUserAsync`): ends live memberships, then hard-deletes the user's join requests and EE grants; the GDPR export contributes a `TeamEarlyEntry` data slice.
@@ -246,7 +246,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - **Gdpr.Contracts:** `IUserDataContributor` (export + erasure).
 - **EarlyEntry** (full section): `IEarlyEntryProvider` — `GetEarlyEntriesAsync` projects grants from `EarlyEntryEnabled` teams to the cross-section `EarlyEntryGrant` view (`"{TeamName}: {ProjectName}"`) via `TeamEarlyEntryProjection`; `IEarlyEntryInvalidator` on grant writes.
 - **Camps.Contracts:** active camp lead assignments feed the Barrio Leads system team via `ICampLeadDirectory`.
-- **Governance.Contracts:** `IMembershipCalculatorRead` decides Asociados / Colaboradors eligibility.
+- **Governance.Contracts:** `IMembershipCalculatorRead` decides Asociados / Colaboradores eligibility.
 - **Tickets.Contracts:** the EE page's ticket-barcode lookup.
 
 **Inbound** — sections that reference Teams and are not dependencies of it:

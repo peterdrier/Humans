@@ -56,7 +56,7 @@ The Application entity also serves **upgrades** (Volunteer→Colaborador, Volunt
 - Application form collects tier-specific information
 - Creates a new Application entity for the target tier
 - Active Volunteers can apply for Colaborador or Asociado
-- Active Colaboradors can apply for Asociado
+- Active Colaboradores can apply for Asociado
 - Current tier and access maintained during review
 
 ### US-3.3: View Application Status
@@ -87,7 +87,7 @@ The Application entity also serves **upgrades** (Volunteer→Colaborador, Volunt
 
 **As a** Board member
 **I want to** review and vote on tier applications
-**So that** qualified humans can become Colaboradors or Asociados
+**So that** qualified humans can become Colaboradores or Asociados
 
 **Acceptance Criteria:**
 - Board Voting dashboard shows pending applications
@@ -252,7 +252,7 @@ When an Application is approved:
 3. `Application.BoardMeetingDate` = entered meeting date
 4. `Application.DecisionNote` = Board's collective note
 5. `Profile.MembershipTier` → Application's tier
-6. User added to Colaboradors or Asociados system team
+6. User added to Colaboradores or Asociados system team
 7. Individual BoardVote records deleted
 8. Approval email attempted best-effort, including recipient lookup; email failure does not skip the in-app notice.
 
