@@ -4,6 +4,7 @@ using Humans.Camps.Contracts;
 using Humans.Containers.Contracts;
 using Humans.Containers.Data;
 using Humans.Containers.Domain;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 
 namespace Humans.Containers.Services;
@@ -14,6 +15,7 @@ internal sealed class Service(
     ICampServiceRead campService,
     IAuditLogService auditLog,
     IClock clock,
+    IStringLocalizer<ContainersResource> localizer,
     ILogger<Service> logger) : IContainerService
 {
     // Names travel into JS string templates and HTML on the map pages; ban the characters
@@ -299,44 +301,36 @@ internal sealed class Service(
         }
     }
 
-    private static void ValidateImageCount(int total)
+    private void ValidateImageCount(int total)
     {
         if (total > MaxImagesPerContainer)
         {
-            throw new ContainerRuleException(
-                "Containers_Error_TooManyImages",
-                $"A container can have at most {MaxImagesPerContainer} images.",
-                MaxImagesPerContainer);
+            throw new InvalidOperationException(localizer["Containers_Error_TooManyImages", MaxImagesPerContainer]);
         }
     }
 
-    private static void ValidateImage(ContainerImageUpload? image)
+    private void ValidateImage(ContainerImageUpload? image)
     {
         if (image is null) return;
         if (!AllowedContentTypes.Contains(image.ContentType))
         {
-            throw new ContainerRuleException(
-                "Containers_Error_ImageType", "Only JPEG, PNG, and WebP images are allowed.");
+            throw new InvalidOperationException(localizer["Containers_Error_ImageType"]);
         }
         if (image.Length > MaxImageBytes)
         {
-            throw new ContainerRuleException("Containers_Error_ImageTooLarge", "Image must be under 10 MB.");
+            throw new InvalidOperationException(localizer["Containers_Error_ImageTooLarge"]);
         }
         // Security: extension whitelist prevents image/jpeg + .html (static middleware would serve as HTML).
         var fileName = DisplayFileName(image.FileName);
         if (fileName.Length > MaxImageFileNameLength)
         {
-            throw new ContainerRuleException(
-                "Containers_Error_ImageFileNameLength",
-                $"Image filename must be {MaxImageFileNameLength} characters or fewer.",
-                MaxImageFileNameLength);
+            throw new InvalidOperationException(localizer["Containers_Error_ImageFileNameLength", MaxImageFileNameLength]);
         }
 
         var ext = Path.GetExtension(fileName);
         if (!AllowedImageExtensions.Contains(ext))
         {
-            throw new ContainerRuleException(
-                "Containers_Error_ImageExtension", "Image filename must end in .jpg, .jpeg, .png, or .webp.");
+            throw new InvalidOperationException(localizer["Containers_Error_ImageExtension"]);
         }
     }
 

@@ -1,7 +1,6 @@
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.Containers.Contracts;
-using Humans.Containers.Services;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -160,7 +159,7 @@ internal sealed class ContainerController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Container write failed for camp {Slug}: {Message}", slug, ex.Message);
-            SetError(ex is ContainerRuleException { Key.Length: > 0 } rule ? localizer[rule.Key, rule.Args].Value : ex.Message);
+            SetError(ex.Message);
             return RedirectToAction(nameof(Index), new { slug });
         }
 
