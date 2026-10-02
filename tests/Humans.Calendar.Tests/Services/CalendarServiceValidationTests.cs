@@ -129,7 +129,7 @@ public class CalendarServiceValidationTests
 
         result.Succeeded.Should().BeFalse();
         result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceRule));
-        result.ErrorMessage.Should().Contain("Recurrence rule is malformed");
+        result.ErrorMessage.Should().Be("Calendar_InvalidTimedRecurrence");
         await repo.DidNotReceive().AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>());
     }
 
@@ -153,7 +153,7 @@ public class CalendarServiceValidationTests
 
         result.Succeeded.Should().BeFalse();
         result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceTimezone));
-        result.ErrorMessage.Should().Contain("Recurrence timezone is unknown");
+        result.ErrorMessage.Should().Be("Calendar_UnknownTimezone");
     }
 
     [HumansFact]
@@ -394,6 +394,34 @@ public class CalendarServiceValidationTests
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Be("Calendar_SaveFailed");
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EventMutation_InvalidTimedEventReturnsLocalizedValidationKey(bool update)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        repo.UpdateAsync(Arg.Any<Guid>(), Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.ArgAt<Action<Humans.Calendar.Domain.CalendarEvent>>(1)(new Humans.Calendar.Domain.CalendarEvent());
+                return true;
+            });
+        var service = BuildService(repo);
+        var dto = new CreateCalendarEventDto(
+            "", null, null, null, Guid.NewGuid(),
+            Instant.FromUtc(2026, 5, 15, 17, 0), Instant.FromUtc(2026, 5, 15, 18, 0),
+            false, null, null);
+
+        var result = update
+            ? await service.UpdateEventWithResultAsync(Guid.NewGuid(), dto, Guid.NewGuid(), TestContext.Current.CancellationToken)
+            : await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ValidationMemberName.Should().BeNull();
+        result.ErrorMessage.Should().Be("Calendar_InvalidTimedEvent");
+        await repo.DidNotReceive().AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>());
     }
 
     private static CalendarService BuildService(ICalendarRepository repo)

@@ -85,6 +85,8 @@
   <data name="Calendar_StartRequired" xml:space="preserve"><value>L'ora di inizio è obbligatoria.</value></data>
   <data name="Calendar_EndBeforeStart" xml:space="preserve"><value>La fine deve essere uguale o successiva all'inizio.</value></data>
   <data name="Calendar_SaveFailed" xml:space="preserve"><value>Impossibile salvare l'evento del calendario.</value></data>
+  <data name="Calendar_InvalidTimedRecurrence" xml:space="preserve"><value>Usa una regola di ricorrenza valida.</value></data>
+  <data name="Calendar_InvalidTimedEvent" xml:space="preserve"><value>Inserisci un titolo e un intervallo di tempo valido. Specifica insieme la regola di ricorrenza e il fuso orario.</value></data>
   <data name="Calendar_EventTitle" xml:space="preserve"><value>Evento</value></data>
   <data name="Calendar_FirstStart" xml:space="preserve"><value>Primo inizio</value></data>
   <data name="Calendar_FormTitle" xml:space="preserve"><value>Titolo</value></data>

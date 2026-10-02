@@ -112,13 +112,13 @@ internal sealed class CalendarService(
         {
             logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
             return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex),
-                dto.IsAllDay ? "Calendar_InvalidAllDayRecurrence" : ex.Message);
+                CalendarValidationErrorKey(ex, dto.IsAllDay));
         }
         catch (InvalidOperationException ex)
         {
             logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
             return CalendarEventMutationResult.Failed(ex.Message.StartsWith("Calendar_", StringComparison.Ordinal)
-                ? ex.Message : dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : ex.Message);
+                ? ex.Message : dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : "Calendar_InvalidTimedEvent");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -152,6 +152,13 @@ internal sealed class CalendarService(
         if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz) is null)
             throw new ValidationException($"Recurrence timezone is unknown: '{tz}'.");
     }
+
+    private static string CalendarValidationErrorKey(ValidationException ex, bool isAllDay) =>
+        isAllDay ? "Calendar_InvalidAllDayRecurrence" : CalendarValidationMemberName(ex) switch
+        {
+            nameof(CreateCalendarEventDto.RecurrenceTimezone) => "Calendar_UnknownTimezone",
+            _ => "Calendar_InvalidTimedRecurrence"
+        };
 
     private static string CalendarValidationMemberName(ValidationException ex) =>
         ex.Message.Contains("timezone", StringComparison.OrdinalIgnoreCase)
@@ -345,7 +352,7 @@ internal sealed class CalendarService(
         {
             logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
             return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex),
-                dto.IsAllDay ? "Calendar_InvalidAllDayRecurrence" : ex.Message);
+                CalendarValidationErrorKey(ex, dto.IsAllDay));
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
         {
@@ -356,7 +363,7 @@ internal sealed class CalendarService(
         {
             logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
             return CalendarEventMutationResult.Failed(ex.Message.StartsWith("Calendar_", StringComparison.Ordinal)
-                ? ex.Message : dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : ex.Message);
+                ? ex.Message : dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : "Calendar_InvalidTimedEvent");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

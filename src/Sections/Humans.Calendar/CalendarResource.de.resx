@@ -85,6 +85,8 @@
   <data name="Calendar_StartRequired" xml:space="preserve"><value>Ein Startzeitpunkt ist erforderlich.</value></data>
   <data name="Calendar_EndBeforeStart" xml:space="preserve"><value>Das Ende muss am oder nach dem Start liegen.</value></data>
   <data name="Calendar_SaveFailed" xml:space="preserve"><value>Kalenderereignis konnte nicht gespeichert werden.</value></data>
+  <data name="Calendar_InvalidTimedRecurrence" xml:space="preserve"><value>Verwende eine gültige Wiederholungsregel.</value></data>
+  <data name="Calendar_InvalidTimedEvent" xml:space="preserve"><value>Gib einen Titel und einen gültigen Zeitraum ein. Gib die Wiederholungsregel und die Zeitzone gemeinsam an.</value></data>
   <data name="Calendar_EventTitle" xml:space="preserve"><value>Veranstaltung</value></data>
   <data name="Calendar_FirstStart" xml:space="preserve"><value>Erster Beginn</value></data>
   <data name="Calendar_FormTitle" xml:space="preserve"><value>Titel</value></data>

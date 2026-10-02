@@ -128,7 +128,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Every mutating action (create / update / delete / cancel-occurrence / override-occurrence) writes an `AuditLogEntry` with the actor's user ID.
 - Create and update result wrappers preserve caller cancellation; they do not turn a canceled operation into an ordinary validation or persistence failure.
 - Title is required (non-null, non-empty).
-- Calendar form parse and fallback validation messages use `CalendarResource` in every supported culture.
+- Calendar form parse and fallback validation messages use `CalendarResource` in every supported culture. Timed service validation results also return resource keys for malformed recurrence, unknown timezone, and invalid event fields, while detailed diagnostics stay in server logs. Recurrence errors remain attached to their specific form field.
 - Timed events require `StartUtc <= EndUtc` and have no date fields. All-day writes require `StartDate < EndDateExclusive` and have no start/end instants.
 - Zero-duration timed occurrences are included when their start is in `[from, to)`, including the window's start. Positive-duration occurrences must overlap the window; an occurrence ending exactly at `from` is excluded.
 - Forms display inclusive end dates; `CalendarService.AllDayWindow` / `AllDayInclusiveEndDate` convert between inclusive and exclusive `LocalDate` values without a timezone.

@@ -85,6 +85,8 @@
   <data name="Calendar_StartRequired" xml:space="preserve"><value>L'hora d'inici és obligatòria.</value></data>
   <data name="Calendar_EndBeforeStart" xml:space="preserve"><value>El final ha de ser igual o posterior a l'inici.</value></data>
   <data name="Calendar_SaveFailed" xml:space="preserve"><value>No s'ha pogut desar l'esdeveniment del calendari.</value></data>
+  <data name="Calendar_InvalidTimedRecurrence" xml:space="preserve"><value>Utilitza una regla de recurrència vàlida.</value></data>
+  <data name="Calendar_InvalidTimedEvent" xml:space="preserve"><value>Introdueix un títol i un interval de temps vàlid. Indica la regla de recurrència i la zona horària juntes.</value></data>
   <data name="Calendar_EventTitle" xml:space="preserve"><value>Esdeveniment</value></data>
   <data name="Calendar_FirstStart" xml:space="preserve"><value>Primer inici</value></data>
   <data name="Calendar_FormTitle" xml:space="preserve"><value>Títol</value></data>

@@ -85,6 +85,8 @@
   <data name="Calendar_StartRequired" xml:space="preserve"><value>L'heure de début est obligatoire.</value></data>
   <data name="Calendar_EndBeforeStart" xml:space="preserve"><value>La fin doit être postérieure ou égale au début.</value></data>
   <data name="Calendar_SaveFailed" xml:space="preserve"><value>Impossible d'enregistrer l'événement du calendrier.</value></data>
+  <data name="Calendar_InvalidTimedRecurrence" xml:space="preserve"><value>Utilisez une règle de récurrence valide.</value></data>
+  <data name="Calendar_InvalidTimedEvent" xml:space="preserve"><value>Saisissez un titre et une plage horaire valide. Indiquez ensemble la règle de récurrence et le fuseau horaire.</value></data>
   <data name="Calendar_EventTitle" xml:space="preserve"><value>Événement</value></data>
   <data name="Calendar_FirstStart" xml:space="preserve"><value>Premier début</value></data>
   <data name="Calendar_FormTitle" xml:space="preserve"><value>Titre</value></data>
