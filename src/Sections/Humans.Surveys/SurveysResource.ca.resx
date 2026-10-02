@@ -328,4 +328,7 @@
   <data name="Surveys_Created" xml:space="preserve"><value>Enquesta creada.</value></data>
   <data name="Surveys_Saved" xml:space="preserve"><value>Enquesta desada.</value></data>
   <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>El correu de previsualització de l’enquesta s’ha posat a la cua per a {0}.</value></data>
+  <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>No s’ha trobat l’enquesta.</value></data>
+  <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>El teu compte no té cap adreça electrònica de notificació.</value></data>
+  <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>No s’ha pogut posar a la cua el correu de previsualització de l’enquesta.</value></data>
 </root>

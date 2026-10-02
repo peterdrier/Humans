@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Surveys.Domain;
@@ -14,6 +15,64 @@ namespace Humans.Surveys.Tests.Services;
 
 public sealed class SurveyPreviewEmailServiceTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("missing-survey")]
+    [Xunit.InlineData("missing-email")]
+    [Xunit.InlineData("queue-failure")]
+    public async Task Preview_failures_use_the_site_ui_language(string failure)
+    {
+        using var culture = new CultureScope("es");
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var surveyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        var userEmails = Substitute.For<IUserEmailService>();
+        var users = Substitute.For<IUserServiceRead>();
+        var emailService = Substitute.For<IEmailService>();
+        var editable = new SurveyEditInput(
+            Text("Volunteer survey"), LocalizedText.Empty, LocalizedText.Empty,
+            LocalizedText.Empty, LocalizedText.Empty, "en",
+            false, null, null, null, null, null, null, []);
+        if (!string.Equals(failure, "missing-survey", StringComparison.Ordinal))
+            surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+                .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, editable, userId));
+        userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string>());
+        if (string.Equals(failure, "queue-failure", StringComparison.Ordinal))
+        {
+            userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(new Dictionary<Guid, string> { [userId] = "author@example.org" });
+            users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+                .Returns(new UserInfo(
+                    userId, "Author", false, "fr", null, Instant.FromUnixTimeSeconds(0),
+                    null, null, null, null, null, false, false, null, null, null,
+                    null, null, null, [], [], [], null, []));
+            emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException(new IOException("Outbox unavailable")));
+        }
+        var sut = new SurveyPreviewEmailService(
+            surveys, userEmails, users, emailService, TestSurveysEmails.Create(),
+            Substitute.For<IEmailPreviewServiceRead>(),
+            new SurveyPreviewTokenProvider(DataProtectionProvider.Create("survey-preview-error-language-tests")),
+            NullLogger<SurveyPreviewEmailService>.Instance);
+        var act = async () =>
+        {
+            if (string.Equals(failure, "queue-failure", StringComparison.Ordinal))
+                await sut.SendToUserAsync(surveyId, userId, ct);
+            else
+                await sut.PreviewForUserAsync(surveyId, userId, ct);
+        };
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(failure switch
+        {
+            "missing-survey" => "No se encontró la encuesta.",
+            "missing-email" => "Tu cuenta no tiene un correo electrónico de notificación.",
+            _ => "No se pudo poner en cola el correo de vista previa de la encuesta."
+        });
+        if (!string.Equals(failure, "queue-failure", StringComparison.Ordinal))
+            await emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task PreviewForUserAsync_returns_the_rendered_message_without_sending_it()
     {

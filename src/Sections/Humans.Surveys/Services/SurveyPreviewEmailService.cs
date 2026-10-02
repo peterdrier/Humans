@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using Humans.Surveys.Contracts;
 using Humans.Email.Contracts;
 using Humans.Base.Extensions;
@@ -26,6 +28,8 @@ internal sealed class SurveyPreviewEmailService(
     SurveyPreviewTokenProvider previewTokens,
     ILogger<SurveyPreviewEmailService> logger) : ISurveyPreviewEmailService
 {
+    private static readonly ResourceManager ErrorResources = new(typeof(SurveysResource));
+
     public async Task<RenderedEmailPreview> PreviewForUserAsync(
         Guid surveyId,
         Guid userId,
@@ -53,7 +57,7 @@ internal sealed class SurveyPreviewEmailService(
                 ex,
                 "Failed to queue survey {SurveyId} preview email for requesting user {UserId}",
                 surveyId, userId);
-            throw new InvalidOperationException("The survey preview email could not be queued.", ex);
+            throw new InvalidOperationException(ErrorResources.GetString("Surveys_PreviewQueueFailed", CultureInfo.CurrentUICulture)!, ex);
         }
 
         logger.LogInformation(
@@ -68,11 +72,11 @@ internal sealed class SurveyPreviewEmailService(
         CancellationToken ct)
     {
         var detail = await surveyService.GetForEditAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
+            ?? throw new InvalidOperationException(ErrorResources.GetString("Surveys_PreviewNotFound", CultureInfo.CurrentUICulture)!);
         var survey = detail.Editable;
         var emails = await userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
         if (!emails.TryGetValue(userId, out var email))
-            throw new InvalidOperationException("Your account has no notification email.");
+            throw new InvalidOperationException(ErrorResources.GetString("Surveys_PreviewNoEmail", CultureInfo.CurrentUICulture)!);
 
         var user = await userService.GetUserInfoAsync(userId, ct);
         var name = user?.BurnerName ?? string.Empty;

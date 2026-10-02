@@ -328,4 +328,7 @@
   <data name="Surveys_Created" xml:space="preserve"><value>Sondage créé.</value></data>
   <data name="Surveys_Saved" xml:space="preserve"><value>Sondage enregistré.</value></data>
   <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>L’e-mail d’aperçu du sondage a été mise en file d’attente pour {0}.</value></data>
+  <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>Sondage introuvable.</value></data>
+  <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>Aucune adresse e-mail de notification n’est associée à votre compte.</value></data>
+  <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>L’e-mail d’aperçu du sondage n’a pas pu être mise en file d’attente.</value></data>
 </root>

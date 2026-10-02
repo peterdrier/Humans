@@ -159,7 +159,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
   (design-rules §11), never by view filtering; `SurveyService` re-checks ownership on every edit path
   (`UpdateAsync`, translation pre-fill, ranked availability), so an edit the handler refuses is refused
   whoever the caller is.
-  Ordinary authors’ create/save and preview-email success notices use the site UI language in all six cultures.
+  Ordinary authors’ create/save and preview-email success notices use the site UI language in all six cultures. Preview errors (missing survey, missing notification address, failed queueing) also use the site UI language, independently of the invitation’s recipient language.
   The builder's **Save and review recipients** action continues to the Send page; a Draft with
   net-new recipients can be opened there before the separate invitation confirmation.
 - **`/Survey/Answer?t={token}`** — `SurveyController` invited wizard (token carries identity; never the current principal).

@@ -328,4 +328,7 @@
   <data name="Surveys_Created" xml:space="preserve"><value>Umfrage erstellt.</value></data>
   <data name="Surveys_Saved" xml:space="preserve"><value>Umfrage gespeichert.</value></data>
   <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>Vorschau-E-Mail zur Umfrage für {0} wurde in die Warteschlange gestellt.</value></data>
+  <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>Umfrage nicht gefunden.</value></data>
+  <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>Für dein Konto ist keine Benachrichtigungs-E-Mail hinterlegt.</value></data>
+  <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>Die Vorschau-E-Mail zur Umfrage konnte nicht in die Warteschlange gestellt werden.</value></data>
 </root>

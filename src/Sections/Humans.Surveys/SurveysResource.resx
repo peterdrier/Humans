@@ -323,4 +323,7 @@
   <data name="Surveys_Created" xml:space="preserve"><value>Survey created.</value></data>
   <data name="Surveys_Saved" xml:space="preserve"><value>Survey saved.</value></data>
   <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>Survey preview email queued for {0}.</value></data>
+  <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>Survey not found.</value></data>
+  <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>Your account has no notification email.</value></data>
+  <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>The survey preview email could not be queued.</value></data>
 </root>
