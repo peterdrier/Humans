@@ -99,8 +99,9 @@ resolve_target() {
 # old/new strings never need regex escaping — both routinely contain `*`,
 # `.` and `/`.
 repair_line() {
-  local file="$1" old="$2" new="$3"
-  awk -v old="$old" -v new="$new" '
+  local file="$1" old="$2" new="$3" staging_file
+  staging_file=$(mktemp "$file.verify-triggers.XXXXXX") || return 1
+  if awk -v old="$old" -v new="$new" '
     {
       line = $0
       trimmed = line
@@ -115,8 +116,10 @@ repair_line() {
       }
       print line
     }
-  ' "$file" > "$file.verify-triggers.tmp" && mv "$file.verify-triggers.tmp" "$file" && return 0
-  rm -f "$file.verify-triggers.tmp"
+  ' "$file" > "$staging_file" && chmod --reference="$file" "$staging_file" && mv -- "$staging_file" "$file"; then
+    return 0
+  fi
+  rm -f -- "$staging_file"
   return 1
 }
 
