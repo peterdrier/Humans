@@ -303,8 +303,10 @@ internal sealed class Service(
     {
         if (total > MaxImagesPerContainer)
         {
-            throw new InvalidOperationException(
-                $"A container can have at most {MaxImagesPerContainer} images.");
+            throw new ContainerRuleException(
+                "Containers_Error_TooManyImages",
+                $"A container can have at most {MaxImagesPerContainer} images.",
+                MaxImagesPerContainer);
         }
     }
 
@@ -313,25 +315,28 @@ internal sealed class Service(
         if (image is null) return;
         if (!AllowedContentTypes.Contains(image.ContentType))
         {
-            throw new InvalidOperationException("Only JPEG, PNG, and WebP images are allowed.");
+            throw new ContainerRuleException(
+                "Containers_Error_ImageType", "Only JPEG, PNG, and WebP images are allowed.");
         }
         if (image.Length > MaxImageBytes)
         {
-            throw new InvalidOperationException("Image must be under 10 MB.");
+            throw new ContainerRuleException("Containers_Error_ImageTooLarge", "Image must be under 10 MB.");
         }
         // Security: extension whitelist prevents image/jpeg + .html (static middleware would serve as HTML).
         var fileName = DisplayFileName(image.FileName);
         if (fileName.Length > MaxImageFileNameLength)
         {
-            throw new InvalidOperationException(
-                $"Image filename must be {MaxImageFileNameLength} characters or fewer.");
+            throw new ContainerRuleException(
+                "Containers_Error_ImageFileNameLength",
+                $"Image filename must be {MaxImageFileNameLength} characters or fewer.",
+                MaxImageFileNameLength);
         }
 
         var ext = Path.GetExtension(fileName);
         if (!AllowedImageExtensions.Contains(ext))
         {
-            throw new InvalidOperationException(
-                "Image filename must end in .jpg, .jpeg, .png, or .webp.");
+            throw new ContainerRuleException(
+                "Containers_Error_ImageExtension", "Image filename must end in .jpg, .jpeg, .png, or .webp.");
         }
     }
 

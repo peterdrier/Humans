@@ -129,4 +129,19 @@
   <data name="Containers_Carousel_Next" xml:space="preserve">
     <value>Següent</value>
   </data>
+  <data name="Containers_Error_TooManyImages" xml:space="preserve">
+    <value>Un contenidor pot tenir com a màxim {0} imatges.</value>
+  </data>
+  <data name="Containers_Error_ImageType" xml:space="preserve">
+    <value>Només es permeten imatges JPEG, PNG i WebP.</value>
+  </data>
+  <data name="Containers_Error_ImageTooLarge" xml:space="preserve">
+    <value>La imatge ha de pesar menys de 10 MB.</value>
+  </data>
+  <data name="Containers_Error_ImageFileNameLength" xml:space="preserve">
+    <value>El nom del fitxer d'imatge ha de tenir {0} caràcters o menys.</value>
+  </data>
+  <data name="Containers_Error_ImageExtension" xml:space="preserve">
+    <value>El nom del fitxer d'imatge ha d'acabar en .jpg, .jpeg, .png o .webp.</value>
+  </data>
 </root>

@@ -129,4 +129,19 @@
   <data name="Containers_Carousel_Next" xml:space="preserve">
     <value>Weiter</value>
   </data>
+  <data name="Containers_Error_TooManyImages" xml:space="preserve">
+    <value>Ein Container kann höchstens {0} Bilder haben.</value>
+  </data>
+  <data name="Containers_Error_ImageType" xml:space="preserve">
+    <value>Nur JPEG-, PNG- und WebP-Bilder sind erlaubt.</value>
+  </data>
+  <data name="Containers_Error_ImageTooLarge" xml:space="preserve">
+    <value>Das Bild muss kleiner als 10 MB sein.</value>
+  </data>
+  <data name="Containers_Error_ImageFileNameLength" xml:space="preserve">
+    <value>Der Bilddateiname darf höchstens {0} Zeichen lang sein.</value>
+  </data>
+  <data name="Containers_Error_ImageExtension" xml:space="preserve">
+    <value>Der Bilddateiname muss auf .jpg, .jpeg, .png oder .webp enden.</value>
+  </data>
 </root>
