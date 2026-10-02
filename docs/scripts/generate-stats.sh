@@ -317,7 +317,16 @@ while IFS=' ' read -r day commit; do
   controllers=$(find "$SNAPSHOT_WORKTREE/src" -name '*Controller.cs' ! -path '*/Migrations/*' 2>/dev/null | wc -l)
   views=$(find "$SNAPSHOT_WORKTREE/src" -name '*.cshtml' 2>/dev/null | wc -l)
   entities=$(find "$SNAPSHOT_WORKTREE/src" -path '*/Entities/*.cs' 2>/dev/null | wc -l)
-  resx_keys=$(grep -c '<data ' "$SNAPSHOT_WORKTREE/src/Humans.Web/Resources/SharedResource.resx" 2>/dev/null || echo 0)
+  # Shared resources moved from the Shell to Base; historical snapshots can
+  # still carry the old path or predate the resource file entirely.
+  shared_resource="$SNAPSHOT_WORKTREE/src/Humans.Base/Resources/SharedResource.resx"
+  if [ ! -f "$shared_resource" ]; then
+    shared_resource="$SNAPSHOT_WORKTREE/src/Humans.Web/Resources/SharedResource.resx"
+  fi
+  resx_keys=0
+  if [ -f "$shared_resource" ]; then
+    resx_keys=$(awk '/<data / { n++ } END { print n+0 }' "$shared_resource")
+  fi
 
   # Semantic C# code/comment split via cloc. Same scope as cs_lines above
   # (src/ minus Migrations; tests live in tests/ at the root, not in src/).
