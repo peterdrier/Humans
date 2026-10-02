@@ -77,13 +77,14 @@ internal interface IUserServiceInternal : IUserService
 
     /// <summary>
     /// Saves the profile fields projected into UserInfo and updates the user's
-    /// display label in the same storage operation. Filesystem writes remain
-    /// outside this service; picture metadata changes are returned to the
-    /// orchestrator as old/current content types.
+    /// display label in the same storage operation. Supplied picture bytes are
+    /// written before their content-type metadata; a failed write preserves the
+    /// previous picture. Old/current metadata lets the editor clean up stale files.
     /// </summary>
     Task<UserProfileSaveResult> SaveProfileAsync(
         Guid userId,
         UserProfileSaveCommand command,
+        byte[]? profilePictureData = null,
         CancellationToken ct = default);
 
     /// <summary>

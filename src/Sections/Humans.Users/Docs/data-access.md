@@ -42,8 +42,9 @@ so the unified `UserInfo` read-model invalidates as a side effect.
 ### ProfileEditorService (Scoped)
 
 No repository. Per-user serialization wrapper that fans out to
-`IUserService.SaveProfileAsync` for the row writes and `IFileStorage` for
-the picture file. No `IMemoryCache`.
+`IUserServiceInternal.SaveProfileAsync` for row writes and picture upload bytes,
+which are saved before publishing their content-type metadata. Uses `IFileStorage`
+only to clean up superseded files after that save. No `IMemoryCache`.
 
 ### ContactFieldService (Scoped)
 

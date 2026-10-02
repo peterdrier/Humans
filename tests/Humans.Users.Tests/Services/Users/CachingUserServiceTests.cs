@@ -955,12 +955,14 @@ public class CachingUserServiceTests
     {
         var userId = Guid.NewGuid();
         var profileId = Guid.NewGuid();
+        var pictureData = new byte[] { 1, 2, 3 };
         var sut = CreateSut();
         await PrimeAsync(sut, SampleUserInfo(userId, "Before"));
 
         _inner.SaveProfileAsync(
                 userId,
                 Arg.Any<UserProfileSaveCommand>(),
+                Arg.Any<byte[]?>(),
                 Arg.Any<CancellationToken>())
             .Returns(new UserProfileSaveResult(profileId, null, "image/png"));
 
@@ -999,11 +1001,11 @@ public class CachingUserServiceTests
                 EmergencyContactRelationship: null,
                 NoPriorBurnExperience: false,
                 PictureMutation: UserProfilePictureMutation.Set,
-                ProfilePictureContentType: "image/png"), Xunit.TestContext.Current.CancellationToken);
+                ProfilePictureContentType: "image/png"), pictureData, Xunit.TestContext.Current.CancellationToken);
 
         result.ProfileId.Should().Be(profileId);
         await _inner.Received(1).SaveProfileAsync(
-            userId, Arg.Any<UserProfileSaveCommand>(), Arg.Any<CancellationToken>());
+            userId, Arg.Any<UserProfileSaveCommand>(), pictureData, Arg.Any<CancellationToken>());
         var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
         refreshed.Should().NotBeNull();
         refreshed.BurnerName.Should().Be("New Burner");

@@ -689,10 +689,11 @@ internal sealed class CachingUserService(
     public async Task<UserProfileSaveResult> SaveProfileAsync(
         Guid userId,
         UserProfileSaveCommand command,
+        byte[]? profilePictureData = null,
         CancellationToken ct = default)
     {
         var result = await WithInnerAsync(inner =>
-            inner.SaveProfileAsync(userId, command, ct));
+            inner.SaveProfileAsync(userId, command, profilePictureData, ct));
         await RefreshEntryAsync(userId);
         return result;
     }

@@ -95,6 +95,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`comments-stay-short`](code/comments-stay-short.md) — Code comments and doc blocks get 1-3 lines stating what's true now and why — never a history of the decision.
 - [`clamp-page-size`](code/clamp-page-size.md) — Use `ClampPageSize()` for page-size clamping instead of scattering inline `Math.Clamp(pageSize, ...)` calls.
 - [`csv-use-csvhelper`](code/csv-use-csvhelper.md) — ALL CSV reads/writes go through CsvHelper via the shared `HumansCsv` config — never hand-rolled splitting/quoting/escaping or `string.Split(',')`.
+- [`file-metadata-commit-order`](code/file-metadata-commit-order.md) — When changing file uploads or removals, save new bytes before publishing metadata and clean old files only after commit.
 - [`guard-tests-assert-the-message`](code/guard-tests-assert-the-message.md) — A test pinning a guard clause must assert its message or use an input no sibling path can reach — a type-only `Assert.Throws` still passes with the guard deleted.
 - [`hangfire-method-signature-stable`](code/hangfire-method-signature-stable.md) — Methods called via `backgroundJobs.Enqueue<I>()`/`.Schedule<I>()` need a frozen signature — pin the call site to a no-defaults overload; never add/reorder/change its params.
 - [`culture-and-language`](code/culture-and-language.md) — Use `CultureCatalog`/`CultureCodeExtensions` for culture lists, ordering, and display labels — no per-view language dictionaries.
