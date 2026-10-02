@@ -196,6 +196,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 ## Invariants
 
+- The registration GET carries request cancellation through season settings and registration instructions; abandoning the page stops those loads. POST redisplay helpers keep their existing cancellation boundary.
+
 - Each camp has a unique slug used for URL routing.
 - Camp season status follows: Pending then Active, Full, Rejected, or Withdrawn. Only CampAdmin can approve or reject a season. A camp lead or CampAdmin can set an Active season's status to Full (`CampService.SetSeasonStatusAsync` → `CampSeason.SetStatus`, a plain field flip with no transition validation); only CampAdmin can reactivate a Full (or Withdrawn) season back to Active/Pending.
 - **`Full` is informational only — it does not gate join requests.** It tells visitors the camp currently looks full; `RequestCampMembershipAsync` still matches `Active` **or** `Full` for the public year, because Humans doesn't yet know everyone who is actually in the camp (Peter, 2026-08-20). Don't reintroduce a block here — that reading of the issue was explicitly overridden.

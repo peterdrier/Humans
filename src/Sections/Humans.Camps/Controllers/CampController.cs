@@ -162,15 +162,15 @@ internal sealed class CampController(
             : []
         };
 
-    private async Task PopulateRegisterSeasonYearAsync()
+    private async Task PopulateRegisterSeasonYearAsync(CancellationToken ct = default)
     {
-        var settings = await _campService.GetSettingsAsync();
+        var settings = await _campService.GetSettingsAsync(ct);
         ViewData["SeasonYear"] = settings.OpenSeasons.OrderByDescending(y => y).FirstOrDefault();
     }
 
-    private async Task PopulateRegistrationInfoAsync()
+    private async Task PopulateRegistrationInfoAsync(CancellationToken ct = default)
     {
-        ViewData["RegistrationInfo"] = await cityPlanningService.GetRegistrationInfoAsync();
+        ViewData["RegistrationInfo"] = await cityPlanningService.GetRegistrationInfoAsync(ct);
     }
 
     [AllowAnonymous]
@@ -340,14 +340,14 @@ internal sealed class CampController(
     [HttpGet("Register")]
     public async Task<IActionResult> Register()
     {
-        await PopulateRegisterSeasonYearAsync();
+        await PopulateRegisterSeasonYearAsync(HttpContext.RequestAborted);
         if ((int?)ViewData["SeasonYear"] == 0)
         {
             SetError(campsLocalizer["Camps_Flash_RegistrationClosed"].Value);
             return RedirectToAction(nameof(Index));
         }
 
-        await PopulateRegistrationInfoAsync();
+        await PopulateRegistrationInfoAsync(HttpContext.RequestAborted);
         return View(new CampRegisterViewModel());
     }
 

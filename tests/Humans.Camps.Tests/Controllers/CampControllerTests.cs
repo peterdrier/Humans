@@ -36,6 +36,36 @@ public class CampControllerTests
     private readonly IStringLocalizer<CampsResource> _campsLocalizer = Substitute.For<IStringLocalizer<CampsResource>>();
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Register_stops_loading_when_the_request_is_abandoned(bool cancelAfterSettings)
+    {
+        using var request = new CancellationTokenSource();
+        var abandon = false;
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            if (abandon && cancelAfterSettings) await request.CancelAsync();
+            return new CampSettingsInfo(2026, [2026]);
+        });
+        _cityPlanning.GetRegistrationInfoAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return "Registration instructions";
+        });
+        var controller = BuildController(Guid.NewGuid());
+        controller.HttpContext.RequestAborted = request.Token;
+        (await controller.Register()).Should().BeOfType<ViewResult>();
+        controller.ViewData["SeasonYear"].Should().Be(2026);
+        controller.ViewData["RegistrationInfo"].Should().Be("Registration instructions");
+
+        abandon = true;
+        if (!cancelAfterSettings) await request.CancelAsync();
+        Func<Task> load = async () => await controller.Register();
+        await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [HumansFact]
     public void UploadImage_allows_one_valid_image_without_accepting_a_larger_request()
     {
