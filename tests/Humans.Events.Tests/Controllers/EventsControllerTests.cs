@@ -1,3 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Humans.Base;
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Camps.Contracts;
@@ -36,6 +40,52 @@ public class EventsControllerTests
     private readonly IAuthorizationService _authz = Substitute.For<IAuthorizationService>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<EventsResource> _localizer = Substitute.For<IStringLocalizer<EventsResource>>();
+
+    [HumansTheory]
+    [Xunit.InlineData("en")]
+    [Xunit.InlineData("es")]
+    [Xunit.InlineData("de")]
+    [Xunit.InlineData("it")]
+    [Xunit.InlineData("fr")]
+    [Xunit.InlineData("ca")]
+    public void SubmissionForms_LocalizeValidationMessages(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var registrations = new ServiceCollection();
+        registrations.AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+        var cases = new (object Model, string Field, string Key, object[] Arguments)[]
+        {
+            (new IndividualEventFormViewModel(), "Title", "Validation_Required", ["Title"]),
+            (new IndividualEventFormViewModel(), "Description", "Validation_Required", ["Description"]),
+            (new IndividualEventFormViewModel { Title = new string('x', 81) }, "Title", "Validation_MaxLength", ["Title", 80]),
+            (new IndividualEventFormViewModel { Description = new string('x', 451) }, "Description", "Validation_MaxLength", ["Description", 450]),
+            (new IndividualEventFormViewModel { LocationNote = new string('x', 121) }, "LocationNote", "Validation_MaxLength", ["Location Note", 120]),
+            (new IndividualEventFormViewModel { Host = new string('x', 41) }, "Host", "Validation_MaxLength", ["Host", 40]),
+            (new IndividualEventFormViewModel { DurationMinutes = 14 }, "DurationMinutes", "Validation_Range", ["Duration (minutes)", 15, 1440]),
+            (new CampEventFormViewModel(), "Title", "Validation_Required", ["Title"]),
+            (new CampEventFormViewModel(), "Description", "Validation_Required", ["Description"]),
+            (new CampEventFormViewModel(), "PriorityRank", "Validation_Required", ["Priority Rank"]),
+            (new CampEventFormViewModel { Title = new string('x', 81) }, "Title", "Validation_MaxLength", ["Title", 80]),
+            (new CampEventFormViewModel { Description = new string('x', 451) }, "Description", "Validation_MaxLength", ["Description", 450]),
+            (new CampEventFormViewModel { LocationNote = new string('x', 121) }, "LocationNote", "Validation_MaxLength", ["Location Note", 120]),
+            (new CampEventFormViewModel { Host = new string('x', 41) }, "Host", "Validation_MaxLength", ["Host", 40]),
+            (new CampEventFormViewModel { DurationMinutes = 481 }, "DurationMinutes", "Validation_Range", ["Duration (minutes)", 15, 480]),
+            (new CampEventFormViewModel { PriorityRank = 101 }, "PriorityRank", "Validation_Range", ["Priority Rank", 1, 100]),
+        };
+        foreach (var (model, field, key, arguments) in cases)
+        {
+            var context = new ActionContext { HttpContext = new DefaultHttpContext { RequestServices = services } };
+            validator.Validate(context, null, "", model);
+            var expected = localizer[key, arguments];
+            expected.ResourceNotFound.Should().BeFalse();
+            context.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
+        }
+    }
 
     [HumansFact]
     public async Task Edit_NonSubmitterNonAdmin_ReturnsForbid()

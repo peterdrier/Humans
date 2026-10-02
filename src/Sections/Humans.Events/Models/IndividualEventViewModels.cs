@@ -69,43 +69,43 @@ internal sealed class IndividualEventFormViewModel
 {
     public Guid? Id { get; set; }
 
-    [Required]
-    [MaxLength(80)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [MaxLength(80, ErrorMessage = "Validation_MaxLength")]
     public string Title { get; set; } = string.Empty;
 
-    [Required]
-    [MaxLength(450)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [MaxLength(450, ErrorMessage = "Validation_MaxLength")]
     public string Description { get; set; } = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     [Display(Name = "Category")]
     public Guid CategoryId { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     [Display(Name = "Venue")]
     public Guid VenueId { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     [Display(Name = "Date")]
     public DateTime StartDate { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     [Display(Name = "Start Time")]
     public TimeSpan StartTime { get; set; }
 
-    [Required]
-    [Range(15, 1440)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [Range(15, 1440, ErrorMessage = "Validation_Range")]
     [Display(Name = "Duration (minutes)")]
     public int DurationMinutes { get; set; } = 60;
 
     [Display(Name = "All day")]
     public bool IsAllDay { get; set; }
 
-    [MaxLength(120)]
+    [MaxLength(120, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "Location Note")]
     public string? LocationNote { get; set; }
 
-    [MaxLength(40)]
+    [MaxLength(40, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "Host")]
     public string? Host { get; set; }
 
