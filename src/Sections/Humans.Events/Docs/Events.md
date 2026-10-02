@@ -94,7 +94,7 @@ Append-only audit log. DB-level: `OnDelete(DeleteBehavior.Restrict)` prevents ca
 | SubmissionOpenAt | Instant | |
 | SubmissionCloseAt | Instant | |
 | GuidePublishAt | Instant | |
-| MaxPrintSlots | int | 0 = unlimited |
+| MaxPrintSlots | int | Admin form accepts 0–10000; 0 = unlimited |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
 

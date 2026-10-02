@@ -55,6 +55,7 @@
                 <label asp-for="MaxPrintSlots" class="form-label"></label>
                 <input asp-for="MaxPrintSlots" type="number" class="form-control" style="max-width: 200px;" />
                 <span asp-validation-for="MaxPrintSlots" class="text-danger"></span>
+                <div class="form-text">Use 0 for no print slot limit.</div>
             </div>
 
             <button type="submit" class="btn btn-primary">
