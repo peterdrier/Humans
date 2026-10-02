@@ -999,7 +999,24 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             UploadedAt = _clock.GetCurrentInstant()
         };
 
-        await _repo.AddImageAsync(image, cancellationToken);
+        try
+        {
+            await _repo.AddImageAsync(image, cancellationToken);
+        }
+        catch
+        {
+            try
+            {
+                // A failed save may have committed: only remove an unreferenced file.
+                if (await _repo.GetImageForMutationAsync(image.Id, CancellationToken.None) is null)
+                    await _fileStorage.DeleteAsync(storageKey, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to verify or clean up camp image upload {ImageId} at {StoragePath}", image.Id, storageKey);
+            }
+            throw;
+        }
 
         await _auditLog.LogAsync(
             AuditAction.CampImageUploaded, nameof(CampImage), image.Id,

@@ -1658,6 +1658,45 @@ public sealed class CampServiceTests : CampsTestHarness
         stillThere.Should().NotBeNull();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("no-row")]
+    [Xunit.InlineData("committed")]
+    [Xunit.InlineData("verification-failure")]
+    public async Task Failed_image_metadata_write_cleans_only_an_unreferenced_upload(string failure)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var repo = Substitute.For<ICampRepository>();
+        CampImage? committed = null;
+        var original = new IOException("Image metadata write failed");
+        repo.AddImageAsync(Arg.Any<CampImage>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(failure, "committed", StringComparison.Ordinal))
+                committed = call.Arg<CampImage>();
+            return Task.FromException(original);
+        });
+        repo.GetImageForMutationAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(_ =>
+            string.Equals(failure, "verification-failure", StringComparison.Ordinal)
+                ? Task.FromException<CampImage?>(new IOException("Cannot verify metadata"))
+                : Task.FromResult(committed));
+        var service = new CampService(
+            repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
+            Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
+            new Lazy<ICampRoleService>(() => _campRoleService),
+            new Lazy<ICityPlanningService>(() => _cityPlanningService),
+            _earlyEntryInvalidator, _campInfoInvalidator, _userServiceRead, _settingsService,
+            Clock, NullLogger<CampService>.Instance);
+        await using var image = new MemoryStream([1, 2, 3]);
+
+        var act = () => service.UploadImageAsync(Guid.NewGuid(), image, "camp.png", "image/png", image.Length, ct);
+
+        var thrown = await act.Should().ThrowAsync<IOException>();
+        thrown.Which.Should().BeSameAs(original);
+        if (string.Equals(failure, "no-row", StringComparison.Ordinal))
+            _fileStorage.Files.Should().BeEmpty();
+        else
+            _fileStorage.Files.Should().ContainSingle().Which.Value.Should().Equal(1, 2, 3);
+    }
+
     [HumansFact]
     public async Task UploadImageAsync_RejectsOverlongFilenameBeforeWriting()
     {
