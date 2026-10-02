@@ -256,6 +256,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Granting / revoking EE writes `CampEarlyEntryGranted` / `CampEarlyEntryRevoked` audit entries. Idempotent set writes no audit row.
 - Changing `EeSlotCount` writes `CampSeasonEeSlotCountChanged`. The EE start date is edited on `/Settings` now (Settings' own audit trail), so `CampSettingsEeStartDateChanged` is no longer written; the enum member stays so existing history still reads (nobodies-collective/Humans#1633).
 
+- Camp season names in notices may outgrow the 200-character title limit. These producers bound titles by Unicode character, preserving the full title and existing detail in the body; short notice copy is unchanged.
+
 ## Cross-Section Dependencies
 
 - **Search (downstream consumer):** the global `/Search` page renders every camp hit through this section's own public `<vc:camps-search-result camp-id>`, which resolves the public-year season name and the slug it links to itself off `ICampServiceRead.GetCampByIdAsync`. Search passes the camp id and no display fields (nobodies-collective/Humans#1062); `CampSearchHit` is `(CampId, Name, Score)`, carrying the section's own `Score`. Camps does not depend on Search.

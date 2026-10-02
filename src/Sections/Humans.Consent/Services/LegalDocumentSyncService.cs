@@ -1,3 +1,4 @@
+using System.Text;
 using System.Globalization;
 using System.Resources;
 using Humans.Base.Extensions;
@@ -600,13 +601,20 @@ internal sealed partial class LegalDocumentSyncService(
                 try
                 {
                     var culture = CultureInfo.GetCultureInfo(group.Key);
+                    var title = string.Format(culture, NoticeResources.GetString(titleKey, culture)!, document.Name);
+                    var body = NoticeResources.GetString(bodyKey, culture);
+                    if (title.EnumerateRunes().Count() > 200)
+                    {
+                        body = string.Concat(title, "\n\n", body);
+                        title = string.Concat(title.EnumerateRunes().Take(199)) + "…";
+                    }
                     await notificationService.SendAsync(
                         source,
                         NotificationClass.Actionable,
                         NotificationPriority.High,
-                        string.Format(culture, NoticeResources.GetString(titleKey, culture)!, document.Name),
+                        title,
                         group.Select(u => u.Id).ToList(),
-                        body: NoticeResources.GetString(bodyKey, culture),
+                        body: body,
                         actionUrl: "/Consent",
                         actionLabel: NoticeResources.GetString("Consent_ReviewAndConsent", culture),
                         cancellationToken: cancellationToken);

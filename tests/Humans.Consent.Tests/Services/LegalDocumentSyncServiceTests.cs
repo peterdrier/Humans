@@ -1,3 +1,4 @@
+using System.Text;
 using AwesomeAssertions;
 using Humans.Notifications.Contracts;
 using Microsoft.EntityFrameworkCore;
@@ -277,6 +278,39 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     // ── GitHub sync — version creation & re-consent pins ─────────────────────
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SyncDocumentAsync_LongNamesKeepNoticeWithinStorageLimit(bool update)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        StubActiveUser();
+        var prefixLength = update ? 0 : "New legal document published: ".Length;
+        var name = new string('x', 198 - prefixLength) + "😀" + new string('x', 256 - (198 - prefixLength) - 2);
+        var document = await SeedDocumentAsync(name, folderPath: "privacy/", currentCommitSha: "sha-1");
+        if (update)
+        {
+            LegalDb.DocumentVersions.Add(new DocumentVersion
+            {
+                Id = Guid.NewGuid(), LegalDocumentId = document.Id, VersionNumber = "v1.0", CommitSha = "sha-1",
+                Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "old" },
+                EffectiveFrom = Clock.GetCurrentInstant(), CreatedAt = Clock.GetCurrentInstant()
+            });
+            await SaveAllAsync(ct);
+        }
+        StubGitHubFolder("privacy/", "new-es-content", "sha-2", "Updated wording");
+
+        await _service.SyncDocumentAsync(document.Id, ct);
+
+        var args = Notifier.ReceivedCalls().Single().GetArguments();
+        var title = (string)args[3]!;
+        title.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(200);
+        title.Should().EndWith("…").And.Contain("😀");
+        var encode = () => new UTF8Encoding(false, true).GetBytes(title);
+        encode.Should().NotThrow();
+        ((string)args[5]!).Should().Contain(update ? "new version" : "new required legal document");
+    }
 
     [HumansTheory]
     [Xunit.InlineData(false, false)]

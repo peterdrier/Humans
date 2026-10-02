@@ -230,6 +230,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - Each Early Entry mutation writes an `AuditLogEntry` (`EarlyEntryGranted` on add, `EarlyEntryUpdated` on edit, `EarlyEntryRevoked` on remove) against the `TeamEarlyEntryGrant` and evicts the affected user's EE cache.
 - Right-to-erasure (`IUserDataContributor.EraseForUserAsync`): ends live memberships, then hard-deletes the user's join requests and EE grants; the GDPR export contributes a `TeamEarlyEntry` data slice.
 
+- Team names in notices may outgrow the 200-character title limit. These producers bound titles by Unicode character, preserving the full title and existing detail in the body; short notice copy is unchanged.
+
 ## Cross-Section Dependencies
 
 **Outbound** — every `ProjectReference` of `Humans.Teams.csproj` beyond Base and its own leaf, and what it is for:

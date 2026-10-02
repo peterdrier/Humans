@@ -1,3 +1,4 @@
+using System.Text;
 using Humans.Notifications.Contracts;
 using AwesomeAssertions;
 using Humans.Base.Interfaces.Caching;
@@ -879,6 +880,43 @@ public sealed class CampServiceTests : CampsTestHarness
         second.CampMemberId.Should().Be(first.CampMemberId);
         // Scope to the requester — the camp creator also has an Active member row.
         (await CampsDb.CampMembers.AsNoTracking().CountAsync(m => m.UserId == userId, Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("approve")]
+    [Xunit.InlineData("reject")]
+    [Xunit.InlineData("close")]
+    public async Task MembershipNotices_LongNamesKeepFullCopyAndValidTitle(string action)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var season = await CampsDb.CampSeasons.SingleAsync(row => row.CampId == camp.Id, ct);
+        var name = new string('x', 168) + "😀" + new string('x', 86);
+        season.Name = name;
+        await CampsDb.SaveChangesAsync(ct);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Requester");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId, ct);
+        switch (action)
+        {
+            case "approve": await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid(), ct); break;
+            case "reject": await _service.RejectCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid(), ct); break;
+            default: await _service.WithdrawSeasonAsync(camp.Id, season.Id, ct); break;
+        }
+        var args = Notifier.ReceivedCalls().Single().GetArguments();
+        var title = (string)args[3]!;
+        title.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(200);
+        title.Should().EndWith("…");
+        var encode = () => new UTF8Encoding(false, true).GetBytes(title);
+        encode.Should().NotThrow();
+        ((string)args[5]!).Should().Contain(action switch
+        {
+            "approve" => $"Your request to join {name} was approved",
+            "reject" => $"Your request to join {name} was not approved",
+            _ => "Your pending request to join this camp won't be reviewed"
+        });
     }
 
     [HumansTheory]

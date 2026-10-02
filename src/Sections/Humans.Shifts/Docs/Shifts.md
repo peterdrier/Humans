@@ -311,6 +311,8 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 - Deleting a rota or shift is rejected if any signup is in Confirmed state. Deleting an allowed rota or shift removes all of its signups together with it; it does not create cancelled historical signup rows for a removed shift.
 - When an account merge accepts, the section's three `IUserMerge` implementations re-FK its user-keyed rows from source to target: `ShiftSignupService` moves `ShiftSignup` rows (volunteer / enrolled-by / reviewed-by references), `ShiftManagementService` moves `VolunteerEventProfile` + `VolunteerTagPreference` (with conflict resolution since both are `(UserId)`-unique), `VolunteerTrackingService` moves `GeneralAvailability`. Called only by `AccountMergeService.AcceptAsync` (Users section) through the `IUserMerge` fan-out.
 
+- Rota names in notices may outgrow the 200-character title limit. These producers bound titles by Unicode character, preserving the full title and existing detail in the body; short notice copy is unchanged.
+
 ## Cross-Section Dependencies
 
 ### Inbound — the read boundary (`Humans.Shifts.Contracts`)

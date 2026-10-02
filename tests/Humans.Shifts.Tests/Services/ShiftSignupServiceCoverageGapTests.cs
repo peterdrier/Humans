@@ -1,3 +1,4 @@
+using System.Text;
 using Humans.Shifts.Domain;
 using Humans.Auth.Contracts;
 using Humans.Teams.Domain;
@@ -144,13 +145,20 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task RemoveAsync_DropsConfirmedBelowMinVolunteers_SendsShiftCoverageGapNotification()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RemoveAsync_DropsConfirmedBelowMinVolunteers_SendsShiftCoverageGapNotification(bool longName)
     {
         // Arrange: shift with MinVolunteers=2, exactly 2 Confirmed signups; removing
         // either drops it to 1 (below min).
         var (_, rota, _, userA, _) = await SeedScenarioAsync(
             minVolunteers: 2, maxVolunteers: 5);
+        if (longName)
+        {
+            rota.Name = new string('x', 168) + "😀" + new string('x', 86);
+            await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        }
         var coordinatorId = Guid.NewGuid();
         _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
             .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
@@ -175,6 +183,20 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+        if (longName)
+        {
+            var notices = _notificationService.ReceivedCalls().Select(call => call.GetArguments()).ToList();
+            notices.Should().HaveCount(2);
+            foreach (var args in notices)
+            {
+                var title = (string)args[3]!;
+                title.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(200);
+                title.Should().EndWith("…");
+                var encode = () => new UTF8Encoding(false, true).GetBytes(title);
+                encode.Should().NotThrow();
+                ((string)args[5]!).Should().Contain(rota.Name);
+            }
+        }
     }
 
     private async Task<(EventSettings es, Rota rota, Shift shift, Guid userA, Guid userB)>

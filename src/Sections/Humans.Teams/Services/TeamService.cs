@@ -1,3 +1,4 @@
+using System.Text;
 using System.Globalization;
 using System.Resources;
 using Humans.GoogleIntegration.Contracts;
@@ -778,13 +779,14 @@ internal sealed class TeamService(
         try
         {
             var displayName = await GetDisplayNameAsync(userId, cancellationToken);
+            var noticeCopy = PrepareNoticeCopy($"New join request for {team.Name}", $"{displayName} has requested to join {team.Name}.");
             await notificationService.SendAsync(
                 NotificationSource.TeamJoinRequestSubmitted,
                 NotificationClass.Actionable,
                 NotificationPriority.Normal,
-                $"New join request for {team.Name}",
+                noticeCopy.Title,
                 coordinatorUserIds,
-                body: $"{displayName} has requested to join {team.Name}.",
+                body: noticeCopy.Body,
                 actionUrl: $"/Teams/{team.Slug}/Members",
                 actionLabel: "Review request",
                 cancellationToken: cancellationToken);
@@ -809,13 +811,14 @@ internal sealed class TeamService(
         try
         {
             var displayName = await GetDisplayNameAsync(userId, cancellationToken);
+            var noticeCopy = PrepareNoticeCopy($"{displayName} joined {team.Name}", $"{displayName} has joined {team.Name}.");
             await notificationService.SendAsync(
                 NotificationSource.TeamMemberAdded,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                $"{displayName} joined {team.Name}",
+                noticeCopy.Title,
                 coordinatorUserIds,
-                body: $"{displayName} has joined {team.Name}.",
+                body: noticeCopy.Body,
                 actionUrl: $"/Teams/{team.Slug}/Members",
                 actionLabel: "View members",
                 cancellationToken: cancellationToken);
@@ -832,6 +835,16 @@ internal sealed class TeamService(
             .Select(member => member.UserId)
             .Distinct()
             .ToList();
+
+    // Notification storage holds 200 Unicode characters; retain the full title in the body.
+    private static (string Title, string? Body) PrepareNoticeCopy(string title, string? body = null)
+    {
+        if (title.EnumerateRunes().Count() <= 200)
+            return (title, body);
+
+        return (string.Concat(title.EnumerateRunes().Take(199)) + "…",
+            body is null ? title : string.Concat(title, "\n\n", body));
+    }
 
     private async Task<CultureInfo> GetRecipientCultureAsync(Guid userId, CancellationToken cancellationToken)
     {
@@ -1083,13 +1096,14 @@ internal sealed class TeamService(
         try
         {
             var culture = await GetRecipientCultureAsync(requesterUserId, cancellationToken);
+            var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinApproved", culture)!, team.Name), string.Format(culture, NoticeResources.GetString("Teams_Notification_Welcome", culture)!, team.Name));
             await notificationService.SendAsync(
                 NotificationSource.TeamJoinRequestDecided,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinApproved", culture)!, team.Name),
+                noticeCopy.Title,
                 [requesterUserId],
-                body: string.Format(culture, NoticeResources.GetString("Teams_Notification_Welcome", culture)!, team.Name),
+                body: noticeCopy.Body,
                 actionUrl: $"/Teams/{team.Slug}",
                 actionLabel: NoticeResources.GetString("Teams_Notification_ViewTeam", culture),
                 cancellationToken: cancellationToken);
@@ -1136,13 +1150,14 @@ internal sealed class TeamService(
         try
         {
             var culture = await GetRecipientCultureAsync(requesterUserId, cancellationToken);
+            var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinRejected", culture)!, team.Name), string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinRejected", culture)!, team.Name) + ".");
             await notificationService.SendAsync(
                 NotificationSource.TeamJoinRequestDecided,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinRejected", culture)!, team.Name),
+                noticeCopy.Title,
                 [requesterUserId],
-                body: string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinRejected", culture)!, team.Name) + ".",
+                body: noticeCopy.Body,
                 actionUrl: "/Teams",
                 actionLabel: NoticeResources.GetString("MyTeams_BrowseTeams", culture),
                 cancellationToken: cancellationToken);
@@ -1244,12 +1259,14 @@ internal sealed class TeamService(
         try
         {
             var culture = await GetRecipientCultureAsync(userId, cancellationToken);
+            var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString("Teams_Notification_MemberRemoved", culture)!, team.Name));
             await notificationService.SendAsync(
                 NotificationSource.TeamMemberRemoved,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                string.Format(culture, NoticeResources.GetString("Teams_Notification_MemberRemoved", culture)!, team.Name),
+                noticeCopy.Title,
                 [userId],
+                body: noticeCopy.Body,
                 actionUrl: "/Teams",
                 cancellationToken: cancellationToken);
         }
@@ -2343,12 +2360,14 @@ internal sealed class TeamService(
 
         try
         {
+            var noticeCopy = PrepareNoticeCopy($"You were added to {team.Name}");
             await notificationService.SendAsync(
                 NotificationSource.TeamMemberAdded,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                $"You were added to {team.Name}",
+                noticeCopy.Title,
                 [userId],
+                body: noticeCopy.Body,
                 actionUrl: $"/Teams/{team.Slug}",
                 cancellationToken: cancellationToken);
         }

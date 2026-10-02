@@ -1,3 +1,4 @@
+using System.Text;
 using System.Globalization;
 using System.Resources;
 using Humans.Shifts.Domain;
@@ -620,6 +621,42 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         Saved(result).Enrolled.Should().BeTrue();
         Saved(result).EnrolledByUserId.Should().Be(enrollerId);
         Saved(result).ReviewedByUserId.Should().Be(enrollerId);
+    }
+
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task VoluntellNotices_LongNamesKeepFullCopyAndValidTitle(int rangeCount)
+    {
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        rota.Name = new string('x', 168) + "😀" + new string('x', 86);
+        if (rangeCount > 0)
+        {
+            rota.Period = RotaPeriod.Build;
+            SeedAllDayShift(rota, -3);
+            if (rangeCount > 1) SeedAllDayShift(rota, -2);
+        }
+        var volunteerId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = rangeCount > 0
+            ? await _service.VoluntellRangeAsync(volunteerId, rota.Id, -3, -3 + rangeCount - 1, Guid.NewGuid())
+            : await _service.VoluntellAsync(volunteerId, shift.Id, Guid.NewGuid());
+
+        result.Success.Should().BeTrue();
+        var notices = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSource)
+            .Select(call => call.GetArguments()).ToList();
+        notices.Should().NotBeEmpty();
+        foreach (var args in notices)
+        {
+            var title = (string)args[3]!;
+            title.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(200);
+            title.Should().EndWith("…");
+            var encode = () => new UTF8Encoding(false, true).GetBytes(title);
+            encode.Should().NotThrow();
+            ((string)args[5]!).Should().Contain(rota.Name);
+        }
     }
 
     [HumansTheory]

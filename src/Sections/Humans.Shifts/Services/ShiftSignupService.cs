@@ -1,3 +1,4 @@
+using System.Text;
 using System.Globalization;
 using System.Resources;
 using Humans.Auth.Contracts;
@@ -331,13 +332,15 @@ internal sealed class ShiftSignupService(
             try
             {
                 var culture = await GetRecipientCultureAsync(userId);
+                var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString("Shifts_Notification_AssignedDay", culture)!,
+                        shift.Rota.Name, shift.DayOffset));
                 await notificationService.SendAsync(
                     NotificationSource.ShiftAssigned,
                     NotificationClass.Informational,
                     NotificationPriority.Normal,
-                    string.Format(culture, NoticeResources.GetString("Shifts_Notification_AssignedDay", culture)!,
-                        shift.Rota.Name, shift.DayOffset),
+                    noticeCopy.Title,
                     [userId],
+                    body: noticeCopy.Body,
                     actionUrl: "/Shifts",
                     actionLabel: NoticeResources.GetString("Shifts_BrowseAvailable", culture));
             }
@@ -462,14 +465,16 @@ internal sealed class ShiftSignupService(
             try
             {
                 var culture = await GetRecipientCultureAsync(userId);
+                var noticeCopy = PrepareNoticeCopy(string.Format(culture, NoticeResources.GetString(assignable.Count == 1
+                        ? "Shifts_Notification_AssignedRangeSingular" : "Shifts_Notification_AssignedRange", culture)!,
+                        rota.Name, assignable.Count));
                 await notificationService.SendAsync(
                     NotificationSource.ShiftAssigned,
                     NotificationClass.Informational,
                     NotificationPriority.Normal,
-                    string.Format(culture, NoticeResources.GetString(assignable.Count == 1
-                        ? "Shifts_Notification_AssignedRangeSingular" : "Shifts_Notification_AssignedRange", culture)!,
-                        rota.Name, assignable.Count),
+                    noticeCopy.Title,
                     [userId],
+                    body: noticeCopy.Body,
                     actionUrl: "/Shifts",
                     actionLabel: NoticeResources.GetString("Shifts_BrowseAvailable", culture));
             }
@@ -1151,6 +1156,16 @@ internal sealed class ShiftSignupService(
         return null;
     }
 
+    // Notification storage holds 200 Unicode characters; retain the full title in the body.
+    private static (string Title, string? Body) PrepareNoticeCopy(string title, string? body = null)
+    {
+        if (title.EnumerateRunes().Count() <= 200)
+            return (title, body);
+
+        return (string.Concat(title.EnumerateRunes().Take(199)) + "…",
+            body is null ? title : string.Concat(title, "\n\n", body));
+    }
+
     private async Task<CultureInfo> GetRecipientCultureAsync(Guid userId)
     {
         try
@@ -1186,13 +1201,14 @@ internal sealed class ShiftSignupService(
             if (coordinatorIds.Count == 0)
                 return;
 
+            var noticeCopy = PrepareNoticeCopy($"Coverage gap: {shift.Rota.Name} day {shift.DayOffset}", $"Only {confirmedCount}/{shift.MinVolunteers} volunteers confirmed.");
             await notificationService.SendAsync(
                 NotificationSource.ShiftCoverageGap,
                 NotificationClass.Actionable,
                 NotificationPriority.High,
-                $"Coverage gap: {shift.Rota.Name} day {shift.DayOffset}",
+                noticeCopy.Title,
                 coordinatorIds,
-                body: $"Only {confirmedCount}/{shift.MinVolunteers} volunteers confirmed.",
+                body: noticeCopy.Body,
                 actionUrl: $"/Shifts?departmentId={teamId}",
                 actionLabel: "Find cover →");
         }
@@ -1226,13 +1242,14 @@ internal sealed class ShiftSignupService(
             if (coordinatorIds.Count == 0)
                 return;
 
+            var noticeCopy = PrepareNoticeCopy($"Shift signup change: {rotaName}", enrichedDescription);
             await notificationService.SendAsync(
                 NotificationSource.ShiftSignupChange,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                $"Shift signup change: {rotaName}",
+                noticeCopy.Title,
                 coordinatorIds,
-                body: enrichedDescription,
+                body: noticeCopy.Body,
                 actionUrl: $"/Shifts?departmentId={teamId}",
                 actionLabel: "View →");
         }

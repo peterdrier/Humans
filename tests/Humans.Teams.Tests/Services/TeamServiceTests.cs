@@ -1,3 +1,4 @@
+using System.Text;
 // Tests seed TeamMember.User navs directly for DB-roundtrip verification.
 // TeamMember.User is Obsolete per Â§6c and is never populated by production
 // code (nobodies-collective/Humans#979 removed the in-memory stitcher); the
@@ -1207,6 +1208,47 @@ public sealed class TeamServiceTests : TeamsTestHarness
     // ==========================================================================
     // ApproveJoinRequestAsync
     // ==========================================================================
+
+    [HumansTheory]
+    [Xunit.InlineData("approve")]
+    [Xunit.InlineData("reject")]
+    [Xunit.InlineData("remove")]
+    [Xunit.InlineData("request")]
+    [Xunit.InlineData("join")]
+    public async Task MemberNotices_LongNamesKeepFullCopyAndValidTitle(string action)
+    {
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        var name = new string('x', 168) + "😀" + new string('x', 86);
+        var team = SeedTeam(name, requiresApproval: !string.Equals(action, "join", StringComparison.Ordinal));
+        team.Slug = "alpha";
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        if (string.Equals(action, "remove", StringComparison.Ordinal))
+            SeedTeamMember(team.Id, requester.Id);
+        if (string.Equals(action, "request", StringComparison.Ordinal) || string.Equals(action, "join", StringComparison.Ordinal))
+            TeamsDb.TeamJoinRequests.Remove(request);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        switch (action)
+        {
+            case "approve": await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, null, Xunit.TestContext.Current.CancellationToken); break;
+            case "reject": await _service.RejectJoinRequestAsync(request.Id, coordinator.Id, "Reason", Xunit.TestContext.Current.CancellationToken); break;
+            case "remove": await _service.RemoveMemberAsync(team.Id, requester.Id, coordinator.Id, Xunit.TestContext.Current.CancellationToken); break;
+            default: await _service.JoinTeamAsync(team.Id, requester.Id, null, Xunit.TestContext.Current.CancellationToken); break;
+        }
+        var notices = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSource)
+            .Select(call => call.GetArguments()).ToList();
+        notices.Should().NotBeEmpty();
+        foreach (var args in notices)
+        {
+            var title = (string)args[3]!;
+            title.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(200);
+            title.Should().EndWith("…");
+            var encode = () => new UTF8Encoding(false, true).GetBytes(title);
+            encode.Should().NotThrow();
+            ((string)args[5]!).Should().Contain(name);
+        }
+    }
 
     [HumansTheory]
     [Xunit.InlineData("approve")]

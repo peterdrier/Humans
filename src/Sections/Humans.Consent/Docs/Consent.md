@@ -153,6 +153,8 @@ Three controllers serve this section.
 - The reminder job attempts every eligible recipient before reporting per-recipient preparation, enqueue, or cooldown-stamp failures. Failed enqueues do not stamp the cooldown; successful reminders retain it. Collected failures still fail the job so Hangfire can retry, skipping recipients already in cooldown.
 - A background job suspends humans who no longer have valid consents for required documents.
 
+- Legal document names in notices may outgrow the 200-character title limit. These producers bound titles by Unicode character, preserving the full title and existing detail in the body; short notice copy is unchanged.
+
 ## Cross-Section Dependencies
 
 - **Profiles/Onboarding:** `ConsentService` has no profile dependency and does **not** call into Profile or Onboarding after a consent submit — the threshold check (`OnboardingService.SetConsentCheckPendingIfEligibleAsync`) is invoked by the controller (`ConsentController.Submit`, `OnboardingWidgetController`) as a peer call alongside `ConsentService.SubmitConsentAsync`.
