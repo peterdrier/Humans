@@ -195,6 +195,51 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         result.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(ContactFieldVisibility.BoardOnly, true, 4)]
+    [Xunit.InlineData(ContactFieldVisibility.BoardOnly, false, 4)]
+    [Xunit.InlineData(ContactFieldVisibility.CoordinatorsAndBoard, true, 3)]
+    [Xunit.InlineData(ContactFieldVisibility.CoordinatorsAndBoard, false, 3)]
+    [Xunit.InlineData(ContactFieldVisibility.MyTeams, true, 2)]
+    [Xunit.InlineData(ContactFieldVisibility.MyTeams, false, 2)]
+    public async Task GetVisibleContactFields_UsesEachViewersPermissionsOnTheSameService(
+        ContactFieldVisibility privilege, bool privilegedFirst, int privilegedFieldCount)
+    {
+        var ownerId = Guid.NewGuid();
+        var privilegedViewerId = Guid.NewGuid();
+        var ordinaryViewerId = Guid.NewGuid();
+        StubUserInfo(ownerId, await CreateProfileWithFields(ownerId));
+        var teamId = Guid.NewGuid();
+        if (privilege == ContactFieldVisibility.BoardOnly)
+        {
+            _roleAssignmentService.IsUserBoardMemberAsync(privilegedViewerId, Arg.Any<CancellationToken>())
+                .Returns(true);
+            SetupEmptyTeams();
+        }
+        else if (privilege == ContactFieldVisibility.CoordinatorsAndBoard)
+        {
+            SetupTeams((privilegedViewerId, TeamMemberRole.Coordinator, teamId, SystemTeamType.None));
+        }
+        else
+        {
+            SetupTeams(
+                (privilegedViewerId, TeamMemberRole.Member, teamId, SystemTeamType.None),
+                (ownerId, TeamMemberRole.Member, teamId, SystemTeamType.None));
+        }
+
+        var firstViewerId = privilegedFirst ? privilegedViewerId : ordinaryViewerId;
+        var secondViewerId = privilegedFirst ? ordinaryViewerId : privilegedViewerId;
+        var firstFields = await _service.GetVisibleContactFieldsAsync(
+            ownerId, firstViewerId, Xunit.TestContext.Current.CancellationToken);
+        var secondFields = await _service.GetVisibleContactFieldsAsync(
+            ownerId, secondViewerId, Xunit.TestContext.Current.CancellationToken);
+
+        var privilegedFields = privilegedFirst ? firstFields : secondFields;
+        var ordinaryFields = privilegedFirst ? secondFields : firstFields;
+        privilegedFields.Should().HaveCount(privilegedFieldCount);
+        ordinaryFields.Should().ContainSingle().Which.Visibility.Should().Be(ContactFieldVisibility.AllActiveProfiles);
+    }
+
     [HumansFact]
     public async Task GetVisibleContactFields_FiltersFieldsByVisibility()
     {
