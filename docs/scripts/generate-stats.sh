@@ -125,12 +125,31 @@ ORIG_REF=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
 # including the table separator row) BEFORE we touch the working tree. The
 # data rows below the separator will be regenerated (in --full mode) or
 # augmented (incremental mode) below.
-WORK_DIR="${TMPDIR:-/tmp}/dev-stats-$$"
-mkdir -p "$WORK_DIR"
+WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/dev-stats-XXXXXX")
 PREAMBLE="$WORK_DIR/preamble.md"
 EXISTING_ROWS="$WORK_DIR/existing-rows.md"
 NEW_ROWS="$WORK_DIR/new-rows.md"
 SNAPSHOT_WORKTREE="$WORK_DIR/checkout"
+PUBLISH_FILE=""
+SNAPSHOT_CREATED=false
+cleanup() {
+  local cleanup_status=$?
+  if [ -n "$PUBLISH_FILE" ]; then
+    rm -f -- "$PUBLISH_FILE"
+  fi
+  if [ "$SNAPSHOT_CREATED" = true ]; then
+    if ! git worktree remove --force "$SNAPSHOT_WORKTREE" 2>/dev/null; then
+      echo "Error: could not remove this run's worktree at $SNAPSHOT_WORKTREE; leaving it intact." >&2
+      if [ "$cleanup_status" -eq 0 ]; then cleanup_status=1; fi
+    fi
+  fi
+  if [ -d "$WORK_DIR" ]; then
+    rm -- "$WORK_DIR"/*.md 2>/dev/null || true
+    rmdir "$WORK_DIR" 2>/dev/null || true
+  fi
+  exit "$cleanup_status"
+}
+trap cleanup EXIT
 > "$EXISTING_ROWS"
 > "$NEW_ROWS"
 
@@ -167,21 +186,7 @@ else
   LAST_DATE=$(grep -E '^\| [0-9]{4}-[0-9]{2}-[0-9]{2} ' "$EXISTING_ROWS" | tail -1 | awk -F'|' '{ gsub(/^ +| +$/, "", $2); print $2 }' || true)
 fi
 
-PUBLISH_FILE=""
-cleanup() {
-  if [ -n "$PUBLISH_FILE" ]; then
-    rm -f -- "$PUBLISH_FILE"
-  fi
-  if [ -d "$SNAPSHOT_WORKTREE" ]; then
-    git worktree remove --force "$SNAPSHOT_WORKTREE" 2>/dev/null \
-      || { rm -rf -- "$SNAPSHOT_WORKTREE" 2>/dev/null || true; git worktree prune --quiet 2>/dev/null || true; }
-  fi
-  if [ -d "$WORK_DIR" ]; then
-    rm -- "$WORK_DIR"/*.md 2>/dev/null || true
-    rmdir "$WORK_DIR" 2>/dev/null || true
-  fi
-}
-trap cleanup EXIT
+
 
 # Load reforge-derived (classes, interfaces) by date. The CSV header is:
 #   commit_date,commit,solution,loc_prod,loc_test,files_prod,files_test,classes,interfaces,...
@@ -264,6 +269,7 @@ done <<< "$DAILY_DIFFS"
 # Create the throwaway worktree that historical checkouts happen in. This
 # never touches the caller's tree (see the header comment).
 git worktree add --quiet --detach "$SNAPSHOT_WORKTREE" "$ORIG_REF"
+SNAPSHOT_CREATED=true
 
 N=0
 TOTAL=$(echo "$DAY_COMMITS" | wc -l)
