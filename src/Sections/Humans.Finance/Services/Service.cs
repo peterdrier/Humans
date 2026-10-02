@@ -478,12 +478,7 @@ internal sealed class Service(
     private async Task<IReadOnlyList<HoldedCategoryMapRow>> BuildCategoryMapAsync(CancellationToken ct)
     {
         var map = await repo.GetCategoryMapAsync(ct);
-        var year = await budget.GetActiveYearAsync();
-        var categories = year is null
-            ? new Dictionary<Guid, (string Name, string Group)>()
-            : year.Groups
-                .SelectMany(g => g.Categories.Select(c => (c.Id, Name: c.Name, Group: g.Name)))
-                .ToDictionary(c => c.Id, c => (c.Name, c.Group));
+        var categories = await ActiveYearCategoriesAsync();
 
         return map.Select(m => new HoldedCategoryMapRow(
             m.BudgetCategoryId,
@@ -499,6 +494,18 @@ internal sealed class Service(
     public Task<IReadOnlyList<HoldedCategoryMapRow>> GetCategoryMapAsync(CancellationToken ct = default) =>
         BuildCategoryMapAsync(ct);
 
+    /// <summary>Name and group of every category in the active budget year, by category id; empty
+    /// when no year is active.</summary>
+    private async Task<Dictionary<Guid, (string Name, string Group)>> ActiveYearCategoriesAsync()
+    {
+        var year = await budget.GetActiveYearAsync();
+        return year is null
+            ? new Dictionary<Guid, (string Name, string Group)>()
+            : year.Groups
+                .SelectMany(g => g.Categories.Select(c => (c.Id, Name: c.Name, Group: g.Name)))
+                .ToDictionary(c => c.Id, c => (c.Name, c.Group));
+    }
+
     // ─── Connector overview (/Finance/Holded) ─────────────────────────────────────
 
     public async Task<HoldedConnectorVm> GetConnectorOverviewAsync(CancellationToken ct = default)
@@ -511,12 +518,7 @@ internal sealed class Service(
 
         // Category names come from the active budget year, the same source the provisioning plan
         // uses. A doc pointing outside it keeps a null name rather than a lookup per row.
-        var year = await budget.GetActiveYearAsync();
-        var categories = year is null
-            ? new Dictionary<Guid, (string Name, string Group)>()
-            : year.Groups
-                .SelectMany(g => g.Categories.Select(c => (c.Id, Name: c.Name, Group: g.Name)))
-                .ToDictionary(c => c.Id, c => (c.Name, c.Group));
+        var categories = await ActiveYearCategoriesAsync();
 
         string? NameOf(Guid? categoryId) =>
             categoryId is { } id && categories.TryGetValue(id, out var c) ? c.Name : null;
