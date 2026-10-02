@@ -22,7 +22,11 @@ namespace Humans.Events.Controllers;
 [Route("api/events")]
 [EnableCors("EventsApi")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-internal sealed class EventsApiController(IEventService guide, ICampServiceRead camps, IUserServiceRead users)
+internal sealed class EventsApiController(
+    IEventService guide,
+    ICampServiceRead camps,
+    IUserServiceRead users,
+    ILogger<EventsApiController> logger)
     : ApiControllerBase(users)
 {
     [HttpGet("events")]
@@ -240,12 +244,14 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
             if (!added) return Conflict(new { error = "Already favourited" });
             return Ok(new { favourited = true });
         }
-        catch (KeyNotFoundException)
+        catch (KeyNotFoundException ex)
         {
+            logger.LogWarning("Rejected favourite for user {UserId} event {EventId}: {Reason}", userId, eventId, ex.Message);
             return NotFound();
         }
-        catch (ArgumentOutOfRangeException)
+        catch (ArgumentOutOfRangeException ex)
         {
+            logger.LogWarning("Rejected favourite for user {UserId} event {EventId} day {Day}: {Reason}", userId, eventId, day, ex.Message);
             return BadRequest();
         }
     }

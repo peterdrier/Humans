@@ -115,7 +115,7 @@ internal sealed class SendReConsentReminderJob(
                             "Sent re-consent reminder to user {UserId} ({Email})",
                             user.Id, effectiveEmail);
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (ex is not OperationCanceledException)
                     {
                         failures.Add(ex);
                         logger.LogError(ex, "Failed to complete re-consent reminder for user {UserId}", user.Id);

@@ -1462,7 +1462,8 @@ public sealed class CampServiceTests : CampsTestHarness
             _userServiceRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
                 .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User
                 {
-                    Id = userId, PreferredLanguage = userId == englishId ? "en" : "es"
+                    Id = userId,
+                    PreferredLanguage = userId == englishId ? "en" : "es"
                 }, [], [], [], null, [])));
         }
         if (lookupFailure)

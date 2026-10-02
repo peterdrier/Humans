@@ -293,9 +293,13 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         {
             LegalDb.DocumentVersions.Add(new DocumentVersion
             {
-                Id = Guid.NewGuid(), LegalDocumentId = document.Id, VersionNumber = "v1.0", CommitSha = "sha-1",
+                Id = Guid.NewGuid(),
+                LegalDocumentId = document.Id,
+                VersionNumber = "v1.0",
+                CommitSha = "sha-1",
                 Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "old" },
-                EffectiveFrom = Clock.GetCurrentInstant(), CreatedAt = Clock.GetCurrentInstant()
+                EffectiveFrom = Clock.GetCurrentInstant(),
+                CreatedAt = Clock.GetCurrentInstant()
             });
             await SaveAllAsync(ct);
         }
@@ -323,8 +327,12 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var englishIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
         var inactiveId = Guid.NewGuid();
         var users = spanishIds.Concat(englishIds).Append(inactiveId).Select(id => UserInfo.Create(
-            new User { Id = id, PreferredLanguage = spanishIds.Contains(id) || id == inactiveId ? "es" : id == englishIds[0] ? "en" : "unsupported",
-                State = id == inactiveId ? UserState.Rejected : UserState.Active },
+            new User
+            {
+                Id = id,
+                PreferredLanguage = spanishIds.Contains(id) || id == inactiveId ? "es" : id == englishIds[0] ? "en" : "unsupported",
+                State = id == inactiveId ? UserState.Rejected : UserState.Active
+            },
             [], [], [], UserFixtures.Profile(), [])).ToList();
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns((IReadOnlyCollection<UserInfo>)users);
         var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "sha-1");
@@ -332,9 +340,13 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         {
             LegalDb.DocumentVersions.Add(new DocumentVersion
             {
-                Id = Guid.NewGuid(), LegalDocumentId = document.Id, VersionNumber = "v1.0", CommitSha = "sha-1",
+                Id = Guid.NewGuid(),
+                LegalDocumentId = document.Id,
+                VersionNumber = "v1.0",
+                CommitSha = "sha-1",
                 Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "old" },
-                EffectiveFrom = Clock.GetCurrentInstant(), CreatedAt = Clock.GetCurrentInstant()
+                EffectiveFrom = Clock.GetCurrentInstant(),
+                CreatedAt = Clock.GetCurrentInstant()
             });
             await SaveAllAsync(ct);
         }

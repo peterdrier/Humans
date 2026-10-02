@@ -739,6 +739,6 @@
   <data name="Governance_Notification_ApplicationRejectedBody" xml:space="preserve"><value>Votre demande pour {0} n’a pas été approuvée.</value></data>
   <data name="Governance_Notification_ViewApplication" xml:space="preserve"><value>Voir la demande</value></data>
   <data name="Governance_Notification_TermRenewalReminder" xml:space="preserve"><value>Votre mandat de {0} prend fin le {1}</value></data>
-  <data name="Governance_Notification_TermRenewalReminderBody" xml:space="preserve"><value>Déposez une demande de renouvellement pour conserver votre niveau d’adhésion.</value></data>
+  <data name="Governance_Notification_TermRenewalReminderBody" xml:space="preserve"><value>Déposez une demande de renouvellement pour conserver votre catégorie d’adhésion.</value></data>
   <data name="Governance_Notification_Renew" xml:space="preserve"><value>Renouveler →</value></data>
 </root>

@@ -9,6 +9,7 @@ using Humans.Events.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -133,7 +134,7 @@ public class EventsApiControllerTests
 
     private EventsApiController BuildController()
     {
-        var controller = new EventsApiController(_guide, _camps, _users)
+        var controller = new EventsApiController(_guide, _camps, _users, NullLogger<EventsApiController>.Instance)
         {
             ControllerContext = new ControllerContext
             {

@@ -739,6 +739,6 @@
   <data name="Governance_Notification_ApplicationRejectedBody" xml:space="preserve"><value>Dein Antrag auf {0} wurde nicht genehmigt.</value></data>
   <data name="Governance_Notification_ViewApplication" xml:space="preserve"><value>Antrag ansehen</value></data>
   <data name="Governance_Notification_TermRenewalReminder" xml:space="preserve"><value>Deine Amtszeit als {0} endet am {1}</value></data>
-  <data name="Governance_Notification_TermRenewalReminderBody" xml:space="preserve"><value>Stelle einen Verlängerungsantrag, um deine Mitgliedschaftsstufe zu behalten.</value></data>
+  <data name="Governance_Notification_TermRenewalReminderBody" xml:space="preserve"><value>Stelle einen Verlängerungsantrag, um deine Mitgliedschaftskategorie zu behalten.</value></data>
   <data name="Governance_Notification_Renew" xml:space="preserve"><value>Verlängern →</value></data>
 </root>

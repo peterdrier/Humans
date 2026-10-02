@@ -367,8 +367,10 @@ public sealed class EventServiceTests
     {
         var guideEvent = new Event
         {
-            Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(),
-            Title = "Fire show", Status = EventStatus.Pending
+            Id = Guid.NewGuid(),
+            SubmitterUserId = Guid.NewGuid(),
+            Title = "Fire show",
+            Status = EventStatus.Pending
         };
         _userService.GetUserInfoAsync(guideEvent.SubmitterUserId, Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromException<UserInfo?>(new InvalidOperationException("User lookup unavailable")));
@@ -386,8 +388,10 @@ public sealed class EventServiceTests
     {
         var guideEvent = new Event
         {
-            Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(),
-            Title = "Fire show", Status = EventStatus.Pending
+            Id = Guid.NewGuid(),
+            SubmitterUserId = Guid.NewGuid(),
+            Title = "Fire show",
+            Status = EventStatus.Pending
         };
         _repo.Events.Add(guideEvent);
         _userService.GetUserInfoAsync(guideEvent.SubmitterUserId, Arg.Any<CancellationToken>())

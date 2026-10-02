@@ -37,7 +37,9 @@ public sealed class SendReConsentReminderJobTests
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
-                [first.Id] = first, [next.Id] = next, [cooling.Id] = cooling
+                [first.Id] = first,
+                [next.Id] = next,
+                [cooling.Id] = cooling
             });
         var email = Substitute.For<IEmailService>();
         var failure = new IOException("Recipient failure");
@@ -73,6 +75,34 @@ public sealed class SendReConsentReminderJobTests
         }
         if (string.Equals(outcome, "send", StringComparison.Ordinal))
             await users.DidNotReceive().SetLastConsentReminderSentAsync(first.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Cancellation_StopsFanoutInsteadOfAggregating()
+    {
+        var now = Instant.FromUtc(2026, 10, 2, 4, 0);
+        var first = MakeUser("first@example.com");
+        var next = MakeUser("next@example.com");
+        var membership = Substitute.For<IMembershipCalculatorRead>();
+        membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { first.Id, next.Id });
+        var legal = Substitute.For<ILegalDocumentSyncServiceRead>();
+        legal.GetRequiredVersionsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [first.Id] = first, [next.Id] = next });
+        var email = Substitute.For<IEmailService>();
+        email.SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == first.Email), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new OperationCanceledException()));
+        var job = new SendReConsentReminderJob(membership, legal, users, email,
+            TestConsentEmails.Create(), Options.Create(new EmailSettings { ConsentReminderCooldownDays = 7 }),
+            Substitute.For<IHumansMetrics>(), NullLogger<SendReConsentReminderJob>.Instance, new FakeClock(now));
+
+        var error = await Record.ExceptionAsync(() => job.ExecuteAsync(TestContext.Current.CancellationToken));
+
+        error.Should().BeOfType<OperationCanceledException>();
+        await email.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == next.Email), Arg.Any<CancellationToken>());
     }
 
     private static UserInfo MakeUser(string email, Instant? sentAt = null)

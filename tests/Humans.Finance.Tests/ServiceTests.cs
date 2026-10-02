@@ -2235,7 +2235,8 @@ public class HoldedFinanceServiceTests
         _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>
             {
-                [firstUserId] = "ana@example.com", [secondUserId] = "dani@example.com",
+                [firstUserId] = "ana@example.com",
+                [secondUserId] = "dani@example.com",
             });
         _emailService.SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == "ana@example.com"), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("Outbox temporarily unavailable")));
