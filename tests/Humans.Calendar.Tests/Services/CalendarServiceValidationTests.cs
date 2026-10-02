@@ -372,6 +372,30 @@ public class CalendarServiceValidationTests
         await act.Should().NotThrowAsync();
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EventMutation_UnexpectedWriteFailureReturnsLocalizedSaveKey(bool update)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        repo.AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new IOException("database unavailable")));
+        repo.UpdateAsync(Arg.Any<Guid>(), Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(new IOException("database unavailable")));
+        var service = BuildService(repo);
+        var dto = new CreateCalendarEventDto(
+            "Event", null, null, null, Guid.NewGuid(),
+            Instant.FromUtc(2026, 5, 15, 17, 0), Instant.FromUtc(2026, 5, 15, 18, 0),
+            false, null, null);
+
+        var result = update
+            ? await service.UpdateEventWithResultAsync(Guid.NewGuid(), dto, Guid.NewGuid(), TestContext.Current.CancellationToken)
+            : await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Calendar_SaveFailed");
+    }
+
     private static CalendarService BuildService(ICalendarRepository repo)
     {
         return BuildService(repo, Substitute.For<IAuditLogService>());

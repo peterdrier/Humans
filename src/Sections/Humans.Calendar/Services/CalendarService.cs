@@ -127,7 +127,7 @@ internal sealed class CalendarService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to create calendar event");
-            return CalendarEventMutationResult.Failed("Failed to create calendar event.");
+            return CalendarEventMutationResult.Failed("Calendar_SaveFailed");
         }
     }
 
@@ -365,7 +365,7 @@ internal sealed class CalendarService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to update calendar event {EventId}", id);
-            return CalendarEventMutationResult.Failed("Failed to update calendar event.");
+            return CalendarEventMutationResult.Failed("Calendar_SaveFailed");
         }
     }
 

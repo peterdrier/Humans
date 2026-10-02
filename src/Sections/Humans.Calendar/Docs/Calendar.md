@@ -124,6 +124,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 - Every `CalendarEvent` has a non-null `OwningTeamId` — a bare Guid naming a team, with no database FK constraint and no navigation property.
 - Only authenticated humans may create, edit, or delete events, or manage exceptions (enforced by `[Authorize]` on `CalendarController`).
+- Unexpected create/edit failures return `Calendar_SaveFailed` for the controller to localize in all six cultures; detailed exceptions remain in server logs.
 - Every mutating action (create / update / delete / cancel-occurrence / override-occurrence) writes an `AuditLogEntry` with the actor's user ID.
 - Create and update result wrappers preserve caller cancellation; they do not turn a canceled operation into an ordinary validation or persistence failure.
 - Title is required (non-null, non-empty).
