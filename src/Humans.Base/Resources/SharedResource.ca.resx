@@ -271,13 +271,13 @@
     <value>Acords</value>
   </data>
   <data name="Dashboard_MembershipTier" xml:space="preserve">
-    <value>Nivell de membres</value>
+    <value>Categoria de membresia</value>
   </data>
   <data name="Dashboard_TierApplicationPending" xml:space="preserve">
-    <value>La teva sol·licitud de nivell està pendent de revisió per la Junta.</value>
+    <value>La teva sol·licitud de categoria està pendent de revisió per la Junta.</value>
   </data>
   <data name="Dashboard_TierActive" xml:space="preserve">
-    <value>El teu nivell de membres està actiu.</value>
+    <value>La teva categoria de membresia està activa.</value>
   </data>
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Revisar acords</value>
@@ -374,7 +374,7 @@
     <value>Coordinador</value>
   </data>
   <data name="Profile_MembershipTier" xml:space="preserve">
-    <value>Nivell de membres</value>
+    <value>Categoria de membresia</value>
   </data>
   <data name="Profile_MotivationRequired" xml:space="preserve">
     <value>Es requereix una declaració de motivació per a les sol·licituds de Col·laborador i Associat.</value>
@@ -640,7 +640,7 @@
     <value>Aprovat</value>
   </data>
   <data name="AdminHuman_MembershipTier" xml:space="preserve">
-    <value>Nivell de membres</value>
+    <value>Categoria de membresia</value>
   </data>
   <data name="AdminHuman_Active" xml:space="preserve">
     <value>Actiu</value>
@@ -693,7 +693,7 @@
     <comment>{0} = formatted date</comment>
   </data>
   <data name="Dashboard_TermExpired" xml:space="preserve">
-    <value>El teu mandat ha expirat. Envia una sol·licitud de renovació per restaurar el teu nivell.</value>
+    <value>El teu mandat ha expirat. Envia una sol·licitud de renovació per restaurar la teva categoria.</value>
   </data>
   <data name="Dashboard_RenewNow" xml:space="preserve">
     <value>Renova ara</value>

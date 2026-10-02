@@ -270,7 +270,7 @@
     <value>Nota: Puoi sempre fare domanda per cambiare questo in seguito.</value>
   </data>
   <data name="ProfileEdit_TierLocked" xml:space="preserve">
-    <value>Il tuo livello è bloccato perché hai una domanda attiva o in sospeso.</value>
+    <value>La tua categoria è bloccata perché hai una domanda attiva o in sospeso.</value>
   </data>
   <data name="ProfileEdit_ApplicationSection" xml:space="preserve">
     <value>Domanda</value>

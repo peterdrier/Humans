@@ -271,13 +271,13 @@
     <value>Acuerdos</value>
   </data>
   <data name="Dashboard_MembershipTier" xml:space="preserve">
-    <value>Nivel de membresía</value>
+    <value>Categoría de membresía</value>
   </data>
   <data name="Dashboard_TierApplicationPending" xml:space="preserve">
-    <value>Tu solicitud de nivel está pendiente de revisión por la Junta.</value>
+    <value>Tu solicitud de categoría está pendiente de revisión por la Junta.</value>
   </data>
   <data name="Dashboard_TierActive" xml:space="preserve">
-    <value>Tu nivel de membresía está activo.</value>
+    <value>Tu categoría de membresía está activa.</value>
   </data>
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Revisar acuerdos</value>
@@ -374,7 +374,7 @@
     <value>Coordinador</value>
   </data>
   <data name="Profile_MembershipTier" xml:space="preserve">
-    <value>Nivel de membresía</value>
+    <value>Categoría de membresía</value>
   </data>
   <data name="Profile_MotivationRequired" xml:space="preserve">
     <value>Se requiere una declaración de motivación para las solicitudes de Colaborador y Asociado.</value>
@@ -640,7 +640,7 @@
     <value>Aprobado</value>
   </data>
   <data name="AdminHuman_MembershipTier" xml:space="preserve">
-    <value>Nivel de membresía</value>
+    <value>Categoría de membresía</value>
   </data>
   <data name="AdminHuman_Active" xml:space="preserve">
     <value>Activo</value>
@@ -693,7 +693,7 @@
     <comment>{0} = formatted date</comment>
   </data>
   <data name="Dashboard_TermExpired" xml:space="preserve">
-    <value>Tu mandato ha expirado. Envía una solicitud de renovación para restaurar tu nivel.</value>
+    <value>Tu mandato ha expirado. Envía una solicitud de renovación para restaurar tu categoría.</value>
   </data>
   <data name="Dashboard_RenewNow" xml:space="preserve">
     <value>Renovar ahora</value>

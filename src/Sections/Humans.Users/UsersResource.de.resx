@@ -270,7 +270,7 @@
     <value>Hinweis: Du kannst jederzeit eine Änderung beantragen.</value>
   </data>
   <data name="ProfileEdit_TierLocked" xml:space="preserve">
-    <value>Ihre Stufe ist gesperrt, da Sie einen aktiven oder ausstehenden Antrag haben.</value>
+    <value>Ihre Kategorie ist gesperrt, da Sie einen aktiven oder ausstehenden Antrag haben.</value>
   </data>
   <data name="ProfileEdit_ApplicationSection" xml:space="preserve">
     <value>Antrag</value>

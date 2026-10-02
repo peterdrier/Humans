@@ -270,7 +270,7 @@
     <value>Nota: Siempre puedes solicitar cambiar esto más adelante.</value>
   </data>
   <data name="ProfileEdit_TierLocked" xml:space="preserve">
-    <value>Tu nivel está bloqueado porque tienes una solicitud activa o pendiente.</value>
+    <value>Tu categoría está bloqueada porque tienes una solicitud activa o pendiente.</value>
   </data>
   <data name="ProfileEdit_ApplicationSection" xml:space="preserve">
     <value>Solicitud</value>
