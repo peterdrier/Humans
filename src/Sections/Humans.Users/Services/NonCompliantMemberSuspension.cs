@@ -69,6 +69,12 @@ internal sealed class NonCompliantMemberSuspension(
             return;
         }
 
+        // Prepare downstream inputs before changing state: an already-suspended
+        // user will not be returned by the write on a retry.
+        var usersById = await userService
+            .GetUserInfosAsync(usersToSuspend, cancellationToken);
+        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
+
         // Apply the suspension write through IUserService — returns the
         // subset of user ids actually mutated (skips already-suspended /
         // profileless users).
@@ -82,11 +88,6 @@ internal sealed class NonCompliantMemberSuspension(
                 "Completed non-compliant member check, no eligible users to suspend");
             return;
         }
-
-        // Fan out user + email hydration for notifications, and team membership
-        // lookup for Google-sync cleanup.
-        var usersById = await userService
-            .GetUserInfosAsync(suspendedIds, cancellationToken);
 
         foreach (var userId in suspendedIds)
         {
@@ -137,7 +138,7 @@ internal sealed class NonCompliantMemberSuspension(
                 logger.LogError(ex, "Failed to dispatch AccessSuspended notification for user {UserId}", user.Id);
             }
 
-            var memberTeamIds = (await teamService.GetTeamsAsync(cancellationToken)).Values
+            var memberTeamIds = teamsById.Values
                 .Where(t => t.Members.Any(m => m.UserId == user.Id))
                 .Select(t => t.Id)
                 .ToList();

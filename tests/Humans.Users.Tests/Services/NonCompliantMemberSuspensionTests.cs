@@ -105,6 +105,73 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExecuteAsync_PreparationFailure_DoesNotPersistSuspensions(bool teamLookupFails)
+    {
+        var user = SetupUser();
+        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<Guid> { user.Id });
+        StubSuspendSucceeds([user.Id]);
+        var failure = new IOException("Directory unavailable");
+        if (teamLookupFails)
+        {
+            _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<IReadOnlyDictionary<Guid, TeamInfo>>(failure));
+        }
+        else
+        {
+            _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(failure));
+        }
+
+        var thrown = await Assert.ThrowsAsync<IOException>(() =>
+            _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken));
+
+        Assert.Same(failure, thrown);
+        await _userService.DidNotReceive().SuspendProfilesForMissingConsentAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+        await _auditLogService.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ExecuteAsync_PreparesOneTeamSnapshot_AndOnlyProcessesChangedUsers()
+    {
+        var users = new[] { SetupUser(), SetupUser(), SetupUser() };
+        var ids = users.Select(user => user.Id).ToList();
+        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+            .Returns(ids);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                users.ToDictionary(user => user.Id, user => user.ToUserInfo())));
+        var teams = users.SelectMany(user => TeamDirectoryWith(Guid.NewGuid(), user.Id))
+            .ToDictionary(pair => pair.Key, pair => pair.Value);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(teams));
+        StubSuspendSucceeds(ids.Take(2).ToList());
+
+        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _teamService.Received(1).GetTeamsAsync(Arg.Any<CancellationToken>());
+        foreach (var userId in ids.Take(2))
+        {
+            var teamId = teams.Values.Single(team => team.Members.Any(member => member.UserId == userId)).Id;
+            await _googleSyncService.Received(1).RemoveUserFromTeamResourcesAsync(
+                teamId, userId, Arg.Any<CancellationToken>());
+            await _auditLogService.Received(1).LogAsync(
+                AuditAction.MemberSuspended, nameof(User), userId,
+                Arg.Any<string>(), "SuspendNonCompliantMembersJob", Arg.Any<Guid?>(), Arg.Any<string?>());
+        }
+        await _googleSyncService.DidNotReceive().RemoveUserFromTeamResourcesAsync(
+            Arg.Any<Guid>(), ids[2], Arg.Any<CancellationToken>());
+        await _auditLogService.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), ids[2],
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
     [HumansFact]
     public async Task ExecuteAsync_NoUsersToSuspend_DoesNothing()
     {
@@ -146,7 +213,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { userId });
 
-        // User service says it suspended the user, but the follow-up lookup returns
+        // User service says it suspended the user, but the prepared lookup returns
         // an empty lookup — job should not emit email/notification/audit.
         _userService.SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
