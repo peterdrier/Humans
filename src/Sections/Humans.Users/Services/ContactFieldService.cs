@@ -1,3 +1,5 @@
+using Humans.Base.Extensions;
+using Microsoft.Extensions.Localization;
 using Humans.Auth.Contracts;
 using NodaTime;
 using Humans.Users.Data.Repositories;
@@ -17,7 +19,8 @@ internal sealed class ContactFieldService(
     IRoleAssignmentService roleAssignmentService,
     IUserInfoInvalidator userInfoInvalidator,
     IClock clock,
-    ILogger<ContactFieldService> logger) : IContactFieldService, IUserMerge
+    ILogger<ContactFieldService> logger,
+    IStringLocalizer<UsersResource> localizer) : IContactFieldService, IUserMerge
 {
     public async Task<IReadOnlyList<ContactFieldDto>> GetVisibleContactFieldsAsync(
         Guid userId,
@@ -37,7 +40,8 @@ internal sealed class ContactFieldService(
             .Select(cf => new ContactFieldDto(
                 cf.Id,
                 cf.FieldType,
-                cf.FieldType == ContactFieldType.Other ? cf.CustomLabel ?? "Other" : cf.FieldType.ToString(),
+                cf.FieldType == ContactFieldType.Other && cf.CustomLabel is not null
+                    ? cf.CustomLabel : localizer.EnumDisplay(cf.FieldType),
                 cf.Value,
                 cf.Visibility))
             .ToList();

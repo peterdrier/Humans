@@ -383,7 +383,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 
 **Table:** `contact_fields`
 
-Contact fields allow humans to share different types of contact information with per-field visibility controls.
+Contact fields allow humans to share different types of contact information with per-field visibility controls. Default labels use the viewer's current culture, including legacy email fields; custom Other labels are preserved verbatim. Profile cards and contact lookup details receive the same localized labels.
 
 | Property | Type | Notes |
 |----------|------|-------|

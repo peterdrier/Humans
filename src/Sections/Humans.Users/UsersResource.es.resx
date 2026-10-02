@@ -1078,6 +1078,7 @@
   <!-- ======================== -->
   <!-- Enum display names       -->
   <!-- ======================== -->
+  <data name="Enum_ContactFieldType_Email" xml:space="preserve"><value>Correo</value></data>
   <data name="Enum_ContactFieldType_Discord" xml:space="preserve"><value>Discord</value></data>
   <data name="Enum_ContactFieldType_Other" xml:space="preserve"><value>Otro</value></data>
   <data name="Enum_ContactFieldType_Phone" xml:space="preserve"><value>Teléfono</value></data>
