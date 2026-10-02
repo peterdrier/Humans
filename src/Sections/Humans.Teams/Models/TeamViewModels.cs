@@ -168,7 +168,7 @@ internal sealed class JoinTeamViewModel
     public string TeamSlug { get; set; } = string.Empty;
     public bool RequiresApproval { get; set; }
 
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string? Message { get; set; }
 }
 

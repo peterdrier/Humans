@@ -60,7 +60,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 **So that** the coordinators can review my request
 
 **Acceptance Criteria:**
-- Can submit request with optional message
+- Can submit request with optional message (up to 2,000 characters); invalid input redisplays the form with a localized error and creates no request.
 - Request enters Pending status
 - Cannot submit if already have pending request
 - Can withdraw pending request

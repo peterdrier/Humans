@@ -450,6 +450,20 @@ internal sealed class TeamController(
             return NotFound();
         }
 
+        if (team.IsSystemTeam)
+        {
+            SetError(localizer["Team_CannotJoinSystem"].Value);
+            return RedirectToAction(nameof(Details), new { slug });
+        }
+
+        if (!ModelState.IsValid)
+        {
+            model.TeamName = team.Name;
+            model.TeamSlug = team.Slug;
+            model.RequiresApproval = team.RequiresApproval;
+            return View(model);
+        }
+
         try
         {
             var outcome = await teamService.JoinTeamAsync(team.Id, user.Id, model.Message);

@@ -1,8 +1,10 @@
 using System.Globalization;
 using System.Security.Claims;
 using Humans.Base.Constants;
+using Humans.Base.Extensions;
 using Humans.Teams.Domain;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using AwesomeAssertions;
 using Humans.Base;
@@ -99,6 +101,86 @@ public class TeamControllerPageContentTests
         {
             CultureInfo.CurrentUICulture = originalCulture;
         }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("en")]
+    [Xunit.InlineData("es")]
+    [Xunit.InlineData("de")]
+    [Xunit.InlineData("it")]
+    [Xunit.InlineData("fr")]
+    [Xunit.InlineData("ca")]
+    public async Task Join_InvalidMessageReturnsTheFormWithoutSubmittingARequest(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var userId = Guid.NewGuid();
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+        var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha", RequiresApproval = true };
+        var teams = Substitute.For<ITeamManagementService>();
+        teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var controller = new TeamController(
+            teams, Substitute.For<ITeamPageService>(), users,
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
+            new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
+            NullLogger<TeamController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var model = new JoinTeamViewModel
+        {
+            TeamId = team.Id, TeamName = "Spoofed", TeamSlug = "wrong", RequiresApproval = false,
+            Message = new string('x', 2001)
+        };
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = await controller.Join(team.Slug, model);
+
+        var returned = result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<JoinTeamViewModel>().Subject;
+        returned.Message.Should().Be(model.Message);
+        returned.TeamName.Should().Be(team.Name);
+        returned.TeamSlug.Should().Be(team.Slug);
+        returned.RequiresApproval.Should().BeTrue();
+        var expected = services.GetRequiredService<IStringLocalizer<SharedResource>>()
+            ["Validation_MaxLength", "", 2000];
+        expected.ResourceNotFound.Should().BeFalse();
+        controller.ModelState[nameof(model.Message)]!.Errors.Should().ContainSingle()
+            .Which.ErrorMessage.Should().Be(expected.Value);
+        await teams.DidNotReceive().JoinTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+
+        controller.ModelState.Clear();
+        model.Message = new string('x', 2000);
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+        controller.ModelState.IsValid.Should().BeTrue();
+        (await controller.Join(team.Slug, model)).Should().BeOfType<RedirectToActionResult>();
+        await teams.Received(1).JoinTeamAsync(team.Id, userId, model.Message, Arg.Any<CancellationToken>());
+
+        controller.ModelState.AddModelError(nameof(model.Message), "invalid");
+        team.SystemTeamType = SystemTeamType.Volunteers;
+        (await controller.Join(team.Slug, model)).Should().BeOfType<RedirectToActionResult>();
+        controller.TempData[TempDataKeys.ErrorMessage].Should().Be(
+            services.GetRequiredService<IStringLocalizer<TeamsResource>>()["Team_CannotJoinSystem"].Value);
+        team.SystemTeamType = SystemTeamType.None;
+        team.IsHidden = true;
+        (await controller.Join(team.Slug, model)).Should().BeOfType<NotFoundResult>();
+        model.TeamId = Guid.NewGuid();
+        (await controller.Join(team.Slug, model)).Should().BeOfType<BadRequestResult>();
+        await teams.Received(1).JoinTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
