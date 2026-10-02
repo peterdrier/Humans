@@ -46,16 +46,19 @@ internal sealed class HumanLifecycleService(
         {
             var language = (await userService.GetUserInfoAsync(userId, ct))?.PreferredLanguage;
             var culture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
+            var body = string.IsNullOrWhiteSpace(notes)
+                ? NoticeResources.GetString("AccountStatus_HeadingAdminSuspended", culture)!
+                : string.Format(culture,
+                    NoticeResources.GetString("Users_Notification_AdminSuspendedWithReason", culture)!, notes);
+            if (body.EnumerateRunes().Count() > 2000)
+                body = string.Concat(body.EnumerateRunes().Take(1999)) + "…";
             await notificationService.SendAsync(
                 NotificationSource.AccessSuspended,
                 NotificationClass.Actionable,
                 NotificationPriority.Critical,
                 NoticeResources.GetString("AccountStatus_HeadingSuspended", culture)!,
                 [userId],
-                body: string.IsNullOrWhiteSpace(notes)
-                    ? NoticeResources.GetString("AccountStatus_HeadingAdminSuspended", culture)!
-                    : string.Format(culture,
-                        NoticeResources.GetString("Users_Notification_AdminSuspendedWithReason", culture)!, notes),
+                body: body,
                 actionUrl: "/Profile",
                 actionLabel: NoticeResources.GetString("Users_Notification_ViewProfile", culture)!,
                 cancellationToken: ct);

@@ -56,6 +56,37 @@ public class HumanLifecycleServiceTests
         _metrics.Received(1).RecordMemberSuspended("admin");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("a")]
+    [Xunit.InlineData("😀")]
+    public async Task SuspendAsync_LongReason_BoundsNoticePreviewAndPreservesAudit(string character)
+    {
+        var userId = Guid.NewGuid();
+        var adminId = Guid.NewGuid();
+        var notes = string.Concat(Enumerable.Repeat(character, 2000));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(MakeUserInfo(userId, UserState.AdminSuspended) with { PreferredLanguage = "es" });
+        _userService.ApplyProfileOnboardingMutationAsync(userId,
+            Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+
+        var result = await BuildSut().SuspendAsync(userId, adminId, notes,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        var body = (string)_notificationService.ReceivedCalls().Single().GetArguments()[5]!;
+        body.EnumerateRunes().Count().Should().Be(2000);
+        body.Should().StartWith("Tu acceso ha sido suspendido: ");
+        body.Should().EndWith("…");
+        body.Should().NotContain("�");
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.MemberSuspended, nameof(User), userId,
+            "Suspended: " + notes, adminId);
+        await _userService.Received(1).ApplyProfileOnboardingMutationAsync(userId,
+            Arg.Is<UserProfileOnboardingCommand>(command => command.Notes == notes),
+            Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task SuspendAsync_OnSuccess_WritesProfileNotifiesAndRecordsMetric()
     {
