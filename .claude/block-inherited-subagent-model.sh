@@ -23,9 +23,10 @@ block() {
 [[ "$TYPE" == "fork" ]] && block "fork always inherits the session model; a model override is ignored."
 [[ "$MODEL" == "inherit" ]] && block "model: inherit runs this subagent on the session model."
 [[ -n "$MODEL" ]] && exit 0
-# CLAUDE_CODE_SUBAGENT_MODEL pins every subagent to one model: a chosen tier, so the
-# call needs no model of its own (the claude-review workflow sets it for the reviewer).
-[[ -n "${CLAUDE_CODE_SUBAGENT_MODEL:-}" ]] && exit 0
+# The claude-review workflow runs this hook too (project settings load from the base
+# checkout) with nobody steering the reviewer per spawn; its subagents run on the
+# CLAUDE_CODE_SUBAGENT_MODEL in .claude/settings.json, which is a chosen tier.
+[[ -n "${GITHUB_ACTIONS:-}" ]] && exit 0
 
 # No model on the call: does the agent definition pin one? Candidates in priority order:
 # project, cwd, then user definitions (bare names only), then plugin agents -- the active
