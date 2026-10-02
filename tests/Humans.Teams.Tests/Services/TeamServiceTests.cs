@@ -42,6 +42,7 @@ namespace Humans.Teams.Tests.Services;
 public sealed class TeamServiceTests : TeamsTestHarness
 {
     private readonly TeamService _service;
+    private readonly IUserService _userService;
     private readonly RoleAssignmentService _roleAssignmentService;
     private readonly ITeamResourceService _teamResourceService;
     private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
@@ -68,7 +69,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         // Capture the user service to a local before threading it into the locator
         // builder â€” NSubstitute can't attach an outer .Returns() to a factory that
         // itself configures substitute calls.
-        var userService = NewDbBackedUserService();
+        var userService = _userService = NewDbBackedUserService();
         var googleOutboxService = new GoogleSyncOutboxService(
             new GoogleSyncOutboxRepository(GoogleIntegrationDbFactory));
         var serviceProvider = new ServiceLocatorBuilder()
@@ -992,6 +993,49 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var stored = await TeamsDb.TeamJoinRequests.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         stored.Id.Should().Be(result.Id);
         stored.Message.Should().Be("Pick me");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task JoinTeam_NameLookupFailure_ReturnsCommittedRequestOrMembership(bool requiresApproval)
+    {
+        var user = SeedUser();
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var team = SeedTeam("Alpha", requiresApproval: requiresApproval);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var userInfo = await _userService.GetUserInfoAsync(
+            user.Id, Xunit.TestContext.Current.CancellationToken);
+        var lookups = 0;
+        _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(_ => !requiresApproval && lookups++ == 0
+                ? new ValueTask<UserInfo?>(userInfo)
+                : ValueTask.FromException<UserInfo?>(new IOException("Name lookup failed")));
+
+        if (requiresApproval)
+        {
+            var result = await _service.RequestToJoinTeamAsync(
+                team.Id, user.Id, "Pick me", Xunit.TestContext.Current.CancellationToken);
+            result.Status.Should().Be(TeamJoinRequestStatus.Pending);
+            ClearAllTrackers();
+            (await TeamsDb.TeamJoinRequests.AsNoTracking().SingleAsync(
+                Xunit.TestContext.Current.CancellationToken)).Id.Should().Be(result.Id);
+        }
+        else
+        {
+            var result = await _service.JoinTeamDirectlyAsync(
+                team.Id, user.Id, Xunit.TestContext.Current.CancellationToken);
+            result.UserId.Should().Be(user.Id);
+            ClearAllTrackers();
+            (await TeamsDb.TeamMembers.AsNoTracking().SingleAsync(
+                m => m.UserId == user.Id, Xunit.TestContext.Current.CancellationToken))
+                .Id.Should().Be(result.Id);
+            await AuditLog.Received(1).LogAsync(
+                AuditAction.TeamJoinedDirectly, nameof(Team), team.Id,
+                $"Joined {team.Name} directly", user.Id,
+                relatedEntityId: user.Id, relatedEntityType: nameof(User));
+        }
     }
 
     // ==========================================================================

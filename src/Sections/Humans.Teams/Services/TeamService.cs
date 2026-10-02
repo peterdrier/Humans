@@ -771,9 +771,9 @@ internal sealed class TeamService(
             return;
         }
 
-        var displayName = await GetDisplayNameAsync(userId, cancellationToken);
         try
         {
+            var displayName = await GetDisplayNameAsync(userId, cancellationToken);
             await notificationService.SendAsync(
                 NotificationSource.TeamJoinRequestSubmitted,
                 NotificationClass.Actionable,
@@ -802,9 +802,9 @@ internal sealed class TeamService(
             return;
         }
 
-        var displayName = await GetDisplayNameAsync(userId, cancellationToken);
         try
         {
+            var displayName = await GetDisplayNameAsync(userId, cancellationToken);
             await notificationService.SendAsync(
                 NotificationSource.TeamMemberAdded,
                 NotificationClass.Informational,
