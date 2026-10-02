@@ -47,6 +47,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     private static readonly HashSet<string> AllowedImageExtensions =
         new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
     private const int MaxImageFileNameLength = 256;
+    private const int MaxCampSlugLength = 256;
 
     public CampService(
         ICampRepository repo,
@@ -87,6 +88,8 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         CancellationToken cancellationToken = default)
     {
         var slug = SlugHelper.GenerateSlug(name);
+        if (slug.Length == 0)
+            slug = "camp";
         if (SlugHelper.IsReservedCampSlug(slug))
         {
             throw new InvalidOperationException("Camps_Flash_ReservedName");
@@ -96,7 +99,9 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         var suffix = 2;
         while (await _repo.SlugExistsAsync(slug, cancellationToken))
         {
-            slug = $"{baseSlug}-{suffix}";
+            var suffixText = "-" + suffix.ToString(CultureInfo.InvariantCulture);
+            var prefixLength = Math.Min(baseSlug.Length, MaxCampSlugLength - suffixText.Length);
+            slug = baseSlug[..prefixLength].TrimEnd('-') + suffixText;
             suffix++;
         }
 

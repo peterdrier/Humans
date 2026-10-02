@@ -1,3 +1,4 @@
+using Humans.Base.Helpers;
 using Xunit;
 using System.Text;
 using Humans.Notifications.Contracts;
@@ -182,6 +183,47 @@ public sealed class CampServiceTests : CampsTestHarness
             .Should().BeTrue();
         (await CampsDb.CampRoleAssignments.AsNoTracking().AnyAsync(a => a.CampSeasonId == season.Id, Xunit.TestContext.Current.CancellationToken))
             .Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [InlineData("🔥🔥")]
+    [InlineData("日本のキャンプ")]
+    public async Task CreateCampAsync_NonAsciiNamesGetDistinctUsableSlugs(string name)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var first = await _service.CreateCampAsync(Guid.NewGuid(), name, "camp@test.com", "+34600000000",
+            null, null, false, 0, MakeSeasonData(), null, 2026, ct);
+        var second = await _service.CreateCampAsync(Guid.NewGuid(), name, "camp@test.com", "+34600000000",
+            null, null, false, 0, MakeSeasonData(), null, 2026, ct);
+
+        foreach (var camp in new[] { first, second })
+        {
+            SlugHelper.IsValidKebabSlug(camp.Slug, maxLength: 256).Should().BeTrue();
+            var read = await _service.GetCampBySlugAsync(camp.Slug, ct);
+            read!.Id.Should().Be(camp.Id);
+            read.Seasons.Single().Name.Should().Be(name);
+        }
+        first.Slug.Should().NotBe(second.Slug);
+    }
+
+    [HumansFact]
+    public async Task CreateCampAsync_LongNameCollisionSlugsStayWithinTheirStoredBound()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var maxLength = CampsDb.Model.FindEntityType(typeof(Camp))!.FindProperty(nameof(Camp.Slug))!.GetMaxLength()!.Value;
+        var name = new string('a', maxLength - 3) + "-bc";
+        var slugs = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < 3; i++)
+        {
+            var camp = await _service.CreateCampAsync(Guid.NewGuid(), name, "camp@test.com", "+34600000000",
+                null, null, false, 0, MakeSeasonData(), null, 2026, ct);
+
+            SlugHelper.IsValidKebabSlug(camp.Slug, maxLength).Should().BeTrue();
+            slugs.Add(camp.Slug).Should().BeTrue();
+            (await _service.GetCampBySlugAsync(camp.Slug, ct))!.Seasons.Single().Name.Should().Be(name);
+        }
     }
 
     [HumansFact]

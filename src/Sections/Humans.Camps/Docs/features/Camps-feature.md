@@ -71,6 +71,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Captures season-specific data: description, vibes, kids policy, sound zone, etc.
 - Optional historical names (comma-separated)
 - Creates camp with Pending status
+- Generated slugs remain non-empty and fit their stored length bound, including non-ASCII names and duplicate maximum-length names; the display name is preserved
 - Registering user becomes a Camp Lead (a `CampRoleAssignment` against the `SpecialRole = Lead` role definition, not a separate entity)
 - Redirects to detail page with success message
 
