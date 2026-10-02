@@ -1,3 +1,11 @@
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+using System.Security.Claims;
+using Humans.Issues.Controllers;
+using Humans.Issues.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -191,6 +199,57 @@ public sealed class IssuesServiceTests
             ct.ThrowIfCancellationRequested();
             return Task.CompletedTask;
         }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BrowserReads_StopWhenTheRequestIsAbandoned(bool detail)
+    {
+        var user = SeedUser();
+        var issueId = await _service.CreateIssueAsync(user.Id, IssueCategory.Bug, "Title", "Description",
+            section: "Tickets", actorUserId: user.Id, ct: Xunit.TestContext.Current.CancellationToken);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+        var controller = new IssuesController(_service, authorization, _userService,
+            Domain.TestIssueQueues.Shipped(), services.GetRequiredService<IStringLocalizer<IssuesResource>>(),
+            NullLogger<IssuesController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())], "test"))
+                }
+            }
+        };
+        Task<IActionResult> Read() => detail
+            ? controller.Detail(issueId, partial: true)
+            : controller.Index(null, null, null, null, null, null);
+        var healthy = await Read();
+        if (detail)
+            healthy.Should().BeOfType<PartialViewResult>().Which.Model.Should().BeOfType<IssueDetailViewModel>();
+        else
+            healthy.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<IssuePageViewModel>()
+                .Which.Issues.Should().ContainSingle();
+
+        using var cancellation = new CancellationTokenSource();
+        controller.HttpContext.RequestAborted = cancellation.Token;
+        // Simulate navigation away after the current-user read, before the issue repository query.
+        async ValueTask<UserInfo?> CancelBeforeIssueReadAsync()
+        {
+            await cancellation.CancelAsync();
+            return Info(user.Id);
+        }
+        _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(_ => CancelBeforeIssueReadAsync());
+
+        var abandoned = () => Read();
+        await abandoned.Should().ThrowAsync<OperationCanceledException>();
     }
 
     // ==========================================================================
