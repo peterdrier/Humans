@@ -167,7 +167,11 @@ else
   LAST_DATE=$(grep -E '^\| [0-9]{4}-[0-9]{2}-[0-9]{2} ' "$EXISTING_ROWS" | tail -1 | awk -F'|' '{ gsub(/^ +| +$/, "", $2); print $2 }' || true)
 fi
 
+PUBLISH_FILE=""
 cleanup() {
+  if [ -n "$PUBLISH_FILE" ]; then
+    rm -f -- "$PUBLISH_FILE"
+  fi
   if [ -d "$SNAPSHOT_WORKTREE" ]; then
     git worktree remove --force "$SNAPSHOT_WORKTREE" 2>/dev/null \
       || { rm -rf -- "$SNAPSHOT_WORKTREE" 2>/dev/null || true; git worktree prune --quiet 2>/dev/null || true; }
@@ -377,14 +381,17 @@ while IFS=' ' read -r day commit; do
   echo "[$N/$TOTAL] $day $commit"
 done <<< "$DAY_COMMITS"
 
-# Stitch: preamble + existing rows + new rows. The caller's tree was never
-# touched, so $DOC is written in place with no ref restore needed first.
+# Stage beside the document for atomic publication, using only this run's
+# temporary file. Keep the document's existing permissions.
+PUBLISH_FILE=$(mktemp "${DOC}.XXXXXX")
 {
   cat "$PREAMBLE"
   cat "$EXISTING_ROWS"
   cat "$NEW_ROWS"
-} > "$DOC.tmp"
-mv "$DOC.tmp" "$DOC"
+} > "$PUBLISH_FILE"
+chmod --reference="$DOC" "$PUBLISH_FILE"
+mv -- "$PUBLISH_FILE" "$DOC"
+PUBLISH_FILE=""
 
 ROWS=$(grep -cE '^\| [0-9]{4}-[0-9]{2}-[0-9]{2} ' "$DOC" || echo 0)
 echo "Done. Appended $N rows. Table now has $ROWS data rows."
