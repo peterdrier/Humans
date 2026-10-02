@@ -7,7 +7,7 @@
 #
 # Modes:
 #   default: incremental — append rows for days strictly after the last date
-#            already in the CSV.
+#            already in the CSV; publish only when every selected day succeeds.
 #   --full:  rebuild from scratch, replacing the CSV only after snapshots succeed.
 #
 # Requirements:
@@ -175,6 +175,13 @@ done
 
 if [ "$OK" -eq 0 ]; then
   echo "Error: no snapshots succeeded; existing CSV was preserved." >&2
+  exit 1
+fi
+
+# The last CSV row is the next incremental run's checkpoint. Publishing later
+# successes past a failed day would make that day unreachable on future runs.
+if [ "$FULL" != "true" ] && [ "$FAIL" -gt 0 ]; then
+  echo "Error: incremental snapshots failed; existing CSV was preserved for retry." >&2
   exit 1
 fi
 
