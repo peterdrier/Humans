@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Resources;
+using Humans.Base.Extensions;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -32,6 +35,8 @@ internal sealed partial class LegalDocumentSyncService(
     IClock clock,
     ILogger<LegalDocumentSyncService> logger) : ILegalDocumentSyncService, IAdminLegalDocumentService
 {
+    private static readonly ResourceManager NoticeResources = new(typeof(ConsentResource));
+
     private readonly GitHubSettings _githubSettings = githubSettings.Value;
 
     // ==========================================================================
@@ -560,8 +565,8 @@ internal sealed partial class LegalDocumentSyncService(
             await TryFanoutAsync(
                 document,
                 NotificationSource.LegalDocumentPublished,
-                $"New legal document published: {document.Name}",
-                "A new required legal document has been published. Please review and sign it.",
+                "Consent_Notification_Published",
+                "Consent_Notification_PublishedBody",
                 cancellationToken);
         }
 
@@ -570,8 +575,8 @@ internal sealed partial class LegalDocumentSyncService(
             await TryFanoutAsync(
                 document,
                 NotificationSource.ReConsentRequired,
-                $"{document.Name} has been updated — re-consent required",
-                "A required legal document has been updated. Please review and sign the new version.",
+                "Consent_Notification_ReConsentRequired",
+                "Consent_Notification_ReConsentRequiredBody",
                 cancellationToken);
         }
 
@@ -581,28 +586,37 @@ internal sealed partial class LegalDocumentSyncService(
     private async Task TryFanoutAsync(
         LegalDocument document,
         NotificationSource source,
-        string title,
-        string body,
+        string titleKey,
+        string bodyKey,
         CancellationToken cancellationToken)
     {
         try
         {
-            var approvedUserIds = (await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
+            var recipientsByLanguage = (await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
                 .Where(u => u.IsActive)
-                .Select(u => u.Id)
-                .ToList();
-            if (approvedUserIds.Count > 0)
+                .GroupBy(u => u.PreferredLanguage.IsSupportedCultureCode() ? u.PreferredLanguage : "en", StringComparer.Ordinal);
+            foreach (var group in recipientsByLanguage)
             {
-                await notificationService.SendAsync(
-                    source,
-                    NotificationClass.Actionable,
-                    NotificationPriority.High,
-                    title,
-                    approvedUserIds,
-                    body: body,
-                    actionUrl: "/Consent",
-                    actionLabel: "Review document",
-                    cancellationToken: cancellationToken);
+                try
+                {
+                    var culture = CultureInfo.GetCultureInfo(group.Key);
+                    await notificationService.SendAsync(
+                        source,
+                        NotificationClass.Actionable,
+                        NotificationPriority.High,
+                        string.Format(culture, NoticeResources.GetString(titleKey, culture)!, document.Name),
+                        group.Select(u => u.Id).ToList(),
+                        body: NoticeResources.GetString(bodyKey, culture),
+                        actionUrl: "/Consent",
+                        actionLabel: NoticeResources.GetString("Consent_ReviewAndConsent", culture),
+                        cancellationToken: cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex,
+                        "Failed to dispatch {Source} notifications for document {DocumentId} in {Culture}",
+                        source, document.Id, group.Key);
+                }
             }
         }
         catch (Exception ex)

@@ -170,4 +170,8 @@
 &lt;p&gt;Gràcies,&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = days remaining, {2} = document list items HTML, {3} = base URL</comment>
   </data>
+  <data name="Consent_Notification_Published" xml:space="preserve"><value>S’ha publicat un nou document legal: {0}</value></data>
+  <data name="Consent_Notification_PublishedBody" xml:space="preserve"><value>S’ha publicat un nou document legal obligatori. Revisa’l i signa’l.</value></data>
+  <data name="Consent_Notification_ReConsentRequired" xml:space="preserve"><value>{0} s’ha actualitzat — cal tornar a donar el consentiment</value></data>
+  <data name="Consent_Notification_ReConsentRequiredBody" xml:space="preserve"><value>S’ha actualitzat un document legal obligatori. Revisa i signa la nova versió.</value></data>
 </root>

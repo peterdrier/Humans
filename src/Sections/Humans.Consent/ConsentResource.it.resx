@@ -170,4 +170,8 @@
 &lt;p&gt;Grazie,&lt;br/&gt;Il team di Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = days remaining, {2} = document list items HTML, {3} = base URL</comment>
   </data>
+  <data name="Consent_Notification_Published" xml:space="preserve"><value>Nuovo documento legale pubblicato: {0}</value></data>
+  <data name="Consent_Notification_PublishedBody" xml:space="preserve"><value>È stato pubblicato un nuovo documento legale obbligatorio. Esaminalo e firmalo.</value></data>
+  <data name="Consent_Notification_ReConsentRequired" xml:space="preserve"><value>{0} è stato aggiornato — è necessario dare nuovamente il consenso</value></data>
+  <data name="Consent_Notification_ReConsentRequiredBody" xml:space="preserve"><value>È stato aggiornato un documento legale obbligatorio. Esaminalo e firma la nuova versione.</value></data>
 </root>

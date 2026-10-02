@@ -87,4 +87,8 @@
 &lt;p&gt;If you do not accept these documents before the deadline, your access may be temporarily suspended.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{3}/Consent"&gt;Review Documents Now&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Thank you,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = days remaining, {2} = document list items HTML, {3} = base URL</comment></data>
+  <data name="Consent_Notification_Published" xml:space="preserve"><value>New legal document published: {0}</value></data>
+  <data name="Consent_Notification_PublishedBody" xml:space="preserve"><value>A new required legal document has been published. Please review and sign it.</value></data>
+  <data name="Consent_Notification_ReConsentRequired" xml:space="preserve"><value>{0} has been updated — re-consent required</value></data>
+  <data name="Consent_Notification_ReConsentRequiredBody" xml:space="preserve"><value>A required legal document has been updated. Please review and sign the new version.</value></data>
 </root>
