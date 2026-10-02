@@ -622,6 +622,8 @@ Admin-only flows for the section's cross-account hygiene (the `/Profile/Admin/*`
 
 ## Invariants
 
+- The live burner-name collision warning invalidates pending responses and hides the previous name’s warning on every input, before debounce; clearing the field cannot revive an older result.
+
 - Profile API search, burner-name count and user-id lookup carry request cancellation through current-user resolution as well as their subsequent reads.
 
 - Outbox, privacy and dietary/medical GETs carry request cancellation through their current-user reads and, for outbox, email history. Dietary load errors remain localized; an abandoned request propagates cancellation.

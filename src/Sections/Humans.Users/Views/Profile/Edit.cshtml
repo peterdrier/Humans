@@ -1177,7 +1177,7 @@
                 const name = burnerNameInput.value.trim();
                 if (name.length < 2) { collisionWarning.classList.add('d-none'); return; }
 
-                const seq = ++collisionSeq;
+                const seq = collisionSeq;
                 // Editing user is resolved server-side from the session; no id is sent.
                 const url = '/api/profiles/burner-name-count?name=' + encodeURIComponent(name);
                 try {
@@ -1192,6 +1192,8 @@
             }
 
             burnerNameInput?.addEventListener('input', () => {
+                ++collisionSeq; // invalidate in-flight responses before the debounce fires
+                collisionWarning?.classList.add('d-none');
                 clearTimeout(collisionTimer);
                 collisionTimer = setTimeout(checkBurnerNameCollision, 350);
             });

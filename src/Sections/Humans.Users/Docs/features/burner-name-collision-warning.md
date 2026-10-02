@@ -92,7 +92,9 @@ debounced `input` handler in the existing nonce'd script block fetches the count
 action with the typed name (no id is sent — CSP-safe: `data-*` + `addEventListener`),
 selects the singular/plural template by count, substitutes `{0}` (count) and
 `{1}` (typed name), and toggles visibility. A monotonic sequence guard discards
-responses superseded by a later keystroke.
+responses superseded by a later keystroke immediately, before the next debounce
+fires. Every input hides the previous warning, including when the name becomes
+too short for another lookup.
 
 Localization keys `ProfileEdit_BurnerNameCollisionOne` /
 `ProfileEdit_BurnerNameCollisionMany` are defined in `UsersResource.resx` and the
