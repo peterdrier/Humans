@@ -139,11 +139,11 @@ internal sealed class CityPlanningApiController(
     private async Task<IActionResult> BroadcastAndReturnAsync(
         Guid campSeasonId, CampPolygonSaveResult polygon, CancellationToken cancellationToken)
     {
-        var season = await campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
-        var soundZoneValue = season?.SoundZone is { } sz ? (int)sz : -1;
-        var campName = season?.Name ?? string.Empty;
         try
         {
+            var season = await campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
+            var soundZoneValue = season?.SoundZone is { } sz ? (int)sz : -1;
+            var campName = season?.Name ?? string.Empty;
             await hubContext.Clients.All.SendAsync(
                 "CampPolygonUpdated", campSeasonId, polygon.GeoJson, polygon.AreaSqm, soundZoneValue, campName, cancellationToken);
         }

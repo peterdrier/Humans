@@ -188,6 +188,33 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         (await CityPlanningDb.CampPolygons.SingleAsync(ct)).GeoJson.Should().Be(Square);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task PolygonWrite_BroadcastPreparationFailure_ReturnsSavedResult(bool restore)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Guid historyId = default;
+        if (restore)
+        {
+            await _service.SaveCampPolygonAsync(_campSeasonId, Square, 10, _userId, cancellationToken: ct);
+            historyId = (await CityPlanningDb.CampPolygonHistories.SingleAsync(ct)).Id;
+        }
+        _campService.GetCampSeasonByIdAsync(_campSeasonId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("Camp directory unavailable"));
+        var controller = CreateController(RoleNames.CampAdmin);
+
+        var result = restore
+            ? await controller.RestoreCampPolygon(_campSeasonId, historyId, ct)
+            : await controller.SaveCampPolygon(_campSeasonId, new SaveCampPolygonRequest(Square, 10), ct);
+
+        result.Should().BeOfType<OkObjectResult>();
+        (await CityPlanningDb.CampPolygons.SingleAsync(ct)).GeoJson.Should().Be(Square);
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(restore ? 2 : 1);
+        await _allClients.DidNotReceive().SendCoreAsync(
+            Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task SaveCampPolygon_CancelledBroadcast_PropagatesCancellationAfterSave()
     {
