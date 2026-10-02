@@ -1221,4 +1221,7 @@
   <data name="Shifts_Signup_RangeCapacityDays" xml:space="preserve"><value>I turni sono al completo nei giorni: {0}.</value></data>
   <data name="Shifts_Signup_RangeEarlyEntryCapacityDays" xml:space="preserve"><value>È stata raggiunta la capienza per l’ingresso anticipato nei giorni: {0}.</value></data>
   <data name="Shifts_Signup_RangeNothingToAdd" xml:space="preserve"><value>Niente da aggiungere.</value></data>
+  <data name="Shifts_Notification_AssignedDay" xml:space="preserve"><value>Ti è stato assegnato un turno in {0} per il giorno {1}</value></data>
+  <data name="Shifts_Notification_AssignedRange" xml:space="preserve"><value>Ti sono stati assegnati {1} turni in {0}</value></data>
+  <data name="Shifts_Notification_AssignedRangeSingular" xml:space="preserve"><value>Ti è stato assegnato un turno in {0}</value></data>
 </root>

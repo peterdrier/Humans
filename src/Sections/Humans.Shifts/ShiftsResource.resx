@@ -435,4 +435,7 @@
   <data name="Shifts_Signup_RangeCapacityDays" xml:space="preserve"><value>Day(s) {0} are at capacity.</value></data>
   <data name="Shifts_Signup_RangeEarlyEntryCapacityDays" xml:space="preserve"><value>Early entry capacity reached for day(s): {0}.</value></data>
   <data name="Shifts_Signup_RangeNothingToAdd" xml:space="preserve"><value>Nothing to add.</value></data>
+  <data name="Shifts_Notification_AssignedDay" xml:space="preserve"><value>You were assigned to {0} on day {1}</value></data>
+  <data name="Shifts_Notification_AssignedRange" xml:space="preserve"><value>You were assigned to {0} ({1} shifts)</value></data>
+  <data name="Shifts_Notification_AssignedRangeSingular" xml:space="preserve"><value>You were assigned to {0} (1 shift)</value></data>
 </root>

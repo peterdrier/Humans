@@ -1221,4 +1221,7 @@
   <data name="Shifts_Signup_RangeCapacityDays" xml:space="preserve"><value>Aquests dies estan complets: {0}.</value></data>
   <data name="Shifts_Signup_RangeEarlyEntryCapacityDays" xml:space="preserve"><value>S’ha assolit el límit d’accés anticipat per a aquests dies: {0}.</value></data>
   <data name="Shifts_Signup_RangeNothingToAdd" xml:space="preserve"><value>No hi ha res a afegir.</value></data>
+  <data name="Shifts_Notification_AssignedDay" xml:space="preserve"><value>T’han assignat un torn a {0} per al dia {1}</value></data>
+  <data name="Shifts_Notification_AssignedRange" xml:space="preserve"><value>T’han assignat {1} torns a {0}</value></data>
+  <data name="Shifts_Notification_AssignedRangeSingular" xml:space="preserve"><value>T’han assignat un torn a {0}</value></data>
 </root>

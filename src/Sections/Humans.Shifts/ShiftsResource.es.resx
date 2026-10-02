@@ -1222,4 +1222,7 @@
   <data name="Shifts_Signup_RangeCapacityDays" xml:space="preserve"><value>Estos días están completos: {0}.</value></data>
   <data name="Shifts_Signup_RangeEarlyEntryCapacityDays" xml:space="preserve"><value>Se ha alcanzado el límite de acceso anticipado para estos días: {0}.</value></data>
   <data name="Shifts_Signup_RangeNothingToAdd" xml:space="preserve"><value>No hay nada que añadir.</value></data>
+  <data name="Shifts_Notification_AssignedDay" xml:space="preserve"><value>Te han asignado un turno en {0} para el día {1}</value></data>
+  <data name="Shifts_Notification_AssignedRange" xml:space="preserve"><value>Te han asignado {1} turnos en {0}</value></data>
+  <data name="Shifts_Notification_AssignedRangeSingular" xml:space="preserve"><value>Te han asignado un turno en {0}</value></data>
 </root>

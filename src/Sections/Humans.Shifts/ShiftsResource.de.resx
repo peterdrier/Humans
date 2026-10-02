@@ -1221,4 +1221,7 @@
   <data name="Shifts_Signup_RangeCapacityDays" xml:space="preserve"><value>An folgenden Tagen sind alle Plätze belegt: {0}.</value></data>
   <data name="Shifts_Signup_RangeEarlyEntryCapacityDays" xml:space="preserve"><value>Die Kapazität für den Früheinlass ist an folgenden Tagen erreicht: {0}.</value></data>
   <data name="Shifts_Signup_RangeNothingToAdd" xml:space="preserve"><value>Nichts hinzuzufügen.</value></data>
+  <data name="Shifts_Notification_AssignedDay" xml:space="preserve"><value>Du wurdest für {0} an Tag {1} eingeteilt</value></data>
+  <data name="Shifts_Notification_AssignedRange" xml:space="preserve"><value>Du wurdest für {0} ({1} Schichten) eingeteilt</value></data>
+  <data name="Shifts_Notification_AssignedRangeSingular" xml:space="preserve"><value>Du wurdest für {0} (1 Schicht) eingeteilt</value></data>
 </root>

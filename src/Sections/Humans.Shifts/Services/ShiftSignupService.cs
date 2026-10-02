@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
@@ -36,6 +38,8 @@ internal sealed class ShiftSignupService(
     IUserServiceRead users,
     IStringLocalizer<ShiftsResource> localizer) : IShiftSignupService, IUserDataContributor, IUserMerge, ICalendarFeedContributor
 {
+    private static readonly ResourceManager NoticeResources = new(typeof(ShiftsResource));
+
     /// <summary>GDPR export JSON keys for this contributor's data.</summary>
     internal const string ShiftSignups = "ShiftSignups";
     internal const string VolunteerEventProfiles = "VolunteerEventProfiles";
@@ -326,14 +330,16 @@ internal sealed class ShiftSignupService(
         {
             try
             {
+                var culture = await GetRecipientCultureAsync(userId);
                 await notificationService.SendAsync(
                     NotificationSource.ShiftAssigned,
                     NotificationClass.Informational,
                     NotificationPriority.Normal,
-                    $"You were assigned to {shift.Rota.Name} on day {shift.DayOffset}",
+                    string.Format(culture, NoticeResources.GetString("Shifts_Notification_AssignedDay", culture)!,
+                        shift.Rota.Name, shift.DayOffset),
                     [userId],
                     actionUrl: "/Shifts",
-                    actionLabel: "View shifts");
+                    actionLabel: NoticeResources.GetString("Shifts_BrowseAvailable", culture));
             }
             catch (Exception ex)
             {
@@ -455,14 +461,17 @@ internal sealed class ShiftSignupService(
         {
             try
             {
+                var culture = await GetRecipientCultureAsync(userId);
                 await notificationService.SendAsync(
                     NotificationSource.ShiftAssigned,
                     NotificationClass.Informational,
                     NotificationPriority.Normal,
-                    $"You were assigned to {rota.Name} ({assignable.Count} shifts)",
+                    string.Format(culture, NoticeResources.GetString(assignable.Count == 1
+                        ? "Shifts_Notification_AssignedRangeSingular" : "Shifts_Notification_AssignedRange", culture)!,
+                        rota.Name, assignable.Count),
                     [userId],
                     actionUrl: "/Shifts",
-                    actionLabel: "View shifts");
+                    actionLabel: NoticeResources.GetString("Shifts_BrowseAvailable", culture));
             }
             catch (Exception ex)
             {
@@ -1140,6 +1149,20 @@ internal sealed class ShiftSignupService(
             return "Early entry capacity reached.";
 
         return null;
+    }
+
+    private async Task<CultureInfo> GetRecipientCultureAsync(Guid userId)
+    {
+        try
+        {
+            var language = (await users.GetUserInfoAsync(userId))?.PreferredLanguage;
+            return CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to resolve assignment notice language for user {UserId}; using English", userId);
+            return CultureInfo.GetCultureInfo("en");
+        }
     }
 
     private async Task CheckAndNotifyCoverageGapAsync(ShiftSignup signup, Shift shift)

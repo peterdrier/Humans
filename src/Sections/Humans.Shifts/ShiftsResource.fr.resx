@@ -1221,4 +1221,7 @@
   <data name="Shifts_Signup_RangeCapacityDays" xml:space="preserve"><value>Les jours suivants sont complets : {0}.</value></data>
   <data name="Shifts_Signup_RangeEarlyEntryCapacityDays" xml:space="preserve"><value>La capacité d’accès anticipé est atteinte pour les jours suivants : {0}.</value></data>
   <data name="Shifts_Signup_RangeNothingToAdd" xml:space="preserve"><value>Rien à ajouter.</value></data>
+  <data name="Shifts_Notification_AssignedDay" xml:space="preserve"><value>Un créneau de {0} vous a été attribué pour le jour {1}</value></data>
+  <data name="Shifts_Notification_AssignedRange" xml:space="preserve"><value>Des créneaux de {0} vous ont été attribués ({1} au total)</value></data>
+  <data name="Shifts_Notification_AssignedRangeSingular" xml:space="preserve"><value>Un créneau de {0} vous a été attribué</value></data>
 </root>

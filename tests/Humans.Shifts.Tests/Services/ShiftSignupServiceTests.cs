@@ -622,6 +622,47 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         Saved(result).ReviewedByUserId.Should().Be(enrollerId);
     }
 
+    [HumansTheory]
+    [InlineData(0, false)]
+    [InlineData(2, false)]
+    [InlineData(1, false)]
+    [InlineData(0, true)]
+    public async Task VoluntellNotices_UseVolunteerLanguageWithLookupFailureFallback(int rangeCount, bool lookupFailure)
+    {
+        var range = rangeCount > 0;
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        if (range)
+        {
+            rota.Period = RotaPeriod.Build;
+            SeedAllDayShift(rota, -3);
+            if (rangeCount > 1) SeedAllDayShift(rota, -2);
+        }
+        var volunteerId = Guid.NewGuid();
+        _users.GetUserInfoAsync(volunteerId, Arg.Any<CancellationToken>())
+            .Returns(UserInfoStubHelpers.MakeUserInfo(volunteerId) with { PreferredLanguage = "es" });
+        if (lookupFailure)
+            _users.GetUserInfoAsync(volunteerId, Arg.Any<CancellationToken>())
+                .Returns(ValueTask.FromException<UserInfo?>(new IOException("Language lookup unavailable")));
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = range
+            ? await _service.VoluntellRangeAsync(volunteerId, rota.Id, -3, -3 + rangeCount - 1, Guid.NewGuid())
+            : await _service.VoluntellAsync(volunteerId, shift.Id, Guid.NewGuid());
+
+        result.Success.Should().BeTrue();
+        var args = Notifier.ReceivedCalls()
+            .Where(call => call.GetArguments()[0] is NotificationSource source && source == NotificationSource.ShiftAssigned)
+            .Single().GetArguments();
+        ((IReadOnlyList<Guid>)args[4]!).Should().ContainSingle().Which.Should().Be(volunteerId);
+        var culture = CultureInfo.GetCultureInfo(lookupFailure ? "en" : "es");
+        var resources = new ResourceManager(typeof(ShiftsResource));
+        args[3].Should().Be(string.Format(culture,
+            resources.GetString(range ? rangeCount == 1 ? "Shifts_Notification_AssignedRangeSingular" : "Shifts_Notification_AssignedRange"
+                : "Shifts_Notification_AssignedDay", culture)!,
+            rota.Name, range ? rangeCount : shift.DayOffset));
+        args[7].Should().Be(resources.GetString("Shifts_BrowseAvailable", culture));
+    }
+
     [HumansFact]
     public async Task Voluntell_FutureShift_SendsAssignedNotification()
     {
