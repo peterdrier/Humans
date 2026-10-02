@@ -32,19 +32,19 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
-            var reports = await service.GetForSubmitterAsync(user.Id);
+            var reports = await service.GetForSubmitterAsync(user.Id, HttpContext.RequestAborted);
             var activeYear = await budgetService.GetActiveYearAsync();
-            var info = await _userService.GetUserInfoAsync(user.Id);
+            var info = await _userService.GetUserInfoAsync(user.Id, HttpContext.RequestAborted);
 
             var categoryNames = activeYear?.Groups
                 .SelectMany(g => g.Categories.Select(c => (c.Id, Display: $"{g.Name} / {c.Name}")))
                 .ToDictionary(x => x.Id, x => x.Display)
                 ?? new Dictionary<Guid, string>();
 
-            var coordinatorQueue = await service.GetCoordinatorQueueAsync(user.Id);
+            var coordinatorQueue = await service.GetCoordinatorQueueAsync(user.Id, HttpContext.RequestAborted);
             var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
 
             // The member's own Holded creditor-account statement (read-only, real ledger lines). Own
@@ -52,11 +52,11 @@ internal sealed class ExpensesController(
             // returns null both for "not bound" and for "bound, but no journal activity cached yet",
             // and telling a correctly-bound member to go get bound again is worse than saying nothing.
             HoldedCreditorLedger? accountLedger = null;
-            var binding = await holdedFinance.GetCreditorContactByUserAsync(user.Id);
+            var binding = await holdedFinance.GetCreditorContactByUserAsync(user.Id, HttpContext.RequestAborted);
             var boundAccountNum = binding?.SupplierAccountNum;
             if (boundAccountNum is { } accNum)
             {
-                var led = await holdedFinance.GetCreditorLedgerAsync(accNum);
+                var led = await holdedFinance.GetCreditorLedgerAsync(accNum, HttpContext.RequestAborted);
                 if (led is not null)
                     accountLedger = led with
                     {
@@ -81,7 +81,7 @@ internal sealed class ExpensesController(
             };
             return View(model);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading expense reports index for user");
             SetError(localizer["Expenses_Flash_LoadIndexFailed"]);

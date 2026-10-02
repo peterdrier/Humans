@@ -132,6 +132,8 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Invariants
 
+- The Expenses index GET passes request cancellation to token-aware member, report, coordinator queue and cached creditor reads. Cancellation propagates rather than becoming a load-failure toast and empty page; existing tokenless Budget reads retain their contract.
+
 - A report follows the lifecycle: Draft → Submitted → (CoordinatorEndorsed →) Approved. `Approved` is terminal for the report — paid/unpaid is read from the member's Holded creditor ledger, never stamped on the report. Terminal alternate: Withdrawn (from Submitted/CoordinatorEndorsed/Approved). `ExpenseReportService` enforces all transitions; `IExpenseRepository` persists them atomically.
 - A report cannot be submitted without at least one line. Every **Receipt** line (proof rows included) and every **Invoice** line must have an attachment at submit time; Mileage/PerDiem lines never require one (a pure-travel report submits with zero attachments).
 - A proof row must reference an Invoice line on the same report, must itself be a Receipt line, and nests one level only (enforced at add time). Removing an invoice line removes its proof rows and their attachments. Proof rows never contribute to `Total`, never appear as Holded document lines, and their files are never uploaded to the Holded doc. Proof coverage vs the invoice amount is displayed to reviewers but never enforced.

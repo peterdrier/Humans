@@ -1,4 +1,10 @@
 using AwesomeAssertions;
+using System.Security.Claims;
+using Humans.Expenses.Controllers;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using System.Globalization;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
@@ -116,6 +122,35 @@ public sealed class ExpenseReportServiceTests
         communicationPreferences: []);
 
     // ─────────────────────────────── 4.2 ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task AbandonedExpensesIndex_CancelsReadsInsteadOfShowingAnErrorView()
+    {
+        var actorId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
+        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId).Returns(new HashSet<Guid>());
+        using var request = new CancellationTokenSource();
+        var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance,
+            Substitute.For<IAuthorizationService>(), NullLogger<ExpensesController>.Instance, _localizer)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
+                    RequestAborted = request.Token
+                }
+            }
+        };
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        (await controller.Index()).Should().BeOfType<ViewResult>();
+        controller.TempData.Should().BeEmpty();
+        await request.CancelAsync();
+        Func<Task> read = async () => await controller.Index();
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
 
     [HumansFact]
     public async Task CreateDraftAsync_CreatesReport_WithDraftStatusAndZeroTotal()

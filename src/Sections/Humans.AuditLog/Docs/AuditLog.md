@@ -116,6 +116,8 @@ No one reads audit entries anonymously. The `/AuditLog` dashboard is gated to Bo
 
 ## Invariants
 
+- The Audit Log GET forwards request cancellation through the viewer to repository and name reads; an abandoned page does not complete its data load.
+
 - Audit entries are append-only. `IAuditLogRepository` exposes `AddAsync` and `GetXxxAsync` — **no** `UpdateAsync`, **no** `DeleteAsync`, **no** `RemoveAsync`.
 - The `audit_log` table itself rejects UPDATE and DELETE at the database layer via the `prevent_audit_log_update` and `prevent_audit_log_delete` Postgres triggers (created by `Migrations/AuditLog/20260810193154_BaselineAuditLog`). No application path can mutate or delete an existing row.
 - `LogAsync` is self-persisting — each call routes through `AuditLogRepository.AddAsync`, which opens a fresh `DbContext` via `IDbContextFactory<AuditLogDbContext>`, adds the entry, and calls `SaveChangesAsync`. Callers do not flush audit.
