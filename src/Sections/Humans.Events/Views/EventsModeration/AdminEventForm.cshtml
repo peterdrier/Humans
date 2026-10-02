@@ -131,11 +131,7 @@
                         @for (var mins = 15; mins <= 480; mins += 15)
                         {
                             var label = EventDurationFormatter.Format(mins, Localizer);
-                            <option value="@mins" selected="@(mins == Model.DurationMinutes ? "selected" : null)">@label</option>
-                        }
-                        @if (Model.DurationMinutes == 1440)
-                        {
-                            <option value="1440" selected="selected">All day</option>
+                            <option value="@mins" selected="@(mins == (Model.IsAllDay ? 60 : Model.DurationMinutes) ? "selected" : null)">@label</option>
                         }
                     </select>
                     <span asp-validation-for="DurationMinutes" class="text-danger"></span>
@@ -220,16 +216,12 @@
             var allDayCheck = document.getElementById('IsAllDay');
             var startTimeField = document.getElementById('startTimeField');
             var durationField = document.getElementById('durationField');
-            var durationSelect = document.getElementById('durationSelect');
 
             function applyAllDay() {
                 if (!allDayCheck) return;
                 var allDay = allDayCheck.checked;
                 if (startTimeField) startTimeField.style.display = allDay ? 'none' : '';
                 if (durationField) durationField.style.display = allDay ? 'none' : '';
-                if (allDay && durationSelect) {
-                    durationSelect.value = '1440';
-                }
             }
 
             if (allDayCheck) {

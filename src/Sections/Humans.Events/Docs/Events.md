@@ -26,6 +26,7 @@ Event programming: submission, moderation, browsing, export, and preference mana
 - An **EventPreference** stores a user's excluded category slugs as a JSON list.
 - **Recurring events** have `IsRecurring = true` and a comma-separated `RecurrenceDays` field encoding integer day offsets from gate-opening date.
 - Member-facing event duration labels use the shared `EventDurationFormatter` and `EventsResource` short-unit keys, so submission forms, browse results, and the dashboard card display the active culture consistently.
+- Individual and moderator forms preserve the timed duration when toggling all-day. Editing an all-day event starts with a 60-minute timed fallback; the server encodes all-day as midnight plus 1440 minutes, independently of that selection.
 
 ## Data Model
 
