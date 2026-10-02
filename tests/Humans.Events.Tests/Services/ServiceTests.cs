@@ -30,7 +30,8 @@ public sealed class EventServiceTests
     private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly EventsEmails _emailMessages = new(NullLogger<EventsEmails>.Instance);
+    private readonly EventsEmails _emailMessages = new(new StringLocalizer<EventsResource>(new ResourceManagerStringLocalizerFactory(
+        Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)), NullLogger<EventsEmails>.Instance);
     private readonly EventService _service;
 
     public EventServiceTests()

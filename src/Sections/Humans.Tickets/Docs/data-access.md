@@ -184,10 +184,10 @@ ticketing actuals. It is a Budget service and is documented in
 
 ### TicketsEmails (Scoped, internal)
 
-No repository. Pure builder — reads `EmailSettings`, writes nothing.
+No repository. Pure builder — reads `EmailSettings` and `TicketsResource`, writes nothing.
 Returns `EmailMessage` values for `TicketTransferService` to pass to
-`IEmailService.SendAsync`. The transfer copy is hardcoded English
-(peterdrier/Humans#1657). No DB access, no cache.
+`IEmailService.SendAsync`. Member-facing copy is localized in the
+recipient's preferred language; the ticket-team notice stays English. No DB access, no cache.
 
 ### TicketsEmailPreviews (Scoped)
 

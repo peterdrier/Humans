@@ -168,4 +168,12 @@
   <data name="Events_Upload_RowRecurringBoolean" xml:space="preserve"><value>Fila {0}: IsRecurring debe ser true o false.</value></data>
   <data name="Events_Upload_ParseFailed" xml:space="preserve"><value>No se pudo procesar el CSV. Descarga una plantilla nueva y comprueba el formato del archivo.</value></data>
   <data name="Events_Upload_ParseErrorDetail" xml:space="preserve"><value>No se pudo procesar el CSV: {0}</value></data>
+  <data name="Events_Email_Pending_Subject" xml:space="preserve"><value>Hemos recibido el envío de tu evento</value></data>
+  <data name="Events_Email_Pending_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0}:&lt;/p&gt;&lt;p&gt;Hemos recibido tu evento &lt;strong&gt;{1}&lt;/strong&gt; y ahora está en la cola de moderación. Te avisaremos cuando se haya revisado.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Ver tus envíos&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_Email_Approved_Subject" xml:space="preserve"><value>Tu evento ha sido aprobado</value></data>
+  <data name="Events_Email_Approved_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0}:&lt;/p&gt;&lt;p&gt;Tu evento &lt;strong&gt;{1}&lt;/strong&gt; ha sido aprobado y aparecerá en la guía de eventos.&lt;/p&gt;</value></data>
+  <data name="Events_Email_Rejected_Subject" xml:space="preserve"><value>El envío de tu evento no fue aprobado</value></data>
+  <data name="Events_Email_Rejected_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0}:&lt;/p&gt;&lt;p&gt;Tu evento &lt;strong&gt;{1}&lt;/strong&gt; no fue aprobado para la guía de eventos.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Motivo:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Puedes editar y volver a enviar tu evento aquí: &lt;a href="{3}"&gt;Editar evento&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_Email_ResubmitRequested_Subject" xml:space="preserve"><value>Se han solicitado cambios en el envío de tu evento</value></data>
+  <data name="Events_Email_ResubmitRequested_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0}:&lt;/p&gt;&lt;p&gt;El equipo de moderación ha solicitado cambios en tu evento &lt;strong&gt;{1}&lt;/strong&gt; antes de poder aprobarlo.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Comentarios:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Actualízalo y vuelve a enviarlo aquí: &lt;a href="{3}"&gt;Editar evento&lt;/a&gt;&lt;/p&gt;</value></data>
 </root>

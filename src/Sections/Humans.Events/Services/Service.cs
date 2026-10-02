@@ -221,7 +221,8 @@ internal sealed class EventService(
                     UserName: submitter.BurnerName,
                     EventTitle: guideEvent.Title,
                     Reason: reason,
-                    ActionUrl: actionUrl),
+                    ActionUrl: actionUrl,
+                    Culture: submitter.PreferredLanguage),
                 submitterEmail));
         }
         catch (Exception ex)
