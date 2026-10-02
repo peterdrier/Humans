@@ -43,6 +43,7 @@ public sealed class CampaignServiceTests
 
     private readonly CampaignServiceImpl _service;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly INotificationEmitter _notifications = Substitute.For<INotificationEmitter>();
     private readonly CampaignsEmails _emailMessages = new();
     private readonly ITicketDiscountCodes _ticketDiscountCodes;
 
@@ -89,7 +90,7 @@ public sealed class CampaignServiceTests
             teamService,
             userEmailService,
             userService,
-            Substitute.For<INotificationEmitter>(),
+            _notifications,
             _emailService,
             _emailMessages,
             _ticketDiscountCodes,
@@ -412,6 +413,33 @@ public sealed class CampaignServiceTests
                 && m.RecipientEmail == user.Email
                 && m.HtmlBody.Contains("CODE-A")),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("x")]
+    [Xunit.InlineData("🚀")]
+    public async Task SendWaveAsync_LongCampaignTitle_PreservesNoticeCopyWithinTitleLimit(string character)
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(["CODE-A"]);
+        campaign.Title = string.Concat(Enumerable.Repeat(character, 200));
+        CampaignsDb.Campaigns.Update(campaign);
+        var user = SeedUser();
+        var team = SeedTeam("Notice Team");
+        SeedTeamMember(team.Id, user.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+
+        result.SentCount.Should().Be(1);
+        var call = _notifications.ReceivedCalls().Should().ContainSingle().Subject;
+        var arguments = call.GetArguments();
+        var fullTitle = $"You received a code from campaign: {campaign.Title}";
+        var title = (string)arguments[3]!;
+        title.EnumerateRunes().Count().Should().Be(200);
+        title.Should().Be(string.Concat(fullTitle.EnumerateRunes().Take(199)) + "…");
+        arguments[5].Should().Be(fullTitle + "\n\nCheck your email for your campaign code.");
+        ((IReadOnlyList<Guid>)arguments[4]!).Should().Equal(user.Id);
+        arguments[0].Should().Be(NotificationSource.CampaignReceived);
     }
 
     [HumansFact]

@@ -114,6 +114,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 ## Triggers
 
+- Campaign notice titles fit the 200-Unicode-character notification limit; an oversized title is shortened with an ellipsis and retained in full before the body text.
 - When a campaign wave is sent (`SendWaveAsync`), emails are queued to the outbox via `IEmailService.SendAsync(CampaignsEmails.CampaignCode(...))` for each eligible human, and a `CampaignReceived` in-app notification is dispatched (best-effort) to every recipient who actually received a grant.
 - Legacy campaign-only unsubscribe tokens map to `MessageCategory.Marketing`, which is opt-outable; `ICommunicationPreferenceService.UpdatePreferenceAsync` flips that preference as normal. There is no live path to a `CampaignCodes` unsubscribe token — `OutboxEmailService` never generates one for an always-on category — and `UpdatePreferenceAsync`/`GuestAccountController.CanUpdatePreference` would refuse the change regardless. (The legacy `User.UnsubscribedFromCampaigns` boolean still exists on the entity for GDPR export but is not read by any active gate.)
 - When `TicketSyncService` detects a granted code redeemed in a ticket purchase, it calls `ICampaignService.MarkGrantsRedeemedAsync` to set `CampaignGrant.RedeemedAt`.

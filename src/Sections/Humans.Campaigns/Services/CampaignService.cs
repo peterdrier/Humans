@@ -495,13 +495,21 @@ internal sealed class CampaignService(
 
         try
         {
+            var title = $"You received a code from campaign: {campaign.Title}";
+            var body = "Check your email for your campaign code.";
+            if (title.EnumerateRunes().Count() > 200)
+            {
+                body = string.Concat(title, "\n\n", body);
+                title = string.Concat(title.EnumerateRunes().Take(199)) + "…";
+            }
+
             await notificationService.SendAsync(
                 NotificationSource.CampaignReceived,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                $"You received a code from campaign: {campaign.Title}",
+                title,
                 grantedUserIds,
-                body: "Check your email for your campaign code.",
+                body: body,
                 cancellationToken: ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
