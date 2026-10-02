@@ -291,6 +291,21 @@ public class ShiftsControllerToggleDayTests
     }
 
     [HumansFact]
+    public async Task ToggleDay_without_an_active_event_redirects_to_browse_without_mutating_signups()
+    {
+        var userId = Guid.NewGuid();
+        var ctrl = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example", "vegan"));
+        ctrl.Url.Action(Arg.Is<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>(context =>
+            context.Action == nameof(ShiftsController.Index))).Returns("/Shifts");
+
+        var result = await ctrl.ToggleDay(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeAssignableTo<IStatusCodeActionResult>().Which.StatusCode.Should().Be(204);
+        ctrl.Response.Headers["X-Redirect"].ToString().Should().Be("/Shifts");
+        await _signupService.DidNotReceiveWithAnyArgs().ToggleDayAsync(default, default, default, default, default);
+    }
+
+    [HumansFact]
     public async Task ToggleDay_WhenDietaryMissing_Returns204_WithRedirectHeader()
     {
         var userId = Guid.NewGuid();
