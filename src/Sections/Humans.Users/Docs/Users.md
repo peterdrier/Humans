@@ -622,6 +622,8 @@ Admin-only flows for the section's cross-account hygiene (the `/Profile/Admin/*`
 
 ## Invariants
 
+- Profile and dietary/medical forms render the Other allergy/intolerance labels and required-description errors in all six supported cultures.
+
 - `Profile.DietaryPreference` is stored as free text (`varchar(200)?`), not a constrained enum. The `/Profile/Me/Edit` and `/Profile/Me/DietaryMedical` radio groups constrain the UI to `DietaryOptions.DietaryPreferences` (Omnivore / Vegetarian / Vegan / Pescatarian), but neither `ProfileController` nor `UserService.SaveDietaryMedicalAsync` re-checks membership on POST — any non-blank string persists. Deliberate: legacy free-text values predating the [dietary nudge](features/dietary-medical-nudge.md) stay readable without a data migration. Allergies are the exception — the Edit path filters them against `DietaryOptions.AllergyOptions` before saving.
 - Every authenticated human can edit their own profile regardless of membership status (available during onboarding). Profile fields and their nested contact-field, Burner CV, and language forms, dietary/medical details, facilitated messages, and email-add forms use shared validation messages in all six cultures; their input limits are unchanged.
 - Contact field visibility is enforced per-field: a human viewing their own profile sees everything. Board members see everything. Coordinators see CoordinatorsAndBoard-level and below. Shared-team members see MyTeams-level and below. Other active members see only AllActiveProfiles fields. Each call derives permissions for its supplied viewer; a reused service cannot carry another viewer’s roles or team membership into the result.
