@@ -248,6 +248,10 @@
   <data name="Camps_Flash_SeasonWithdrawn" xml:space="preserve"><value>Temporada retirada.</value></data>
   <data name="Camps_Flash_SeasonFull" xml:space="preserve"><value>Temporada marcada como completa.</value></data>
   <data name="Camps_Flash_NameRequired" xml:space="preserve"><value>El nombre no puede estar vacío.</value></data>
+  <data name="Camps_Flash_ReservedName" xml:space="preserve"><value>El nombre '{0}' genera un slug reservado.</value></data>
+  <data name="Camps_Flash_SeasonNotOpen" xml:space="preserve"><value>La temporada {0} no está abierta para inscripciones.</value></data>
+  <data name="Camps_Flash_SeasonAlreadyExists" xml:space="preserve"><value>Este barrio ya tiene una temporada para {0}.</value></data>
+  <data name="Camps_Flash_NoPreviousSeason" xml:space="preserve"><value>No hay ninguna temporada anterior de la que copiar.</value></data>
   <data name="Camps_Flash_HistoricalNameAdded" xml:space="preserve"><value>Nombre histórico añadido.</value></data>
   <data name="Camps_Flash_HistoricalNameRemoved" xml:space="preserve"><value>Nombre histórico eliminado.</value></data>
   <data name="Camps_Flash_ImageRequired" xml:space="preserve"><value>Selecciona un archivo para subir.</value></data>

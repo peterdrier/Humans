@@ -56,6 +56,52 @@ public class CampControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    public async Task RegistrationAndRenewal_LocalizeRuleFailures(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var localizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
+        var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        var reservedKey = "Camps_Flash_ReservedName";
+        _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0,
+                default!, null, 0, default)
+            .ReturnsForAnyArgs(Task.FromException<Camp>(new InvalidOperationException(reservedKey)));
+        var controller = BuildController(userId, localizer);
+        var model = new CampRegisterViewModel { Name = "Register" };
+
+        (await controller.Register(model)).Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        var expected = localizer[reservedKey, model.Name];
+        expected.ResourceNotFound.Should().BeFalse();
+        controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
+
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: userId);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        foreach (var key in new[]
+        {
+            "Camps_Flash_SeasonNotOpen", "Camps_Flash_SeasonAlreadyExists", "Camps_Flash_NoPreviousSeason"
+        })
+        {
+            _camps.OptInToSeasonAsync(camp.Id, 2027, Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<CampSeason>(new InvalidOperationException(key)));
+            (await controller.OptIn(camp.Slug, 2027)).Should().BeOfType<RedirectToActionResult>();
+            expected = localizer[key, 2027];
+            expected.ResourceNotFound.Should().BeFalse();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
     public async Task Register_LocalizesThePhoneFieldInValidationErrors(string culture)
     {
         using var cultureScope = new CultureScope(culture);

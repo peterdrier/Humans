@@ -248,6 +248,10 @@
   <data name="Camps_Flash_SeasonWithdrawn" xml:space="preserve"><value>Saison retirée.</value></data>
   <data name="Camps_Flash_SeasonFull" xml:space="preserve"><value>Saison marquée complète.</value></data>
   <data name="Camps_Flash_NameRequired" xml:space="preserve"><value>Le nom ne peut pas être vide.</value></data>
+  <data name="Camps_Flash_ReservedName" xml:space="preserve"><value>Le nom '{0}' génère un slug réservé.</value></data>
+  <data name="Camps_Flash_SeasonNotOpen" xml:space="preserve"><value>La saison {0} n’est pas ouverte aux inscriptions.</value></data>
+  <data name="Camps_Flash_SeasonAlreadyExists" xml:space="preserve"><value>Ce camp a déjà une saison pour {0}.</value></data>
+  <data name="Camps_Flash_NoPreviousSeason" xml:space="preserve"><value>Aucune saison précédente à copier.</value></data>
   <data name="Camps_Flash_HistoricalNameAdded" xml:space="preserve"><value>Nom historique ajouté.</value></data>
   <data name="Camps_Flash_HistoricalNameRemoved" xml:space="preserve"><value>Nom historique supprimé.</value></data>
   <data name="Camps_Flash_ImageRequired" xml:space="preserve"><value>Sélectionnez un fichier à téléverser.</value></data>

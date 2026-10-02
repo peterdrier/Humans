@@ -408,7 +408,7 @@ internal sealed class CampController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning(ex, "Camp registration failed for user {UserId} in year {Year}", user.Id, year);
-            ModelState.AddModelError(string.Empty, ex.Message);
+            ModelState.AddModelError(string.Empty, campsLocalizer[ex.Message, model.Name].Value);
             await PopulateRegisterSeasonYearAsync();
             await PopulateRegistrationInfoAsync();
             return View(model);
@@ -634,7 +634,7 @@ internal sealed class CampController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning(ex, "Camp opt-in failed for camp {CampId}, slug {Slug}, and year {Year}", camp.Id, slug, year);
-            SetError(ex.Message);
+            SetError(campsLocalizer[ex.Message, year].Value);
         }
 
         return RedirectToAction(nameof(Edit), new { slug, year });

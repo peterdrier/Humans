@@ -248,6 +248,10 @@
   <data name="Camps_Flash_SeasonWithdrawn" xml:space="preserve"><value>Temporada retirada.</value></data>
   <data name="Camps_Flash_SeasonFull" xml:space="preserve"><value>Temporada marcada com a plena.</value></data>
   <data name="Camps_Flash_NameRequired" xml:space="preserve"><value>El nom no pot estar buit.</value></data>
+  <data name="Camps_Flash_ReservedName" xml:space="preserve"><value>El nom '{0}' genera un slug reservat.</value></data>
+  <data name="Camps_Flash_SeasonNotOpen" xml:space="preserve"><value>La temporada {0} no està oberta per a inscripcions.</value></data>
+  <data name="Camps_Flash_SeasonAlreadyExists" xml:space="preserve"><value>Aquest barri ja té una temporada per a {0}.</value></data>
+  <data name="Camps_Flash_NoPreviousSeason" xml:space="preserve"><value>No hi ha cap temporada anterior per copiar.</value></data>
   <data name="Camps_Flash_HistoricalNameAdded" xml:space="preserve"><value>Nom històric afegit.</value></data>
   <data name="Camps_Flash_HistoricalNameRemoved" xml:space="preserve"><value>Nom històric eliminat.</value></data>
   <data name="Camps_Flash_ImageRequired" xml:space="preserve"><value>Selecciona un fitxer per pujar.</value></data>

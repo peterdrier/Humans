@@ -89,7 +89,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         var slug = SlugHelper.GenerateSlug(name);
         if (SlugHelper.IsReservedCampSlug(slug))
         {
-            throw new InvalidOperationException($"The name '{name}' generates a reserved slug.");
+            throw new InvalidOperationException("Camps_Flash_ReservedName");
         }
 
         var baseSlug = slug;
@@ -491,16 +491,16 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         var settings = await GetSettingsAsync(cancellationToken);
         if (!settings.OpenSeasons.Contains(year))
         {
-            throw new InvalidOperationException($"Season {year} is not open for registration.");
+            throw new InvalidOperationException("Camps_Flash_SeasonNotOpen");
         }
 
         if (await _repo.SeasonExistsAsync(campId, year, cancellationToken))
         {
-            throw new InvalidOperationException($"Camp already has a season for {year}.");
+            throw new InvalidOperationException("Camps_Flash_SeasonAlreadyExists");
         }
 
         var previousSeason = await _repo.GetLatestSeasonAsync(campId, cancellationToken)
-            ?? throw new InvalidOperationException("No previous season to copy from.");
+            ?? throw new InvalidOperationException("Camps_Flash_NoPreviousSeason");
 
         var hasApprovedSeason = await _repo.HasApprovedSeasonAsync(campId, cancellationToken);
 

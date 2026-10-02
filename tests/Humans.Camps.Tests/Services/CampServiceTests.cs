@@ -1,3 +1,4 @@
+using Xunit;
 using System.Text;
 using Humans.Notifications.Contracts;
 using AwesomeAssertions;
@@ -194,7 +195,7 @@ public sealed class CampServiceTests : CampsTestHarness
             null, null, false, 0, MakeSeasonData(), null, 2026, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*reserved*");
+            .WithMessage("Camps_Flash_ReservedName");
     }
 
     // ==========================================================================
@@ -270,6 +271,25 @@ public sealed class CampServiceTests : CampsTestHarness
     // ==========================================================================
     // OptInToSeasonAsync
     // ==========================================================================
+
+    [HumansTheory]
+    [InlineData(2027, false, "Camps_Flash_SeasonNotOpen")]
+    [InlineData(2026, false, "Camps_Flash_SeasonAlreadyExists")]
+    [InlineData(2026, true, "Camps_Flash_NoPreviousSeason")]
+    public async Task OptInToSeasonAsync_RefusesInvalidRenewalsWithoutWriting(int year, bool missingCamp, string key)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        var seasonsBefore = await CampsDb.CampSeasons.CountAsync(ct);
+        var auditCallsBefore = AuditLog.ReceivedCalls().Count();
+
+        var act = () => _service.OptInToSeasonAsync(missingCamp ? Guid.NewGuid() : camp.Id, year, ct);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(key);
+        (await CampsDb.CampSeasons.CountAsync(ct)).Should().Be(seasonsBefore);
+        AuditLog.ReceivedCalls().Count().Should().Be(auditCallsBefore);
+    }
 
     [HumansFact]
     public async Task OptInToSeasonAsync_ReturningCamp_AutoApproves()
