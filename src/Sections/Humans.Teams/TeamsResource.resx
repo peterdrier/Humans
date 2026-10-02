@@ -236,4 +236,9 @@
   <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Enable Early Entry</value></data>
   <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>When enabled, coordinators of this team (and Early-Entry Team Admins) can grant early entry for this team's projects.</value></data>
   <data name="Teams_TeamDetail_Roles" xml:space="preserve"><value>Roles</value></data>
+  <data name="Teams_Notification_JoinApproved" xml:space="preserve"><value>Your request to join {0} has been approved</value></data>
+  <data name="Teams_Notification_Welcome" xml:space="preserve"><value>Welcome to {0}!</value></data>
+  <data name="Teams_Notification_ViewTeam" xml:space="preserve"><value>View team</value></data>
+  <data name="Teams_Notification_JoinRejected" xml:space="preserve"><value>Your request to join {0} was not approved</value></data>
+  <data name="Teams_Notification_MemberRemoved" xml:space="preserve"><value>You were removed from {0}</value></data>
 </root>

@@ -572,4 +572,9 @@
   <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Frühen Einlass aktivieren</value></data>
   <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>Wenn aktiviert, können die Koordinatoren dieses Teams und die Administratoren für frühen Einlass den Projekten dieses Teams frühen Einlass gewähren.</value></data>
   <data name="Teams_TeamDetail_Roles" xml:space="preserve"><value>Rollen</value></data>
+  <data name="Teams_Notification_JoinApproved" xml:space="preserve"><value>Deine Anfrage, {0} beizutreten, wurde genehmigt</value></data>
+  <data name="Teams_Notification_Welcome" xml:space="preserve"><value>Willkommen bei {0}!</value></data>
+  <data name="Teams_Notification_ViewTeam" xml:space="preserve"><value>Team ansehen</value></data>
+  <data name="Teams_Notification_JoinRejected" xml:space="preserve"><value>Deine Anfrage, {0} beizutreten, wurde nicht genehmigt</value></data>
+  <data name="Teams_Notification_MemberRemoved" xml:space="preserve"><value>Du wurdest aus {0} entfernt</value></data>
 </root>

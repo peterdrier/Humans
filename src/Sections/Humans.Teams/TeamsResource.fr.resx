@@ -572,4 +572,9 @@
   <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Activer l'entrée anticipée</value></data>
   <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>Lorsqu'elle est activée, les coordinateurs de cette équipe et les administrateurs d'entrée anticipée peuvent accorder une entrée anticipée aux projets de cette équipe.</value></data>
   <data name="Teams_TeamDetail_Roles" xml:space="preserve"><value>Rôles</value></data>
+  <data name="Teams_Notification_JoinApproved" xml:space="preserve"><value>Votre demande pour rejoindre {0} a été approuvée</value></data>
+  <data name="Teams_Notification_Welcome" xml:space="preserve"><value>Bienvenue dans {0} !</value></data>
+  <data name="Teams_Notification_ViewTeam" xml:space="preserve"><value>Voir l’équipe</value></data>
+  <data name="Teams_Notification_JoinRejected" xml:space="preserve"><value>Votre demande pour rejoindre {0} n’a pas été approuvée</value></data>
+  <data name="Teams_Notification_MemberRemoved" xml:space="preserve"><value>Vous ne faites plus partie de {0}</value></data>
 </root>

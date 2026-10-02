@@ -572,4 +572,9 @@
   <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Activa l'entrada anticipada</value></data>
   <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>En activar-ho, els coordinadors d'aquest equip i els administradors d'entrada anticipada poden concedir entrada anticipada als projectes d'aquest equip.</value></data>
   <data name="Teams_TeamDetail_Roles" xml:space="preserve"><value>Rols</value></data>
+  <data name="Teams_Notification_JoinApproved" xml:space="preserve"><value>S’ha aprovat la teva sol·licitud per unir-te a {0}</value></data>
+  <data name="Teams_Notification_Welcome" xml:space="preserve"><value>Et donem la benvinguda a {0}!</value></data>
+  <data name="Teams_Notification_ViewTeam" xml:space="preserve"><value>Mostra l’equip</value></data>
+  <data name="Teams_Notification_JoinRejected" xml:space="preserve"><value>No s’ha aprovat la teva sol·licitud per unir-te a {0}</value></data>
+  <data name="Teams_Notification_MemberRemoved" xml:space="preserve"><value>T’han tret de {0}</value></data>
 </root>

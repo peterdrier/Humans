@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
 using System.Transactions;
@@ -33,6 +35,8 @@ internal sealed class TeamService(
     IClock clock,
     ILogger<TeamService> logger) : ITeamManagementService, ITeamSeeding, IGoogleGroupMembershipSource, IUserDataContributor, IUserMerge, IEarlyEntryProvider
 {
+    private static readonly ResourceManager NoticeResources = new(typeof(TeamsResource));
+
     internal const string TeamMemberships = "TeamMemberships";
     internal const string TeamJoinRequests = "TeamJoinRequests";
     internal const string TeamEarlyEntry = "TeamEarlyEntry";
@@ -829,6 +833,24 @@ internal sealed class TeamService(
             .Distinct()
             .ToList();
 
+    private async Task<CultureInfo> GetRecipientCultureAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var language = (await UserService.GetUserInfoAsync(userId, cancellationToken))?.PreferredLanguage;
+            return CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to resolve notification language for user {UserId}; using English", userId);
+            return CultureInfo.GetCultureInfo("en");
+        }
+    }
+
     private async Task<string> GetDisplayNameAsync(Guid userId, CancellationToken cancellationToken)
     {
         var user = await UserService.GetUserInfoAsync(userId, cancellationToken);
@@ -1060,15 +1082,16 @@ internal sealed class TeamService(
     {
         try
         {
+            var culture = await GetRecipientCultureAsync(requesterUserId, cancellationToken);
             await notificationService.SendAsync(
                 NotificationSource.TeamJoinRequestDecided,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                $"Your request to join {team.Name} has been approved",
+                string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinApproved", culture)!, team.Name),
                 [requesterUserId],
-                body: $"Welcome to {team.Name}!",
+                body: string.Format(culture, NoticeResources.GetString("Teams_Notification_Welcome", culture)!, team.Name),
                 actionUrl: $"/Teams/{team.Slug}",
-                actionLabel: "View team",
+                actionLabel: NoticeResources.GetString("Teams_Notification_ViewTeam", culture),
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)
@@ -1112,15 +1135,16 @@ internal sealed class TeamService(
     {
         try
         {
+            var culture = await GetRecipientCultureAsync(requesterUserId, cancellationToken);
             await notificationService.SendAsync(
                 NotificationSource.TeamJoinRequestDecided,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                $"Your request to join {team.Name} was not approved",
+                string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinRejected", culture)!, team.Name),
                 [requesterUserId],
-                body: $"Your request to join {team.Name} was not approved.",
+                body: string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinRejected", culture)!, team.Name) + ".",
                 actionUrl: "/Teams",
-                actionLabel: "Browse teams",
+                actionLabel: NoticeResources.GetString("MyTeams_BrowseTeams", culture),
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)
@@ -1219,11 +1243,12 @@ internal sealed class TeamService(
 
         try
         {
+            var culture = await GetRecipientCultureAsync(userId, cancellationToken);
             await notificationService.SendAsync(
                 NotificationSource.TeamMemberRemoved,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                $"You were removed from {team.Name}",
+                string.Format(culture, NoticeResources.GetString("Teams_Notification_MemberRemoved", culture)!, team.Name),
                 [userId],
                 actionUrl: "/Teams",
                 cancellationToken: cancellationToken);
