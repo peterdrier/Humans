@@ -232,19 +232,15 @@ internal sealed class Service(
 
         placement.PlacementNotes = string.IsNullOrWhiteSpace(notes) ? null : notes;
 
-        if (removeImage && placement.PlacementImageStoragePath is not null)
+        var previousImagePath = placement.PlacementImageStoragePath;
+        if (removeImage && previousImagePath is not null)
         {
-            await fileStorage.DeleteAsync(placement.PlacementImageStoragePath, ct);
             placement.PlacementImageStoragePath = null;
             placement.PlacementImageContentType = null;
             placement.PlacementImageFileName = null;
         }
         else if (image is not null)
         {
-            if (placement.PlacementImageStoragePath is not null)
-            {
-                await fileStorage.DeleteAsync(placement.PlacementImageStoragePath, ct);
-            }
             placement.PlacementImageStoragePath = await SaveImageAsync(containerId, image, ct);
             placement.PlacementImageContentType = image.ContentType;
             placement.PlacementImageFileName = DisplayFileName(image.FileName);
@@ -258,6 +254,21 @@ internal sealed class Service(
             $"Updated placement notes for {year}",
             actorUserId,
             relatedEntityId: containerId, relatedEntityType: AuditEntityTypes.Container);
+
+        // The previous file remains usable until the new metadata is committed.
+        if (previousImagePath is not null
+            && !string.Equals(previousImagePath, placement.PlacementImageStoragePath, StringComparison.Ordinal))
+        {
+            try
+            {
+                await fileStorage.DeleteAsync(previousImagePath, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to delete superseded placement image {StoragePath} for container {ContainerId}, year {Year}",
+                    previousImagePath, containerId, year);
+            }
+        }
 
         return ToPlacementDto(placement);
     }
