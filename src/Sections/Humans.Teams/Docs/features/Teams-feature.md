@@ -118,6 +118,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 
 **Acceptance Criteria:**
 - Anonymous visitors can access `/Teams/{slug}` for public teams
+- Team renames and custom URL edits cannot shadow reserved global Teams routes
 - Shows team description, page content (markdown), and call-to-action buttons
 - Shows coordinators with display name and avatar (no email or contact info)
 - Regular members are hidden from anonymous visitors

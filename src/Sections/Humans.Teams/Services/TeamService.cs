@@ -38,6 +38,10 @@ internal sealed class TeamService(
 {
     private static readonly ResourceManager NoticeResources = new(typeof(TeamsResource));
     private const int MaxTeamSlugLength = 256;
+    private static readonly HashSet<string> ReservedTeamSlugs = new(StringComparer.Ordinal)
+    {
+        "roster", "birthdays", "map", "my", "sync", "summary", "create", "search"
+    };
 
     internal const string TeamMemberships = "TeamMemberships";
     internal const string TeamJoinRequests = "TeamJoinRequests";
@@ -82,8 +86,7 @@ internal sealed class TeamService(
             baseSlug = "team";
         var now = clock.GetCurrentInstant();
 
-        string[] reservedSlugs = ["roster", "birthdays", "map", "my", "sync", "summary", "create", "search"];
-        if (Array.Exists(reservedSlugs, s => string.Equals(baseSlug, s, StringComparison.Ordinal)))
+        if (ReservedTeamSlugs.Contains(baseSlug))
             throw new InvalidOperationException($"The team name '{name}' conflicts with a reserved route");
 
         if (parentTeamId.HasValue)
@@ -423,6 +426,8 @@ internal sealed class TeamService(
             var normalized = SlugHelper.GenerateSlug(customSlug);
             if (string.IsNullOrEmpty(normalized))
                 throw new InvalidOperationException("Custom slug is not valid. Use lowercase letters, numbers, and hyphens.");
+            if (ReservedTeamSlugs.Contains(normalized))
+                throw new InvalidOperationException($"The slug '{normalized}' conflicts with a reserved route.");
 
             var customSlugTaken = await repo.SlugExistsAsync(normalized, excludingTeamId: teamId, cancellationToken);
             if (customSlugTaken)
@@ -444,7 +449,7 @@ internal sealed class TeamService(
         if (!string.Equals(team.Name, name, StringComparison.Ordinal))
         {
             var newSlug = SlugHelper.GenerateSlug(name);
-            if (!string.IsNullOrEmpty(newSlug)
+            if (!string.IsNullOrEmpty(newSlug) && !ReservedTeamSlugs.Contains(newSlug)
                 && !await repo.SlugExistsAsync(newSlug, excludingTeamId: teamId, cancellationToken))
                 team.Slug = newSlug;
         }

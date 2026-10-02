@@ -671,6 +671,59 @@ public sealed class TeamServiceTests : TeamsTestHarness
         stored.CustomSlug.Should().BeNull();
     }
 
+    [HumansTheory]
+    [InlineData("Roster")]
+    [InlineData("Birthdays")]
+    [InlineData("Map")]
+    [InlineData("My")]
+    [InlineData("Sync")]
+    [InlineData("Summary")]
+    [InlineData("Create")]
+    [InlineData("Search")]
+    public async Task UpdateTeamAsync_ReservedRenameKeepsTheExistingUrl(string name)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var team = SeedTeam("Original Name");
+        await SaveAllAsync(ct);
+        var originalSlug = team.Slug;
+
+        await _service.UpdateTeamAsync(team.Id, name, null, false, true, cancellationToken: ct);
+
+        var read = await _service.GetTeamBySlugAsync(originalSlug, ct);
+        read.Should().NotBeNull();
+        read!.Name.Should().Be(name);
+        read.Slug.Should().Be(originalSlug);
+    }
+
+    [HumansTheory]
+    [InlineData("Roster")]
+    [InlineData("Birthdays")]
+    [InlineData("Map")]
+    [InlineData("My")]
+    [InlineData("Sync")]
+    [InlineData("Summary")]
+    [InlineData("Create")]
+    [InlineData("Search")]
+    public async Task UpdateTeamAsync_ReservedCustomSlugRefusesTheUpdate(string slug)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var team = SeedTeam("Original Name");
+        await SaveAllAsync(ct);
+        var originalSlug = team.Slug;
+
+        var act = () => _service.UpdateTeamAsync(team.Id, "Changed Name", null, false, false,
+            customSlug: slug, isHidden: true, cancellationToken: ct);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*reserved route*");
+        ClearAllTrackers();
+        var stored = await TeamsDb.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id, ct);
+        stored.Name.Should().Be("Original Name");
+        stored.Slug.Should().Be(originalSlug);
+        stored.CustomSlug.Should().BeNull();
+        stored.IsActive.Should().BeTrue();
+        stored.IsHidden.Should().BeFalse();
+    }
+
     [HumansFact]
     public async Task UpdateTeamAsync_RenamesTeam_AndRegeneratesSlug()
     {
