@@ -526,7 +526,7 @@ internal sealed class CampController(
             SlotCount = r.Definition.SlotCount,
             MinimumRequired = r.Definition.MinimumRequired,
             FilledSlots = r.FilledSlots
-                .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.CampMemberId, s.UserId, s.DisplayName))
+                .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.CampMemberId, s.UserId))
                 .ToList(),
             EmptySlotCount = r.EmptySlotCount,
             OverCapacity = r.OverCapacity,

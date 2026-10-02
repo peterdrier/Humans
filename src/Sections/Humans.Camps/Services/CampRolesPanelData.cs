@@ -19,5 +19,4 @@ internal sealed record CampRolesPanelRow(
 internal sealed record CampRolesPanelSlot(
     Guid AssignmentId,
     Guid CampMemberId,
-    Guid UserId,
-    string DisplayName);
+    Guid UserId);

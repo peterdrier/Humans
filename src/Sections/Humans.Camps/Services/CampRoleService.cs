@@ -11,7 +11,6 @@ internal sealed class CampRoleService(
     ICampRepository repo,
     ICampRoleCampAccess campAccess,
     ICampInfoInvalidator campInfoInvalidator,
-    IUserServiceRead userService,
     IUserEmailService userEmailService,
     IAuditLogService auditLog,
     INotificationEmitter notificationEmitter,
@@ -225,11 +224,6 @@ internal sealed class CampRoleService(
         var definitions = OrderDefinitions(await repo.ListDefinitionsAsync(includeDeactivated: false, ct));
         var assignments = await repo.GetAssignmentsForSeasonAsync(campSeasonId, ct);
 
-        var memberUserIds = assignments.Select(a => a.CampMember.UserId).Distinct().ToList();
-        IReadOnlyDictionary<Guid, UserInfo> users = memberUserIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await userService.GetUserInfosAsync(memberUserIds, ct);
-
         var rows = definitions.Select(def =>
         {
             var defAssignments = assignments
@@ -238,12 +232,7 @@ internal sealed class CampRoleService(
                 .ToList();
 
             var filled = defAssignments.Select(a =>
-            {
-                var displayName = users.TryGetValue(a.CampMember.UserId, out var u)
-                    ? u.BurnerName
-                    : "(unknown)";
-                return new CampRolesPanelSlot(a.Id, a.CampMemberId, a.CampMember.UserId, displayName);
-            }).ToList();
+                new CampRolesPanelSlot(a.Id, a.CampMemberId, a.CampMember.UserId)).ToList();
 
             var current = filled.Count;
             var empty = Math.Max(0, def.SlotCount - current);
