@@ -179,13 +179,7 @@ def short_ref(ref: str) -> str:
 def load_json(path: str | None) -> dict | None:
     if not path:
         return None
-    data = Path(path).read_bytes()
-    for encoding in ("utf-8", "utf-8-sig", "utf-16"):
-        try:
-            return json.loads(data.decode(encoding))
-        except UnicodeError:
-            continue
-    return json.loads(data.decode("utf-8"))
+    return json.loads(Path(path).read_bytes())
 
 
 def format_delta(delta: int) -> str:
