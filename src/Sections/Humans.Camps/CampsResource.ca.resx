@@ -315,4 +315,5 @@
   <data name="Camps_Notification_GenericCamp" xml:space="preserve"><value>un camp</value></data>
   <data name="Camps_Notification_SeasonClosed" xml:space="preserve"><value>La temporada {0} de {1} ja no està oberta</value></data>
   <data name="Camps_Notification_SeasonClosedBody" xml:space="preserve"><value>La teva sol·licitud pendent per unir-te a aquest camp no es revisarà perquè la temporada s’ha retirat o rebutjat.</value></data>
+  <data name="Camps_Notification_RoleAssigned" xml:space="preserve"><value>T’han assignat el rol {0}.</value></data>
 </root>

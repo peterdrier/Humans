@@ -264,4 +264,5 @@
   <data name="Camps_Notification_GenericCamp" xml:space="preserve"><value>a camp</value></data>
   <data name="Camps_Notification_SeasonClosed" xml:space="preserve"><value>The {0} season for {1} is no longer open</value></data>
   <data name="Camps_Notification_SeasonClosedBody" xml:space="preserve"><value>Your pending request to join this camp won't be reviewed because the season was withdrawn or rejected.</value></data>
+  <data name="Camps_Notification_RoleAssigned" xml:space="preserve"><value>You were assigned the {0} role.</value></data>
 </root>

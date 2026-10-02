@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Resources;
+using Humans.Base.Extensions;
 using Humans.GoogleIntegration.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
@@ -12,6 +15,7 @@ internal sealed class CampRoleService(
     ICampRoleCampAccess campAccess,
     ICampInfoInvalidator campInfoInvalidator,
     IUserEmailService userEmailService,
+    IUserServiceRead userServiceRead,
     IAuditLogService auditLog,
     INotificationEmitter notificationEmitter,
     IOptions<GoogleWorkspaceOptions> googleOptions,
@@ -19,6 +23,7 @@ internal sealed class CampRoleService(
     ILogger<CampRoleService> logger) : ICampRoleService, ICampRoleSeeding, IGoogleGroupMembershipSource
 {
     private readonly GoogleWorkspaceOptions _googleOptions = googleOptions.Value;
+    private static readonly ResourceManager NoticeResources = new(typeof(CampsResource));
 
     public async Task<IReadOnlyList<CampRoleDefinitionInfo>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default)
     {
@@ -293,11 +298,26 @@ internal sealed class CampRoleService(
 
         try
         {
+            var culture = CultureInfo.GetCultureInfo("en");
+            try
+            {
+                var language = (await userServiceRead.GetUserInfoAsync(memberLookup.UserId, ct))?.PreferredLanguage;
+                culture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to resolve role notification language for user {UserId}; using English", memberLookup.UserId);
+            }
+
             await notificationEmitter.SendAsync(
                 source: NotificationSource.CampRoleAssigned,
                 notificationClass: NotificationClass.Informational,
                 priority: NotificationPriority.Normal,
-                title: $"You were assigned the {def.Name} role.",
+                title: string.Format(culture, NoticeResources.GetString("Camps_Notification_RoleAssigned", culture)!, def.Name),
                 recipientUserIds: [memberLookup.UserId],
                 cancellationToken: ct);
         }
@@ -307,7 +327,7 @@ internal sealed class CampRoleService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Notification failed for CampRoleAssigned (assignment {AssignmentId}).", assignment.Id);
+            logger.LogError(ex, "Notification failed for CampRoleAssigned (assignment {AssignmentId}).", assignment.Id);
         }
 
         return AssignCampRoleOutcome.Assigned;

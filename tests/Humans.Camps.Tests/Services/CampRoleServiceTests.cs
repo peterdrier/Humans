@@ -15,6 +15,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
 {
     private readonly CampRoleService _service;
     private readonly IUserEmailService _userEmailService;
+    private readonly IUserServiceRead _userServiceRead = Substitute.For<IUserServiceRead>();
     private readonly ICampRoleCampAccess _campAccess;
     private readonly ICampInfoInvalidator _campInfoInvalidator;
     private readonly Guid _actorUserId = Guid.NewGuid();
@@ -33,6 +34,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
             _campAccess,
             _campInfoInvalidator,
             _userEmailService,
+            _userServiceRead,
             AuditLog,
             Notifier,
             Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" }),
@@ -261,6 +263,35 @@ public sealed class CampRoleServiceTests : CampsTestHarness
             Arg.Is<IReadOnlyList<Guid>>(r => r.Contains(member.UserId)),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Assign_notice_uses_recipient_language_with_lookup_failure_fallback(bool lookupFails)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, season) = await SeedCampWithSeasonAsync();
+        var member = await SeedActiveMemberAsync(season.Id);
+        var def = await SeedDefinitionAsync();
+        _campAccess.GetCampMemberStatusAsync(member.Id, Arg.Any<CancellationToken>())
+            .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
+        _userServiceRead.GetUserInfoAsync(member.UserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                new User { Id = member.UserId, PreferredLanguage = "es" }, [], [], [], null, [])));
+        if (lookupFails)
+            _userServiceRead.GetUserInfoAsync(member.UserId, Arg.Any<CancellationToken>())
+                .Returns(ValueTask.FromException<UserInfo?>(new IOException("Language lookup unavailable")));
+
+        var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId, ct);
+
+        outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+        var notice = Notifier.ReceivedCalls().Single().GetArguments();
+        notice[3].Should().Be(lookupFails
+            ? $"You were assigned the {def.Name} role."
+            : $"Se te ha asignado el rol {def.Name}.");
+        ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(member.UserId);
+        (await CampsDb.CampRoleAssignments.AsNoTracking().SingleAsync(ct)).CampMemberId.Should().Be(member.Id);
     }
 
     [HumansFact]
