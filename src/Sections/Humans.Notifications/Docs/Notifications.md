@@ -81,6 +81,7 @@ The originating system for a notification, mapped to a `MessageCategory` for pre
 
 - Notifications are stored events — once written, they are persisted until cleaned up by `CleanupNotificationsJob` (resolved older than 7 days; unresolved informational older than 30 days; unresolved rows of **retired sources** purged outright; other actionable notifications are never auto-cleaned — they represent real work).
 - Meters are **never** stored. `NotificationMeterProvider` computes them from each owning section's public service; do not add a `meter_counts` table.
+- Aborted meter reads propagate caller cancellation without Error logging or caching fallback zero counts, for both global and per-camp-lead caches. Other computation failures retain the logged best-effort fallback.
 - An emit call with an empty recipient list is logged at Warning and silently skipped (no notification row written). An emit call where every recipient suppresses the notification via `InboxEnabled=false` for the source's `MessageCategory` (Informational only) is logged at Information and silently skipped.
 - `INotificationService.SendToRoleAsync(role, …)` resolves recipients via `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` — never via `DbContext.RoleAssignments` directly.
 - `Informational` notifications respect each recipient's `InboxEnabled` preference for the source's `MessageCategory`; `Actionable` notifications always go through (they cannot be suppressed by user preference).

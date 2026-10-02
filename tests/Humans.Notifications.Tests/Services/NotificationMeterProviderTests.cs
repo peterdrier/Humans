@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Xunit;
 
 namespace Humans.Notifications.Tests.Services;
 
@@ -45,6 +46,40 @@ public class NotificationMeterProviderTests : IDisposable
     {
         _cache.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetMetersForUserAsync_PropagatesCancellationWithoutCachingZeroCounts(bool campLeadCount)
+    {
+        var userId = Guid.NewGuid();
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
+        _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(3);
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([MakeCampInfoWithPendingRequest(userId)]);
+        if (campLeadCount)
+            _campService.GetCampsForYearAsync(2026, aborted.Token)
+                .Returns(Task.FromCanceled<IReadOnlyList<CampInfo>>(aborted.Token));
+        else
+            _googleSyncService.GetFailedSyncEventCountAsync(aborted.Token)
+                .Returns(Task.FromCanceled<int>(aborted.Token));
+        var principal = CreatePrincipalWithId(userId, RoleNames.Admin);
+
+        var act = () => _provider.GetMetersForUserAsync(principal, aborted.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        var meters = await _provider.GetMetersForUserAsync(principal, TestContext.Current.CancellationToken);
+        if (campLeadCount)
+            meters.Should().Contain(m => m.ActionUrl == "/Barrios" && m.Count == 1);
+        else
+            meters.Should().Contain(m => m.Title == "Failed Google sync events" && m.Count == 3);
     }
 
     [HumansFact]
