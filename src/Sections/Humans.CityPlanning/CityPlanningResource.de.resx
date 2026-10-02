@@ -362,4 +362,48 @@
   <data name="CityPlanning_OverviewTitle" xml:space="preserve">
     <value>Stadtplanung</value>
   </data>
+  <data name="CityPlanning_PolygonSaveFailed" xml:space="preserve">
+    <value>Polygon konnte nicht gespeichert werden. Bitte versuche es erneut.</value>
+  </data>
+  <data name="CityPlanning_DiscardChangesConfirm" xml:space="preserve">
+    <value>Nicht gespeicherte Änderungen verwerfen?</value>
+  </data>
+  <data name="CityPlanning_HistoryForCamp" xml:space="preserve">
+    <comment>{0} = camp name</comment>
+    <value>Verlauf von {0}</value>
+  </data>
+  <data name="CityPlanning_HistoryLoadFailed" xml:space="preserve">
+    <value>Verlauf konnte nicht geladen werden.</value>
+  </data>
+  <data name="CityPlanning_HistoryEmpty" xml:space="preserve">
+    <value>Noch kein Verlauf vorhanden.</value>
+  </data>
+  <data name="CityPlanning_OutsideLimits" xml:space="preserve">
+    <value>Außerhalb der Grenzen</value>
+  </data>
+  <data name="CityPlanning_OverlapsBarrio" xml:space="preserve">
+    <value>Überschneidet sich mit einem anderen Barrio</value>
+  </data>
+  <data name="CityPlanning_AreaLargerRequested" xml:space="preserve">
+    <comment>{0} = requested area in square meters</comment>
+    <value>Fläche größer als angefragt ({0} m²)</value>
+  </data>
+  <data name="CityPlanning_AreaSmallerRequested" xml:space="preserve">
+    <comment>{0} = requested area in square meters</comment>
+    <value>Fläche kleiner als angefragt ({0} m²)</value>
+  </data>
+  <data name="CityPlanning_AreaMuchLargerRequested" xml:space="preserve">
+    <comment>{0} = requested area in square meters</comment>
+    <value>Fläche deutlich größer als angefragt ({0} m²)</value>
+  </data>
+  <data name="CityPlanning_AreaMuchSmallerRequested" xml:space="preserve">
+    <comment>{0} = requested area in square meters</comment>
+    <value>Fläche deutlich kleiner als angefragt ({0} m²)</value>
+  </data>
+  <data name="CityPlanning_SoundZoneMismatch" xml:space="preserve">
+    <value>Die Schallzone passt nicht zu diesem Bereich</value>
+  </data>
+  <data name="CityPlanning_GenericCamp" xml:space="preserve">
+    <value>Zeltlager</value>
+  </data>
 </root>

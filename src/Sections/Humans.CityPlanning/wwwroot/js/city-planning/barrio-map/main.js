@@ -131,12 +131,12 @@ document.getElementById('save-btn')?.addEventListener('click', async () => {
         exitEditMode();
         // SignalR CampPolygonUpdated will refresh the map layer
     } else {
-        alert('Failed to save polygon. Please try again.');
+        alert(CONFIG.SAVE_FAILED);
     }
 });
 
 document.getElementById('cancel-btn')?.addEventListener('click', () => {
-    if (!confirm('Discard unsaved changes?')) return;
+    if (!confirm(CONFIG.DISCARD_CONFIRM)) return;
     exitEditMode();
 });
 

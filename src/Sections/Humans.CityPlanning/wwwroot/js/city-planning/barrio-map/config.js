@@ -8,6 +8,23 @@ export const CONFIG = {
     IS_PLACEMENT_OPEN:   el.dataset.isPlacementOpen === 'true',
     IS_MAP_ADMIN:        el.dataset.isMapAdmin === 'true',
 
+    SAVE_FAILED: el.dataset.saveFailed,
+    DISCARD_CONFIRM: el.dataset.discardConfirm,
+    HISTORY_FOR_CAMP: el.dataset.historyForCamp,
+    HISTORY_LOAD_FAILED: el.dataset.historyLoadFailed,
+    HISTORY_EMPTY: el.dataset.historyEmpty,
+    OUTSIDE_LIMITS: el.dataset.outsideLimits,
+    OVERLAPS_BARRIO: el.dataset.overlapsBarrio,
+    AREA_LARGER: el.dataset.areaLarger,
+    AREA_SMALLER: el.dataset.areaSmaller,
+    AREA_MUCH_LARGER: el.dataset.areaMuchLarger,
+    AREA_MUCH_SMALLER: el.dataset.areaMuchSmaller,
+    SOUND_ZONE_MISMATCH: el.dataset.soundZoneMismatch,
+    GENERIC_CAMP: el.dataset.genericCamp,
+    EDIT: el.dataset.edit,
+    PREVIEW: el.dataset.preview,
+    HISTORY: el.dataset.history,
+
     ESRI_TILES,
     MAP_BOUNDS, // [SW, NE] corners of festival site
 };

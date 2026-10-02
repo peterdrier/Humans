@@ -37,23 +37,23 @@ export function onCampPolygonClick(e) {
     const canEdit = CONFIG.IS_MAP_ADMIN || (CONFIG.IS_PLACEMENT_OPEN && isOwn);
 
     const area         = props.areaSqm   ? `<div class="text-muted small">${Math.round(props.areaSqm).toLocaleString()} m²</div>` : '';
-    const warning      = props.outsideZone ? `<div class="text-danger small">⚠️ Outside limits</div>` : '';
-    const overlapWarn  = props.overlaps    ? `<div class="text-warning small">⚠️ Overlaps with another barrio</div>` : '';
+    const warning      = props.outsideZone ? `<div class="text-danger small">⚠️ ${escHtml(CONFIG.OUTSIDE_LIMITS)}</div>` : '';
+    const overlapWarn  = props.overlaps    ? `<div class="text-warning small">⚠️ ${escHtml(CONFIG.OVERLAPS_BARRIO)}</div>` : '';
     const sizeWarn     = (() => {
         if (!props.spaceRequirementSqm || !props.areaSqm) return '';
         const ratio = props.areaSqm / props.spaceRequirementSqm;
-        if (ratio > SIZE_RATIO_UPPER) return `<div class="text-warning small">⚠️ Area much larger than requested (${Math.round(props.spaceRequirementSqm).toLocaleString()} m²)</div>`;
-        if (ratio < SIZE_RATIO_LOWER) return `<div class="text-warning small">⚠️ Area much smaller than requested (${Math.round(props.spaceRequirementSqm).toLocaleString()} m²)</div>`;
+        if (ratio > SIZE_RATIO_UPPER) return `<div class="text-warning small">⚠️ ${escHtml(CONFIG.AREA_MUCH_LARGER.replace('{0}', Math.round(props.spaceRequirementSqm).toLocaleString()))}</div>`;
+        if (ratio < SIZE_RATIO_LOWER) return `<div class="text-warning small">⚠️ ${escHtml(CONFIG.AREA_MUCH_SMALLER.replace('{0}', Math.round(props.spaceRequirementSqm).toLocaleString()))}</div>`;
         return '';
     })();
-    const soundZoneWarn = props.soundZoneOutOfRange ? `<div class="text-warning small">⚠️ Sound zone doesn't match this area</div>` : '';
-    const editBtn      = canEdit ? `<button class="btn btn-primary btn-sm js-edit-barrio-btn">Edit</button>` : '';
-    const historyBtn   = `<button class="btn btn-outline-secondary btn-sm js-history-barrio-btn"><i class="fa fa-history me-1"></i>History</button>`;
+    const soundZoneWarn = props.soundZoneOutOfRange ? `<div class="text-warning small">⚠️ ${escHtml(CONFIG.SOUND_ZONE_MISMATCH)}</div>` : '';
+    const editBtn      = canEdit ? `<button class="btn btn-primary btn-sm js-edit-barrio-btn">${escHtml(CONFIG.EDIT)}</button>` : '';
+    const historyBtn   = `<button class="btn btn-outline-secondary btn-sm js-history-barrio-btn"><i class="fa fa-history me-1"></i>${escHtml(CONFIG.HISTORY)}</button>`;
 
     if (appState.currentPopup) appState.currentPopup.remove();
     const nameHtml = props.campSlug
-        ? `<a href="/Barrios/${encodeURIComponent(props.campSlug)}" class="fw-bold text-decoration-none">${escHtml(props.campName || 'Camp')}</a>`
-        : `<strong>${escHtml(props.campName || 'Camp')}</strong>`;
+        ? `<a href="/Barrios/${encodeURIComponent(props.campSlug)}" class="fw-bold text-decoration-none">${escHtml(props.campName || CONFIG.GENERIC_CAMP)}</a>`
+        : `<strong>${escHtml(props.campName || CONFIG.GENERIC_CAMP)}</strong>`;
     appState.currentPopup = new maplibregl.Popup().setLngLat(e.lngLat)
         .setHTML(`<div>${nameHtml}</div>${area}${warning}${overlapWarn}${sizeWarn}${soundZoneWarn}<div class="d-flex flex-column gap-1 mt-1">${editBtn}${historyBtn}</div>`)
         .addTo(appState.map);
@@ -196,16 +196,16 @@ export function updateSaveButton() {
         const sizeWarning = (() => {
             if (!spaceReqSqm) return '';
             const ratio = area / spaceReqSqm;
-            if (ratio > SIZE_RATIO_UPPER) return `\n⚠️ Area larger than requested (${Math.round(spaceReqSqm).toLocaleString()} m²)`;
-            if (ratio < SIZE_RATIO_LOWER) return `\n⚠️ Area smaller than requested (${Math.round(spaceReqSqm).toLocaleString()} m²)`;
+            if (ratio > SIZE_RATIO_UPPER) return `\n⚠️ ${CONFIG.AREA_LARGER.replace('{0}', Math.round(spaceReqSqm).toLocaleString())}`;
+            if (ratio < SIZE_RATIO_LOWER) return `\n⚠️ ${CONFIG.AREA_SMALLER.replace('{0}', Math.round(spaceReqSqm).toLocaleString())}`;
             return '';
         })();
         const soundZoneMismatch = getSoundZoneOutOfRange(poly, getCampSoundZone(editId));
         const warnings = [
-            ...(outside           ? ['\n⚠️ Outside limits'] : []),
-            ...(overlap            ? ['\n⚠️ Overlaps with another barrio'] : []),
+            ...(outside           ? ["\n⚠️ " + CONFIG.OUTSIDE_LIMITS] : []),
+            ...(overlap            ? ["\n⚠️ " + CONFIG.OVERLAPS_BARRIO] : []),
             ...(sizeWarning        ? [sizeWarning] : []),
-            ...(soundZoneMismatch  ? ['\n⚠️ Sound zone doesn\'t match this area'] : []),
+            ...(soundZoneMismatch  ? ["\n⚠️ " + CONFIG.SOUND_ZONE_MISMATCH] : []),
         ];
         centroid.properties = { label: Math.round(area).toLocaleString() + ' m²' + warnings.join('') };
         map.getSource('draw-label').setData({ type: 'FeatureCollection', features: [centroid] });
@@ -236,19 +236,19 @@ export async function loadHistory(campSeasonId, canEdit = false) {
 
     const campName = appState.campMap.campPolygons.find(p => p.campSeasonId === id)?.campName;
     const titleEl = document.getElementById('history-panel-title');
-    if (titleEl && campName) titleEl.textContent = `History of ${campName}`;
+    if (titleEl && campName) titleEl.textContent = CONFIG.HISTORY_FOR_CAMP.replace('{0}', () => campName);
 
     const list = document.getElementById('history-list');
 
     if (!resp.ok) {
-        list.innerHTML = '<p class="text-danger text-center py-4">Failed to load history.</p>';
+        list.innerHTML = `<p class="text-danger text-center py-4">${escHtml(CONFIG.HISTORY_LOAD_FAILED)}</p>`;
         bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('history-panel')).show();
         return;
     }
 
     const history = await resp.json();
     if (!history.length) {
-        list.innerHTML = '<p class="text-muted text-center py-4">No history yet.</p>';
+        list.innerHTML = `<p class="text-muted text-center py-4">${escHtml(CONFIG.HISTORY_EMPTY)}</p>`;
     } else {
         list.innerHTML = history.map(h => `
             <div class="border-bottom py-2 px-1">
@@ -259,7 +259,7 @@ export async function loadHistory(campSeasonId, canEdit = false) {
                         <div class="text-secondary" style="font-size:12px">${escHtml(h.note)}</div>
                     </div>
                     <div class="d-flex gap-1 flex-shrink-0">
-                        <button class="btn btn-outline-secondary btn-sm py-0 preview-btn" data-id="${h.id}" data-geojson="${encodeURIComponent(h.geoJson)}">Preview</button>
+                        <button class="btn btn-outline-secondary btn-sm py-0 preview-btn" data-id="${h.id}" data-geojson="${encodeURIComponent(h.geoJson)}">${escHtml(CONFIG.PREVIEW)}</button>
                         ${CONFIG.IS_MAP_ADMIN ? `<button class="btn btn-outline-warning btn-sm py-0 restore-btn" data-id="${h.id}">Restore</button>` : ''}
                     </div>
                 </div>

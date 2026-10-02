@@ -362,4 +362,48 @@
   <data name="CityPlanning_OverviewTitle" xml:space="preserve">
     <value>Planificación urbana</value>
   </data>
+  <data name="CityPlanning_PolygonSaveFailed" xml:space="preserve">
+    <value>No se pudo guardar el polígono. Inténtalo de nuevo.</value>
+  </data>
+  <data name="CityPlanning_DiscardChangesConfirm" xml:space="preserve">
+    <value>¿Descartar los cambios sin guardar?</value>
+  </data>
+  <data name="CityPlanning_HistoryForCamp" xml:space="preserve">
+    <comment>{0} = camp name</comment>
+    <value>Historial de {0}</value>
+  </data>
+  <data name="CityPlanning_HistoryLoadFailed" xml:space="preserve">
+    <value>No se pudo cargar el historial.</value>
+  </data>
+  <data name="CityPlanning_HistoryEmpty" xml:space="preserve">
+    <value>Aún no hay historial.</value>
+  </data>
+  <data name="CityPlanning_OutsideLimits" xml:space="preserve">
+    <value>Fuera de los límites</value>
+  </data>
+  <data name="CityPlanning_OverlapsBarrio" xml:space="preserve">
+    <value>Se superpone a otro barrio</value>
+  </data>
+  <data name="CityPlanning_AreaLargerRequested" xml:space="preserve">
+    <comment>{0} = requested area in square meters</comment>
+    <value>Área mayor de la solicitada ({0} m²)</value>
+  </data>
+  <data name="CityPlanning_AreaSmallerRequested" xml:space="preserve">
+    <comment>{0} = requested area in square meters</comment>
+    <value>Área menor de la solicitada ({0} m²)</value>
+  </data>
+  <data name="CityPlanning_AreaMuchLargerRequested" xml:space="preserve">
+    <comment>{0} = requested area in square meters</comment>
+    <value>Área mucho mayor de la solicitada ({0} m²)</value>
+  </data>
+  <data name="CityPlanning_AreaMuchSmallerRequested" xml:space="preserve">
+    <comment>{0} = requested area in square meters</comment>
+    <value>Área mucho menor de la solicitada ({0} m²)</value>
+  </data>
+  <data name="CityPlanning_SoundZoneMismatch" xml:space="preserve">
+    <value>La zona de sonido no corresponde a esta área</value>
+  </data>
+  <data name="CityPlanning_GenericCamp" xml:space="preserve">
+    <value>Campamento</value>
+  </data>
 </root>

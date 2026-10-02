@@ -35,7 +35,23 @@
     <div id="map" class="city-map-canvas"
          data-user-camp-season-id="@userCampSeasonId"
          data-is-placement-open="@(isPlacementOpen ? "true" : "false")"
-         data-is-map-admin="@(isMapAdmin ? "true" : "false")"></div>
+         data-is-map-admin="@(isMapAdmin ? "true" : "false")"
+         data-save-failed="@Localizer["CityPlanning_PolygonSaveFailed"].Value"
+         data-discard-confirm="@Localizer["CityPlanning_DiscardChangesConfirm"].Value"
+         data-history-for-camp="@Localizer["CityPlanning_HistoryForCamp"].Value"
+         data-history-load-failed="@Localizer["CityPlanning_HistoryLoadFailed"].Value"
+         data-history-empty="@Localizer["CityPlanning_HistoryEmpty"].Value"
+         data-outside-limits="@Localizer["CityPlanning_OutsideLimits"].Value"
+         data-overlaps-barrio="@Localizer["CityPlanning_OverlapsBarrio"].Value"
+         data-area-larger="@Localizer["CityPlanning_AreaLargerRequested"].Value"
+         data-area-smaller="@Localizer["CityPlanning_AreaSmallerRequested"].Value"
+         data-area-much-larger="@Localizer["CityPlanning_AreaMuchLargerRequested"].Value"
+         data-area-much-smaller="@Localizer["CityPlanning_AreaMuchSmallerRequested"].Value"
+         data-sound-zone-mismatch="@Localizer["CityPlanning_SoundZoneMismatch"].Value"
+         data-generic-camp="@Localizer["CityPlanning_GenericCamp"].Value"
+         data-edit="@SharedLocalizer["Common_Edit"].Value"
+         data-preview="@SharedLocalizer["Common_Preview"].Value"
+         data-history="@Localizer["CityPlanning_HistoryButton"].Value"></div>
 
     <!-- Placement phase card -->
     <div class="position-absolute top-0 start-0 m-3">

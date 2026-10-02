@@ -12,7 +12,7 @@
 
 # City Planning — Section Invariants
 
-Interactive map surface: a read-only overview, barrio polygon editing, and container placement. Owns placement phase control and append-only polygon history.
+Interactive map surface: a read-only overview, barrio polygon editing, and container placement. Owns placement phase control and append-only polygon history. Barrio map popup and drawing warnings, history browsing, save failures and discard confirmations use the viewer’s language in all six supported cultures; map-admin-only restore controls remain operator copy.
 
 ## Concepts
 
