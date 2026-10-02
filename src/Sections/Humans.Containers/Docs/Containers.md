@@ -114,7 +114,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 - Images uploaded during Create/Edit append to the gallery; nothing is replaced. Exceeding 5 rejects the whole write.
 - Ticking an image's "Remove" checkbox deletes its file from disk and its `container_images` row — or, for `Guid.Empty`, nulls the three legacy columns on `containers`.
-- When a container is deleted, every gallery file and the legacy image (if any) are removed from disk; `container_images` cascades and all `ContainerPlacement` rows for that container are removed in the same transaction.
+- Container deletion commits the container/gallery/placement removal and writes its audit before attempting gallery and legacy file cleanup. A failed database deletion leaves all files intact. Cleanup attempts every distinct image path independently after commit; unexpected failures are logged as errors and do not reverse the deletion.
 - Placement save (`SavePlacementAsync(containerId, year, geoJson)`) upserts a `ContainerPlacement` row, preserving any existing notes/image.
 - Placement clear (`ClearPlacementAsync(containerId, year)`): if notes/image are absent, the row is deleted; otherwise `LocationGeoJson` is set to null and the row is preserved.
 

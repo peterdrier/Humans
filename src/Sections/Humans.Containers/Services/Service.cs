@@ -13,7 +13,8 @@ internal sealed class Service(
     IFileStorage fileStorage,
     ICampServiceRead campService,
     IAuditLogService auditLog,
-    IClock clock) : IContainerService
+    IClock clock,
+    ILogger<Service> logger) : IContainerService
 {
     // Names travel into JS string templates and HTML on the map pages; ban the characters
     // that are ever token-significant there rather than trusting every sink to escape.
@@ -138,14 +139,11 @@ internal sealed class Service(
         var container = await repo.GetByIdAsync(id, ct)
             ?? throw new InvalidOperationException("Container not found.");
 
+        var imagePaths = (await repo.GetImagesAsync([id], ct))
+            .Select(image => image.StoragePath)
+            .ToList();
         if (container.ImageStoragePath is not null)
-        {
-            await fileStorage.DeleteAsync(container.ImageStoragePath, ct);
-        }
-        foreach (var image in await repo.GetImagesAsync([id], ct))
-        {
-            await fileStorage.DeleteAsync(image.StoragePath, ct);
-        }
+            imagePaths.Add(container.ImageStoragePath);
 
         // Orphaned placement-image files tolerated at this scale; see Docs/Containers.md.
         await repo.DeleteAsync(id, ct);
@@ -155,6 +153,18 @@ internal sealed class Service(
             $"Deleted container '{container.Name}'",
             actorUserId,
             relatedEntityId: container.CampId, relatedEntityType: AuditEntityTypes.Camp);
+
+        foreach (var path in imagePaths.Distinct(StringComparer.Ordinal))
+        {
+            try
+            {
+                await fileStorage.DeleteAsync(path, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to delete image file {StoragePath} after container {ContainerId} was deleted", path, id);
+            }
+        }
     }
 
     public async Task<IReadOnlyList<ContainerPlacementDto>> GetPlacementsByYearAsync(int year, CancellationToken ct = default)

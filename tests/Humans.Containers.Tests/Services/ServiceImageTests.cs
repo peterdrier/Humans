@@ -17,6 +17,8 @@ namespace Humans.Containers.Tests.Services;
 public sealed class ServiceImageTests
 {
     private readonly IFileStorage _fileStorage;
+    private readonly Microsoft.Extensions.Logging.ILogger<Service> _logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<Service>>();
+    private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly Service _sut;
     private static readonly Instant StartTime = Instant.FromUtc(2026, 5, 8, 10, 0, 0);
     private static readonly Guid CampId = Guid.Parse("00000000-0000-0000-0099-000000000001");
@@ -34,8 +36,8 @@ public sealed class ServiceImageTests
             repo,
             _fileStorage,
             Substitute.For<ICampServiceRead>(),
-            Substitute.For<IAuditLogService>(),
-            new FakeClock(StartTime));
+            _auditLog,
+            new FakeClock(StartTime), _logger);
     }
 
     private static ContainerImageUpload FakeImage(string kind = "main") =>
@@ -237,6 +239,66 @@ public sealed class ServiceImageTests
 
         await _fileStorage.Received(1).DeleteAsync("uploads/containers/id/main-guid.jpg", Arg.Any<CancellationToken>());
         updated.Images.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task DeleteAsync_preserves_image_files_when_the_database_delete_fails()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var container = await SeedContainerAsync(legacyImagePath: "uploads/containers/legacy.jpg");
+        var repo = Substitute.For<IContainerRepository>();
+        repo.GetByIdAsync(container.Id, Arg.Any<CancellationToken>()).Returns(container);
+        repo.GetImagesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ContainerImage>
+            {
+                new() { Id = Guid.NewGuid(), ContainerId = container.Id, StoragePath = "uploads/containers/gallery.jpg", ContentType = "image/jpeg", FileName = "gallery.jpg" }
+            });
+        var original = new IOException("Database delete failed");
+        repo.DeleteAsync(container.Id, Arg.Any<CancellationToken>()).Returns(Task.FromException(original));
+        var service = new Service(repo, _fileStorage, Substitute.For<ICampServiceRead>(), _auditLog, new FakeClock(StartTime), _logger);
+
+        var act = () => service.DeleteAsync(container.Id, Guid.NewGuid(), ct);
+
+        var thrown = await act.Should().ThrowAsync<IOException>();
+        thrown.Which.Should().BeSameAs(original);
+        await _fileStorage.DidNotReceiveWithAnyArgs().DeleteAsync(default!);
+    }
+
+    [HumansFact]
+    public async Task DeleteAsync_commits_and_audits_before_attempting_every_image_cleanup()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var container = await SeedContainerAsync(legacyImagePath: "uploads/containers/legacy.jpg", galleryImages: 2);
+        var actorId = Guid.NewGuid();
+        var metadataDeletedBeforeCleanup = false;
+        var auditedBeforeCleanup = false;
+        var cleanupFailure = new IOException("Image file cannot be deleted");
+        _fileStorage.DeleteAsync($"uploads/containers/{container.Id}/seed-0.jpg", Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await using var db = new ContainersDbContext(_containersOptions);
+                metadataDeletedBeforeCleanup = await db.Containers.CountAsync(ct) == 0;
+                auditedBeforeCleanup = _auditLog.ReceivedCalls().Any(call =>
+                    call.GetArguments()[0] is AuditAction action && action == AuditAction.ContainerDeleted);
+                await Task.FromException(cleanupFailure);
+            });
+
+        var act = () => _sut.DeleteAsync(container.Id, actorId, ct);
+
+        await act.Should().NotThrowAsync();
+        await using var ctx = new ContainersDbContext(_containersOptions);
+        (await ctx.Containers.CountAsync(ct)).Should().Be(0);
+        (await ctx.ContainerImages.CountAsync(ct)).Should().Be(0);
+        metadataDeletedBeforeCleanup.Should().BeTrue();
+        auditedBeforeCleanup.Should().BeTrue();
+        await _auditLog.Received(1).LogAsync(AuditAction.ContainerDeleted, AuditEntityTypes.Container, container.Id,
+            Arg.Any<string>(), actorId, CampId, AuditEntityTypes.Camp);
+        _logger.ReceivedCalls().Where(call =>
+            call.GetArguments()[0] is Microsoft.Extensions.Logging.LogLevel level && level == Microsoft.Extensions.Logging.LogLevel.Error
+            && ReferenceEquals(call.GetArguments()[3], cleanupFailure)).Should().ContainSingle();
+        await _fileStorage.Received(1).DeleteAsync("uploads/containers/legacy.jpg", Arg.Any<CancellationToken>());
+        for (var i = 0; i < 2; i++)
+            await _fileStorage.Received(1).DeleteAsync($"uploads/containers/{container.Id}/seed-{i}.jpg", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

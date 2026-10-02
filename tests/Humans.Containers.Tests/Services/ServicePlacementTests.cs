@@ -38,7 +38,7 @@ public sealed class ServicePlacementTests
             _fileStorage,
             Substitute.For<ICampServiceRead>(),
             _auditLog,
-            Clock);
+            Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
     }
 
     private static ContainerImageUpload Sketch(string name = "sketch.jpg") =>
