@@ -174,10 +174,11 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
     private async Task<IReadOnlyDictionary<string, string>> FetchFolderContentByPrefixAsync(
         string folderPath, string filePrefix)
     {
-        var files = await _client.Repository.Content.GetAllContents(
+        var files = await _client.Repository.Content.GetAllContentsByRef(
             _settings.Owner,
             _settings.Repository,
-            folderPath);
+            folderPath,
+            _settings.Branch);
 
         var content = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var file in files.Where(f =>
@@ -192,10 +193,11 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
                 : "es";
 
             // Fetch full content (GetAllContents for a directory only returns metadata)
-            var fileContent = await _client.Repository.Content.GetAllContents(
+            var fileContent = await _client.Repository.Content.GetAllContentsByRef(
                 _settings.Owner,
                 _settings.Repository,
-                file.Path);
+                file.Path,
+                _settings.Branch);
 
             if (fileContent.Count > 0 && fileContent[0].Content is not null)
             {

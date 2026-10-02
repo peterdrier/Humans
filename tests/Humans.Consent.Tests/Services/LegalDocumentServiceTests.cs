@@ -1,3 +1,10 @@
+using System.Net;
+using System.Reflection;
+using System.Text;
+using Humans.Base.Configuration;
+using Microsoft.Extensions.Options;
+using Octokit;
+using Octokit.Internal;
 using AwesomeAssertions;
 using Humans.Base.Caching;
 using Microsoft.Extensions.Caching.Memory;
@@ -103,6 +110,49 @@ public sealed class LegalDocumentServiceTests : IDisposable
     {
         CacheKeys.LegalDocument("statutes").Should().Be("Legal:statutes");
         CacheKeys.LegalDocument("privacy-policy").Should().Be("Legal:privacy-policy");
+    }
+
+    [HumansFact]
+    public async Task PrefixDocumentRead_UsesConfiguredBranchForDirectoryAndContent()
+    {
+        using var handler = new LegalContentHandler();
+        var connector = new GitHubLegalDocumentConnector(
+            Options.Create(new GitHubSettings { Branch = "legal-preview" }),
+            NullLogger<GitHubLegalDocumentConnector>.Instance);
+        var client = new GitHubClient(new Connection(
+            new ProductHeaderValue("test"), new HttpClientAdapter(() => handler)));
+        typeof(GitHubLegalDocumentConnector)
+            .GetField("_client", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(connector, client);
+
+        var content = await connector.GetFolderContentByPrefixAsync(
+            "Estatutos", "ESTATUTOS", Xunit.TestContext.Current.CancellationToken);
+
+        content.Should().ContainKey("es").WhoseValue.Should().Be("hola");
+        handler.Requests.Should().HaveCount(2);
+        handler.Requests.Should().OnlyContain(uri => uri.Query == "?ref=legal-preview");
+    }
+
+    private sealed class LegalContentHandler : HttpMessageHandler
+    {
+        public List<Uri> Requests { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request.RequestUri!);
+            const string directory = """
+                [{"type":"file","name":"ESTATUTOS.md","path":"Estatutos/ESTATUTOS.md","sha":"abc"}]
+                """;
+            const string file = """
+                {"type":"file","name":"ESTATUTOS.md","path":"Estatutos/ESTATUTOS.md","sha":"abc","content":"aG9sYQ==","encoding":"base64"}
+                """;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(Requests.Count == 1 ? directory : file,
+                    Encoding.UTF8, "application/json")
+            });
+        }
     }
 
     private sealed class FakeConnector : IGitHubLegalDocumentConnector
