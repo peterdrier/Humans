@@ -260,7 +260,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - When an offer is edited and the member point, waypoints, or direction changed: the route is
   recomputed and re-stored.
 - When an interest is created: `INotificationEmitter` notifies the posting owner (`Actionable`),
-  best-effort — delivery failures are caught and logged, never surfaced to the caller. Caller
+  best-effort — name/recipient lookup, message preparation and delivery failures are caught and logged,
+  never surfaced after the interest is saved. The same boundary applies to acceptance and decline. Caller
   cancellation still propagates.
 - When an interest is accepted: the interest's author is notified (`Informational`); seats
   remaining recomputes on next read.

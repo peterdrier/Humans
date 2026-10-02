@@ -264,13 +264,12 @@ internal sealed class RideshareService(
         };
         await repository.AddInterestAsync(interest, ct);
 
-        var name = await DisplayNameAsync(fromUserId, ct);
         var recipient = request?.UserId ?? trip.UserId;
         var (titleKey, place, date) = request is null
             ? ("Rideshare_NoticeInterestRide", trip.MemberPlaceLabel, trip.DepartureDate)
             : ("Rideshare_NoticeCanTakeYou", request.PickupPlaceLabel, request.DesiredDate);
 
-        await NotifyAsync(NotificationSource.RideshareInterestReceived, NotificationClass.Actionable, recipient, culture =>
+        await NotifyAsync(NotificationSource.RideshareInterestReceived, NotificationClass.Actionable, recipient, fromUserId, (culture, name) =>
         {
             var body = Notice(culture, "Rideshare_NoticeTripDetails", place, date.ToWeekdayDayMonth(), SeatsText(seats, culture));
             if (interest.Message is not null)
@@ -296,10 +295,9 @@ internal sealed class RideshareService(
         interest.RespondedAt = clock.GetCurrentInstant();
         await repository.UpdateInterestAsync(interest, ct);
 
-        var name = await DisplayNameAsync(actorUserId, ct);
         await NotifyAsync(
-            NotificationSource.RideshareInterestAccepted, NotificationClass.Informational, interest.FromUserId,
-            culture => (Notice(culture, "Rideshare_NoticeAccepted", name),
+            NotificationSource.RideshareInterestAccepted, NotificationClass.Informational, interest.FromUserId, actorUserId,
+            (culture, name) => (Notice(culture, "Rideshare_NoticeAccepted", name),
                 Notice(culture, "Rideshare_NoticeTripDetails", interest.Trip.MemberPlaceLabel,
                     interest.Trip.DepartureDate.ToWeekdayDayMonth(), SeatsText(interest.Seats, culture))),
             ct);
@@ -317,10 +315,9 @@ internal sealed class RideshareService(
 
         // Declines are private: neutral wording, no reason captured or shown.
         // A rider declining a driver's answer to their pin reads differently from a driver declining a rider.
-        var name = await DisplayNameAsync(actorUserId, ct);
         await NotifyAsync(
-            NotificationSource.RideshareInterestDeclined, NotificationClass.Informational, interest.FromUserId,
-            culture => (Notice(culture, "Rideshare_NoticeUpdate"),
+            NotificationSource.RideshareInterestDeclined, NotificationClass.Informational, interest.FromUserId, actorUserId,
+            (culture, name) => (Notice(culture, "Rideshare_NoticeUpdate"),
                 Notice(culture, interest.RequestId is null
                     ? "Rideshare_NoticeDeclinedOffer"
                     : "Rideshare_NoticeDeclinedRider", name)),
@@ -662,18 +659,19 @@ internal sealed class RideshareService(
 
     // Notifications are best-effort: a failed send never rolls back the interest write.
     private async Task NotifyAsync(
-        NotificationSource source, NotificationClass notificationClass, Guid recipientUserId,
-        Func<CultureInfo, (string Title, string Body)> content, CancellationToken ct)
+        NotificationSource source, NotificationClass notificationClass, Guid recipientUserId, Guid actorUserId,
+        Func<CultureInfo, string, (string Title, string Body)> content, CancellationToken ct)
     {
         try
         {
+            var name = await DisplayNameAsync(actorUserId, ct);
             var language = (await users.GetUserInfoAsync(recipientUserId, ct))?.PreferredLanguage ?? "en";
             string title, body, actionLabel;
             // CultureScope so ambient-culture formatting (ToWeekdayDayMonth) follows the recipient too.
             using (new CultureScope(language, logger))
             {
                 var culture = CultureInfo.CurrentUICulture;
-                (title, body) = content(culture);
+                (title, body) = content(culture, name);
                 actionLabel = Notice(culture, "Rideshare_NoticeOpen");
             }
 

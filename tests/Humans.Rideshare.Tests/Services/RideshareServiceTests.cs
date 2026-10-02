@@ -697,6 +697,49 @@ public sealed class RideshareServiceTests : RideshareTestHarness
             Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData("express")]
+    [InlineData("accept")]
+    [InlineData("decline")]
+    public async Task InterestMutations_NamePreparationFailure_DoesNotUndoSuccess(string action)
+    {
+        var driver = SeedUser("Ada");
+        var rider = SeedUser("Bo");
+        var trip = await SeedTripAsync(driver);
+        var actor = string.Equals(action, "express", StringComparison.Ordinal) ? rider : driver;
+        var failure = new IOException("name lookup failed");
+        Users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromException<Humans.Users.Contracts.UserInfo?>(failure));
+        Guid interestId;
+        var expectedStatus = InterestStatus.Pending;
+        if (string.Equals(action, "express", StringComparison.Ordinal))
+        {
+            interestId = await NewService().ExpressInterestAsync(rider, trip.Id, null, 1, null, Ct);
+        }
+        else
+        {
+            interestId = (await SeedInterestAsync(rider, trip.Id)).Id;
+            if (string.Equals(action, "accept", StringComparison.Ordinal))
+            {
+                await NewService().AcceptInterestAsync(interestId, driver, Ct);
+                expectedStatus = InterestStatus.Accepted;
+            }
+            else
+            {
+                await NewService().DeclineInterestAsync(interestId, driver, Ct);
+                expectedStatus = InterestStatus.Declined;
+            }
+        }
+
+        await using var ctx = OpenContext();
+        var stored = await ctx.Interests.SingleAsync(i => i.Id == interestId, Ct);
+        stored.Status.Should().Be(expectedStatus);
+        if (!string.Equals(action, "express", StringComparison.Ordinal))
+            stored.RespondedAt.Should().Be(Clock.GetCurrentInstant());
+        Notifications.ReceivedCalls().Should().BeEmpty();
+        Logger.Entries.Should().Contain(e => e.Level == LogLevel.Error && e.Exception == failure);
+    }
+
     [HumansFact]
     public async Task ExpressInterest_SurvivesANotificationFailure()
     {
