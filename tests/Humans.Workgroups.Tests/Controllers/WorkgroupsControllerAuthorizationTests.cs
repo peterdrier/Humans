@@ -1,4 +1,7 @@
 using Humans.Workgroups.Authorization;
+using Humans.Base;
+using Humans.Base.Extensions;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -20,6 +23,7 @@ using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Workgroups.Tests.Controllers;
 
@@ -31,6 +35,48 @@ namespace Humans.Workgroups.Tests.Controllers;
 /// </summary>
 public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarness
 {
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void MemberForms_LocalizeRequiredAndLengthErrors(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+
+        void AssertError(object model, string field, string key, params object[] arguments)
+        {
+            var context = new ActionContext { HttpContext = new DefaultHttpContext { RequestServices = services } };
+            validator.Validate(context, null, "", model);
+            var expected = localizer[key, arguments];
+            expected.ResourceNotFound.Should().BeFalse();
+            context.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
+        }
+
+        AssertError(new WorkgroupFormViewModel(), "Name", "Validation_Required");
+        AssertError(new WorkgroupFormViewModel(), "Purpose", "Validation_Required");
+        AssertError(new WorkgroupFormViewModel(), "Deliverable", "Validation_Required");
+        AssertError(new WorkgroupFormViewModel { Name = new string('x', 201) }, "Name", "Validation_MaxLength", "", 200);
+        AssertError(new WorkgroupFormViewModel { Purpose = new string('x', 4001) }, "Purpose", "Validation_MaxLength", "", 4000);
+        AssertError(new WorkgroupFormViewModel { Deliverable = new string('x', 501) }, "Deliverable", "Validation_MaxLength", "", 500);
+        AssertError(new WorkgroupFormViewModel { DiscordChannelUrl = new string('x', 501) }, "DiscordChannelUrl", "Validation_MaxLength", "", 500);
+        AssertError(new MeetingFormViewModel { Slug = "group" }, "Title", "Validation_Required");
+        AssertError(new MeetingFormViewModel { Slug = "group", Title = new string('x', 201) }, "Title", "Validation_MaxLength", "", 200);
+        AssertError(new MeetingFormViewModel { Slug = "group", Location = new string('x', 201) }, "Location", "Validation_MaxLength", "", 200);
+        AssertError(new LogEntryFormViewModel { Slug = "group" }, "Body", "Validation_Required");
+        AssertError(new LogEntryFormViewModel { Slug = "group", Title = new string('x', 201) }, "Title", "Validation_MaxLength", "", 200);
+        AssertError(new DocumentFormViewModel { Slug = "group" }, "Title", "Validation_Required");
+        AssertError(new DocumentFormViewModel { Slug = "group", Title = new string('x', 201) }, "Title", "Validation_MaxLength", "", 200);
+    }
+
     [HumansFact]
     public async Task NonMember_MarkingTheGroupDone_IsForbidden()
     {

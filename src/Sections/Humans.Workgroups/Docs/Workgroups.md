@@ -238,6 +238,8 @@ Settings and Register an existing group on first setup or after clearing the que
 
 ## Invariants
 
+- Application/register, meeting, log entry and document form required and length errors use shared resources in all six cultures; input limits are unchanged.
+
 - Registration is administrative recognition only (Board Resolution clause 4). No
   transition happens automatically; every lifecycle step is a `BoardOrAdmin` action
   (`WorkgroupService.Lifecycle`).

@@ -79,6 +79,7 @@ is a separate call on the same interface and is unaffected.
 - Support single event or recurring via a friendly picker (repeats daily/weekly/monthly/yearly, every N, weekdays, monthly day or nth weekday, ends never/on date/after N); "Custom" exposes the raw RRULE for anything else, and existing rules the picker cannot represent open as Custom
 - Save creates the event and redirects to event details
 - Required fields: title, team, start date/time
+- Required, length and URL validation messages use the current culture in all six supported languages.
 
 **Not shipped:** the recurrence preview of the next 5 occurrences on the create form. Occurrences are only listed after the event exists, on its detail page.
 
