@@ -201,6 +201,23 @@ fi
 fmt() { echo "$1" | sed -e ':a' -e 's/\B[0-9]\{3\}\>/,&/' -e 'ta'; }
 to_kb() { awk -v b="$1" 'BEGIN { printf "%d\n", int((b + 512) / 1024) }'; }
 
+# grep's no-match status is a valid zero; an input failure is not. Filter
+# matched paths in awk so an empty legacy type inventory emits exactly one zero.
+count_source_types() {
+  local matches status
+  if matches=$(grep -rE "$1" --include='*.cs' "$SNAPSHOT_WORKTREE/src/" 2>/dev/null); then
+    :
+  else
+    status=$?
+    if [ "$status" -ne 1 ]; then
+      echo "Error: failed to scan type declarations for $day." >&2
+      return "$status"
+    fi
+  fi
+  printf '%s\n' "$matches" | awk 'NF && !/\/Migrations\// && !/Tests/ { n++ } END { print n+0 }'
+}
+
+
 # Last-commit-of-each-day on the current ref, oldest first.
 DAY_COMMITS=$(git log --reverse --format="%ad %H" --date=format:"%Y-%m-%d" 2>/dev/null \
   | awk '{ last[$1] = $2; if (!seen[$1]++) order[++n] = $1 }
@@ -219,24 +236,26 @@ fi
 # Cumulative commit-count by day across full history (independent of filter).
 declare -A cum_commits
 total=0
+COMMIT_DATES=$(git log --reverse --format="%H %ad" --date=format:"%Y-%m-%d")
 while read -r _hash day; do
+  [ -z "$day" ] && continue
   total=$((total + 1))
   cum_commits["$day"]=$total
-done < <(git log --reverse --format="%H %ad" --date=format:"%Y-%m-%d")
+done <<< "$COMMIT_DATES"
 
 # Per-day line +/- (excluding migrations) across full history.
 declare -A day_adds day_dels
-while read -r d a dl; do
-  day_adds["$d"]=$a
-  day_dels["$d"]=$dl
-done < <(
-  git log --format="COMMIT %ad" --date=format:"%Y-%m-%d" --numstat | awk '
+DAILY_DIFFS=$(git log --format="COMMIT %ad" --date=format:"%Y-%m-%d" --numstat | awk '
     /^COMMIT / { day=$2; next }
     /Migrations/ { next }
     NF >= 3 && $1 != "-" { adds[day]+=$1; dels[day]+=$2 }
     END { for (d in adds) print d, adds[d], dels[d] }
-  '
-)
+  ')
+while read -r d a dl; do
+  [ -z "$d" ] && continue
+  day_adds["$d"]=$a
+  day_dels["$d"]=$dl
+done <<< "$DAILY_DIFFS"
 
 # Create the throwaway worktree that historical checkouts happen in. This
 # never touches the caller's tree (see the header comment).
@@ -290,8 +309,8 @@ while IFS=' ' read -r day commit; do
     interfaces=${reforge_interfaces[$day]}
     REFORGE_HITS=$((REFORGE_HITS+1))
   else
-    classes=$(grep -rE '^\s*(public|internal)\s+(sealed |abstract |static |partial )*(class|record) ' --include='*.cs' "$SNAPSHOT_WORKTREE/src/" 2>/dev/null | grep -v '/Migrations/' | grep -v 'Tests' | wc -l || echo 0)
-    interfaces=$(grep -rE '^\s*public\s+interface\s' --include='*.cs' "$SNAPSHOT_WORKTREE/src/" 2>/dev/null | grep -v '/Migrations/' | grep -v 'Tests' | wc -l || echo 0)
+    classes=$(count_source_types '^\s*(public|internal)\s+(sealed |abstract |static |partial )*(class|record) ')
+    interfaces=$(count_source_types '^\s*public\s+interface\s')
     REFORGE_MISSES=$((REFORGE_MISSES+1))
   fi
 
@@ -304,7 +323,7 @@ while IFS=' ' read -r day commit; do
   # (src/ minus Migrations; tests live in tests/ at the root, not in src/).
   # cloc CSV: files,language,blank,comment,code  — we read the C# row.
   if [ -d "$SNAPSHOT_WORKTREE/src" ]; then
-    cloc_csv=$("$CLOC" --quiet --csv --include-lang=C# --exclude-dir=Migrations "$SNAPSHOT_WORKTREE/src" 2>/dev/null || true)
+    cloc_csv=$("$CLOC" --quiet --csv --include-lang=C# --exclude-dir=Migrations "$SNAPSHOT_WORKTREE/src")
     cs_code=$(echo "$cloc_csv" | awk -F, '$2=="C#" { print $5+0; exit }')
     cs_comment=$(echo "$cloc_csv" | awk -F, '$2=="C#" { print $4+0; exit }')
     cs_code=${cs_code:-0}
