@@ -68,6 +68,11 @@
   <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>Die Übertragung konnte nicht vorbereitet werden — wähle eines deiner Tickets und eine gültige andere empfangende Person.</value></data>
   <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Übertragung angefragt. Unser Ticketing-Team bearbeitet sie und gibt dir in Kürze Bescheid.</value></data>
   <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Übertragung storniert.</value></data>
+  <data name="Tickets_TicketTransfer_NotFound" xml:space="preserve"><value>Übertragung nicht gefunden.</value></data>
+  <data name="Tickets_TicketTransfer_OnlyPendingCanBeCancelled" xml:space="preserve"><value>Nur ausstehende Übertragungen können storniert werden.</value></data>
+  <data name="Tickets_TicketTransfer_OnlySenderCanCancel" xml:space="preserve"><value>Nur die absendende Person kann diese Übertragung stornieren.</value></data>
+  <data name="Tickets_TicketTransfer_CancelFailed" xml:space="preserve"><value>Die Übertragung konnte nicht storniert werden. Lade die Seite neu oder kontaktiere das Ticket-Team.</value></data>
+  <data name="Tickets_TicketTransfer_NotCurrentHolder" xml:space="preserve"><value>Du kannst nur Tickets übertragen, die dir aktuell gehören.</value></data>
   <data name="Tickets_TicketStub_EventLabel" xml:space="preserve"><value>{0} · Eintritt für eine Person</value></data>
   <data name="Tickets_TicketStub_CheckedIn" xml:space="preserve"><value>Eingecheckt</value></data>
   <data name="Tickets_TicketStub_Void" xml:space="preserve"><value>Ungültig</value></data>

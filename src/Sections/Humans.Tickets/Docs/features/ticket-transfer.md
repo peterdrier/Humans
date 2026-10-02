@@ -61,6 +61,8 @@ Outcomes are recorded on the request columns + audit log.
 - On submit a `Pending` request is created; the Sender sees a pending stamp on the ticket and a Cancel
   control on the homepage.
 
+Member request and cancellation errors are localized in all six cultures. Unknown failure text is logged and replaced by a translated fallback.
+
 ### US-42.2: Sender cancels a pending transfer
 - A Cancel control appears on the Sender's pending-transfer ticket on the homepage.
 - Cancel transitions the request to `Cancelled` (audit-logged) and re-enables transferring the ticket.

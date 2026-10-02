@@ -231,7 +231,7 @@ public sealed class TicketTransferServiceTests
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Checked-in tickets cannot be transferred.");
+            .WithMessage("TicketTransfer_CheckedIn");
     }
 
     [HumansFact]
@@ -696,7 +696,9 @@ public sealed class TicketTransferServiceTests
         }
 
         var decideAgain = () => second.WaitAsync(Xunit.TestContext.Current.CancellationToken);
-        await decideAgain.Should().ThrowAsync<InvalidOperationException>().WithMessage("Only Pending transfers*");
+        await decideAgain.Should().ThrowAsync<InvalidOperationException>().WithMessage(
+            string.Equals(action, "cancel", StringComparison.Ordinal)
+                ? "Tickets_TicketTransfer_OnlyPendingCanBeCancelled" : "Only Pending transfers*");
         req.Status.Should().Be(TicketTransferStatus.Approved);
         await _vendor.Received(1).VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>());
         await _vendor.Received(1).IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>());

@@ -93,28 +93,28 @@ internal sealed class TicketTransferService(
         TicketTransferRequestDto dto, Guid senderUserId, CancellationToken ct = default)
     {
         if (dto.ReceiverUserId == senderUserId)
-            throw new InvalidOperationException("Cannot transfer a ticket to yourself.");
+            throw new InvalidOperationException("Tickets_TicketTransfer_InvalidSelection");
 
         var attendee = await ticketRepo.GetAttendeeByIdAsync(dto.OriginalAttendeeId, ct)
-            ?? throw new InvalidOperationException("Attendee not found.");
+            ?? throw new InvalidOperationException("Tickets_TicketTransfer_InvalidSelection");
 
         if (!TicketAttendeeOwnership.IsCurrentOwner(attendee, senderUserId))
-            throw new InvalidOperationException("You can only transfer tickets you currently hold.");
+            throw new InvalidOperationException("Tickets_TicketTransfer_NotCurrentHolder");
 
         if (attendee.Status != TicketAttendeeStatus.Valid)
-            throw new InvalidOperationException("Only Valid tickets can be transferred.");
+            throw new InvalidOperationException("TicketTransfer_NotTransferable");
 
         // A gate scan keeps Status = Valid and records the scan in CheckedInAt,
         // so the Valid check above does not catch an already-used ticket — guard
         // on CheckedInAt explicitly.
         if (attendee.CheckedInAt is not null)
-            throw new InvalidOperationException("Checked-in tickets cannot be transferred.");
+            throw new InvalidOperationException("TicketTransfer_CheckedIn");
 
         var receiverInfo = await userService.GetUserInfoAsync(dto.ReceiverUserId, ct)
-            ?? throw new InvalidOperationException("Receiver user not found.");
+            ?? throw new InvalidOperationException("Tickets_TicketTransfer_InvalidSelection");
         // Defense-in-depth: receiver MUST have legal name; mirror not-found message to avoid leaking why.
         if (!receiverInfo.HasRequiredNameFields)
-            throw new InvalidOperationException("Receiver user not found.");
+            throw new InvalidOperationException("Tickets_TicketTransfer_InvalidSelection");
         var receiverProfile = receiverInfo.Profile!;
 
         // Block duplicate pendings (UX hides Send; ToDictionary would crash on dupes).
@@ -122,11 +122,11 @@ internal sealed class TicketTransferService(
             .Any(r => r.OriginalTicketAttendeeId == dto.OriginalAttendeeId
                 && r.Status == TicketTransferStatus.Pending);
         if (existingPending)
-            throw new InvalidOperationException("There is already a pending transfer request for this ticket.");
+            throw new InvalidOperationException("TicketTransfer_AlreadyPending");
 
         var receiverLegalName = receiverProfile.FullName;
         var receiverEmail = await userEmailService.GetPrimaryEmailAsync(dto.ReceiverUserId, ct)
-            ?? throw new InvalidOperationException("Receiver has no primary email on file.");
+            ?? throw new InvalidOperationException("Tickets_TicketTransfer_InvalidSelection");
 
         var now = clock.GetCurrentInstant();
         var request = new TicketTransferRequest
@@ -166,11 +166,11 @@ internal sealed class TicketTransferService(
     {
         using var decision = await DecisionLockFor(transferRequestId).AcquireAsync(logger, ct);
         var request = await transferRepo.GetByIdAsync(transferRequestId, ct)
-            ?? throw new InvalidOperationException("Transfer not found.");
+            ?? throw new InvalidOperationException("Tickets_TicketTransfer_NotFound");
         if (request.Status != TicketTransferStatus.Pending)
-            throw new InvalidOperationException("Only Pending transfers can be cancelled.");
+            throw new InvalidOperationException("Tickets_TicketTransfer_OnlyPendingCanBeCancelled");
         if (request.SenderUserId != senderUserId)
-            throw new InvalidOperationException("Only the Sender can cancel.");
+            throw new InvalidOperationException("Tickets_TicketTransfer_OnlySenderCanCancel");
         EnsureNotMidProcessing(request);
 
         var now = clock.GetCurrentInstant();

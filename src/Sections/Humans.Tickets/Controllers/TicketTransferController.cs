@@ -77,6 +77,7 @@ internal sealed class TicketTransferController(
         {
             logger.LogWarning("Ticket transfer Submit rejected for attendee {AttendeeId}: {Message}",
                 attendeeId, ex.Message);
+            var error = localizer[ex.Message];
             var mine = await service.GetMyAttendeesAsync(user.Id, ct);
             var transfers = await service.GetBySenderAsync(user.Id, ct);
             var confirm = await service.GetConfirmationAsync(attendeeId, receiverUserId, user.Id, ct);
@@ -88,7 +89,9 @@ internal sealed class TicketTransferController(
                 HolderEarlyEntry = earlyEntry?.EarliestEntryDate,
                 Confirm = confirm,
                 Reason = reason,
-                Error = ex.Message,
+                Error = error.ResourceNotFound
+                    ? localizer["Tickets_TicketTransfer_InvalidSelection"].Value
+                    : error.Value,
             });
         }
     }
@@ -109,7 +112,9 @@ internal sealed class TicketTransferController(
         {
             logger.LogWarning("Ticket transfer Cancel rejected for transfer {TransferId}: {Message}",
                 id, ex.Message);
-            SetError(ex.Message);
+            var error = localizer[ex.Message];
+            SetError(error.ResourceNotFound
+                ? localizer["Tickets_TicketTransfer_CancelFailed"].Value : error.Value);
         }
         return RedirectToAction(nameof(Index));
     }

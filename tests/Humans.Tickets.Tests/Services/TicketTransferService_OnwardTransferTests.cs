@@ -135,7 +135,7 @@ public sealed class TicketTransferService_OnwardTransferTests
             new TicketTransferRequestDto(attendeeId, UserC, "test"), UserA, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*currently hold*");
+            .WithMessage("Tickets_TicketTransfer_NotCurrentHolder");
     }
 
     [HumansFact]

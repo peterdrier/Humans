@@ -68,6 +68,11 @@
   <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>No se pudo preparar la transferencia: elige una de tus entradas y una persona destinataria válida que no seas tú.</value></data>
   <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Transferencia solicitada. Nuestro equipo de entradas la procesará y te avisará en breve.</value></data>
   <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Transferencia cancelada.</value></data>
+  <data name="Tickets_TicketTransfer_NotFound" xml:space="preserve"><value>Transferencia no encontrada.</value></data>
+  <data name="Tickets_TicketTransfer_OnlyPendingCanBeCancelled" xml:space="preserve"><value>Solo se pueden cancelar las transferencias pendientes.</value></data>
+  <data name="Tickets_TicketTransfer_OnlySenderCanCancel" xml:space="preserve"><value>Solo quien envió la solicitud puede cancelar esta transferencia.</value></data>
+  <data name="Tickets_TicketTransfer_CancelFailed" xml:space="preserve"><value>No se pudo cancelar la transferencia. Actualiza la página o contacta con el equipo de entradas.</value></data>
+  <data name="Tickets_TicketTransfer_NotCurrentHolder" xml:space="preserve"><value>Solo puedes transferir entradas que estén actualmente a tu nombre.</value></data>
   <data name="Tickets_TicketStub_EventLabel" xml:space="preserve"><value>{0} · Entrada individual</value></data>
   <data name="Tickets_TicketStub_CheckedIn" xml:space="preserve"><value>Check-in realizado</value></data>
   <data name="Tickets_TicketStub_Void" xml:space="preserve"><value>Anulada</value></data>

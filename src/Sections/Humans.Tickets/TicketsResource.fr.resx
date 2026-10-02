@@ -68,6 +68,11 @@
   <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>Impossible de préparer ce transfert : choisissez l'un de vos billets et une personne destinataire valide autre que vous-même.</value></data>
   <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Transfert demandé. Notre équipe billetterie le traitera et vous tiendra informé sous peu.</value></data>
   <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Transfert annulé.</value></data>
+  <data name="Tickets_TicketTransfer_NotFound" xml:space="preserve"><value>Transfert introuvable.</value></data>
+  <data name="Tickets_TicketTransfer_OnlyPendingCanBeCancelled" xml:space="preserve"><value>Seuls les transferts en attente peuvent être annulés.</value></data>
+  <data name="Tickets_TicketTransfer_OnlySenderCanCancel" xml:space="preserve"><value>Seule la personne ayant envoyé la demande peut annuler ce transfert.</value></data>
+  <data name="Tickets_TicketTransfer_CancelFailed" xml:space="preserve"><value>Impossible d'annuler le transfert. Actualisez la page ou contactez l'équipe de billetterie.</value></data>
+  <data name="Tickets_TicketTransfer_NotCurrentHolder" xml:space="preserve"><value>Vous ne pouvez transférer que les billets dont vous êtes actuellement titulaire.</value></data>
   <data name="Tickets_TicketStub_EventLabel" xml:space="preserve"><value>{0} · Entrée individuelle</value></data>
   <data name="Tickets_TicketStub_CheckedIn" xml:space="preserve"><value>Enregistré</value></data>
   <data name="Tickets_TicketStub_Void" xml:space="preserve"><value>Annulé</value></data>

@@ -57,6 +57,11 @@
   <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>Couldn't set up that transfer — choose one of your tickets and a valid recipient other than yourself.</value></data>
   <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Transfer requested. Our ticketing team will process it and let you know shortly.</value></data>
   <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Transfer cancelled.</value></data>
+  <data name="Tickets_TicketTransfer_NotFound" xml:space="preserve"><value>Transfer not found.</value></data>
+  <data name="Tickets_TicketTransfer_OnlyPendingCanBeCancelled" xml:space="preserve"><value>Only pending transfers can be cancelled.</value></data>
+  <data name="Tickets_TicketTransfer_OnlySenderCanCancel" xml:space="preserve"><value>Only the sender can cancel this transfer.</value></data>
+  <data name="Tickets_TicketTransfer_CancelFailed" xml:space="preserve"><value>Couldn't cancel the transfer. Refresh the page or contact the ticketing team.</value></data>
+  <data name="Tickets_TicketTransfer_NotCurrentHolder" xml:space="preserve"><value>You can only transfer tickets you currently hold.</value></data>
   <data name="Tickets_TicketStub_EventLabel" xml:space="preserve"><value>{0} · Admit One</value></data>
   <data name="Tickets_TicketStub_CheckedIn" xml:space="preserve"><value>Checked in</value></data>
   <data name="Tickets_TicketStub_Void" xml:space="preserve"><value>Void</value></data>

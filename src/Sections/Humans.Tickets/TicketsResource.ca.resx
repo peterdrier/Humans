@@ -68,6 +68,11 @@
   <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>No s'ha pogut preparar la transferència: tria una de les teves entrades i una persona destinatària vàlida que no siguis tu.</value></data>
   <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Transferència sol·licitada. El nostre equip d'entrades la processarà i t'ho farà saber aviat.</value></data>
   <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Transferència cancel·lada.</value></data>
+  <data name="Tickets_TicketTransfer_NotFound" xml:space="preserve"><value>Transferència no trobada.</value></data>
+  <data name="Tickets_TicketTransfer_OnlyPendingCanBeCancelled" xml:space="preserve"><value>Només es poden cancel·lar les transferències pendents.</value></data>
+  <data name="Tickets_TicketTransfer_OnlySenderCanCancel" xml:space="preserve"><value>Només qui ha enviat la sol·licitud pot cancel·lar aquesta transferència.</value></data>
+  <data name="Tickets_TicketTransfer_CancelFailed" xml:space="preserve"><value>No s'ha pogut cancel·lar la transferència. Actualitza la pàgina o contacta amb l'equip d'entrades.</value></data>
+  <data name="Tickets_TicketTransfer_NotCurrentHolder" xml:space="preserve"><value>Només pots transferir entrades que estiguin actualment al teu nom.</value></data>
   <data name="Tickets_TicketStub_EventLabel" xml:space="preserve"><value>{0} · Entrada individual</value></data>
   <data name="Tickets_TicketStub_CheckedIn" xml:space="preserve"><value>Check-in fet</value></data>
   <data name="Tickets_TicketStub_Void" xml:space="preserve"><value>Anul·lada</value></data>
