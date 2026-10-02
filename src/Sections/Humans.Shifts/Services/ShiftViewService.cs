@@ -21,44 +21,8 @@ internal sealed class ShiftViewService : IShiftRowView
         _calendarResolver = calendarResolver;
     }
 
-    public async ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        // "Active" is Settings' notion (nobodies-collective/Humans#1631) — resolve
-        // directly, no Shifts-local lookup.
-        var activeEvent = await _calendarResolver.GetActiveAsync(ct).ConfigureAwait(false);
-
-        var profile = await _management.GetVolunteerEventProfileAsync(userId, ct).ConfigureAwait(false);
-        var tagPrefs = await _management.GetVolunteerTagPreferencesForUsersAsync([userId], ct).ConfigureAwait(false);
-
-        GeneralAvailability? availability = null;
-        VolunteerBuildStatus? buildStatus = null;
-        IReadOnlyList<ShiftSignup> signups = [];
-        Humans.Settings.Contracts.EventSettingsInfo? calendar = null;
-        if (activeEvent is not null)
-        {
-            var availabilityRows = await _tracking
-                .GetAvailabilityForUserAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
-            availability = availabilityRows.Count > 0 ? availabilityRows[0] : null;
-
-            var buildStatusRows = await _tracking
-                .GetBuildStatusesForEventAsync(activeEvent.Id, [userId], ct).ConfigureAwait(false);
-            buildStatus = buildStatusRows.Count > 0 ? buildStatusRows[0] : null;
-
-            signups = await _management
-                .GetForUsersAsync([userId], activeEvent.Id, ct).ConfigureAwait(false);
-
-            calendar = activeEvent;
-        }
-
-        return new ShiftUserView(
-            userId,
-            profile,
-            availability,
-            buildStatus,
-            tagPrefs,
-            signups,
-            calendar);
-    }
+    public async ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default) =>
+        (await GetUsersAsync([userId], ct).ConfigureAwait(false))[userId];
 
     /// <summary>
     /// True bulk: one query per contributing table filtered by the supplied

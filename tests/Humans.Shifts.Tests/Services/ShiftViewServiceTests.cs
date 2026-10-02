@@ -40,8 +40,10 @@ public class ShiftViewServiceTests
     {
         var userId = Guid.NewGuid();
         StubActiveCalendar(null);
-        _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((VolunteerEventProfile?)null);
+        _management.GetVolunteerEventProfilesByUserIdsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
         _management.GetVolunteerTagPreferencesForUsersAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
@@ -69,12 +71,15 @@ public class ShiftViewServiceTests
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
+        var profile = new VolunteerEventProfile { UserId = userId };
         var availability = new GeneralAvailability { UserId = userId, EventSettingsId = eventId };
         var buildStatus = new VolunteerBuildStatus { UserId = userId, EventSettingsId = eventId };
 
         StubActiveCalendar(Calendar(eventId));
-        _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((VolunteerEventProfile?)null);
+        _management.GetVolunteerEventProfilesByUserIdsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
+            .Returns([profile]);
         _management.GetVolunteerTagPreferencesForUsersAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
@@ -84,7 +89,10 @@ public class ShiftViewServiceTests
                 Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns([]);
-        _tracking.GetAvailabilityForUserAsync(userId, eventId, Arg.Any<CancellationToken>())
+        _tracking.GetAvailabilityForEventAsync(
+                eventId,
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
             .Returns([availability]);
         _tracking.GetBuildStatusesForEventAsync(
                 eventId,
@@ -95,6 +103,8 @@ public class ShiftViewServiceTests
         var sut = CreateSut();
         var view = await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
+        view.Profile.Should().BeSameAs(profile);
+        view.Calendar!.Id.Should().Be(eventId);
         view.Availability.Should().BeSameAs(availability);
         view.BuildStatus.Should().BeSameAs(buildStatus);
     }
@@ -104,8 +114,10 @@ public class ShiftViewServiceTests
     {
         var userId = Guid.NewGuid();
         StubActiveCalendar(null);
-        _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((VolunteerEventProfile?)null);
+        _management.GetVolunteerEventProfilesByUserIdsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
         _management.GetVolunteerTagPreferencesForUsersAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
@@ -127,8 +139,10 @@ public class ShiftViewServiceTests
         var scoped = new[] { new ShiftSignup { Id = Guid.NewGuid(), UserId = userId } };
 
         StubActiveCalendar(Calendar(eventId));
-        _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((VolunteerEventProfile?)null);
+        _management.GetVolunteerEventProfilesByUserIdsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
         _management.GetVolunteerTagPreferencesForUsersAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
@@ -142,7 +156,7 @@ public class ShiftViewServiceTests
         var sut = CreateSut();
         var view = await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
-        view.Signups.Should().BeSameAs(scoped);
+        view.Signups.Should().ContainSingle().Which.Should().BeSameAs(scoped[0]);
         await _management.Received(1).GetForUsersAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             eventId,
