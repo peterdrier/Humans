@@ -739,6 +739,6 @@
   <data name="Governance_Notification_ApplicationRejectedBody" xml:space="preserve"><value>La tua domanda per {0} non è stata approvata.</value></data>
   <data name="Governance_Notification_ViewApplication" xml:space="preserve"><value>Visualizza la domanda</value></data>
   <data name="Governance_Notification_TermRenewalReminder" xml:space="preserve"><value>Il tuo periodo come {0} scade il {1}</value></data>
-  <data name="Governance_Notification_TermRenewalReminderBody" xml:space="preserve"><value>Presenta una domanda di rinnovo per mantenere il tuo categoria di adesione.</value></data>
+  <data name="Governance_Notification_TermRenewalReminderBody" xml:space="preserve"><value>Presenta una domanda di rinnovo per mantenere la tua categoria di adesione.</value></data>
   <data name="Governance_Notification_Renew" xml:space="preserve"><value>Rinnova →</value></data>
 </root>

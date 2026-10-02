@@ -1314,8 +1314,11 @@ internal sealed class SurveyService(
             {
                 answer = NormalizeAnswer(question, answer);
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
+                logger.LogWarning(
+                    "Rejected wizard answer for survey {SurveyId} question {QuestionId}: {Reason}",
+                    state.SurveyId, id, ex.Message);
                 invalidAnswers.Add(id);
             }
 
@@ -2198,7 +2201,7 @@ internal sealed class SurveyService(
     /// Keeps only the answers to questions visible under full cascading branching: an answer on a
     /// hidden question neither survives nor counts towards downstream <c>ShowIf</c> conditions.
     /// </summary>
-    private static VisibleAnswerPreparation VisibleAnswers(
+    private VisibleAnswerPreparation VisibleAnswers(
         Survey survey,
         IReadOnlyList<SurveyAnswerInput> answers)
     {
@@ -2213,8 +2216,11 @@ internal sealed class SurveyService(
                 {
                     return NormalizeAnswer(questions[a.QuestionId], a);
                 }
-                catch (InvalidOperationException)
+                catch (InvalidOperationException ex)
                 {
+                    logger.LogWarning(
+                        "Rejected answer for survey {SurveyId} question {QuestionId}: {Reason}",
+                        survey.Id, a.QuestionId, ex.Message);
                     invalidAnswers.Add(a.QuestionId);
                     return a;
                 }
