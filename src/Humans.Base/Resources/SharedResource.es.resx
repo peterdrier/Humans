@@ -1317,4 +1317,6 @@
   <data name="Validation_Range" xml:space="preserve"><value>Introduce un valor entre {1} y {2}.</value></data>
   <data name="Validation_InvalidCharacters" xml:space="preserve"><value>Este campo contiene caracteres no válidos.</value></data>
   <data name="Validation_EmailAddress" xml:space="preserve"><value>Introduce una dirección de correo electrónico válida.</value></data>
+  <data name="Validation_InvalidValue" xml:space="preserve"><value>Introduce un valor válido.</value></data>
+  <data name="Validation_Number" xml:space="preserve"><value>Introduce un número.</value></data>
 </root>

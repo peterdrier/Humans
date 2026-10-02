@@ -49,6 +49,8 @@ Because those roles now share one assembly, the old project graph no longer enfo
 
 **Key change from prior rules:** a service lives in its own section's `Services/` folder and reaches persistence only through that section's `Data/` folder. The old rule ("services own their data access") meant "services inject `DbContext` directly," which conflated business logic with persistence and made "no cross-domain joins" impossible to enforce structurally. The new rule is "services go through their owning repository."
 
+**Shared form validation is a Shell concern.** `AddHumansInfrastructure` configures MVC's model-binding and numeric client-validation messages through `SharedResource` in all six cultures. Resource lookups run when binding or rendering, so cached MVC metadata does not freeze the first request's culture. Section annotations use the same shared resource through the Shell's data-annotation localizer; section-specific business errors remain section-owned.
+
 ## 2. Service Ownership — The Core Rule
 
 Each service is the exclusive gateway to its data. No component — controller, other service, job, or view component — may bypass the owning service to reach its tables, its cache, or its store.

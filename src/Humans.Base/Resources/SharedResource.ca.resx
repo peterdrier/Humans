@@ -1317,4 +1317,6 @@
   <data name="Validation_Range" xml:space="preserve"><value>Introdueix un valor entre {1} i {2}.</value></data>
   <data name="Validation_InvalidCharacters" xml:space="preserve"><value>Aquest camp conté caràcters no vàlids.</value></data>
   <data name="Validation_EmailAddress" xml:space="preserve"><value>Introdueix una adreça de correu electrònic vàlida.</value></data>
+  <data name="Validation_InvalidValue" xml:space="preserve"><value>Introdueix un valor vàlid.</value></data>
+  <data name="Validation_Number" xml:space="preserve"><value>Introdueix un número.</value></data>
 </root>
