@@ -58,6 +58,7 @@ public class ProfileControllerEditTests
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly IShiftVolunteerProfiles _shiftMgmt = Substitute.For<IShiftVolunteerProfiles>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
+    private readonly IEmailOutboxServiceRead _emailOutbox = Substitute.For<IEmailOutboxServiceRead>();
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _profileId = Guid.NewGuid();
@@ -100,7 +101,7 @@ public class ProfileControllerEditTests
             localizer,
             sharedLocalizer,
             Substitute.For<ICampaignService>(),
-            Substitute.For<IEmailOutboxServiceRead>(),
+            _emailOutbox,
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             _applicationDecisionService,
             _accountDeletionService,
@@ -282,6 +283,43 @@ public class ProfileControllerEditTests
             .GetField("_bytes", BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(limit)
             .Should().Be(21L * 1024 * 1024);
+    }
+
+    [HumansTheory]
+    [InlineData("Outbox")]
+    [InlineData("Privacy")]
+    [InlineData("DietaryMedical")]
+    [InlineData("OutboxAfterViewer")]
+    public async Task ProfileReadPages_StopLoadingAfterRequestCancellation(string page)
+    {
+        using var request = new CancellationTokenSource();
+        _controller.HttpContext.RequestAborted = request.Token;
+        var abandon = false;
+        async ValueTask<UserInfo?> ReadViewer(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (abandon && string.Equals(page, "OutboxAfterViewer", StringComparison.Ordinal))
+                await request.CancelAsync();
+            return new User { Id = _userId, PreferredLanguage = "en" }.ToUserInfo();
+        }
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(call => ReadViewer(call.Arg<CancellationToken>()));
+        _emailOutbox.GetMessagesForUserAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Array.Empty<EmailOutboxMessageDto>();
+        });
+        Func<Task<IActionResult>> load = page switch
+        {
+            "Privacy" => () => _controller.Privacy(),
+            "DietaryMedical" => () => _controller.DietaryMedical(),
+            _ => () => _controller.MyOutbox(),
+        };
+        (await load()).Should().BeOfType<ViewResult>();
+        abandon = true;
+        if (!string.Equals(page, "OutboxAfterViewer", StringComparison.Ordinal))
+            await request.CancelAsync();
+        await load.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]

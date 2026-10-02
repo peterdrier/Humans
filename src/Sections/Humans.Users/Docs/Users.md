@@ -622,6 +622,8 @@ Admin-only flows for the section's cross-account hygiene (the `/Profile/Admin/*`
 
 ## Invariants
 
+- Outbox, privacy and dietary/medical GETs carry request cancellation through their current-user reads and, for outbox, email history. Dietary load errors remain localized; an abandoned request propagates cancellation.
+
 - Profile and dietary/medical forms render the Other allergy/intolerance labels and required-description errors in all six supported cultures.
 
 - `Profile.DietaryPreference` is stored as free text (`varchar(200)?`), not a constrained enum. The `/Profile/Me/Edit` and `/Profile/Me/DietaryMedical` radio groups constrain the UI to `DietaryOptions.DietaryPreferences` (Omnivore / Vegetarian / Vegan / Pescatarian), but neither `ProfileController` nor `UserService.SaveDietaryMedicalAsync` re-checks membership on POST — any non-blank string persists. Deliberate: legacy free-text values predating the [dietary nudge](features/dietary-medical-nudge.md) stay readable without a data migration. Allergies are the exception — the Edit path filters them against `DietaryOptions.AllergyOptions` before saving.

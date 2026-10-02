@@ -636,11 +636,11 @@ internal sealed class ProfileController(
     [HttpGet("Me/Outbox")]
     public async Task<IActionResult> MyOutbox()
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
-        var messages = await emailOutboxService.GetMessagesForUserAsync(user.Id);
+        var messages = await emailOutboxService.GetMessagesForUserAsync(user.Id, HttpContext.RequestAborted);
 
         return View("Outbox", messages);
     }
@@ -648,7 +648,7 @@ internal sealed class ProfileController(
     [HttpGet("Me/Privacy")]
     public async Task<IActionResult> Privacy()
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
@@ -695,7 +695,7 @@ internal sealed class ProfileController(
     {
         try
         {
-            var user = await GetCurrentUserInfoAsync();
+            var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
             if (user is null)
                 return NotFound();
 
@@ -715,7 +715,7 @@ internal sealed class ProfileController(
 
             return View(vm);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to load dietary/medical info for user");
             SetError(localizer["Profile_DietaryMedical_LoadFailed"].Value);
