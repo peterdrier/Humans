@@ -122,6 +122,7 @@ Both kinds of submission are managed from a single page — **My Event Submissio
 **Acceptance Criteria:**
 - Sensitive categories (is_sensitive = true) visible by default
 - Attendee can toggle off any category; preference persists across sessions
+- The authenticated preference API accepts category slugs case-insensitively; reads and saves normalize exclusions to lowercase so mixed-case input hides the same category. Reads leave older stored rows unchanged.
 - If logged in to Humans: preference stored in UserGuidePreference (server-side)
 - If not logged in: preference stored in localStorage on the PWA
 

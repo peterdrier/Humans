@@ -448,11 +448,13 @@ internal sealed class EventService(
     {
         var pref = await repo.GetPreferenceAsync(userId, ct);
         if (pref == null) return [];
-        return JsonSerializer.Deserialize<List<string>>(pref.ExcludedCategorySlugs) ?? [];
+        return (JsonSerializer.Deserialize<List<string>>(pref.ExcludedCategorySlugs) ?? [])
+            .Select(slug => slug.ToLowerInvariant()).ToList();
     }
 
     public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default)
-        => repo.UpsertPreferenceAsync(userId, JsonSerializer.Serialize(slugs), clock.GetCurrentInstant(), ct);
+        => repo.UpsertPreferenceAsync(userId,
+            JsonSerializer.Serialize(slugs.Select(slug => slug.ToLowerInvariant())), clock.GetCurrentInstant(), ct);
 
     public Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default)
         => repo.GetModerationStatusCountsAsync(ct);

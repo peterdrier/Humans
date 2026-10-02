@@ -1,3 +1,9 @@
+using System.Security.Claims;
+using Humans.Camps.Contracts;
+using Humans.Events.Controllers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
@@ -227,6 +233,62 @@ public sealed class EventServiceTests
         await act.Should().ThrowAsync<KeyNotFoundException>();
         _repo.Favourites.Should().BeEmpty();
         _repo.SaveChangesCount.Should().Be(0);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CategoryPreferences_AcceptedMixedCaseSlugsExcludeEvents(bool previouslyStored)
+    {
+        var userId = Guid.NewGuid();
+        var music = new EventCategory { Id = Guid.NewGuid(), Name = "Music", Slug = "music", IsActive = true };
+        var workshop = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.AddRange([music, workshop]);
+        var hidden = ExistingEvent(Guid.NewGuid(), music.Id, EventStatus.Approved);
+        hidden.Category = music;
+        var visible = ExistingEvent(Guid.NewGuid(), workshop.Id, EventStatus.Approved);
+        visible.Category = workshop;
+        _repo.Events.AddRange([hidden, visible]);
+        var registrations = new ServiceCollection();
+        registrations.AddKeyedScoped<IEventService>(CachingEventService.InnerServiceKey, (_, _) => _service);
+        using var provider = registrations.BuildServiceProvider();
+        var cached = new CachingEventService(provider.GetRequiredService<IServiceScopeFactory>(), NullLogger<CachingEventService>.Instance);
+        if (previouslyStored)
+        {
+            _repo.Preference = new EventPreference
+            {
+                Id = Guid.NewGuid(), UserId = userId,
+                ExcludedCategorySlugs = "[\"MuSiC\"]", UpdatedAt = _clock.GetCurrentInstant()
+            };
+        }
+        else
+        {
+            var controller = new EventsApiController(cached, Substitute.For<ICampServiceRead>(), _userService,
+                NullLogger<EventsApiController>.Instance)
+            {
+                ControllerContext = new()
+                {
+                    HttpContext = new DefaultHttpContext
+                    {
+                        User = new ClaimsPrincipal(new ClaimsIdentity(
+                            [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+                    }
+                }
+            };
+            var response = await controller.UpdatePreferences(new EventsApiController.UpdatePreferencesRequest
+            {
+                ExcludedCategorySlugs = ["MuSiC"]
+            });
+            response.Should().BeOfType<OkObjectResult>();
+        }
+
+        var exclusions = await cached.GetExcludedCategorySlugsAsync(userId, TestContext.Current.CancellationToken);
+        var events = await cached.GetApprovedEventsAsync(null, null, null, null, exclusions, TestContext.Current.CancellationToken);
+
+        events.Should().ContainSingle().Which.Id.Should().Be(visible.Id);
+        exclusions.Should().Equal("music");
+        _repo.Preference!.ExcludedCategorySlugs.Should().Be(previouslyStored ? "[\"MuSiC\"]" : "[\"music\"]");
+        _repo.SaveChangesCount.Should().Be(previouslyStored ? 0 : 1);
     }
 
     [HumansFact]
