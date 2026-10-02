@@ -43,9 +43,10 @@ internal sealed class FinanceController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ProvisionHoldedAccounts(int blockStart, bool addAll)
     {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
         try
         {
-            var n = await holdedConnector.ProvisionAsync(blockStart, addAll);
+            var n = await holdedConnector.ProvisionAsync(blockStart, addAll, actorUserId);
             SetSuccess($"Provisioned {n} Holded account(s).");
         }
         catch (Exception ex)
@@ -244,9 +245,10 @@ internal sealed class FinanceController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BindCreditor(Guid userId, int supplierAccountNum, string? returnUrl)
     {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
         try
         {
-            var result = await holdedConnector.SetCreditorContactAsync(userId, supplierAccountNum);
+            var result = await holdedConnector.SetCreditorContactAsync(userId, supplierAccountNum, actorUserId);
             if (result.Succeeded)
                 SetSuccess($"Bound member to creditor account {supplierAccountNum}.");
             else
@@ -267,9 +269,10 @@ internal sealed class FinanceController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnbindCreditor(Guid userId, string? returnUrl)
     {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
         try
         {
-            if (await holdedConnector.ClearCreditorContactAsync(userId))
+            if (await holdedConnector.ClearCreditorContactAsync(userId, actorUserId))
                 SetSuccess("Cleared the member's creditor account binding.");
             else
                 SetError("That member has no creditor account binding to clear.");

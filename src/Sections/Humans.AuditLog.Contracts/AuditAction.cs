@@ -345,4 +345,10 @@ public enum AuditAction
 
     // A Store admin's repair run copied a legacy payment's int Method into its string MethodName column.
     StorePaymentMethodBackfilled,
+
+    // A Finance admin bound or unbound a member's Holded creditor account, deciding who gets paid.
+    HoldedCreditorBound,
+    HoldedCreditorUnbound,
+    // A Finance admin provisioned a Holded expense account for a budget category from /Finance/HoldedAccounts.
+    HoldedCategoryAccountProvisioned,
 }

@@ -18,16 +18,17 @@ internal interface IHoldedFinanceAdminService : IApplicationService
     Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(int blockStart, CancellationToken ct = default);
 
     /// <summary>Creates the plan's missing accounts in Holded and maps them; additive only.</summary>
-    Task<int> ProvisionAsync(int blockStart, bool addAll, CancellationToken ct = default);
+    Task<int> ProvisionAsync(int blockStart, bool addAll, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Manually binds a member to an existing Holded creditor account by 400000xx number.
     /// Fails, writing nothing, when the account is already bound or no Holded contact carries it.</summary>
-    Task<CreditorBindResult> SetCreditorContactAsync(Guid userId, int supplierAccountNum, CancellationToken ct = default);
+    Task<CreditorBindResult> SetCreditorContactAsync(
+        Guid userId, int supplierAccountNum, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Clears the member's creditor binding — the remedy for a wrong bind or a collision. Removes
     /// the whole row, not just the number: the contact id alone merges two members' payables just as
     /// thoroughly. The next push re-resolves. False when nothing was bound.</summary>
-    Task<bool> ClearCreditorContactAsync(Guid userId, CancellationToken ct = default);
+    Task<bool> ClearCreditorContactAsync(Guid userId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Everything <c>/Finance/Holded</c> renders, from the local cache only — no Holded
     /// HTTP call, so the page cannot inherit the connector's timeout

@@ -11,7 +11,3 @@ inbox:
     id: FIN-3
     what: "GetOrCreateDocSyncStateAsync (Finance/Data/Repository.cs) inserts the holded_doc_sync_state singleton on first call, so Backdoor's read-only GET /api/backdoor/finance/holded-sync (BackdoorFinanceController.HoldedSync) can write on a fresh DB. Fix: add a pure-read GetDocSyncStateAsync for Backdoor's path. Follow-up: peterdrier/Humans#1840. Found in peterdrier/Humans#1839 re-review (m4)."
     review: light
-  - added: 2026-10-02
-    id: FIN-4
-    what: "Admin creditor Bind (SetCreditorContactAsync) and Unbind (ClearCreditorContactAsync), and category-account provisioning (ProvisionAsync), change who gets paid or what gets booked yet write no audit entry; Unbind only logs. The fix needs new AuditAction values in the AuditLog contracts (or a ruling that provisioning reuses HoldedExpenseAccountCreated), a public-surface addition outside section-doctor's remit. Found by /section-doctor on Finance 2026-10-02 (finding 9)."
-    review: light

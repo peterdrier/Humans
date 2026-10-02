@@ -144,7 +144,8 @@ internal sealed class Service(
         return new HoldedProvisioningPlan(rows, nextFree);
     }
 
-    public async Task<int> ProvisionAsync(int blockStart, bool addAll, CancellationToken ct = default)
+    public async Task<int> ProvisionAsync(
+        int blockStart, bool addAll, Guid actorUserId, CancellationToken ct = default)
     {
         var plan = await GetProvisioningPlanAsync(blockStart, ct);
         var toAdd = plan.Rows.Where(r => string.Equals(r.State, "ToAdd", StringComparison.Ordinal)).ToList();
@@ -171,6 +172,10 @@ internal sealed class Service(
                     CreatedAt = now,
                     UpdatedAt = now,
                 }, ct);
+                await audit.LogAsync(AuditAction.HoldedCategoryAccountProvisioned, HoldedExpenseAccount,
+                    row.BudgetCategoryId,
+                    $"Provisioned Holded expense account {row.ProposedAccountNum.Value} '{accountName}'",
+                    actorUserId);
                 created++;
             }
             catch (Exception ex)
@@ -823,7 +828,7 @@ internal sealed class Service(
     }
 
     public async Task<CreditorBindResult> SetCreditorContactAsync(
-        Guid userId, int supplierAccountNum, CancellationToken ct = default)
+        Guid userId, int supplierAccountNum, Guid actorUserId, CancellationToken ct = default)
     {
         // The dropdown is filtered, but it is client data — the account number arrives on a POST.
         // Holded numbers every supplier contact, so without this an org vendor's account is bindable.
@@ -868,6 +873,9 @@ internal sealed class Service(
             CreatedAt = now,
             UpdatedAt = now,
         }, now, ct);
+        await audit.LogAsync(AuditAction.HoldedCreditorBound, HoldedCreditorAccount, userId,
+            $"Bound creditor account {supplierAccountNum} (Holded contact {contact.Id})",
+            actorUserId, userId, nameof(User));
         return CreditorBindResult.Success;
     }
 
@@ -1027,7 +1035,19 @@ internal sealed class Service(
         }, now, ct);
     }
 
-    public async Task<bool> ClearCreditorContactAsync(Guid userId, CancellationToken ct = default)
+    public async Task<bool> ClearCreditorContactAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
+        if (binding is null || !await DeleteCreditorBindingAsync(userId, ct)) return false;
+
+        await audit.LogAsync(AuditAction.HoldedCreditorUnbound, HoldedCreditorAccount, userId,
+            $"Unbound creditor account {binding.SupplierAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "(unresolved)"} "
+            + $"(Holded contact {binding.HoldedContactId})",
+            actorUserId, userId, nameof(User));
+        return true;
+    }
+
+    private async Task<bool> DeleteCreditorBindingAsync(Guid userId, CancellationToken ct)
     {
         var removed = await repo.DeleteCreditorContactAsync(userId, ct);
         if (removed)
@@ -2335,7 +2355,7 @@ internal sealed class Service(
     /// this section does own survive on the same basis — see <see cref="PayoutRetention"/>.
     /// </summary>
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
-        ClearCreditorContactAsync(userId, ct);
+        DeleteCreditorBindingAsync(userId, ct);
 
     // ─── Helpers ──────────────────────────────────────────────────────────────────
 
