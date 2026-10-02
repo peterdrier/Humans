@@ -1132,12 +1132,12 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         };
     }
 
-    private async Task InvalidateLeadBadgesAsync(Guid campId, CancellationToken cancellationToken)
+    private async Task<Camp?> InvalidateLeadBadgesAsync(Guid campId, CancellationToken cancellationToken)
     {
         var camp = await _repo.GetByIdAsync(campId, cancellationToken);
         if (camp is null)
         {
-            return;
+            return null;
         }
         var leadUserIds = new HashSet<Guid>();
         foreach (var season in camp.Seasons)
@@ -1152,6 +1152,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         {
             _leadBadgeInvalidator.Invalidate(leadUserId);
         }
+        return camp;
     }
 
     /// <summary>Sole CampMember→Removed transition: role-cascade, state flip, audit. Callers own preconditions and post-effects.</summary>
@@ -1269,9 +1270,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             approvedByUserId,
             relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
 
-        await InvalidateLeadBadgesAsync(scopedCampId, cancellationToken);
-
-        var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken);
+        var camp = await InvalidateLeadBadgesAsync(scopedCampId, cancellationToken);
         var campName = camp?.Seasons.FirstOrDefault(s => s.Id == member.CampSeasonId)?.Name ?? camp?.Slug ?? "a camp";
         var slug = camp?.Slug;
         try
@@ -1312,9 +1311,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             cascadeRoleAssignments: false,
             cancellationToken);
 
-        await InvalidateLeadBadgesAsync(scopedCampId, cancellationToken);
-
-        var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken);
+        var camp = await InvalidateLeadBadgesAsync(scopedCampId, cancellationToken);
         var campName = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug ?? "a camp";
         try
         {
