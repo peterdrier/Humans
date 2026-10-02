@@ -1037,8 +1037,8 @@ internal sealed class Service(
 
     public async Task<bool> ClearCreditorContactAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
     {
-        var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
-        if (binding is null || !await DeleteCreditorBindingAsync(userId, ct)) return false;
+        // The audit names the row the delete removed, not an earlier read a push could have overtaken.
+        if (await DeleteCreditorBindingAsync(userId, ct) is not { } binding) return false;
 
         await audit.LogAsync(AuditAction.HoldedCreditorUnbound, HoldedCreditorAccount, userId,
             $"Unbound creditor account {binding.SupplierAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "(unresolved)"} "
@@ -1047,10 +1047,10 @@ internal sealed class Service(
         return true;
     }
 
-    private async Task<bool> DeleteCreditorBindingAsync(Guid userId, CancellationToken ct)
+    private async Task<HoldedCreditorContact?> DeleteCreditorBindingAsync(Guid userId, CancellationToken ct)
     {
         var removed = await repo.DeleteCreditorContactAsync(userId, ct);
-        if (removed)
+        if (removed is not null)
             logger.LogInformation("Cleared the creditor binding for member {UserId}.", userId);
         return removed;
     }

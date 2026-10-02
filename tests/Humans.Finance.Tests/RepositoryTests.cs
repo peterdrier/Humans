@@ -171,8 +171,8 @@ public class RepositoryTests
         await repo.UpsertCreditorContactAsync(Binding(ana, "c-a", 40000004), Now, Ct);
         await repo.UpsertCreditorContactAsync(Binding(bo, "c-b", 40000005), Now, Ct);
 
-        (await repo.DeleteCreditorContactAsync(ana, Ct)).Should().BeTrue();
-        (await repo.DeleteCreditorContactAsync(ana, Ct)).Should().BeFalse();
+        (await repo.DeleteCreditorContactAsync(ana, Ct))!.HoldedContactId.Should().Be("c-a");
+        (await repo.DeleteCreditorContactAsync(ana, Ct)).Should().BeNull();
 
         await using var ctx = await factory.CreateDbContextAsync(Ct);
         ctx.HoldedCreditorContacts.Single().UserId.Should().Be(bo);

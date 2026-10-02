@@ -1425,9 +1425,11 @@ public class HoldedFinanceServiceTests
     public async Task ClearCreditorContact_RemovesTheBinding()
     {
         var userId = Guid.NewGuid();
+        // An earlier read may hold a stale binding; the audit must name the row actually deleted.
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact { UserId = userId, HoldedContactId = "c0", SupplierAccountNum = 40000003 });
+        _repo.DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 });
-        _repo.DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
 
         var removed = await MakeService().ClearCreditorContactAsync(
             userId, Admin, Xunit.TestContext.Current.CancellationToken);
@@ -1435,14 +1437,14 @@ public class HoldedFinanceServiceTests
         removed.Should().BeTrue();
         await _repo.Received(1).DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(AuditAction.HoldedCreditorUnbound, Arg.Any<string>(), userId,
-            Arg.Is<string>(d => d.Contains("40000004")), Admin, userId, Arg.Any<string?>());
+            Arg.Is<string>(d => d.Contains("40000004") && d.Contains("c1")), Admin, userId, Arg.Any<string?>());
     }
 
     [HumansFact]
     public async Task ClearCreditorContact_NothingBound_ReportsFalse()
     {
         var userId = Guid.NewGuid();
-        _repo.DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+        _repo.DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
 
         var removed = await MakeService().ClearCreditorContactAsync(
             userId, Admin, Xunit.TestContext.Current.CancellationToken);
@@ -1809,7 +1811,8 @@ public class HoldedFinanceServiceTests
         // Article 17: the binding is erased in full; the payout files are the accounting record
         // and stay, on a stated legal basis the declaration carries.
         var userId = Guid.NewGuid();
-        _repo.DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+        _repo.DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact { UserId = userId, HoldedContactId = "c1" });
         var svc = MakeService();
 
         await svc.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
