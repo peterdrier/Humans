@@ -801,6 +801,40 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.Should().BeEmpty();
     }
 
+    [HumansFact]
+    public async Task GetBoardVotingDetailAsync_ReturnsVotesWithoutUnusedVoterNameLookup()
+    {
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        var voterId = Guid.NewGuid();
+        var votedAt = Clock.GetCurrentInstant();
+        GovernanceDb.BoardVotes.Add(new BoardVote
+        {
+            Id = Guid.NewGuid(),
+            ApplicationId = app.Id,
+            BoardMemberUserId = voterId,
+            Vote = VoteChoice.Yay,
+            Note = "Support",
+            VotedAt = votedAt
+        });
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        ClearAllTrackers();
+        _userService.GetUserInfosAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(
+                new IOException("Unused voter name lookup failed")));
+
+        var detail = await _service.GetBoardVotingDetailAsync(
+            app.Id, Xunit.TestContext.Current.CancellationToken);
+
+        detail.Should().NotBeNull();
+        detail.ApplicationId.Should().Be(app.Id);
+        var vote = detail.Votes.Should().ContainSingle().Subject;
+        vote.BoardMemberUserId.Should().Be(voterId);
+        vote.Vote.Should().Be(VoteChoice.Yay);
+        vote.Note.Should().Be("Support");
+        vote.VotedAt.Should().Be(votedAt);
+    }
+
     // --- GetUserApplicationDetailAsync ---
 
     [HumansFact]

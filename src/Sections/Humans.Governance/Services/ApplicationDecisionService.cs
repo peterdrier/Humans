@@ -480,7 +480,6 @@ internal sealed class ApplicationDecisionService(
             Votes: a.BoardVotes
                 .Select(v => new BoardVoteRow(
                     BoardMemberUserId: v.BoardMemberUserId,
-                    BoardMemberDisplayName: null,
                     Vote: v.Vote,
                     Note: v.Note,
                     VotedAt: v.VotedAt))
@@ -507,16 +506,9 @@ internal sealed class ApplicationDecisionService(
         var applicantInfo = await userService.GetUserInfoAsync(application.UserId, ct);
         var profile = applicantInfo?.Profile;
 
-        var voterIds = application.BoardVotes
-            .Select(v => v.BoardMemberUserId)
-            .Distinct()
-            .ToList();
-        var votersById = await userService.GetUserInfosAsync(voterIds, ct);
-
         var voteRows = application.BoardVotes
             .Select(v => new BoardVoteRow(
                 BoardMemberUserId: v.BoardMemberUserId,
-                BoardMemberDisplayName: votersById.GetValueOrDefault(v.BoardMemberUserId)?.BurnerName,
                 Vote: v.Vote,
                 Note: v.Note,
                 VotedAt: v.VotedAt))
