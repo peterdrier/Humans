@@ -306,18 +306,34 @@ internal sealed partial class WorkgroupService
         foreach (var group in recipients.GroupBy(person => person.Language, StringComparer.OrdinalIgnoreCase))
         {
             var culture = System.Globalization.CultureInfo.GetCultureInfo(group.Key);
-            var title = $"{NoticeResources.GetString(titleKey, culture)}: {w.Name}";
+            var copy = PrepareNoticeCopy($"{NoticeResources.GetString(titleKey, culture)}: {w.Name}", body);
             await notifications.SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,
-                title, group.Select(person => person.Id).ToList(), body,
+                copy.Title, group.Select(person => person.Id).ToList(), copy.Body,
                 actionUrl: PageUrl(w), sourceKey: w.Id.ToString(), cancellationToken: ct);
         }
     }
 
     private Task NotifyBoardAsync(
-        NotificationSource source, string title, WorkgroupInfo w, string body, CancellationToken ct) =>
-        notifications.SendToRoleAsync(source, NotificationClass.Actionable,
-            NotificationPriority.Normal, title, RoleNames.Board, body,
+        NotificationSource source, string title, WorkgroupInfo w, string body, CancellationToken ct)
+    {
+        var copy = PrepareNoticeCopy(title, body);
+        return notifications.SendToRoleAsync(source, NotificationClass.Actionable,
+            NotificationPriority.Normal, copy.Title, RoleNames.Board, copy.Body,
             actionUrl: "/Workgroups/Admin", cancellationToken: ct);
+    }
+
+    // Preview limits belong at both notification boundaries; full details stay in the register/log.
+    private static (string Title, string? Body) PrepareNoticeCopy(string title, string? body)
+    {
+        if (title.EnumerateRunes().Count() > 200)
+        {
+            body = body is null ? title : string.Concat(title, "\n\n", body);
+            title = string.Concat(title.EnumerateRunes().Take(199)) + "…";
+        }
+        if (body is not null && body.EnumerateRunes().Count() > 2000)
+            body = string.Concat(body.EnumerateRunes().Take(1999)) + "…";
+        return (title, body);
+    }
 
     /// <summary>
     /// One notice per recipient, addressed by name. Email failures never fail the write:

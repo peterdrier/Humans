@@ -1,4 +1,5 @@
 using Xunit;
+using NSubstitute;
 using AwesomeAssertions;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
@@ -14,6 +15,60 @@ namespace Humans.Workgroups.Tests.Services;
 /// </summary>
 public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 {
+    [HumansTheory]
+    [InlineData("apply")]
+    [InlineData("refer")]
+    [InlineData("refuse")]
+    public async Task Notices_LongGroupNameAndDetail_FitStorageAndKeepFullRecords(string action)
+    {
+        var name = new string('x', 200);
+        var detail = string.Concat(Enumerable.Repeat("🚀", 1998)) + "tail";
+        Guid id;
+        string fullTitle;
+        if (string.Equals(action, "apply", StringComparison.Ordinal))
+        {
+            id = await NewService().ApplyAsync(SeedUser(), new WorkgroupApplication(
+                name, "Purpose", "Report", WorkgroupDeliverableKind.Report,
+                WorkgroupAudience.Board, null, null, null), Ct);
+            fullTitle = $"Working group applied: {name}";
+        }
+        else
+        {
+            var group = await SeedWorkgroupAsync(status: WorkgroupStatus.Applied, name: name);
+            group.Slug = "boundary-group";
+            await Db.SaveChangesAsync(Ct);
+            id = group.Id;
+            if (string.Equals(action, "refer", StringComparison.Ordinal))
+            {
+                await NewService().ReferAsync(id, SeedUser(), detail, Ct);
+                fullTitle = $"Referred to the Board: {name}";
+            }
+            else
+            {
+                await NewService().RefuseAsync(id, SeedUser(), detail, Ct);
+                fullTitle = $"Refused: {name}";
+            }
+        }
+
+        var args = Notifications.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        ((string)args[3]!).Should().Be(string.Concat(fullTitle.EnumerateRunes().Take(199)) + "…");
+        var body = (string)args[5]!;
+        body.Should().StartWith(fullTitle + "\n\n");
+        body.EnumerateRunes().Count().Should().BeLessThanOrEqualTo(2000);
+        body.Should().NotContain("�");
+        await using var ctx = OpenContext();
+        var stored = await ctx.Workgroups.SingleAsync(w => w.Id == id, Ct);
+        stored.Name.Should().Be(name);
+        if (!string.Equals(action, "apply", StringComparison.Ordinal))
+        {
+            body.EnumerateRunes().Count().Should().Be(2000);
+            body.Should().EndWith("…");
+            (await ctx.LogEntries.SingleAsync(e => e.WorkgroupId == id, Ct)).Body.Should().Be(detail);
+        }
+        if (string.Equals(action, "refuse", StringComparison.Ordinal))
+            stored.Reasons.Should().Be(detail);
+    }
+
     // ── Register: Applied/Referred → Active ─────────────────────────────────
 
     [HumansTheory]

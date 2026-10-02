@@ -287,6 +287,10 @@ Settings and Register an existing group on first setup or after clearing the que
 
 ## Triggers
 
+Member and Board notice previews fit notification storage: 200 Unicode characters for titles,
+2,000 for bodies. Oversized titles move into the body before the detail excerpt; ellipses mark
+shortened copy. Full names and notes remain in the register and system log.
+
 - Apply: the applicant becomes the first coordinator (plus an optional second); writes
   `Applied`; notifies and emails the Board.
 - Register: creates the Drive subfolder, flips to Active, writes `Registered`, audits,
