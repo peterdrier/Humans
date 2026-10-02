@@ -213,23 +213,23 @@
   <data name="Profile_WhatsApp" xml:space="preserve">
     <value>WhatsApp</value>
   </data>
-  <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Dietary &amp; medical info</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Dietary preference</value></data>
+  <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Informations alimentaires et médicales</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Préférence alimentaire</value></data>
   <data name="Profile_DietaryMedical_DietaryPreference_Omnivore" xml:space="preserve"><value>Omnivore</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Vegetarian" xml:space="preserve"><value>Vegetarian</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Vegan" xml:space="preserve"><value>Vegan</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Pescatarian" xml:space="preserve"><value>Pescatarian</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Vegetarian" xml:space="preserve"><value>Végétarien·ne</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Vegan" xml:space="preserve"><value>Végan·e</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Pescatarian" xml:space="preserve"><value>Pescétarien·ne</value></data>
   <data name="Profile_DietaryMedical_Allergies_Label" xml:space="preserve"><value>Allergies</value></data>
   <data name="Profile_DietaryMedical_AllergyOther_Label" xml:space="preserve"><value>Autre allergie — veuillez préciser</value></data>
   <data name="Profile_DietaryMedical_Intolerances_Label" xml:space="preserve"><value>Intolerances</value></data>
   <data name="Profile_DietaryMedical_IntoleranceOther_Label" xml:space="preserve"><value>Autre intolérance — veuillez préciser</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Only visible to you and the No-Info Admins. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc.</value></data>
-  <data name="Profile_DietaryMedical_Saved" xml:space="preserve"><value>Your dietary and medical info has been saved.</value></data>
+  <data name="Profile_DietaryMedical_Saved" xml:space="preserve"><value>Vos informations alimentaires et médicales ont été enregistrées.</value></data>
   <data name="Profile_DietaryMedical_AllergyOther_Required" xml:space="preserve"><value>Veuillez décrire votre autre allergie.</value></data>
   <data name="Profile_DietaryMedical_IntoleranceOther_Required" xml:space="preserve"><value>Veuillez décrire votre autre intolérance.</value></data>
-  <data name="Profile_DietaryMedical_LoadFailed" xml:space="preserve"><value>Failed to load dietary and medical info.</value></data>
-  <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>Failed to save dietary and medical info.</value></data>
-  <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
+  <data name="Profile_DietaryMedical_LoadFailed" xml:space="preserve"><value>Impossible de charger les informations alimentaires et médicales.</value></data>
+  <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>Impossible d’enregistrer les informations alimentaires et médicales.</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Problèmes de santé</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
   <data name="Profile_Assigned" xml:space="preserve"><value>Attribué</value></data>
   <data name="Profile_Campaign" xml:space="preserve"><value>Campagne</value></data>
