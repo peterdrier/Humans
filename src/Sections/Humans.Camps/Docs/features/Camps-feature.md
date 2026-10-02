@@ -67,6 +67,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 **Acceptance Criteria:**
 - Only available when a season is open for registration
 - Captures camp details: name, contact info, Swiss camp flag, times at Nowhere
+- Registration and editing enforce required text, email syntax and persisted text-length bounds server-side, with localized validation errors before writes
 - Captures season-specific data: description, vibes, kids policy, sound zone, etc.
 - Optional historical names (comma-separated)
 - Creates camp with Pending status

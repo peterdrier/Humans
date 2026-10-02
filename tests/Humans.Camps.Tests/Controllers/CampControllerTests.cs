@@ -56,6 +56,93 @@ public class CampControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    public async Task CampForms_ValidateExistingFieldLimitsBeforeWriting(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var shared = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+        var userId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: userId);
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+
+        foreach (var edit in new[] { false, true })
+        {
+            var model = edit ? new CampEditViewModel() : new CampRegisterViewModel();
+            // MVC converts an empty posted email field to null before validation.
+            model.ContactEmail = null!;
+            var controller = BuildController(userId);
+            controller.HttpContext.RequestServices = services;
+            validator.Validate(controller.ControllerContext, null, "", model);
+            foreach (var field in new[] { "Name", "ContactEmail", "BlurbLong", "BlurbShort", "Languages" })
+            {
+                controller.ModelState.Should().ContainKey(field);
+                controller.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage
+                    .Should().Be(shared["Validation_Required"].Value);
+            }
+
+            controller.ModelState.Clear();
+            model.Name = new string('n', 257);
+            model.ContactEmail = new string('a', 245) + "@example.com";
+            model.ContactPhone = "+" + new string('1', 64);
+            model.BlurbLong = new string('x', 4001);
+            model.BlurbShort = new string('x', 1001);
+            model.Languages = new string('x', 257);
+            model.KidsAreaDescription = new string('x', 2001);
+            model.PerformanceTypes = new string('x', 1001);
+            validator.Validate(controller.ControllerContext, null, "", model);
+            foreach (var (field, max) in new[]
+            {
+                ("Name", 256), ("ContactEmail", 256), ("ContactPhone", 64), ("BlurbLong", 4000),
+                ("BlurbShort", 1000), ("Languages", 256), ("KidsAreaDescription", 2000), ("PerformanceTypes", 1000)
+            })
+            {
+                controller.ModelState.Should().ContainKey(field);
+                controller.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage
+                    .Should().Be(shared["Validation_MaxLength", field, max].Value);
+            }
+
+            var result = edit ? await controller.Edit(camp.Slug, (CampEditViewModel)model) : await controller.Register(model);
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+
+            controller.ModelState.Clear();
+            model.Name = new string('n', 256);
+            model.ContactEmail = new string('a', 244) + "@example.com";
+            model.ContactPhone = "+" + new string('1', 63);
+            model.BlurbLong = new string('x', 4000);
+            model.BlurbShort = new string('x', 1000);
+            model.Languages = new string('x', 256);
+            model.KidsAreaDescription = new string('x', 2000);
+            model.PerformanceTypes = new string('x', 1000);
+            validator.Validate(controller.ControllerContext, null, "", model);
+            controller.ModelState.IsValid.Should().BeTrue();
+
+            controller.ModelState.Clear();
+            model.ContactEmail = "invalid email";
+            validator.Validate(controller.ControllerContext, null, "", model);
+            controller.ModelState.Should().ContainKey("ContactEmail");
+            controller.ModelState["ContactEmail"]!.Errors.Should().ContainSingle().Which.ErrorMessage
+                .Should().Be(shared["Validation_EmailAddress"].Value);
+        }
+        _camps.ReceivedCalls().Should().NotContain(call =>
+            call.GetMethodInfo().Name == "CreateCampAsync" || call.GetMethodInfo().Name == "UpdateCampAsync");
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
     public async Task RegistrationAndRenewal_LocalizeRuleFailures(string culture)
     {
         using var cultureScope = new CultureScope(culture);
