@@ -299,6 +299,8 @@ shortened copy. Full names and notes remain in the register and system log.
   notified/emailed; Withdraw and Reactivate also request a Drive sync (write access changes).
 - Join/Leave: system log entry (`MemberJoined`/`MemberLeft`), Drive sync requested; a
   forced coordinator handover on last-coordinator leave also writes `CoordinatorChanged`.
+  Names needed for membership/coordinator logs are read before persistence; a failed lookup
+  leaves membership unchanged. Handover reuses the promoted person’s name for log and audit.
 - Publish/OpenComments/CloseComments/Deliver: system log entry; Publish and OpenComments
   notify current members; Deliver notifies and emails the Board.
 - RecordDisposition: system log entry, audit entry, members notified, coordinators emailed.
