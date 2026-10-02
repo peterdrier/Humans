@@ -218,16 +218,19 @@ internal sealed class OnboardingService(
 
         try
         {
+            var body = string.IsNullOrWhiteSpace(reason)
+                ? NoticeResources.GetString("Onboarding_Notification_ProfileRejectedBody", culture)!
+                : string.Format(culture,
+                    NoticeResources.GetString("Onboarding_Notification_ProfileRejectedWithReason", culture)!, reason);
+            if (body.EnumerateRunes().Count() > 2000)
+                body = string.Concat(body.EnumerateRunes().Take(1999)) + "…";
             await notificationService.SendAsync(
                 NotificationSource.ProfileRejected,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 NoticeResources.GetString("Onboarding_Notification_ProfileRejectedTitle", culture)!,
                 [userId],
-                body: string.IsNullOrWhiteSpace(reason)
-                    ? NoticeResources.GetString("Onboarding_Notification_ProfileRejectedBody", culture)!
-                    : string.Format(culture,
-                        NoticeResources.GetString("Onboarding_Notification_ProfileRejectedWithReason", culture)!, reason),
+                body: body,
                 actionUrl: "/Profile",
                 actionLabel: NoticeResources.GetString("Onboarding_Notification_ViewProfile", culture)!,
                 cancellationToken: ct);

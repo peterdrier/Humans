@@ -173,6 +173,39 @@ public sealed class OnboardingServiceTests
         args[7].Should().Be("Ver perfil");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("a")]
+    [Xunit.InlineData("😀")]
+    public async Task RejectSignupAsync_LongReason_BoundsNoticeAndPreservesStoredReason(string character)
+    {
+        var userId = Guid.NewGuid();
+        var reviewerId = Guid.NewGuid();
+        var reason = string.Concat(Enumerable.Repeat(character, 2000));
+        _userService.ApplyProfileOnboardingMutationAsync(userId,
+            Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(burnerName: "Member"))
+                with { PreferredLanguage = "es" });
+
+        var result = await BuildSut().RejectSignupAsync(userId, reviewerId, reason,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        var body = (string)_notificationService.ReceivedCalls().Single().GetArguments()[5]!;
+        body.EnumerateRunes().Count().Should().Be(2000);
+        body.Should().StartWith("Tu inscripción no se ha podido aprobar: ");
+        body.Should().EndWith("…");
+        body.Should().NotContain("�");
+        await _userService.Received(1).ApplyProfileOnboardingMutationAsync(userId,
+            Arg.Is<UserProfileOnboardingCommand>(command => command.RejectionReason == reason),
+            Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.SignupRejected, AuditEntityTypes.Profile, userId,
+            "Signup rejected: " + reason, reviewerId);
+        _syncJob.ReceivedCalls().Should().HaveCount(3);
+    }
+
     [HumansFact]
     public async Task RejectSignupAsync_OnSuccess_AuditsDeprovisionsAllThreeTeamsAndNotifies()
     {

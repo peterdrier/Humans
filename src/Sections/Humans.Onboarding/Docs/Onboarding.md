@@ -106,7 +106,7 @@ Board voting moved to Governance: `/Governance/BoardVoting`. Onboarding only con
 - When a consent check is flagged: `Profile.IsApproved` is set to false and `ConsentCheckStatus = Flagged`. Annotation-only — no de-provisioning. The flag no longer gates admission; it is a record nothing acts on.
 - When a signup is rejected: `Profile.RejectedAt`, `RejectionReason`, and `RejectedByUserId` are recorded; `IsApproved` is set to false; system team memberships are de-provisioned (`RejectedAt` is the kick-out lever); a `SignupRejected` email and `ProfileRejected` notification are dispatched. (`Profile` has no `IsRejected` boolean — rejection is detected by `RejectedAt is not null`.)
 - Rejection email preparation and dispatch are best-effort after mutation, audit and deprovisioning. Recipient lookup failures preserve the successful rejection and still attempt the in-app notice in English; requested cancellation propagates.
-- The rejection email and in-app notice use the recipient’s supported preferred language (English fallback). The notice’s title, body and profile action are localized in all six cultures; the reviewer’s free-text reason is preserved inside the localized body.
+- The rejection email and in-app notice use the recipient’s supported preferred language (English fallback). The notice’s title, body and profile action are localized in all six cultures; the reviewer’s free-text reason is excerpted only when needed to fit the 2,000-character body. The full reason remains in the profile, audit entry and rejection email.
 
 ## Cross-Section Dependencies
 
