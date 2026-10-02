@@ -79,6 +79,7 @@ internal sealed class SendReConsentReminderJob(
             var now = clock.GetCurrentInstant();
             var cooldown = Duration.FromDays(cooldownDays);
             var sentCount = 0;
+            var failures = new List<Exception>();
 
             foreach (var userId in userIds)
             {
@@ -97,26 +98,37 @@ internal sealed class SendReConsentReminderJob(
                 var effectiveEmail = user.Email;
                 if (effectiveEmail is not null)
                 {
-                    await emailService.SendAsync(emailMessages.ReConsentReminder(
-                        effectiveEmail,
-                        user.BurnerName,
-                        requiredDocNames,
-                        daysBeforeSuspension,
-                        user.PreferredLanguage),
-                        cancellationToken);
+                    try
+                    {
+                        await emailService.SendAsync(emailMessages.ReConsentReminder(
+                            effectiveEmail,
+                            user.BurnerName,
+                            requiredDocNames,
+                            daysBeforeSuspension,
+                            user.PreferredLanguage),
+                            cancellationToken);
 
-                    await userService.SetLastConsentReminderSentAsync(user.Id, now, cancellationToken);
-                    sentCount++;
+                        await userService.SetLastConsentReminderSentAsync(user.Id, now, cancellationToken);
+                        sentCount++;
 
-                    logger.LogInformation(
-                        "Sent re-consent reminder to user {UserId} ({Email})",
-                        user.Id, effectiveEmail);
+                        logger.LogInformation(
+                            "Sent re-consent reminder to user {UserId} ({Email})",
+                            user.Id, effectiveEmail);
+                    }
+                    catch (Exception ex)
+                    {
+                        failures.Add(ex);
+                        logger.LogError(ex, "Failed to complete re-consent reminder for user {UserId}", user.Id);
+                    }
                 }
             }
 
+            if (failures.Count > 0)
+                throw new AggregateException("Failed to complete one or more re-consent reminders.", failures);
+
             metrics.RecordJobRun("send_reconsent_reminder", "success");
             logger.LogInformation(
-                "Completed re-consent reminder job, sent {Count} reminders ({Skipped} skipped due to cooldown)",
+                "Completed re-consent reminder job, sent {Count} reminders ({Skipped} skipped)",
                 sentCount, userIds.Count - sentCount);
         }
         catch (Exception ex)

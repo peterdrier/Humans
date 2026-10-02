@@ -149,6 +149,7 @@ Three controllers serve this section.
 - When a Consent Coordinator clears a consent check: `Profile.IsApproved` is set to true and `ConsentCheckStatus = Cleared`. This is an audit annotation only — `ClearConsentCheckAsync` provisions no team; Volunteers membership and app access are independent of CC review.
 - When a Consent Coordinator flags a consent check: `Profile.IsApproved` is set to false and `ConsentCheckStatus = Flagged`. This is an audit annotation only — `FlagConsentCheckAsync` provisions/deprovisions no team; Volunteers membership and app access are unaffected. `RejectSignupAsync` (which sets `RejectedAt`) is the CC's only actual kick-out lever.
 - When a new document version is published: affected humans are notified to re-consent. A background job sends re-consent reminders.
+- The reminder job attempts every eligible recipient before reporting per-recipient preparation, enqueue, or cooldown-stamp failures. Failed enqueues do not stamp the cooldown; successful reminders retain it. Collected failures still fail the job so Hangfire can retry, skipping recipients already in cooldown.
 - A background job suspends humans who no longer have valid consents for required documents.
 
 ## Cross-Section Dependencies
