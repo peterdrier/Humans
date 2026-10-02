@@ -121,7 +121,8 @@ for line in sys.stdin:
         result = {"thread": {"id": thread}}
     elif method == "thread/goal/set":
         assert "tokenBudget" not in params
-        assert "ONLY target" in params["objective"]
+        assert ("cap, not a target" in params["objective"]) == (thread == "fixture-repair")
+        assert ("ONLY target" in params["objective"]) == (thread != "fixture-repair")
         if objective is None:
             objective = params["objective"]
         else:
@@ -240,7 +241,7 @@ for line in sys.stdin:
         self.assertEqual(len(self.git(self.clone, "log", "--oneline", "origin/main..HEAD").splitlines()), 2)
 
     def test_spend_includes_separate_repair_root(self):
-        self.env.update(GATE_REPAIR_ATTEMPTS="1", GATE_REPAIR_BUDGET="1s")
+        self.env.update(GATE_REPAIR_ATTEMPTS="1", GATE_REPAIR_BUDGET="30s")  # repair finishes early; must not be forced to the cap
         result, _, published = self.run_scenario("build-repair")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(len(published), 1)
@@ -324,6 +325,7 @@ for line in sys.stdin:
                 if scenario in ("build-failure", "test-failure"):
                     self.assertEqual(len(published), 1)
                     self.assertIn("--draft", published[0])
+                    self.assertNotIn("passed", (self.root / "pr-body").read_text())
                     self.assertIn("Agent cost for fixture-thread", (self.root / "pr-comment").read_text())
                 else:
                     self.assertEqual(published, [])
