@@ -1312,4 +1312,7 @@
   <data name="EmailComposer_SendToMeError" xml:space="preserve"><value>No se pudo enviar el correo de prueba. Inténtalo de nuevo.</value></data>
   <data name="EmailComposer_SendToMeRateLimited" xml:space="preserve"><value>Demasiados correos de prueba. Espera un minuto e inténtalo de nuevo.</value></data>
   <data name="EmailComposer_SendToMeNoAddress" xml:space="preserve"><value>Tu cuenta no tiene ninguna dirección de correo a la que enviar.</value></data>
+  <data name="Validation_Required" xml:space="preserve"><value>Este campo es obligatorio.</value></data>
+  <data name="Validation_MaxLength" xml:space="preserve"><value>Introduce como máximo {1} caracteres.</value></data>
+  <data name="Validation_Range" xml:space="preserve"><value>Introduce un valor entre {1} y {2}.</value></data>
 </root>

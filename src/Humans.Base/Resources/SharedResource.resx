@@ -790,4 +790,7 @@
   <data name="EmailComposer_SendToMeError" xml:space="preserve"><value>Couldn't send the test email. Please try again.</value></data>
   <data name="EmailComposer_SendToMeRateLimited" xml:space="preserve"><value>Too many test emails. Wait a minute and try again.</value></data>
   <data name="EmailComposer_SendToMeNoAddress" xml:space="preserve"><value>Your account has no email address to send to.</value></data>
+  <data name="Validation_Required" xml:space="preserve"><value>This field is required.</value></data>
+  <data name="Validation_MaxLength" xml:space="preserve"><value>Enter no more than {1} characters.</value></data>
+  <data name="Validation_Range" xml:space="preserve"><value>Enter a value between {1} and {2}.</value></data>
 </root>

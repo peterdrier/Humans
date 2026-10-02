@@ -1312,4 +1312,7 @@
   <data name="EmailComposer_SendToMeError" xml:space="preserve"><value>No s'ha pogut enviar el correu de prova. Torna-ho a provar.</value></data>
   <data name="EmailComposer_SendToMeRateLimited" xml:space="preserve"><value>Massa correus de prova. Espera un minut i torna-ho a provar.</value></data>
   <data name="EmailComposer_SendToMeNoAddress" xml:space="preserve"><value>El teu compte no té cap adreça de correu on enviar.</value></data>
+  <data name="Validation_Required" xml:space="preserve"><value>Aquest camp és obligatori.</value></data>
+  <data name="Validation_MaxLength" xml:space="preserve"><value>Introdueix com a màxim {1} caràcters.</value></data>
+  <data name="Validation_Range" xml:space="preserve"><value>Introdueix un valor entre {1} i {2}.</value></data>
 </root>
