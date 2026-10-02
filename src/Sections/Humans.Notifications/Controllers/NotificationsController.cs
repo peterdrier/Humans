@@ -23,7 +23,7 @@ internal sealed class NotificationsController(
 
         var result = await inboxService.GetInboxAsync(userId.Value, search, filter, tab, HttpContext.RequestAborted);
 
-        var meters = await meterProvider.GetMetersForUserAsync(User);
+        var meters = await meterProvider.GetMetersForUserAsync(User, HttpContext.RequestAborted);
 
         return View(new NotificationInboxViewModel
         {
@@ -49,7 +49,7 @@ internal sealed class NotificationsController(
 
         var result = await inboxService.GetPopupAsync(userId.Value, HttpContext.RequestAborted);
 
-        var meters = await meterProvider.GetMetersForUserAsync(User);
+        var meters = await meterProvider.GetMetersForUserAsync(User, HttpContext.RequestAborted);
 
         return PartialView("_NotificationPopup", new NotificationPopupViewModel
         {

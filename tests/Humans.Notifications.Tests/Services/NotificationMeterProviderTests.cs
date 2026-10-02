@@ -1,3 +1,7 @@
+using Humans.Notifications.Controllers;
+using Humans.Notifications.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Enums;
@@ -81,6 +85,62 @@ public class NotificationMeterProviderTests : IDisposable
             meters.Should().Contain(m => m.ActionUrl == "/Barrios" && m.Count == 1);
         else
             meters.Should().Contain(m => m.Title == "Failed Google sync events" && m.Count == 3);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NotificationPage_AbortedAfterInboxRead_CancelsMetersWithoutCachingEmptyCounts(bool popup)
+    {
+        using var aborted = new CancellationTokenSource();
+        var abortAfterInbox = true;
+        var inbox = Substitute.For<INotificationInboxService>();
+        inbox.GetInboxAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                if (abortAfterInbox) aborted.Cancel();
+                return new NotificationInboxResult();
+            });
+        inbox.GetPopupAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                if (abortAfterInbox) aborted.Cancel();
+                return new NotificationPopupResult();
+            });
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
+        _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return 3;
+            });
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
+        var controller = new NotificationsController(inbox, _userService, _provider)
+        {
+            ControllerContext = new()
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = CreatePrincipalWithId(Guid.NewGuid(), RoleNames.Admin),
+                    RequestAborted = aborted.Token
+                }
+            }
+        };
+
+        Func<Task<IActionResult>> read = popup ? controller.GetPopup : () => controller.Index(null);
+        await read.Should().ThrowAsync<OperationCanceledException>();
+
+        abortAfterInbox = false;
+        controller.HttpContext.RequestAborted = TestContext.Current.CancellationToken;
+        var result = await read();
+        var meters = popup
+            ? result.Should().BeOfType<PartialViewResult>().Subject.Model.Should().BeOfType<NotificationPopupViewModel>().Subject.Meters
+            : result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<NotificationInboxViewModel>().Subject.Meters;
+        meters.Should().Contain(m => m.Title == "Failed Google sync events" && m.Count == 3);
     }
 
     [HumansFact]
