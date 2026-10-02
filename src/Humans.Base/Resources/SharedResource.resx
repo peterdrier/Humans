@@ -794,4 +794,5 @@
   <data name="Validation_MaxLength" xml:space="preserve"><value>Enter no more than {1} characters.</value></data>
   <data name="Validation_Range" xml:space="preserve"><value>Enter a value between {1} and {2}.</value></data>
   <data name="Validation_InvalidCharacters" xml:space="preserve"><value>This field contains invalid characters.</value></data>
+  <data name="Validation_EmailAddress" xml:space="preserve"><value>Enter a valid email address.</value></data>
 </root>

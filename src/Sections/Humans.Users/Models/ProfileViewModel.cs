@@ -393,18 +393,18 @@ internal sealed class ContactFieldEditViewModel
 {
     public Guid? Id { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public ContactFieldType FieldType { get; set; }
 
-    [StringLength(100)]
+    [StringLength(100, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "Custom Label")]
     public string? CustomLabel { get; set; }
 
-    [Required]
-    [StringLength(500)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string Value { get; set; } = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public ContactFieldVisibility Visibility { get; set; } = ContactFieldVisibility.AllActiveProfiles;
 
     public int DisplayOrder { get; set; }
@@ -433,16 +433,16 @@ internal sealed class VolunteerHistoryEntryEditViewModel
 {
     public Guid? Id { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     [Display(Name = "Date")]
     public string DateString { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(256)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(256, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "Event Name")]
     public string EventName { get; set; } = string.Empty;
 
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     [DataType(DataType.MultilineText)]
     public string? Description { get; set; }
 
@@ -498,11 +498,11 @@ internal sealed class ProfileLanguageEditViewModel
 {
     public Guid? Id { get; set; }
 
-    [Required]
-    [StringLength(10)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(10, ErrorMessage = "Validation_MaxLength")]
     public string LanguageCode { get; set; } = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public LanguageProficiency Proficiency { get; set; }
 }
 

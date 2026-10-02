@@ -245,6 +245,25 @@ public class ProfileControllerEditTests
             ("AllergyOtherText", "Validation_MaxLength", ["", 500]),
             ("IntoleranceOtherText", "Validation_MaxLength", ["", 500]),
             ("MedicalConditions", "Validation_MaxLength", ["", 4000]));
+        AssertErrors(new ProfileViewModel
+        {
+            EditableContactFields = [new() { CustomLabel = new string('x', 101) }, new() { Value = new string('x', 501) }],
+            EditableVolunteerHistory = [new(), new() { DateString = "2026-01", EventName = new string('x', 257), Description = new string('x', 2001) }],
+            EditableLanguages = [new(), new() { LanguageCode = new string('x', 11) }],
+        },
+            ("EditableContactFields[0].CustomLabel", "Validation_MaxLength", ["", 100]),
+            ("EditableContactFields[0].Value", "Validation_Required", []),
+            ("EditableContactFields[1].Value", "Validation_MaxLength", ["", 500]),
+            ("EditableVolunteerHistory[0].DateString", "Validation_Required", []),
+            ("EditableVolunteerHistory[0].EventName", "Validation_Required", []),
+            ("EditableVolunteerHistory[1].EventName", "Validation_MaxLength", ["", 256]),
+            ("EditableVolunteerHistory[1].Description", "Validation_MaxLength", ["", 2000]),
+            ("EditableLanguages[0].LanguageCode", "Validation_Required", []),
+            ("EditableLanguages[1].LanguageCode", "Validation_MaxLength", ["", 10]));
+        AssertErrors(new EmailsViewModel { NewEmail = "invalid" },
+            ("NewEmail", "Validation_EmailAddress", []));
+        AssertErrors(new EmailsViewModel { NewEmail = new string('x', 245) + "@example.com" },
+            ("NewEmail", "Validation_MaxLength", ["", 256]));
         AssertErrors(new SendMessageViewModel(), ("Message", "Validation_Required", []));
         AssertErrors(new SendMessageViewModel { Message = new string('x', 2001) },
             ("Message", "Validation_MaxLength", ["", 2000]));

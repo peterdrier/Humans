@@ -1316,4 +1316,5 @@
   <data name="Validation_MaxLength" xml:space="preserve"><value>Introduce como máximo {1} caracteres.</value></data>
   <data name="Validation_Range" xml:space="preserve"><value>Introduce un valor entre {1} y {2}.</value></data>
   <data name="Validation_InvalidCharacters" xml:space="preserve"><value>Este campo contiene caracteres no válidos.</value></data>
+  <data name="Validation_EmailAddress" xml:space="preserve"><value>Introduce una dirección de correo electrónico válida.</value></data>
 </root>

@@ -17,8 +17,8 @@ internal sealed class EmailsViewModel
     /// <summary>
     /// New email address to add (form input).
     /// </summary>
-    [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
-    [StringLength(256)]
+    [EmailAddress(ErrorMessage = "Validation_EmailAddress")]
+    [StringLength(256, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "New Email Address")]
     public string? NewEmail { get; set; }
 
