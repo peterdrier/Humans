@@ -108,7 +108,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Specify team name and description
 - Choose if approval is required
 - Optionally assign a parent team (department)
-- System generates URL-friendly slug
+- System generates URL-friendly slug; non-ASCII names get a non-empty base, and collision suffixes fit the stored length bound
 - Team is immediately active
 
 ### US-6.9: View Public Team Page (Anonymous)

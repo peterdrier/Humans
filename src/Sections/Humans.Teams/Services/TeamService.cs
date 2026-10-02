@@ -37,6 +37,7 @@ internal sealed class TeamService(
     ILogger<TeamService> logger) : ITeamManagementService, ITeamSeeding, IGoogleGroupMembershipSource, IUserDataContributor, IUserMerge, IEarlyEntryProvider
 {
     private static readonly ResourceManager NoticeResources = new(typeof(TeamsResource));
+    private const int MaxTeamSlugLength = 256;
 
     internal const string TeamMemberships = "TeamMemberships";
     internal const string TeamJoinRequests = "TeamJoinRequests";
@@ -77,6 +78,8 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default)
     {
         var baseSlug = SlugHelper.GenerateSlug(name);
+        if (baseSlug.Length == 0)
+            baseSlug = "team";
         var now = clock.GetCurrentInstant();
 
         string[] reservedSlugs = ["roster", "birthdays", "map", "my", "sync", "summary", "create", "search"];
@@ -97,7 +100,13 @@ internal sealed class TeamService(
 
         for (var attempt = 0; attempt < 10; attempt++)
         {
-            var slug = attempt == 0 ? baseSlug : $"{baseSlug}-{attempt + 1}";
+            var slug = baseSlug;
+            if (attempt > 0)
+            {
+                var suffix = "-" + (attempt + 1).ToString(CultureInfo.InvariantCulture);
+                var prefixLength = Math.Min(baseSlug.Length, MaxTeamSlugLength - suffix.Length);
+                slug = baseSlug[..prefixLength].TrimEnd('-') + suffix;
+            }
 
             var collidesWithExistingSlug = await repo.SlugExistsAsync(slug, excludingTeamId: null, cancellationToken);
             if (collidesWithExistingSlug)
@@ -435,8 +444,8 @@ internal sealed class TeamService(
         if (!string.Equals(team.Name, name, StringComparison.Ordinal))
         {
             var newSlug = SlugHelper.GenerateSlug(name);
-            var slugTaken = await repo.SlugExistsAsync(newSlug, excludingTeamId: teamId, cancellationToken);
-            if (!slugTaken)
+            if (!string.IsNullOrEmpty(newSlug)
+                && !await repo.SlugExistsAsync(newSlug, excludingTeamId: teamId, cancellationToken))
                 team.Slug = newSlug;
         }
 

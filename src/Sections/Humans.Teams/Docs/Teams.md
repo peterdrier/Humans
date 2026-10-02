@@ -21,6 +21,7 @@ Departments and sub-teams, join requests, role definitions, team pages, and link
 - A **Coordinator** is a team member assigned to the management role on a department. Coordinators have full authority over the department and all its sub-teams, including Google resource management. They are added to the Coordinators system team.
 - A **Sub-team Manager** is a team member assigned to the management role on a sub-team. Managers have scoped authority over their sub-team only: member management, join requests, roles, shifts, and team page editing. They **cannot** manage Google resources, the parent department, or sibling sub-teams. They are **not** added to the Coordinators system team.
 - A **Team Page** is a Markdown-based public or member-facing page for a department, with optional calls to action.
+- Generated team slugs are non-empty and collision suffixes fit the 256-character column, shortening the base without a trailing separator. Names with no ASCII letters/digits use `team` on creation; renaming to such a name preserves the existing slug. Display names are preserved.
 
 ## Data Model
 
