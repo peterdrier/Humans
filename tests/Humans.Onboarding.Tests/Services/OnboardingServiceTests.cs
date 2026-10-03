@@ -246,7 +246,7 @@ public sealed class OnboardingServiceTests
         await _syncJob.Received(1).SyncMembershipForUserAsync(
             userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
         await _syncJob.Received(1).SyncMembershipForUserAsync(
-            userId, SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
+            userId, SystemTeamType.Colaboradores, Arg.Any<CancellationToken>());
         await _syncJob.Received(1).SyncMembershipForUserAsync(
             userId, SystemTeamType.Asociados, Arg.Any<CancellationToken>());
         await _syncJob.Received(3).SyncMembershipForUserAsync(

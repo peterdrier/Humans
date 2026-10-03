@@ -355,7 +355,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 
         await _syncJob.Received().SyncMembershipForUserAsync(
-            userId, SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
+            userId, SystemTeamType.Colaboradores, Arg.Any<CancellationToken>());
         await _syncJob.DidNotReceive().SyncMembershipForUserAsync(
             Arg.Any<Guid>(), SystemTeamType.Asociados, Arg.Any<CancellationToken>());
     }
@@ -372,7 +372,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await _syncJob.Received().SyncMembershipForUserAsync(
             userId, SystemTeamType.Asociados, Arg.Any<CancellationToken>());
         await _syncJob.DidNotReceive().SyncMembershipForUserAsync(
-            Arg.Any<Guid>(), SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), SystemTeamType.Colaboradores, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -727,7 +727,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null, Xunit.TestContext.Current.CancellationToken);
 
         await _syncJob.DidNotReceive().SyncMembershipForUserAsync(
-            Arg.Any<Guid>(), SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), SystemTeamType.Colaboradores, Arg.Any<CancellationToken>());
         await _syncJob.DidNotReceive().SyncMembershipForUserAsync(
             Arg.Any<Guid>(), SystemTeamType.Asociados, Arg.Any<CancellationToken>());
     }

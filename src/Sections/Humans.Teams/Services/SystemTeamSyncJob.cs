@@ -72,7 +72,7 @@ internal sealed class SystemTeamSyncJob(
             await SyncCoordinatorsTeamAsync(report, cancellationToken);
             await SyncBoardTeamAsync(report, cancellationToken);
             await SyncAsociadosTeamAsync(report, cancellationToken);
-            await SyncColaboradorsTeamAsync(report, cancellationToken);
+            await SyncColaboradoresTeamAsync(report, cancellationToken);
             await SyncBarrioLeadsTeamAsync(report, cancellationToken);
 
             // Without credentials the group reconciler runs against in-memory stubs and would
@@ -285,11 +285,11 @@ internal sealed class SystemTeamSyncJob(
         SyncTierTeamAsync(MembershipTier.Asociado, SystemTeamType.Asociados, SystemTeamIds.Asociados, report, cancellationToken);
 
     /// <summary>
-    /// Syncs the Colaboradors team membership based on approved Colaborador applications.
+    /// Syncs the Colaboradores team membership based on approved Colaborador applications.
     /// Members: All users with an approved Colaborador application who are also in the Volunteers team.
     /// </summary>
-    public Task SyncColaboradorsTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default) =>
-        SyncTierTeamAsync(MembershipTier.Colaborador, SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors, report, cancellationToken);
+    public Task SyncColaboradoresTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default) =>
+        SyncTierTeamAsync(MembershipTier.Colaborador, SystemTeamType.Colaboradores, SystemTeamIds.Colaboradores, report, cancellationToken);
 
     private async Task SyncTierTeamAsync(MembershipTier tier, SystemTeamType teamType, Guid teamId,
         SyncReport? report, CancellationToken cancellationToken)
@@ -370,8 +370,8 @@ internal sealed class SystemTeamSyncJob(
         {
             SystemTeamType.Volunteers => SyncVolunteersMembershipForUserAsync(userId, cancellationToken),
             SystemTeamType.Coordinators => SyncCoordinatorsMembershipForUserAsync(userId, cancellationToken),
-            SystemTeamType.Colaboradors => SyncTierMembershipForUserAsync(
-                userId, MembershipTier.Colaborador, SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors, cancellationToken),
+            SystemTeamType.Colaboradores => SyncTierMembershipForUserAsync(
+                userId, MembershipTier.Colaborador, SystemTeamType.Colaboradores, SystemTeamIds.Colaboradores, cancellationToken),
             SystemTeamType.Asociados => SyncTierMembershipForUserAsync(
                 userId, MembershipTier.Asociado, SystemTeamType.Asociados, SystemTeamIds.Asociados, cancellationToken),
             SystemTeamType.BarrioLeads => SyncBarrioLeadsMembershipForUserAsync(userId, cancellationToken),
@@ -436,7 +436,7 @@ internal sealed class SystemTeamSyncJob(
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
     }
 
-    /// <summary>Tier-team (Colaboradors / Asociados) membership for one user: in while the tier is active.</summary>
+    /// <summary>Tier-team (Colaboradores / Asociados) membership for one user: in while the tier is active.</summary>
     private async Task SyncTierMembershipForUserAsync(Guid userId, MembershipTier tier,
         SystemTeamType teamType, Guid teamId, CancellationToken cancellationToken)
     {

@@ -249,7 +249,7 @@ GoogleIntegration gains a Drive access source, mirroring `IGoogleGroupMembership
 - Workgroups implements the source. It claims every Active or Dormant group's `DriveFolderId` and the configured root:
   - group folder, Active: current members → Contributor;
   - group folder, Dormant: current members → Reader (read-only, per Peter);
-  - root: Board members, approved Asociados, approved Colaboradors → Reader (from `IUserServiceRead` tiers plus `SystemTeamIds.Board` membership through `ITeamServiceRead`).
+  - root: Board members, approved Asociados, approved Colaboradores → Reader (from `IUserServiceRead` tiers plus `SystemTeamIds.Board` membership through `ITeamServiceRead`).
 - Registration calls `CreateSubfolderAsync(root, workgroup.Name)`, stores the id, then requests a sync. Join, leave and status changes request a sync for the affected folder.
 
 **Teams' own Drive path** (`google_resources` keyed by `TeamId`, reconciled by team membership) is not touched in this work. Migrating it onto the same source fan-out, so GoogleIntegration stops knowing about teams directly, is recorded in `docs/architecture/debt-ledger.yml` as follow-up debt.

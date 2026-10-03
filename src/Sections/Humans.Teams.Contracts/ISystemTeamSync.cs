@@ -3,7 +3,7 @@ using Humans.Base.Enums;
 namespace Humans.Teams.Contracts;
 
 /// <summary>
-/// Syncs system team memberships (Volunteers, Coordinators, Colaboradors, Asociados, Board, Barrio Leads)
+/// Syncs system team memberships (Volunteers, Coordinators, Colaboradores, Asociados, Board, Barrio Leads)
 /// after approval/consent/role changes.
 /// </summary>
 /// <remarks>

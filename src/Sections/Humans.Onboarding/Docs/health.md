@@ -90,7 +90,7 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
   That is why the detail view still withholds Flag from a cleared human — see §5.
   (`Services/OnboardingService.cs` `RecordConsentCheckAsync`.)
 - **Reject is the only coordinator action with consequences.** It sets `RejectedAt`,
-  de-provisions the approval-gated system teams (Volunteers, Colaboradors, Asociados), and
+  de-provisions the approval-gated system teams (Volunteers, Colaboradores, Asociados), and
   notifies the person. (`Services/OnboardingService.cs` `RejectSignupAsync`,
   `DeprovisionApprovalGatedSystemTeamsAsync`; pinned on the success path by
   `OnboardingServiceTests.RejectSignupAsync_OnSuccess_AuditsDeprovisionsAllThreeTeamsAndNotifies`,

@@ -30,12 +30,12 @@ Tier is tracked on the `Profile` entity (`MembershipTier` field), not as a role.
 
 ### System Teams (Separate, Not Nested)
 
-Each tier has its own system team. Asociados are **not** in the Colaboradors team — they are separate memberships:
+Each tier has its own system team. Asociados are **not** in the Colaboradores team — they are separate memberships:
 
 | Team | Members |
 |------|---------|
 | Volunteers | All active humans (every tier) |
-| Colaboradors | Only humans with approved Colaborador applications |
+| Colaboradores | Only humans with approved Colaborador applications |
 | Asociados | Only humans with approved Asociado applications |
 | Board | Board members (managed via RoleAssignment, external process) |
 
@@ -85,7 +85,7 @@ Volunteer is the default tier for everyone. No badge is displayed for Volunteers
 - Dashboard shows Colaborador/Asociado badge if applicable (no badge for Volunteer)
 - If a tier application is pending, shows status
 - If application was rejected, shows notification with reason
-- Term expiry date shown for Colaboradors/Asociados
+- Term expiry date shown for Colaboradores/Asociados
 
 ### US-15.4: Admin Tier Downgrade
 
@@ -95,7 +95,7 @@ Volunteer is the default tier for everyone. No badge is displayed for Volunteers
 
 **Acceptance Criteria:**
 - Admin-initiated only (not self-service)
-- Removes from higher-tier team (Colaboradors or Asociados)
+- Removes from higher-tier team (Colaboradores or Asociados)
 - Audit log entry created
 - Human retains Volunteer access
 
@@ -153,7 +153,7 @@ Renewal is a new Application entity (same tier). Goes through normal Board votin
 
 ### Lapse
 
-If term expires without renewal, the human is removed from the Colaboradors/Asociados system team and their profile tier is downgraded — to another tier they still hold an active approval for, otherwise to Volunteer.
+If term expires without renewal, the human is removed from the Colaboradores/Asociados system team and their profile tier is downgraded — to another tier they still hold an active approval for, otherwise to Volunteer.
 
 ## Application Flow
 
@@ -187,7 +187,7 @@ Application created → Board Voting → Approve/Reject
 2. **Volunteer doesn't require an Application** — a legal name plus the required consents is sufficient. The Consent Coordinator's clear/flag review is an independent audit annotation and does not gate admission (`MembershipCalculator` never reads `ConsentCheckStatus`)
 3. **Inline application is one-shot** — only during initial signup, never on subsequent profile edits
 4. **After onboarding, applications use the dedicated route** — profile edit is just profile data
-5. **Asociados are not in Colaboradors team** — separate system teams
+5. **Asociados are not in Colaboradores team** — separate system teams
 6. **One pending Application per user** — cannot have multiple active tier applications
 7. **Downgrades are admin-only** — no self-service downgrade
 8. **Terms are synchronized** — all expire Dec 31 of odd years
@@ -200,4 +200,4 @@ Application created → Board Voting → Approve/Reject
 - [Tier Applications](asociado-applications.md) — Application entity and state machine
 - [Board Voting](board-voting.md) — How the Board decides on tier applications
 - [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Coordinator review (audit annotation, Volunteer only)
-- [Teams](../../../Humans.Teams/Docs/features/Teams-feature.md) — Volunteers, Colaboradors, Asociados system teams
+- [Teams](../../../Humans.Teams/Docs/features/Teams-feature.md) — Volunteers, Colaboradores, Asociados system teams

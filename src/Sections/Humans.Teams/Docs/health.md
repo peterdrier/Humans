@@ -9,7 +9,7 @@ level) or a **sub-team** under exactly one department; each has members, optiona
 role slots, an optional Google Group plus Drive folder, and — for departments — an
 optional public page. A human joins an open team at once or asks to join an
 approval-required one; a coordinator answers. A few **system teams** (Volunteers,
-Coordinators, Board, Asociados, Colaboradors, Barrio Leads) are computed hourly from
+Coordinators, Board, Asociados, Colaboradores, Barrio Leads) are computed hourly from
 other sections' facts and cannot be joined or left by hand. **Hidden** teams exist for
 privacy-sensitive groupings; only admins see them. A team may also be switched on for
 **Early Entry**, letting its coordinators put named crew on the festival's early-arrival

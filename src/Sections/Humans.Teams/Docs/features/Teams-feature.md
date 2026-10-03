@@ -13,7 +13,7 @@
 
 ## Business Context
 
-Nobodies Collective operates through self-organizing working groups (teams). Teams can be created for specific initiatives and managed by their members. Teams can optionally be organized into departments (parent-child hierarchy) for logical grouping. System-managed teams track organisational facts automatically: all volunteers, department coordinators, Board members, Asociados, Colaboradors and camp leads.
+Nobodies Collective operates through self-organizing working groups (teams). Teams can be created for specific initiatives and managed by their members. Teams can optionally be organized into departments (parent-child hierarchy) for logical grouping. System-managed teams track organisational facts automatically: all volunteers, department coordinators, Board members, Asociados, Colaboradores and camp leads.
 
 ## User Stories
 
