@@ -46,7 +46,8 @@ internal sealed class UserInfoSaveChangesInterceptor(
             var refresher = services.GetService<IUserInfoSliceRefresher>();
             if (refresher is not null)
             {
-                await ApplyAsync(refresher, affected, cancellationToken);
+                // The rows have committed; finish cache refresh so cancellation cannot skip subsequent audits.
+                await ApplyAsync(refresher, affected, CancellationToken.None);
             }
         }
         return await base.SavedChangesAsync(eventData, result, cancellationToken);
