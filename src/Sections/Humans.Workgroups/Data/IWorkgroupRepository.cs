@@ -49,8 +49,6 @@ internal interface IWorkgroupRepository : IRepository
     /// <summary>True when another group already holds <paramref name="slug"/>.</summary>
     Task<bool> SlugTakenAsync(string slug, Guid? exceptId = null, CancellationToken ct = default);
 
-    Task<WorkgroupMember?> GetMemberAsync(Guid id, CancellationToken ct = default);
-
     Task<WorkgroupMeeting?> GetMeetingAsync(Guid id, CancellationToken ct = default);
 
     Task<WorkgroupLogEntry?> GetLogEntryAsync(Guid id, CancellationToken ct = default);
