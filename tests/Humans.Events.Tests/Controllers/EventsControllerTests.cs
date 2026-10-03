@@ -42,6 +42,112 @@ public class EventsControllerTests
     private readonly IStringLocalizer<EventsResource> _localizer = Substitute.For<IStringLocalizer<EventsResource>>();
 
     [HumansTheory]
+    [Xunit.InlineData(nameof(EventsController.MySubmissions), "Viewer")]
+    [Xunit.InlineData(nameof(EventsController.MySubmissions), "Guide")]
+    [Xunit.InlineData(nameof(EventsController.MySubmissions), "Burn")]
+    [Xunit.InlineData(nameof(EventsController.MySubmissions), "Submissions")]
+    [Xunit.InlineData(nameof(EventsController.MySubmissions), "CampSettings")]
+    [Xunit.InlineData(nameof(EventsController.MySubmissions), "Camps")]
+    [Xunit.InlineData(nameof(EventsController.MySubmissions), "CampSummary")]
+    [Xunit.InlineData(nameof(EventsController.Submit), "Guide")]
+    [Xunit.InlineData(nameof(EventsController.Submit), "Burn")]
+    [Xunit.InlineData(nameof(EventsController.Submit), "Categories")]
+    [Xunit.InlineData(nameof(EventsController.Submit), "Venues")]
+    [Xunit.InlineData(nameof(EventsController.Edit), "Viewer")]
+    [Xunit.InlineData(nameof(EventsController.Edit), "Event")]
+    [Xunit.InlineData(nameof(EventsController.Edit), "Guide")]
+    [Xunit.InlineData(nameof(EventsController.Edit), "Burn")]
+    [Xunit.InlineData(nameof(EventsController.Edit), "Categories")]
+    [Xunit.InlineData(nameof(EventsController.Edit), "Venues")]
+    [Xunit.InlineData(nameof(EventsController.Schedule), "Viewer")]
+    [Xunit.InlineData(nameof(EventsController.Schedule), "Guide")]
+    [Xunit.InlineData(nameof(EventsController.Schedule), "Burn")]
+    [Xunit.InlineData(nameof(EventsController.Schedule), "Favourites")]
+    [Xunit.InlineData(nameof(EventsController.Schedule), "Camps")]
+    [Xunit.InlineData(nameof(EventsController.Browse), "Viewer")]
+    [Xunit.InlineData(nameof(EventsController.Browse), "Guide")]
+    [Xunit.InlineData(nameof(EventsController.Browse), "Burn")]
+    [Xunit.InlineData(nameof(EventsController.Browse), "Excluded")]
+    [Xunit.InlineData(nameof(EventsController.Browse), "Favourites")]
+    [Xunit.InlineData(nameof(EventsController.Browse), "Approved")]
+    [Xunit.InlineData(nameof(EventsController.Browse), "Camps")]
+    [Xunit.InlineData(nameof(EventsController.Browse), "Submitter")]
+    [Xunit.InlineData(nameof(EventsController.Browse), "Categories")]
+    [Xunit.InlineData(nameof(EventsController.Browse), "Venues")]
+    public async Task MemberReadPages_StopLoadingAfterRequestCancellation(string route, string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var controller = BuildController(userId);
+        controller.HttpContext.RequestAborted = request.Token;
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        var abandon = false;
+        async Task<T> Read<T>(T value, string current, CancellationToken ct)
+        {
+            if (abandon && string.Equals(current, boundary, StringComparison.Ordinal))
+                await request.CancelAsync();
+            ct.ThrowIfCancellationRequested();
+            return value;
+        }
+        StubEditableGuideSettings();
+        var settings = (await _guide.GetGuideSettingsAsync(Xunit.TestContext.Current.CancellationToken))! with
+        {
+            SubmissionOpenAt = Instant.FromUtc(2026, 5, 1, 0, 0),
+            SubmissionCloseAt = Instant.FromUtc(2026, 6, 1, 0, 0),
+        };
+        _clock.GetCurrentInstant().Returns(Instant.FromUtc(2026, 5, 15, 0, 0));
+        var burn = MakeBurnSettings() with { Id = settings.EventSettingsId };
+        var guideEvent = MakeEvent(null, userId, EventStatus.ResubmitRequested);
+        var campId = Guid.NewGuid();
+        var season = new CampSeasonInfo(
+            Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
+            default, default, default, default, 1, null, null, null, 0, null, null) { LeadUserIds = [userId] };
+        var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
+        var submitterId = Guid.NewGuid();
+        var approved = new ApprovedEventView(Guid.NewGuid(), null, null, submitterId, Guid.NewGuid(), "music", "Music", false,
+            null, "Event", "Description", null, null, Instant.FromUtc(2026, 8, 1, 18, 0), 60, false, null, null,
+            Instant.FromUtc(2026, 1, 1, 0, 0), Instant.FromUtc(2026, 1, 1, 0, 0));
+        _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+            new ValueTask<UserInfo?>(Read<UserInfo?>(MakeUserInfo(call.Arg<Guid>(), "Human"),
+                call.Arg<Guid>() == userId ? "Viewer" : "Submitter", call.Arg<CancellationToken>())));
+        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+            Read<EventGuideSettingsView?>(settings, "Guide", call.Arg<CancellationToken>()));
+        _guide.GetEventSettingsByIdAsync(settings.EventSettingsId, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<EventSettingsInfo?>(burn, "Burn", call.Arg<CancellationToken>()));
+        _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<Event?>(guideEvent, "Event", call.Arg<CancellationToken>()));
+        _guide.GetUserSubmissionsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<IReadOnlyList<EventInfo>>([], "Submissions", call.Arg<CancellationToken>()));
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+            Read(new CampSettingsInfo(2026, [2026]), "CampSettings", call.Arg<CancellationToken>()));
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<IReadOnlyList<CampInfo>>([camp], "Camps", call.Arg<CancellationToken>()));
+        _guide.GetCampSubmissionsSummaryAsync(campId, Arg.Any<CancellationToken>()).Returns(call =>
+            Read(new CampSubmissionsSummary(0, 0, 0, []), "CampSummary", call.Arg<CancellationToken>()));
+        _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns(call =>
+            Read<IReadOnlyList<EventCategoryView>>([], "Categories", call.Arg<CancellationToken>()));
+        _guide.GetActiveVenuesAsync(Arg.Any<CancellationToken>()).Returns(call =>
+            Read<IReadOnlyList<EventVenueView>>([], "Venues", call.Arg<CancellationToken>()));
+        _guide.GetFavouritesWithEventsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<IReadOnlyList<EventFavouriteInfo>>([], "Favourites", call.Arg<CancellationToken>()));
+        _guide.GetExcludedCategorySlugsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<List<string>>([], "Excluded", call.Arg<CancellationToken>()));
+        _guide.GetApprovedEventsAsync(null, null, null, null, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>()).Returns(call =>
+            Read<IReadOnlyList<ApprovedEventView>>([approved], "Approved", call.Arg<CancellationToken>()));
+        Func<Task<IActionResult>> load = route switch
+        {
+            nameof(EventsController.MySubmissions) => controller.MySubmissions,
+            nameof(EventsController.Submit) => controller.Submit,
+            nameof(EventsController.Edit) => () => controller.Edit(guideEvent.Id),
+            nameof(EventsController.Schedule) => controller.Schedule,
+            _ => () => controller.Browse(null, null, null, null),
+        };
+        (await load()).Should().BeOfType<ViewResult>();
+        abandon = true;
+        await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("en")]
     [Xunit.InlineData("es")]
     [Xunit.InlineData("de")]
