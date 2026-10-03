@@ -272,13 +272,13 @@
     <value>Vereinbarungen</value>
   </data>
   <data name="Dashboard_MembershipTier" xml:space="preserve">
-    <value>Mitgliedschaftsstufe</value>
+    <value>Mitgliedschaftskategorie</value>
   </data>
   <data name="Dashboard_TierApplicationPending" xml:space="preserve">
-    <value>Ihr Stufenantrag wartet auf die Prüfung durch den Vorstand.</value>
+    <value>Ihr Kategorieantrag wartet auf die Prüfung durch den Vorstand.</value>
   </data>
   <data name="Dashboard_TierActive" xml:space="preserve">
-    <value>Ihre Mitgliedschaftsstufe ist aktiv.</value>
+    <value>Ihre Mitgliedschaftskategorie ist aktiv.</value>
   </data>
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Vereinbarungen prüfen</value>
@@ -375,7 +375,7 @@
     <value>Koordinator</value>
   </data>
   <data name="Profile_MembershipTier" xml:space="preserve">
-    <value>Mitgliedschaftsstufe</value>
+    <value>Mitgliedschaftskategorie</value>
   </data>
   <data name="Profile_MotivationRequired" xml:space="preserve">
     <value>Eine Motivationserklärung ist für Colaborador- und Asociado-Anträge erforderlich.</value>
@@ -641,7 +641,7 @@
     <value>Genehmigt</value>
   </data>
   <data name="AdminHuman_MembershipTier" xml:space="preserve">
-    <value>Mitgliedschaftsstufe</value>
+    <value>Mitgliedschaftskategorie</value>
   </data>
   <data name="AdminHuman_Active" xml:space="preserve">
     <value>Aktiv</value>
@@ -694,7 +694,7 @@
     <comment>{0} = formatted date</comment>
   </data>
   <data name="Dashboard_TermExpired" xml:space="preserve">
-    <value>Deine Mitgliedschaft ist abgelaufen. Reiche einen Verlängerungsantrag ein, um deine Stufe wiederherzustellen.</value>
+    <value>Deine Mitgliedschaft ist abgelaufen. Reiche einen Verlängerungsantrag ein, um deine Kategorie wiederherzustellen.</value>
   </data>
   <data name="Dashboard_RenewNow" xml:space="preserve">
     <value>Jetzt verlängern</value>

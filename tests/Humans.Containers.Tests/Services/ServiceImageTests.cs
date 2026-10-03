@@ -6,7 +6,11 @@ using Humans.Containers.Contracts;
 using Humans.Containers.Data;
 using Humans.Containers.Domain;
 using Humans.Containers.Services;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -20,6 +24,9 @@ public sealed class ServiceImageTests
     private readonly IFileStorage _fileStorage;
     private readonly Microsoft.Extensions.Logging.ILogger<Service> _logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<Service>>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
+    internal static readonly IStringLocalizer<ContainersResource> Localizer =
+        new StringLocalizer<ContainersResource>(new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
     private readonly Service _sut;
     private static readonly Instant StartTime = Instant.FromUtc(2026, 5, 8, 10, 0, 0);
     private static readonly Guid CampId = Guid.Parse("00000000-0000-0000-0099-000000000001");
@@ -38,7 +45,7 @@ public sealed class ServiceImageTests
             _fileStorage,
             Substitute.For<ICampServiceRead>(),
             _auditLog,
-            new FakeClock(StartTime), _logger);
+            new FakeClock(StartTime), Localizer, _logger);
     }
 
     private static ContainerImageUpload FakeImage(string kind = "main") =>
@@ -102,6 +109,28 @@ public sealed class ServiceImageTests
     }
 
     [HumansFact]
+    public async Task CreateAsync_ImageRuleMessage_IsInTheCallersCulture()
+    {
+        var original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es");
+            var act = async () => await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
+                CampId: CampId,
+                Name: "Test",
+                Description: null,
+                NewImages: FakeImages(6)), ct: TestContext.Current.CancellationToken);
+
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("Un contenedor puede tener como máximo 5 imágenes.");
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+    }
+
+    [HumansFact]
     public async Task CreateAsync_RejectsMoreThanFiveImages()
     {
         var act = async () => await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
@@ -111,7 +140,7 @@ public sealed class ServiceImageTests
             NewImages: FakeImages(6)), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Containers_Error_TooManyImages");
+            .WithMessage("*at most 5 images*");
     }
 
     [HumansFact]
@@ -127,7 +156,7 @@ public sealed class ServiceImageTests
             NewImages: [image]), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Containers_Error_ImageFileNameLength");
+            .WithMessage("*256 characters or fewer*");
         await _fileStorage.DidNotReceive().SaveAsync(
             Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
@@ -158,7 +187,7 @@ public sealed class ServiceImageTests
             NewImages: FakeImages(2)), actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Containers_Error_TooManyImages");
+            .WithMessage("*at most 5 images*");
     }
 
     [HumansFact]
@@ -173,7 +202,7 @@ public sealed class ServiceImageTests
             NewImages: FakeImages(1)), actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Containers_Error_TooManyImages");
+            .WithMessage("*at most 5 images*");
     }
 
     [HumansFact]
@@ -317,7 +346,7 @@ public sealed class ServiceImageTests
             });
         var original = new IOException("Database delete failed");
         repo.DeleteAsync(container.Id, Arg.Any<CancellationToken>()).Returns(Task.FromException(original));
-        var service = new Service(repo, _fileStorage, Substitute.For<ICampServiceRead>(), _auditLog, new FakeClock(StartTime), _logger);
+        var service = new Service(repo, _fileStorage, Substitute.For<ICampServiceRead>(), _auditLog, new FakeClock(StartTime), Localizer, _logger);
 
         var act = () => service.DeleteAsync(container.Id, Guid.NewGuid(), ct);
 
@@ -390,7 +419,7 @@ public sealed class ServiceImageTests
             Description: null), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Containers_Error_InvalidName");
+            .WithMessage("*must not contain*");
     }
 
     [HumansFact]
@@ -403,7 +432,7 @@ public sealed class ServiceImageTests
             NewImages: [new(Stream.Null, "image/jpeg", "trojan.html", 1024)]), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Containers_Error_ImageExtension");
+            .WithMessage("*end in .jpg*");
     }
 
     [HumansFact]
@@ -416,7 +445,7 @@ public sealed class ServiceImageTests
             NewImages: [new(Stream.Null, "image/jpeg", "big.jpg", 10 * 1024 * 1024 + 1)]), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Containers_Error_ImageSize");
+            .WithMessage("*under 10 MB*");
         await _fileStorage.DidNotReceive().SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
 
@@ -431,6 +460,6 @@ public sealed class ServiceImageTests
             ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Containers_Error_ImageType");
+            .WithMessage("*JPEG, PNG, and WebP*");
     }
 }

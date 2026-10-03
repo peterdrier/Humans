@@ -86,7 +86,7 @@
     <value>¡Bienvenido/a! Ahora es Asociado/a de Nobodies Collective.</value>
   </data>
   <data name="Governance_Tier" xml:space="preserve">
-    <value>Nivel</value>
+    <value>Categoría</value>
   </data>
   <data name="Governance_TermExpiry" xml:space="preserve">
     <value>El mandato expira</value>
@@ -152,7 +152,7 @@
     <value>Nueva solicitud</value>
   </data>
   <data name="GovernanceCreate_Lead" xml:space="preserve">
-    <value>Colaboradores y Asociados asumen responsabilidades de gobernanza. Elige el nivel que mejor se adapte a tu nivel de participación.</value>
+    <value>Colaboradores y Asociados asumen responsabilidades de gobernanza. Elige la categoría que mejor se adapte a tu nivel de participación.</value>
   </data>
   <data name="GovernanceCreate_MotivationPlaceholder" xml:space="preserve">
     <value>Por favor, comparta su motivación para unirse...</value>
@@ -266,7 +266,7 @@
     <value>Solicitante</value>
   </data>
   <data name="BoardVoting_Tier" xml:space="preserve">
-    <value>Nivel</value>
+    <value>Categoría</value>
   </data>
   <data name="BoardVoting_Details" xml:space="preserve">
     <value>Detalles</value>
@@ -314,7 +314,7 @@
     <value>Rechazar</value>
   </data>
   <data name="BoardVoting_ApproveConfirm" xml:space="preserve">
-    <value>Esto aprobará la solicitud y otorgará el nivel de membresía. ¿Continuar?</value>
+    <value>Esto aprobará la solicitud y otorgará la categoría de membresía. ¿Continuar?</value>
   </data>
   <data name="BoardVoting_RejectConfirm" xml:space="preserve">
     <value>Esto rechazará la solicitud. ¿Continuar?</value>
@@ -703,7 +703,7 @@
 &lt;p&gt;Tu mandato de &lt;strong&gt;{1}&lt;/strong&gt; expira el &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;Si deseas continuar como {1}, envía una solicitud de renovación antes de que finalice tu mandato.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Enviar solicitud de renovación&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Si no renuevas, seguirás siendo un human activo pero ya no tendrás acceso de nivel {1}.&lt;/p&gt;
+&lt;p&gt;Si no renuevas, seguirás siendo un human activo pero ya no tendrás acceso de categoría {1}.&lt;/p&gt;
 &lt;p&gt;¡Gracias por tu participación!&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment>
   </data>

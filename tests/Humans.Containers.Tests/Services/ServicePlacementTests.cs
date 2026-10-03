@@ -40,7 +40,7 @@ public sealed class ServicePlacementTests
             _fileStorage,
             Substitute.For<ICampServiceRead>(),
             _auditLog,
-            Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
+            Clock, ServiceImageTests.Localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
     }
 
     private static ContainerImageUpload Sketch(string name = "sketch.jpg") =>
@@ -231,7 +231,7 @@ public sealed class ServicePlacementTests
         repo.UpsertPlacementAsync(Arg.Any<ContainerPlacement>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Database write failed"));
         var service = new Service(repo, _fileStorage, Substitute.For<ICampServiceRead>(), _auditLog,
-            Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
+            Clock, ServiceImageTests.Localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
 
         var act = () => service.UpdatePlacementNotesAsync(id, Year, "notes",
             removeImage ? null : Sketch(), removeImage, ActorUserId, TestContext.Current.CancellationToken);
@@ -266,7 +266,7 @@ public sealed class ServicePlacementTests
         var act = async () => await _sut.UpdatePlacementNotesAsync(container.Id, Year, null, tooBig, removeImage: false, ActorUserId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Containers_Error_ImageSize");
+            .WithMessage("*under 10 MB*");
         await _fileStorage.DidNotReceive().SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
 

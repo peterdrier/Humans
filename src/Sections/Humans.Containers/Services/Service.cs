@@ -4,6 +4,7 @@ using Humans.Camps.Contracts;
 using Humans.Containers.Contracts;
 using Humans.Containers.Data;
 using Humans.Containers.Domain;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 
 namespace Humans.Containers.Services;
@@ -14,6 +15,7 @@ internal sealed class Service(
     ICampServiceRead campService,
     IAuditLogService auditLog,
     IClock clock,
+    IStringLocalizer<ContainersResource> localizer,
     ILogger<Service> logger) : IContainerService
 {
     // Names travel into JS string templates and HTML on the map pages; ban the characters
@@ -308,47 +310,44 @@ internal sealed class Service(
         return new ContainerAdminOverview(year, campGroups);
     }
 
-    private static void ValidateName(string name)
+    private void ValidateName(string name)
     {
         if (name.IndexOfAny(InvalidNameChars) >= 0)
         {
-            throw new InvalidOperationException("Containers_Error_InvalidName");
+            throw new InvalidOperationException(localizer["Containers_Error_InvalidName"]);
         }
     }
 
-    private static void ValidateImageCount(int total)
+    private void ValidateImageCount(int total)
     {
         if (total > MaxImagesPerContainer)
         {
-            throw new InvalidOperationException(
-                "Containers_Error_TooManyImages");
+            throw new InvalidOperationException(localizer["Containers_Error_TooManyImages", MaxImagesPerContainer]);
         }
     }
 
-    private static void ValidateImage(ContainerImageUpload? image)
+    private void ValidateImage(ContainerImageUpload? image)
     {
         if (image is null) return;
         if (!AllowedContentTypes.Contains(image.ContentType))
         {
-            throw new InvalidOperationException("Containers_Error_ImageType");
+            throw new InvalidOperationException(localizer["Containers_Error_ImageType"]);
         }
         if (image.Length > MaxImageBytes)
         {
-            throw new InvalidOperationException("Containers_Error_ImageSize");
+            throw new InvalidOperationException(localizer["Containers_Error_ImageTooLarge"]);
         }
         // Security: extension whitelist prevents image/jpeg + .html (static middleware would serve as HTML).
         var fileName = DisplayFileName(image.FileName);
         if (fileName.Length > MaxImageFileNameLength)
         {
-            throw new InvalidOperationException(
-                "Containers_Error_ImageFileNameLength");
+            throw new InvalidOperationException(localizer["Containers_Error_ImageFileNameLength", MaxImageFileNameLength]);
         }
 
         var ext = Path.GetExtension(fileName);
         if (!AllowedImageExtensions.Contains(ext))
         {
-            throw new InvalidOperationException(
-                "Containers_Error_ImageExtension");
+            throw new InvalidOperationException(localizer["Containers_Error_ImageExtension"]);
         }
     }
 

@@ -70,9 +70,9 @@
   <data name="Containers_Carousel_Previous" xml:space="preserve"><value>Previous</value></data>
   <data name="Containers_Carousel_Next" xml:space="preserve"><value>Next</value></data>
   <data name="Containers_Error_InvalidName" xml:space="preserve"><value>Container name must not contain &lt;, &gt; or $.</value></data>
-  <data name="Containers_Error_TooManyImages" xml:space="preserve"><value>A container can have at most 5 images.</value></data>
+  <data name="Containers_Error_TooManyImages" xml:space="preserve"><value>A container can have at most {0} images.</value></data>
   <data name="Containers_Error_ImageType" xml:space="preserve"><value>Only JPEG, PNG, and WebP images are allowed.</value></data>
-  <data name="Containers_Error_ImageSize" xml:space="preserve"><value>Image must be under 10 MB.</value></data>
-  <data name="Containers_Error_ImageFileNameLength" xml:space="preserve"><value>Image filename must be 256 characters or fewer.</value></data>
+  <data name="Containers_Error_ImageTooLarge" xml:space="preserve"><value>Image must be under 10 MB.</value></data>
+  <data name="Containers_Error_ImageFileNameLength" xml:space="preserve"><value>Image filename must be {0} characters or fewer.</value></data>
   <data name="Containers_Error_ImageExtension" xml:space="preserve"><value>Image filename must end in .jpg, .jpeg, .png, or .webp.</value></data>
 </root>

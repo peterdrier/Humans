@@ -272,13 +272,13 @@
     <value>Accordi</value>
   </data>
   <data name="Dashboard_MembershipTier" xml:space="preserve">
-    <value>Livello di adesione</value>
+    <value>Categoria di adesione</value>
   </data>
   <data name="Dashboard_TierApplicationPending" xml:space="preserve">
-    <value>La tua domanda di livello è in attesa di esame da parte del Consiglio.</value>
+    <value>La tua domanda di categoria è in attesa di esame da parte del Consiglio.</value>
   </data>
   <data name="Dashboard_TierActive" xml:space="preserve">
-    <value>Il tuo livello di adesione è attivo.</value>
+    <value>La tua categoria di adesione è attiva.</value>
   </data>
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Esamina accordi</value>
@@ -375,7 +375,7 @@
     <value>Coordinatore</value>
   </data>
   <data name="Profile_MembershipTier" xml:space="preserve">
-    <value>Livello di adesione</value>
+    <value>Categoria di adesione</value>
   </data>
   <data name="Profile_MotivationRequired" xml:space="preserve">
     <value>Una dichiarazione di motivazione è richiesta per le domande di Colaborador e Asociado.</value>
@@ -641,7 +641,7 @@
     <value>Approvato</value>
   </data>
   <data name="AdminHuman_MembershipTier" xml:space="preserve">
-    <value>Livello di adesione</value>
+    <value>Categoria di adesione</value>
   </data>
   <data name="AdminHuman_Active" xml:space="preserve">
     <value>Attivo</value>
@@ -694,7 +694,7 @@
     <comment>{0} = formatted date</comment>
   </data>
   <data name="Dashboard_TermExpired" xml:space="preserve">
-    <value>Il tuo mandato è scaduto. Invia una domanda di rinnovo per ripristinare il tuo livello.</value>
+    <value>Il tuo mandato è scaduto. Invia una domanda di rinnovo per ripristinare la tua categoria.</value>
   </data>
   <data name="Dashboard_RenewNow" xml:space="preserve">
     <value>Rinnova ora</value>

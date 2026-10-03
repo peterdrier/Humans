@@ -168,28 +168,12 @@
   <data name="Events_Upload_RowRecurringBoolean" xml:space="preserve"><value>Zeile {0}: IsRecurring muss true oder false sein.</value></data>
   <data name="Events_Upload_ParseFailed" xml:space="preserve"><value>Die CSV-Datei konnte nicht verarbeitet werden. Lade eine neue Vorlage herunter und prüfe das Dateiformat.</value></data>
   <data name="Events_Upload_ParseErrorDetail" xml:space="preserve"><value>Die CSV-Datei konnte nicht verarbeitet werden: {0}</value></data>
-  <data name="Events_Email_SubmittedSubject" xml:space="preserve">
-    <value>Deine Veranstaltung wurde eingereicht</value>
-  </data>
-  <data name="Events_Email_SubmittedBody" xml:space="preserve">
-    <value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Deine Veranstaltung &lt;strong&gt;{1}&lt;/strong&gt; wurde eingereicht und wartet auf Prüfung. Du wirst benachrichtigt, sobald sie geprüft wurde.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Deine Einreichungen ansehen&lt;/a&gt;&lt;/p&gt;</value>
-  </data>
-  <data name="Events_Email_ApprovedSubject" xml:space="preserve">
-    <value>Deine Veranstaltung wurde genehmigt</value>
-  </data>
-  <data name="Events_Email_ApprovedBody" xml:space="preserve">
-    <value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Deine Veranstaltung &lt;strong&gt;{1}&lt;/strong&gt; wurde genehmigt und erscheint im Veranstaltungsführer.&lt;/p&gt;</value>
-  </data>
-  <data name="Events_Email_RejectedSubject" xml:space="preserve">
-    <value>Deine Veranstaltung wurde nicht genehmigt</value>
-  </data>
-  <data name="Events_Email_RejectedBody" xml:space="preserve">
-    <value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Deine Veranstaltung &lt;strong&gt;{1}&lt;/strong&gt; wurde nicht für den Veranstaltungsführer genehmigt.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Grund:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Hier kannst du deine Veranstaltung bearbeiten und erneut einreichen: &lt;a href="{3}"&gt;Veranstaltung bearbeiten&lt;/a&gt;&lt;/p&gt;</value>
-  </data>
-  <data name="Events_Email_ResubmitRequestedSubject" xml:space="preserve">
-    <value>Änderungen an deiner Veranstaltung erforderlich</value>
-  </data>
-  <data name="Events_Email_ResubmitRequestedBody" xml:space="preserve">
-    <value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Das Moderationsteam hat Änderungen an deiner Veranstaltung &lt;strong&gt;{1}&lt;/strong&gt; angefordert, bevor sie genehmigt werden kann.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Rückmeldung:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Bitte aktualisiere sie und reiche sie hier erneut ein: &lt;a href="{3}"&gt;Veranstaltung bearbeiten&lt;/a&gt;&lt;/p&gt;</value>
-  </data>
+  <data name="Events_Email_Pending_Subject" xml:space="preserve"><value>Deine Veranstaltung wurde eingereicht</value></data>
+  <data name="Events_Email_Pending_Body" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Deine Veranstaltung &lt;strong&gt;{1}&lt;/strong&gt; ist eingegangen und befindet sich jetzt in der Moderationswarteschlange. Du wirst benachrichtigt, sobald sie geprüft wurde.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Deine Einreichungen ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_Email_Approved_Subject" xml:space="preserve"><value>Deine Veranstaltung wurde freigegeben</value></data>
+  <data name="Events_Email_Approved_Body" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Deine Veranstaltung &lt;strong&gt;{1}&lt;/strong&gt; wurde freigegeben und erscheint im Veranstaltungsführer.&lt;/p&gt;</value></data>
+  <data name="Events_Email_Rejected_Subject" xml:space="preserve"><value>Deine Veranstaltung wurde nicht freigegeben</value></data>
+  <data name="Events_Email_Rejected_Body" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Deine Veranstaltung &lt;strong&gt;{1}&lt;/strong&gt; wurde nicht für den Veranstaltungsführer freigegeben.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Grund:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Du kannst deine Veranstaltung hier bearbeiten und erneut einreichen: &lt;a href="{3}"&gt;Veranstaltung bearbeiten&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_Email_ResubmitRequested_Subject" xml:space="preserve"><value>Änderungen an deiner Veranstaltung angefordert</value></data>
+  <data name="Events_Email_ResubmitRequested_Body" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Das Moderationsteam bittet um Änderungen an deiner Veranstaltung &lt;strong&gt;{1}&lt;/strong&gt;, bevor sie freigegeben werden kann.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Rückmeldung:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Bitte aktualisiere sie und reiche sie hier erneut ein: &lt;a href="{3}"&gt;Veranstaltung bearbeiten&lt;/a&gt;&lt;/p&gt;</value></data>
 </root>

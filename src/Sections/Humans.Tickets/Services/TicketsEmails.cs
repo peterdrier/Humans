@@ -1,11 +1,12 @@
+using System.Globalization;
 using System.Net;
 using Humans.Base.Configuration;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options;
 
 namespace Humans.Tickets.Services;
 
@@ -13,13 +14,16 @@ namespace Humans.Tickets.Services;
 /// Tickets' own email templates: one method per template, each returning a ready
 /// <see cref="EmailMessage"/> (content plus the routing policy Tickets chooses —
 /// template name and opt-out category) for the single
-/// <see cref="IEmailService.SendAsync"/> path. The member transfer copy is rendered from Tickets resources in the recipient’s culture.
+/// <see cref="IEmailService.SendAsync"/> path. The member-facing copy lives in Tickets' own
+/// resx set and is rendered in the recipient's culture inside a <see cref="CultureScope"/>; the
+/// ticket-team notice stays English (memory/architecture/email-templates-live-in-sender.md,
+/// peterdrier/Humans#1651).
 /// Pure — no I/O, no persistence.
 /// </summary>
 internal sealed class TicketsEmails(
     IOptions<EmailSettings> settings,
-    ILogger<TicketsEmails> logger,
-    IStringLocalizer<TicketsResource> localizer)
+    IStringLocalizer<TicketsResource> localizer,
+    ILogger<TicketsEmails> logger)
 {
     private readonly EmailSettings _settings = settings.Value;
 
@@ -29,13 +33,10 @@ internal sealed class TicketsEmails(
     {
         using (new CultureScope(culture, logger))
         {
-            var name = Encode(senderName);
-            var receiver = Encode(receiverName);
-            var ticket = Encode(ticketLabel);
             return new EmailMessage(
                 senderEmail, senderName,
-                localizer["Tickets_Email_TransferRequestedSubject"].Value,
-                localizer["Tickets_Email_TransferRequestedBody", name, ticket, receiver].Value,
+                localizer["Tickets_TicketTransfer_Email_Requested_Subject"].Value,
+                Lf("Tickets_TicketTransfer_Email_Requested_Body", Encode(senderName), Encode(ticketLabel), Encode(receiverName)),
                 "ticket_transfer_requested", MessageCategory.System);
         }
     }
@@ -78,27 +79,30 @@ internal sealed class TicketsEmails(
         using (new CultureScope(culture, logger))
         {
             var name = Encode(toName);
-            var receiver = Encode(receiverName);
             var ticket = Encode(ticketLabel);
+            var receiver = Encode(receiverName);
             if (successful)
             {
                 return new EmailMessage(
                     toEmail, toName,
-                    localizer["Tickets_Email_TransferCompletedSubject"].Value,
-                    localizer["Tickets_Email_TransferCompletedBody", name, ticket, receiver].Value,
+                    localizer["Tickets_TicketTransfer_Email_Completed_Subject"].Value,
+                    Lf("Tickets_TicketTransfer_Email_Completed_Body", name, ticket, receiver),
                     "ticket_transfer_completed", MessageCategory.System);
             }
 
             var reasonHtml = string.IsNullOrWhiteSpace(reason)
                 ? ""
-                : localizer["Tickets_Email_TransferCancellationReason", Encode(reason)].Value;
+                : Lf("Tickets_TicketTransfer_Email_Cancelled_Reason", Encode(reason));
             return new EmailMessage(
                 toEmail, toName,
-                localizer["Tickets_Email_TransferCancelledSubject"].Value,
-                localizer["Tickets_Email_TransferCancelledBody", name, ticket, receiver, reasonHtml].Value,
+                localizer["Tickets_TicketTransfer_Email_Cancelled_Subject"].Value,
+                Lf("Tickets_TicketTransfer_Email_Cancelled_Body", name, ticket, receiver, reasonHtml),
                 "ticket_transfer_cancelled", MessageCategory.System);
         }
     }
+
+    private string Lf(string key, params object[] args) =>
+        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 }

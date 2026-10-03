@@ -272,13 +272,13 @@
     <value>Accords</value>
   </data>
   <data name="Dashboard_MembershipTier" xml:space="preserve">
-    <value>Niveau d'adhésion</value>
+    <value>Catégorie d'adhésion</value>
   </data>
   <data name="Dashboard_TierApplicationPending" xml:space="preserve">
-    <value>Votre candidature de niveau est en attente d'examen par le Conseil.</value>
+    <value>Votre candidature de catégorie est en attente d'examen par le Conseil.</value>
   </data>
   <data name="Dashboard_TierActive" xml:space="preserve">
-    <value>Votre niveau d'adhésion est actif.</value>
+    <value>Votre catégorie d'adhésion est active.</value>
   </data>
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Consulter les accords</value>
@@ -375,7 +375,7 @@
     <value>Coordinateur</value>
   </data>
   <data name="Profile_MembershipTier" xml:space="preserve">
-    <value>Niveau d'adhésion</value>
+    <value>Catégorie d'adhésion</value>
   </data>
   <data name="Profile_MotivationRequired" xml:space="preserve">
     <value>Une déclaration de motivation est requise pour les candidatures Colaborador et Asociado.</value>
@@ -641,7 +641,7 @@
     <value>Approuvé</value>
   </data>
   <data name="AdminHuman_MembershipTier" xml:space="preserve">
-    <value>Niveau d'adhésion</value>
+    <value>Catégorie d'adhésion</value>
   </data>
   <data name="AdminHuman_Active" xml:space="preserve">
     <value>Actif</value>
@@ -694,7 +694,7 @@
     <comment>{0} = formatted date</comment>
   </data>
   <data name="Dashboard_TermExpired" xml:space="preserve">
-    <value>Votre mandat a expiré. Soumettez une demande de renouvellement pour rétablir votre niveau.</value>
+    <value>Votre mandat a expiré. Soumettez une demande de renouvellement pour rétablir votre catégorie.</value>
   </data>
   <data name="Dashboard_RenewNow" xml:space="preserve">
     <value>Renouveler maintenant</value>

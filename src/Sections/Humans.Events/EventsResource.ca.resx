@@ -168,28 +168,12 @@
   <data name="Events_Upload_RowRecurringBoolean" xml:space="preserve"><value>Fila {0}: IsRecurring ha de ser true o false.</value></data>
   <data name="Events_Upload_ParseFailed" xml:space="preserve"><value>No s'ha pogut processar el CSV. Baixa una plantilla nova i comprova el format del fitxer.</value></data>
   <data name="Events_Upload_ParseErrorDetail" xml:space="preserve"><value>No s'ha pogut processar el CSV: {0}</value></data>
-  <data name="Events_Email_SubmittedSubject" xml:space="preserve">
-    <value>Hem rebut la teva proposta d’esdeveniment</value>
-  </data>
-  <data name="Events_Email_SubmittedBody" xml:space="preserve">
-    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Hem rebut el teu esdeveniment &lt;strong&gt;{1}&lt;/strong&gt; i és a la cua de moderació. T’avisarem quan s’hagi revisat.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Veure les teves propostes&lt;/a&gt;&lt;/p&gt;</value>
-  </data>
-  <data name="Events_Email_ApprovedSubject" xml:space="preserve">
-    <value>El teu esdeveniment ha estat aprovat</value>
-  </data>
-  <data name="Events_Email_ApprovedBody" xml:space="preserve">
-    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;El teu esdeveniment &lt;strong&gt;{1}&lt;/strong&gt; ha estat aprovat i apareixerà a la guia d’esdeveniments.&lt;/p&gt;</value>
-  </data>
-  <data name="Events_Email_RejectedSubject" xml:space="preserve">
-    <value>La teva proposta d’esdeveniment no ha estat aprovada</value>
-  </data>
-  <data name="Events_Email_RejectedBody" xml:space="preserve">
-    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;El teu esdeveniment &lt;strong&gt;{1}&lt;/strong&gt; no ha estat aprovat per a la guia d’esdeveniments.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Motiu:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Pots editar i tornar a enviar el teu esdeveniment aquí: &lt;a href="{3}"&gt;Editar l’esdeveniment&lt;/a&gt;&lt;/p&gt;</value>
-  </data>
-  <data name="Events_Email_ResubmitRequestedSubject" xml:space="preserve">
-    <value>Es demanen canvis en la teva proposta d’esdeveniment</value>
-  </data>
-  <data name="Events_Email_ResubmitRequestedBody" xml:space="preserve">
-    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;L’equip de moderació ha demanat canvis en el teu esdeveniment &lt;strong&gt;{1}&lt;/strong&gt; abans de poder aprovar-lo.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Comentaris:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Actualitza’l i torna’l a enviar aquí: &lt;a href="{3}"&gt;Editar l’esdeveniment&lt;/a&gt;&lt;/p&gt;</value>
-  </data>
+  <data name="Events_Email_Pending_Subject" xml:space="preserve"><value>Hem rebut l'enviament del teu esdeveniment</value></data>
+  <data name="Events_Email_Pending_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Hem rebut el teu esdeveniment &lt;strong&gt;{1}&lt;/strong&gt; i ara és a la cua de moderació. T'avisarem quan s'hagi revisat.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Veure els teus enviaments&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_Email_Approved_Subject" xml:space="preserve"><value>El teu esdeveniment ha estat aprovat</value></data>
+  <data name="Events_Email_Approved_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;El teu esdeveniment &lt;strong&gt;{1}&lt;/strong&gt; ha estat aprovat i apareixerà a la guia d'esdeveniments.&lt;/p&gt;</value></data>
+  <data name="Events_Email_Rejected_Subject" xml:space="preserve"><value>L'enviament del teu esdeveniment no ha estat aprovat</value></data>
+  <data name="Events_Email_Rejected_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;El teu esdeveniment &lt;strong&gt;{1}&lt;/strong&gt; no ha estat aprovat per a la guia d'esdeveniments.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Motiu:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Pots editar i tornar a enviar el teu esdeveniment aquí: &lt;a href="{3}"&gt;Edita l'esdeveniment&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_Email_ResubmitRequested_Subject" xml:space="preserve"><value>S'han sol·licitat canvis a l'enviament del teu esdeveniment</value></data>
+  <data name="Events_Email_ResubmitRequested_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;L'equip de moderació ha sol·licitat canvis al teu esdeveniment &lt;strong&gt;{1}&lt;/strong&gt; abans de poder aprovar-lo.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Comentaris:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Actualitza'l i torna'l a enviar aquí: &lt;a href="{3}"&gt;Edita l'esdeveniment&lt;/a&gt;&lt;/p&gt;</value></data>
 </root>

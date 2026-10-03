@@ -163,28 +163,12 @@
   <data name="Events_Upload_RowRecurringBoolean" xml:space="preserve"><value>Row {0}: IsRecurring must be true or false.</value></data>
   <data name="Events_Upload_ParseFailed" xml:space="preserve"><value>Could not parse CSV. Download a fresh template and check the file format.</value></data>
   <data name="Events_Upload_ParseErrorDetail" xml:space="preserve"><value>Could not parse CSV: {0}</value></data>
-  <data name="Events_Email_SubmittedSubject" xml:space="preserve">
-    <value>Your event submission has been received</value>
-  </data>
-  <data name="Events_Email_SubmittedBody" xml:space="preserve">
-    <value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;Your event &lt;strong&gt;{1}&lt;/strong&gt; has been received and is now in the moderation queue. You will be notified once it has been reviewed.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;View your submissions&lt;/a&gt;&lt;/p&gt;</value>
-  </data>
-  <data name="Events_Email_ApprovedSubject" xml:space="preserve">
-    <value>Your event has been approved</value>
-  </data>
-  <data name="Events_Email_ApprovedBody" xml:space="preserve">
-    <value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;Your event &lt;strong&gt;{1}&lt;/strong&gt; has been approved and will appear in the event guide.&lt;/p&gt;</value>
-  </data>
-  <data name="Events_Email_RejectedSubject" xml:space="preserve">
-    <value>Your event submission was not approved</value>
-  </data>
-  <data name="Events_Email_RejectedBody" xml:space="preserve">
-    <value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;Your event &lt;strong&gt;{1}&lt;/strong&gt; was not approved for the event guide.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;You can edit and resubmit your event here: &lt;a href="{3}"&gt;Edit event&lt;/a&gt;&lt;/p&gt;</value>
-  </data>
-  <data name="Events_Email_ResubmitRequestedSubject" xml:space="preserve">
-    <value>Changes requested for your event submission</value>
-  </data>
-  <data name="Events_Email_ResubmitRequestedBody" xml:space="preserve">
-    <value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;The moderation team has requested changes to your event &lt;strong&gt;{1}&lt;/strong&gt; before it can be approved.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Feedback:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Please update and resubmit here: &lt;a href="{3}"&gt;Edit event&lt;/a&gt;&lt;/p&gt;</value>
-  </data>
+  <data name="Events_Email_Pending_Subject" xml:space="preserve"><value>Your event submission has been received</value></data>
+  <data name="Events_Email_Pending_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;Your event &lt;strong&gt;{1}&lt;/strong&gt; has been received and is now in the moderation queue. You will be notified once it has been reviewed.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;View your submissions&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_Email_Approved_Subject" xml:space="preserve"><value>Your event has been approved</value></data>
+  <data name="Events_Email_Approved_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;Your event &lt;strong&gt;{1}&lt;/strong&gt; has been approved and will appear in the event guide.&lt;/p&gt;</value></data>
+  <data name="Events_Email_Rejected_Subject" xml:space="preserve"><value>Your event submission was not approved</value></data>
+  <data name="Events_Email_Rejected_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;Your event &lt;strong&gt;{1}&lt;/strong&gt; was not approved for the event guide.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;You can edit and resubmit your event here: &lt;a href="{3}"&gt;Edit event&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_Email_ResubmitRequested_Subject" xml:space="preserve"><value>Changes requested for your event submission</value></data>
+  <data name="Events_Email_ResubmitRequested_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;The moderation team has requested changes to your event &lt;strong&gt;{1}&lt;/strong&gt; before it can be approved.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Feedback:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Please update and resubmit here: &lt;a href="{3}"&gt;Edit event&lt;/a&gt;&lt;/p&gt;</value></data>
 </root>

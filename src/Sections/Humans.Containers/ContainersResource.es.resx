@@ -134,9 +134,19 @@
     <value>Siguiente</value>
   </data>
   <data name="Containers_Error_InvalidName" xml:space="preserve"><value>El nombre del contenedor no debe contener &lt;, &gt; ni $.</value></data>
-  <data name="Containers_Error_TooManyImages" xml:space="preserve"><value>Un contenedor puede tener como máximo 5 imágenes.</value></data>
-  <data name="Containers_Error_ImageType" xml:space="preserve"><value>Solo se permiten imágenes JPEG, PNG y WebP.</value></data>
-  <data name="Containers_Error_ImageSize" xml:space="preserve"><value>La imagen debe ocupar menos de 10 MB.</value></data>
-  <data name="Containers_Error_ImageFileNameLength" xml:space="preserve"><value>El nombre del archivo de imagen no puede tener más de 256 caracteres.</value></data>
-  <data name="Containers_Error_ImageExtension" xml:space="preserve"><value>El nombre del archivo de imagen debe terminar en .jpg, .jpeg, .png o .webp.</value></data>
+  <data name="Containers_Error_TooManyImages" xml:space="preserve">
+    <value>Un contenedor puede tener como máximo {0} imágenes.</value>
+  </data>
+  <data name="Containers_Error_ImageType" xml:space="preserve">
+    <value>Solo se permiten imágenes JPEG, PNG y WebP.</value>
+  </data>
+  <data name="Containers_Error_ImageTooLarge" xml:space="preserve">
+    <value>La imagen debe pesar menos de 10 MB.</value>
+  </data>
+  <data name="Containers_Error_ImageFileNameLength" xml:space="preserve">
+    <value>El nombre del archivo de imagen debe tener {0} caracteres o menos.</value>
+  </data>
+  <data name="Containers_Error_ImageExtension" xml:space="preserve">
+    <value>El nombre del archivo de imagen debe terminar en .jpg, .jpeg, .png o .webp.</value>
+  </data>
 </root>

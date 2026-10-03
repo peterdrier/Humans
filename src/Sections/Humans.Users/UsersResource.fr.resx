@@ -270,7 +270,7 @@
     <value>Note : Vous pouvez toujours demander à changer cela plus tard.</value>
   </data>
   <data name="ProfileEdit_TierLocked" xml:space="preserve">
-    <value>Votre niveau est verrouillé car vous avez une candidature active ou en attente.</value>
+    <value>Votre catégorie est verrouillée car vous avez une candidature active ou en attente.</value>
   </data>
   <data name="ProfileEdit_ApplicationSection" xml:space="preserve">
     <value>Candidature</value>

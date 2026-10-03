@@ -159,7 +159,7 @@ internal sealed class ContainerController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Container write failed for camp {Slug}: {Message}", slug, ex.Message);
-            SetError(localizer[ex.Message].Value);
+            SetError(ex.Message);
             return RedirectToAction(nameof(Index), new { slug });
         }
 

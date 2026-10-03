@@ -326,7 +326,7 @@ internal sealed class CityPlanningApiController(
         }
         catch (InvalidOperationException ex)
         {
-            return UnprocessableEntity(containersLocalizer[ex.Message].Value);
+            return UnprocessableEntity(ex.Message);
         }
     }
 
