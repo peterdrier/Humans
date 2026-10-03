@@ -1176,4 +1176,24 @@
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Il tuo accesso è stato sospeso: {0}</value></data>
   <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Visualizza profilo</value></data>
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Consenso ai documenti richiesti mancante (periodo di grazia scaduto)</value></data>
+  <data name="CommPrefs_Name_System" xml:space="preserve"><value>Sistema</value></data>
+  <data name="CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Codici delle campagne</value></data>
+  <data name="CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Messaggi tra persone</value></data>
+  <data name="CommPrefs_Name_Ticketing" xml:space="preserve"><value>Biglietti</value></data>
+  <data name="CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Novità per il volontariato</value></data>
+  <data name="CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Novità dei team</value></data>
+  <data name="CommPrefs_Name_Governance" xml:space="preserve"><value>Governance</value></data>
+  <data name="CommPrefs_Name_Marketing" xml:space="preserve"><value>Marketing</value></data>
+  <data name="CommPrefs_Description_System" xml:space="preserve"><value>Notifiche importanti su account, consenso e sicurezza. Sempre attive.</value></data>
+  <data name="CommPrefs_Description_CampaignCodes" xml:space="preserve"><value>Codici sconto, contributi e codici da riscattare per le campagne. Sempre attivi.</value></data>
+  <data name="CommPrefs_Description_FacilitatedMessages" xml:space="preserve"><value>Messaggi che altre persone ti inviano tramite Humans.</value></data>
+  <data name="CommPrefs_Description_Ticketing" xml:space="preserve"><value>Conferme di acquisto e informazioni sull’evento.</value></data>
+  <data name="CommPrefs_Description_VolunteerUpdates" xml:space="preserve"><value>Modifiche ai turni, aggiornamenti del programma e notifiche per il volontariato.</value></data>
+  <data name="CommPrefs_Description_TeamUpdates" xml:space="preserve"><value>Permessi di Drive, aggiunte e rimozioni di membri dei team.</value></data>
+  <data name="CommPrefs_Description_Governance" xml:space="preserve"><value>Votazioni del Consiglio, domande di livello associativo, assegnazioni di ruoli e verifiche di iscrizione.</value></data>
+  <data name="CommPrefs_Description_Marketing" xml:space="preserve"><value>Mailing list e promozioni.</value></data>
+  <data name="CommPrefs_TicketingYear" xml:space="preserve"><value>Biglietti — {0}</value></data>
+  <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Bloccato — hai un biglietto per quest’anno</value></data>
+  <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Operazioni dell’evento</value></data>
+  <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Novità della comunità</value></data>
 </root>

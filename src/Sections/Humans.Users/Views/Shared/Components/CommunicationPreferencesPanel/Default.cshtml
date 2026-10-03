@@ -1,3 +1,4 @@
+@inject NodaTime.IClock Clock
 @using Humans.Base.Extensions
 @model Humans.Users.Models.CommunicationPreferencesViewModel
 @{
@@ -22,15 +23,18 @@
                 @for (var i = 0; i < Model.Categories.Count; i++)
                 {
                     var item = Model.Categories[i];
+                    var categoryName = item.Category == MessageCategory.Ticketing
+                        ? Localizer["CommPrefs_TicketingYear", Clock.GetCurrentInstant().InUtc().Year].Value
+                        : Localizer[$"CommPrefs_Name_{item.Category}"].Value;
 
                     <tr class="@(!item.EmailEditable ? "table-light" : "")">
                         <td>
-                            <div class="fw-semibold">@item.DisplayName</div>
-                            <div class="form-text mb-0">@item.Description</div>
+                            <div class="fw-semibold">@categoryName</div>
+                            <div class="form-text mb-0">@Localizer[$"CommPrefs_Description_{item.Category}"]</div>
                             @if (item.Note is not null)
                             {
                                 <div class="form-text text-warning-emphasis mb-0">
-                                    <i class="fa-solid fa-lock fa-xs me-1"></i>@item.Note
+                                    <i class="fa-solid fa-lock fa-xs me-1"></i>@Localizer["CommPrefs_TicketingLocked"]
                                 </div>
                             }
                         </td>

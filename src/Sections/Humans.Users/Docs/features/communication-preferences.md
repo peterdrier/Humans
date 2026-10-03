@@ -29,6 +29,8 @@ GDPR and CAN-SPAM compliance require giving users control over which communicati
 | Governance (board voting, tier applications, role assignments) | Opt-in | Opt-in | On | Yes |
 | Marketing (mailing list, promotions) | Opt-in | Opt-in | Off | Yes |
 
+Category names, descriptions, the clock-derived Ticketing year heading and ticket-lock note are localized in all six supported cultures on member and guest pages. Guest one-click banners and legacy Marketing unsubscribe pages share the translated category names.
+
 ### Always-On Categories
 
 System and Campaign Codes are always locked on — users cannot opt out. These categories cover critical account operations and code delivery.

@@ -1176,4 +1176,24 @@
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Dein Zugang wurde gesperrt: {0}</value></data>
   <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Profil ansehen</value></data>
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Erforderliche Einwilligung fehlt (Nachfrist abgelaufen)</value></data>
+  <data name="CommPrefs_Name_System" xml:space="preserve"><value>System</value></data>
+  <data name="CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Kampagnencodes</value></data>
+  <data name="CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Nachrichten zwischen Mitgliedern</value></data>
+  <data name="CommPrefs_Name_Ticketing" xml:space="preserve"><value>Tickets</value></data>
+  <data name="CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Neuigkeiten für Freiwillige</value></data>
+  <data name="CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Teamneuigkeiten</value></data>
+  <data name="CommPrefs_Name_Governance" xml:space="preserve"><value>Vereinsführung</value></data>
+  <data name="CommPrefs_Name_Marketing" xml:space="preserve"><value>Marketing</value></data>
+  <data name="CommPrefs_Description_System" xml:space="preserve"><value>Wichtige Benachrichtigungen zu Konto, Einwilligung und Sicherheit. Immer aktiviert.</value></data>
+  <data name="CommPrefs_Description_CampaignCodes" xml:space="preserve"><value>Rabattcodes, Zuschüsse und Codes zum Einlösen von Kampagnen. Immer aktiviert.</value></data>
+  <data name="CommPrefs_Description_FacilitatedMessages" xml:space="preserve"><value>Nachrichten, die dir andere Menschen über Humans senden.</value></data>
+  <data name="CommPrefs_Description_Ticketing" xml:space="preserve"><value>Kaufbestätigungen und Informationen zur Veranstaltung.</value></data>
+  <data name="CommPrefs_Description_VolunteerUpdates" xml:space="preserve"><value>Schichtänderungen, Dienstplanaktualisierungen und Benachrichtigungen für Freiwillige.</value></data>
+  <data name="CommPrefs_Description_TeamUpdates" xml:space="preserve"><value>Drive-Berechtigungen sowie Hinzufügen und Entfernen von Teammitgliedern.</value></data>
+  <data name="CommPrefs_Description_Governance" xml:space="preserve"><value>Vorstandsabstimmungen, Anträge auf Mitgliedschaftsstufen, Rollenzuweisungen und Prüfungen beim Beitritt.</value></data>
+  <data name="CommPrefs_Description_Marketing" xml:space="preserve"><value>Mailingliste und Werbeaktionen.</value></data>
+  <data name="CommPrefs_TicketingYear" xml:space="preserve"><value>Tickets — {0}</value></data>
+  <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Gesperrt — du hast ein Ticket für dieses Jahr</value></data>
+  <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Veranstaltungsorganisation</value></data>
+  <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Neuigkeiten der Gemeinschaft</value></data>
 </root>

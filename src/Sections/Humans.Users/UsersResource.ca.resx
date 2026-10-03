@@ -1176,4 +1176,24 @@
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>El teu accés ha estat suspès: {0}</value></data>
   <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Veure el perfil</value></data>
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Falta el consentiment als documents requerits (termini de gràcia vençut)</value></data>
+  <data name="CommPrefs_Name_System" xml:space="preserve"><value>Sistema</value></data>
+  <data name="CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Codis de campanyes</value></data>
+  <data name="CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Missatges entre persones</value></data>
+  <data name="CommPrefs_Name_Ticketing" xml:space="preserve"><value>Entrades</value></data>
+  <data name="CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Novetats del voluntariat</value></data>
+  <data name="CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Novetats dels equips</value></data>
+  <data name="CommPrefs_Name_Governance" xml:space="preserve"><value>Governança</value></data>
+  <data name="CommPrefs_Name_Marketing" xml:space="preserve"><value>Màrqueting</value></data>
+  <data name="CommPrefs_Description_System" xml:space="preserve"><value>Notificacions importants sobre el compte, el consentiment i la seguretat. Sempre activades.</value></data>
+  <data name="CommPrefs_Description_CampaignCodes" xml:space="preserve"><value>Codis de descompte, ajuts i codis per bescanviar campanyes. Sempre activats.</value></data>
+  <data name="CommPrefs_Description_FacilitatedMessages" xml:space="preserve"><value>Missatges que altres persones t’envien a través de Humans.</value></data>
+  <data name="CommPrefs_Description_Ticketing" xml:space="preserve"><value>Confirmacions de compra i informació de l’esdeveniment.</value></data>
+  <data name="CommPrefs_Description_VolunteerUpdates" xml:space="preserve"><value>Canvis de torns, actualitzacions de l’horari i notificacions del voluntariat.</value></data>
+  <data name="CommPrefs_Description_TeamUpdates" xml:space="preserve"><value>Permisos de Drive, incorporacions i baixes als equips.</value></data>
+  <data name="CommPrefs_Description_Governance" xml:space="preserve"><value>Votacions de la Junta, sol·licituds de nivell, assignacions de rols i revisions d’incorporació.</value></data>
+  <data name="CommPrefs_Description_Marketing" xml:space="preserve"><value>Llista de correu i promocions.</value></data>
+  <data name="CommPrefs_TicketingYear" xml:space="preserve"><value>Entrades — {0}</value></data>
+  <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Bloquejat — tens una entrada per a aquest any</value></data>
+  <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Operacions de l’esdeveniment</value></data>
+  <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Novetats de la comunitat</value></data>
 </root>

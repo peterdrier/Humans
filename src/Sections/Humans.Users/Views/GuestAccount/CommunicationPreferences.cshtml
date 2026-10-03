@@ -1,3 +1,4 @@
+@inject NodaTime.IClock Clock
 @model CommunicationPreferencesViewModel
 @{
     ViewData["Title"] = Localizer["CommPrefs_Title"].Value;
@@ -21,10 +22,9 @@
 
         @if (Model.HighlightCategory is { } highlight && !highlight.IsAlwaysOn())
         {
-            // Reuse the controller-built DisplayName (sourced from IClock for Ticketing year).
-            // Avoids a raw DateTime.UtcNow in the view — see memory/code/nodatime-for-dates.md.
-            var highlightName = Model.Categories.FirstOrDefault(c => c.Category == highlight)?.DisplayName
-                ?? highlight.ToDisplayName();
+            var highlightName = highlight == MessageCategory.Ticketing
+                ? Localizer["CommPrefs_TicketingYear", Clock.GetCurrentInstant().InUtc().Year].Value
+                : Localizer[$"CommPrefs_Name_{highlight}"].Value;
             <div id="oneClickBanner"
                  class="alert alert-warning d-flex align-items-center justify-content-between gap-3 mb-4"
                  data-category="@highlight">
@@ -52,16 +52,19 @@
                         @for (var i = 0; i < Model.Categories.Count; i++)
                         {
                             var item = Model.Categories[i];
+                            var categoryName = item.Category == MessageCategory.Ticketing
+                                ? Localizer["CommPrefs_TicketingYear", Clock.GetCurrentInstant().InUtc().Year].Value
+                                : Localizer[$"CommPrefs_Name_{item.Category}"].Value;
 
                             <tr class="@(!item.EmailEditable ? "table-light" : (Model.HighlightCategory == item.Category ? "table-warning" : ""))"
                                 data-category-row="@item.Category">
                                 <td>
-                                    <div class="fw-semibold">@item.DisplayName</div>
-                                    <div class="form-text mb-0">@item.Description</div>
+                                    <div class="fw-semibold">@categoryName</div>
+                                    <div class="form-text mb-0">@Localizer[$"CommPrefs_Description_{item.Category}"]</div>
                                     @if (item.Note is not null)
                                     {
                                         <div class="form-text text-warning-emphasis mb-0">
-                                            <i class="fa-solid fa-lock fa-xs me-1"></i>@item.Note
+                                            <i class="fa-solid fa-lock fa-xs me-1"></i>@Localizer["CommPrefs_TicketingLocked"]
                                         </div>
                                     }
                                 </td>

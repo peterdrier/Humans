@@ -194,6 +194,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- Member and guest communication-preference category names, descriptions, ticket-year heading and ticket-lock note use Users resources in all six cultures. Guest one-click banners and legacy marketing unsubscribe pages use the same translated category names; stored category identifiers and preference rules are unchanged.
+
 - Account-status, pending-deletion and communication-preferences GETs retain request cancellation during viewer resolution; cancellation propagates without an error flash. Deletion and preference POSTs keep their existing mutation boundaries.
 
 - The login page’s locked-account error and dismissal label render in all six supported cultures. Authentication and lockout behavior are unchanged.
