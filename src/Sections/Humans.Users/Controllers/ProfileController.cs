@@ -249,9 +249,7 @@ internal sealed class ProfileController(
         // services are peers/leaves that must not call each other back.
         await RunPostProfileSaveOrchestrationAsync(user, model, isInitialSetup);
 
-        var contactFieldsResult = await SaveEditedContactFieldsOrNullAsync(model, user.Id, profileId);
-        if (contactFieldsResult is not null)
-            return contactFieldsResult;
+        await SaveEditedContactFieldsAsync(model, profileId);
 
         // Languages: remove-and-replace.
         var newLanguages = model.EditableLanguages
@@ -484,7 +482,7 @@ internal sealed class ProfileController(
         }
     }
 
-    private async Task<IActionResult?> SaveEditedContactFieldsOrNullAsync(ProfileViewModel model, Guid userId, Guid profileId)
+    private async Task SaveEditedContactFieldsAsync(ProfileViewModel model, Guid profileId)
     {
         var contactFieldDtos = model.EditableContactFields
             .Where(cf => !string.IsNullOrWhiteSpace(cf.Value))
@@ -498,18 +496,7 @@ internal sealed class ProfileController(
             ))
             .ToList();
 
-        try
-        {
-            await contactFieldService.SaveContactFieldsAsync(profileId, contactFieldDtos);
-            return null;
-        }
-        catch (ValidationException ex)
-        {
-            logger.LogWarning(ex, "Failed to save contact fields for user {UserId} and profile {ProfileId}", userId, profileId);
-            ModelState.AddModelError(string.Empty, ex.Message);
-            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-            return View(model);
-        }
+        await contactFieldService.SaveContactFieldsAsync(profileId, contactFieldDtos);
     }
 
     private async Task<(bool Success, byte[]? Data, string? ContentType)> TryReadProfilePictureUploadAsync(ProfileViewModel model)
