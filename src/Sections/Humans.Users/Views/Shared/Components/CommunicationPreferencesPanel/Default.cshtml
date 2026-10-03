@@ -43,16 +43,16 @@
                             {
                                 if (item.EmailEnabled)
                                 {
-                                    <input type="checkbox" class="form-check-input" checked disabled />
+                                    <input type="checkbox" aria-label="@Localizer["CommPrefs_Email"] — @categoryName" class="form-check-input" checked disabled />
                                 }
                                 else
                                 {
-                                    <input type="checkbox" class="form-check-input" disabled />
+                                    <input type="checkbox" aria-label="@Localizer["CommPrefs_Email"] — @categoryName" class="form-check-input" disabled />
                                 }
                             }
                             else if (item.EmailEditable)
                             {
-                                <input type="checkbox"
+                                <input type="checkbox" aria-label="@Localizer["CommPrefs_Email"] — @categoryName"
                                        class="form-check-input pref-toggle"
                                        data-category="@item.Category"
                                        data-channel="email"
@@ -60,7 +60,7 @@
                             }
                             else
                             {
-                                <input type="checkbox"
+                                <input type="checkbox" aria-label="@Localizer["CommPrefs_Email"] — @categoryName"
                                        class="form-check-input"
                                        checked
                                        disabled />

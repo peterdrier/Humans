@@ -71,7 +71,7 @@
                                 <td class="text-center">
                                     @if (item.EmailEditable)
                                     {
-                                        <input type="checkbox"
+                                        <input type="checkbox" aria-label="@Localizer["CommPrefs_Email"] — @categoryName"
                                                class="form-check-input pref-toggle"
                                                data-category="@item.Category"
                                                data-channel="email"
@@ -79,7 +79,7 @@
                                     }
                                     else
                                     {
-                                        <input type="checkbox"
+                                        <input type="checkbox" aria-label="@Localizer["CommPrefs_Email"] — @categoryName"
                                                class="form-check-input"
                                                checked
                                                disabled />
@@ -89,7 +89,7 @@
                                 <td class="text-center">
                                     @if (item.AlertEditable)
                                     {
-                                        <input type="checkbox"
+                                        <input type="checkbox" aria-label="@Localizer["CommPrefs_Alert"] — @categoryName"
                                                class="form-check-input pref-toggle"
                                                data-category="@item.Category"
                                                data-channel="alert"
@@ -97,7 +97,7 @@
                                     }
                                     else
                                     {
-                                        <input type="checkbox"
+                                        <input type="checkbox" aria-label="@Localizer["CommPrefs_Alert"] — @categoryName"
                                                class="form-check-input"
                                                checked
                                                disabled />
