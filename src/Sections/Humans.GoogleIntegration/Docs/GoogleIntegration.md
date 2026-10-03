@@ -110,6 +110,8 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 
 ## Invariants
 
+- Workspace accounts, per-resource/per-human audit frames and Sync Outbox reads pass the browser abort token to every data lookup. Account-list caller cancellation logs a warning without an exception stack and propagates; dependency cancellation remains an error with generic feedback.
+
 - The Workspace accounts page renders existing `WorkspaceAccountInfo` rows directly, preserving service email ordering and status, member-link, 2FA and recovery fields.
 
 - Sync-dashboard preview loads apply only the latest response or failure for each resource tab. Drive and group previews load independently; sync POSTs keep their existing execution boundaries.

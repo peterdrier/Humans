@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Humans.GoogleIntegration.Services;
+using Humans.Teams.Contracts;
 
 namespace Humans.GoogleIntegration.Tests;
 
@@ -25,8 +26,45 @@ namespace Humans.GoogleIntegration.Tests;
 /// </remarks>
 public class GoogleControllerSyncCancellationTests
 {
+    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly ITeamResourceService _resources = Substitute.For<ITeamResourceService>();
+    private readonly IGoogleAdminService _admin = Substitute.For<IGoogleAdminService>();
     private readonly IGoogleSyncService _syncService = Substitute.For<IGoogleSyncService>();
     private readonly IGoogleGroupSync _groupSync = Substitute.For<IGoogleGroupSync>();
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task AccountsAndOutbox_ForwardTheBrowserTokenToEveryRead(bool outbox)
+    {
+        var controller = BuildSut(alreadyAbortedRequest: true);
+        var ct = controller.HttpContext.RequestAborted;
+        if (outbox)
+        {
+            var userId = Guid.NewGuid();
+            var teamId = Guid.NewGuid();
+            _syncService.GetRecentOutboxEventsAsync(200, Arg.Any<CancellationToken>())
+                .Returns([new GoogleSyncOutboxEventSnapshot(Guid.NewGuid(), "test", teamId, userId, default, null, 0, null, false)]);
+            var teams = Substitute.For<ITeamServiceRead>();
+            teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+            _resources.GetResourcesByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>());
+
+            (await controller.SyncOutbox(teams, Substitute.For<IGoogleDriveActivityClient>())).Should().BeOfType<ViewResult>();
+
+            await _syncService.Received(1).GetRecentOutboxEventsAsync(200, ct);
+            await _users.Received(1).GetUserInfoAsync(userId, ct);
+            await teams.Received(1).GetTeamsAsync(ct);
+            await _resources.Received(1).GetResourcesByTeamIdsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(teamId)), ct);
+        }
+        else
+        {
+            _admin.GetWorkspaceAccountListAsync(Arg.Any<CancellationToken>())
+                .Returns(new WorkspaceAccountListResult([], 0, 0, 0, 0, 0, 0, 0));
+            (await controller.Accounts()).Should().BeOfType<ViewResult>();
+            await _admin.Received(1).GetWorkspaceAccountListAsync(ct);
+        }
+    }
 
     [HumansFact]
     public async Task SyncExecute_does_not_forward_the_aborted_request_token()
@@ -119,12 +157,12 @@ public class GoogleControllerSyncCancellationTests
     private GoogleController BuildSut(bool alreadyAbortedRequest)
     {
         var controller = new GoogleController(
-            Substitute.For<IUserServiceRead>(),
+            _users,
             _syncService,
             _groupSync,
-            Substitute.For<ITeamResourceService>(),
+            _resources,
             Substitute.For<IEmailProvisioningService>(),
-            Substitute.For<IGoogleAdminService>(),
+            _admin,
             NullLogger<GoogleController>.Instance);
 
         var aborted = new CancellationTokenSource();
