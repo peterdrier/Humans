@@ -135,6 +135,8 @@ internal sealed partial class WorkgroupService(
         var now = clock.GetCurrentInstant();
         await repository.AddMemberAsync(
             NewMember(workgroup.Id, userId, WorkgroupMemberRole.Member, now), ct);
+        // Membership has committed; its log and follow-up work must survive a closed tab.
+        ct = CancellationToken.None;
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.MemberJoined, now, name, ct);
         await RequestDriveSyncAsync(workgroup, ct);
     }
@@ -184,6 +186,8 @@ internal sealed partial class WorkgroupService(
         var leavingName = await NameOfAsync(userId, ct);
         var promotedName = promoted is null ? null : await NameOfAsync(promoted.UserId, ct);
         await repository.UpdateMembersAsync(changed, ct);
+        // Membership has committed; finish its log, audit and follow-up work.
+        ct = CancellationToken.None;
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.MemberLeft, now, leavingName, ct);
         if (promoted is not null)
         {
@@ -296,6 +300,8 @@ internal sealed partial class WorkgroupService(
 
         var names = await NamesOfAsync(wanted, ct);
         await repository.UpdateMembersAsync(changed, ct);
+        // Membership has committed; finish its log, audit and follow-up work.
+        ct = CancellationToken.None;
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CoordinatorChanged, now,
             string.Join(", ", names), ct, authorUserId: asAdmin ? null : actorUserId);
         await AuditAsync(AuditAction.WorkgroupCoordinatorsChanged, workgroup,
