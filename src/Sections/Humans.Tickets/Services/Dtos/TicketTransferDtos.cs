@@ -10,12 +10,6 @@ internal sealed record TicketTransferRequestDto(
     Guid ReceiverUserId,
     string Reason);
 
-/// <summary>Admin decision payload.</summary>
-internal sealed record TicketTransferDecisionDto(
-    Guid TransferRequestId,
-    bool Approve,
-    string? AdminNotes);
-
 /// <summary>Read-side DTO for the admin queue.</summary>
 internal sealed record TicketTransferRowDto(
     Guid Id,

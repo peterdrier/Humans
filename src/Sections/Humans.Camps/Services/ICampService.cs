@@ -278,5 +278,3 @@ internal sealed record CampPlacementSummary(
     string? SoundZone,
     string Status,
     string? ElectricalGrid);
-
-internal sealed record CampSeasonBrief(Guid CampSeasonId, string Name, string CampSlug, SpaceSize? SpaceRequirement);

@@ -3,24 +3,6 @@ using Humans.Events.Contracts;
 
 namespace Humans.Events.Models;
 
-internal sealed class CampEventsTabViewModel
-{
-    public Guid CampId { get; set; }
-    public string CampName { get; set; } = string.Empty;
-    public string CampSlug { get; set; } = string.Empty;
-
-    public int SubmittedCount { get; set; }
-    public int ApprovedCount { get; set; }
-    public int PendingCount { get; set; }
-
-    public bool IsSubmissionOpen { get; set; }
-    public DateTime? SubmissionOpenAt { get; set; }
-    public DateTime? SubmissionCloseAt { get; set; }
-    public string? TimeZoneId { get; set; }
-
-    public List<CampEventRowViewModel> Events { get; set; } = [];
-}
-
 internal sealed class CampEventRowViewModel
 {
     public Guid Id { get; set; }

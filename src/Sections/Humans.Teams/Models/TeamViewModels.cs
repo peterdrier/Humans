@@ -187,13 +187,6 @@ internal sealed class TeamJoinRequestViewModel
     public string? ReviewNotes { get; set; }
 }
 
-internal sealed class PendingRequestsViewModel : PagedListViewModel
-{
-    public List<TeamJoinRequestViewModel> Requests { get; set; } = [];
-    public Guid? TeamIdFilter { get; set; }
-    public string? TeamNameFilter { get; set; }
-}
-
 internal sealed class CreateTeamViewModel : TeamFormViewModelBase;
 
 internal sealed class EditTeamViewModel : TeamFormViewModelBase
