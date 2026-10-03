@@ -94,7 +94,8 @@ public class EmailProvisioningServiceTests
         IUserService UserService,
         IGoogleWorkspaceUserService WorkspaceUserService,
         IUserEmailService UserEmailService,
-        ITeamService TeamService);
+        ITeamService TeamService,
+        INotificationEmitter Notifications);
 
     private static ProvisioningFixture BuildFixture()
     {
@@ -114,15 +115,15 @@ public class EmailProvisioningServiceTests
 
         return new ProvisioningFixture(
             service, userService, workspace, userEmail,
-            teamService);
+            teamService, notify);
     }
 
-    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile, string language = "en") => UserInfo.Create(
         user: new User
         {
             Id = userId,
             DisplayName = profile.BurnerName,
-            PreferredLanguage = "en",
+            PreferredLanguage = language,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         },
         userEmails: [],
@@ -205,15 +206,23 @@ public class EmailProvisioningServiceTests
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ProvisionNobodiesEmailAsync_AllowsWhenPrefixIsFree()
+    [HumansTheory]
+    [InlineData("en", "Your @nobodies.team account is ready", "View profile")]
+    [InlineData("es", "Tu cuenta @nobodies.team está lista", "Ver perfil")]
+    [InlineData("de", "Dein @nobodies.team-Konto ist bereit", "Profil ansehen")]
+    [InlineData("it", "Il tuo account @nobodies.team è pronto", "Visualizza profilo")]
+    [InlineData("fr", "Ton compte @nobodies.team est prêt", "Voir le profil")]
+    [InlineData("ca", "El teu compte @nobodies.team està llest", "Mostra el perfil")]
+    [InlineData("xx", "Your @nobodies.team account is ready", "View profile")]
+    public async Task ProvisionNobodiesEmailAsync_FreePrefix_LocalizesRecipientNotice(
+        string language, string expectedTitle, string expectedAction)
     {
         var f = BuildFixture();
 
         var userId = Guid.NewGuid();
         StubTargetUser(f, userId);
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(firstName: "Person", lastName: "Test")));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(firstName: "Person", lastName: "Test"), language));
         f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmailEditDto>());
 
@@ -231,6 +240,12 @@ public class EmailProvisioningServiceTests
 
         result.Success.Should().BeTrue();
         result.FullEmail.Should().Be("bob@nobodies.team");
+        var notice = f.Notifications.ReceivedCalls().Single().GetArguments();
+        notice[3].Should().Be(expectedTitle);
+        ((IReadOnlyList<Guid>)notice[4]!).Should().Equal(userId);
+        ((string)notice[5]!).Should().Contain("bob@nobodies.team");
+        notice[6].Should().Be("/Profile");
+        notice[7].Should().Be(expectedAction);
 
         await f.WorkspaceUserService.Received(1).ProvisionAccountAsync(
             "bob@nobodies.team", "Person", "Test",
