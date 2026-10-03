@@ -9,6 +9,7 @@ using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using AwesomeAssertions;
 using Humans.Base.Csv;
+using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Events.Contracts;
 using Humans.Events.Data;
@@ -36,11 +37,12 @@ public sealed class EventServiceTests
     private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly EventsEmails _emailMessages = new(NullLogger<EventsEmails>.Instance);
+    private readonly EventsEmails _emailMessages;
     private readonly EventService _service;
 
     public EventServiceTests()
     {
+        _emailMessages = new EventsEmails(NullLogger<EventsEmails>.Instance, _localizer);
         _service = new EventService(_repo, _burnSettings, _userService, _emailService, _emailMessages, _clock, NullLogger<EventService>.Instance, _localizer);
     }
 
@@ -362,6 +364,34 @@ public sealed class EventServiceTests
                 && m.HtmlBody.Contains("https://x/Events/MySubmissions")));
     }
 
+    [HumansTheory]
+    [InlineData(false, "Hemos recibido tu propuesta de evento")]
+    [InlineData(true, "Tu propuesta de evento no ha sido aprobada")]
+    public async Task LifecycleEmail_UsesSubmitterLanguageInsteadOfActorLanguage(bool moderate, string subject)
+    {
+        using var actorCulture = new CultureScope("de");
+        var submitterId = StubSubmitterWithEmail("sub@example.com", "Burner", "es");
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(), SubmitterUserId = submitterId,
+            Title = "Fire show", Status = EventStatus.Pending,
+        };
+        if (moderate)
+        {
+            _repo.Events.Add(guideEvent);
+            await _service.ApplyModerationAsync(guideEvent.Id, Guid.NewGuid(),
+                EventModerationActionType.Rejected, "Too loud", "https://x/edit", TestContext.Current.CancellationToken);
+        }
+        else
+        {
+            await _service.SubmitEventAsync(guideEvent, "https://x/Events/MySubmissions", TestContext.Current.CancellationToken);
+        }
+
+        await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(m =>
+            string.Equals(m.Subject, subject, StringComparison.Ordinal)));
+        CultureInfo.CurrentUICulture.Name.Should().Be("de");
+    }
+
     [HumansFact]
     public async Task SubmitEventAsync_NullActionUrl_SkipsEmail()
     {
@@ -470,12 +500,12 @@ public sealed class EventServiceTests
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
-    private Guid StubSubmitterWithEmail(string email, string burnerName)
+    private Guid StubSubmitterWithEmail(string email, string burnerName, string culture = "en")
     {
         var userId = Guid.NewGuid();
         // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
         // UserInfo.BurnerName reads User.BurnerName only (#1098).
-        var user = new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = "en" };
+        var user = new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = culture };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             // UserInfoStubHelpers.ToUserInfo lives in Humans.Application.Tests and is not
             // visible across the section boundary; UserInfo.Create is the public builder.

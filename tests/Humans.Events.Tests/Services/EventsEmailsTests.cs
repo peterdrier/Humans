@@ -1,4 +1,9 @@
 using System.Reflection;
+using System.Globalization;
+using Humans.Base.Extensions;
+using Xunit;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Events.Contracts;
@@ -17,7 +22,53 @@ namespace Humans.Events.Tests.Services;
 /// </summary>
 public sealed class EventsEmailsTests
 {
-    private static EventsEmails Create() => new(NullLogger<EventsEmails>.Instance);
+    private static EventsEmails Create() => new(NullLogger<EventsEmails>.Instance,
+        new StringLocalizer<EventsResource>(new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
+
+    [HumansTheory]
+    [InlineData("en", EventStatus.Pending, "Your event submission has been received", "Hi")]
+    [InlineData("en", EventStatus.Approved, "Your event has been approved", "Hi")]
+    [InlineData("en", EventStatus.Rejected, "Your event submission was not approved", "Hi")]
+    [InlineData("en", EventStatus.ResubmitRequested, "Changes requested for your event submission", "Hi")]
+    [InlineData("es", EventStatus.Pending, "Hemos recibido tu propuesta de evento", "Hola")]
+    [InlineData("es", EventStatus.Approved, "Tu evento ha sido aprobado", "Hola")]
+    [InlineData("es", EventStatus.Rejected, "Tu propuesta de evento no ha sido aprobada", "Hola")]
+    [InlineData("es", EventStatus.ResubmitRequested, "Se solicitan cambios en tu propuesta de evento", "Hola")]
+    [InlineData("de", EventStatus.Pending, "Deine Veranstaltung wurde eingereicht", "Hallo")]
+    [InlineData("de", EventStatus.Approved, "Deine Veranstaltung wurde genehmigt", "Hallo")]
+    [InlineData("de", EventStatus.Rejected, "Deine Veranstaltung wurde nicht genehmigt", "Hallo")]
+    [InlineData("de", EventStatus.ResubmitRequested, "Änderungen an deiner Veranstaltung erforderlich", "Hallo")]
+    [InlineData("it", EventStatus.Pending, "Abbiamo ricevuto la tua proposta di evento", "Ciao")]
+    [InlineData("it", EventStatus.Approved, "Il tuo evento è stato approvato", "Ciao")]
+    [InlineData("it", EventStatus.Rejected, "La tua proposta di evento non è stata approvata", "Ciao")]
+    [InlineData("it", EventStatus.ResubmitRequested, "Sono richieste modifiche alla tua proposta di evento", "Ciao")]
+    [InlineData("fr", EventStatus.Pending, "Nous avons reçu ta proposition d’événement", "Bonjour")]
+    [InlineData("fr", EventStatus.Approved, "Ton événement a été approuvé", "Bonjour")]
+    [InlineData("fr", EventStatus.Rejected, "Ta proposition d’événement n’a pas été approuvée", "Bonjour")]
+    [InlineData("fr", EventStatus.ResubmitRequested, "Des modifications sont demandées pour ton événement", "Bonjour")]
+    [InlineData("ca", EventStatus.Pending, "Hem rebut la teva proposta d’esdeveniment", "Hola")]
+    [InlineData("ca", EventStatus.Approved, "El teu esdeveniment ha estat aprovat", "Hola")]
+    [InlineData("ca", EventStatus.Rejected, "La teva proposta d’esdeveniment no ha estat aprovada", "Hola")]
+    [InlineData("ca", EventStatus.ResubmitRequested, "Es demanen canvis en la teva proposta d’esdeveniment", "Hola")]
+    public void EventLifecycle_UsesRecipientCultureAndEncodesSubstitutions(
+        string culture, EventStatus status, string subject, string greeting)
+    {
+        using var ambient = new CultureScope("en");
+        var msg = Create().EventLifecycle(
+            new EventLifecycleNotification(status, "Bob <Admin>", "Lights & sound", "Too <loud>",
+                "/edit?a=1&b=2", culture), "bob@x.com");
+
+        msg.Subject.Should().Be(subject);
+        msg.HtmlBody.Should().Contain($"<p>{greeting} Bob &lt;Admin&gt;,</p>");
+        msg.HtmlBody.Should().Contain("Lights &amp; sound");
+        if (status is EventStatus.Rejected or EventStatus.ResubmitRequested)
+            msg.HtmlBody.Should().Contain("Too &lt;loud&gt;");
+        if (status is not EventStatus.Approved)
+            msg.HtmlBody.Should().Contain("/edit?a=1&amp;b=2");
+        CultureInfo.CurrentUICulture.Name.Should().Be("en");
+        CultureInfo.CurrentCulture.Name.Should().Be("en");
+    }
 
     [HumansFact]
     public void EventLifecycle_PicksTemplateFromStatus()

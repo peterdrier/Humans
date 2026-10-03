@@ -74,8 +74,8 @@ approved events). Only the event projection is surfaced on
 
 ### EventsEmails (Scoped, internal)
 
-No repository. Pure builder — the lifecycle copy is hardcoded English, so it
-reads no resource set and writes nothing. Returns `EmailMessage` values for
+No repository. Pure builder — reads Events resources in the recipient’s culture
+and HTML-encodes dynamic substitutions; writes nothing. Returns `EmailMessage` values for
 `EventService` to pass to `IEmailService.SendAsync`. No DB access, no cache.
 
 ### EventsEmailPreviews (Scoped)
