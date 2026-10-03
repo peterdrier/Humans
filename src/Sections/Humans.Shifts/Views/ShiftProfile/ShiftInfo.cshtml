@@ -26,6 +26,7 @@
 
         <form asp-action="ShiftInfo" method="post" id="wizardForm">
             @Html.AntiForgeryToken()
+            <div asp-validation-summary="All" class="text-danger" role="alert"></div>
 
             <div class="step-pane active" id="step-0">
                 <div class="chip-grid">

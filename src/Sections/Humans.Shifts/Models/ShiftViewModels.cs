@@ -306,10 +306,12 @@ internal sealed class ShiftAdminViewModel
 internal sealed class ShiftInfoViewModel
 {
     public List<string> SelectedSkills { get; set; } = [];
+    [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string? SkillOtherText { get; set; }
     public List<string> SelectedQuirks { get; set; } = [];
     public string? TimePreference { get; set; } // Mutually exclusive; persisted as a quirk value.
     public List<string> SelectedLanguages { get; set; } = [];
+    [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string? LanguageOtherText { get; set; }
 
     internal static readonly string[] SkillOptions = ["Bartending", "First Aid", "Driving", "Sound", "Electrical", "Construction", "Cooking", "Art", "DJ", "Other"];
