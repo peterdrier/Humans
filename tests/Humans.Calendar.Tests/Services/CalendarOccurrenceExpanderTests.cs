@@ -9,6 +9,30 @@ namespace Humans.Calendar.Tests.Services;
 public sealed class CalendarOccurrenceExpanderTests
 {
     [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public void Expand_UsesInstantWindowAcrossTimezoneTransitions(bool autumnOverlap)
+    {
+        var start = autumnOverlap
+            ? Instant.FromUtc(2026, 10, 24, 0, 30)
+            : Instant.FromUtc(2026, 3, 28, 1, 30);
+        var duration = autumnOverlap ? Duration.FromMinutes(30) : Duration.Zero;
+        var expected = start.Plus(Duration.FromDays(1));
+        var info = BuildInfo(start: start, end: start.Plus(duration), recurrenceRule: "FREQ=DAILY;COUNT=2")
+            with { RecurrenceTimezone = "Europe/Madrid" };
+        var from = expected.Minus(Duration.FromMinutes(autumnOverlap ? 30 : 15));
+        var to = expected.Plus(Duration.FromMinutes(30));
+
+        var occurrence = CalendarOccurrenceExpander.Expand([info], from, to,
+            new Dictionary<Guid, string>(), NullLogger.Instance).Should().ContainSingle().Subject;
+
+        occurrence.OccurrenceStartUtc.Should().Be(expected);
+        occurrence.OccurrenceEndUtc.Should().Be(expected.Plus(duration));
+        CalendarOccurrenceExpander.Expand([info], expected.Minus(Duration.FromMinutes(1)), expected,
+            new Dictionary<Guid, string>(), NullLogger.Instance).Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("FREQ=DAILY;UNTIL=20260603T100000Z")]
     [Xunit.InlineData("FREQ=DAILY;UNTIL=20260603T100000")]
     public void WindowAfterUntil_KeepsFinalOccurrenceWhileItStillOverlaps(string rule)
