@@ -361,7 +361,10 @@ internal sealed class Service(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Service.SyncAsync failed");
+            if (ex is OperationCanceledException && ct.IsCancellationRequested)
+                logger.LogWarning("Holded document sync cancelled by the caller");
+            else
+                logger.LogError(ex, "Service.SyncAsync failed");
             state.Status = "Error";
             state.LastError = ex.Message;
             state.StatusChangedAt = now;

@@ -28,6 +28,8 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
   per run, logged when capped). Residual mismatches are **reportable state** on the sync row,
   never a failure — Holded's own chart totals can exclude unconfirmed entries.
 
+- **Interrupted manual syncs** remain recorded as `Error` and propagate caller cancellation. Caller-aborted document/ledger syncs and their controller log stack-free warnings; dependency failures remain errors with exceptions.
+
 ## Data Model (`HoldedDbContext`, history `__EFMigrationsHistory_Holded`)
 
 | Table | Content |

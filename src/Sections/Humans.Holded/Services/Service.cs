@@ -112,7 +112,10 @@ internal sealed class Service(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Holded ledger sync failed");
+                if (ex is OperationCanceledException && ct.IsCancellationRequested)
+                    logger.LogWarning("Holded ledger sync cancelled by the caller");
+                else
+                    logger.LogError(ex, "Holded ledger sync failed");
                 try
                 {
                     state.SyncStatus = HoldedSyncStatus.Error;

@@ -468,6 +468,36 @@ public class HoldedFinanceServiceTests
         };
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Sync_distinguishes_request_abort_from_dependency_failure(bool requestAborted)
+    {
+        using var cancellation = new CancellationTokenSource();
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>());
+        _repo.GetManagedAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedManagedAccount>());
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<HoldedPurchaseDocListItemDto>>(_ =>
+            {
+                if (requestAborted) cancellation.Cancel();
+                throw new OperationCanceledException("doc fetch cancelled");
+            });
+        var logger = new CapturingLogger<Service>();
+        var service = MakeService(logger);
+
+        var act = () => service.SyncAsync(cancellation.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        var entry = logger.Entries.Should().ContainSingle().Subject;
+        entry.Level.Should().Be(requestAborted ? LogLevel.Warning : LogLevel.Error);
+        if (requestAborted) entry.Exception.Should().BeNull();
+        else entry.Exception.Should().BeOfType<OperationCanceledException>();
+        await _repo.Received(1).SaveDocSyncStateAsync(
+            Arg.Is<HoldedDocSyncState>(s => string.Equals(s.Status, "Error", StringComparison.Ordinal) && string.Equals(s.LastError, "doc fetch cancelled", StringComparison.Ordinal)),
+            CancellationToken.None);
+    }
+
     [HumansFact]
     public async Task Sync_sets_error_state_on_exception()
     {
