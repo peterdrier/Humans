@@ -93,6 +93,7 @@
   <data name="Containers_MapPlaced" xml:space="preserve">
     <value>Col·locats</value>
   </data>
+  <data name="Containers_MapCenterOnContainer" xml:space="preserve"><value>Centra el mapa en aquest contenidor</value></data>
   <data name="Containers_MapClearPlacement" xml:space="preserve">
     <value>Treure col·locació</value>
   </data>

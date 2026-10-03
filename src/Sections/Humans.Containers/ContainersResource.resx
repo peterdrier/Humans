@@ -53,6 +53,7 @@
 
   <data name="Containers_MapUnplaced" xml:space="preserve"><value>Unplaced</value></data>
   <data name="Containers_MapPlaced" xml:space="preserve"><value>Placed</value></data>
+  <data name="Containers_MapCenterOnContainer" xml:space="preserve"><value>Center map on this container</value></data>
   <data name="Containers_MapClearPlacement" xml:space="preserve"><value>Clear placement</value></data>
   <data name="Containers_MapPlaceOnMap" xml:space="preserve"><value>Place on map</value></data>
   <data name="Containers_MapConfirmClear" xml:space="preserve"><value>Remove placement for «{0}»? This cannot be undone.</value><comment>{0} = container name</comment></data>

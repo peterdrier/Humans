@@ -158,6 +158,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - Camp leads can only add/edit/delete their camp's containers when container placement is open. City-planning team members and CampAdmin are exempt.
 - CityPlanningSettings row is auto-created per year from `CampSettingsInfo.PublicYear`.
 - SignalR broadcasts polygon updates to all connected clients in real time.
+- Member-facing container map centering and notes buttons have localized titles and accessible names; the notes modal close button and sketch image reuse localized shared/container labels.
 - Container drag and rotation saves include the final pointer movement even before its animation frame. Changing or clearing the selected container discards unfinished gestures and queued movement.
 - Placement-note saves update the submitted container in local map state even if another container is opened while saving. A completed save or error cannot close or alter a newer notes-editing session.
 - The container placement map deliberately has **no SignalR channel and no MapboxDraw control** — placement saves are fire-and-forget per drop (single-user workflow is sufficient at this scale) and containers use a custom drag-to-move / drag-handle-to-rotate interaction. Only the barrio polygon map broadcasts real-time updates via `CityPlanningHub`.

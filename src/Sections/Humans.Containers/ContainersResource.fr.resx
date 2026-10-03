@@ -93,6 +93,7 @@
   <data name="Containers_MapPlaced" xml:space="preserve">
     <value>Placé</value>
   </data>
+  <data name="Containers_MapCenterOnContainer" xml:space="preserve"><value>Centrer la carte sur ce conteneur</value></data>
   <data name="Containers_MapClearPlacement" xml:space="preserve">
     <value>Retirer le placement</value>
   </data>
