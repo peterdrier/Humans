@@ -110,6 +110,8 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 
 ## Invariants
 
+- The Workspace accounts page renders existing `WorkspaceAccountInfo` rows directly, preserving service email ordering and status, member-link, 2FA and recovery fields.
+
 - Sync-dashboard preview loads apply only the latest response or failure for each resource tab. Drive and group previews load independently; sync POSTs keep their existing execution boundaries.
 
 - All Google Drive resources are on Shared Drives. The system does not use regular (My Drive) folders.

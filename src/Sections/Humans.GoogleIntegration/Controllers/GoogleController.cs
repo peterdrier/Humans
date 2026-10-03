@@ -392,20 +392,7 @@ internal sealed class GoogleController(
 
         var model = new WorkspaceEmailListViewModel
         {
-            Accounts = result.Accounts.Select(a => new WorkspaceEmailAccountViewModel
-            {
-                PrimaryEmail = a.PrimaryEmail,
-                FirstName = a.FirstName,
-                LastName = a.LastName,
-                IsSuspended = a.IsSuspended,
-                CreationTime = a.CreationTime,
-                LastLoginTime = a.LastLoginTime,
-                MatchedUserId = a.MatchedUserId,
-                MatchedDisplayName = a.MatchedDisplayName,
-                IsUsedAsPrimary = a.IsUsedAsPrimary,
-                IsEnrolledIn2Sv = a.IsEnrolledIn2Sv,
-                RecoveryEmail = a.RecoveryEmail
-            }).ToList(),
+            Accounts = result.Accounts,
             TotalAccounts = result.TotalAccounts,
             ActiveAccounts = result.ActiveAccounts,
             SuspendedAccounts = result.SuspendedAccounts,
