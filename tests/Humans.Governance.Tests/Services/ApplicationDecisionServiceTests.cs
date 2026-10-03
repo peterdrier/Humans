@@ -1,3 +1,10 @@
+using System.Security.Claims;
+using Humans.Governance.Controllers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
+using NSubstitute.Core;
+using Xunit;
 using Humans.Auth.Contracts;
 using Humans.Governance.Domain;
 using NodaTime.Testing;
@@ -866,6 +873,36 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         vote.Vote.Should().Be(VoteChoice.Yay);
         vote.Note.Should().Be("Support");
         vote.VotedAt.Should().Be(votedAt);
+    }
+
+    [HumansFact]
+    public async Task BoardVotingDetail_CancelsViewerReadAfterApplicationLoads()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var applicantId = Guid.NewGuid();
+        var viewerId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(applicantId);
+        var abandonAfterApplicant = false;
+        async ValueTask<UserInfo?> ReadUser(CallInfo call)
+        {
+            var id = call.Arg<Guid>();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            if (abandonAfterApplicant && id == applicantId) await cancellation.CancelAsync();
+            return new User { Id = id, DisplayName = "Member", Email = "member@example.com" }.ToUserInfo();
+        }
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(ReadUser);
+        var controller = new GovernanceBoardVotingController(_userService, _service,
+            NullLogger<GovernanceBoardVotingController>.Instance, Substitute.For<IStringLocalizer<GovernanceResource>>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "Test")),
+            } },
+        };
+
+        (await controller.BoardVotingDetail(app.Id, cancellation.Token)).Should().BeOfType<ViewResult>();
+        abandonAfterApplicant = true;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.BoardVotingDetail(app.Id, cancellation.Token));
     }
 
     // --- GetUserApplicationDetailAsync ---

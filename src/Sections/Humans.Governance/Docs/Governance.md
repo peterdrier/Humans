@@ -248,6 +248,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Invariants
 
+- Governance overview GETs propagate request cancellation to user and index-data reads; Board-voting detail GETs retain it when resolving the viewer after loading the application.
+
 - Application status follows: Submitted then Approved, Rejected, or Withdrawn. The state machine also defines a `RequestMoreInfo` self-transition on Submitted, but no controller path currently invokes it.
 - Each Board member gets exactly one vote per application (DB-enforced via unique index on `(ApplicationId, BoardMemberUserId)`).
 - Board-voting rows carry voter IDs; the pages render voter identities through the Human component. Detail reads do not perform an unused bulk voter-name lookup.

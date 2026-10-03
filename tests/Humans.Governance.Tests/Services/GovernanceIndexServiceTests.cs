@@ -1,3 +1,9 @@
+using System.Security.Claims;
+using Humans.Governance.Controllers;
+using Humans.Governance.Tests.Infrastructure;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using NSubstitute.Core;
 using AwesomeAssertions;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
@@ -53,4 +59,41 @@ public sealed class GovernanceIndexServiceTests
 
         data.ApplicationTermExpiresAt.Should().BeNull();
     }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Index_CancelsAbandonedUserAndApplicationReads(bool cancelAfterViewer)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, DisplayName = "Member", Email = "member@example.com" }.ToUserInfo();
+        var abandon = false;
+        async ValueTask<UserInfo?> ReadUser(CallInfo call)
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            if (abandon && cancelAfterViewer) await cancellation.CancelAsync();
+            return user;
+        }
+        Users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(ReadUser);
+        Applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<UserApplicationSnapshot>>([]);
+        });
+        var controller = new GovernanceController(Users, CreateService())
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            {
+                RequestAborted = cancellation.Token,
+                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
+            } },
+        };
+
+        (await controller.Index()).Should().BeOfType<ViewResult>();
+        abandon = true;
+        if (!cancelAfterViewer) await cancellation.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.Index());
+    }
+
 }
