@@ -638,6 +638,8 @@ Admin-only flows for the section's cross-account hygiene (the `/Profile/Admin/*`
 
 ## Invariants
 
+- The `UserEmails` GDPR export includes each owned address’s Google-selection flag, Google sync status, and UTC creation, update and nullable last-verification-email timestamps. Existing export keys retain their names; other users’ addresses are excluded.
+
 - The live burner-name collision warning invalidates pending responses and hides the previous name’s warning on every input, before debounce; clearing the field cannot revive an older result.
 
 - Profile API search, burner-name count and user-id lookup carry request cancellation through current-user resolution as well as their subsequent reads.

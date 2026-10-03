@@ -1034,6 +1034,11 @@ internal sealed class UserService(
             // JSON keys pinned per memory/code/no-rename-serialized-fields.md (GDPR export stability).
             IsOAuth = e.Provider != null,
             IsNotificationTarget = e.IsPrimary,
+            e.IsGoogle,
+            GoogleEmailStatus = e.GoogleEmailStatus.ToString(),
+            VerificationSentAt = e.VerificationSentAt.ToIso8601(),
+            CreatedAt = e.CreatedAt.ToIso8601(),
+            UpdatedAt = e.UpdatedAt.ToIso8601(),
             e.Visibility
         }).ToList());
 
