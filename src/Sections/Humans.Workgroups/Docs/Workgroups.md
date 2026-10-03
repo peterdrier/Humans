@@ -238,7 +238,7 @@ Settings and Register an existing group on first setup or after clearing the que
 
 ## Invariants
 
-- Member and admin action and form rule rejections remain visible at Warning without exception stacks; action and resource-key context, redirects and localized form feedback are preserved.
+- Member and admin action and form rule rejections remain visible at Warning without exception stacks; action and resource-key context, redirects and localized form feedback are preserved. Only section rule exceptions become validation feedback; unexpected dependency lookup or access failures propagate to the application error handler instead of becoming workgroup 404/403 responses.
 
 - Member workgroup pages and forms localize breadcrumb navigation labels in all six supported cultures.
 

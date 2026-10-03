@@ -147,10 +147,6 @@ internal sealed class WorkgroupsAdminController(
                 null => "Budget saved.",
             });
         }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
         catch (WorkgroupRuleException ex)
         {
             logger.LogWarning("Workgroups admin Budget: rule {Rule}", ex.Key);
@@ -217,12 +213,6 @@ internal sealed class WorkgroupsAdminController(
         {
             await action(user.Id);
             SetSuccess(success);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            logger.LogInformation(ex, "Workgroups admin {Action}: not found",
-                ControllerContext.ActionDescriptor.ActionName);
-            return NotFound();
         }
         catch (WorkgroupRuleException ex)
         {

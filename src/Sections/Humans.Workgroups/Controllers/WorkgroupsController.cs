@@ -478,16 +478,6 @@ internal sealed class WorkgroupsController(
             await action(workgroup.Id, user.Id);
             SetSuccess(localizer[successKey]);
         }
-        catch (KeyNotFoundException ex)
-        {
-            logger.LogInformation(ex, "Workgroups {Action}: not found", ActionName());
-            return NotFound();
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            logger.LogWarning(ex, "Workgroups {Action}: forbidden", ActionName());
-            return Forbid();
-        }
         catch (WorkgroupRuleException ex)
         {
             logger.LogWarning("Workgroups {Action}: rule {Rule}", ActionName(), ex.Key);
@@ -508,16 +498,6 @@ internal sealed class WorkgroupsController(
             var result = await action();
             SetSuccess(localizer[successKey]);
             return result;
-        }
-        catch (KeyNotFoundException ex)
-        {
-            logger.LogInformation(ex, "Workgroups {Action}: not found", ActionName());
-            return NotFound();
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            logger.LogWarning(ex, "Workgroups {Action}: forbidden", ActionName());
-            return Forbid();
         }
         catch (WorkgroupRuleException ex)
         {

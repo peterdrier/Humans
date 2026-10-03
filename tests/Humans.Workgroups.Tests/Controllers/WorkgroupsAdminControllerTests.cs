@@ -28,6 +28,27 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task UnexpectedDependencyLookup_IsNotNotFound(bool budget)
+    {
+        var service = Substitute.For<IWorkgroupService>();
+        var id = Guid.NewGuid();
+        var failure = new KeyNotFoundException("Dependency lookup failed");
+        service.SetBudgetAsync(id, Arg.Any<Guid>(), Arg.Any<WorkgroupBudgetSave>(), Ct)
+            .Returns(Task.FromException<Humans.Finance.Contracts.HoldedExpenseAccountRef?>(failure));
+        service.RecordDispositionAsync(id, Arg.Any<Guid>(), WorkgroupDisposition.Noted, "Noted", Ct)
+            .Returns(Task.FromException(failure));
+        var controller = MakeAdminController("Test", service: service);
+        Func<Task<IActionResult>> act = budget
+            ? () => controller.Budget(id, new WorkgroupBudgetFormViewModel { HasBudget = false }, "group", Ct)
+            : () => controller.Disposition(id, WorkgroupDisposition.Noted, "Noted", Ct);
+
+        (await act.Should().ThrowAsync<KeyNotFoundException>()).Which.Should().BeSameAs(failure);
+        controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task InvalidRegisterOrSettingsForm_LogsRuleWithoutStack(bool settings)
     {
         var action = settings ? nameof(WorkgroupsAdminController.Settings) : nameof(WorkgroupsAdminController.RegisterExisting);
@@ -167,7 +188,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
 
     /// <summary>A Board-actor <see cref="WorkgroupsAdminController"/> wired to an in-memory context,
     /// with a localizer that renders any rule key as <paramref name="errorMessage"/>.</summary>
-    private WorkgroupsAdminController MakeAdminController(string actionName, string errorMessage = "Rule failed.")
+    private WorkgroupsAdminController MakeAdminController(string actionName, string errorMessage = "Rule failed.", IWorkgroupService? service = null)
     {
         var actor = SeedUser("Board member");
         var http = new DefaultHttpContext
@@ -179,7 +200,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         var localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>();
         localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(call => new LocalizedString(call.Arg<string>(), errorMessage));
-        return new WorkgroupsAdminController(NewService(), Users, localizer, Clock,
+        return new WorkgroupsAdminController(service ?? NewService(), Users, localizer, Clock,
             _logger)
         {
             ControllerContext = new ControllerContext

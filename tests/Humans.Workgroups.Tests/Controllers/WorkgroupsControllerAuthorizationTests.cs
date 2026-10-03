@@ -39,6 +39,34 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     private readonly ILogger<WorkgroupsController> _logger = Substitute.For<ILogger<WorkgroupsController>>();
 
     [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task UnexpectedDependencyFailure_IsNotAResourceDenial(bool form, bool unauthorized)
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var actor = workgroup.Members.Single().UserId;
+        var service = Substitute.For<IWorkgroupService>();
+        service.GetBySlugAsync(workgroup.Slug, Ct).Returns(await NewService().GetBySlugAsync(workgroup.Slug, Ct));
+        Exception failure = unauthorized ? new UnauthorizedAccessException("Dependency denied access")
+            : new KeyNotFoundException("Dependency lookup failed");
+        service.MarkDoneAsync(workgroup.Id, actor, WorkgroupDormantReason.Delivered, Ct)
+            .Returns(Task.FromException(failure));
+        service.CreateMeetingAsync(workgroup.Id, actor, Arg.Any<WorkgroupMeetingSave>(), Ct)
+            .Returns(Task.FromException<Guid>(failure));
+        var controller = BuildController(actor, isBoard: false, service);
+        var now = Clock.GetCurrentInstant();
+        Func<Task<IActionResult>> act = form
+            ? () => controller.SaveMeeting(workgroup.Slug, new MeetingFormViewModel
+            { Slug = workgroup.Slug, Title = "Meeting", StartUtc = now, EndUtc = now + Duration.FromHours(1) }, Ct)
+            : () => controller.Done(workgroup.Slug, WorkgroupDormantReason.Delivered, Ct);
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
+        controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task RuleRejection_IsVisibleWithoutExceptionStack(bool form)
@@ -313,7 +341,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
 
     /// <summary>A <see cref="WorkgroupsController"/> for <paramref name="actorId"/>, Board-flagged
     /// or not, wired to the real <see cref="WorkgroupAuthorizationHandler"/>.</summary>
-    private WorkgroupsController BuildController(Guid actorId, bool isBoard)
+    private WorkgroupsController BuildController(Guid actorId, bool isBoard, IWorkgroupService? service = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -324,7 +352,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
         var controller = new WorkgroupsController(
-            NewService(), Users, Teams,
+            service ?? NewService(), Users, Teams,
             localizer,
             Clock,
             provider.GetRequiredService<IAuthorizationService>(),
