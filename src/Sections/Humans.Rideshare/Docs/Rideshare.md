@@ -231,7 +231,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Interest always anchors to a trip.** `RideshareInterest.TripId` is required on both the rider→offer and driver→request-pin paths; `RequestId` is an optional origin pointer only, never the anchor.
 - **Seats remaining is derived, never stored.** `SeatsRemaining = SeatsOffered − Σ(Seats of Accepted interests on the trip)`; a trip is full when this is `≤ 0`.
 - **A request's Matched state is derived, never stored.** True when an `Accepted` interest on an `Active` trip exists with `FromUserId == request.UserId` or `RequestId == request.Id`; cancelling the trip un-matches the request.
-- **Route geometry is computed once at save and frozen.** Recomputed only on create, or on an update that changes the member point, waypoints, or direction — never at view time, and never invalidated by a later settings edit. The straight-line fallback the board draws when the stored route is null is not a route: it is rendered at view time through the current destination, so it follows a later destination edit.
+- **Route geometry is computed once at save and frozen.** Recomputed only on create, or on an update that changes the member point, waypoints, or direction — never at view time, and never invalidated by a later settings edit. The straight-line fallback the board draws when the stored route is absent or invalid is not a route: it is rendered at view time through the current destination, so it follows a later destination edit.
+- **Routing geometry is validated.** Provider geocodes must be Points and directions must be LineStrings with at least two positions. Coordinates must be numeric and finite, with latitude within −90…90; geocoded Point longitude must also satisfy the existing −180…180 form bounds. Route altitude and geometry metadata are retained. Invalid responses warn and return null. Invalid stored routes warn without exception stacks and use the existing travel-order fallback without rewriting data; when only the origin is available, the fallback is a Point.
 - **A null route never blocks a save.** When the routing provider is unavailable, `RouteGeoJson` is stored as null and a warning is logged; the save still succeeds.
 - **Declines are private.** No reason is required or stored; the declined party sees neutral language only, never a score or a broadcast reason.
 - **Driver discretion is absolute.** Accept/decline is the posting owner's call; the app never prompts for or records a justification.
@@ -325,6 +326,6 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 ### Routing provider
 
 `IRouteProvider` (geocode + directions) is a section-internal abstraction over OpenRouteService
-(`OpenRouteServiceClient`, `HttpClient`-based). It never throws — an unconfigured API key or a
-non-success response logs a warning and returns null, so routing is always best-effort and never
-blocks a save (see Invariants).
+(`OpenRouteServiceClient`, `HttpClient`-based). Provider failures — including malformed geometry,
+an unconfigured API key or a non-success response — log a warning and return null, keeping
+unavailable routing from blocking a save (see Invariants). Caller cancellation propagates.

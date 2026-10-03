@@ -52,7 +52,7 @@ public sealed class OpenRouteServiceClientTests
     public async Task Geocode_ReadsGeoJsonLngLat_IntoLatLng()
     {
         var client = Make(Key, _ => Json(HttpStatusCode.OK,
-            """{"features":[{"geometry":{"coordinates":[2.3522,48.8566]}}]}"""));
+            """{"features":[{"geometry":{"type":"Point","coordinates":[2.3522,48.8566]}}]}"""));
 
         var point = await client.GeocodeAsync("Paris", Ct);
 
@@ -71,10 +71,11 @@ public sealed class OpenRouteServiceClientTests
         (await client.GeocodeAsync("Nowhere in particular", Ct)).Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task Directions_PostsLngLatPairsWithTheKey_AndReturnsTheGeometry()
+    [HumansTheory]
+    [Xunit.InlineData("""{"type":"LineString","coordinates":[[2.35,48.85],[-2.4,43.2]]}""")]
+    [Xunit.InlineData("""{"type":"LineString","coordinates":[[2.35,48.85,100],[-2.4,43.2,200]]}""")]
+    public async Task Directions_PostsLngLatPairsWithTheKey_AndReturnsTheGeometry(string geometry)
     {
-        const string geometry = """{"type":"LineString","coordinates":[[2.35,48.85],[-2.4,43.2]]}""";
         var client = Make(Key, _ => Json(HttpStatusCode.OK,
             $$"""{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{{geometry}}}]}"""));
 
@@ -118,6 +119,38 @@ public sealed class OpenRouteServiceClientTests
         (await client.GeocodeAsync("Paris", Ct)).Should().BeNull();
 
         _logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning && e.Exception is HttpRequestException);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("null")]
+    [Xunit.InlineData("{}")]
+    [Xunit.InlineData("""{"type":"Point","coordinates":[2.35,48.85]}""")]
+    [Xunit.InlineData("""{"type":"LineString","coordinates":[]}""")]
+    [Xunit.InlineData("""{"type":"LineString","coordinates":[[2.35,48.85]]}""")]
+    [Xunit.InlineData("""{"type":"LineString","coordinates":[[2.35],[2.4,43.2]]}""")]
+    [Xunit.InlineData("""{"type":"LineString","coordinates":[[1e400,48.85],[2.4,43.2]]}""")]
+    [Xunit.InlineData("""{"type":"LineString","coordinates":[[2.35,91],[2.4,43.2]]}""")]
+    [Xunit.InlineData("""{"type":"LineString","coordinates":[["2.35",48.85],[2.4,43.2]]}""")]
+    public async Task Directions_InvalidGeometry_ReturnsNullAndWarns(string geometry)
+    {
+        var client = Make(Key, _ => Json(HttpStatusCode.OK,
+            $$"""{"features":[{"geometry":{{geometry}}}]}"""));
+        (await client.GetRouteGeoJsonAsync(TwoPoints, Ct)).Should().BeNull();
+        _logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("""{"coordinates":[2.35,48.85]}""")]
+    [Xunit.InlineData("""{"type":"LineString","coordinates":[2.35,48.85]}""")]
+    [Xunit.InlineData("""{"type":"Point","coordinates":[1e400,48.85]}""")]
+    [Xunit.InlineData("""{"type":"Point","coordinates":[2.35,91]}""")]
+    [Xunit.InlineData("""{"type":"Point","coordinates":[181,48.85]}""")]
+    public async Task Geocode_InvalidGeometry_ReturnsNullAndWarns(string geometry)
+    {
+        var client = Make(Key, _ => Json(HttpStatusCode.OK,
+            $$"""{"features":[{"geometry":{{geometry}}}]}"""));
+        (await client.GeocodeAsync("Paris", Ct)).Should().BeNull();
+        _logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning);
     }
 
     private static HttpResponseMessage Json(HttpStatusCode status, string json) =>
