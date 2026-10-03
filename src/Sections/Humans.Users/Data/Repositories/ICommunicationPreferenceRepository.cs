@@ -31,11 +31,6 @@ internal interface ICommunicationPreferenceRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns whether a user has any preference rows at all.
-    /// </summary>
-    Task<bool> HasAnyAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns user ids from the input list that have any preference rows.
     /// </summary>
     Task<IReadOnlySet<Guid>> GetUsersWithAnyPreferencesAsync(

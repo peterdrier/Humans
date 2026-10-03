@@ -61,13 +61,6 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<UsersD
         return disabledUserIds.ToHashSet();
     }
 
-    public async Task<bool> HasAnyAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.CommunicationPreferences
-            .AnyAsync(cp => cp.UserId == userId, ct);
-    }
-
     public async Task<IReadOnlySet<Guid>> GetUsersWithAnyPreferencesAsync(
         IReadOnlyList<Guid> userIds, CancellationToken ct = default)
     {

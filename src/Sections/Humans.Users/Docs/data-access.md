@@ -112,9 +112,9 @@ model.
 
 No repository, no cache, no direct DB access. Section-internal diagnostics over
 `IUserEmailService` and `IUserService`: `ScanAsync` builds the
-`EmailProblemsReport` for the admin email-health screen,
-`IsGhostExternalLoginsUserAsync` flags accounts whose only identity is an
-external login, and `BackfillLegacyIdentityEmailsAsync` returns the
+`EmailProblemsReport` for the admin email-health screen, including accounts
+whose only identity is an external login. `BackfillLegacyIdentityEmailsAsync`
+returns the
 `(UserId, Email)` pairs still missing a `UserEmail` row. Timestamps come from
 `IClock`.
 

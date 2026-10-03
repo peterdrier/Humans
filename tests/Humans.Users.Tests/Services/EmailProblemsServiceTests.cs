@@ -350,25 +350,6 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task IsGhostExternalLoginsUser_InSet_True()
-    {
-        var ghostUserId = Guid.NewGuid();
-        SetGhosts(ghostUserId);
-
-        (await Sut.IsGhostExternalLoginsUserAsync(ghostUserId, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task IsGhostExternalLoginsUser_NotInSet_False()
-    {
-        var ghostUserId = Guid.NewGuid();
-        var otherUserId = Guid.NewGuid();
-        SetGhosts(ghostUserId);
-
-        (await Sut.IsGhostExternalLoginsUserAsync(otherUserId, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
-    }
-
-    [HumansFact]
     public async Task DetectsLegacyIdentityEmailNotInUserEmails()
     {
         var userId = Guid.NewGuid();

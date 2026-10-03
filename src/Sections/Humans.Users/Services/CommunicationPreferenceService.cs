@@ -250,10 +250,6 @@ internal sealed class CommunicationPreferenceService(
         CancellationToken cancellationToken = default) =>
         await repository.GetUsersWithInboxDisabledAsync(userIds, category, cancellationToken);
 
-    public async Task<bool> HasAnyPreferencesAsync(
-        Guid userId, CancellationToken cancellationToken = default) =>
-        await repository.HasAnyAsync(userId, cancellationToken);
-
     public async Task<IReadOnlySet<Guid>> GetUsersWithAnyPreferencesAsync(
         IReadOnlyList<Guid> userIds, CancellationToken cancellationToken = default) =>
         await repository.GetUsersWithAnyPreferencesAsync(userIds, cancellationToken);
