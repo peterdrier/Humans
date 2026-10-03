@@ -226,9 +226,18 @@ export function updateSaveButton() {
 
 // --- History ---
 
+let historyVersion = 0;
+const historyPanel = document.getElementById('history-panel');
+historyPanel.addEventListener('hide.bs.offcanvas', () => { historyVersion++; });
+historyPanel.addEventListener('hidden.bs.offcanvas', () => {
+    appState.previewCampSeasonId = null;
+    if (!appState.activeCampSeasonId) appState.draw.deleteAll();
+});
+
 export async function loadHistory(campSeasonId, canEdit = false) {
     const id = campSeasonId ?? appState.activeCampSeasonId;
     if (!id) return;
+    const version = ++historyVersion;
 
     if (appState.currentPopup) { appState.currentPopup.remove(); appState.currentPopup = null; }
 
@@ -237,6 +246,7 @@ export async function loadHistory(campSeasonId, canEdit = false) {
     if (titleEl && campName) titleEl.textContent = CONFIG.HISTORY_FOR_CAMP.replace('{0}', () => campName);
 
     const list = document.getElementById('history-list');
+    list.innerHTML = '';
 
     let history;
     try {
@@ -244,11 +254,13 @@ export async function loadHistory(campSeasonId, canEdit = false) {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         history = await resp.json();
     } catch (error) {
+        if (version !== historyVersion) return;
         console.error('Failed to load barrio polygon history', error);
         list.innerHTML = `<p class="text-danger text-center py-4">${escHtml(CONFIG.HISTORY_LOAD_FAILED)}</p>`;
         bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('history-panel')).show();
         return;
     }
+    if (version !== historyVersion) return;
     if (!history.length) {
         list.innerHTML = `<p class="text-muted text-center py-4">${escHtml(CONFIG.HISTORY_EMPTY)}</p>`;
     } else {
@@ -280,12 +292,7 @@ export async function loadHistory(campSeasonId, canEdit = false) {
         });
     }
 
-    const panel = document.getElementById('history-panel');
-    panel.addEventListener('hidden.bs.offcanvas', () => {
-        appState.previewCampSeasonId = null;
-        if (!appState.activeCampSeasonId) appState.draw.deleteAll();
-    }, { once: true });
-    bootstrap.Offcanvas.getOrCreateInstance(panel).show();
+    bootstrap.Offcanvas.getOrCreateInstance(historyPanel).show();
 }
 
 export async function restoreVersion(historyId, campSeasonId) {

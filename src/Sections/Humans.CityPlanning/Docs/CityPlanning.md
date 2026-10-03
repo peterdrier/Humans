@@ -153,6 +153,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 ## Invariants
 
 - Only one CampPolygon per CampSeason (unique constraint on `CampSeasonId`).
+- Barrio history displays only the latest requested camp season. Switching barrios clears prior preview/restore controls immediately; late success or failure cannot overwrite a newer request or reopen a dismissed panel. One panel-close handler clears history previews while preserving active edits.
 - CampPolygonHistory is append-only — edits and restores always create a new history entry (design-rules §12).
 - Camp leads can only edit their own camp's polygon when barrio placement is open. City-planning team members and CampAdmin are exempt.
 - Camp leads can only add/edit/delete their camp's containers when container placement is open. City-planning team members and CampAdmin are exempt.
