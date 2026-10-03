@@ -58,7 +58,7 @@ that enforces each:
   (`src/Sections/Humans.Agent/Services/AgentService.cs:522`, `src/Sections/Humans.Agent/Controllers/AgentController.cs:111`).
 - The tool whitelist is closed (`src/Sections/Humans.Agent/Services/AgentToolDispatcher.cs:29`);
   doc reads cannot reach arbitrary paths (`src/Sections/Humans.Agent/Services/Preload/AgentFeatureSpecReader.cs:116`,
-  `src/Sections/Humans.Agent/Services/Preload/AgentSectionDocReader.cs:40`).
+  `src/Sections/Humans.Agent/Services/Preload/AgentSectionDocReader.cs:37`).
 - The tool loop is bounded (`src/Sections/Humans.Agent/Services/AgentService.cs:363`); cap-hit
   forces synthesis (`src/Sections/Humans.Agent/Services/AgentService.cs:409`).
 - A turn never ends with an empty assistant bubble, streamed or stored

@@ -39,7 +39,7 @@ internal sealed class AgentPreloadAugmentor(
 
     public string BuildGlossariesMarkdown()
     {
-        // Glossary keys name help-widget pages, not docs/sections files. The model uses a heading it
+        // Glossary keys name help-widget pages, not section docs. The model uses a heading it
         // sees as a fetch_section_guide argument (nobodies-collective/Humans#949), so each block is
         // emitted under the section key the tool accepts. Pages sharing a key are collected under one
         // heading but keep their own table and page label: several define the same term with
