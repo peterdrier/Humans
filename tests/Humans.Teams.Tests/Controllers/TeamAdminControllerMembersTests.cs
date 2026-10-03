@@ -67,11 +67,14 @@ public class TeamAdminControllerMembersTests
             Substitute.For<IEmailProvisioningService>(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketServiceRead>())
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            ControllerContext = new ControllerContext
             {
-                RequestAborted = aborted.Token,
-                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
-            } },
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = aborted.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
+                }
+            },
         };
         var act = () => controller.Resources(team.Slug);
         await act.Should().ThrowAsync<OperationCanceledException>();
@@ -105,11 +108,14 @@ public class TeamAdminControllerMembersTests
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
             Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketServiceRead>())
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            ControllerContext = new ControllerContext
             {
-                User = new ClaimsPrincipal(new ClaimsIdentity([
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([
                     new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, RoleNames.Admin)], "Test")),
-            } },
+                }
+            },
         };
         var first = (TeamMembersViewModel)((ViewResult)await controller.Members(team.Slug)).Model!;
         first.Members.Should().ContainSingle();

@@ -164,7 +164,8 @@ public class NotificationMeterProviderTests : IDisposable
         var userId = Guid.NewGuid();
         var users = MakeNeedsConsentReview(1).Append(new User
         {
-            Id = Guid.NewGuid(), DeletionRequestedAt = Instant.FromUtc(2026, 4, 1, 0, 0)
+            Id = Guid.NewGuid(),
+            DeletionRequestedAt = Instant.FromUtc(2026, 4, 1, 0, 0)
         }.ToUserInfo()).ToList();
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));

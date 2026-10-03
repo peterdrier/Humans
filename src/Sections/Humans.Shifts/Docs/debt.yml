@@ -7,5 +7,3 @@ inbox:
     id: SHIFTS-6
     what: "DashboardShiftsViewComponent.NextShiftsAsync fetches team names, sorts and constructs DashboardShiftSignup rows that no view renders; DashboardShifts/Default.cshtml uses only NextShifts.Count > 0 or PendingCount > 0. Compute that boolean from the existing IShiftView summary instead. Found during the nightly production-code sweep."
     review: panel
-    status: needs-detail
-    blocked_on: "Review public view-component constructor compatibility before removing its ITeamServiceRead dependency; keep pending/current-event/end-time behavior intact."

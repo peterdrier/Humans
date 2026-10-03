@@ -225,8 +225,11 @@ public sealed class ServicePlacementTests
         var repo = Substitute.For<IContainerRepository>();
         repo.GetPlacementAsync(id, Year, Arg.Any<CancellationToken>()).Returns(new ContainerPlacement
         {
-            ContainerId = id, Year = Year, PlacementImageStoragePath = "uploads/containers/original.jpg",
-            CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant()
+            ContainerId = id,
+            Year = Year,
+            PlacementImageStoragePath = "uploads/containers/original.jpg",
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         });
         repo.UpsertPlacementAsync(Arg.Any<ContainerPlacement>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Database write failed"));

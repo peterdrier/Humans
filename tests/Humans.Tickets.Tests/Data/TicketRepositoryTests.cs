@@ -47,15 +47,26 @@ public sealed class TicketRepositoryTests : IDisposable
         var now = _clock.GetCurrentInstant();
         var order = new TicketOrder
         {
-            Id = Guid.NewGuid(), VendorOrderId = "order", VendorEventId = "event", BuyerName = "Human",
-            BuyerEmail = "human@example.com", Currency = "EUR", PaymentStatus = TicketPaymentStatus.Paid,
-            PurchasedAt = now, SyncedAt = now,
+            Id = Guid.NewGuid(),
+            VendorOrderId = "order",
+            VendorEventId = "event",
+            BuyerName = "Human",
+            BuyerEmail = "human@example.com",
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            PurchasedAt = now,
+            SyncedAt = now,
         };
         _dbContext.TicketOrders.Add(order);
         _dbContext.TicketAttendees.Add(new TicketAttendee
         {
-            Id = Guid.NewGuid(), TicketOrderId = order.Id, VendorTicketId = "ticket", VendorEventId = "event",
-            AttendeeName = "Human", Status = TicketAttendeeStatus.Valid, SyncedAt = now,
+            Id = Guid.NewGuid(),
+            TicketOrderId = order.Id,
+            VendorTicketId = "ticket",
+            VendorEventId = "event",
+            AttendeeName = "Human",
+            Status = TicketAttendeeStatus.Valid,
+            SyncedAt = now,
         });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         async Task<(int Count, int Total)> ReadPage(int page)

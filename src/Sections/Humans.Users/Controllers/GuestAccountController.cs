@@ -180,10 +180,6 @@ internal sealed class GuestAccountController(
             categories.Add(new CategoryPreferenceItem
             {
                 Category = category,
-                DisplayName = category == MessageCategory.Ticketing
-                    ? $"Ticketing — {clock.GetCurrentInstant().InUtc().Year}"
-                    : category.ToDisplayName(),
-                Description = category.ToDescription(),
                 // No row → category's domain default (Marketing is opt-out-by-default,
                 // so a missing row renders unchecked). Matches the panel view component.
                 EmailEnabled = pref is null ? !category.DefaultOptedOut() : !pref.OptedOut,
@@ -194,6 +190,10 @@ internal sealed class GuestAccountController(
             });
         }
 
-        return new CommunicationPreferencesViewModel { Categories = categories };
+        return new CommunicationPreferencesViewModel
+        {
+            Categories = categories,
+            TicketingYear = clock.GetCurrentInstant().InUtc().Year,
+        };
     }
 }

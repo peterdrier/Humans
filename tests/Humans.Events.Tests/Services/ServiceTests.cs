@@ -258,8 +258,10 @@ public sealed class EventServiceTests
         {
             _repo.Preference = new EventPreference
             {
-                Id = Guid.NewGuid(), UserId = userId,
-                ExcludedCategorySlugs = "[\"MuSiC\"]", UpdatedAt = _clock.GetCurrentInstant()
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ExcludedCategorySlugs = "[\"MuSiC\"]",
+                UpdatedAt = _clock.GetCurrentInstant()
             };
         }
         else

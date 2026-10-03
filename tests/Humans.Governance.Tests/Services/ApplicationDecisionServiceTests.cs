@@ -895,10 +895,13 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var controller = new GovernanceBoardVotingController(_userService, _service,
             NullLogger<GovernanceBoardVotingController>.Instance, Substitute.For<IStringLocalizer<GovernanceResource>>())
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            ControllerContext = new ControllerContext
             {
-                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "Test")),
-            } },
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "Test")),
+                }
+            },
         };
 
         (await controller.BoardVotingDetail(app.Id, cancellation.Token)).Should().BeOfType<ViewResult>();
@@ -927,18 +930,24 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var controller = new GovernanceApplicationsController(_service, _userService,
             Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            ControllerContext = new ControllerContext
             {
-                RequestAborted = request.Token,
-                User = new ClaimsPrincipal(new ClaimsIdentity([
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = request.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([
                     new Claim(ClaimTypes.NameIdentifier, viewerId.ToString()), new Claim(ClaimTypes.Role, RoleNames.Admin)], "Test")),
-            } },
+                }
+            },
         };
         Task<IActionResult> ReadPage() => page switch
         {
-            "Index" => controller.Index(), "Create" => controller.Create(),
-            "Details" => controller.Details(app.Id), "Admin" => controller.Admin(null, null),
-            "AdminDetail" => controller.AdminDetail(app.Id), "AdminTermExpiry" => controller.AdminTermExpiry(),
+            "Index" => controller.Index(),
+            "Create" => controller.Create(),
+            "Details" => controller.Details(app.Id),
+            "Admin" => controller.Admin(null, null),
+            "AdminDetail" => controller.AdminDetail(app.Id),
+            "AdminTermExpiry" => controller.AdminTermExpiry(),
             _ => throw new ArgumentOutOfRangeException(nameof(page)),
         };
 

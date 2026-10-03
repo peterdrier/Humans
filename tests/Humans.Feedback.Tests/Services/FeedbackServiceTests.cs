@@ -584,11 +584,14 @@ public sealed class FeedbackServiceTests
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var controller = new FeedbackController(_service, teams, users, NullLogger<FeedbackController>.Instance)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            ControllerContext = new ControllerContext
             {
-                RequestAborted = request.Token,
-                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, id.ToString())], "Test")),
-            } },
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = request.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, id.ToString())], "Test")),
+                }
+            },
         };
         Task<IActionResult> ReadPage() => controller.Index(null, null, null, null, null, false, null, request.Token);
         (await ReadPage()).Should().BeOfType<ViewResult>();

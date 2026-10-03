@@ -1,4 +1,3 @@
-@inject NodaTime.IClock Clock
 @using Humans.Base.Extensions
 @model Humans.Users.Models.CommunicationPreferencesViewModel
 @{
@@ -24,7 +23,7 @@
                 {
                     var item = Model.Categories[i];
                     var categoryName = item.Category == MessageCategory.Ticketing
-                        ? Localizer["CommPrefs_TicketingYear", Clock.GetCurrentInstant().InUtc().Year].Value
+                        ? Localizer["CommPrefs_TicketingYear", Model.TicketingYear].Value
                         : Localizer[$"CommPrefs_Name_{item.Category}"].Value;
 
                     <tr class="@(!item.EmailEditable ? "table-light" : "")" data-alert-enabled="@(item.AlertEnabled ? "true" : "false")">

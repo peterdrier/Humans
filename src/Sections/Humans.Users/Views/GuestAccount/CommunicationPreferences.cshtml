@@ -1,4 +1,3 @@
-@inject NodaTime.IClock Clock
 @model CommunicationPreferencesViewModel
 @{
     ViewData["Title"] = Localizer["CommPrefs_Title"].Value;
@@ -23,7 +22,7 @@
         @if (Model.HighlightCategory is { } highlight && !highlight.IsAlwaysOn())
         {
             var highlightName = highlight == MessageCategory.Ticketing
-                ? Localizer["CommPrefs_TicketingYear", Clock.GetCurrentInstant().InUtc().Year].Value
+                ? Localizer["CommPrefs_TicketingYear", Model.TicketingYear].Value
                 : Localizer[$"CommPrefs_Name_{highlight}"].Value;
             <div id="oneClickBanner"
                  class="alert alert-warning d-flex align-items-center justify-content-between gap-3 mb-4"
@@ -53,7 +52,7 @@
                         {
                             var item = Model.Categories[i];
                             var categoryName = item.Category == MessageCategory.Ticketing
-                                ? Localizer["CommPrefs_TicketingYear", Clock.GetCurrentInstant().InUtc().Year].Value
+                                ? Localizer["CommPrefs_TicketingYear", Model.TicketingYear].Value
                                 : Localizer[$"CommPrefs_Name_{item.Category}"].Value;
 
                             <tr class="@(!item.EmailEditable ? "table-light" : (Model.HighlightCategory == item.Category ? "table-warning" : ""))"

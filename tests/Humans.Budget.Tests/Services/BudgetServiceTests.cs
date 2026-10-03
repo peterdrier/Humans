@@ -461,11 +461,17 @@ public sealed class BudgetServiceTests
         {
             ctx.BudgetYears.Add(new BudgetYear
             {
-                Id = activeYearId, Year = "2026", Name = "Current budget", Status = BudgetYearStatus.Active
+                Id = activeYearId,
+                Year = "2026",
+                Name = "Current budget",
+                Status = BudgetYearStatus.Active
             });
             ctx.BudgetYears.Add(new BudgetYear
             {
-                Id = _yearId, Year = "2025", Name = "Old budget", Status = BudgetYearStatus.Closed
+                Id = _yearId,
+                Year = "2025",
+                Name = "Old budget",
+                Status = BudgetYearStatus.Closed
             });
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }

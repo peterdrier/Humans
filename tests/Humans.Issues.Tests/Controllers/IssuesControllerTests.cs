@@ -55,9 +55,12 @@ public sealed class IssuesControllerTests
             ("Title", "Validation_Required", []), ("Description", "Validation_Required", []));
         AssertErrors(new SubmitIssueViewModel
         {
-            Title = new string('x', 201), Description = new string('x', 5001),
-            Section = new string('x', 65), PageUrl = new string('x', 2001),
-            UserAgent = new string('x', 1001), AdditionalContext = new string('x', 2001)
+            Title = new string('x', 201),
+            Description = new string('x', 5001),
+            Section = new string('x', 65),
+            PageUrl = new string('x', 2001),
+            UserAgent = new string('x', 1001),
+            AdditionalContext = new string('x', 2001)
         },
             ("Title", "Validation_MaxLength", ["", 200]),
             ("Description", "Validation_MaxLength", ["", 5000]),

@@ -339,7 +339,9 @@ public class ProfileControllerEditTests
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return new ValueTask<UserInfo?>(new User
             {
-                Id = _userId, PreferredLanguage = "en", DeletionRequestedAt = now,
+                Id = _userId,
+                PreferredLanguage = "en",
+                DeletionRequestedAt = now,
                 DeletionScheduledFor = now + Duration.FromDays(30),
             }.ToUserInfo());
         });

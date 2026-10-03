@@ -83,11 +83,14 @@ public sealed class GovernanceIndexServiceTests
         });
         var controller = new GovernanceController(Users, CreateService())
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            ControllerContext = new ControllerContext
             {
-                RequestAborted = cancellation.Token,
-                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
-            } },
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = cancellation.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
+                }
+            },
         };
 
         (await controller.Index()).Should().BeOfType<ViewResult>();

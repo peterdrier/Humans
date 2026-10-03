@@ -38,11 +38,14 @@ public class TicketTransferControllerTests
         var controller = new TicketTransferController(transfers, Substitute.For<IEarlyEntryService>(),
             users, NullLogger<TicketTransferController>.Instance, Substitute.For<IStringLocalizer<TicketsResource>>())
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            ControllerContext = new ControllerContext
             {
-                RequestAborted = request.Token,
-                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, id.ToString())], "Test")),
-            } },
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = request.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, id.ToString())], "Test")),
+                }
+            },
         };
         (await controller.Index(request.Token)).Should().BeOfType<ViewResult>();
         await request.CancelAsync();

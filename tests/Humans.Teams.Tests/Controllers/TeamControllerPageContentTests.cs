@@ -218,7 +218,10 @@ public class TeamControllerPageContentTests
         };
         var model = new JoinTeamViewModel
         {
-            TeamId = team.Id, TeamName = "Spoofed", TeamSlug = "wrong", RequiresApproval = false,
+            TeamId = team.Id,
+            TeamName = "Spoofed",
+            TeamSlug = "wrong",
+            RequiresApproval = false,
             Message = new string('x', 2001)
         };
         services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);

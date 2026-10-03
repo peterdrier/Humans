@@ -51,6 +51,7 @@ export function openPlacementNotes(container) {
     const saveBtn = _modalEl.querySelector('[data-role="save-btn"]');
     const canEdit = !!container.canEdit;
     fieldset.disabled = !canEdit;
+    saveBtn.disabled = false;
     saveBtn.classList.toggle('d-none', !canEdit);
 
     bootstrap.Modal.getOrCreateInstance(_modalEl).show();
@@ -78,6 +79,6 @@ async function onSubmit(e) {
             err.classList.remove('d-none');
         }
     } finally {
-        saveBtn.disabled = false;
+        if (version === _openVersion) saveBtn.disabled = false;
     }
 }

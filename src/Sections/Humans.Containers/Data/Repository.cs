@@ -101,30 +101,6 @@ internal sealed class Repository(IDbContextFactory<ContainersDbContext> factory)
             .ToListAsync(ct);
     }
 
-    public async Task AddImagesAsync(IReadOnlyCollection<ContainerImage> images, CancellationToken ct = default)
-    {
-        if (images.Count == 0) return;
-
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.ContainerImages.AddRange(images);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task DeleteImagesAsync(
-        Guid containerId, IReadOnlyCollection<Guid> imageIds, CancellationToken ct = default)
-    {
-        if (imageIds.Count == 0) return;
-
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var images = await ctx.ContainerImages
-            .Where(i => i.ContainerId == containerId && imageIds.Contains(i.Id))
-            .ToListAsync(ct);
-        if (images.Count == 0) return;
-
-        ctx.ContainerImages.RemoveRange(images);
-        await ctx.SaveChangesAsync(ct);
-    }
-
     public async Task<ContainerPlacement?> GetPlacementAsync(Guid containerId, int year, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

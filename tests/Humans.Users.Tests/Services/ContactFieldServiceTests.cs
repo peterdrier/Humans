@@ -285,16 +285,25 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         {
             Db.ContactFields.Add(new ContactField
             {
-                Id = Guid.NewGuid(), ProfileId = profile.Id, FieldType = type, Value = "Contact value",
+                Id = Guid.NewGuid(),
+                ProfileId = profile.Id,
+                FieldType = type,
+                Value = "Contact value",
                 Visibility = ContactFieldVisibility.AllActiveProfiles,
-                CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant(),
+                CreatedAt = Clock.GetCurrentInstant(),
+                UpdatedAt = Clock.GetCurrentInstant(),
             });
         }
         Db.ContactFields.Add(new ContactField
         {
-            Id = Guid.NewGuid(), ProfileId = profile.Id, FieldType = ContactFieldType.Other,
-            CustomLabel = "My custom label", Value = "Custom value", Visibility = ContactFieldVisibility.AllActiveProfiles,
-            CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            ProfileId = profile.Id,
+            FieldType = ContactFieldType.Other,
+            CustomLabel = "My custom label",
+            Value = "Custom value",
+            Visibility = ContactFieldVisibility.AllActiveProfiles,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
         });
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         StubUserInfo(ownerId, profile);

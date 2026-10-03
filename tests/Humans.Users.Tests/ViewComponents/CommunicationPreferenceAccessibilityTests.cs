@@ -67,6 +67,7 @@ public class CommunicationPreferenceAccessibilityTests
         var model = new CommunicationPreferencesViewModel
         {
             ReadOnly = string.Equals(surface, "Admin", StringComparison.Ordinal),
+            TicketingYear = 2026,
             Categories =
             [
                 new() { Category = MessageCategory.Marketing, EmailEnabled = false, AlertEnabled = false, EmailEditable = true, AlertEditable = true },

@@ -192,11 +192,14 @@ public sealed class ExpenseReportServiceTests
         var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance,
             authorization, NullLogger<ExpensesController>.Instance, _localizer)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            ControllerContext = new ControllerContext
             {
-                RequestAborted = request.Token,
-                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
-            } },
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = request.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
+                }
+            },
         };
         Task<IActionResult> ReadAttachment() => inline ? controller.AttachmentView(attachmentId) : controller.Attachment(attachmentId);
 
@@ -224,11 +227,14 @@ public sealed class ExpenseReportServiceTests
         var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance,
             Substitute.For<IAuthorizationService>(), NullLogger<ExpensesController>.Instance, _localizer)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            ControllerContext = new ControllerContext
             {
-                RequestAborted = request.Token,
-                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
-            } },
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = request.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
+                }
+            },
         };
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
         (await controller.New()).Should().BeOfType<ViewResult>();
@@ -282,19 +288,26 @@ public sealed class ExpenseReportServiceTests
         var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance,
             authorization, NullLogger<ExpensesController>.Instance, _localizer)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            ControllerContext = new ControllerContext
             {
-                RequestAborted = request.Token,
-                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
-            } },
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = request.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
+                }
+            },
         };
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
         Task<IActionResult> ReadPage() => page switch
         {
-            "Detail" => controller.Detail(id), "Edit" => controller.Edit(id),
-            "NewLine" => controller.NewLine(id), "LineEdit" => controller.LineEdit(id, lineId),
-            "LineProofs" => controller.LineProofs(id, lineId), "Iban" => controller.Iban(id),
-            "Review" => controller.Review(), _ => throw new ArgumentOutOfRangeException(nameof(page)),
+            "Detail" => controller.Detail(id),
+            "Edit" => controller.Edit(id),
+            "NewLine" => controller.NewLine(id),
+            "LineEdit" => controller.LineEdit(id, lineId),
+            "LineProofs" => controller.LineProofs(id, lineId),
+            "Iban" => controller.Iban(id),
+            "Review" => controller.Review(),
+            _ => throw new ArgumentOutOfRangeException(nameof(page)),
         };
 
         (await ReadPage()).Should().BeOfType<ViewResult>();
@@ -330,10 +343,13 @@ public sealed class ExpenseReportServiceTests
         var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance,
             authorization, NullLogger<ExpensesController>.Instance, _localizer)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            ControllerContext = new ControllerContext
             {
-                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "test")),
-            } },
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "test")),
+                }
+            },
         };
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
 

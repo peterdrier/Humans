@@ -101,7 +101,8 @@ public class EventsControllerTests
         var campId = Guid.NewGuid();
         var season = new CampSeasonInfo(
             Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
-            default, default, default, default, 1, null, null, null, 0, null, null) { LeadUserIds = [userId] };
+            default, default, default, default, 1, null, null, null, 0, null, null)
+        { LeadUserIds = [userId] };
         var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
         var submitterId = Guid.NewGuid();
         var approved = new ApprovedEventView(Guid.NewGuid(), null, null, submitterId, Guid.NewGuid(), "music", "Music", false,

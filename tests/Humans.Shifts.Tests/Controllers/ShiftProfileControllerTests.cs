@@ -58,8 +58,10 @@ public class ShiftProfileControllerTests
         };
         var model = new ShiftInfoViewModel
         {
-            SelectedSkills = ["Other"], SkillOtherText = new string('s', 200),
-            SelectedLanguages = ["Other"], LanguageOtherText = new string('l', 200),
+            SelectedSkills = ["Other"],
+            SkillOtherText = new string('s', 200),
+            SelectedLanguages = ["Other"],
+            LanguageOtherText = new string('l', 200),
         };
         validator.Validate(controller.ControllerContext, null, "", model);
         controller.ModelState.IsValid.Should().BeTrue();
