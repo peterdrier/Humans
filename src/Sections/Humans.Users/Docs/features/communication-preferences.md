@@ -33,6 +33,8 @@ Category names, descriptions, the clock-derived Ticketing year heading and ticke
 
 The member panel currently shows only the Email control. Its updates preserve the existing inbox setting rather than resetting the hidden channel.
 
+Guest updates serialize per row by disabling both editable channels and the matching one-click unsubscribe control while a save is pending. Success/failure unlocks the row; failures revert the edited value. Other categories stay independent.
+
 ### Always-On Categories
 
 System and Campaign Codes are always locked on — users cannot opt out. These categories cover critical account operations and code delivery.

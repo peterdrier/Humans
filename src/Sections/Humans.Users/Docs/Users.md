@@ -194,6 +194,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- Guest preference saves disable both editable channels and the matching one-click unsubscribe action until completion. Writes to one category cannot overlap in the page; other categories remain available, and failures restore the edited value before unlocking.
+
 - Member email-preference changes preserve the row’s existing inbox preference when the alert control is not shown; changing email cannot silently re-enable inbox notifications.
 
 - Guest communication-preference GETs carry request cancellation through session/token user lookup, preference reads and ticket holdings. Cancellation propagates without an error flash; paired POST helpers retain their default mutation token.

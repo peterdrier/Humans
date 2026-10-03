@@ -120,6 +120,18 @@
 
 @section Scripts {
 <script>
+    function setPreferenceSaving(row, saving) {
+        if (!row) return;
+        row.querySelectorAll('.pref-toggle').forEach(function (control) {
+            control.disabled = saving;
+        });
+        var banner = document.getElementById('oneClickBanner');
+        var button = document.getElementById('oneClickUnsubscribe');
+        if (banner && button && banner.dataset.category === row.dataset.categoryRow) {
+            button.disabled = saving;
+        }
+    }
+
     document.querySelectorAll('.pref-toggle').forEach(function (cb) {
         cb.addEventListener('change', function () {
             var row = this.closest('tr');
@@ -140,7 +152,7 @@
                 @:body.append('utoken', '@Html.Raw(Html.Encode(Model.UnsubscribeToken))');
             }
 
-            this.disabled = true;
+            setPreferenceSaving(row, true);
             var self = this;
 
             fetch('@Url.Action("UpdatePreference")', {
@@ -156,7 +168,7 @@
                 row.classList.add('table-danger');
                 setTimeout(function () { row.classList.remove('table-danger'); }, 1500);
             }).finally(function () {
-                self.disabled = false;
+                setPreferenceSaving(row, false);
             });
         });
     });
@@ -183,6 +195,7 @@
                 @:body.append('utoken', '@Html.Raw(Html.Encode(Model.UnsubscribeToken))');
             }
 
+            setPreferenceSaving(row, true);
             oneClickBtn.disabled = true;
             fetch('@Url.Action("UpdatePreference")', {
                 method: 'POST',
@@ -198,6 +211,8 @@
                 banner.classList.remove('alert-warning');
                 banner.classList.add('alert-danger');
                 oneClickBtn.disabled = false;
+            }).finally(function () {
+                setPreferenceSaving(row, false);
             });
         });
     }
