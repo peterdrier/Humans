@@ -345,4 +345,17 @@
   <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>No se encontró la encuesta.</value></data>
   <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>Tu cuenta no tiene un correo electrónico de notificación.</value></data>
   <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>No se pudo poner en cola el correo de vista previa de la encuesta.</value></data>
+  <data name="Surveys_PreviewOnly" xml:space="preserve"><value>Solo vista previa</value></data>
+  <data name="Surveys_SendPreviewEmail" xml:space="preserve"><value>Enviarme el correo de vista previa</value></data>
+  <data name="Surveys_PreviewIntroNotice" xml:space="preserve"><value>Puedes revisar esta encuesta, pero no se guardará ninguna respuesta ni actividad.</value></data>
+  <data name="Surveys_PreviewPageNotice" xml:space="preserve"><value>Las respuestas y la actividad no se guardan. Se muestran las preguntas condicionales para poder revisarlas.</value></data>
+  <data name="Surveys_PreviewThankYouNotice" xml:space="preserve"><value>No se ha enviado ninguna respuesta.</value></data>
+  <data name="Surveys_EmailPreviewTitle" xml:space="preserve"><value>Vista previa del correo de la encuesta</value></data>
+  <data name="Surveys_EmailPreviewDescription" xml:space="preserve"><value>Esta es la invitación que se enviaría a la persona que tiene la sesión iniciada.</value></data>
+  <data name="Surveys_EmailPreviewTo" xml:space="preserve"><value>Para:</value></data>
+  <data name="Surveys_EmailPreviewSubject" xml:space="preserve"><value>Asunto:</value></data>
+  <data name="Surveys_EmailPreviewFrameTitle" xml:space="preserve"><value>Vista previa del correo de invitación a la encuesta</value></data>
+  <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Navegación de ruta</value></data>
+  <data name="Surveys_StartPreview" xml:space="preserve"><value>Iniciar vista previa</value></data>
+  <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Vista previa del agradecimiento</value></data>
 </root>

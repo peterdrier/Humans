@@ -331,4 +331,17 @@
   <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>No s’ha trobat l’enquesta.</value></data>
   <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>El teu compte no té cap adreça electrònica de notificació.</value></data>
   <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>No s’ha pogut posar a la cua el correu de previsualització de l’enquesta.</value></data>
+  <data name="Surveys_PreviewOnly" xml:space="preserve"><value>Només previsualització</value></data>
+  <data name="Surveys_SendPreviewEmail" xml:space="preserve"><value>Envia’m el correu de previsualització</value></data>
+  <data name="Surveys_PreviewIntroNotice" xml:space="preserve"><value>Pots revisar aquesta enquesta, però no es desarà cap resposta ni activitat.</value></data>
+  <data name="Surveys_PreviewPageNotice" xml:space="preserve"><value>Les respostes i l’activitat no es desen. Es mostren les preguntes condicionals per poder-les revisar.</value></data>
+  <data name="Surveys_PreviewThankYouNotice" xml:space="preserve"><value>No s’ha enviat cap resposta.</value></data>
+  <data name="Surveys_EmailPreviewTitle" xml:space="preserve"><value>Previsualització del correu de l’enquesta</value></data>
+  <data name="Surveys_EmailPreviewDescription" xml:space="preserve"><value>Aquesta és la invitació que s’enviaria a la persona que té la sessió iniciada.</value></data>
+  <data name="Surveys_EmailPreviewTo" xml:space="preserve"><value>Per a:</value></data>
+  <data name="Surveys_EmailPreviewSubject" xml:space="preserve"><value>Assumpte:</value></data>
+  <data name="Surveys_EmailPreviewFrameTitle" xml:space="preserve"><value>Previsualització del correu d’invitació a l’enquesta</value></data>
+  <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Navegació de ruta</value></data>
+  <data name="Surveys_StartPreview" xml:space="preserve"><value>Inicia la previsualització</value></data>
+  <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Previsualitza l’agraïment</value></data>
 </root>

@@ -15,7 +15,7 @@
                     <partial name="_PreviewNotice"
                              model="@(new SurveyPreviewNoticeModel(
                                  Model.PreviewSurveyId!.Value,
-                                 "You can inspect this survey, but no response or activity will be saved."))" />
+                                 Localizer["Surveys_PreviewIntroNotice"].Value))" />
                 }
 
                 @if (Model.HasResumableDraft)
@@ -120,7 +120,7 @@
                     </div>
 
                     <button type="submit" class="btn btn-primary">
-                        @(Model.IsPreview ? "Start preview" : Model.HasResumableDraft ? Localizer["Survey_Continue"] : Localizer["Survey_Start"])
+                        @(Model.IsPreview ? Localizer["Surveys_StartPreview"] : Model.HasResumableDraft ? Localizer["Survey_Continue"] : Localizer["Survey_Start"])
                     </button>
                 </form>
             </div>

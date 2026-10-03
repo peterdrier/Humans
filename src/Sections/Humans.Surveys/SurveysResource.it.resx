@@ -331,4 +331,17 @@
   <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>Sondaggio non trovato.</value></data>
   <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>Il tuo account non ha un indirizzo email per le notifiche.</value></data>
   <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>Non è stato possibile mettere in coda l’email di anteprima del sondaggio.</value></data>
+  <data name="Surveys_PreviewOnly" xml:space="preserve"><value>Solo anteprima</value></data>
+  <data name="Surveys_SendPreviewEmail" xml:space="preserve"><value>Inviami l’email di anteprima</value></data>
+  <data name="Surveys_PreviewIntroNotice" xml:space="preserve"><value>Puoi esaminare questo sondaggio, ma non verranno salvate risposte né attività.</value></data>
+  <data name="Surveys_PreviewPageNotice" xml:space="preserve"><value>Le risposte e le attività non vengono salvate. Le domande condizionali vengono mostrate per poterle esaminare.</value></data>
+  <data name="Surveys_PreviewThankYouNotice" xml:space="preserve"><value>Non è stata inviata alcuna risposta.</value></data>
+  <data name="Surveys_EmailPreviewTitle" xml:space="preserve"><value>Anteprima email del sondaggio</value></data>
+  <data name="Surveys_EmailPreviewDescription" xml:space="preserve"><value>Questo è l’invito che verrebbe inviato alla persona attualmente connessa.</value></data>
+  <data name="Surveys_EmailPreviewTo" xml:space="preserve"><value>A:</value></data>
+  <data name="Surveys_EmailPreviewSubject" xml:space="preserve"><value>Oggetto:</value></data>
+  <data name="Surveys_EmailPreviewFrameTitle" xml:space="preserve"><value>Anteprima dell’email di invito al sondaggio</value></data>
+  <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Navigazione breadcrumb</value></data>
+  <data name="Surveys_StartPreview" xml:space="preserve"><value>Avvia anteprima</value></data>
+  <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Anteprima dei ringraziamenti</value></data>
 </root>

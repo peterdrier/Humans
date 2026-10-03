@@ -21,7 +21,7 @@
                     <partial name="_PreviewNotice"
                              model="@(new SurveyPreviewNoticeModel(
                                  Model.PreviewSurveyId!.Value,
-                                 "Answers and activity are not saved. Conditional questions are shown so they can be inspected."))" />
+                                 Localizer["Surveys_PreviewPageNotice"].Value))" />
                 }
 
                 @if (Model.IsAsociadoVote)
@@ -115,7 +115,7 @@
                                    asp-route-id="@Model.PreviewSurveyId"
                                    asp-route-culture="@Model.PreviewCulture"
                                    class="btn btn-outline-primary">
-                                    Preview thank-you
+                                    @Localizer["Surveys_PreviewThankYou"]
                                 </a>
                                 <button type="button" class="btn btn-primary" disabled aria-disabled="true">
                                     @Localizer["Survey_Submit"]<i class="fa-solid fa-paper-plane ms-1"></i>

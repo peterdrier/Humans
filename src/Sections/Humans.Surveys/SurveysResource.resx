@@ -326,4 +326,17 @@
   <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>Survey not found.</value></data>
   <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>Your account has no notification email.</value></data>
   <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>The survey preview email could not be queued.</value></data>
+  <data name="Surveys_PreviewOnly" xml:space="preserve"><value>Preview only</value></data>
+  <data name="Surveys_SendPreviewEmail" xml:space="preserve"><value>Send preview email to me</value></data>
+  <data name="Surveys_PreviewIntroNotice" xml:space="preserve"><value>You can inspect this survey, but no response or activity will be saved.</value></data>
+  <data name="Surveys_PreviewPageNotice" xml:space="preserve"><value>Answers and activity are not saved. Conditional questions are shown so they can be inspected.</value></data>
+  <data name="Surveys_PreviewThankYouNotice" xml:space="preserve"><value>No response was submitted.</value></data>
+  <data name="Surveys_EmailPreviewTitle" xml:space="preserve"><value>Survey email preview</value></data>
+  <data name="Surveys_EmailPreviewDescription" xml:space="preserve"><value>This is the invitation that would be sent to the currently logged-in user.</value></data>
+  <data name="Surveys_EmailPreviewTo" xml:space="preserve"><value>To:</value></data>
+  <data name="Surveys_EmailPreviewSubject" xml:space="preserve"><value>Subject:</value></data>
+  <data name="Surveys_EmailPreviewFrameTitle" xml:space="preserve"><value>Survey invitation email preview</value></data>
+  <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb navigation</value></data>
+  <data name="Surveys_StartPreview" xml:space="preserve"><value>Start preview</value></data>
+  <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Preview thank-you</value></data>
 </root>
