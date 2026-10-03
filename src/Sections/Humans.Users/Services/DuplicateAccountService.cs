@@ -157,15 +157,6 @@ internal sealed class DuplicateAccountService(
         }
     }
 
-    public async Task<DuplicateAccountGroup?> GetDuplicateGroupAsync(
-        Guid userId1, Guid userId2, CancellationToken ct = default)
-    {
-        var groups = await DetectDuplicatesAsync(ct);
-        return groups.FirstOrDefault(g =>
-            g.Accounts.Any(a => a.UserId == userId1) &&
-            g.Accounts.Any(a => a.UserId == userId2));
-    }
-
     private static DuplicateAccountInfo BuildAccountInfo(
         Guid userId,
         List<string> emailSources,

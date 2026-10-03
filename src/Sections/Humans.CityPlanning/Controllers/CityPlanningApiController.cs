@@ -107,7 +107,7 @@ internal sealed class CityPlanningApiController(
         }
         catch (ArgumentException ex)
         {
-            logger.LogWarning(ex, "Rejected camp polygon for {CampSeasonId}: {Reason}", campSeasonId, ex.Message);
+            logger.LogWarning("Rejected camp polygon for {CampSeasonId}: {Reason}", campSeasonId, ex.Message);
             return BadRequest("Invalid GeoJSON.");
         }
 
@@ -278,13 +278,16 @@ internal sealed class CityPlanningApiController(
             User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place);
         if (!authResult.Succeeded) return Forbid();
 
-        if (string.IsNullOrWhiteSpace(request.GeoJson) || !IsValidContainerPlacementGeoJson(request.GeoJson))
+        try
         {
-            return UnprocessableEntity(containersLocalizer["Containers_Error_InvalidPlacementGeoJson"].Value);
+            var updated = await containerService.SavePlacementAsync(id, year, request.GeoJson, CurrentUserId(), cancellationToken);
+            return Ok(new { id = updated.ContainerId, year = updated.Year, locationGeoJson = updated.LocationGeoJson });
         }
-
-        var updated = await containerService.SavePlacementAsync(id, year, request.GeoJson, CurrentUserId(), cancellationToken);
-        return Ok(new { id = updated.ContainerId, year = updated.Year, locationGeoJson = updated.LocationGeoJson });
+        catch (InvalidOperationException ex) when (string.Equals(
+            ex.Message, containersLocalizer["Containers_Error_InvalidPlacementGeoJson"].Value, StringComparison.Ordinal))
+        {
+            return UnprocessableEntity(ex.Message);
+        }
     }
 
     /// <summary>Update placement notes and/or sketch image for a placed container.</summary>
@@ -344,27 +347,6 @@ internal sealed class CityPlanningApiController(
 
         await containerService.ClearPlacementAsync(id, year, CurrentUserId(), cancellationToken);
         return NoContent();
-    }
-
-    private static bool IsValidContainerPlacementGeoJson(string json)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-            if (!string.Equals(root.GetProperty("type").GetString(), "Feature", StringComparison.Ordinal)) return false;
-            var geom = root.GetProperty("geometry");
-            if (!string.Equals(geom.GetProperty("type").GetString(), "Polygon", StringComparison.Ordinal)) return false;
-            var props = root.GetProperty("properties");
-            if (!props.TryGetProperty("center_lng", out _)) return false;
-            if (!props.TryGetProperty("center_lat", out _)) return false;
-            if (!props.TryGetProperty("rotation_degrees", out _)) return false;
-            return true;
-        }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException or KeyNotFoundException)
-        {
-            return false;
-        }
     }
 }
 

@@ -69,6 +69,11 @@ internal sealed class HoldedController(
             else
                 SetInfo($"Synced {docs.DocCount} purchase doc(s). A ledger sweep was already running, so this one was skipped.");
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Manual Holded sync cancelled by the caller");
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Holded sync failed");

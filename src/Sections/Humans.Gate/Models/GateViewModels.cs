@@ -105,9 +105,6 @@ internal sealed record GateSettingsViewModel(
     [param: System.ComponentModel.DataAnnotations.Range(0, 21,
         ErrorMessage = "Minor age threshold must be between 0 and 21.")] int MinorAgeThresholdYears);
 
-/// <summary>One leaderboard row (name resolved in the view via <c>&lt;vc:human&gt;</c>).</summary>
-internal sealed record GateLeaderboardRowViewModel(Guid ScannedByUserId, int Admitted, int Rejected, int Total);
-
 /// <summary>
 /// The "Who is scanning?" claim screen. <see cref="Roster"/> is a one-tap quick-pick of
 /// people signed up for the gate shift roster (empty unless <c>Gate:RosterTeamId</c> is

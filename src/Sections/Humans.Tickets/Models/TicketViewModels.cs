@@ -4,6 +4,7 @@ using NodaTime;
 using Humans.Base.Models;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain;
+using Humans.Tickets.Services.Dtos;
 
 namespace Humans.Tickets.Models;
 
@@ -69,7 +70,7 @@ internal sealed class TicketOrderSummary
 
 internal sealed class TicketOrdersViewModel() : PagedListViewModel(25)
 {
-    public List<TicketOrderRow> Orders { get; set; } = [];
+    public List<OrderRow> Orders { get; set; } = [];
     public string? Search { get; set; }
     public string SortBy { get; set; } = "date";
     public bool SortDesc { get; set; } = true;
@@ -79,33 +80,9 @@ internal sealed class TicketOrdersViewModel() : PagedListViewModel(25)
     public List<string> AvailableTicketTypes { get; set; } = [];
 }
 
-internal sealed class TicketOrderRow
-{
-    public Guid Id { get; set; }
-    public Instant PurchasedAt { get; set; }
-    public string VendorOrderId { get; set; } = string.Empty;
-    public string BuyerName { get; set; } = string.Empty;
-    public string BuyerEmail { get; set; } = string.Empty;
-    public int AttendeeCount { get; set; }
-    public decimal TotalAmount { get; set; }
-    public string Currency { get; set; } = "EUR";
-    public string? DiscountCode { get; set; }
-    public decimal? DiscountAmount { get; set; }
-    public decimal DonationAmount { get; set; }
-    public decimal VatAmount { get; set; }
-    public string? PaymentMethod { get; set; }
-    public string? PaymentMethodDetail { get; set; }
-    public decimal? StripeFee { get; set; }
-    public decimal? ApplicationFee { get; set; }
-    public TicketPaymentStatus PaymentStatus { get; set; }
-    public string? VendorDashboardUrl { get; set; }
-    public Guid? MatchedUserId { get; set; }
-    public string? MatchedUserName { get; set; }
-}
-
 internal sealed class TicketAttendeesViewModel() : PagedListViewModel(25)
 {
-    public List<TicketAttendeeRow> Attendees { get; set; } = [];
+    public List<AttendeeRow> Attendees { get; set; } = [];
     public string? Search { get; set; }
     public string SortBy { get; set; } = "name";
     public bool SortDesc { get; set; }
@@ -117,133 +94,30 @@ internal sealed class TicketAttendeesViewModel() : PagedListViewModel(25)
     public List<string> AvailableTicketTypes { get; set; } = [];
 }
 
-internal sealed class TicketAttendeeRow
-{
-    public Guid Id { get; set; }
-    public string AttendeeName { get; set; } = string.Empty;
-    public string? AttendeeEmail { get; set; }
-    public string TicketTypeName { get; set; } = string.Empty;
-    public decimal Price { get; set; }
-    public bool IsVip { get; set; }
-    public decimal TaxableAmount { get; set; }
-    public decimal VipDonation { get; set; }
-    public TicketAttendeeStatus Status { get; set; }
-    public Guid? MatchedUserId { get; set; }
-    public string? MatchedUserName { get; set; }
-    public string VendorOrderId { get; set; } = string.Empty;
-}
-
 internal sealed class TicketCodeTrackingViewModel
 {
     public int TotalCodesSent { get; set; }
     public int CodesRedeemed { get; set; }
     public int CodesUnused { get; set; }
     public decimal RedemptionRate { get; set; }
-    public List<CampaignCodeSummary> Campaigns { get; set; } = [];
-    public List<CodeDetailRow> Codes { get; set; } = [];
+    public List<CampaignCodeSummaryDto> Campaigns { get; set; } = [];
+    public List<CodeDetailDto> Codes { get; set; } = [];
     public string? Search { get; set; }
-}
-
-internal sealed class CodeDetailRow
-{
-    public string Code { get; set; } = string.Empty;
-    public string RecipientName { get; set; } = string.Empty;
-    public Guid RecipientUserId { get; set; }
-    public string CampaignTitle { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public Instant? RedeemedAt { get; set; }
-    public string? RedeemedByName { get; set; }
-    public string? RedeemedByEmail { get; set; }
-    public string? RedeemedOrderVendorId { get; set; }
-}
-
-internal sealed class CampaignCodeSummary
-{
-    public Guid CampaignId { get; set; }
-    public string CampaignTitle { get; set; } = string.Empty;
-    public int TotalGrants { get; set; }
-    public int Redeemed { get; set; }
-    public int Unused { get; set; }
-    public decimal RedemptionRate { get; set; }
 }
 
 internal sealed class TicketSalesAggregatesViewModel
 {
-    public List<WeeklySalesRow> WeeklySales { get; set; } = [];
-    public List<QuarterlySalesRow> QuarterlySales { get; set; } = [];
-    public List<MonthlySalesRow> MonthlySales { get; set; } = [];
-    public List<TicketTypeSalesRow> ByTicketType { get; set; } = [];
-    public List<DiscountCampaignRow> ByDiscountCampaign { get; set; } = [];
+    public List<WeeklySalesAggregate> WeeklySales { get; set; } = [];
+    public List<QuarterlySalesAggregate> QuarterlySales { get; set; } = [];
+    public List<MonthlySalesAggregate> MonthlySales { get; set; } = [];
+    public List<TicketTypeSalesAggregate> ByTicketType { get; set; } = [];
+    public List<DiscountCampaignAggregate> ByDiscountCampaign { get; set; } = [];
     public string Currency { get; set; } = "EUR";
-}
-
-internal sealed class DiscountCampaignRow
-{
-    public string CampaignTitle { get; set; } = string.Empty;
-
-    /// <summary>Null for codes that match no grant — render blank.</summary>
-    public int? CodesGranted { get; set; }
-
-    public int CodesUsed { get; set; }
-    public decimal AverageDiscount { get; set; }
-    public decimal TotalDiscount { get; set; }
-}
-
-internal sealed class TicketTypeSalesRow
-{
-    public string TicketTypeName { get; set; } = string.Empty;
-    public decimal Price { get; set; }
-    public int TicketsSold { get; set; }
-    public decimal FaceValue { get; set; }
-}
-
-internal sealed class WeeklySalesRow
-{
-    public string WeekLabel { get; set; } = string.Empty; // "Mar 3 – Mar 9"
-    public int TicketsSold { get; set; }
-    public decimal GrossRevenue { get; set; }
-    public int OrderCount { get; set; }
-    public decimal Donations { get; set; }
-    public decimal VatAmount { get; set; }
-    public decimal VipDonations { get; set; }
-}
-
-internal sealed class MonthlySalesRow
-{
-    public string MonthLabel { get; set; } = string.Empty; // "2026-03"
-    public int OrderCount { get; set; }
-    public int TicketsSold { get; set; }
-    public decimal GrossRevenue { get; set; }
-    public decimal Donations { get; set; }
-    public decimal VipDonations { get; set; }
-    public decimal VatAmount { get; set; }
-    public decimal StripeFees { get; set; }
-    public decimal ApplicationFees { get; set; }
-    public decimal RefundedGross { get; set; }
-
-    /// <summary>Taxable ticket income with VAT in it — the base the VAT was charged on.</summary>
-    public decimal TicketIncomeInclVat { get; set; }
-
-    /// <summary>Taxable ticket income net of VAT.</summary>
-    public decimal TicketIncomeExVat { get; set; }
-}
-
-internal sealed class QuarterlySalesRow
-{
-    public string QuarterLabel { get; set; } = string.Empty; // "Q1 2026"
-    public int Year { get; set; }
-    public int Quarter { get; set; }
-    public int TicketsSold { get; set; }
-    public decimal GrossRevenue { get; set; }
-    public int OrderCount { get; set; }
-    public decimal Donations { get; set; }
-    public decimal VatAmount { get; set; }
-    public decimal VipDonations { get; set; }
 }
 
 internal sealed class WhoHasntBoughtViewModel() : PagedListViewModel(25)
 {
-    public List<WhoHasntBoughtRow> Humans { get; set; } = [];
+    public List<WhoHasntBoughtRowDto> Humans { get; set; } = [];
     public string? Search { get; set; }
     public string? FilterTeam { get; set; }
     public string? FilterTier { get; set; }
@@ -255,14 +129,4 @@ internal sealed class ParticipationBackfillViewModel
 {
     public int Year { get; set; }
     public string? CsvData { get; set; }
-}
-
-internal sealed class WhoHasntBoughtRow
-{
-    public Guid UserId { get; set; }
-    public bool HasTicket { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string Teams { get; set; } = string.Empty;
-    public MembershipTier Tier { get; set; }
 }

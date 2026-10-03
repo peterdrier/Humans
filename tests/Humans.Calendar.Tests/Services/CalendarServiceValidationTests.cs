@@ -5,6 +5,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Calendar.Data;
 using Humans.Teams.Contracts;
 using Humans.Calendar.Services;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NodaTime;
@@ -31,6 +32,37 @@ namespace Humans.Calendar.Tests.Services;
 /// </summary>
 public class CalendarServiceValidationTests
 {
+    [HumansTheory]
+    [InlineData("FREQ=DAILY;COUNT=3", false)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", false)]
+    [InlineData("FREQ=DAILY;COUNT=3", true)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", true)]
+    public async Task EventWithResultAsync_InvalidDuration_is_a_validation_failure(string rule, bool update)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo);
+        var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+
+        var eventId = Guid.NewGuid();
+        repo.UpdateAsync(eventId, Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.ArgAt<Action<Humans.Calendar.Domain.CalendarEvent>>(1)(new() { Id = eventId });
+                return true;
+            });
+        var dto = new CreateCalendarEventDto(
+            "Invalid duration", null, null, null, Guid.NewGuid(),
+            start, start.Minus(Duration.FromHours(1)), false, rule, "UTC");
+        var result = update
+            ? await service.UpdateEventWithResultAsync(eventId, dto, Guid.NewGuid(), TestContext.Current.CancellationToken)
+            : await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Calendar_InvalidTimedEvent");
+        await repo.DidNotReceive().AddAsync(
+            Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansTheory]
     [InlineData(null)]
     [InlineData("")]
@@ -112,7 +144,10 @@ public class CalendarServiceValidationTests
     public async Task CreateEventWithResultAsync_returns_validation_member_for_malformed_recurrence()
     {
         var repo = Substitute.For<ICalendarRepository>();
-        var service = BuildService(repo);
+        var logger = Substitute.For<ILogger<CalendarService>>();
+        var service = new CalendarService(repo,
+            new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
+            Substitute.For<IAuditLogService>(), logger);
         var dto = new CreateCalendarEventDto(
             "Planning",
             Description: null,
@@ -128,6 +163,9 @@ public class CalendarServiceValidationTests
         var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
+        var log = logger.ReceivedCalls().Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).GetArguments();
+        log[0].Should().Be(LogLevel.Warning);
+        log[3].Should().BeNull("invalid user input should not log an exception stack");
         result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceRule));
         result.ErrorMessage.Should().Be("Calendar_InvalidTimedRecurrence");
         await repo.DidNotReceive().AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>());
@@ -136,7 +174,11 @@ public class CalendarServiceValidationTests
     [HumansFact]
     public async Task UpdateEventWithResultAsync_returns_validation_member_for_unknown_timezone()
     {
-        var service = BuildService(Substitute.For<ICalendarRepository>());
+        var repo = Substitute.For<ICalendarRepository>();
+        var logger = Substitute.For<ILogger<CalendarService>>();
+        var service = new CalendarService(repo,
+            new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
+            Substitute.For<IAuditLogService>(), logger);
         var dto = new CreateCalendarEventDto(
             "Planning",
             Description: null,
@@ -152,6 +194,9 @@ public class CalendarServiceValidationTests
         var result = await service.UpdateEventWithResultAsync(Guid.NewGuid(), dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
+        var log = logger.ReceivedCalls().Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).GetArguments();
+        log[0].Should().Be(LogLevel.Warning);
+        log[3].Should().BeNull("invalid user input should not log an exception stack");
         result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceTimezone));
         result.ErrorMessage.Should().Be("Calendar_UnknownTimezone");
     }
@@ -181,6 +226,45 @@ public class CalendarServiceValidationTests
             Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", false)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000z", false)]
+    [InlineData("freq=daily;until=20260603t100000z", false)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", true)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000z", true)]
+    [InlineData("freq=daily;until=20260603t100000z", true)]
+    public async Task EventWithResultAsync_UTC_until_is_independent_of_case_and_server_timezone(string rule, bool update)
+    {
+        var validate = () => CalendarService.ValidateRecurrenceRule(rule);
+        validate.Should().NotThrow();
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo);
+        var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+        var ev = new Humans.Calendar.Domain.CalendarEvent { Id = Guid.NewGuid() };
+        repo.UpdateAsync(ev.Id, Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.ArgAt<Action<Humans.Calendar.Domain.CalendarEvent>>(1)(ev);
+                return true;
+            });
+        var dto = new CreateCalendarEventDto(
+            "UTC-bounded daily events", null, null, null, Guid.NewGuid(),
+            start, start + Duration.FromHours(1), false, rule, "Europe/Madrid");
+
+        var result = update
+            ? await service.UpdateEventWithResultAsync(ev.Id, dto, Guid.NewGuid(), TestContext.Current.CancellationToken)
+            : await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
+        var expected = Instant.FromUtc(2026, 6, 3, 10, 0);
+        if (update)
+            ev.RecurrenceUntilUtc.Should().Be(expected);
+        else
+            await repo.Received(1).AddAsync(
+                Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e => e.RecurrenceUntilUtc == expected),
+                Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task CreateEventWithResultAsync_DATE_until_persists_the_end_of_that_local_day()
     {
@@ -200,6 +284,31 @@ public class CalendarServiceValidationTests
         await repo.Received(1).AddAsync(
             Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e =>
                 e.RecurrenceUntilUtc == Instant.FromUtc(2026, 6, 3, 22, 0)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("20260329T023000", "Europe/Madrid", 2026, 3, 29, 1, 30)]
+    [InlineData("20261025T023000", "Europe/Madrid", 2026, 10, 25, 0, 30)]
+    [InlineData("20111229", "Pacific/Apia", 2011, 12, 30, 10, 0)]
+    public async Task CreateEventWithResultAsync_LocalUntil_uses_occurrence_timezone_resolution(
+        string until, string timezone, int year, int month, int day, int hour, int minute)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo);
+        var expectedUntil = Instant.FromUtc(year, month, day, hour, minute);
+        var start = expectedUntil.Minus(Duration.FromDays(3));
+
+        var result = await service.CreateEventWithResultAsync(
+            new CreateCalendarEventDto(
+                "Timezone-transition recurrence", null, null, null, Guid.NewGuid(),
+                start, start + Duration.FromHours(1), false,
+                $"FREQ=DAILY;UNTIL={until}", timezone),
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
+        await repo.Received(1).AddAsync(
+            Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e => e.RecurrenceUntilUtc == expectedUntil),
             Arg.Any<CancellationToken>());
     }
 

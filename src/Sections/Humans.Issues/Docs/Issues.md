@@ -119,7 +119,10 @@ Known area labels in the member submission form, issue list and detail view use 
 
 ## Invariants
 
+- Mutation result wrappers log missing/inaccessible issues and terminal-section rejections at Warning without exception stacks; unexpected failures retain Error logs and their exceptions.
+
 - Every issue is linked to the human who submitted it (`ReporterUserId` is required).
+- The GDPR export includes stored browser user agent and submission context alongside the reporter’s issues and comments; it excludes issues reported by other people.
 - Status flows Triage → Open → InProgress → Resolved/WontFix/Duplicate. Transitioning out of a terminal status clears `ResolvedAt` and `ResolvedByUserId`.
 - A reporter posting a comment on a terminal issue **auto-reopens** it to `Open` (audit-logged as `AuditAction.IssueStatusChanged` with actor = the reporter).
 - A handler may post a comment and atomically mark the issue resolved in the same request ("Comment & mark resolved"). The status change is audit-logged after the comment is persisted.

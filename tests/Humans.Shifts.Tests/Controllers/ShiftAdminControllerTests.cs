@@ -1,3 +1,4 @@
+using Xunit;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Enums;
@@ -44,6 +45,7 @@ public class ShiftAdminControllerTests
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly IVolunteerTrackingService _tracking = Substitute.For<IVolunteerTrackingService>();
+    private readonly ILogger<ShiftAdminController> _logger = Substitute.For<ILogger<ShiftAdminController>>();
     private readonly IRotaCoordinatorMessageService _rotaMessenger = Substitute.For<IRotaCoordinatorMessageService>();
 
     private static readonly BurnSettingsInfo Event = new(
@@ -77,6 +79,41 @@ public class ShiftAdminControllerTests
         _shiftMgmt.GetTagsAsync().Returns([]);
         _shiftMgmt.GetStaffingSnapshotAsync(Event.Id, TeamId).Returns(ShiftStaffingSnapshot.Empty);
         _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id).Returns([]);
+    }
+
+    [HumansTheory]
+    [InlineData("ConfigureStaffing")]
+    [InlineData("DeleteRota")]
+    [InlineData("BailRange")]
+    public async Task GuardrailRejection_LogsWarningWithReasonWithoutException(string action)
+    {
+        const string reason = "Shift operation rejected by a guardrail";
+        var rota = MakeRota(TeamId);
+        _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
+        _shiftMgmt.CreateBuildStrikeShiftsAsync(Arg.Any<ConfigureBuildStrikeStaffingInput>())
+            .Returns(Task.FromException<ShiftGenerationResult>(new InvalidOperationException(reason)));
+        _shiftMgmt.DeleteRotaAsync(rota.Id)
+            .Returns(Task.FromException(new InvalidOperationException(reason)));
+        var signupBlockId = Guid.NewGuid();
+        _signupService.BailRangeAsync(signupBlockId, UserId, null)
+            .Returns(Task.FromException(new InvalidOperationException(reason)));
+        var ctrl = BuildSut();
+
+        var result = action switch
+        {
+            "ConfigureStaffing" => await ctrl.ConfigureStaffing(Slug, rota.Id, new StaffingGridModel()),
+            "DeleteRota" => await ctrl.DeleteRota(Slug, rota.Id),
+            "BailRange" => await ctrl.BailRange(Slug, signupBlockId, null),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
+        };
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        ctrl.TempData["ErrorMessage"].Should().Be(reason);
+        var arguments = _logger.ReceivedCalls().Should().ContainSingle(call =>
+            string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
+        arguments[0].Should().Be(LogLevel.Warning);
+        arguments[3].Should().BeNull();
+        arguments[2]!.ToString().Should().Contain(reason);
     }
 
     [HumansFact]
@@ -307,7 +344,7 @@ public class ShiftAdminControllerTests
             new ShiftAdminPageBuilder(_shiftMgmt, Substitute.For<IMembershipCalculatorRead>(), _userService, _teamService),
             new ShiftVolunteerSearchBuilder(_burnSettings, _userService, _shiftView, _signupService, _tracking),
             _rotaMessenger,
-            NullLogger<ShiftAdminController>.Instance);
+            _logger);
 
         var http = new DefaultHttpContext
         {

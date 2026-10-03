@@ -746,9 +746,12 @@ internal sealed class Service(
             RecordedByUserId = null,
         };
         await repo.AddPaymentAsync(payment, ct);
-        var settlement = status == PaymentStatus.Pending
-            ? "Pending Stripe payment (mandate captured, not yet cleared)"
-            : "Recorded Stripe payment";
+        var settlement = status switch
+        {
+            PaymentStatus.Pending => "Pending Stripe payment (mandate captured, not yet cleared)",
+            PaymentStatus.Failed => "Failed Stripe payment (settlement rejected)",
+            _ => "Recorded Stripe payment",
+        };
         await audit.LogAsync(
             AuditAction.StorePaymentRecorded, AuditEntityTypes.Payment, payment.Id,
             $"{settlement} of EUR {amountEur:0.00} on order {orderId} (PI {paymentIntentId})",
@@ -1034,9 +1037,9 @@ internal sealed class Service(
     /// event to its settled state — <see cref="PaymentStatus.Paid"/> on
     /// <c>async_payment_succeeded</c>, <see cref="PaymentStatus.Failed"/> on
     /// <c>async_payment_failed</c>. Idempotent: a re-delivered event that finds the row already in
-    /// the target state is a no-op. Out-of-order tolerance: if the success event arrives before
-    /// <c>completed</c> (no row yet), the payment is recorded directly as Paid so settled money is
-    /// never lost; a failure with no row is a no-op (no money was ever pending here).
+    /// the target state is a no-op. Out-of-order tolerance: if a terminal event arrives before
+    /// <c>completed</c> (no row yet), the payment is recorded directly in its terminal state so
+    /// a later completed event cannot lose settlement or recreate a failed payment as Pending.
     /// </summary>
     private async Task TransitionAsyncPaymentAsync(StoreCheckoutWebhookEvent evt, PaymentStatus target, CancellationToken ct)
     {
@@ -1055,17 +1058,15 @@ internal sealed class Service(
         var existing = await repo.GetPaymentByStripePaymentIntentIdAsync(paymentIntentId, ct);
         if (existing is null)
         {
-            // Out-of-order: the settlement event beat checkout.session.completed. Record the money
-            // now (Paid) so it isn't lost; the later completed event no-ops on the unique PI. A
-            // failure with no pending row means nothing was ever owed here — ignore it.
-            if (target == PaymentStatus.Paid
-                && session.OrderId is { } orderId
+            // Preserve either terminal outcome before completed; its later delivery no-ops on
+            // the unique PI instead of recreating a failed payment as Pending.
+            if (session.OrderId is { } orderId
                 && session.AmountEur is { } amountEur && amountEur > 0)
             {
-                await RecordStripePaymentAsync(orderId, paymentIntentId, amountEur, PaymentStatus.Paid, ct);
+                await RecordStripePaymentAsync(orderId, paymentIntentId, amountEur, target, ct);
                 logger.LogInformation(
-                    "Async {Kind} arrived before completed for order {OrderId} (PI {PaymentIntentId}); recorded settled payment directly.",
-                    evt.Kind, orderId, paymentIntentId);
+                    "Async {Kind} arrived before completed for order {OrderId} (PI {PaymentIntentId}); recorded {Status} payment directly.",
+                    evt.Kind, orderId, paymentIntentId, target);
             }
             else
             {

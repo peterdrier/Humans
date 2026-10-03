@@ -36,6 +36,7 @@
   <!-- Common / Shared          -->
   <!-- ======================== -->
   <data name="Enum_EventStatus_Approved" xml:space="preserve"><value>Approved</value></data>
+  <data name="Events_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
   <data name="Enum_EventStatus_Draft" xml:space="preserve"><value>Draft</value></data>
   <data name="Enum_EventStatus_Pending" xml:space="preserve"><value>Pending</value></data>
   <data name="Enum_EventStatus_Rejected" xml:space="preserve"><value>Rejected</value></data>

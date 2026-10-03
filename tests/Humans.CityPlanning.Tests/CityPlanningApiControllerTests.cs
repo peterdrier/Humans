@@ -21,7 +21,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -41,6 +41,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     private IAuthorizationService _authorization;
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ILogger<CityPlanningApiController> _logger = Substitute.For<ILogger<CityPlanningApiController>>();
     private readonly IClientProxy _allClients = Substitute.For<IClientProxy>();
     private readonly CityPlanningService _service;
     private readonly Guid _userId = Guid.NewGuid();
@@ -76,7 +77,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var controller = new CityPlanningApiController(
             _service, _campService, _containers, _containersLocalizer,
             _authorization, hubContext, userManager,
-            NullLogger<CityPlanningApiController>.Instance)
+            _logger)
         {
             ControllerContext = new ControllerContext
             {
@@ -96,7 +97,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [InlineData("it", "GeoJSON di posizionamento del container non valido.")]
     [InlineData("fr", "Le GeoJSON de placement du conteneur est invalide.")]
     [InlineData("ca", "El GeoJSON d’ubicació del contenidor no és vàlid.")]
-    public async Task InvalidContainerPlacement_ReturnsLocalizedErrorWithoutSaving(string culture, string expected)
+    public async Task InvalidContainerPlacement_ReturnsTheOwnersLocalizedError(string culture, string error)
     {
         using var cultureScope = new CultureScope(culture);
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
@@ -107,13 +108,31 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var id = Guid.NewGuid();
         _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
             new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
+        _containers.SavePlacementAsync(id, 2026, "{}", _userId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException(error));
 
         var result = await CreateController().SaveContainerPlacement(
             id, 2026, new SaveContainerPlacementRequest("{}"), TestContext.Current.CancellationToken);
 
-        result.Should().BeOfType<UnprocessableEntityObjectResult>().Which.Value.Should().Be(expected);
-        await _containers.DidNotReceive().SavePlacementAsync(
-            Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        result.Should().BeOfType<UnprocessableEntityObjectResult>().Which.Value.Should().Be(error);
+    }
+
+    [HumansFact]
+    public async Task SaveContainerPlacement_DoesNotConvertUnexpectedFailuresIntoValidationErrors()
+    {
+        _authorization = Substitute.For<IAuthorizationService>();
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var id = Guid.NewGuid();
+        _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
+            new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
+        _containers.SavePlacementAsync(id, 2026, "{}", _userId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Database unavailable"));
+
+        var act = () => CreateController().SaveContainerPlacement(
+            id, 2026, new SaveContainerPlacementRequest("{}"), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Database unavailable");
     }
 
     private const string Square = """{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[0,0]]]}""";
@@ -199,16 +218,25 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task SaveCampPolygon_InvalidGeoJson_ReturnsBadRequestWithoutSaving()
+    [HumansTheory]
+    [InlineData("not json")]
+    [InlineData("""{"type":"Point","coordinates":[0,0]}""")]
+    [InlineData("""{"type":"Polygon","coordinates":[[]]}""")]
+    public async Task SaveCampPolygon_InvalidGeoJson_ReturnsBadRequestWithoutSaving(string geoJson)
     {
         var result = await CreateController(RoleNames.CampAdmin).SaveCampPolygon(
-            _campSeasonId, new SaveCampPolygonRequest("not json", 10),
+            _campSeasonId, new SaveCampPolygonRequest(geoJson, 10),
             Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<BadRequestObjectResult>()
             .Which.Value.Should().Be("Invalid GeoJSON.");
         (await CityPlanningDb.CampPolygons.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        _allClients.ReceivedCalls().Should().BeEmpty();
+        var warning = _logger.ReceivedCalls().Single(c => string.Equals(c.GetMethodInfo().Name, "Log", StringComparison.Ordinal));
+        warning.GetArguments()[0].Should().Be(LogLevel.Warning);
+        warning.GetArguments()[3].Should().BeNull();
+        warning.GetArguments()[2]!.ToString().Should().Contain(_campSeasonId.ToString()).And.Contain("Invalid GeoJSON.");
     }
 
     [HumansFact]

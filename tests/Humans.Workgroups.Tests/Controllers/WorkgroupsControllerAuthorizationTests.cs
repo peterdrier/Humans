@@ -12,6 +12,7 @@ using Humans.Users.Contracts;
 using Humans.Workgroups.Controllers;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Models;
+using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -20,7 +21,7 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -35,6 +36,75 @@ namespace Humans.Workgroups.Tests.Controllers;
 /// </summary>
 public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarness
 {
+    private readonly ILogger<WorkgroupsController> _logger = Substitute.For<ILogger<WorkgroupsController>>();
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task UnexpectedDependencyFailure_IsNotAResourceDenial(bool form, bool unauthorized)
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var actor = workgroup.Members.Single().UserId;
+        var service = Substitute.For<IWorkgroupService>();
+        service.GetBySlugAsync(workgroup.Slug, Ct).Returns(await NewService().GetBySlugAsync(workgroup.Slug, Ct));
+        Exception failure = unauthorized ? new UnauthorizedAccessException("Dependency denied access")
+            : new KeyNotFoundException("Dependency lookup failed");
+        service.MarkDoneAsync(workgroup.Id, actor, WorkgroupDormantReason.Delivered, Ct)
+            .Returns(Task.FromException(failure));
+        service.CreateMeetingAsync(workgroup.Id, actor, Arg.Any<WorkgroupMeetingSave>(), Ct)
+            .Returns(Task.FromException<Guid>(failure));
+        var controller = BuildController(actor, isBoard: false, service);
+        var now = Clock.GetCurrentInstant();
+        Func<Task<IActionResult>> act = form
+            ? () => controller.SaveMeeting(workgroup.Slug, new MeetingFormViewModel
+            { Slug = workgroup.Slug, Title = "Meeting", StartUtc = now, EndUtc = now + Duration.FromHours(1) }, Ct)
+            : () => controller.Done(workgroup.Slug, WorkgroupDormantReason.Delivered, Ct);
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
+        controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RuleRejection_IsVisibleWithoutExceptionStack(bool form)
+    {
+        var (controller, workgroup) = await BuildAsync(asMember: true);
+        var key = form ? WorkgroupErrorKeys.WindowInvalid : WorkgroupErrorKeys.DoneReasonInvalid;
+
+        IActionResult result;
+        if (form)
+        {
+            var now = Clock.GetCurrentInstant();
+            var model = new MeetingFormViewModel
+            {
+                Slug = workgroup.Slug,
+                Title = "Meeting",
+                StartUtc = now,
+                EndUtc = now
+            };
+            result = await controller.SaveMeeting(workgroup.Slug, model, Ct);
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState.IsValid.Should().BeFalse();
+            (await OpenContext().Meetings.ToListAsync(Ct)).Should().BeEmpty();
+        }
+        else
+        {
+            result = await controller.Done(workgroup.Slug, WorkgroupDormantReason.Quiet, Ct);
+            result.Should().BeOfType<RedirectToActionResult>();
+            (await OpenContext().Workgroups.FindAsync([workgroup.Id], Ct))!.Status
+                .Should().Be(WorkgroupStatus.Active);
+        }
+
+        var arguments = _logger.ReceivedCalls().Should().ContainSingle(call =>
+            string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
+        arguments[0].Should().Be(LogLevel.Warning);
+        arguments[3].Should().BeNull();
+        arguments[2]!.ToString().Should().Contain(key).And.Contain("Test");
+    }
+
     [HumansTheory]
     [InlineData("en")]
     [InlineData("es")]
@@ -274,19 +344,22 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
 
     /// <summary>A <see cref="WorkgroupsController"/> for <paramref name="actorId"/>, Board-flagged
     /// or not, wired to the real <see cref="WorkgroupAuthorizationHandler"/>.</summary>
-    private WorkgroupsController BuildController(Guid actorId, bool isBoard)
+    private WorkgroupsController BuildController(Guid actorId, bool isBoard, IWorkgroupService? service = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddAuthorization();
         services.AddScoped<IAuthorizationHandler, WorkgroupAuthorizationHandler>();
         var provider = services.BuildServiceProvider();
+        var localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>();
+        localizer[Arg.Any<string>(), Arg.Any<object[]>()]
+            .Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
         var controller = new WorkgroupsController(
-            NewService(), Users, Teams,
-            Substitute.For<IStringLocalizer<WorkgroupsResource>>(),
+            service ?? NewService(), Users, Teams,
+            localizer,
             Clock,
             provider.GetRequiredService<IAuthorizationService>(),
-            NullLogger<WorkgroupsController>.Instance);
+            _logger);
 
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, actorId.ToString()) };
         if (isBoard) claims.Add(new Claim(ClaimTypes.Role, RoleNames.Board));

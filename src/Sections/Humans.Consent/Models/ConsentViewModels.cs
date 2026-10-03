@@ -1,38 +1,11 @@
+using Humans.Consent.Services;
 
 namespace Humans.Consent.Models;
 
 internal sealed class ConsentIndexViewModel
 {
-    public List<ConsentTeamGroupViewModel> TeamGroups { get; set; } = [];
-    public List<ConsentHistoryViewModel> ConsentHistory { get; set; } = [];
-}
-
-internal sealed class ConsentTeamGroupViewModel
-{
-    public Guid TeamId { get; set; }
-    public string TeamName { get; set; } = string.Empty;
-    public List<ConsentDocumentViewModel> Documents { get; set; } = [];
-    public bool AllConsented => Documents.All(d => d.HasConsented);
-}
-
-internal sealed class ConsentDocumentViewModel
-{
-    public Guid DocumentVersionId { get; set; }
-    public string DocumentName { get; set; } = string.Empty;
-    public string VersionNumber { get; set; } = string.Empty;
-    public DateTime EffectiveFrom { get; set; }
-    public bool HasConsented { get; set; }
-    public DateTime? ConsentedAt { get; set; }
-    public string? ChangesSummary { get; set; }
-    public DateTime? LastUpdated { get; set; }
-}
-
-internal sealed class ConsentHistoryViewModel
-{
-    public Guid DocumentVersionId { get; set; }
-    public string DocumentName { get; set; } = string.Empty;
-    public string VersionNumber { get; set; } = string.Empty;
-    public DateTime ConsentedAt { get; set; }
+    public IReadOnlyList<ConsentDashboardTeamGroup> TeamGroups { get; set; } = [];
+    public IReadOnlyList<ConsentDashboardHistoryItem> ConsentHistory { get; set; } = [];
 }
 
 internal sealed class ConsentDetailViewModel

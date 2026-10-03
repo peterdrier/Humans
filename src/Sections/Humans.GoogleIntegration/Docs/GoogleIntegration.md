@@ -110,6 +110,12 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 
 ## Invariants
 
+- Domain-group listing and its team picker use browser cancellation. Aborted per-group settings fetches propagate through the listing instead of becoming group errors; caller cancellation logs warnings without exception stacks. Dependency failures retain their existing error feedback.
+
+- Workspace accounts, per-resource/per-human audit frames and Sync Outbox reads pass the browser abort token to every data lookup. Account-list caller cancellation logs a warning without an exception stack and propagates; dependency cancellation remains an error with generic feedback.
+
+- The Workspace accounts page renders existing `WorkspaceAccountInfo` rows directly, preserving service email ordering and status, member-link, 2FA and recovery fields.
+
 - Sync-dashboard preview loads apply only the latest response or failure for each resource tab. Drive and group previews load independently; sync POSTs keep their existing execution boundaries.
 
 - All Google Drive resources are on Shared Drives. The system does not use regular (My Drive) folders.
@@ -124,6 +130,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - **Cancelled health probes propagate cancellation.** A stopped Google credential/API probe is never reported as an authentication failure; credential-free instances still report degraded. The per-probe SDK client is disposed after every outcome.
 - **Drive Activity reads remain cancellable.** Activity queries and Directory identity lookups pass their caller token through the shared credential loader and Google API read. A cancelled identity lookup propagates cancellation instead of returning an unresolved person.
 - **Member dashboard reads stop with the request.** `MyGoogleResourcesViewComponent` passes `HttpContext.RequestAborted` through its volunteer gate and resource read, and rethrows a matching cancellation rather than treating a disconnected browser as a widget failure.
+- **Workspace account timestamps are UTC.** Directory creation and last-login timestamps retain their instant regardless of server timezone; missing creation time remains `DateTime.MinValue` and missing login time remains null.
 - A human's Google service email is their @nobodies.team email if provisioned, otherwise their OAuth login email.
 - `EmailProvisioningService.ProvisionNobodiesEmailAsync` refuses an archived id: a merge-resolved-forward id (lookup returns the survivor, whose `Id` differs) or a GDPR/legacy tombstone (`UserInfo.IsActive` false) is rejected before any Workspace call (peterdrier/Humans#1707).
 - Each Google email **address** carries a `GoogleEmailStatus` (`Unknown`, `Valid`, `Rejected`) on its `UserEmail` row (#687) — the status belongs to the address Google rejected, not the human. When Google permanently rejects the canonical address (HTTP 400/403/404), that address is set to `Rejected` and new outbox events are not enqueued for the human. Because the status lives on the address, selecting a different Google email (a fresh `Unknown` row) resets sync naturally and fresh events are enqueued.
@@ -182,6 +189,8 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 The section's `/Google/Resource/{id}` and `/Google/Human/{id}` pages emit `<vc:google-sync-log>` with the applicable predicate. The component owns the read (`IGoogleSyncLogViewer`) and render, while the page supplies its title, empty text, and back link. Keeping the host page here avoids a cross-section Razor tag-helper dependency. The render test seeds a row and asserts it reaches the page.
 
 The read/write split is deliberate: `IGoogleSyncLogViewer` and its `GoogleSyncLogView` DTO are public only because a cross-assembly ViewComponent's constructor parameters must be. The write side, `IGoogleSyncLogService`, stays `internal` — nothing outside this section appends to the log.
+
+The GDPR sync-log export preserves the viewer fields and resolves resource names, but formats `OccurredAt` as UTC ISO 8601 so download JSON contains a timestamp. Page rendering retains the public viewer DTO.
 
 ### Repository surface
 

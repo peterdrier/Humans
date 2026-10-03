@@ -183,6 +183,12 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Invariants
 
+- Expected create, edit, deactivate, join-request rejection and member add/remove rejections log at Warning with their reason and applicable team id, without exception stacks. Form feedback and redirects are unchanged.
+
+- The `TeamJoinRequests` GDPR export includes the person’s request and review notes plus chronological status-history entries (status, UTC change time and notes). Other users’ requests are excluded.
+
+- Member-facing team details, membership, birthdays, roster, map and join pages localize their breadcrumb navigation label in all six supported cultures.
+
 - The team resources GET forwards request cancellation through viewer, team, resource-management permission, resource list and service-account email reads. Shared permission helpers retain their existing default token for resource mutations.
 
 - Admin team-list paging computes offsets without integer overflow, so extreme page numbers cannot wrap into earlier teams.
@@ -194,7 +200,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - A department can have **at most one** role flagged as management (coordinator). Enforced in both the toggle and edit paths.
 - A sub-team can have **at most one** role flagged as management (manager).
 - Toggling or changing the `IsManagement` flag on a role definition is restricted to **TeamsAdmin / Admin** (`ToggleManagement` action and `EditRole` IsManagement field). Coordinators / sub-team managers can still create, rename, and delete other (non-management) role definitions on their team — they just cannot promote/demote the management role itself.
-- A `TeamRoleDefinition.IsPublic = false` role is hidden from volunteer-facing views (team detail, roster) but remains visible to coordinators and admins. The team-detail roster's headings (including subteam leads), fallback role titles, role periods, priorities, and empty-slot labels use section or shared resources.
+- A `TeamRoleDefinition.IsPublic = false` role is hidden from volunteer-facing views (team detail, roster) but remains visible to coordinators and admins. The team-detail roster's headings (including subteam leads), fallback role titles, role periods, priorities, and empty-slot labels use section or shared resources. The team-calendar link also uses the section resource in every supported culture.
 - Members of sub-teams are also considered members of the department. They appear in the department's member roster and inherit the department's legal requirements and Google resource access.
 - A human can be a member of multiple teams simultaneously.
 - System team membership is managed exclusively by an automated sync job. Manual add/remove is blocked for system teams.

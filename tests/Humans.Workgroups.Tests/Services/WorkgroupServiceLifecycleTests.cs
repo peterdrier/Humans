@@ -6,6 +6,7 @@ using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Humans.Workgroups.Data;
 
 namespace Humans.Workgroups.Tests.Services;
 
@@ -15,6 +16,78 @@ namespace Humans.Workgroups.Tests.Services;
 /// </summary>
 public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 {
+    [HumansTheory]
+    [InlineData("refer")]
+    [InlineData("refuse")]
+    [InlineData("withdraw")]
+    [InlineData("close")]
+    [InlineData("done")]
+    [InlineData("reactivate")]
+    [InlineData("disposition")]
+    public async Task Lifecycle_CommittedWriteFinishesAfterRequestCancellation(string action)
+    {
+        var status = action switch
+        {
+            "refer" or "refuse" => WorkgroupStatus.Applied,
+            "reactivate" => WorkgroupStatus.Dormant,
+            _ => WorkgroupStatus.Active
+        };
+        var group = await SeedWorkgroupAsync(status: status);
+        group.HoldedAccountNumber = 62900160;
+        await Db.SaveChangesAsync(Ct);
+        var actor = group.Members.Single().UserId;
+        var document = await AddDocumentAsync(group.Id, WorkgroupDocumentStatus.Delivered);
+        using var cancellation = new CancellationTokenSource();
+        var real = new WorkgroupRepository(DbFactory);
+        var repository = Substitute.For<IWorkgroupRepository>();
+        repository.GetWorkgroupAsync(group.Id, Arg.Any<CancellationToken>())
+            .Returns(c => real.GetWorkgroupAsync(group.Id, c.Arg<CancellationToken>()));
+        repository.GetDocumentAsync(document.Id, Arg.Any<CancellationToken>())
+            .Returns(c => real.GetDocumentAsync(document.Id, c.Arg<CancellationToken>()));
+        repository.UpdateWorkgroupAsync(Arg.Any<Workgroup>(), Arg.Any<CancellationToken>())
+            .Returns(async c =>
+            {
+                c.Arg<CancellationToken>().Should().Be(cancellation.Token);
+                await real.UpdateWorkgroupAsync(c.Arg<Workgroup>(), c.Arg<CancellationToken>());
+                await cancellation.CancelAsync();
+            });
+        repository.UpdateDocumentAsync(Arg.Any<WorkgroupDocument>(), Arg.Any<CancellationToken>())
+            .Returns(async c =>
+            {
+                c.Arg<CancellationToken>().Should().Be(cancellation.Token);
+                await real.UpdateDocumentAsync(c.Arg<WorkgroupDocument>(), c.Arg<CancellationToken>());
+                await cancellation.CancelAsync();
+            });
+        repository.AddLogEntryAsync(Arg.Any<WorkgroupLogEntry>(), Arg.Any<CancellationToken>())
+            .Returns(c => real.AddLogEntryAsync(c.Arg<WorkgroupLogEntry>(), c.Arg<CancellationToken>()));
+        Roles.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([actor]);
+        var service = NewService(repository);
+        Func<Task> mutate = action switch
+        {
+            "refer" => () => service.ReferAsync(group.Id, actor, "Review", cancellation.Token),
+            "refuse" => () => service.RefuseAsync(group.Id, actor, "Refused", cancellation.Token),
+            "withdraw" => () => service.WithdrawAsync(group.Id, actor, "Withdrawn", cancellation.Token),
+            "close" => () => service.CloseAsync(group.Id, actor, "Quiet", cancellation.Token),
+            "done" => () => service.MarkDoneAsync(group.Id, actor, WorkgroupDormantReason.Delivered, cancellation.Token),
+            "reactivate" => () => service.ReactivateAsync(group.Id, actor, cancellation.Token),
+            _ => () => service.RecordDispositionAsync(document.Id, actor, WorkgroupDisposition.Accepted, "Accepted", cancellation.Token)
+        };
+
+        await mutate.Should().NotThrowAsync();
+
+        await using var db = OpenContext();
+        (await db.LogEntries.CountAsync(e => e.WorkgroupId == group.Id, Ct)).Should().Be(1);
+        await repository.DidNotReceive().AddLogEntryAsync(Arg.Any<WorkgroupLogEntry>(), cancellation.Token);
+        AuditLog.ReceivedCalls().Should().ContainSingle();
+        Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
+            .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
+        Email.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
+            .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
+        if (action is "withdraw" or "close" or "done" or "reactivate")
+            await Finance.Received(1).SetExpenseAccountActiveAsync(62900160,
+                string.Equals(action, "reactivate", StringComparison.Ordinal), CancellationToken.None);
+    }
+
     [HumansTheory]
     [InlineData("apply")]
     [InlineData("refer")]

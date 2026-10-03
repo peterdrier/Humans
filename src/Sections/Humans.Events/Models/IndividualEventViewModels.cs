@@ -203,9 +203,3 @@ internal sealed class BrowseEventItem
     public string? SubmitterName { get; set; }
     public string? DisplayHost { get; set; }
 }
-
-internal sealed class BrowseCampOption
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-}

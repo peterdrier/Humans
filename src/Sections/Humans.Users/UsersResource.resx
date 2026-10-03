@@ -35,6 +35,7 @@
   <!-- Profile (view + edit)    -->
   <!-- ======================== -->
   <data name="Profile_Title" xml:space="preserve"><value>My Profile</value></data>
+  <data name="Users_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
   <data name="Profile_ActionRequired" xml:space="preserve"><value>Action Required:</value></data>
   <data name="Profile_PendingConsents" xml:space="preserve"><value>You have {0} pending consent(s) to review.</value><comment>{0} = pending count</comment></data>
   <data name="Profile_ReviewNow" xml:space="preserve"><value>Review now</value></data>

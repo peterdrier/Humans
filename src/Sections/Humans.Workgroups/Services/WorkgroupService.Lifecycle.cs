@@ -50,6 +50,8 @@ internal sealed partial class WorkgroupService
         workgroup.Status = WorkgroupStatus.Referred;
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);
+        // The decision committed; finish its record and notices after browser cancellation.
+        ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Referred, now, Trimmed(note), ct);
         await AuditAsync(AuditAction.WorkgroupReferred, workgroup,
@@ -75,6 +77,8 @@ internal sealed partial class WorkgroupService
         workgroup.Reasons = reasons.Trim();
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);
+        // The decision committed; finish its record and notices after browser cancellation.
+        ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Refused, now, reasons.Trim(), ct);
         await AuditAsync(AuditAction.WorkgroupRefused, workgroup,
@@ -96,6 +100,8 @@ internal sealed partial class WorkgroupService
         workgroup.EndedAt = now;
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);
+        // The decision committed; finish its record and notices after browser cancellation.
+        ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Withdrawn, now, reasons.Trim(), ct);
         await AuditAsync(AuditAction.WorkgroupWithdrawn, workgroup,
@@ -130,6 +136,8 @@ internal sealed partial class WorkgroupService
         workgroup.Reasons = null;
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);
+        // The decision committed; finish its record and notices after browser cancellation.
+        ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Reactivated, now, body: null, ct);
         await AuditAsync(AuditAction.WorkgroupReactivated, workgroup,
@@ -231,6 +239,8 @@ internal sealed partial class WorkgroupService
         document.DispositionByUserId = actorUserId;
         document.UpdatedAt = now;
         await repository.UpdateDocumentAsync(document, ct);
+        // The decision committed; finish its record and notices after browser cancellation.
+        ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.DispositionRecorded, now,
             $"{disposition}: {note.Trim()}", ct, documentId: document.Id);

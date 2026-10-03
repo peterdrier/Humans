@@ -238,7 +238,6 @@ internal sealed class GateController(
         var rows = board.Rows
             .OrderByDescending(r => r.Admitted)
             .ThenByDescending(r => r.Total)
-            .Select(r => new GateLeaderboardRowViewModel(r.ScannedByUserId, r.Admitted, r.Rejected, r.Total))
             .ToList();
 
         ViewData["TotalAdmitted"] = board.TotalAdmitted;

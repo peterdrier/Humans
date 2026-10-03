@@ -30,10 +30,3 @@ internal sealed class AdminApplicationDetailViewModel : ApplicationDetailViewMod
     public string? Language { get; set; }
     public bool CanApproveReject { get; set; }
 }
-
-internal sealed class AdminApplicationActionModel
-{
-    public Guid ApplicationId { get; set; }
-    public string Action { get; set; } = string.Empty;
-    public string? Notes { get; set; }
-}

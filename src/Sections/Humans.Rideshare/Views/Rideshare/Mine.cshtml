@@ -7,7 +7,7 @@
     var canAdminister = (await AuthService.AuthorizeAsync(User, PolicyNames.RideshareAdminOrAdmin)).Succeeded;
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Rideshare_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Rideshare_Title"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>

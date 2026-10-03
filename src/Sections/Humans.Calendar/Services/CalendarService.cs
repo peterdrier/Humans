@@ -65,8 +65,6 @@ internal sealed class CalendarService(
             IsAllDay = dto.IsAllDay,
             RecurrenceRule = dto.RecurrenceRule,
             RecurrenceTimezone = dto.RecurrenceTimezone,
-            RecurrenceUntilUtc = dto.IsAllDay ? null : ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc),
-            RecurrenceUntilDate = dto.IsAllDay ? ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null,
             CreatedByUserId = createdByUserId,
             CreatedAt = now,
             UpdatedAt = now,
@@ -75,6 +73,9 @@ internal sealed class CalendarService(
         var errors = ev.Validate();
         if (errors.Count > 0)
             throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
+
+        ev.RecurrenceUntilUtc = dto.IsAllDay ? null : ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
+        ev.RecurrenceUntilDate = dto.IsAllDay ? ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null;
 
         await repo.AddAsync(ev, ct);
 
@@ -110,7 +111,7 @@ internal sealed class CalendarService(
         }
         catch (ValidationException ex)
         {
-            logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
+            logger.LogWarning("Calendar event create rejected: {Reason}", ex.Message);
             return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex),
                 CalendarValidationErrorKey(ex, dto.IsAllDay));
         }
@@ -182,24 +183,25 @@ internal sealed class CalendarService(
 
             if (string.Equals(key, "UNTIL", StringComparison.OrdinalIgnoreCase))
             {
+                // Match the recurrence library's case-insensitive DATE-TIME parsing.
+                val = val.ToUpperInvariant();
                 // RFC 5545 allows UNTIL as either DATE-TIME (YYYYMMDDTHHMMSS[Z]) or DATE (YYYYMMDD).
-                var invariant = System.Globalization.CultureInfo.InvariantCulture;
                 var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
                 if (zone is null) return null;
 
                 if (val.EndsWith('Z'))
                 {
-                    var dt = DateTimeOffset.ParseExact(val, "yyyyMMdd'T'HHmmss'Z'", invariant);
-                    return Instant.FromDateTimeOffset(dt);
+                    return DateFormattingExtensions.IcalBasicDateTimePattern.Parse(val[..^1]).Value
+                        .InUtc().ToInstant();
                 }
                 if (val.Contains('T'))
                 {
                     var local = DateFormattingExtensions.IcalBasicDateTimePattern.Parse(val).Value;
-                    return local.InZoneStrictly(zone).ToInstant();
+                    return local.InZoneLeniently(zone).ToInstant();
                 }
                 // DATE form — treat UNTIL as end-of-day in the rule's timezone.
                 var date = DateFormattingExtensions.IcalBasicDatePattern.Parse(val).Value;
-                return (date.PlusDays(1).AtMidnight()).InZoneStrictly(zone).ToInstant();
+                return date.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
             }
             else if (string.Equals(key, "COUNT", StringComparison.OrdinalIgnoreCase))
             {
@@ -304,13 +306,14 @@ internal sealed class CalendarService(
             ev.IsAllDay = dto.IsAllDay;
             ev.RecurrenceRule = dto.RecurrenceRule;
             ev.RecurrenceTimezone = dto.RecurrenceTimezone;
-            ev.RecurrenceUntilUtc = dto.IsAllDay ? null : ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
-            ev.RecurrenceUntilDate = dto.IsAllDay ? ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null;
             ev.UpdatedAt = now;
 
             var errors = ev.Validate();
             if (errors.Count > 0)
                 throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
+
+            ev.RecurrenceUntilUtc = dto.IsAllDay ? null : ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
+            ev.RecurrenceUntilDate = dto.IsAllDay ? ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null;
 
             mutated = ev;
         }, ct);
@@ -350,7 +353,7 @@ internal sealed class CalendarService(
         }
         catch (ValidationException ex)
         {
-            logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
+            logger.LogWarning("Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
             return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex),
                 CalendarValidationErrorKey(ex, dto.IsAllDay));
         }

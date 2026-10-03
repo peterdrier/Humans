@@ -36,6 +36,7 @@
   <!-- Common / Shared          -->
   <!-- ======================== -->
   <data name="Shifts_SignedUp" xml:space="preserve"><value>Signed Up</value></data>
+  <data name="Shifts_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
   <data name="Shifts_Pending" xml:space="preserve"><value>(pending)</value></data>
   <data name="ShiftInfo_Title" xml:space="preserve"><value>Shift Preferences</value></data>
   <data name="ShiftInfo_StepOf" xml:space="preserve"><value>Step {0} of {1}</value><comment>{0} = current step, {1} = total steps</comment></data>

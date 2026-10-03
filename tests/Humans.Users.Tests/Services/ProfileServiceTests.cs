@@ -54,8 +54,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         _service = new ProfileService(
             _userRepository, _userService,
-            _pictureStorage,
-            NullLogger<ProfileService>.Instance);
+            _pictureStorage);
         _editor = new ProfileEditorService(
             _userService,
             _pictureStorage,
@@ -73,14 +72,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
                 call.ArgAt<UserProfileSaveCommand>(1),
                 call.ArgAt<byte[]?>(2),
                 call.ArgAt<CancellationToken>(3)));
-        _userService.SetProfilePictureContentTypeAsync(
-                Arg.Any<Guid>(),
-                Arg.Any<string>(),
-                Arg.Any<CancellationToken>())
-            .Returns(call => storageUserService.SetProfilePictureContentTypeAsync(
-                call.ArgAt<Guid>(0),
-                call.ArgAt<string>(1),
-                call.ArgAt<CancellationToken>(2)));
     }
 
     // --- Profile editor save flow ---

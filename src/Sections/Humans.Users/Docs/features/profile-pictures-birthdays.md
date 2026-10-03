@@ -98,7 +98,7 @@ The read path lives in `IProfilePictureService.GetProfilePictureAsync` and is th
 2. Otherwise reads the filesystem store. A hit is returned immediately.
 3. On a filesystem miss it returns `null` — there is no DB-column fallback.
 
-Saves and removals are filesystem-only: `IProfilePictureService.SetProfilePictureAsync` writes the bytes through `IFileStorage` (deleting the old-extension file first when the content type changed) and sets only the `ProfilePictureContentType` column; removal/anonymization clears the content-type column AND best-effort deletes the filesystem file. If the filesystem delete fails an error is logged so an operator can clean up the stale file out-of-band, but the read-path content-type gate ensures a stale file is never served to clients (GDPR-compliant).
+Picture saves use `IProfileEditorService.SaveProfileAsync`: `UserService` writes bytes before committing their content-type metadata, then the editor cleans superseded files without request cancellation. `IProfilePictureService` only reads pictures and migration snapshots. Removal/anonymization clears the content-type gate before best-effort file cleanup; failures are logged and stale files remain inaccessible through the read path.
 
 ## Routes
 

@@ -1369,6 +1369,11 @@ internal sealed class GoogleWorkspaceSyncService(
                         }
                     }
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    logger.LogWarning("Fetching settings for group {GroupEmail} cancelled by caller", email);
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     logger.LogError(ex, "Error fetching settings for group '{GroupEmail}'", email);

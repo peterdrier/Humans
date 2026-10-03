@@ -622,7 +622,7 @@ internal sealed class TeamController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to create team: {Message}", ex.Message);
+            logger.LogWarning("Failed to create team: {Reason}", ex.Message);
             SetError(ex.Message);
             await PopulateEligibleParentsAsync(model, excludeTeamId: null);
             return View(model);
@@ -714,7 +714,7 @@ internal sealed class TeamController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to update team {TeamId}", id);
+            logger.LogWarning("Failed to update team {TeamId}: {Reason}", id, ex.Message);
             ModelState.AddModelError("", ex.Message);
             await PopulateEligibleParentsAsync(model, id);
             return View(model);
@@ -751,7 +751,7 @@ internal sealed class TeamController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to deactivate team {TeamId}", id);
+            logger.LogWarning("Failed to deactivate team {TeamId}: {Reason}", id, ex.Message);
             SetError(ex.Message);
         }
 

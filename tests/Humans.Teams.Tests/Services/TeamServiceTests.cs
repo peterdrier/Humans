@@ -1,5 +1,6 @@
 using Xunit;
 using Humans.Base.Helpers;
+using Humans.Base.Extensions;
 using System.Text;
 // Tests seed TeamMember.User navs directly for DB-roundtrip verification.
 // TeamMember.User is Obsolete per Â§6c and is never populated by production
@@ -124,6 +125,64 @@ public sealed class TeamServiceTests : TeamsTestHarness
     // ==========================================================================
     // CreateTeamAsync
     // ==========================================================================
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_IncludesJoinRequestReviewAndOrderedStateHistory()
+    {
+        var team = SeedTeam("Export team");
+        var user = SeedUser();
+        var now = Clock.GetCurrentInstant();
+        var request = new TeamJoinRequest
+        {
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = user.Id,
+            Status = TeamJoinRequestStatus.Rejected,
+            RequestedAt = now - Duration.FromHours(1),
+            ResolvedAt = now,
+            Message = "Please let me join",
+            ReviewNotes = "No vacancies"
+        };
+        request.StateHistory.Add(new TeamJoinRequestStateHistory
+        {
+            Id = Guid.NewGuid(),
+            TeamJoinRequestId = request.Id,
+            Status = TeamJoinRequestStatus.Rejected,
+            ChangedAt = now,
+            ChangedByUserId = Guid.NewGuid(),
+            Notes = "No vacancies"
+        });
+        request.StateHistory.Add(new TeamJoinRequestStateHistory
+        {
+            Id = Guid.NewGuid(),
+            TeamJoinRequestId = request.Id,
+            Status = TeamJoinRequestStatus.Pending,
+            ChangedAt = request.RequestedAt,
+            ChangedByUserId = user.Id,
+            Notes = "Requested membership"
+        });
+        TeamsDb.TeamJoinRequests.Add(request);
+        TeamsDb.TeamJoinRequests.Add(new TeamJoinRequest
+        {
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = Guid.NewGuid(),
+            RequestedAt = now,
+            Message = "Someone else's request"
+        });
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        TeamsDb.ChangeTracker.Clear();
+
+        var slices = await _service.ContributeForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var slice = slices.Single(x => string.Equals(x.SectionName, "TeamJoinRequests", StringComparison.Ordinal));
+        var exported = System.Text.Json.JsonSerializer.SerializeToElement(slice.Data).EnumerateArray().Single();
+        exported.GetProperty("Message").GetString().Should().Be(request.Message);
+        exported.GetProperty("ReviewNotes").GetString().Should().Be("No vacancies");
+        var history = exported.GetProperty("StateHistory").EnumerateArray().ToList();
+        history.Should().HaveCount(2);
+        history.Select(x => x.GetProperty("Notes").GetString()).Should().Equal("Requested membership", "No vacancies");
+        history[0].GetProperty("ChangedAt").GetString().Should().Be(request.RequestedAt.ToIso8601());
+    }
 
     [HumansFact]
     public async Task CreateTeamAsync_ReservedSlug_Throws()

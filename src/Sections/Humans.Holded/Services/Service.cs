@@ -112,7 +112,10 @@ internal sealed class Service(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Holded ledger sync failed");
+                if (ex is OperationCanceledException && ct.IsCancellationRequested)
+                    logger.LogWarning("Holded ledger sync cancelled by the caller");
+                else
+                    logger.LogError(ex, "Holded ledger sync failed");
                 try
                 {
                     state.SyncStatus = HoldedSyncStatus.Error;
@@ -328,6 +331,7 @@ internal sealed class Service(
 
     private async Task DrainCallLogAsync(CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         var records = callLog.DrainAll();
         if (records.Count == 0) return;
         await repo.AddApiCallsAsync(records.Select(r => new HoldedApiCall
@@ -339,7 +343,7 @@ internal sealed class Service(
             StatusCode = r.StatusCode,
             RateLimitRemaining = r.RateLimitRemaining,
             RateLimitWindow = r.RateLimitWindow,
-        }).ToList(), ct);
+        }).ToList(), CancellationToken.None); // Drained records must reach the mirror despite request cancellation.
     }
 
     /// <summary>LastError is varchar(2000); an unbounded mismatch list or exception message

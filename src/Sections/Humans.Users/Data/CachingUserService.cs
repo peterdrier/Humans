@@ -711,17 +711,6 @@ internal sealed class CachingUserService(
         await RefreshEntryAsync(userId);
     }
 
-    public async Task<UserProfilePictureContentTypeResult> SetProfilePictureContentTypeAsync(
-        Guid userId,
-        string contentType,
-        CancellationToken ct = default)
-    {
-        var result = await WithInnerAsync(inner =>
-            inner.SetProfilePictureContentTypeAsync(userId, contentType, ct));
-        if (result.Saved) await RefreshEntryAsync(userId);
-        return result;
-    }
-
     public async Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
         Guid userId,
         CancellationToken ct = default)

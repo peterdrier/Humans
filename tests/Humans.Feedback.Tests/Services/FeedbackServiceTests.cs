@@ -373,6 +373,27 @@ public sealed class FeedbackServiceTests
             Arg.Is<string>(s => s.Contains("cleared")), "API");
     }
 
+    [HumansTheory]
+    [InlineData("Browser/1.0", "Roles: Volunteer")]
+    [InlineData(null, null)]
+    public async Task ContributeForUserAsync_ExportsStoredSubmissionContext(string? userAgent, string? context)
+    {
+        var userId = Guid.NewGuid();
+        var report = await SeedReportAsync(userId, "Historical bug", "/profile");
+        report.UserAgent = userAgent;
+        report.AdditionalContext = context;
+        await FeedbackDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var slices = await _service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        var slice = slices.Single(s => string.Equals(s.SectionName, FeedbackServiceImpl.FeedbackReports, StringComparison.Ordinal));
+        using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(slice.Data));
+        var exportedReport = json.RootElement[0];
+        exportedReport.GetProperty("UserAgent").GetString().Should().Be(userAgent);
+        exportedReport.GetProperty("AdditionalContext").GetString().Should().Be(context);
+        exportedReport.GetProperty("Description").GetString().Should().Be("Historical bug");
+    }
+
     [HumansFact]
     public async Task EraseForUserAsync_DeletesOwnRows_DetachesForeignFootprint()
     {
@@ -421,12 +442,24 @@ public sealed class FeedbackServiceTests
         FeedbackDb.FeedbackMessages.Add(foreignReply);
         await SaveAllAsync(ct);
 
-        await _service.EraseForUserAsync(erasedId, ct);
+        using var erasureCancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var screenshotDeleted = false;
+        _fileStorage.DeleteAsync("uploads/feedback/x/shot.png", Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                // Cancellation arrives after the repository has committed the erasure.
+                await erasureCancellation.CancelAsync();
+                call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
+                screenshotDeleted = true;
+            });
+
+        await _service.EraseForUserAsync(erasedId, erasureCancellation.Token);
 
         // Own report hard-deleted; its screenshot handed to IFileStorage.
         (await FeedbackDb.FeedbackReports.AsNoTracking().AnyAsync(r => r.UserId == erasedId, ct))
             .Should().BeFalse();
-        await _fileStorage.Received(1).DeleteAsync("uploads/feedback/x/shot.png", Arg.Any<CancellationToken>());
+        screenshotDeleted.Should().BeTrue();
+        await _fileStorage.Received(1).DeleteAsync("uploads/feedback/x/shot.png", CancellationToken.None);
 
         // The other human's thread survives with the erased user detached everywhere.
         var survivor = await FeedbackDb.FeedbackReports.AsNoTracking()

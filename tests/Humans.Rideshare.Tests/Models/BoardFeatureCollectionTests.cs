@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using AwesomeAssertions;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Models;
@@ -20,6 +21,7 @@ public sealed class BoardFeatureCollectionTests
         new LocalDate(2026, 7, 1), new LocalDate(2026, 7, 10), new LocalDate(2026, 7, 12), new LocalDate(2026, 7, 20));
     private const string StoredRoute = """{"type":"LineString","coordinates":[[2.35,48.85],[-2.4,43.2]]}""";
 
+    private readonly ILogger _logger = Substitute.For<ILogger>();
     private readonly IStringLocalizer _localizer = Substitute.For<IStringLocalizer>();
 
     public BoardFeatureCollectionTests()
@@ -27,24 +29,26 @@ public sealed class BoardFeatureCollectionTests
         _localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), "L:" + ci.Arg<string>()));
     }
 
-    [HumansFact]
-    public void Build_EmitsALineAndAStartPerJoinableTrip_APinPerActiveRequest_AndTheDestination()
+    [HumansTheory]
+    [InlineData(StoredRoute)]
+    [InlineData("""{"type":"LineString","coordinates":[[2.35,48.85,100],[-2.4,43.2,200]],"bbox":[-2.4,43.2,2.35,48.85]}""")]
+    public void Build_EmitsALineAndAStartPerJoinableTrip_APinPerActiveRequest_AndTheDestination(string route)
     {
         var me = Guid.NewGuid();
         var driver = Guid.NewGuid();
-        var trip = Trip(driver, route: StoredRoute);
+        var trip = Trip(driver, route: route);
         var cancelled = Trip(driver, status: TripStatus.Cancelled);
         var request = Request(me);
         var snapshot = new RideshareSnapshot(2026, Settings, [trip, cancelled], [request], []);
         var users = new Dictionary<Guid, UserInfo> { [driver] = User(driver, "Ada") };
 
-        var features = Features(BoardFeatureCollection.Build(snapshot, July3, RideshareDirection.Inbound, me, users, _localizer));
+        var features = Features(BoardFeatureCollection.Build(snapshot, July3, RideshareDirection.Inbound, me, users, _localizer, _logger));
 
         features.Select(f => f.GetProperty("properties").GetProperty("kind").GetString())
             .Should().Equal("trip", "tripStart", "request", "destination");
 
         var line = features[0];
-        line.GetProperty("geometry").GetRawText().Should().Be(StoredRoute);
+        line.GetProperty("geometry").GetRawText().Should().Be(route);
         var props = line.GetProperty("properties");
         props.GetProperty("id").GetGuid().Should().Be(trip.Id);
         props.GetProperty("driverName").GetString().Should().Be("Ada");
@@ -73,7 +77,7 @@ public sealed class BoardFeatureCollectionTests
         var trip = Trip(Guid.NewGuid(), direction, route: null, waypoints: [new Waypoint("Lyon", 45.76, 4.84)]);
         var snapshot = new RideshareSnapshot(2026, Settings, [trip], [], []);
 
-        var features = Features(BoardFeatureCollection.Build(snapshot, July3, direction, Guid.NewGuid(), new Dictionary<Guid, UserInfo>(), _localizer));
+        var features = Features(BoardFeatureCollection.Build(snapshot, July3, direction, Guid.NewGuid(), new Dictionary<Guid, UserInfo>(), _localizer, _logger));
 
         var line = features[0].GetProperty("geometry");
         line.GetProperty("type").GetString().Should().Be("LineString");
@@ -85,16 +89,28 @@ public sealed class BoardFeatureCollectionTests
             : [destination, lyon, member]);
     }
 
-    [HumansFact]
-    public void Build_FallsBackToTheStraightLine_OnAMalformedRoute_AndOmitsTheDestinationWithoutSettings()
+    [HumansTheory]
+    [InlineData("{not json")]
+    [InlineData("null")]
+    [InlineData("[]")]
+    [InlineData("""{"type":"Point","coordinates":[20,30]}""")]
+    [InlineData("""{"type":"LineString","coordinates":[]}""")]
+    [InlineData("""{"type":"LineString","coordinates":[[2.35,48.85]]}""")]
+    [InlineData("""{"type":"LineString","coordinates":[[1e400,48.85],[2.4,43.2]]}""")]
+    public void Build_FallsBackToOrigin_OnAMalformedRoute_AndOmitsTheDestinationWithoutSettings(string route)
     {
-        var trip = Trip(Guid.NewGuid(), route: "{not json");
+        var trip = Trip(Guid.NewGuid(), route: route);
         var snapshot = new RideshareSnapshot(2026, null, [trip], [], []);
 
-        var features = Features(BoardFeatureCollection.Build(snapshot, July3, RideshareDirection.Inbound, Guid.NewGuid(), new Dictionary<Guid, UserInfo>(), _localizer));
+        var features = Features(BoardFeatureCollection.Build(snapshot, July3, RideshareDirection.Inbound, Guid.NewGuid(), new Dictionary<Guid, UserInfo>(), _localizer, _logger));
 
         features.Select(f => f.GetProperty("properties").GetProperty("kind").GetString()).Should().Equal("trip", "tripStart");
+        features[0].GetProperty("geometry").GetProperty("type").GetString().Should().Be("Point");
         Coordinates(features[0].GetProperty("geometry")).Should().Equal((2.35, 48.85));
+        var args = _logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(LogLevel.Warning);
+        args[3].Should().BeNull();
+        args[2]!.ToString().Should().Contain(trip.Id.ToString()).And.Contain("fallback");
     }
 
     private static List<JsonElement> Features(string json) =>

@@ -15,8 +15,8 @@ internal sealed class FinanceOverviewViewModel
     public decimal TotalIncome { get; init; }
     public decimal TotalExpenses { get; init; }
     public decimal NetBalance { get; init; }
-    public required IReadOnlyList<BudgetSlice> IncomeSlices { get; init; }
-    public required IReadOnlyList<BudgetSlice> ExpenseSlices { get; init; }
+    public required IReadOnlyList<BudgetSliceResult> IncomeSlices { get; init; }
+    public required IReadOnlyList<BudgetSliceResult> ExpenseSlices { get; init; }
 
     /// <summary>Holded actual spend per budget category (keyed by BudgetCategoryId), each row
     /// carrying the approved purchase docs it sums so the category panel can show them.</summary>
@@ -60,16 +60,9 @@ internal sealed class BudgetSummaryViewModel
     public decimal TotalExpenses { get; init; }
     public decimal NetBalance { get; init; }
     public decimal TotalLineItems { get; init; }
-    public required IReadOnlyList<BudgetSlice> IncomeSlices { get; init; }
-    public required IReadOnlyList<BudgetSlice> ExpenseSlices { get; init; }
+    public required IReadOnlyList<BudgetSliceResult> IncomeSlices { get; init; }
+    public required IReadOnlyList<BudgetSliceResult> ExpenseSlices { get; init; }
     public bool IsCoordinator { get; init; }
-}
-
-internal sealed class BudgetSlice
-{
-    public required string Name { get; init; }
-    public decimal Amount { get; init; }
-    public decimal Percentage { get; init; }
 }
 
 /// <summary>

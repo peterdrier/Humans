@@ -12,7 +12,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
+using Humans.Workgroups.Services;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
@@ -22,6 +23,63 @@ namespace Humans.Workgroups.Tests.Controllers;
 
 public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
 {
+    private readonly ILogger<WorkgroupsAdminController> _logger = Substitute.For<ILogger<WorkgroupsAdminController>>();
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnexpectedDependencyLookup_IsNotNotFound(bool budget)
+    {
+        var service = Substitute.For<IWorkgroupService>();
+        var id = Guid.NewGuid();
+        var failure = new KeyNotFoundException("Dependency lookup failed");
+        service.SetBudgetAsync(id, Arg.Any<Guid>(), Arg.Any<WorkgroupBudgetSave>(), Ct)
+            .Returns(Task.FromException<Humans.Finance.Contracts.HoldedExpenseAccountRef?>(failure));
+        service.RecordDispositionAsync(id, Arg.Any<Guid>(), WorkgroupDisposition.Noted, "Noted", Ct)
+            .Returns(Task.FromException(failure));
+        var controller = MakeAdminController("Test", service: service);
+        Func<Task<IActionResult>> act = budget
+            ? () => controller.Budget(id, new WorkgroupBudgetFormViewModel { HasBudget = false }, "group", Ct)
+            : () => controller.Disposition(id, WorkgroupDisposition.Noted, "Noted", Ct);
+
+        (await act.Should().ThrowAsync<KeyNotFoundException>()).Which.Should().BeSameAs(failure);
+        controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvalidRegisterOrSettingsForm_LogsRuleWithoutStack(bool settings)
+    {
+        var action = settings ? nameof(WorkgroupsAdminController.Settings) : nameof(WorkgroupsAdminController.RegisterExisting);
+        var controller = MakeAdminController(action);
+        object model = settings
+            ? new WorkgroupsSettingsViewModel { RootDriveFolderId = " " }
+            : new RegisterExistingViewModel
+            {
+                Application = new WorkgroupFormViewModel { Name = " " },
+                CoordinatorUserId = SeedUser("Coordinator"),
+                RegisteredOn = Clock.GetCurrentInstant().InUtc().Date
+            };
+        var result = settings
+            ? await controller.Settings((WorkgroupsSettingsViewModel)model, Ct)
+            : await controller.RegisterExisting((RegisterExistingViewModel)model, Ct);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        controller.ModelState.IsValid.Should().BeFalse();
+        (await OpenContext().Workgroups.ToListAsync(Ct)).Should().BeEmpty();
+        AssertRuleWarning(settings ? WorkgroupErrorKeys.RootFolderNotConfigured : WorkgroupErrorKeys.NameRequired);
+    }
+
+    private void AssertRuleWarning(string key)
+    {
+        var args = _logger.ReceivedCalls().Should().ContainSingle(call =>
+            string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
+        args[0].Should().Be(LogLevel.Warning);
+        args[3].Should().BeNull();
+        args[2]!.ToString().Should().Contain(key);
+    }
+
     [HumansTheory]
     [InlineData(nameof(WorkgroupsAdminController.Refuse))]
     [InlineData(nameof(WorkgroupsAdminController.Withdraw))]
@@ -50,6 +108,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         sut.ModelState[string.Empty]!.Errors.Should().ContainSingle()
             .Which.ErrorMessage.Should().Contain("4000");
         sut.TempData.Should().BeEmpty("oversized text must not enter the TempData cookie");
+        AssertRuleWarning(WorkgroupErrorKeys.TextTooLong);
         await using var db = OpenContext();
         (await db.Workgroups.FindAsync([workgroup.Id], Ct))!.Status.Should().Be(status);
     }
@@ -84,6 +143,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
 
         result.Should().BeOfType<RedirectToActionResult>();
         sut.TempData.Should().ContainKey(TempDataKeys.ErrorMessage);
+        AssertRuleWarning(WorkgroupErrorKeys.WrongStatus);
     }
 
     [HumansFact]
@@ -128,7 +188,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
 
     /// <summary>A Board-actor <see cref="WorkgroupsAdminController"/> wired to an in-memory context,
     /// with a localizer that renders any rule key as <paramref name="errorMessage"/>.</summary>
-    private WorkgroupsAdminController MakeAdminController(string actionName, string errorMessage = "Rule failed.")
+    private WorkgroupsAdminController MakeAdminController(string actionName, string errorMessage = "Rule failed.", IWorkgroupService? service = null)
     {
         var actor = SeedUser("Board member");
         var http = new DefaultHttpContext
@@ -140,8 +200,8 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         var localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>();
         localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(call => new LocalizedString(call.Arg<string>(), errorMessage));
-        return new WorkgroupsAdminController(NewService(), Users, localizer, Clock,
-            NullLogger<WorkgroupsAdminController>.Instance)
+        return new WorkgroupsAdminController(service ?? NewService(), Users, localizer, Clock,
+            _logger)
         {
             ControllerContext = new ControllerContext
             {

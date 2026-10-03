@@ -57,7 +57,7 @@ One polygon per CampSeason representing the camp's placed barrio area.
 |----------|------|-------|
 | Id | Guid | PK |
 | CampSeasonId | Guid | Bare reference id for the CampSeason (unique — one polygon per season). **No FK constraint and no navigation** — see the note under this table. |
-| GeoJson | text | GeoJSON Feature with Polygon geometry |
+| GeoJson | text | GeoJSON Polygon/MultiPolygon, normally wrapped in a Feature |
 | AreaSqm | double | Computed area in square meters |
 | LastModifiedByUserId | Guid | Bare reference id for the User. **No FK constraint and no navigation.** |
 | LastModifiedAt | Instant | Last modification |
@@ -159,7 +159,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - Camp leads can only add/edit/delete their camp's containers when container placement is open. City-planning team members and CampAdmin are exempt.
 - CityPlanningSettings row is auto-created per year from `CampSettingsInfo.PublicYear`.
 - SignalR broadcasts polygon updates to all connected clients in real time.
-- Container-placement save, notes, and clear HTTP failures use localized prefixes while retaining status codes and server details; invalid-placement GeoJSON errors are localized in all six cultures.
+- Container-placement save, notes, and clear HTTP failures use localized prefixes while retaining status codes and server details; invalid-placement GeoJSON errors are localized in all six cultures. Containers validates placement geometry before writing; the API formats its localized validation failure as HTTP 422.
 - Member-facing container map centering and notes buttons have localized titles and accessible names; the notes modal close button reuses the localized shared label.
 - Container drag and rotation saves include the final pointer movement even before its animation frame. Changing or clearing the selected container discards unfinished gestures and queued movement.
 - Placement-note saves update the submitted container in local map state even if another container is opened while saving. A completed save or error cannot close or alter a newer notes-editing session.
@@ -202,6 +202,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - `ICityPlanningRepository` / `CityPlanningRepository` (`Humans.CityPlanning.Data`) is the only code path that touches this section's tables via `CityPlanningDbContext`.
 - **Decorator decision — no caching decorator.** Admin-facing, low-traffic (same rationale as Governance / User / Feedback).
 - **Read/write interface split.** `ICityPlanningServiceRead` (`GetSettingsAsync`, `GetRegistrationInfoAsync`, `IsCityPlanningTeamMemberAsync`) is the cross-section read surface. External sections inject `ICityPlanningServiceRead`; `ICityPlanningService : ICityPlanningServiceRead` adds writes. `ContainerAuthorizationHandler` and `ContainerController` inject `ICityPlanningServiceRead` — not `ICityPlanningService`. The service exposes no display-name read; `CityPlanningHub` resolves the burner name directly via `IUserServiceRead.GetUserInfoAsync`, and lives at `Services/CityPlanningHub.cs` in this section — `internal`, mapped by the section's own `SectionEndpoints : ISectionEndpoints` rather than by Shell's `MapHub<T>` on the concrete type. See `memory/architecture/section-read-write-split.md`.
+- **Camp geometry validation.** Save and restore reject non-area GeoJSON before writing the polygon or history. Polygon and MultiPolygon coordinates must contain nonempty polygons and closed rings of at least four positions; positions need finite numeric coordinates, latitude within −90–90 and longitude within −180–180. Feature-wrapped and bare geometry, holes and altitude coordinates round-trip unchanged. Invalid geometry returns HTTP 400 and logs a warning with the reason, without an exception. Overlay FeatureCollection uploads retain their separate JSON validation.
 - **Save/restore return type.** `SaveCampPolygonAsync` and `RestoreCampPolygonVersionAsync` return `CampPolygonSaveResult(GeoJson, AreaSqm)`, a DTO — keeping EF entities inside the service boundary.
 - **Upload pipeline.** `UpdateLimitZoneFromUploadAsync` / `UpdateOfficialZonesFromUploadAsync` accept `IFormFile?` directly — file read, 10 MB size limit and JSON validation all live in the service — and return `GeoJsonUploadResult`. Their routes, and the placement-image API route, allow 11 MB to cover multipart overhead without allowing the server default to buffer a larger upload. `UpdatePlacementDatesAsync` accepts raw `string?` date inputs, parses them internally, and returns `PlacementDateUpdateResult`; the `LocalDateTime` parse logic and `DateFormattingExtensions` are not the controller's.
 - **No year-keyed settings read on `ICityPlanningRepository`.** All settings access routes through `GetOrCreateSettingsAsync`, which creates the row with `IsPlacementOpen = false` when absent.

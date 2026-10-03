@@ -1164,8 +1164,10 @@ public sealed class ExpenseReportServiceTests
         result.ErrorMessage.Should().Contain("receipt and invoice");
     }
 
-    [HumansFact]
-    public async Task RemoveLineAsync_InvoiceLine_RemovesItsProofRows_AndTheirFiles()
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task RemoveLineAsync_InvoiceLine_RemovesItsProofRows_AndTheirFiles(bool cancelAtAudit)
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1177,14 +1179,38 @@ public sealed class ExpenseReportServiceTests
         await _expenseRepo.AddAttachmentAsync(proofAttachment, Xunit.TestContext.Current.CancellationToken);
         await _expenseRepo.SetLineAttachmentAsync(proofId, proofAttachment.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await _sut.RemoveLineAsync(id, submitter, false, invoiceId, Xunit.TestContext.Current.CancellationToken);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>()).Returns(
+            call => new ValueTask<UserInfo?>(ReadMemberAsync(call.ArgAt<CancellationToken>(1))));
+        async Task<UserInfo?> ReadMemberAsync(CancellationToken readCt)
+        {
+            if (cancelAtAudit) await cancellation.CancelAsync();
+            readCt.ThrowIfCancellationRequested();
+            return null;
+        }
+        var fileDeleted = false;
+        var auditBeforeCleanup = false;
+        _fileStorage.DeleteAsync(
+            $"uploads/expense-attachments/{proofAttachment.Id}{proofAttachment.Extension}",
+            Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            auditBeforeCleanup = AuditLog.ReceivedCalls().Any(c =>
+                Equals(c.GetArguments()[0], AuditAction.ExpenseEditedOnBehalf));
+            if (!cancelAtAudit) await cancellation.CancelAsync();
+            call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
+            fileDeleted = true;
+        });
+
+        await _sut.RemoveLineAsync(id, Guid.NewGuid(), true, invoiceId, cancellation.Token);
 
         var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
         loaded!.Lines.Should().BeEmpty();
         loaded.Total.Should().Be(0m);
+        auditBeforeCleanup.Should().BeTrue();
+        fileDeleted.Should().BeTrue();
         await _fileStorage.Received(1).DeleteAsync(
             $"uploads/expense-attachments/{proofAttachment.Id}{proofAttachment.Extension}",
-            Arg.Any<CancellationToken>());
+            CancellationToken.None);
     }
 
     [HumansFact]

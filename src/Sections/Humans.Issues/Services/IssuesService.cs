@@ -532,9 +532,9 @@ internal sealed class IssuesService(
             await UpdateStatusAsync(issueId, viewer, newStatus, actorUserId, ct);
             return IssueMutationResult.Success();
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            logger.LogWarning(ex, "Issue {IssueId} not found during UpdateStatus", issueId);
+            logger.LogWarning("Issue {IssueId} not found during UpdateStatus", issueId);
             return IssueMutationResult.Missing("Issue not found.");
         }
         catch (Exception ex)
@@ -599,9 +599,9 @@ internal sealed class IssuesService(
             await UpdateAssigneeAsync(issueId, viewer, newAssigneeUserId, actorUserId, ct);
             return IssueMutationResult.Success();
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            logger.LogWarning(ex, "Issue {IssueId} not found during UpdateAssignee", issueId);
+            logger.LogWarning("Issue {IssueId} not found during UpdateAssignee", issueId);
             return IssueMutationResult.Missing("Issue not found.");
         }
         catch (Exception ex)
@@ -659,7 +659,7 @@ internal sealed class IssuesService(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Issue {IssueId} UpdateSection rejected: {Reason}", issueId, ex.Message);
+            logger.LogWarning("Issue {IssueId} UpdateSection rejected: {Reason}", issueId, ex.Message);
             return IssueMutationResult.Failed(ex.Message);
         }
         catch (Exception ex)
@@ -698,9 +698,9 @@ internal sealed class IssuesService(
             await SetGitHubIssueNumberAsync(issueId, viewer, githubIssueNumber, actorUserId, ct);
             return IssueMutationResult.Success();
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            logger.LogWarning(ex, "Issue {IssueId} not found during SetGitHubIssue", issueId);
+            logger.LogWarning("Issue {IssueId} not found during SetGitHubIssue", issueId);
             return IssueMutationResult.Missing("Issue not found.");
         }
         catch (Exception ex)
@@ -802,6 +802,8 @@ internal sealed class IssuesService(
             i.Section,
             i.Status,
             i.PageUrl,
+            i.UserAgent,
+            i.AdditionalContext,
             CreatedAt = i.CreatedAt.ToIso8601(),
             ResolvedAt = i.ResolvedAt.ToIso8601(),
             Comments = i.Comments.OrderBy(c => c.CreatedAt).Select(c => new

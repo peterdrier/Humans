@@ -238,6 +238,14 @@ Settings and Register an existing group on first setup or after clearing the que
 
 ## Invariants
 
+- Budget preparation remains cancellable. Account creation or linking runs independently of browser cancellation through Finance, then persists the binding, system log and audit. Amount-only saves retain cancellation until their save succeeds, then finish the log and audit independently.
+
+- Joining, leaving and changing coordinators keep preparation and the membership save cancellable. Once membership commits, system logs, handover/coordinator audits, notices and Drive sync requests finish independently of browser cancellation. Document publishing, comment-window changes, delivery and comment replies follow the same boundary: their save remains cancellable, then system logs and notices finish independently. Referral, refusal, withdrawal, reactivation, member/Secretary endings and Board disposition use this boundary too, including their audits and account activation changes. Register edits finish their scope-change log after saving; recorded status requests finish their coordinator notice.
+
+- Member and admin action and form rule rejections remain visible at Warning without exception stacks; action and resource-key context, redirects and localized form feedback are preserved. Only section rule exceptions become validation feedback; unexpected dependency lookup or access failures propagate to the application error handler instead of becoming workgroup 404/403 responses.
+
+- Member workgroup pages and forms localize breadcrumb navigation labels in all six supported cultures.
+
 - Application/register, meeting, log entry and document form required and length errors use shared resources in all six cultures; input limits are unchanged.
 
 - Registration is administrative recognition only (Board Resolution clause 4). No
@@ -385,7 +393,8 @@ should end is the Board's decision, taken on the register in front of them.
   dates), log entries, meetings created, documents (created, updated, or with a disposition
   this person recorded — each labelled), comments (including hidden ones, with disposition
   and response). Every attribution column the erasure nulls is also an export predicate, so
-  nothing is erasable but unexportable.
+  nothing is erasable but unexportable. All exported instants are UTC ISO-8601 text, and log-entry
+  dates are ISO dates; absent timestamps remain null.
 - **Erasure** (`EraseForUserAsync`): nulls attribution everywhere (`AuthorUserId`,
   `CreatedByUserId`, `UpdatedByUserId`, `RespondedByUserId`, `AppliedByUserId`,
   `HiddenByUserId`, `DispositionByUserId`). **Content stays** — comments, log bodies,

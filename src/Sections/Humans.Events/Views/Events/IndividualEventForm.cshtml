@@ -4,7 +4,7 @@
     ViewData["Title"] = isEdit ? Localizer["Events_Submission_EditTitle"].Value : Localizer["Events_Submission_SubmitTitle"].Value;
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Events_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Events" asp-action="MySubmissions">@Localizer["Events_MySubmissionsTitle"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@(isEdit ? Localizer["Events_Submission_Edit"] : Localizer["Events_Submission_New"])</li>

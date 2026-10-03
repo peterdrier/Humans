@@ -672,6 +672,8 @@ internal sealed class ApplicationDecisionService(
             a.RoleUnderstanding,
             a.Language,
             SubmittedAt = a.SubmittedAt.ToIso8601(),
+            UpdatedAt = a.UpdatedAt.ToIso8601(),
+            RenewalReminderSentAt = a.RenewalReminderSentAt.ToIso8601(),
             ResolvedAt = a.ResolvedAt.ToIso8601(),
             TermExpiresAt = a.TermExpiresAt.ToInvariantDate(),
             BoardMeetingDate = a.BoardMeetingDate.ToInvariantDate(),

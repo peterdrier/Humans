@@ -25,6 +25,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -81,6 +82,7 @@ public sealed class IssuesServiceTests
     private readonly IIssuesBadgeCacheInvalidator _issuesBadge;
     private readonly IIssuesRepository _repository;
     private readonly IssuesApplicationService _service;
+    private readonly ILogger<IssuesApplicationService> _logger = Substitute.For<ILogger<IssuesApplicationService>>();
 
     private readonly IssuesDbContext _issuesDb;
 
@@ -130,7 +132,7 @@ public sealed class IssuesServiceTests
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, SectionCatalog, Domain.TestIssueQueues.Shipped(),
-            NullLogger<IssuesApplicationService>.Instance);
+            _logger);
     }
 
     private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
@@ -823,6 +825,10 @@ public sealed class IssuesServiceTests
         result.Succeeded.Should().BeFalse();
         result.NotFound.Should().BeTrue();
         result.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+        _logger.ReceivedCalls().Should().ContainSingle(call =>
+            call.GetMethodInfo().Name == "Log" &&
+            (LogLevel)call.GetArguments()[0]! == LogLevel.Warning &&
+            call.GetArguments()[3] == null);
     }
 
     // ==========================================================================
@@ -929,6 +935,10 @@ public sealed class IssuesServiceTests
         result.Succeeded.Should().BeFalse();
         result.NotFound.Should().BeTrue();
         result.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+        _logger.ReceivedCalls().Should().ContainSingle(call =>
+            call.GetMethodInfo().Name == "Log" &&
+            (LogLevel)call.GetArguments()[0]! == LogLevel.Warning &&
+            call.GetArguments()[3] == null);
     }
 
     // ==========================================================================
@@ -1061,6 +1071,10 @@ public sealed class IssuesServiceTests
         result.Succeeded.Should().BeFalse();
         result.NotFound.Should().BeFalse();
         result.ErrorMessage.Should().Contain("Cannot change section");
+        _logger.ReceivedCalls().Should().ContainSingle(call =>
+            call.GetMethodInfo().Name == "Log" &&
+            (LogLevel)call.GetArguments()[0]! == LogLevel.Warning &&
+            call.GetArguments()[3] == null);
     }
 
     [HumansFact]
@@ -1099,6 +1113,10 @@ public sealed class IssuesServiceTests
         result.Succeeded.Should().BeFalse();
         result.NotFound.Should().BeTrue();
         result.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+        _logger.ReceivedCalls().Should().ContainSingle(call =>
+            call.GetMethodInfo().Name == "Log" &&
+            (LogLevel)call.GetArguments()[0]! == LogLevel.Warning &&
+            call.GetArguments()[3] == null);
     }
 
     // ==========================================================================
@@ -1365,9 +1383,13 @@ public sealed class IssuesServiceTests
         SeedUser(bobId, "Bob").Email = "b@b.com";
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's first");
+        var firstId = await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's first");
         await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's second");
         await SeedIssueRowAsync(bobId, IssueStatus.Open, "Bob's");
+        var first = await _issuesDb.Issues.FirstAsync(i => i.Id == firstId, Xunit.TestContext.Current.CancellationToken);
+        first.UserAgent = "Test browser";
+        first.AdditionalContext = "browser details | roles: Volunteer";
+        await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var slices = await _service.ContributeForUserAsync(aliceId, Xunit.TestContext.Current.CancellationToken);
 
@@ -1375,6 +1397,13 @@ public sealed class IssuesServiceTests
         slices[0].SectionName.Should().Be("Issues");
         var data = slices[0].Data.Should().BeAssignableTo<System.Collections.IEnumerable>().Subject;
         data.Cast<object>().Should().HaveCount(2);
+        var exported = System.Text.Json.JsonSerializer.SerializeToElement(slices[0].Data);
+        var firstExport = exported.EnumerateArray().Single(i => string.Equals(i.GetProperty("Title").GetString(), "Alice's first", StringComparison.Ordinal));
+        firstExport.GetProperty("UserAgent").GetString().Should().Be(first.UserAgent);
+        firstExport.GetProperty("AdditionalContext").GetString().Should().Be(first.AdditionalContext);
+        var secondExport = exported.EnumerateArray().Single(i => string.Equals(i.GetProperty("Title").GetString(), "Alice's second", StringComparison.Ordinal));
+        secondExport.GetProperty("UserAgent").GetString().Should().BeNull();
+        secondExport.GetProperty("AdditionalContext").GetString().Should().BeNull();
     }
 
     [HumansFact]

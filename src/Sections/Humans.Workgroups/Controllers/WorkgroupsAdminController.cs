@@ -105,7 +105,7 @@ internal sealed class WorkgroupsAdminController(
         }
         catch (WorkgroupRuleException ex)
         {
-            logger.LogInformation(ex, "Workgroups admin RegisterExisting: rule {Rule}", ex.Key);
+            logger.LogWarning("Workgroups admin RegisterExisting: rule {Rule}", ex.Key);
             ModelState.AddModelError(string.Empty, localizer[ex.Key, ex.Args]);
             return await RegisterExistingViewAsync(model, ct);
         }
@@ -147,13 +147,9 @@ internal sealed class WorkgroupsAdminController(
                 null => "Budget saved.",
             });
         }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
         catch (WorkgroupRuleException ex)
         {
-            logger.LogInformation(ex, "Workgroups admin Budget: rule {Rule}", ex.Key);
+            logger.LogWarning("Workgroups admin Budget: rule {Rule}", ex.Key);
             SetError(localizer[ex.Key, ex.Args]);
         }
         return RedirectToAction("Details", "Workgroups", new { slug });
@@ -191,7 +187,7 @@ internal sealed class WorkgroupsAdminController(
         }
         catch (WorkgroupRuleException ex)
         {
-            logger.LogInformation(ex, "Workgroups root Drive folder rejected: rule {Rule}", ex.Key);
+            logger.LogWarning("Workgroups root Drive folder rejected: rule {Rule}", ex.Key);
             ModelState.AddModelError(nameof(model.RootDriveFolderId), localizer[ex.Key, ex.Args]);
             return View(model);
         }
@@ -218,15 +214,9 @@ internal sealed class WorkgroupsAdminController(
             await action(user.Id);
             SetSuccess(success);
         }
-        catch (KeyNotFoundException ex)
-        {
-            logger.LogInformation(ex, "Workgroups admin {Action}: not found",
-                ControllerContext.ActionDescriptor.ActionName);
-            return NotFound();
-        }
         catch (WorkgroupRuleException ex)
         {
-            logger.LogInformation(ex, "Workgroups admin {Action}: rule {Rule}",
+            logger.LogWarning("Workgroups admin {Action}: rule {Rule}",
                 ControllerContext.ActionDescriptor.ActionName, ex.Key);
             if (submittedReasons is { } submitted)
             {

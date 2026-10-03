@@ -28,6 +28,8 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
   per run, logged when capped). Residual mismatches are **reportable state** on the sync row,
   never a failure — Holded's own chart totals can exclude unconfirmed entries.
 
+- **Interrupted manual syncs** remain recorded as `Error` and propagate caller cancellation. Caller-aborted document/ledger syncs and their controller log stack-free warnings; dependency failures remain errors with exceptions.
+
 ## Data Model (`HoldedDbContext`, history `__EFMigrationsHistory_Holded`)
 
 | Table | Content |
@@ -103,6 +105,7 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 - Sweeps are serialized by a non-blocking in-process gate; a second caller is skipped and told
   so, never queued (single-server deployment).
 - Reads (`GetLedgerLinesAsync`, `GetAccountBalancesAsync`) never call Holded.
+- API-call metering drains honour cancellation before consuming the buffer, then persist consumed records independently of request cancellation. Overview reads remain cancellable afterward.
 - The treasury bank feed (`IHoldedClient.ListBankMovementsAsync` /
   `ReconcileBankMovementAsync`, `GET`/`POST /treasury/accounts/{id}/bank-movements[/…/reconcile]`)
   is **not** mirrored here — Finance's SEPA booking flow (nobodies-collective/Humans#1185) reads

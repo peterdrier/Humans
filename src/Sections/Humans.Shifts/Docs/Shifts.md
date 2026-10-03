@@ -231,6 +231,10 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+- The member shift-profile wizard localizes breadcrumb navigation labels in all six supported cultures.
+
+- The `ShiftSignups` GDPR export includes each signup’s UTC last-update timestamp, including system cancellations without a reviewer date.
+
 - Instant-toggle HTTP failures keep the existing shift and description rows, restore the button for retry, and show the localized network-error toast; only successful row fragments replace them.
 
 - Browse and My shifts GETs forward request cancellation to viewer and cached per-user row reads; My shifts also forwards it to active-event and team-name reads.
@@ -287,6 +291,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 Invalid rota and shift edits redisplay the team shift page without saving. Only the submitted editor opens with its attempted values and validation errors; other editors retain their persisted values.
 
+- **Member dashboard shift card:** while shift browsing is open, a pending signup or a confirmed signup ending after now in the active event selects the signup card. The host computes only that presence flag from `IShiftView`; `ShiftSignupsViewComponent` renders signup details.
+
 ## Negative Access Rules
 
 - Self-signup, including all-day ranges and onboarding/dietary form replay, requires an existing `UserState.Active` account. Privileged/conflict flags do not bypass account eligibility. Named Active humans may still sign up before consent completion; explicit admin-on-behalf Voluntell paths retain their own authorization.
@@ -306,6 +312,8 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 - VolunteerCoordinator **cannot** view volunteer medical data.
 
 ## Triggers
+
+- Coordinator staffing-period, rota-deletion and range-bail guardrail rejections remain Warning logs with their identifiers and reason, without exception stacks.
 
 - Every signup state change writes an audit log entry and dispatches a `ShiftSignupChange` notification to the department's coordinators via `INotificationService`. Action set: `AuditAction.ShiftSignup{Created,Confirmed,Refused,Voluntold,Bailed,Cancelled,NoShow,Reassigned}`. `ShiftSignupCreated` fires on every self-signup (Pending or Confirmed) so the creation moment is always traceable; `ShiftSignupConfirmed` fires only on the later Pending → Confirmed transition by an approver. `ShiftSignupReassigned` fires once per account-merge fold (re-FK of signups from source to target).
 - Voluntelling additionally fires a `ShiftAssigned` informational notification to the assigned volunteer (best-effort; failures logged but do not roll back the signup). Single-shift and range notices use the volunteer’s saved supported language, with English fallback for missing/unsupported language or lookup failures; one-shift ranges use a singular message and the action reuses the localized browse-shifts label. This volunteer-facing notification is **suppressed for past shifts**: a single-shift voluntell skips it when the shift has ended (`shift.GetAbsoluteEnd(es) <= now`); a range voluntell skips its single aggregate notification when *every* assigned shift is already past. The audit entry and the coordinator `ShiftSignupChange` ping are always emitted regardless of shift timing.

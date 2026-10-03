@@ -127,6 +127,10 @@ Three controllers serve this section.
 
 ## Invariants
 
+- The consent dashboard renders section service DTOs directly, sorting pending teams/documents before signed ones and then by ordinal name. It retains UTC date display and the ten most recent history rows; the controller does not copy DTOs into duplicate row models.
+
+- The member consent dashboard and review pages localize breadcrumb navigation labels in all six supported cultures.
+
 - Consent dashboard and review reads carry request cancellation through viewer resolution, the stub-profile check and dashboard/document reads. Submit and its invalid-form redisplay retain their existing mutation boundaries.
 
 - Consent records are immutable. Database triggers prevent UPDATE and DELETE operations on `consent_records`. Only INSERT is allowed to maintain GDPR audit trail integrity (§12).
@@ -138,7 +142,8 @@ Three controllers serve this section.
 - When a new document version is published, existing consents for the old version become stale and re-consent is required.
 - Per-user reads on `consent_records` chain-follow merge tombstones via the resolved record's `UserInfo.AllUserIds` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge, DB triggers (`prevent_consent_record_update`, `prevent_consent_record_delete`) make any rewrite physically impossible.
 
-- A successful consent submission evicts every affected merge-chain cache key before inline reloads start. A failed or cancelled reload therefore leaves no alias serving the pre-submit consent set; the failure propagates and later reads reload the committed state.
+- Once a consent record is saved, required-consent checks, suspension-notification resolution, suspension restoration, and inline cache refreshes finish independently of request cancellation. Validation and the consent write retain the caller token.
+- A successful consent submission evicts every affected merge-chain cache key before inline reloads start. A failed reload therefore leaves no alias serving the pre-submit consent set; the failure propagates and later reads reload the committed state.
 
 ## Negative Access Rules
 

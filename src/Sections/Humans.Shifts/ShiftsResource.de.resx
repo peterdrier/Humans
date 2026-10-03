@@ -43,6 +43,7 @@
   <data name="Shifts_SignedUp" xml:space="preserve">
     <value>Angemeldet</value>
   </data>
+  <data name="Shifts_BreadcrumbNavigation" xml:space="preserve"><value>Navigationspfad</value></data>
   <data name="Shifts_Pending" xml:space="preserve">
     <value>(ausstehend)</value>
   </data>

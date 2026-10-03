@@ -566,27 +566,6 @@ internal sealed class UserService(
         await repo.UpdateAsync(profile, ct);
     }
 
-    public async Task<UserProfilePictureContentTypeResult> SetProfilePictureContentTypeAsync(
-        Guid userId,
-        string contentType,
-        CancellationToken ct = default)
-    {
-        var profile = await repo.GetByUserIdAsync(userId, ct);
-        if (profile is null)
-            return new UserProfilePictureContentTypeResult(false, null, null, null);
-
-        var previousContentType = profile.ProfilePictureContentType;
-        profile.ProfilePictureContentType = contentType;
-        profile.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateAsync(profile, ct);
-
-        return new UserProfilePictureContentTypeResult(
-            true,
-            profile.Id,
-            previousContentType,
-            contentType);
-    }
-
     public async Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
         Guid userId,
         CancellationToken ct = default)
@@ -1055,6 +1034,11 @@ internal sealed class UserService(
             // JSON keys pinned per memory/code/no-rename-serialized-fields.md (GDPR export stability).
             IsOAuth = e.Provider != null,
             IsNotificationTarget = e.IsPrimary,
+            e.IsGoogle,
+            GoogleEmailStatus = e.GoogleEmailStatus.ToString(),
+            VerificationSentAt = e.VerificationSentAt.ToIso8601(),
+            CreatedAt = e.CreatedAt.ToIso8601(),
+            UpdatedAt = e.UpdatedAt.ToIso8601(),
             e.Visibility
         }).ToList());
 
@@ -1077,6 +1061,7 @@ internal sealed class UserService(
             cp.Category,
             cp.OptedOut,
             cp.InboxEnabled,
+            SubscribedAt = cp.SubscribedAt.ToIso8601(),
             UpdatedAt = cp.UpdatedAt.ToIso8601(),
             cp.UpdateSource
         }).ToList());

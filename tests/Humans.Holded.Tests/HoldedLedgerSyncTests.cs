@@ -4,11 +4,13 @@ using Humans.Holded.Data;
 using Humans.Holded.Domain;
 using Humans.Holded.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Holded.Tests;
 
@@ -206,6 +208,62 @@ public sealed class HoldedLedgerSyncTests
         call.Endpoint.Should().Be("ListLedgerEntriesAsync");
         call.RateLimitRemaining.Should().Be(42);
         call.RateLimitWindow.Should().Be("minute");
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Cancelled_sweep_distinguishes_request_abort_from_dependency_failure(bool requestAborted)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var logger = new CapturingLogger<Service>();
+        var service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
+            Options.Create(new HoldedSectionOptions()), logger);
+        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), null, Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<HoldedLedgerLineDto>>(_ =>
+            {
+                if (requestAborted) cancellation.Cancel();
+                throw new OperationCanceledException("ledger fetch cancelled");
+            });
+
+        var act = () => service.SyncLedgerAsync(full: false, cancellation.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        var entry = logger.Entries.Should().ContainSingle().Subject;
+        entry.Level.Should().Be(requestAborted ? LogLevel.Warning : LogLevel.Error);
+        if (requestAborted) entry.Exception.Should().BeNull();
+        else entry.Exception.Should().BeOfType<OperationCanceledException>();
+        var states = await _repo.GetSyncStatesAsync(Xunit.TestContext.Current.CancellationToken);
+        states.Single().SyncStatus.Should().Be(HoldedSyncStatus.Error);
+        states.Single().LastError.Should().Contain("ledger fetch cancelled");
+    }
+
+    [HumansFact]
+    public async Task Manual_sync_propagates_request_abort_with_a_stack_free_warning()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var finance = Substitute.For<Humans.Finance.Contracts.IHoldedFinanceService>();
+        finance.SyncAsync(cancellation.Token).Returns<Humans.Finance.Contracts.HoldedSyncResult>(_ =>
+        {
+            cancellation.Cancel();
+            throw new OperationCanceledException(cancellation.Token);
+        });
+        var logger = new CapturingLogger<Humans.Holded.Controllers.HoldedController>();
+        var controller = new Humans.Holded.Controllers.HoldedController(
+            Substitute.For<Humans.Users.Contracts.IUserServiceRead>(),
+            Substitute.For<IHoldedAdminService>(), Substitute.For<IHoldedService>(), finance, logger)
+        {
+            TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
+                new Microsoft.AspNetCore.Http.DefaultHttpContext(),
+                Substitute.For<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider>()),
+        };
+
+        var act = () => controller.SyncNow(cancellation.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        var entry = logger.Entries.Should().ContainSingle().Subject;
+        entry.Level.Should().Be(LogLevel.Warning);
+        entry.Exception.Should().BeNull();
     }
 
     [HumansFact]

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Security.Claims;
 using Humans.Governance.Controllers;
 using Humans.Base;
@@ -1221,6 +1222,31 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             VotedAt = Clock.GetCurrentInstant()
         });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUserAsync_IncludesApplicationLifecycleTimesOnlyForTheOwner(bool reminderSent)
+    {
+        var userId = Guid.NewGuid();
+        var application = await SeedSubmittedApplicationAsync(userId);
+        application.UpdatedAt = Instant.FromUtc(2026, 10, 2, 23, 30);
+        application.RenewalReminderSentAt = reminderSent ? Instant.FromUtc(2026, 10, 3, 8, 15) : null;
+        var otherApplication = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        otherApplication.Motivation = "Another member's application";
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var slices = await _service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(
+            slices.Single(slice => string.Equals(slice.SectionName, ApplicationDecisionService.Applications, StringComparison.Ordinal)).Data));
+        var row = json.RootElement.EnumerateArray().Should().ContainSingle().Subject;
+
+        row.GetProperty("Motivation").GetString().Should().Be(application.Motivation);
+        row.GetProperty("SubmittedAt").GetString().Should().NotBeNullOrEmpty();
+        row.GetProperty("UpdatedAt").GetString().Should().Be("2026-10-02T23:30:00Z");
+        row.GetProperty("RenewalReminderSentAt").GetString()
+            .Should().Be(reminderSent ? "2026-10-03T08:15:00Z" : null);
     }
 
     private async Task<MemberApplication> SeedSubmittedApplicationAsync(

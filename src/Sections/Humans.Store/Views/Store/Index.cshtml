@@ -127,7 +127,7 @@ else
     Func<ProductDto, IHtmlContent> catalogPriceCell =
         @<text>
             @item.UnitPriceInclVatEur.ToEuro()
-            <div class="text-muted small">(@item.UnitPriceEur.ToEuro() + @item.VatRatePercent.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture)% VAT)</div>
+            <div class="text-muted small">@Localizer["Store_UnitPriceBreakdown", item.UnitPriceEur.ToEuro(), item.VatRatePercent.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture)]</div>
         </text>;
     var catalogTable = TableModel.For(Model.Catalog)
         .Column(Localizer["Store_ColName"].Value, r => r.Name)

@@ -38,12 +38,6 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
             .AnyAsync(w => w.Slug == slug && (exceptId == null || w.Id != exceptId), ct);
     }
 
-    public async Task<WorkgroupMember?> GetMemberAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Members.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id, ct);
-    }
-
     public async Task<WorkgroupMeeting?> GetMeetingAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

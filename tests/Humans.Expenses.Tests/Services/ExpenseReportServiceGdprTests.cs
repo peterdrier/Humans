@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using AwesomeAssertions.Execution;
+using System.Text.Json;
 using Humans.Expenses.Contracts;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
@@ -118,10 +120,16 @@ public class ExpenseReportServiceGdprTests
 
     // ─── happy path ───────────────────────────────────────────────────────────
 
-    [HumansFact]
-    public async Task HappyPath_ReturnsReportsAndMaskedIban()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task HappyPath_ExportsReportDatesAndMaskedIban(bool approved)
     {
-        var report = MakeReport(UserId);
+        var report = MakeReport(UserId) with
+        {
+            SubmittedAt = approved ? Instant.FromUtc(2026, 4, 2, 11, 0) : null,
+            ApprovedAt = approved ? Instant.FromUtc(2026, 4, 3, 12, 0) : null
+        };
         _repo.GetForSubmitterAsync(UserId, Arg.Any<CancellationToken>())
             .Returns([report]);
 
@@ -135,9 +143,13 @@ public class ExpenseReportServiceGdprTests
         var reportsSlice = slices.Single(s => string.Equals(s.SectionName, "ExpenseReports", StringComparison.Ordinal));
         reportsSlice.Data.Should().NotBeNull();
 
-        // The returned data is shaped — we can verify via JSON (or cast)
-        // At minimum, it should be non-null and contain data
-        reportsSlice.Data.Should().NotBeNull();
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(reportsSlice.Data));
+        var row = json.RootElement[0];
+        using var scope = new AssertionScope();
+        row.GetProperty("CreatedAt").GetRawText().Should().Be("\"2026-04-01T10:00:00Z\"");
+        row.GetProperty("SubmittedAt").GetRawText().Should().Be(approved ? "\"2026-04-02T11:00:00Z\"" : "null");
+        row.GetProperty("ApprovedAt").GetRawText().Should().Be(approved ? "\"2026-04-03T12:00:00Z\"" : "null");
+        row.GetProperty("PayeeIban").GetString().Should().Be("ES12****012");
     }
 
     [HumansFact]

@@ -1404,8 +1404,57 @@ public class SurveyServiceTests
             AuditAction.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SendInvitesAsync_finishes_batch_when_request_is_cancelled_after_first_invitation_save(bool upgradePublicParticipation)
+    {
+        var teamId = Guid.NewGuid();
+        Guid first = Guid.NewGuid(), second = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(TeamWith(teamId, first, second));
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [first] = "first@example.org", [second] = "second@example.org" });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        using var request = new CancellationTokenSource();
+        _repo.AddInvitationAndSaveAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                await request.CancelAsync();
+            });
+        if (upgradePublicParticipation)
+        {
+            var participation = new SurveyInvitation { Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = first };
+            _repo.GetInvitationsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns([participation]);
+            _repo.UpdateInvitationStatusAsync(participation.Id, EmailOutboxStatus.Queued, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+                .Returns(async call =>
+                {
+                    call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                    await request.CancelAsync();
+                });
+        }
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        });
+
+        var result = await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), request.Token);
+
+        result.InvitationsCreated.Should().Be(2);
+        result.EmailsQueued.Should().Be(2);
+        result.Failed.Should().Be(0);
+        await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == "first@example.org"), CancellationToken.None);
+        await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == "second@example.org"), CancellationToken.None);
+        await _audit.Received(1).LogAsync(AuditAction.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
+    }
+
     [HumansFact]
-    public async Task SendInvitesAsync_propagates_cancellation_without_marking_the_invitation_failed()
+    public async Task SendInvitesAsync_cancellation_before_batch_creates_no_invitation()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -1419,12 +1468,12 @@ public class SurveyServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
-        _emailService.SendAsync(Arg.Any<EmailMessage>(), aborted.Token)
-            .Returns(Task.FromCanceled(aborted.Token));
 
         var act = () => CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), aborted.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
+        await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
+        await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpdateInvitationStatusAsync(
             Arg.Any<Guid>(), EmailOutboxStatus.Failed, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }

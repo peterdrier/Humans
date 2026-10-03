@@ -47,7 +47,7 @@ internal sealed class CampAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to approve camp season {SeasonId} for admin {UserId}", seasonId, user.Id);
+            logger.LogWarning("Failed to approve camp season {SeasonId} for admin {UserId}: {Reason}", seasonId, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -74,7 +74,7 @@ internal sealed class CampAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to reject camp season {SeasonId} for admin {UserId}", seasonId, user.Id);
+            logger.LogWarning("Failed to reject camp season {SeasonId} for admin {UserId}: {Reason}", seasonId, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -186,7 +186,7 @@ internal sealed class CampAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to reactivate camp season {SeasonId}", seasonId);
+            logger.LogWarning("Failed to reactivate camp season {SeasonId}: {Reason}", seasonId, ex.Message);
             SetError(ex.Message);
         }
 
@@ -223,7 +223,7 @@ internal sealed class CampAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to delete camp {CampId}", campId);
+            logger.LogWarning("Failed to delete camp {CampId}: {Reason}", campId, ex.Message);
             SetError(ex.Message);
         }
 
@@ -321,6 +321,7 @@ internal sealed class CampAdminController(
         }
         catch (InvalidOperationException ex)
         {
+            logger.LogWarning("CreateRole rejected for actor {UserId}: {Reason}", user.Id, ex.Message);
             ModelState.AddModelError(string.Empty, ex.Message);
             return View("RoleForm", form);
         }
@@ -380,10 +381,11 @@ internal sealed class CampAdminController(
                 return NotFound();
             }
 
-            throw new InvalidOperationException($"Unexpected camp role update status '{result.Status}'.");
+            throw new System.Diagnostics.UnreachableException($"Unexpected camp role update status '{result.Status}'.");
         }
         catch (InvalidOperationException ex)
         {
+            logger.LogWarning("EditRole rejected for role {RoleId} by actor {UserId}: {Reason}", id, user.Id, ex.Message);
             ModelState.AddModelError(string.Empty, ex.Message);
             return View("RoleForm", form);
         }

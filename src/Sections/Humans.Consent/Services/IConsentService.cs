@@ -32,7 +32,7 @@ internal sealed record ConsentDashboardHistoryItem(
 /// <summary>
 /// The section's own service surface: everything <see cref="IConsentServiceRead"/> and
 /// <see cref="IConsentSubmission"/> expose across the boundary, plus the consent dashboard,
-/// whose four row records have no consumer outside <c>ConsentController</c>.
+/// whose row records are rendered directly by the section's dashboard view.
 /// </summary>
 /// <remarks>
 /// Kept as an interface rather than collapsed into the concrete service for two reasons:

@@ -9,6 +9,9 @@ namespace Humans.Web.Services;
 /// is served at <c>/uploads/camps/{id}/{guid}.jpg</c>).
 /// </summary>
 /// <remarks>
+/// Failed-upload cleanup is best-effort: cleanup faults are logged without replacing
+/// the original upload exception or caller cancellation.
+///
 /// Production deployments persist <c>wwwroot/uploads/</c> via a Coolify
 /// volume mount. Subpaths under uploads/ that should NOT be publicly served
 /// (e.g. profile pictures, which need the GDPR gate in
@@ -125,7 +128,7 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
         {
             File.Delete(tempPath);
         }
-        catch (IOException cleanupEx)
+        catch (Exception cleanupEx) when (cleanupEx is IOException or UnauthorizedAccessException)
         {
             logger.LogWarning(cleanupEx,
                 "Failed to clean up temp file {TempPath} after a failed save",

@@ -3,7 +3,7 @@
     ViewData["Title"] = string.Format(Localizer["SendMessage_Title"].Value, Model.RecipientDisplayName);
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Users_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
         <li class="breadcrumb-item"><a asp-action="ViewProfile" asp-route-id="@Model.RecipientId">@Model.RecipientDisplayName</a></li>

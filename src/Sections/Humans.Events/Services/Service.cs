@@ -313,6 +313,8 @@ internal sealed class EventService(
                     ? EventRecurrenceDays.OffsetsToDisplayDays(existing.RecurrenceDays, gateOpeningDate)
                     : string.Empty;
                 var rowDays = row.IsRecurring ? row.RecurrenceDays ?? string.Empty : string.Empty;
+                var recurrenceChanged = existing.IsRecurring != row.IsRecurring
+                    || !EventRecurrenceDays.SameDays(existingDays, rowDays);
 
                 var changed =
                     !string.Equals(existing.Title, row.Title, StringComparison.Ordinal) ||
@@ -322,8 +324,7 @@ internal sealed class EventService(
                     existing.DurationMinutes != row.DurationMinutes ||
                     !string.Equals(existing.LocationNote ?? string.Empty, row.LocationNote ?? string.Empty, StringComparison.Ordinal) ||
                     !string.Equals(existing.Host ?? string.Empty, row.Host ?? string.Empty, StringComparison.Ordinal) ||
-                    existing.IsRecurring != row.IsRecurring ||
-                    !EventRecurrenceDays.SameDays(existingDays, rowDays) ||
+                    recurrenceChanged ||
                     existing.PriorityRank != row.PriorityRank;
 
                 if (!changed) continue;
@@ -336,7 +337,10 @@ internal sealed class EventService(
                 existing.LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote;
                 existing.Host = string.IsNullOrEmpty(row.Host) ? null : row.Host;
                 existing.IsRecurring = row.IsRecurring;
-                existing.RecurrenceDays = row.IsRecurring ? recurrenceOffsets : null;
+                // Unchanged weekday labels cannot express a subset of repeated weekdays.
+                // Preserve the authored offsets when another field is edited.
+                if (recurrenceChanged || !row.IsRecurring)
+                    existing.RecurrenceDays = row.IsRecurring ? recurrenceOffsets : null;
                 existing.PriorityRank = row.PriorityRank;
 
                 // One path for every existing status: UpdateAndResubmitAsync keeps a
@@ -674,9 +678,33 @@ internal sealed class EventService(
     {
         var favourites = await repo.GetFavouritesForContributorAsync(userId, ct);
         var preference = await repo.GetPreferenceAsync(userId, ct);
+        var submissions = (await repo.GetAllEventsForDashboardAsync(ct))
+            .Where(e => e.SubmitterUserId == userId);
 
         var shaped = new
         {
+            SubmittedEvents = submissions
+                .OrderBy(e => e.SubmittedAt)
+                .ThenBy(e => e.Id)
+                .Select(e => new
+                {
+                    e.Id,
+                    e.CampId,
+                    e.GuideSharedVenueId,
+                    e.CategoryId,
+                    e.Title,
+                    e.Description,
+                    e.LocationNote,
+                    e.Host,
+                    StartAt = e.StartAt.ToIso8601(),
+                    e.DurationMinutes,
+                    e.IsRecurring,
+                    e.RecurrenceDays,
+                    e.PriorityRank,
+                    Status = e.Status.ToString(),
+                    SubmittedAt = e.SubmittedAt.ToIso8601(),
+                    LastUpdatedAt = e.LastUpdatedAt.ToIso8601()
+                }).ToList(),
             Favourites = favourites
                 .OrderBy(f => f.CreatedAt)
                 .Select(f => new

@@ -327,4 +327,12 @@
   <data name="Camps_Validation_ImageExtension" xml:space="preserve"><value>Il nome del file immagine deve terminare con .jpg, .jpeg, .png o .webp.</value></data>
   <data name="Camps_Flash_WithdrawRequiresPending" xml:space="preserve"><value>È possibile ritirare solo una richiesta di adesione in attesa.</value></data>
   <data name="Camps_Flash_LeaveRequiresActive" xml:space="preserve"><value>È possibile lasciare solo un’adesione attiva al campo.</value></data>
+  <data name="Camps_Flash_ApproveRequiresPending" xml:space="preserve"><value>Si può approvare solo una richiesta di adesione in attesa.</value></data>
+  <data name="Camps_Flash_RejectRequiresPending" xml:space="preserve"><value>Si può rifiutare solo una richiesta di adesione in attesa.</value></data>
+  <data name="Camps_Flash_RemoveRequiresActive" xml:space="preserve"><value>Si può rimuovere solo un’adesione attiva al campo.</value></data>
+  <data name="Camps_Flash_CampNotFound" xml:space="preserve"><value>Campo non trovato.</value></data>
+  <data name="Camps_Flash_HistoricalNameNotFound" xml:space="preserve"><value>Nome storico non trovato.</value></data>
+  <data name="Camps_Flash_HistoricalNameWrongCamp" xml:space="preserve"><value>Questo nome storico non appartiene a questo campo.</value></data>
+  <data name="Camps_Flash_ImageNotFound" xml:space="preserve"><value>Immagine non trovata.</value></data>
+  <data name="Camps_Flash_ImageWrongCamp" xml:space="preserve"><value>Questa immagine non appartiene a questo campo.</value></data>
 </root>

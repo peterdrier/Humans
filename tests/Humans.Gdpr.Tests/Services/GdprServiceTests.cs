@@ -236,6 +236,35 @@ public class GdprServiceTests
             entry.Message.Contains("FakeContributor"));
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task ExportForUserAsync_DistinguishesCallerCancellationFromContributorFault(bool callerCancels)
+    {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
+        var boom = new OperationCanceledException("Contributor cancelled", cancellation.Token);
+        var contributor = Substitute.For<IUserDataContributor>();
+        contributor.ContributeForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(_ => FailAsync());
+        async Task<IReadOnlyList<UserDataSlice>> FailAsync()
+        {
+            if (callerCancels) await cancellation.CancelAsync();
+            throw boom;
+        }
+        var next = new FakeContributor("Consents", new object());
+        var logger = new CapturingLogger<GdprService>();
+        var service = CreateService(users: null, logger, contributor, next);
+
+        var act = () => service.ExportForUserAsync(Guid.NewGuid(), cancellation.Token);
+
+        var thrown = await act.Should().ThrowAsync<OperationCanceledException>();
+        thrown.Which.Should().BeSameAs(boom);
+        next.CalledWithUserId.Should().BeNull();
+        var entry = logger.Entries.Should().ContainSingle().Which;
+        entry.Level.Should().Be(callerCancels ? LogLevel.Warning : LogLevel.Error);
+        entry.Exception.Should().BeSameAs(callerCancels ? null : boom);
+    }
+
     [HumansFact]
     public async Task ExportForUserAsync_WithNoContributors_ReturnsEmptySectionBag()
     {

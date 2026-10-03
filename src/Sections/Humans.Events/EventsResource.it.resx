@@ -41,6 +41,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="Enum_EventStatus_Approved" xml:space="preserve"><value>Approvato</value></data>
+  <data name="Events_BreadcrumbNavigation" xml:space="preserve"><value>Percorso di navigazione</value></data>
   <data name="Enum_EventStatus_Draft" xml:space="preserve"><value>Bozza</value></data>
   <data name="Enum_EventStatus_Pending" xml:space="preserve"><value>In attesa</value></data>
   <data name="Enum_EventStatus_Rejected" xml:space="preserve"><value>Rifiutato</value></data>

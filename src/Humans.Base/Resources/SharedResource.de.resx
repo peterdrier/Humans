@@ -55,6 +55,11 @@
   <data name="Common_Close" xml:space="preserve">
     <value>Schließen</value>
   </data>
+  <data name="SectionHelp_Title" xml:space="preserve"><value>Bereichshilfe</value></data>
+  <data name="SectionHelp_Guide" xml:space="preserve"><value>Leitfaden</value></data>
+  <data name="SectionHelp_Glossary" xml:space="preserve"><value>Glossar</value></data>
+  <data name="SectionHelp_AccessMatrix" xml:space="preserve"><value>Zugriffsmatrix</value></data>
+  <data name="SectionHelp_Feature" xml:space="preserve"><value>Funktion</value></data>
   <data name="EmailComposer_Preview" xml:space="preserve">
     <value>Vorschau</value>
   </data>

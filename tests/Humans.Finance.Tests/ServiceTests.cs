@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using AwesomeAssertions;
+using AwesomeAssertions.Execution;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Finance;
@@ -466,6 +467,36 @@ public class HoldedFinanceServiceTests
             Tax = 0,
             Total = 10,
         };
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Sync_distinguishes_request_abort_from_dependency_failure(bool requestAborted)
+    {
+        using var cancellation = new CancellationTokenSource();
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>());
+        _repo.GetManagedAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedManagedAccount>());
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<HoldedPurchaseDocListItemDto>>(_ =>
+            {
+                if (requestAborted) cancellation.Cancel();
+                throw new OperationCanceledException("doc fetch cancelled");
+            });
+        var logger = new CapturingLogger<Service>();
+        var service = MakeService(logger);
+
+        var act = () => service.SyncAsync(cancellation.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        var entry = logger.Entries.Should().ContainSingle().Subject;
+        entry.Level.Should().Be(requestAborted ? LogLevel.Warning : LogLevel.Error);
+        if (requestAborted) entry.Exception.Should().BeNull();
+        else entry.Exception.Should().BeOfType<OperationCanceledException>();
+        await _repo.Received(1).SaveDocSyncStateAsync(
+            Arg.Is<HoldedDocSyncState>(s => string.Equals(s.Status, "Error", StringComparison.Ordinal) && string.Equals(s.LastError, "doc fetch cancelled", StringComparison.Ordinal)),
+            CancellationToken.None);
     }
 
     [HumansFact]
@@ -1863,7 +1894,9 @@ public class HoldedFinanceServiceTests
         _repo.GetSepaPayoutsForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<SepaPayoutExportRow>
             {
-                new(FixedNow, "nobodies-collective-2026-08-25-0309-4f1a9c02.xml", 40000004, "c1", "Ana Ruiz", "ES79****789", 12.34m, FixedNow, "bm-1", FixedNow),
+                new(FixedNow, "nobodies-collective-2026-08-25-0309-4f1a9c02.xml", 40000004, "c1", "Ana Ruiz", "ES79****789", 12.34m,
+                    FixedNow + Duration.FromHours(1), "bm-1", FixedNow + Duration.FromHours(2)),
+                new(FixedNow, "pending.xml", 40000004, "c1", "Ana Ruiz", "ES79****789", 23.45m, null, null, null),
             });
 
         var slices = await MakeService().ContributeForUserAsync(
@@ -1875,6 +1908,17 @@ public class HoldedFinanceServiceTests
         json.Should().Contain("ES79****789").And.Contain("12.34").And.Contain("BookedAt")
             .And.Contain("c1").And.Contain("bm-1").And.Contain("ReconciledAt")
             .And.NotContain(AnaIban, "the export masks the IBAN even though the payout row keeps it raw");
+        using var document = JsonDocument.Parse(json);
+        document.RootElement.GetArrayLength().Should().Be(2);
+        var booked = document.RootElement[0];
+        var pending = document.RootElement[1];
+        using var scope = new AssertionScope();
+        booked.GetProperty("GeneratedAt").GetRawText().Should().Be("\"2026-05-01T12:00:00Z\"");
+        booked.GetProperty("BookedAt").GetRawText().Should().Be("\"2026-05-01T13:00:00Z\"");
+        booked.GetProperty("ReconciledAt").GetRawText().Should().Be("\"2026-05-01T14:00:00Z\"");
+        pending.GetProperty("GeneratedAt").GetRawText().Should().Be("\"2026-05-01T12:00:00Z\"");
+        pending.GetProperty("BookedAt").ValueKind.Should().Be(JsonValueKind.Null);
+        pending.GetProperty("ReconciledAt").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     [HumansFact]
@@ -2287,6 +2331,59 @@ public class HoldedFinanceServiceTests
                 && m.HtmlBody.Contains("ES79****789")
                 && !m.HtmlBody.Contains(AnaIban)),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayout_CancellationAfterSaveStillQueuesNotificationAndReturnsSavedFile()
+    {
+        ConfigureSepa();
+        var userId = SeedPayableCreditor();
+        using var request = new CancellationTokenSource();
+        var members = new Dictionary<Guid, UserInfo>
+        {
+            [userId] = UserInfo.Create(
+                new User { Id = userId, BurnerName = "Ana", PreferredLanguage = "es", CreatedAt = FixedNow },
+                [], [], [], null, []),
+        };
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return members;
+            });
+        _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return new Dictionary<Guid, string> { [userId] = "ana@example.com" };
+            });
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.CompletedTask;
+            });
+        SepaPayoutFile? saved = null;
+        _repo.AddSepaPayoutAsync(Arg.Any<SepaPayoutFile>(), Arg.Any<IReadOnlyList<SepaPayoutTransfer>>(), request.Token)
+            .Returns(async call =>
+            {
+                saved = call.Arg<SepaPayoutFile>();
+                await request.CancelAsync();
+            });
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 12.34m)], 50m, Admin, request.Token);
+
+        result.Succeeded.Should().BeTrue();
+        saved.Should().NotBeNull();
+        result.Xml.Should().Be(saved!.Xml);
+        result.FileName.Should().Be(saved.FileName);
+        await _audit.Received(1).LogAsync(AuditAction.SepaPayoutTransfer,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Admin, userId, Arg.Any<string>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == "ana@example.com"), CancellationToken.None);
+        await _userEmails.Received(1).GetNotificationTargetEmailsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), CancellationToken.None);
     }
 
     [HumansTheory]

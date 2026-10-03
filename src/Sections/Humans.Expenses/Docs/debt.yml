@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Expenses. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 6
+next_id: 8
 inbox:
   - added: 2026-08-26
     id: EXP-1
@@ -14,4 +14,12 @@ inbox:
   - added: 2026-08-26
     id: EXP-4
     what: "ExpenseReportOperation.Withdraw is granted by ExpenseReportAuthorizationHandler (submitter, on Submitted/CoordinatorEndorsed/Approved) and no code asks for it: ExpensesController.Withdraw hand-rolls report.SubmitterUserId != user.Id instead. Wiring the operation is not a no-op — a submitter withdrawing a Draft would get a 403 where they now get a red toast from the repository's own refusal — so it is a behaviour change, not a cleanup. Found by /section-doctor on Expenses 2026-08-26."
+    review: panel
+  - added: 2026-10-03
+    id: EXP-6
+    what: "ExpenseReportService.RemoveAttachmentFromLineAsync unlinks the line and deletes attachment metadata in separate repository saves. Failure or cancellation between them leaves orphan metadata without the removal audit. An atomic owning-repository operation needs an approved interface change; the existing setters cannot compose into one save. Found during the daily debt source audit."
+    review: panel
+  - added: 2026-10-03
+    id: EXP-7
+    what: "ExpenseReportService.RemoveAttachmentFromLineAsync passes request cancellation to post-commit file cleanup and writes its audit afterward. Cancellation can strand the file; cleanup must follow committed metadata and audit with CancellationToken.None (file-metadata-commit-order). Coordinate with EXP-6 to fix the whole removal workflow. Found during the daily debt source audit."
     review: panel

@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Web.Services;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 
 namespace Humans.Web.Tests.Services;
@@ -17,6 +17,7 @@ public class FileSystemFileStorageTests : IDisposable
     private readonly string _contentRoot;
     private readonly string _wwwroot;
     private readonly FileSystemFileStorage _store;
+    private readonly ILogger<FileSystemFileStorage> _logger = Substitute.For<ILogger<FileSystemFileStorage>>();
 
     public FileSystemFileStorageTests()
     {
@@ -27,7 +28,7 @@ public class FileSystemFileStorageTests : IDisposable
         var env = Substitute.For<IHostEnvironment>();
         env.ContentRootPath.Returns(_contentRoot);
 
-        _store = new FileSystemFileStorage(env, NullLogger<FileSystemFileStorage>.Instance);
+        _store = new FileSystemFileStorage(env, _logger);
     }
 
     public void Dispose()
@@ -37,6 +38,46 @@ public class FileSystemFileStorageTests : IDisposable
             Directory.Delete(_contentRoot, recursive: true);
         }
         GC.SuppressFinalize(this);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SaveAsync_CleanupAccessFailurePreservesTheOriginalFailure(bool cancelled)
+    {
+        const string key = "uploads/camps/test/image.jpg";
+        await _store.SaveAsync(key, [4, 5, 6], Xunit.TestContext.Current.CancellationToken);
+        using var cancellation = new CancellationTokenSource();
+        Exception failure = cancelled ? new OperationCanceledException(cancellation.Token)
+            : new IOException("Upload stream failed");
+        using var content = new FailedCopyStream(stream =>
+        {
+            // Replace only the test's temp file with a directory after closing its handle.
+            // File.Delete fails on the directory without changing filesystem permissions.
+            var path = stream.Name;
+            stream.Dispose();
+            File.Delete(path);
+            Directory.CreateDirectory(path);
+            if (cancelled) cancellation.Cancel();
+        }, failure);
+        var act = () => _store.SaveAsync(key, content, cancellation.Token);
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
+
+        (await _store.TryReadAsync(key, Xunit.TestContext.Current.CancellationToken)).Should().Equal([4, 5, 6]);
+        var cleanup = _logger.ReceivedCalls().Should().ContainSingle(c =>
+            c.GetArguments()[2]!.ToString()!.Contains("Failed to clean up temp file", StringComparison.Ordinal)).Subject.GetArguments();
+        cleanup[0].Should().Be(LogLevel.Warning);
+        cleanup[3].Should().BeOfType<UnauthorizedAccessException>();
+    }
+
+    private sealed class FailedCopyStream(Action<FileStream> beforeFailure, Exception failure) : MemoryStream
+    {
+        public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
+        {
+            beforeFailure((FileStream)destination);
+            return Task.FromException(failure);
+        }
     }
 
     [HumansFact]

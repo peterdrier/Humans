@@ -5,7 +5,7 @@ using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.Base.Enums;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -32,6 +32,7 @@ public class GoogleAdminServiceTests
     private readonly IUserEmailService _userEmailService;
     private readonly IAuditLogService _auditLogService;
     private readonly GoogleAdminService _service;
+    private readonly ILogger<GoogleAdminService> _logger = Substitute.For<ILogger<GoogleAdminService>>();
 
     private readonly Guid _actorUserId = Guid.NewGuid();
 
@@ -69,10 +70,28 @@ public class GoogleAdminServiceTests
             _userService,
             _userEmailService,
             _auditLogService,
-            NullLogger<GoogleAdminService>.Instance);
+            _logger);
     }
 
     // --- GetWorkspaceAccountListAsync ---
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task GetWorkspaceAccountListAsync_SeparatesCallerAndDependencyCancellation(bool callerAborted)
+    {
+        using var cancellation = new CancellationTokenSource();
+        if (callerAborted) await cancellation.CancelAsync();
+        var failure = new OperationCanceledException(cancellation.Token);
+        _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        var act = () => _service.GetWorkspaceAccountListAsync(cancellation.Token);
+        if (callerAborted) (await act.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(failure);
+        else (await act()).ErrorMessage.Should().NotBeNull();
+
+        var args = _logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(callerAborted ? LogLevel.Warning : LogLevel.Error);
+        args[3].Should().BeSameAs(callerAborted ? null : failure);
+    }
 
     [HumansFact]
     public async Task GetWorkspaceAccountListAsync_ReturnsAccountsWithMatchedUsers()

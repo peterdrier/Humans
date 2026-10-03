@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Humans.Base.Extensions;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Services;
+using Humans.Rideshare.Services.Routing;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
 using NodaTime;
@@ -10,7 +11,7 @@ using NodaTime;
 namespace Humans.Rideshare.Models;
 
 /// <summary>
-/// The board's GeoJSON: one line per joinable trip (plus a point at its member end so the line is
+/// The board's GeoJSON: one route per joinable trip (plus a point at its member end so the line is
 /// clickable at its origin), one pin per active request, one point for the destination.
 /// Enum properties carry the localized display text so the client renders them verbatim.
 /// </summary>
@@ -22,14 +23,15 @@ internal static class BoardFeatureCollection
         RideshareDirection direction,
         Guid currentUserId,
         IReadOnlyDictionary<Guid, UserInfo> users,
-        IStringLocalizer localizer)
+        IStringLocalizer localizer,
+        ILogger logger)
     {
         var features = new JsonArray();
         var settings = snapshot.Settings;
 
         foreach (var trip in snapshot.JoinableTrips(date, direction))
         {
-            features.Add(Feature(TripGeometry(trip, settings), TripProperties(trip, currentUserId, users, localizer)));
+            features.Add(Feature(TripGeometry(trip, settings, logger), TripProperties(trip, currentUserId, users, localizer)));
             features.Add(Feature(Point(trip.MemberLatitude, trip.MemberLongitude), new JsonObject
             {
                 ["kind"] = "tripStart",
@@ -55,13 +57,20 @@ internal static class BoardFeatureCollection
         return new JsonObject { ["type"] = "FeatureCollection", ["features"] = features }.ToJsonString();
     }
 
-    /// <summary>The stored route when routing succeeded, else a straight line through the points in travel order.</summary>
-    private static JsonNode TripGeometry(TripView trip, SettingsView? settings)
+    /// <summary>The valid stored route, else points in travel order (just the origin when alone).</summary>
+    private static JsonNode TripGeometry(TripView trip, SettingsView? settings, ILogger logger)
     {
         if (!string.IsNullOrWhiteSpace(trip.RouteGeoJson))
         {
-            try { return JsonNode.Parse(trip.RouteGeoJson)!; }
-            catch (JsonException) { /* fall through to the straight line */ }
+            var reason = "Expected a LineString with at least two valid positions.";
+            try
+            {
+                using var document = JsonDocument.Parse(trip.RouteGeoJson);
+                if (RoutingGeometry.IsLineString(document.RootElement))
+                    return JsonNode.Parse(trip.RouteGeoJson)!;
+            }
+            catch (JsonException ex) { reason = ex.Message; }
+            logger.LogWarning("Invalid stored route for rideshare trip {TripId}; using fallback: {Reason}", trip.Id, reason);
         }
 
         var coords = new JsonArray();
@@ -82,7 +91,9 @@ internal static class BoardFeatureCollection
             coords.Add(member);
         }
 
-        return new JsonObject { ["type"] = "LineString", ["coordinates"] = coords };
+        return coords.Count < 2
+            ? Point(trip.MemberLatitude, trip.MemberLongitude)
+            : new JsonObject { ["type"] = "LineString", ["coordinates"] = coords };
     }
 
     private static JsonObject TripProperties(TripView trip, Guid me, IReadOnlyDictionary<Guid, UserInfo> users, IStringLocalizer localizer)

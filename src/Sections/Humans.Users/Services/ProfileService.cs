@@ -6,55 +6,8 @@ namespace Humans.Users.Services;
 
 internal sealed class ProfileService(IUserRepository userRepository,
     IUserServiceInternal userService,
-    IFileStorage fileStorage,
-    ILogger<ProfileService> logger) : IProfilePictureService
+    IFileStorage fileStorage) : IProfilePictureService
 {
-    public async Task SetProfilePictureAsync(
-        Guid userId, byte[] pictureData, string contentType, CancellationToken ct = default)
-    {
-        if (pictureData.Length == 0)
-        {
-            throw new ArgumentException("Picture data must not be empty", nameof(pictureData));
-        }
-        if (string.IsNullOrWhiteSpace(contentType))
-        {
-            throw new ArgumentException("Content type must not be empty", nameof(contentType));
-        }
-
-        var storageResult = await userService.SetProfilePictureContentTypeAsync(userId, contentType, ct);
-        if (!storageResult.Saved || storageResult.ProfileId is null)
-        {
-            logger.LogWarning(
-                "Cannot set profile picture for user {UserId} - no profile exists", userId);
-            return;
-        }
-
-        try
-        {
-            // Remove old file if content-type/extension changed.
-            if (storageResult.PreviousProfilePictureContentType is not null &&
-                !string.Equals(storageResult.PreviousProfilePictureContentType, contentType, StringComparison.Ordinal))
-            {
-                await fileStorage.DeleteAsync(
-                    ProfilePictureStorageKeys.ProfilePictureKey(
-                        storageResult.ProfileId.Value,
-                        storageResult.PreviousProfilePictureContentType),
-                    ct);
-            }
-            await fileStorage.SaveAsync(
-                ProfilePictureStorageKeys.ProfilePictureKey(storageResult.ProfileId.Value, contentType),
-                pictureData,
-                ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogWarning(ex,
-                "Failed to write profile picture to filesystem for {ProfileId}; content-type column is set but the file is missing - picture will not render",
-                storageResult.ProfileId.Value);
-        }
-
-    }
-
     public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
         Guid profileId, CancellationToken ct = default)
     {

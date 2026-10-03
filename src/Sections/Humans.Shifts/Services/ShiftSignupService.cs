@@ -1306,6 +1306,7 @@ internal sealed class ShiftSignupService(
             ss.Enrolled,
             ss.StatusReason,
             CreatedAt = ss.CreatedAt.ToIso8601(),
+            UpdatedAt = ss.UpdatedAt.ToIso8601(),
             ReviewedAt = ss.ReviewedAt.ToIso8601()
         }).ToList());
 
