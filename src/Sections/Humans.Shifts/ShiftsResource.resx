@@ -438,4 +438,26 @@
   <data name="Shifts_Notification_AssignedDay" xml:space="preserve"><value>You were assigned to {0} on day {1}</value></data>
   <data name="Shifts_Notification_AssignedRange" xml:space="preserve"><value>You were assigned to {0} ({1} shifts)</value></data>
   <data name="Shifts_Notification_AssignedRangeSingular" xml:space="preserve"><value>You were assigned to {0} (1 shift)</value></data>
+  <data name="ShiftInfo_Skill_Bartending" xml:space="preserve"><value>Bartending</value></data>
+  <data name="ShiftInfo_Skill_FirstAid" xml:space="preserve"><value>First Aid</value></data>
+  <data name="ShiftInfo_Skill_Driving" xml:space="preserve"><value>Driving</value></data>
+  <data name="ShiftInfo_Skill_Sound" xml:space="preserve"><value>Sound</value></data>
+  <data name="ShiftInfo_Skill_Electrical" xml:space="preserve"><value>Electrical</value></data>
+  <data name="ShiftInfo_Skill_Construction" xml:space="preserve"><value>Construction</value></data>
+  <data name="ShiftInfo_Skill_Cooking" xml:space="preserve"><value>Cooking</value></data>
+  <data name="ShiftInfo_Skill_Art" xml:space="preserve"><value>Art</value></data>
+  <data name="ShiftInfo_Skill_DJ" xml:space="preserve"><value>DJ</value></data>
+  <data name="ShiftInfo_Time_EarlyBird" xml:space="preserve"><value>Early Bird</value></data>
+  <data name="ShiftInfo_Time_NightOwl" xml:space="preserve"><value>Night Owl</value></data>
+  <data name="ShiftInfo_Time_AllDay" xml:space="preserve"><value>All Day</value></data>
+  <data name="ShiftInfo_Time_NoPreference" xml:space="preserve"><value>No Preference</value></data>
+  <data name="ShiftInfo_Time_EarlyBird_Description" xml:space="preserve"><value>Morning shifts, set up and prep</value></data>
+  <data name="ShiftInfo_Time_NightOwl_Description" xml:space="preserve"><value>Evening and late-night shifts</value></data>
+  <data name="ShiftInfo_Time_AllDay_Description" xml:space="preserve"><value>Flexible, morning through evening</value></data>
+  <data name="ShiftInfo_Time_NoPreference_Description" xml:space="preserve"><value>I'll take whatever's needed</value></data>
+  <data name="ShiftInfo_Quirk_SoberShift" xml:space="preserve"><value>Sober Shift</value></data>
+  <data name="ShiftInfo_Quirk_WorkInShade" xml:space="preserve"><value>Work In Shade</value></data>
+  <data name="ShiftInfo_Quirk_QuietWork" xml:space="preserve"><value>Quiet Work</value></data>
+  <data name="ShiftInfo_Quirk_PhysicalWorkOK" xml:space="preserve"><value>Physical Work OK</value></data>
+  <data name="ShiftInfo_Quirk_NoHeights" xml:space="preserve"><value>No Heights</value></data>
 </root>

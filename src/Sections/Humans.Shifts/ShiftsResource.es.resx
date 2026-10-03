@@ -1225,4 +1225,26 @@
   <data name="Shifts_Notification_AssignedDay" xml:space="preserve"><value>Te han asignado un turno en {0} para el día {1}</value></data>
   <data name="Shifts_Notification_AssignedRange" xml:space="preserve"><value>Te han asignado {1} turnos en {0}</value></data>
   <data name="Shifts_Notification_AssignedRangeSingular" xml:space="preserve"><value>Te han asignado un turno en {0}</value></data>
+  <data name="ShiftInfo_Skill_Bartending" xml:space="preserve"><value>Barra</value></data>
+  <data name="ShiftInfo_Skill_FirstAid" xml:space="preserve"><value>Primeros auxilios</value></data>
+  <data name="ShiftInfo_Skill_Driving" xml:space="preserve"><value>Conducción</value></data>
+  <data name="ShiftInfo_Skill_Sound" xml:space="preserve"><value>Sonido</value></data>
+  <data name="ShiftInfo_Skill_Electrical" xml:space="preserve"><value>Electricidad</value></data>
+  <data name="ShiftInfo_Skill_Construction" xml:space="preserve"><value>Construcción</value></data>
+  <data name="ShiftInfo_Skill_Cooking" xml:space="preserve"><value>Cocina</value></data>
+  <data name="ShiftInfo_Skill_Art" xml:space="preserve"><value>Arte</value></data>
+  <data name="ShiftInfo_Skill_DJ" xml:space="preserve"><value>DJ</value></data>
+  <data name="ShiftInfo_Time_EarlyBird" xml:space="preserve"><value>Madrugador/a</value></data>
+  <data name="ShiftInfo_Time_NightOwl" xml:space="preserve"><value>Noctámbulo/a</value></data>
+  <data name="ShiftInfo_Time_AllDay" xml:space="preserve"><value>Todo el día</value></data>
+  <data name="ShiftInfo_Time_NoPreference" xml:space="preserve"><value>Sin preferencia</value></data>
+  <data name="ShiftInfo_Time_EarlyBird_Description" xml:space="preserve"><value>Turnos de mañana, montaje y preparación</value></data>
+  <data name="ShiftInfo_Time_NightOwl_Description" xml:space="preserve"><value>Turnos de tarde y noche</value></data>
+  <data name="ShiftInfo_Time_AllDay_Description" xml:space="preserve"><value>Flexible, de la mañana a la noche</value></data>
+  <data name="ShiftInfo_Time_NoPreference_Description" xml:space="preserve"><value>Lo que haga falta</value></data>
+  <data name="ShiftInfo_Quirk_SoberShift" xml:space="preserve"><value>Turno sin alcohol ni drogas</value></data>
+  <data name="ShiftInfo_Quirk_WorkInShade" xml:space="preserve"><value>Trabajo a la sombra</value></data>
+  <data name="ShiftInfo_Quirk_QuietWork" xml:space="preserve"><value>Trabajo tranquilo</value></data>
+  <data name="ShiftInfo_Quirk_PhysicalWorkOK" xml:space="preserve"><value>Puedo hacer trabajo físico</value></data>
+  <data name="ShiftInfo_Quirk_NoHeights" xml:space="preserve"><value>Sin alturas</value></data>
 </root>

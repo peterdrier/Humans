@@ -356,14 +356,6 @@ internal sealed class ShiftInfoViewModel
         ["No Preference"] = "\U0001f937"
     };
 
-    internal static readonly Dictionary<string, string> TimePreferenceDesc = new(StringComparer.Ordinal)
-    {
-        ["Early Bird"] = "Morning shifts, set up and prep",
-        ["Night Owl"] = "Evening and late-night shifts",
-        ["All Day"] = "Flexible, morning through evening",
-        ["No Preference"] = "I'll take whatever's needed"
-    };
-
     internal static ShiftInfoViewModel FromProfile(ShiftVolunteerProfileInfo? profile)
     {
         IReadOnlyList<string> quirks = profile?.Quirks ?? [];

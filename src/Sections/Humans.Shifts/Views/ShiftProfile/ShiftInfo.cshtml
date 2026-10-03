@@ -36,7 +36,7 @@
                         <label class="chip @(isSelected ? "selected" : "")" role="checkbox" aria-checked="@(isSelected ? "true" : "false")" tabindex="0">
                             <input type="checkbox" name="SelectedSkills" value="@skill" class="d-none"
                                    @(isSelected ? "checked" : "") />
-                            <span class="chip-emoji">@emoji</span> @skill
+                            <span class="chip-emoji">@emoji</span> @(string.Equals(skill, "Other", StringComparison.Ordinal) ? SharedLocalizer["Common_Other"] : Localizer[$"ShiftInfo_Skill_{skill.Replace(" ", "", StringComparison.Ordinal)}"])
                         </label>
                     }
                 </div>
@@ -53,13 +53,13 @@
                     {
                         var isSelected = string.Equals(Model.TimePreference, tp, StringComparison.Ordinal);
                         var emoji = ShiftInfoViewModel.TimePreferenceEmoji.GetValueOrDefault(tp, "");
-                        var desc = ShiftInfoViewModel.TimePreferenceDesc.GetValueOrDefault(tp, "");
+                        var preferenceKey = tp.Replace(" ", "", StringComparison.Ordinal);
                         <label class="radio-card @(isSelected ? "selected" : "")" tabindex="0">
                             <input type="radio" name="TimePreference" value="@tp" class="d-none"
                                    @(isSelected ? "checked" : "") />
                             <div class="rc-emoji">@emoji</div>
-                            <div class="rc-label">@tp</div>
-                            <div class="rc-desc">@desc</div>
+                            <div class="rc-label">@Localizer[$"ShiftInfo_Time_{preferenceKey}"]</div>
+                            <div class="rc-desc">@Localizer[$"ShiftInfo_Time_{preferenceKey}_Description"]</div>
                         </label>
                     }
                 </div>
@@ -71,7 +71,7 @@
                     <div class="form-check form-switch mb-2">
                         <input type="checkbox" name="SelectedQuirks" value="@quirk" class="form-check-input"
                                id="quirk-@quirk.Replace(" ", "-")" @(isChecked ? "checked" : "") />
-                        <label class="form-check-label" for="quirk-@quirk.Replace(" ", "-")">@quirk</label>
+                        <label class="form-check-label" for="quirk-@quirk.Replace(" ", "-")">@Localizer[$"ShiftInfo_Quirk_{quirk.Replace(" ", "", StringComparison.Ordinal)}"]</label>
                     </div>
                 }
             </div>
@@ -85,7 +85,7 @@
                         <label class="chip @(isSelected ? "selected" : "")" role="checkbox" aria-checked="@(isSelected ? "true" : "false")" tabindex="0">
                             <input type="checkbox" name="SelectedLanguages" value="@lang" class="d-none"
                                    @(isSelected ? "checked" : "") />
-                            <span class="chip-emoji">@emoji</span> @lang
+                            <span class="chip-emoji">@emoji</span> @(string.Equals(lang, "Other", StringComparison.Ordinal) ? SharedLocalizer["Common_Other"].Value : emoji.ToLowerInvariant().ToDisplayLanguageName())
                         </label>
                     }
                 </div>
@@ -209,7 +209,7 @@
             chip.setAttribute('aria-checked', cb.checked ? 'true' : 'false');
             // Show/hide "Other" text input if this chip is the Other option
             var otherInput = chip.closest('.step-pane')?.querySelector('.other-text-input');
-            if (otherInput && chip.textContent.trim().endsWith('Other')) {
+            if (otherInput && cb.value === 'Other') {
                 otherInput.style.display = cb.checked ? 'block' : 'none';
             }
         }

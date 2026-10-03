@@ -102,6 +102,8 @@ The following fields are not editable on `/Profile/Me/ShiftInfo`; they live on `
 - Toggle switches: standard Bootstrap `form-check form-switch`
 - Progress: 3 dots (blue filled = active/completed, grey = future)
 
+Option labels and time-preference descriptions are localized in all six cultures. Language labels use the shared native-language names. Input values retain the existing English skill, quirk and language vocabulary; translations never change saved values.
+
 ## Step Content
 
 | Step | Label | Title | Subtitle |
