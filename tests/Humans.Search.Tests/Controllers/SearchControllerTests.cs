@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Xunit;
@@ -24,6 +24,7 @@ public sealed class SearchControllerTests
 {
     private readonly ISearchService _search = Substitute.For<ISearchService>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
+    private readonly ILogger<SearchController> _logger = Substitute.For<ILogger<SearchController>>();
 
     [HumansTheory]
     [InlineData(null)]
@@ -120,17 +121,25 @@ public sealed class SearchControllerTests
         row.MatchedEmail.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task Index_SearchThrows_RendersTheShellWithTheQueryPreserved_InsteadOfA500()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Index_SearchThrows_RendersTheShellWithTheQueryPreserved_InsteadOfA500(bool dependencyCancelled)
     {
+        Exception failure = dependencyCancelled
+            ? new OperationCanceledException("section timed out")
+            : new InvalidOperationException("section down");
         _search.SearchAsync(Arg.Any<string>(), Arg.Any<SearchResultType?>(), Arg.Any<CancellationToken>())
-            .Throws(new InvalidOperationException("section down"));
+            .Throws(failure);
 
         var vm = await IndexAsync("kitchen", SearchResultType.Camp);
 
         vm.Query.Should().Be("kitchen");
         vm.Filter.Should().Be(SearchResultType.Camp);
         vm.TeamResults.Should().BeEmpty();
+        var log = _logger.ReceivedCalls().Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).GetArguments();
+        log[0].Should().Be(LogLevel.Error);
+        log[3].Should().BeSameAs(failure);
     }
 
     [HumansFact]
@@ -139,10 +148,15 @@ public sealed class SearchControllerTests
         _search.SearchAsync(Arg.Any<string>(), Arg.Any<SearchResultType?>(), Arg.Any<CancellationToken>())
             .Throws(new OperationCanceledException());
 
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
         var act = async () => await BuildController().Index(
-            "kitchen", null, TestContext.Current.CancellationToken);
+            "kitchen", null, cancellation.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
+        var log = _logger.ReceivedCalls().Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).GetArguments();
+        log[0].Should().Be(LogLevel.Warning);
+        log[3].Should().BeNull();
     }
 
     // ==========================================================================
@@ -166,7 +180,7 @@ public sealed class SearchControllerTests
         var services = new ServiceCollection();
         services.AddLogging();
         var http = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() };
-        var controller = new SearchController(_search, _users, NullLogger<SearchController>.Instance)
+        var controller = new SearchController(_search, _users, _logger)
         {
             ControllerContext = new ControllerContext { HttpContext = http }
         };
