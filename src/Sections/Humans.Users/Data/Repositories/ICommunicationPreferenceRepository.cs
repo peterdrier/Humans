@@ -52,7 +52,6 @@ internal interface ICommunicationPreferenceRepository : IRepository
         MessageCategory category, bool optedOut, CancellationToken ct = default);
 
     Task AddAsync(CommunicationPreference preference, CancellationToken ct = default);
-    Task AddRangeAsync(IReadOnlyList<CommunicationPreference> preferences, CancellationToken ct = default);
 
     /// <summary>
     /// Persists changes to a single tracked <see cref="CommunicationPreference"/> entity.

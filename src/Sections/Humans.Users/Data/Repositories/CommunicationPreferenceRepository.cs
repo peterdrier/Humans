@@ -101,14 +101,6 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<UsersD
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task AddRangeAsync(IReadOnlyList<CommunicationPreference> preferences,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.CommunicationPreferences.AddRange(preferences);
-        await ctx.SaveChangesAsync(ct);
-    }
-
     public async Task UpdateAsync(CommunicationPreference preference, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
