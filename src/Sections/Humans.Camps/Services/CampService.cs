@@ -887,26 +887,25 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             scope.Complete();
         }
 
-        // Outside the transaction: file deletes cannot be rolled back, and a failure here
-        // must not undo the DB work.
+        await _auditLog.LogAsync(
+            AuditAction.CampDeleted, nameof(Camp), campId,
+            $"Camp {campId} permanently deleted",
+            "CampService");
+
+        // Metadata and audit have committed; file cleanup must finish independently of the request.
         foreach (var path in deletedImagePaths)
         {
             try
             {
-                await _fileStorage.DeleteAsync(path, cancellationToken);
+                await _fileStorage.DeleteAsync(path, CancellationToken.None);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 _logger.LogWarning(ex,
                     "Failed to delete camp image file at {StoragePath} during camp delete for {CampId}; DB row already removed",
                     path, campId);
             }
         }
-
-        await _auditLog.LogAsync(
-            AuditAction.CampDeleted, nameof(Camp), campId,
-            $"Camp {campId} permanently deleted",
-            "CampService");
 
     }
 
@@ -1047,22 +1046,23 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         var result = await _repo.DeleteImageAsync(imageId, cancellationToken)
             ?? throw new InvalidOperationException("Image not found.");
 
-        try
-        {
-            await _fileStorage.DeleteAsync(result.StoragePath, cancellationToken);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(ex,
-                "Failed to delete camp image file at {StoragePath} for image {ImageId}; DB row already removed",
-                result.StoragePath, imageId);
-        }
-
         await _auditLog.LogAsync(
             AuditAction.CampImageDeleted, nameof(CampImage), imageId,
             $"Deleted image {imageId}",
             "CampService",
             relatedEntityId: result.CampId, relatedEntityType: nameof(Camp));
+
+        // Metadata and audit have committed; file cleanup must finish independently of the request.
+        try
+        {
+            await _fileStorage.DeleteAsync(result.StoragePath, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to delete camp image file at {StoragePath} for image {ImageId}; DB row already removed",
+                result.StoragePath, imageId);
+        }
 
     }
 

@@ -205,6 +205,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Only camp leads or CampAdmin can edit a camp.
 - **Lead-facing mutations are camp-scoped.** Ids arriving from a form (seasonId, imageId, nameId) are proven to belong to the slug-resolved camp in `CampService` (`UpdateSeasonAsync`, `WithdrawSeasonAsync`, `ChangeSeasonNameAsync`, `DeleteImageAsync`, `RemoveHistoricalNameAsync`, `SetSeasonStatusAsync` all take a `scopedCampId` and throw on mismatch) — a lead of camp A cannot mutate camp B by crafting an id.
 - Camp images are stored on disk via the shared `IFileStorage` abstraction (key prefix `uploads/camps/{campId}/`); metadata and display order are tracked per camp. The upload route permits 11 MB for one 10 MB image plus multipart overhead; the service enforces the image cap.
+- Camp and image deletions commit their metadata and audit before cleaning up image files. Cleanup ignores caller cancellation and logs storage failures without failing the committed deletion.
 - **Name-lock + historical-name auto-log:** renaming a season (`ChangeSeasonNameAsync`) is rejected once the season's `NameLockDate` has passed (today ≥ `NameLockDate`). Before the lock date, a rename auto-records the *old* name as a `CampHistoricalName` with `Source = NameChange` and writes a `CampNameChanged` audit entry.
 - Camp settings control which year is shown publicly and which seasons accept registrations.
 - Resource-based authorization per design-rules §11: `CampAuthorizationHandler` + `CampOperationRequirement` gate all admin writes.

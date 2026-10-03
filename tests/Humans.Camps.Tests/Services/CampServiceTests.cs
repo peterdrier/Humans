@@ -1,4 +1,5 @@
 using Humans.Base.Helpers;
+using Humans.Base.Interfaces;
 using Xunit;
 using System.Text;
 using Humans.Notifications.Contracts;
@@ -1727,6 +1728,61 @@ public sealed class CampServiceTests : CampsTestHarness
         unchanged.ContactEmail.Should().Be("test@camp.com",
             because: "no camp-level field may commit when the submitted season belongs to another camp");
         unchanged.TimesAtNowhere.Should().Be(1);
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Image_cleanup_follows_committed_deletion_and_audit(
+        bool deleteCamp, bool storageFails)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var camp = await CreateTestCamp();
+        var image = new CampImage
+        {
+            Id = Guid.NewGuid(), CampId = camp.Id,
+            StoragePath = "uploads/camps/test/photo.jpg", UploadedAt = Clock.GetCurrentInstant()
+        };
+        CampsDb.CampImages.Add(image);
+        await SaveAllAsync(ct);
+        var action = deleteCamp ? AuditAction.CampDeleted : AuditAction.CampImageDeleted;
+        var entityId = deleteCamp ? camp.Id : image.Id;
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var storage = Substitute.For<IFileStorage>();
+        var auditBeforeCleanup = false;
+        var cleanupFinished = false;
+        storage.DeleteAsync(image.StoragePath, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            auditBeforeCleanup = AuditLog.ReceivedCalls().Any(c =>
+                string.Equals(c.GetMethodInfo().Name, nameof(IAuditLogService.LogAsync), StringComparison.Ordinal)
+                && Equals(c.GetArguments()[0], action) && Equals(c.GetArguments()[2], entityId));
+            await cancellation.CancelAsync();
+            call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
+            cleanupFinished = true;
+            if (storageFails) throw new IOException("Storage unavailable");
+        });
+        var service = new CampService(
+            new CampRepository(CampsDbFactory), AuditLog, Substitute.For<ISystemTeamSync>(), storage, Notifier,
+            Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
+            new Lazy<ICampRoleService>(() => _campRoleService),
+            new Lazy<ICityPlanningService>(() => _cityPlanningService),
+            _earlyEntryInvalidator, _campInfoInvalidator, _userServiceRead, _settingsService,
+            Clock, NullLogger<CampService>.Instance);
+
+        if (deleteCamp)
+            await service.DeleteCampAsync(camp.Id, cancellation.Token);
+        else
+            await service.DeleteImageAsync(camp.Id, image.Id, cancellation.Token);
+
+        auditBeforeCleanup.Should().BeTrue();
+        cleanupFinished.Should().BeTrue();
+        await storage.Received(1).DeleteAsync(image.StoragePath, CancellationToken.None);
+        // InMemory does not execute the database's image FK cascade on whole-camp deletion.
+        if (!deleteCamp)
+            (await CampsDb.CampImages.AsNoTracking().AnyAsync(i => i.Id == image.Id, ct)).Should().BeFalse();
+        (await CampsDb.Camps.AsNoTracking().AnyAsync(c => c.Id == camp.Id, ct)).Should().Be(!deleteCamp);
     }
 
     [HumansFact]
