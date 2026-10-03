@@ -89,6 +89,61 @@ public class CampAdminControllerTests
         await act.Should().ThrowAsync<IOException>().WithMessage("Storage unavailable");
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RoleForm_ExpectedRuleRejection_LogsWarningAndRetainsForm(bool edit)
+    {
+        var roles = Substitute.For<ICampRoleService>();
+        var users = Substitute.For<IUserServiceRead>();
+        var actorId = Guid.NewGuid();
+        var roleId = Guid.NewGuid();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
+        var reason = edit ? "Camp role 'Worker' is a system role; only SlotCount and Description can be changed."
+            : "A camp role definition with slug 'worker' already exists.";
+        var failure = new InvalidOperationException(reason);
+        roles.CreateDefinitionAsync(Arg.Any<CreateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        roles.UpdateDefinitionAsync(roleId, Arg.Any<UpdateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        var logger = Substitute.For<ILogger<CampAdminController>>();
+        var controller = CreateController(Substitute.For<ICampService>(), roles, users, actorId, logger);
+        var form = new CampRoleDefinitionFormViewModel { Name = "Worker", Slug = "worker" };
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var result = edit ? await controller.EditRole(roleId, form, ct) : await controller.CreateRole(form, ct);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
+        controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(reason);
+        var args = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(LogLevel.Warning);
+        args[3].Should().BeNull();
+        args[2]!.ToString().Should().Contain(actorId.ToString()).And.Contain(reason);
+        if (edit) args[2]!.ToString().Should().Contain(roleId.ToString());
+    }
+
+    [HumansFact]
+    public async Task EditRole_UnexpectedResult_LogsErrorAndRetainsForm()
+    {
+        var roles = Substitute.For<ICampRoleService>();
+        var users = Substitute.For<IUserServiceRead>();
+        var actorId = Guid.NewGuid();
+        var roleId = Guid.NewGuid();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
+        roles.UpdateDefinitionAsync(roleId, Arg.Any<UpdateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(new UpdateCampRoleDefinitionResult((UpdateCampRoleDefinitionStatus)99, string.Empty));
+        var logger = Substitute.For<ILogger<CampAdminController>>();
+        var controller = CreateController(Substitute.For<ICampService>(), roles, users, actorId, logger);
+        var form = new CampRoleDefinitionFormViewModel { Name = "Worker", Slug = "worker" };
+
+        var result = await controller.EditRole(roleId, form, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
+        controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be("Failed to update role definition.");
+        var args = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(LogLevel.Error);
+        args[3].Should().BeOfType<System.Diagnostics.UnreachableException>().Which.Message.Should().Contain("99");
+        args[2]!.ToString().Should().Contain(roleId.ToString());
+    }
+
     private static void ConfigureFailure(ICampService camps, string action, Guid targetId, Guid actorId, Exception failure)
     {
         switch (action)
