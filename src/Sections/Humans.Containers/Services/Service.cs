@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
@@ -183,10 +184,8 @@ internal sealed class Service(
 
     public async Task<ContainerPlacementDto> SavePlacementAsync(Guid containerId, int year, string geoJson, Guid actorUserId, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(geoJson))
-        {
-            throw new ArgumentException("GeoJson must not be empty.", nameof(geoJson));
-        }
+        if (!IsValidContainerPlacementGeoJson(geoJson))
+            throw new InvalidOperationException(localizer["Containers_Error_InvalidPlacementGeoJson"]);
 
         var placement = await repo.SavePlacementGeometryAsync(
             containerId, year, geoJson, clock.GetCurrentInstant(), ct);
@@ -196,6 +195,46 @@ internal sealed class Service(
             actorUserId,
             relatedEntityId: containerId, relatedEntityType: AuditEntityTypes.Container);
         return ToPlacementDto(placement);
+    }
+
+    private static bool IsValidContainerPlacementGeoJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (!string.Equals(root.GetProperty("type").GetString(), "Feature", StringComparison.Ordinal)) return false;
+            var geometry = root.GetProperty("geometry");
+            if (!string.Equals(geometry.GetProperty("type").GetString(), "Polygon", StringComparison.Ordinal)) return false;
+            var properties = root.GetProperty("properties");
+            if (!IsFiniteNumber(properties.GetProperty("center_lng"))
+                || !IsFiniteNumber(properties.GetProperty("center_lat"))
+                || !IsFiniteNumber(properties.GetProperty("rotation_degrees"))) return false;
+            if (properties.GetProperty("center_lat").GetDouble() is < -90 or > 90) return false;
+
+            var coordinates = geometry.GetProperty("coordinates");
+            if (coordinates.GetArrayLength() == 0) return false;
+            foreach (var ring in coordinates.EnumerateArray())
+            {
+                if (ring.GetArrayLength() < 4) return false;
+                foreach (var position in ring.EnumerateArray())
+                {
+                    if (position.GetArrayLength() < 2 || position.EnumerateArray().Any(n => !IsFiniteNumber(n))) return false;
+                    if (position[1].GetDouble() is < -90 or > 90) return false;
+                }
+                if (!ring[0].EnumerateArray().Select(n => n.GetDouble())
+                    .SequenceEqual(ring[ring.GetArrayLength() - 1].EnumerateArray().Select(n => n.GetDouble()))) return false;
+            }
+            return true;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or KeyNotFoundException)
+        {
+            return false;
+        }
+
+        static bool IsFiniteNumber(JsonElement value) =>
+            value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out var number) && double.IsFinite(number);
     }
 
     public async Task ClearPlacementAsync(Guid containerId, int year, Guid actorUserId, CancellationToken ct = default)
