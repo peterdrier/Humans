@@ -490,7 +490,7 @@ internal sealed class WorkgroupsController(
         }
         catch (WorkgroupRuleException ex)
         {
-            logger.LogInformation(ex, "Workgroups {Action}: rule {Rule}", ActionName(), ex.Key);
+            logger.LogWarning("Workgroups {Action}: rule {Rule}", ActionName(), ex.Key);
             SetError(localizer[ex.Key, ex.Args]);
         }
 
@@ -521,7 +521,7 @@ internal sealed class WorkgroupsController(
         }
         catch (WorkgroupRuleException ex)
         {
-            logger.LogInformation(ex, "Workgroups {Action}: rule {Rule}", ActionName(), ex.Key);
+            logger.LogWarning("Workgroups {Action}: rule {Rule}", ActionName(), ex.Key);
             ModelState.AddModelError(string.Empty, localizer[ex.Key, ex.Args]);
             return viewName is null ? View(model) : View(viewName, model);
         }
