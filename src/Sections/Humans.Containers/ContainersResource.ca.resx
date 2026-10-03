@@ -94,6 +94,9 @@
     <value>Col·locats</value>
   </data>
   <data name="Containers_MapCenterOnContainer" xml:space="preserve"><value>Centra el mapa en aquest contenidor</value></data>
+  <data name="Containers_MapSaveFailed" xml:space="preserve"><value>Error en desar</value></data>
+  <data name="Containers_MapClearFailed" xml:space="preserve"><value>Error en esborrar</value></data>
+  <data name="Containers_Error_InvalidPlacementGeoJson" xml:space="preserve"><value>El GeoJSON d’ubicació del contenidor no és vàlid.</value></data>
   <data name="Containers_MapClearPlacement" xml:space="preserve">
     <value>Treure col·locació</value>
   </data>

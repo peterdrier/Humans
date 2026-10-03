@@ -94,6 +94,9 @@
     <value>Platziert</value>
   </data>
   <data name="Containers_MapCenterOnContainer" xml:space="preserve"><value>Karte auf diesen Container zentrieren</value></data>
+  <data name="Containers_MapSaveFailed" xml:space="preserve"><value>Speichern fehlgeschlagen</value></data>
+  <data name="Containers_MapClearFailed" xml:space="preserve"><value>Entfernen fehlgeschlagen</value></data>
+  <data name="Containers_Error_InvalidPlacementGeoJson" xml:space="preserve"><value>Ungültiges GeoJSON für die Containerplatzierung.</value></data>
   <data name="Containers_MapClearPlacement" xml:space="preserve">
     <value>Platzierung entfernen</value>
   </data>

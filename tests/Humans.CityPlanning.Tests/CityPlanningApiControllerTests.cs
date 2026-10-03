@@ -119,6 +119,33 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         result.Should().BeOfType<UnprocessableEntityObjectResult>().Which.Value.Should().Be(expected.Value);
     }
 
+    [HumansTheory]
+    [InlineData("en", "Invalid container placement GeoJSON.")]
+    [InlineData("es", "El GeoJSON de ubicación del contenedor no es válido.")]
+    [InlineData("de", "Ungültiges GeoJSON für die Containerplatzierung.")]
+    [InlineData("it", "GeoJSON di posizionamento del container non valido.")]
+    [InlineData("fr", "Le GeoJSON de placement du conteneur est invalide.")]
+    [InlineData("ca", "El GeoJSON d’ubicació del contenidor no és vàlid.")]
+    public async Task InvalidContainerPlacement_ReturnsLocalizedErrorWithoutSaving(string culture, string expected)
+    {
+        using var cultureScope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        _containersLocalizer = services.GetRequiredService<IStringLocalizer<ContainersResource>>();
+        _authorization = Substitute.For<IAuthorizationService>();
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var id = Guid.NewGuid();
+        _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
+            new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
+
+        var result = await CreateController().SaveContainerPlacement(
+            id, 2026, new SaveContainerPlacementRequest("{}"), TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<UnprocessableEntityObjectResult>().Which.Value.Should().Be(expected);
+        await _containers.DidNotReceive().SavePlacementAsync(
+            Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
     private const string Square = """{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[0,0]]]}""";
 
     [HumansFact]

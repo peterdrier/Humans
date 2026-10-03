@@ -280,7 +280,7 @@ internal sealed class CityPlanningApiController(
 
         if (string.IsNullOrWhiteSpace(request.GeoJson) || !IsValidContainerPlacementGeoJson(request.GeoJson))
         {
-            return UnprocessableEntity("Invalid container placement GeoJSON.");
+            return UnprocessableEntity(containersLocalizer["Containers_Error_InvalidPlacementGeoJson"].Value);
         }
 
         var updated = await containerService.SavePlacementAsync(id, year, request.GeoJson, CurrentUserId(), cancellationToken);

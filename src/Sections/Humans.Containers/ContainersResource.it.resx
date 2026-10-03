@@ -94,6 +94,9 @@
     <value>Posizionati</value>
   </data>
   <data name="Containers_MapCenterOnContainer" xml:space="preserve"><value>Centra la mappa su questo container</value></data>
+  <data name="Containers_MapSaveFailed" xml:space="preserve"><value>Salvataggio non riuscito</value></data>
+  <data name="Containers_MapClearFailed" xml:space="preserve"><value>Rimozione non riuscita</value></data>
+  <data name="Containers_Error_InvalidPlacementGeoJson" xml:space="preserve"><value>GeoJSON di posizionamento del container non valido.</value></data>
   <data name="Containers_MapClearPlacement" xml:space="preserve">
     <value>Rimuovi posizione</value>
   </data>

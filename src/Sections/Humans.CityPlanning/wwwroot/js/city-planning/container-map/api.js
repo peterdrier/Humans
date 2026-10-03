@@ -1,3 +1,5 @@
+import { CONFIG } from './config.js';
+
 // API calls for container placement.
 
 function antiforgeryToken() {
@@ -21,7 +23,7 @@ export async function savePlacement(id, year, geoJson) {
     });
     if (!res.ok) {
         const text = await res.text().catch(() => res.statusText);
-        throw new Error(`Save failed (${res.status}): ${text}`);
+        throw new Error(`${CONFIG.I18N.SAVE_FAILED} (${res.status}): ${text}`);
     }
     return res.json();
 }
@@ -35,7 +37,7 @@ export async function updatePlacementNotes(id, year, formData) {
     });
     if (!res.ok) {
         const text = await res.text().catch(() => res.statusText);
-        throw new Error(`Save failed (${res.status}): ${text}`);
+        throw new Error(`${CONFIG.I18N.SAVE_FAILED} (${res.status}): ${text}`);
     }
     return res.json();
 }
@@ -47,6 +49,6 @@ export async function clearPlacement(id, year) {
     });
     if (!res.ok) {
         const text = await res.text().catch(() => res.statusText);
-        throw new Error(`Clear failed (${res.status}): ${text}`);
+        throw new Error(`${CONFIG.I18N.CLEAR_FAILED} (${res.status}): ${text}`);
     }
 }
