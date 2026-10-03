@@ -231,6 +231,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+- Instant-toggle HTTP failures keep the existing shift and description rows, restore the button for retry, and show the localized network-error toast; only successful row fragments replace them.
+
 - Browse and My shifts GETs forward request cancellation to viewer and cached per-user row reads; My shifts also forwards it to active-event and team-name reads.
 
 - Dashboard and department volunteer-search boxes debounce independently per shift. Each edit clears the prior results and invalidates pending responses, so older results or errors cannot expose an outdated assignment choice.
