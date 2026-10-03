@@ -244,6 +244,38 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
+    public async Task Overview_finishes_persisting_consumed_call_records_after_request_abort()
+    {
+        using var cancellation = new CancellationTokenSource();
+        _callLog.DrainAll().Returns(_ =>
+        {
+            cancellation.Cancel();
+            return new List<HoldedApiCallRecord>
+            {
+                new(FixedNow, "ListLedgerEntriesAsync", "GET", 200, 42, "minute"),
+            };
+        });
+
+        var act = () => _service.GetOverviewAsync(cancellation.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        var calls = await _repo.GetApiCallsAsync(Xunit.TestContext.Current.CancellationToken);
+        calls.Should().ContainSingle().Which.Endpoint.Should().Be("ListLedgerEntriesAsync");
+    }
+
+    [HumansFact]
+    public async Task Overview_does_not_consume_call_records_when_already_cancelled()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        var act = () => _service.GetOverviewAsync(cancellation.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        _callLog.DidNotReceive().DrainAll();
+    }
+
+    [HumansFact]
     public async Task Sync_states_are_reported_per_kind()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;

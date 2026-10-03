@@ -331,6 +331,7 @@ internal sealed class Service(
 
     private async Task DrainCallLogAsync(CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         var records = callLog.DrainAll();
         if (records.Count == 0) return;
         await repo.AddApiCallsAsync(records.Select(r => new HoldedApiCall
@@ -342,7 +343,7 @@ internal sealed class Service(
             StatusCode = r.StatusCode,
             RateLimitRemaining = r.RateLimitRemaining,
             RateLimitWindow = r.RateLimitWindow,
-        }).ToList(), ct);
+        }).ToList(), CancellationToken.None); // Drained records must reach the mirror despite request cancellation.
     }
 
     /// <summary>LastError is varchar(2000); an unbounded mismatch list or exception message

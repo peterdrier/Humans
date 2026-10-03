@@ -105,6 +105,7 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 - Sweeps are serialized by a non-blocking in-process gate; a second caller is skipped and told
   so, never queued (single-server deployment).
 - Reads (`GetLedgerLinesAsync`, `GetAccountBalancesAsync`) never call Holded.
+- API-call metering drains honour cancellation before consuming the buffer, then persist consumed records independently of request cancellation. Overview reads remain cancellable afterward.
 - The treasury bank feed (`IHoldedClient.ListBankMovementsAsync` /
   `ReconcileBankMovementAsync`, `GET`/`POST /treasury/accounts/{id}/bank-movements[/…/reconcile]`)
   is **not** mirrored here — Finance's SEPA booking flow (nobodies-collective/Humans#1185) reads
