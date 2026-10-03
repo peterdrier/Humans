@@ -387,7 +387,8 @@ should end is the Board's decision, taken on the register in front of them.
   dates), log entries, meetings created, documents (created, updated, or with a disposition
   this person recorded — each labelled), comments (including hidden ones, with disposition
   and response). Every attribution column the erasure nulls is also an export predicate, so
-  nothing is erasable but unexportable.
+  nothing is erasable but unexportable. All exported instants are UTC ISO-8601 text, and log-entry
+  dates are ISO dates; absent timestamps remain null.
 - **Erasure** (`EraseForUserAsync`): nulls attribution everywhere (`AuthorUserId`,
   `CreatedByUserId`, `UpdatedByUserId`, `RespondedByUserId`, `AppliedByUserId`,
   `HiddenByUserId`, `DispositionByUserId`). **Content stays** — comments, log bodies,

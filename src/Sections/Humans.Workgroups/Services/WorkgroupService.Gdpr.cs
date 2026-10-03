@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
@@ -45,8 +46,8 @@ internal sealed partial class WorkgroupService
                     Workgroup = w.Name,
                     Status = w.Status.ToString(),
                     w.Purpose,
-                    w.AppliedAt,
-                    w.RegisteredAt
+                    AppliedAt = w.AppliedAt.ToIso8601(),
+                    RegisteredAt = w.RegisteredAt.ToIso8601()
                 })
                 .ToList()),
             new UserDataSlice(WorkgroupMemberships, rows.Memberships
@@ -54,8 +55,8 @@ internal sealed partial class WorkgroupService
                 {
                     Workgroup = NameOf(m.WorkgroupId),
                     Role = m.Role.ToString(),
-                    m.JoinedAt,
-                    m.LeftAt
+                    JoinedAt = m.JoinedAt.ToIso8601(),
+                    LeftAt = m.LeftAt.ToIso8601()
                 })
                 .ToList()),
             new UserDataSlice(WorkgroupLogEntries, rows.LogEntries
@@ -63,10 +64,10 @@ internal sealed partial class WorkgroupService
                 {
                     Workgroup = NameOf(e.WorkgroupId),
                     Kind = e.Kind.ToString(),
-                    e.OccurredOn,
+                    OccurredOn = e.OccurredOn.ToInvariantDate(),
                     e.Title,
                     e.Body,
-                    e.CreatedAt
+                    CreatedAt = e.CreatedAt.ToIso8601()
                 })
                 .ToList()),
             new UserDataSlice(WorkgroupMeetings, rows.Meetings
@@ -74,12 +75,12 @@ internal sealed partial class WorkgroupService
                 {
                     Workgroup = NameOf(m.WorkgroupId),
                     m.Title,
-                    m.StartUtc,
-                    m.EndUtc,
+                    StartUtc = m.StartUtc.ToIso8601(),
+                    EndUtc = m.EndUtc.ToIso8601(),
                     m.Location,
                     m.IsPublic,
                     m.Minutes,
-                    m.CreatedAt
+                    CreatedAt = m.CreatedAt.ToIso8601()
                 })
                 .ToList()),
             new UserDataSlice(WorkgroupDocuments, rows.Documents
@@ -92,8 +93,8 @@ internal sealed partial class WorkgroupService
                     Authored = d.CreatedByUserId == userId,
                     Edited = d.UpdatedByUserId == userId,
                     DispositionRecorded = d.DispositionByUserId == userId,
-                    d.CreatedAt,
-                    d.UpdatedAt
+                    CreatedAt = d.CreatedAt.ToIso8601(),
+                    UpdatedAt = d.UpdatedAt.ToIso8601()
                 })
                 .ToList()),
             new UserDataSlice(WorkgroupComments, rows.Comments
@@ -114,7 +115,7 @@ internal sealed partial class WorkgroupService
                     c.Response,
                     Hidden = c.HiddenAt is not null,
                     c.HiddenReason,
-                    c.CreatedAt
+                    CreatedAt = c.CreatedAt.ToIso8601()
                 })
                 .ToList())
         ];

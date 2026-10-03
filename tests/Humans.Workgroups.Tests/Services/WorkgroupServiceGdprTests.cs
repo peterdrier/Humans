@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using AwesomeAssertions.Execution;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Notifications.Contracts;
@@ -24,6 +27,11 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
         var document = await AddDocumentAsync(workgroup.Id, WorkgroupDocumentStatus.Published, body: "Body");
         await AddLogEntryAsync(workgroup.Id, WorkgroupLogKind.Update, authorUserId: author);
         var comment = await AddCommentAsync(document.Id, authorUserId: author);
+        var meeting = await AddMeetingAsync(workgroup.Id, Clock.GetCurrentInstant());
+        document.CreatedByUserId = author;
+        meeting.CreatedByUserId = author;
+        workgroup.Members.Single().LeftAt = Clock.GetCurrentInstant();
+        await Db.SaveChangesAsync(Ct);
 
         var slices = await NewService().ContributeForUserAsync(author, Ct);
 
@@ -38,6 +46,39 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
         ]);
         slices.Should().OnlyContain(s => s.Data != null);
         comment.AuthorUserId.Should().Be(author);
+
+        // Match both download controllers' options: enum text, no NodaTime converter.
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            Converters = { new JsonStringEnumConverter() }
+        };
+        var temporalFields = new (string Slice, string[] Instants, string? Date)[]
+        {
+            (WorkgroupService.WorkgroupApplications, ["AppliedAt", "RegisteredAt"], null),
+            (WorkgroupService.WorkgroupMemberships, ["JoinedAt", "LeftAt"], null),
+            (WorkgroupService.WorkgroupLogEntries, ["CreatedAt"], "OccurredOn"),
+            (WorkgroupService.WorkgroupMeetings, ["StartUtc", "EndUtc", "CreatedAt"], null),
+            (WorkgroupService.WorkgroupDocuments, ["CreatedAt", "UpdatedAt"], null),
+            (WorkgroupService.WorkgroupComments, ["CreatedAt"], null)
+        };
+        using var assertions = new AssertionScope();
+        foreach (var (sliceName, instants, date) in temporalFields)
+        {
+            var slice = slices.Single(s => string.Equals(s.SectionName, sliceName, StringComparison.Ordinal));
+            using var json = JsonDocument.Parse(JsonSerializer.Serialize(slice.Data, options));
+            var row = json.RootElement.EnumerateArray().Should().ContainSingle().Subject;
+            foreach (var field in instants)
+            {
+                row.GetProperty(field).ValueKind.Should().Be(JsonValueKind.String);
+                row.GetProperty(field).ToString().Should().Be(
+                    string.Equals(field, "EndUtc", StringComparison.Ordinal)
+                        ? "2026-03-01T13:00:00Z" : "2026-03-01T12:00:00Z");
+            }
+            if (date is not null)
+                row.GetProperty(date).ToString().Should().Be("2026-03-01");
+        }
     }
 
     [HumansFact]
@@ -48,7 +89,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
         // The harness seeds the coordinator as the applicant, which is the real shape: the
         // person who applies is the group's first coordinator.
         var applicant = SeedUser("Applicant");
-        var workgroup = await SeedWorkgroupAsync(coordinatorUserId: applicant);
+        var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Applied, coordinatorUserId: applicant);
 
         var slices = await NewService().ContributeForUserAsync(applicant, Ct);
 
@@ -56,6 +97,9 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
             string.Equals(s.SectionName, WorkgroupService.WorkgroupApplications, StringComparison.Ordinal));
         applications.Data.Should().NotBeNull();
         System.Text.Json.JsonSerializer.Serialize(applications.Data).Should().Contain(workgroup.Name);
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(applications.Data));
+        json.RootElement.EnumerateArray().Single().GetProperty("RegisteredAt").ValueKind
+            .Should().Be(JsonValueKind.Null);
 
         await NewService().EraseForUserAsync(applicant, Ct);
 
