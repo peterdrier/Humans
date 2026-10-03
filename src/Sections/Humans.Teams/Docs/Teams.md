@@ -183,6 +183,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Invariants
 
+- The team resources GET forwards request cancellation through viewer, team, resource-management permission, resource list and service-account email reads. Shared permission helpers retain their existing default token for resource mutations.
+
 - Admin team-list paging computes offsets without integer overflow, so extreme page numbers cannot wrap into earlier teams.
 
 - Team member paging clamps pages below one to one and calculates large offsets without integer overflow; pages beyond the membership list stay empty.

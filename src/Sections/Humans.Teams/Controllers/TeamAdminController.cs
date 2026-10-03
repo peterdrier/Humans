@@ -385,25 +385,25 @@ internal sealed class TeamAdminController(
     [HttpGet("Resources")]
     public async Task<IActionResult> Resources(string slug)
     {
-        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
 
-        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug, HttpContext.RequestAborted);
         if (team is null)
         {
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id, HttpContext.RequestAborted))
         {
             return Forbid();
         }
 
-        var resources = await teamResourceService.GetTeamResourcesAsync(team.Id);
-        var serviceAccountEmail = await teamResourceService.GetServiceAccountEmailAsync();
+        var resources = await teamResourceService.GetTeamResourcesAsync(team.Id, HttpContext.RequestAborted);
+        var serviceAccountEmail = await teamResourceService.GetServiceAccountEmailAsync(HttpContext.RequestAborted);
 
         var viewModel = new TeamResourcesViewModel
         {
@@ -1240,14 +1240,14 @@ internal sealed class TeamAdminController(
         return Json(combined);
     }
 
-    private async Task<bool> CanManageResourcesAsync(Team team, Guid userId)
+    private async Task<bool> CanManageResourcesAsync(Team team, Guid userId, CancellationToken ct = default)
     {
         if (RoleChecks.IsTeamsAdminBoardOrAdmin(User))
             return true;
 
         // Sub-team managers cannot manage Google resources — check at department level.
         var checkTeamId = team.ParentTeamId ?? team.Id;
-        return await teamResourceService.CanManageTeamResourcesAsync(checkTeamId, userId);
+        return await teamResourceService.CanManageTeamResourcesAsync(checkTeamId, userId, ct);
     }
 
     private static void PopulateEditTeamPageModel(EditTeamPageViewModel model, Team team)

@@ -6,6 +6,7 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Controllers;
 using Humans.Teams.Models;
+using Humans.Teams.Domain;
 using Humans.Teams.Services;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
@@ -22,6 +23,60 @@ namespace Humans.Teams.Tests.Controllers;
 
 public class TeamAdminControllerMembersTests
 {
+    [HumansTheory]
+    [InlineData("viewer")]
+    [InlineData("team")]
+    [InlineData("permission")]
+    [InlineData("resources")]
+    [InlineData("account")]
+    public async Task Resources_ObservesRequestCancellationAtEveryRead(string boundary)
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        var userId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserServiceRead>();
+        var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
+        var resources = Substitute.For<ITeamResourceService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], [], null, [])));
+        teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
+        resources.CanManageTeamResourcesAsync(team.Id, userId, Arg.Any<CancellationToken>()).Returns(true);
+        resources.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>()).Returns([]);
+        resources.GetServiceAccountEmailAsync(Arg.Any<CancellationToken>()).Returns("service@example.com");
+        switch (boundary)
+        {
+            case "viewer":
+                users.GetUserInfoAsync(userId, aborted.Token).Returns(ValueTask.FromCanceled<UserInfo?>(aborted.Token));
+                break;
+            case "team":
+                teams.GetTeamEntityBySlugAsync(team.Slug, aborted.Token).Returns(Task.FromCanceled<Team?>(aborted.Token));
+                break;
+            case "permission":
+                resources.CanManageTeamResourcesAsync(team.Id, userId, aborted.Token).Returns(Task.FromCanceled<bool>(aborted.Token));
+                break;
+            case "resources":
+                resources.GetTeamResourcesAsync(team.Id, aborted.Token)
+                    .Returns(Task.FromCanceled<IReadOnlyList<GoogleResourceSnapshot>>(aborted.Token));
+                break;
+            case "account":
+                resources.GetServiceAccountEmailAsync(aborted.Token).Returns(Task.FromCanceled<string>(aborted.Token));
+                break;
+        }
+        var controller = new TeamAdminController(teams, resources, Substitute.For<IGoogleSyncService>(), users,
+            Substitute.For<IEmailProvisioningService>(), Substitute.For<IAuthorizationService>(),
+            NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketServiceRead>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            {
+                RequestAborted = aborted.Token,
+                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
+            } },
+        };
+        var act = () => controller.Resources(team.Slug);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [HumansTheory]
     [InlineData(int.MaxValue, 0, int.MaxValue)]
     [InlineData(int.MinValue, 1, 1)]
