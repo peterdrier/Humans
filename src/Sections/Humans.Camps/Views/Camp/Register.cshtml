@@ -3,7 +3,7 @@
     ViewData["Title"] = $"{Localizer["Camp_Register_Heading", Localizer["Camp_Singular"]]} — {ViewData["SeasonYear"]}";
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Camps_Details_Breadcrumb"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["Camp_Register_Breadcrumb"]</li>
