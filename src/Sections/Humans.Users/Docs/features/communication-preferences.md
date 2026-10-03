@@ -31,6 +31,8 @@ GDPR and CAN-SPAM compliance require giving users control over which communicati
 
 Category names, descriptions, the clock-derived Ticketing year heading and ticket-lock note are localized in all six supported cultures on member and guest pages. Guest one-click banners and legacy Marketing unsubscribe pages share the translated category names.
 
+The member panel currently shows only the Email control. Its updates preserve the existing inbox setting rather than resetting the hidden channel.
+
 ### Always-On Categories
 
 System and Campaign Codes are always locked on — users cannot opt out. These categories cover critical account operations and code delivery.

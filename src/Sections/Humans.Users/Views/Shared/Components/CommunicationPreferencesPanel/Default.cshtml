@@ -27,7 +27,7 @@
                         ? Localizer["CommPrefs_TicketingYear", Clock.GetCurrentInstant().InUtc().Year].Value
                         : Localizer[$"CommPrefs_Name_{item.Category}"].Value;
 
-                    <tr class="@(!item.EmailEditable ? "table-light" : "")">
+                    <tr class="@(!item.EmailEditable ? "table-light" : "")" data-alert-enabled="@(item.AlertEnabled ? "true" : "false")">
                         <td>
                             <div class="fw-semibold">@categoryName</div>
                             <div class="form-text mb-0">@Localizer[$"CommPrefs_Description_{item.Category}"]</div>

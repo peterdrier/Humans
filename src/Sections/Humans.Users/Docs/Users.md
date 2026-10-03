@@ -194,6 +194,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- Member email-preference changes preserve the row’s existing inbox preference when the alert control is not shown; changing email cannot silently re-enable inbox notifications.
+
 - Guest communication-preference GETs carry request cancellation through session/token user lookup, preference reads and ticket holdings. Cancellation propagates without an error flash; paired POST helpers retain their default mutation token.
 
 - Member and guest communication-preference category names, descriptions, ticket-year heading and ticket-lock note use Users resources in all six cultures. Guest one-click banners and legacy marketing unsubscribe pages use the same translated category names; stored category identifiers and preference rules are unchanged.
