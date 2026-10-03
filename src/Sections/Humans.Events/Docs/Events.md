@@ -174,6 +174,8 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 ## Invariants
 
+- Member personal/camp event submission forms and My Submissions localize breadcrumb navigation labels in all six supported cultures.
+
 - The `Events` GDPR export includes the person’s personal and camp submissions in every status, with authored content and schedule fields, alongside favourites and category preferences. Only rows whose `SubmitterUserId` matches are included; internal moderator notes are excluded. Export reads do not alter rows.
 
 - Barrio bulk CSV uploads detect comma/semicolon separators from the first non-comment header line through CsvHelper’s quote-aware detector. Separators inside quoted working-column names cannot change the format; comments, reordered/extra columns and physical row numbers retain their existing behavior.
