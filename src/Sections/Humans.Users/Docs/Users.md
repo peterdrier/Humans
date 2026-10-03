@@ -194,6 +194,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- The login page’s locked-account error and dismissal label render in all six supported cultures. Authentication and lockout behavior are unchanged.
+
 - OAuth login (`ExternalLoginService.CompleteExternalLoginAsync`, dispatched from `AccountController.ExternalLoginCallback`) checks verified `UserEmails`, then unverified `UserEmails` / `User.Email`, before creating a new account — preventing duplicate accounts when the same email exists on another user in any form. The locked-out branch additionally re-links a stale OAuth login from a merged source account to the active target account.
 - `AccountController`, the Development section's `DevLoginController` / `DevPersonaSeeder` / `DevelopmentDashboardSeeder`, and the ASP.NET Identity framework surface may inject `UserManager<User>` and `SignInManager<User>` directly — this is the explicit §2a exception because Identity is a framework concern, not a domain service. Application-layer code (`AccountProvisioningService`, `ExternalLoginService`) may also inject `UserManager<User>` for user creation; everything else routes through `IUserService`.
 - Event-participation derivation is monotonic on `Attended`: once an attendee has been checked in, their `EventParticipation.Status = Attended` row cannot be downgraded by ticket sync. `Ticketed`, `NotAttending`, and `NoShow` are mutable.

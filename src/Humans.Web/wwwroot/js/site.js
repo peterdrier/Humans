@@ -358,7 +358,7 @@ function showToast(message, type) {
     closeBtn.type = 'button';
     closeBtn.className = 'btn-close me-2 m-auto';
     closeBtn.setAttribute('data-bs-dismiss', 'toast');
-    closeBtn.setAttribute('aria-label', 'Close');
+    closeBtn.setAttribute('aria-label', container.dataset.closeLabel);
     wrapper.appendChild(closeBtn);
     toastEl.appendChild(wrapper);
     container.appendChild(toastEl);

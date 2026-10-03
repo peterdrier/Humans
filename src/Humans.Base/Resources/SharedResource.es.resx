@@ -163,6 +163,7 @@
   <data name="Login_SignInFailed" xml:space="preserve">
     <value>Error de inicio de sesión. Esto puede ocurrir si tardaste demasiado o tu navegador bloqueó las cookies. Por favor, inténtalo de nuevo.</value>
   </data>
+  <data name="Login_LockedOut" xml:space="preserve"><value>Esta cuenta está bloqueada. Contacta con un administrador si necesitas ayuda para iniciar sesión.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve">
     <value>Acceso denegado</value>
   </data>

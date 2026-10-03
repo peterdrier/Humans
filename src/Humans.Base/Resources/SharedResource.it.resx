@@ -163,6 +163,7 @@
   <data name="Login_SignInFailed" xml:space="preserve">
     <value>Accesso non riuscito. Questo può accadere se hai impiegato troppo tempo o se il tuo browser ha bloccato i cookie. Per favore riprova.</value>
   </data>
+  <data name="Login_LockedOut" xml:space="preserve"><value>Questo account è bloccato. Contatta un amministratore se hai bisogno di aiuto per accedere.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve">
     <value>Accesso negato</value>
   </data>

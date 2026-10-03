@@ -163,6 +163,7 @@
   <data name="Login_SignInFailed" xml:space="preserve">
     <value>Échec de la connexion. Cela peut se produire si vous avez mis trop de temps ou si votre navigateur a bloqué les cookies. Veuillez réessayer.</value>
   </data>
+  <data name="Login_LockedOut" xml:space="preserve"><value>Ce compte est verrouillé. Contactez un administrateur si vous avez besoin d’aide pour vous connecter.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve">
     <value>Accès refusé</value>
   </data>

@@ -53,6 +53,8 @@ Because those roles now share one assembly, the old project graph no longer enfo
 
 **Composer previews order responses per modal.** Only the latest preview can replace its frame, subject or error; separate modal instances remain independent, including when another composer partial installs the shared script.
 
+**Shared dismiss controls are localized.** Member alerts, Markdown help, login errors and dynamically created toasts use `Common_Close` for their accessible dismissal labels. Both Shell layouts supply that label to the toast helper.
+
 **Shared form validation is a Shell concern.** `AddHumansInfrastructure` configures MVC's model-binding and numeric client-validation messages through `SharedResource` in all six cultures. Resource lookups run when binding or rendering, so cached MVC metadata does not freeze the first request's culture. Section annotations use the same shared resource through the Shell's data-annotation localizer; section-specific business errors remain section-owned.
 
 ## 2. Service Ownership — The Core Rule
