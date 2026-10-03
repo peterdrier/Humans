@@ -183,6 +183,8 @@ internal sealed class CalendarService(
 
             if (string.Equals(key, "UNTIL", StringComparison.OrdinalIgnoreCase))
             {
+                // Match the recurrence library's case-insensitive DATE-TIME parsing.
+                val = val.ToUpperInvariant();
                 // RFC 5545 allows UNTIL as either DATE-TIME (YYYYMMDDTHHMMSS[Z]) or DATE (YYYYMMDD).
                 var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
                 if (zone is null) return null;

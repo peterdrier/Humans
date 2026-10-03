@@ -226,25 +226,43 @@ public class CalendarServiceValidationTests
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task CreateEventWithResultAsync_UTC_until_is_independent_of_server_timezone()
+    [HumansTheory]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", false)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000z", false)]
+    [InlineData("freq=daily;until=20260603t100000z", false)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", true)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000z", true)]
+    [InlineData("freq=daily;until=20260603t100000z", true)]
+    public async Task EventWithResultAsync_UTC_until_is_independent_of_case_and_server_timezone(string rule, bool update)
     {
+        var validate = () => CalendarService.ValidateRecurrenceRule(rule);
+        validate.Should().NotThrow();
         var repo = Substitute.For<ICalendarRepository>();
         var service = BuildService(repo);
         var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+        var ev = new Humans.Calendar.Domain.CalendarEvent { Id = Guid.NewGuid() };
+        repo.UpdateAsync(ev.Id, Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.ArgAt<Action<Humans.Calendar.Domain.CalendarEvent>>(1)(ev);
+                return true;
+            });
+        var dto = new CreateCalendarEventDto(
+            "UTC-bounded daily events", null, null, null, Guid.NewGuid(),
+            start, start + Duration.FromHours(1), false, rule, "Europe/Madrid");
 
-        var result = await service.CreateEventWithResultAsync(
-            new CreateCalendarEventDto(
-                "UTC-bounded daily events", null, null, null, Guid.NewGuid(),
-                start, start + Duration.FromHours(1), false,
-                "FREQ=DAILY;UNTIL=20260603T100000Z", "Europe/Madrid"),
-            Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = update
+            ? await service.UpdateEventWithResultAsync(ev.Id, dto, Guid.NewGuid(), TestContext.Current.CancellationToken)
+            : await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue(result.ErrorMessage);
-        await repo.Received(1).AddAsync(
-            Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e =>
-                e.RecurrenceUntilUtc == Instant.FromUtc(2026, 6, 3, 10, 0)),
-            Arg.Any<CancellationToken>());
+        var expected = Instant.FromUtc(2026, 6, 3, 10, 0);
+        if (update)
+            ev.RecurrenceUntilUtc.Should().Be(expected);
+        else
+            await repo.Received(1).AddAsync(
+                Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e => e.RecurrenceUntilUtc == expected),
+                Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
