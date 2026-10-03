@@ -139,6 +139,8 @@ nobodies-collective/Humans#933.)
 
 ## Invariants
 
+- Resetting the shared PIN keypad cancels its pending delayed completion. Closing the supervisor override with Cancel cannot submit the PIN afterward; a reopened panel submits only its new entry.
+
 - The cutoff is evaluated against the server clock; `ClientScanAt` never influences it.
 - A barcode can be admitted at most once (atomic unique index + pre-check); re-entry is governed
   by a physical wristband, not a second scan.
