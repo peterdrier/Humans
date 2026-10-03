@@ -8,6 +8,9 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
+using NSubstitute.ExceptionExtensions;
+using Xunit;
 using NodaTime;
 using NSubstitute;
 
@@ -36,8 +39,79 @@ public class CampAdminControllerTests
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    [HumansTheory]
+    [InlineData("Approve")]
+    [InlineData("Reject")]
+    [InlineData("Reactivate")]
+    [InlineData("Delete")]
+    public async Task LifecycleAction_ExpectedRejection_LogsWarningWithoutException(string action)
+    {
+        var camps = Substitute.For<ICampService>();
+        var users = Substitute.For<IUserServiceRead>();
+        var actorId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var logger = Substitute.For<ILogger<CampAdminController>>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
+        var reason = string.Equals(action, "Delete", StringComparison.Ordinal) ? "Camp not found." : "Season not found.";
+        ConfigureFailure(camps, action, targetId, actorId, new InvalidOperationException(reason));
+        var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId, logger);
+
+        var result = await InvokeAction(controller, action, targetId);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
+        controller.TempData["ErrorMessage"].Should().Be(reason);
+        var args = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(LogLevel.Warning);
+        args[3].Should().BeNull();
+        args[2]!.ToString().Should().Contain(targetId.ToString()).And.Contain(reason);
+        if (action is "Approve" or "Reject") args[2]!.ToString().Should().Contain(actorId.ToString());
+    }
+
+    [HumansTheory]
+    [InlineData("Approve")]
+    [InlineData("Reject")]
+    [InlineData("Reactivate")]
+    [InlineData("Delete")]
+    public async Task LifecycleAction_UnexpectedFailure_Propagates(string action)
+    {
+        var camps = Substitute.For<ICampService>();
+        var users = Substitute.For<IUserServiceRead>();
+        var actorId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
+        ConfigureFailure(camps, action, targetId, actorId, new IOException("Storage unavailable"));
+        var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId);
+
+        var act = () => InvokeAction(controller, action, targetId);
+
+        await act.Should().ThrowAsync<IOException>().WithMessage("Storage unavailable");
+    }
+
+    private static void ConfigureFailure(ICampService camps, string action, Guid targetId, Guid actorId, Exception failure)
+    {
+        switch (action)
+        {
+            case "Approve": camps.ApproveSeasonAsync(targetId, actorId, null).ThrowsAsync(failure); break;
+            case "Reject": camps.RejectSeasonAsync(targetId, actorId, "Rejected").ThrowsAsync(failure); break;
+            case "Reactivate": camps.ReactivateSeasonAsync(targetId).ThrowsAsync(failure); break;
+            case "Delete": camps.DeleteCampAsync(targetId).ThrowsAsync(failure); break;
+            default: throw new ArgumentOutOfRangeException(nameof(action));
+        }
+    }
+
+    private static Task<IActionResult> InvokeAction(CampAdminController controller, string action, Guid targetId) => action switch
+    {
+        "Approve" => controller.Approve(targetId, null),
+        "Reject" => controller.Reject(targetId, "Rejected"),
+        "Reactivate" => controller.Reactivate(targetId, null),
+        "Delete" => controller.Delete(targetId),
+        _ => throw new ArgumentOutOfRangeException(nameof(action)),
+    };
+
     private static CampAdminController CreateController(
-        ICampService camps, ICampRoleService roles, IUserServiceRead users, Guid actorId)
+        ICampService camps, ICampRoleService roles, IUserServiceRead users, Guid actorId, ILogger<CampAdminController>? logger = null)
     {
         var controller = new CampAdminController(
             camps,
@@ -45,7 +119,7 @@ public class CampAdminControllerTests
             new CampAdminPageBuilder(camps, roles),
             new CampCsvExportBuilder(camps, users),
             users,
-            NullLogger<CampAdminController>.Instance);
+            logger ?? NullLogger<CampAdminController>.Instance);
         var services = new ServiceCollection().BuildServiceProvider();
         var http = new DefaultHttpContext { RequestServices = services };
         http.User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -55,6 +129,7 @@ public class CampAdminControllerTests
             HttpContext = http,
             ActionDescriptor = new ControllerActionDescriptor { ActionName = nameof(CampAdminController.DeactivateRole) },
         };
+        controller.Url = Substitute.For<IUrlHelper>();
         controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         return controller;
     }
