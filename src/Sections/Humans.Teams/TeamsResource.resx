@@ -36,6 +36,7 @@
   <!-- Common / Shared          -->
   <!-- ======================== -->
     <data name="MyTeams_Title" xml:space="preserve"><value>My Teams</value></data>
+  <data name="Teams_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
   <data name="JoinTeam_Title" xml:space="preserve"><value>Join {0}</value><comment>{0} = team name</comment></data>
   <data name="Teams_CreateTeam" xml:space="preserve"><value>Create Team</value></data>
   <data name="Teams_MemberCount" xml:space="preserve"><value>{0} human(s)</value><comment>{0} = member count</comment></data>

@@ -183,6 +183,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Invariants
 
+- Member-facing team details, membership, birthdays, roster, map and join pages localize their breadcrumb navigation label in all six supported cultures.
+
 - The team resources GET forwards request cancellation through viewer, team, resource-management permission, resource list and service-account email reads. Shared permission helpers retain their existing default token for resource mutations.
 
 - Admin team-list paging computes offsets without integer overflow, so extreme page numbers cannot wrap into earlier teams.

@@ -204,6 +204,8 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 ## Invariants
 
+- Member-facing order pages localize their breadcrumb navigation label in all six supported cultures.
+
 - Store index and order GETs retain request cancellation during viewer resolution as well as their existing token-capable reads. Payment, invoice and order mutations retain their existing token boundaries.
 
 - An order has **exactly one counterparty** — `CampSeasonId` xor `TeamId` is non-null. The invariant is service-enforced (in `Service.CreateOrderAsync` / `CreateTeamOrderAsync`), not DB-enforced.
