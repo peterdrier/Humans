@@ -60,7 +60,6 @@
     var dropdown = document.getElementById('@dropdownId');
     var debounceTimer = null;
     var queryVersion = 0;
-    var isOpen = false;
     var excludeIds = @Html.Raw(excludeIdsJson);
     var scopeArg = @Html.Raw(scopeJson);
     var allowEmail = @Html.Raw(allowEmailJson);
@@ -81,7 +80,6 @@
     function showDropdown() {
         positionDropdown();
         dropdown.style.display = 'block';
-        isOpen = true;
         window.addEventListener('scroll', positionDropdown, true);
         window.addEventListener('resize', positionDropdown);
     }
@@ -89,7 +87,6 @@
     function hideDropdown() {
         dropdown.style.display = 'none';
         dropdown.innerHTML = '';
-        isOpen = false;
         window.removeEventListener('scroll', positionDropdown, true);
         window.removeEventListener('resize', positionDropdown);
     }
@@ -108,13 +105,16 @@
 
     textInput.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
+            queryVersion++;
+            clearTimeout(debounceTimer);
             hideDropdown();
         }
     });
 
     document.addEventListener('mousedown', function (e) {
-        if (!isOpen) return;
         if (textInput.contains(e.target) || dropdown.contains(e.target)) return;
+        queryVersion++;
+        clearTimeout(debounceTimer);
         hideDropdown();
     });
 
