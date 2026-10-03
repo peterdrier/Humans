@@ -7,9 +7,10 @@ Written fresh each section-doctor run (Phase 3c), before any scan. History rows 
 Members ask questions in a floating help widget; a Claude-backed assistant answers them,
 grounded in the org's own documentation and the member's live state (roles, teams, shifts,
 tickets, consents). When it cannot answer, it drafts an issue for the member to review and
-submit — it never files anything itself. Admins can watch usage, spend, refusals and latency,
-tune caps and the model, and read any transcript. Conversations expire on a retention clock;
-members' transcripts ride along in their GDPR export and are erased with their account.
+submit — it never files anything itself. Admins watch usage, spend, refusals and latency,
+tune caps and the model from the shared settings page, and read any transcript.
+Conversations expire on a retention clock; members' transcripts ride along in their GDPR
+export and are erased with their account.
 
 ## The shapes
 
@@ -18,7 +19,7 @@ members' transcripts ride along in their GDPR export and are erased with their a
 | Ask a question, stream an answer | `POST /Agent/Ask` (SSE) | One question-shape: gate → rate-limit → converse with provider in a bounded tool loop → persist both sides |
 | Read my own history | `/Agent/Conversations`, `/Agent/Conversation/{id}` | Own rows only; cross-user is 404 |
 | Admin transcript review | `/Agent/Conversations` (admin mode), `/Agent/Conversations/{id}`, `/Agent/Admin/Conversations/{id}/Prompt` | Same list route, admin flag widens it |
-| Admin operations | `/Agent/Admin/Status`, `/Agent/Admin/Settings`, `POST …/ReloadKnowledgeBase` | One status report, one settings form, one cache reload |
+| Admin operations | `/Agent/Admin/Status`, the `/Settings#agent` tab (posts to `/Agent/Admin/Settings`), `POST …/ReloadKnowledgeBase` | One status report, one settings form, one all-or-nothing cache reload |
 | Machine transcript read | `IAgentTranscriptRead` (endpoint lives in Backdoor) | Same data, key-authed, read-only |
 | Grounding lookups (model-facing) | Doc fetches (section / feature spec / community FAQ), live-state reads (audit history, shift details), a handoff (`route_to_issue`) | Whitelist is closed (`AgentToolNames.All`); misses name the valid keys |
 | Retention | `agent-conversation-retention` job, daily | Hard delete + last-run record |
@@ -28,28 +29,45 @@ members' transcripts ride along in their GDPR export and are erased with their a
 
 The layout those shapes imply — and the section already has, near enough:
 
-- One controller per audience (member, admin), one machine contract consumed elsewhere.
+- One controller per audience (member, admin), one machine contract consumed elsewhere; the
+  settings form is a view component contributed to the Settings section's tab strip, posting
+  back to the admin controller.
 - `AgentService` as the single orchestrator of the turn loop; provider access behind
   `IAnthropicClient`; doc access behind the cached readers; live-state access behind
   `IAgentUserSnapshotProvider` and the tool dispatcher; prompt text in one assembler.
 - Singleton in-memory stores (settings mirror, rate-limit counters, retention last-run)
   with warmup hosted services; one repository over the section's own tables.
 - Preload corpus = index-only routing layer; bodies always fetched by tool. One builder, one
-  augmentor collecting each section's `ISectionHelp` glossary contribution (Faq stays in Base).
+  augmentor collecting each section's `ISectionHelp` glossary and `ISectionAccessMatrix`
+  contributions.
 
 ## Invariants
 
-The numbered invariants in `Agent.md` are the contract; the load-bearing ones restated:
+The numbered invariants in `Agent.md` are the contract; the load-bearing ones, with the line
+that enforces each:
 
-- Every refused turn persists a message with `RefusalReason`; every failed/disconnected turn
-  persists an error trace and is billed for what it consumed — no silent zero-cost failures.
-- A user can only post to / read conversations they own; mismatch is 404, never 403.
-- The tool whitelist is closed; doc reads cannot reach arbitrary paths; a key miss names the
-  accepted keys.
-- The tool loop is bounded (`MaxToolCallsPerTurn`); cap-hit forces synthesis, never a dead end.
-- A turn never ends with an empty assistant bubble, streamed or stored.
-- `route_to_issue` never writes server-side.
-- Widget hidden + `/Agent/Ask` 503 when disabled; 429 over caps, checked before the provider.
+- Widget hidden when disabled (`src/Sections/Humans.Agent/Views/Shared/Components/HelpWidget/Default.cshtml:35`);
+  `/Agent/Ask` answers 503 when disabled (`src/Sections/Humans.Agent/Controllers/AgentController.cs:51`).
+- Over any cap is 429 before the provider (`src/Sections/Humans.Agent/Controllers/AgentController.cs:60`),
+  and the service persists the refusal (`src/Sections/Humans.Agent/Services/AgentService.cs:93`).
+- Every refused turn persists a message with `RefusalReason`
+  (`src/Sections/Humans.Agent/Services/AgentService.cs:801`); a failed or disconnected turn
+  persists an error trace and is billed for what it consumed
+  (`src/Sections/Humans.Agent/Services/AgentService.cs:234`).
+- A member reads only their own conversations; mismatch is 404
+  (`src/Sections/Humans.Agent/Services/AgentService.cs:522`, `src/Sections/Humans.Agent/Controllers/AgentController.cs:111`).
+- The tool whitelist is closed (`src/Sections/Humans.Agent/Services/AgentToolDispatcher.cs:29`);
+  doc reads cannot reach arbitrary paths (`src/Sections/Humans.Agent/Services/Preload/AgentFeatureSpecReader.cs:116`,
+  `src/Sections/Humans.Agent/Services/Preload/AgentSectionDocReader.cs:40`).
+- The tool loop is bounded (`src/Sections/Humans.Agent/Services/AgentService.cs:363`); cap-hit
+  forces synthesis (`src/Sections/Humans.Agent/Services/AgentService.cs:409`).
+- A turn never ends with an empty assistant bubble, streamed or stored
+  (`src/Sections/Humans.Agent/Services/AgentService.cs:417`).
+- `route_to_issue` never writes server-side (`src/Sections/Humans.Agent/Services/AgentToolDispatcher.cs:84`).
+- An incomplete preload corpus or community index is served but never cached, and a reload
+  publishes nothing unless every fetch succeeded
+  (`src/Sections/Humans.Agent/Services/Preload/AgentPreloadCorpusBuilder.cs:46`,
+  `src/Sections/Humans.Agent/Services/Preload/AgentPreloadCorpusBuilder.cs:59`).
 
 ## Seams
 
@@ -71,6 +89,8 @@ The numbered invariants in `Agent.md` are the contract; the load-bearing ones re
 - No per-file keyword extraction in-app — the KB generator pipeline owns keyword quality.
 - No `ExecuteDeleteAsync` in purge paths — load+remove keeps the in-memory test provider viable
   at this scale.
+- No standalone settings page — `Views/Admin/Agent/Settings.cshtml` renders only when the
+  settings POST fails model binding; the GET lives on `/Settings#agent`.
 
 ## Load-bearing weirdness
 
@@ -92,10 +112,10 @@ The numbered invariants in `Agent.md` are the contract; the load-bearing ones re
   `NeverRemove`; the admin reload refreshes the community KB and rebuilds the assembled
   corpus, while the section-guide and feature-spec reader caches refresh only on restart
   (the rebuilt corpus re-reads section taglines through those still-warm caches).
-- **Localized fallback strings live in C#, not resx** (`SilentTurnFallbackText`,
-  `RouteToIssueFallbackText`): they are both streamed and persisted, and the service layer has
-  no resx access. The route_to_issue one is deliberately persisted-only, in lockstep with the
-  widget's `Help_Agent_IssueProposed` strings.
+- **Streamed and persisted replies read `AgentResource` through a `ResourceManager`**
+  (`LocalizedReply`), not `IStringLocalizer`: the culture is the conversation's stored locale,
+  not the request's. The route_to_issue fallback is persisted only, and uses the same
+  `Help_Agent_IssueProposed` key the widget renders live.
 - **`AgentDocsHealthCheck` bypasses the cached readers** and probes canaries that don't move
   (`docs/sections/_Index.md`) so the probe genuinely re-tests GitHub each call.
 - **Retention job logs at Warning** on deletion so the entry shows in the prod log viewer
