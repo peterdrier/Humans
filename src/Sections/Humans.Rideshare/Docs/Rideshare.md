@@ -220,6 +220,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 
 ## Invariants
 
+- Expected missing-record, ownership and rule rejections in member action/form helpers and admin settings log at Warning without exception stacks, preserving action/year and reason/key context. Status codes and localized form/toast feedback are unchanged.
+
 - Offer, request and My Rides pages localize the breadcrumb navigation landmark in all six cultures.
 
 - **The list works independently of the map.** Interest forms remain usable from the server-rendered cards when the map library, WebGL, map load or board data request fails.

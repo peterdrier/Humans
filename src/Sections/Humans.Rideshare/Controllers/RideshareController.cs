@@ -212,17 +212,17 @@ internal sealed class RideshareController(
         }
         catch (KeyNotFoundException ex)
         {
-            logger.LogInformation(ex, "Rideshare {Action}: not found", ControllerContext.ActionDescriptor.ActionName);
+            logger.LogWarning("Rideshare {Action}: not found ({Reason})", ControllerContext.ActionDescriptor.ActionName, ex.Message);
             return NotFound();
         }
         catch (UnauthorizedAccessException ex)
         {
-            logger.LogWarning(ex, "Rideshare {Action}: forbidden", ControllerContext.ActionDescriptor.ActionName);
+            logger.LogWarning("Rideshare {Action}: forbidden ({Reason})", ControllerContext.ActionDescriptor.ActionName, ex.Message);
             return Forbid();
         }
         catch (RideshareRuleException ex)
         {
-            logger.LogInformation(ex, "Rideshare {Action}: rule {Rule}", ControllerContext.ActionDescriptor.ActionName, ex.Key);
+            logger.LogWarning("Rideshare {Action}: rule {Rule}", ControllerContext.ActionDescriptor.ActionName, ex.Key);
             SetError(localizer[ex.Key, ex.Args]);
         }
 
@@ -238,17 +238,17 @@ internal sealed class RideshareController(
         }
         catch (KeyNotFoundException ex)
         {
-            logger.LogInformation(ex, "Rideshare {Action}: not found", ControllerContext.ActionDescriptor.ActionName);
+            logger.LogWarning("Rideshare {Action}: not found ({Reason})", ControllerContext.ActionDescriptor.ActionName, ex.Message);
             return NotFound();
         }
         catch (UnauthorizedAccessException ex)
         {
-            logger.LogWarning(ex, "Rideshare {Action}: forbidden", ControllerContext.ActionDescriptor.ActionName);
+            logger.LogWarning("Rideshare {Action}: forbidden ({Reason})", ControllerContext.ActionDescriptor.ActionName, ex.Message);
             return Forbid();
         }
         catch (RideshareRuleException ex)
         {
-            logger.LogInformation(ex, "Rideshare {Action}: rule {Rule}", ControllerContext.ActionDescriptor.ActionName, ex.Key);
+            logger.LogWarning("Rideshare {Action}: rule {Rule}", ControllerContext.ActionDescriptor.ActionName, ex.Key);
             ModelState.AddModelError(string.Empty, localizer[ex.Key, ex.Args]);
             return View(model);
         }

@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -31,6 +31,7 @@ public sealed class RideshareControllerTests
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly IStringLocalizer<RideshareResource> _localizer = Substitute.For<IStringLocalizer<RideshareResource>>();
     private readonly Guid _me = Guid.NewGuid();
+    private readonly ILogger<RideshareController> _logger = Substitute.For<ILogger<RideshareController>>();
 
     public RideshareControllerTests()
     {
@@ -73,6 +74,7 @@ public sealed class RideshareControllerTests
         (await controller.Accept(missing, Ct)).Should().BeOfType<NotFoundResult>();
         (await controller.Accept(notMine, Ct)).Should().BeOfType<ForbidResult>();
         controller.TempData.Should().BeEmpty();
+        AssertExpectedWarnings(2);
     }
 
     [HumansFact]
@@ -87,6 +89,7 @@ public sealed class RideshareControllerTests
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Mine");
         controller.TempData[TempDataKeys.ErrorMessage].Should().Be("L:Rideshare_Error_NotEnoughSeats");
         controller.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
+        AssertExpectedWarnings(1);
     }
 
     [HumansFact]
@@ -129,6 +132,70 @@ public sealed class RideshareControllerTests
         controller.ModelState[string.Empty]!.Errors.Should().ContainSingle()
             .Which.ErrorMessage.Should().Be("L:Rideshare_Error_PlaceNotFound");
         controller.TempData.Should().BeEmpty();
+        AssertExpectedWarnings(1);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task OfferPost_MapsMissingAndForbidden_AndLogsWithoutStack(bool forbidden)
+    {
+        var id = Guid.NewGuid();
+        Exception error = forbidden ? new UnauthorizedAccessException("Only the driver can edit this ride")
+            : new KeyNotFoundException($"Trip {id} not found");
+        _rideshare.UpdateOfferAsync(id, _me, Arg.Any<TripSave>(), Arg.Any<CancellationToken>()).ThrowsAsync(error);
+        var model = new OfferFormViewModel { Id = id, MemberPlaceLabel = "Paris", DepartureDate = "2026-07-03" };
+        var controller = BuildController();
+
+        var result = await controller.Offer(model, Ct);
+
+        if (forbidden) result.Should().BeOfType<ForbidResult>();
+        else result.Should().BeOfType<NotFoundResult>();
+        controller.TempData.Should().BeEmpty();
+        AssertExpectedWarnings(1);
+        _logger.ReceivedCalls().Single().GetArguments()[2]!.ToString().Should().Contain(error.Message);
+    }
+
+    [HumansFact]
+    public async Task AdminSettings_RuleRerendersForm_AndLogsYearAndKeyWithoutStack()
+    {
+        const string key = "Rideshare_Error_WindowOrder";
+        _rideshare.SaveSettingsAsync(2026, Arg.Any<SettingsSave>(), _me, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new RideshareRuleException(key));
+        _rideshare.GetSnapshotAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new RideshareSnapshot(2026, null, [], [], []));
+        var logger = Substitute.For<ILogger<RideshareAdminController>>();
+        var memberController = BuildController();
+        var controller = new RideshareAdminController(_rideshare, _users, _localizer, Substitute.For<IClock>(), logger)
+        {
+            ControllerContext = memberController.ControllerContext, TempData = memberController.TempData
+        };
+        var model = new RideshareSettingsViewModel
+        {
+            DestinationLabel = "Burn", InboundWindowStart = "2026-07-03", InboundWindowEnd = "2026-07-01",
+            OutboundWindowStart = "2026-07-10", OutboundWindowEnd = "2026-07-11"
+        };
+
+        (await controller.Index(model, Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be("L:" + key);
+        var args = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(LogLevel.Warning);
+        args[3].Should().BeNull();
+        args[2]!.ToString().Should().Contain(key).And.Contain("2026");
+    }
+
+    private void AssertExpectedWarnings(int count)
+    {
+        var logs = _logger.ReceivedCalls().Where(call =>
+            string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).ToList();
+        logs.Should().HaveCount(count);
+        foreach (var log in logs)
+        {
+            var args = log.GetArguments();
+            args[0].Should().Be(LogLevel.Warning);
+            args[3].Should().BeNull();
+            args[2]!.ToString().Should().Contain("Test");
+        }
     }
 
     [HumansFact]
@@ -149,7 +216,7 @@ public sealed class RideshareControllerTests
     private RideshareController BuildController(bool signedIn = true)
     {
         var controller = new RideshareController(
-            _rideshare, _users, _localizer, Substitute.For<IClock>(), NullLogger<RideshareController>.Instance);
+            _rideshare, _users, _localizer, Substitute.For<IClock>(), _logger);
 
         var services = new ServiceCollection();
         services.AddLogging();
