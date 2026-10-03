@@ -282,7 +282,17 @@ public sealed class ApplicationRepositoryTests : IDisposable
         ownApplication.SignificantContribution = "private contribution";
         ownApplication.RoleUnderstanding = "private understanding";
         ownApplication.DecisionNote = "private decision";
-        ownApplication.RequestMoreInfo(erasedUserId, "private state note", clock);
+        // Seed legacy review prose directly; the former information-request workflow is gone.
+        _dbContext.Entry(ownApplication).Property(application => application.ReviewNotes)
+            .CurrentValue = "private state note";
+        ownApplication.StateHistory.Add(new ApplicationStateHistory
+        {
+            ApplicationId = ownApplication.Id,
+            Status = ApplicationStatus.Submitted,
+            ChangedByUserId = erasedUserId,
+            ChangedAt = clock.GetCurrentInstant(),
+            Notes = "private state note"
+        });
 
         var reviewedApplication = SeedApp(otherUserId);
         reviewedApplication.DecisionNote = "private reviewer decision";

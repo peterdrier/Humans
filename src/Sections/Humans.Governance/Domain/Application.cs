@@ -120,7 +120,6 @@ internal sealed class Application
         machine.Configure(ApplicationStatus.Submitted)
             .Permit(ApplicationTrigger.Approve, ApplicationStatus.Approved)
             .Permit(ApplicationTrigger.Reject, ApplicationStatus.Rejected)
-            .PermitReentry(ApplicationTrigger.RequestMoreInfo)
             .Permit(ApplicationTrigger.Withdraw, ApplicationStatus.Withdrawn);
 
         machine.Configure(ApplicationStatus.Approved);
@@ -161,20 +160,6 @@ internal sealed class Application
         UpdatedAt = now;
         ResolvedAt = now;
         AddStateHistory(ApplicationStatus.Withdrawn, UserId, clock);
-    }
-
-    /// <summary>
-    /// Requests more information from the applicant.
-    /// </summary>
-    /// <param name="reviewerUserId">The ID of the reviewer.</param>
-    /// <param name="notes">Notes about what information is needed.</param>
-    /// <param name="clock">The clock to use for timestamps.</param>
-    public void RequestMoreInfo(Guid reviewerUserId, string notes, IClock clock)
-    {
-        StateMachine.Fire(ApplicationTrigger.RequestMoreInfo);
-        ReviewNotes = notes;
-        UpdatedAt = clock.GetCurrentInstant();
-        AddStateHistory(ApplicationStatus.Submitted, reviewerUserId, clock, notes);
     }
 
     private void AddStateHistory(ApplicationStatus newStatus, Guid actorUserId, IClock clock, string? notes = null)

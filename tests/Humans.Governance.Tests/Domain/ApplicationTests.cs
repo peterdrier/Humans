@@ -70,18 +70,6 @@ public class ApplicationTests
     }
 
     [HumansFact]
-    public void RequestMoreInfo_ShouldTransitionBackToSubmitted()
-    {
-        var reviewerId = Guid.NewGuid();
-        var application = CreateSubmittedApplication();
-
-        application.RequestMoreInfo(reviewerId, "Please provide more details", _clock);
-
-        application.Status.Should().Be(ApplicationStatus.Submitted);
-        application.ReviewNotes.Should().Be("Please provide more details");
-    }
-
-    [HumansFact]
     public void StateTransitions_ShouldBeRecordedInHistory()
     {
         var reviewerId = Guid.NewGuid();
