@@ -13,7 +13,7 @@ When a controller writes a `CommunicationPreference` via `ICommunicationPreferen
 | `"Guest"` | Signed-in profileless user | `/Guest/CommunicationPreferences` |
 | `"MagicLink"` | Anonymous, valid unsubscribe token | `/Guest/CommunicationPreferences/Update?utoken=…` |
 | `"OneClick"` | Anonymous, RFC 8058 List-Unsubscribe-Post | `/Unsubscribe/OneClick` |
-| `"Default"` | (none — lazy seed by `GetPreferencesAsync`) | first read |
+| `"Default"` | None — historical lazy seeding; no current writer | Historical first read |
 | `"DataMigration"` | Backfill | one-shot data migration |
 
 **Why:** GDPR / CAN-SPAM audit defensibility. The audit-log description literally embeds the source (`"{Category} opted out via {source}"`). When a user disputes "I never unsubscribed", we need to tell whether it came from their authenticated session, a magic-link in their inbox (proves they had inbox access), or one-click from an MUA — those are different evidentiary stories. Conflating them destroys the signal.

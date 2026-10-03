@@ -11,12 +11,6 @@ namespace Humans.Users.Data.Repositories;
 internal interface ICommunicationPreferenceRepository : IRepository
 {
     /// <summary>
-    /// Returns all preferences for a user, tracked for modification.
-    /// </summary>
-    Task<List<CommunicationPreference>> GetByUserIdAsync(
-        Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns a single preference by user and category, tracked.
     /// </summary>
     Task<CommunicationPreference?> GetByUserAndCategoryAsync(
@@ -59,14 +53,6 @@ internal interface ICommunicationPreferenceRepository : IRepository
 
     Task AddAsync(CommunicationPreference preference, CancellationToken ct = default);
     Task AddRangeAsync(IReadOnlyList<CommunicationPreference> preferences, CancellationToken ct = default);
-
-    /// <summary>
-    /// Attempts to insert <paramref name="defaults"/> for <paramref name="userId"/>.
-    /// If another request races and inserts first (DbUpdateException), clears the
-    /// change tracker and reloads from the database. Returns the final list.
-    /// </summary>
-    Task<List<CommunicationPreference>> AddDefaultsOrReloadAsync(
-        Guid userId, IReadOnlyList<CommunicationPreference> defaults, CancellationToken ct = default);
 
     /// <summary>
     /// Persists changes to a single tracked <see cref="CommunicationPreference"/> entity.

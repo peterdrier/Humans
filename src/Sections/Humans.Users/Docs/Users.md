@@ -482,12 +482,12 @@ Per-user, per-category email opt-in/opt-out preferences. One row per user per ca
 | OptedOut | bool | true = user opted out of email for this category |
 | InboxEnabled | bool | Default true; when false, informational in-app notifications for this category are suppressed (actionable notifications always show) |
 | UpdatedAt | Instant | Last change |
-| UpdateSource | string (100) | "Profile" (signed-in profile UI), "Guest" (signed-in Guest dashboard, profileless), "MagicLink" (anonymous unsubscribe-token endpoints), "OneClick" (RFC 8058 List-Unsubscribe), "Default" (lazy seed), "DataMigration" |
+| UpdateSource | string (100) | "Profile" (signed-in profile UI), "Guest" (signed-in Guest dashboard, profileless), "MagicLink" (anonymous unsubscribe-token endpoints), "OneClick" (RFC 8058 List-Unsubscribe), "Default" (historical lazy seed), "DataMigration" |
 | SubscribedAt | Instant? | Stamped by `CommunicationPreferenceService` on the first opt-in transition or first sync-driven write; never overwritten while non-null |
 
 **Unique constraint:** `(UserId, Category)`. **Indexes:** `UserId`.
 
-Defaults are created lazily by `CommunicationPreferenceService` on first read. All active categories default to opted-in (`OptedOut = false`) except Marketing, which defaults to opted-out. System and CampaignCodes are always on (cannot be opted out).
+Reads do not create preference rows. Missing categories use their natural defaults: opted-in (`OptedOut = false`) except Marketing, which defaults to opted-out. Explicit updates create rows as needed; historical `Default` rows remain readable. System and CampaignCodes are always on (cannot be opted out).
 
 ### VolunteerHistoryEntry (CV Entry)
 

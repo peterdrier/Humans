@@ -112,35 +112,15 @@ public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
             communicationPreferences: prefs);
 
     [HumansFact]
-    public async Task GetPreferencesAsync_CreatesDefaultsForActiveCategories()
+    public async Task IsOptedOutAsync_MarketingDefaultsToOptedOutWithoutWriting()
     {
         var userId = Guid.NewGuid();
 
-        var prefs = await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var optedOut = await _service.IsOptedOutAsync(userId, MessageCategory.Marketing,
+            Xunit.TestContext.Current.CancellationToken);
 
-        // 8 active categories in MessageCategoryExtensions.ActiveCategories
-        prefs.Should().HaveCount(8);
-
-        // Deprecated categories must NOT be created
-        prefs.Should().NotContain(p => p.Category == MessageCategory.EventOperations);
-        prefs.Should().NotContain(p => p.Category == MessageCategory.CommunityUpdates);
-
-        // Rows should be persisted in the database
-        var dbCount = await Db.CommunicationPreferences
-            .Where(cp => cp.UserId == userId)
-            .CountAsync(Xunit.TestContext.Current.CancellationToken);
-        dbCount.Should().Be(8);
-    }
-
-    [HumansFact]
-    public async Task GetPreferencesAsync_MarketingDefaultsToOptedOut()
-    {
-        var userId = Guid.NewGuid();
-
-        var prefs = await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
-
-        var marketing = prefs.Single(p => p.Category == MessageCategory.Marketing);
-        marketing.OptedOut.Should().BeTrue();
+        optedOut.Should().BeTrue();
+        (await Db.CommunicationPreferences.AnyAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     [HumansFact]
