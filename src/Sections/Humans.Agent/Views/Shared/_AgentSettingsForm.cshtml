@@ -1,8 +1,7 @@
 @model AdminAgentSettingsViewModel
 
-@* Shared by /Agent/Admin/Settings and the /Settings#agent tab — the explicit
-   asp-controller/asp-action route it posts to so the tab (served from /Settings)
-   still submits to AdminAgentController. *@
+@* Shared by the /Settings#agent tab and AdminAgentController's invalid-POST re-render.
+   Explicit asp-controller/asp-action keeps the tab posting to AdminAgentController. *@
 <form asp-controller="AdminAgent" asp-action="Settings" method="post">
     @Html.AntiForgeryToken()
     <div class="form-check mb-3">

@@ -422,9 +422,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                 // blank stored message makes the admin conversation view misleading.
                 // Persist the fallback without streaming it: when no prose arrives the
                 // widget renders its own localized handoff line live, and a streamed
-                // delta would override that localization. The persisted copy uses
-                // the widget's Help_Agent_IssueProposed resource key so a history reload
-                // shows the same sentence the user saw.
+                // delta would override that localization.
                 assistantText = LocalizedReply("Help_Agent_IssueProposed", conversation.Locale);
             }
             else
@@ -491,8 +489,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
 
     private static readonly System.Resources.ResourceManager ReplyResources = new(typeof(AgentResource));
 
-    // Match the supported member locale, with the same English fallback as the old switches.
-    // Handoff history and the live widget share Help_Agent_IssueProposed rather than mirrored text.
+    // Conversation locale when supported, else the default culture.
     private static string LocalizedReply(string resourceKey, string? locale)
     {
         var culture = CultureInfo.GetCultureInfo(

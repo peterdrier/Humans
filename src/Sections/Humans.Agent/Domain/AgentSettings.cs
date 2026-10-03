@@ -4,7 +4,7 @@ namespace Humans.Agent.Domain;
 
 /// <summary>
 /// Singleton row (<c>Id = 1</c> enforced in EF configuration). Admin-editable at
-/// <c>/Admin/Agent/Settings</c>. Mirrored in-memory by <c>IAgentSettingsStore</c>.
+/// the <c>/Settings#agent</c> tab. Mirrored in-memory by <c>IAgentSettingsStore</c>.
 /// </summary>
 internal sealed class AgentSettings
 {

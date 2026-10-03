@@ -10,8 +10,7 @@ using NSubstitute;
 namespace Humans.Agent.Tests;
 
 /// <summary>
-/// The /Settings#agent tab body (peterdrier/Humans#1634) — the same mapping
-/// AdminAgentController.Settings used to build before that GET became a redirect.
+/// The /Settings#agent tab body (peterdrier/Humans#1634) maps current settings onto the form.
 /// </summary>
 public sealed class AgentSettingsTabViewComponentTests
 {
