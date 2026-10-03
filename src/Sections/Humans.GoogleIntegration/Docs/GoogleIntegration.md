@@ -110,6 +110,8 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 
 ## Invariants
 
+- Sync-dashboard preview loads apply only the latest response or failure for each resource tab. Drive and group previews load independently; sync POSTs keep their existing execution boundaries.
+
 - All Google Drive resources are on Shared Drives. The system does not use regular (My Drive) folders.
 - Inherited access cannot be removed at a child folder. The legacy Teams-keyed Drive path excludes permissions with any inherited component from mutation, since Drive refuses to delete them at this level (nobodies-collective/Humans#945). The source-claimed Drive path retains direct/inherited component details: a direct elevation on a mixed permission is updated in place to the greater of the expected role and inherited floor. Departure or retirement reduces the elevation to that floor; equal-floor mixed or purely inherited permissions then need no further mutation. Pure direct extras are deleted. Role-change successes and failures enter the sync log; reducing an elevation while inherited access remains never sends a total-removal notice. A Drive delete that still 403s as inherited (a race between listing and deleting) is classified terminal and not retried until the next reconciliation pass.
 - Source-claimed Drive role changes use Google's permission update operation rather than delete/recreate. `AddOnly` may elevate access but cannot downgrade it, including the mixed writer-to-inherited-reader transition; `None` and `Preview` never mutate.
