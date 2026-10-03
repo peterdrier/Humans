@@ -89,8 +89,8 @@ internal sealed class BudgetController(
                 TotalExpenses = summary.TotalExpenses,
                 NetBalance = summary.NetBalance,
                 TotalLineItems = totalLineItems,
-                IncomeSlices = summary.IncomeSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
-                ExpenseSlices = summary.ExpenseSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
+                IncomeSlices = summary.IncomeSlices,
+                ExpenseSlices = summary.ExpenseSlices,
                 IsCoordinator = coordinatorTeamIds.Count > 0 || (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded
             };
             return View(model);

@@ -604,8 +604,8 @@ internal sealed class BudgetAdminController(
             TotalIncome = summary.TotalIncome,
             TotalExpenses = summary.TotalExpenses,
             NetBalance = summary.NetBalance,
-            IncomeSlices = summary.IncomeSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
-            ExpenseSlices = summary.ExpenseSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
+            IncomeSlices = summary.IncomeSlices,
+            ExpenseSlices = summary.ExpenseSlices,
             HoldedActualsByCategory = holdedActuals
         };
     }
