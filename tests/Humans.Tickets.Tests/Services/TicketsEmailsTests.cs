@@ -1,4 +1,7 @@
 using System.Reflection;
+using System.Globalization;
+using Humans.Base.Extensions;
+using Xunit;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Tickets.Contracts;
@@ -19,6 +22,44 @@ namespace Humans.Tickets.Tests.Services;
 public sealed class TicketsEmailsTests
 {
     private static TicketsEmails Create() => TestTicketsEmails.Create();
+
+    [HumansTheory]
+    [InlineData("en", "requested", "Ticket transfer requested", "Hi", "Reason:")]
+    [InlineData("en", "completed", "Ticket transfer complete", "Hi", "Reason:")]
+    [InlineData("en", "cancelled", "Ticket transfer cancelled", "Hi", "Reason:")]
+    [InlineData("es", "requested", "Solicitud de transferencia de entrada recibida", "Hola", "Motivo:")]
+    [InlineData("es", "completed", "Transferencia de entrada completada", "Hola", "Motivo:")]
+    [InlineData("es", "cancelled", "Transferencia de entrada cancelada", "Hola", "Motivo:")]
+    [InlineData("de", "requested", "Ticketübertragung angefragt", "Hallo", "Grund:")]
+    [InlineData("de", "completed", "Ticketübertragung abgeschlossen", "Hallo", "Grund:")]
+    [InlineData("de", "cancelled", "Ticketübertragung abgebrochen", "Hallo", "Grund:")]
+    [InlineData("it", "requested", "Richiesta di trasferimento del biglietto ricevuta", "Ciao", "Motivo:")]
+    [InlineData("it", "completed", "Trasferimento del biglietto completato", "Ciao", "Motivo:")]
+    [InlineData("it", "cancelled", "Trasferimento del biglietto annullato", "Ciao", "Motivo:")]
+    [InlineData("fr", "requested", "Demande de transfert de billet reçue", "Bonjour", "Motif :")]
+    [InlineData("fr", "completed", "Transfert de billet terminé", "Bonjour", "Motif :")]
+    [InlineData("fr", "cancelled", "Transfert de billet annulé", "Bonjour", "Motif :")]
+    [InlineData("ca", "requested", "Sol·licitud de transferència d’entrada rebuda", "Hola", "Motiu:")]
+    [InlineData("ca", "completed", "Transferència d’entrada completada", "Hola", "Motiu:")]
+    [InlineData("ca", "cancelled", "Transferència d’entrada cancel·lada", "Hola", "Motiu:")]
+    public void MemberTransferEmail_LocalizesAndEncodesSubstitutions(
+        string culture, string kind, string subject, string greeting, string reasonLabel)
+    {
+        using var ambient = new CultureScope("en");
+        var emails = Create();
+        var msg = string.Equals(kind, "requested", StringComparison.Ordinal)
+            ? emails.TicketTransferRequested("a@x.com", "Ann <Admin>", "Rx & friend", "Ticket <one>", culture)
+            : emails.TicketTransferDecision("a@x.com", "Ann <Admin>",
+                string.Equals(kind, "completed", StringComparison.Ordinal), "Ticket <one>", "Rx & friend", "Too <late>", culture);
+
+        msg.Subject.Should().Be(subject);
+        msg.HtmlBody.Should().Contain($"<p>{greeting} Ann &lt;Admin&gt;,</p>");
+        msg.HtmlBody.Should().Contain("Ticket &lt;one&gt;").And.Contain("Rx &amp; friend");
+        if (string.Equals(kind, "cancelled", StringComparison.Ordinal))
+            msg.HtmlBody.Should().Contain($"<strong>{reasonLabel}</strong> Too &lt;late&gt;");
+        CultureInfo.CurrentCulture.Name.Should().Be("en");
+        CultureInfo.CurrentUICulture.Name.Should().Be("en");
+    }
 
     [HumansFact]
     public void TicketTransferRequested_GoesToTheSender_System()

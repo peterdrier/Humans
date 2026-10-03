@@ -83,4 +83,25 @@
   <data name="Tickets_TicketHoldings_OrderPlural" xml:space="preserve"><value>commandes</value></data>
   <data name="Tickets_TicketHoldings_Empty" xml:space="preserve"><value>Aucun billet.</value></data>
   <data name="Tickets_MemberTicketStatus_Transfers" xml:space="preserve"><value>Transferts…</value></data>
+  <data name="Tickets_Email_TransferRequestedSubject" xml:space="preserve">
+    <value>Demande de transfert de billet reçue</value>
+  </data>
+  <data name="Tickets_Email_TransferRequestedBody" xml:space="preserve">
+    <value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Nous avons reçu ta demande de transfert du billet &lt;strong&gt;{1}&lt;/strong&gt; à &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;Notre équipe billetterie la traitera et te tiendra au courant prochainement. Tu n’as rien d’autre à faire.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Email_TransferCompletedSubject" xml:space="preserve">
+    <value>Transfert de billet terminé</value>
+  </data>
+  <data name="Tickets_Email_TransferCompletedBody" xml:space="preserve">
+    <value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Le transfert du billet &lt;strong&gt;{1}&lt;/strong&gt; à &lt;strong&gt;{2}&lt;/strong&gt; est terminé.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Email_TransferCancelledSubject" xml:space="preserve">
+    <value>Transfert de billet annulé</value>
+  </data>
+  <data name="Tickets_Email_TransferCancelledBody" xml:space="preserve">
+    <value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Le transfert demandé du billet &lt;strong&gt;{1}&lt;/strong&gt; à &lt;strong&gt;{2}&lt;/strong&gt; n’a pas été effectué.&lt;/p&gt;{3}&lt;p&gt;Si tu as des questions, réponds à cet e-mail et notre équipe billetterie t’aidera.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Email_TransferCancellationReason" xml:space="preserve">
+    <value>&lt;p&gt;&lt;strong&gt;Motif :&lt;/strong&gt; {0}&lt;/p&gt;</value>
+  </data>
 </root>

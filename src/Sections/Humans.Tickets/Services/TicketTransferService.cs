@@ -559,13 +559,13 @@ internal sealed class TicketTransferService(
     {
         var ticketLabel = TicketLabel(attendee.AttendeeName, attendee.VendorTicketId);
         var reviewUrl = $"/Tickets/Admin/Transfers/Detail/{request.Id}";
-        var (senderEmail, senderName) = await SafeResolveSenderAsync(senderUserId, request.Id, ct);
+        var (senderEmail, senderName, senderCulture) = await SafeResolveSenderAsync(senderUserId, request.Id, ct);
 
         if (!string.IsNullOrWhiteSpace(senderEmail))
         {
             await SafeSendAsync(request.Id, "transfer-requested (sender)", () =>
                 emailService.SendAsync(emailMessages.TicketTransferRequested(
-                    senderEmail, senderName, request.ReceiverLegalName, ticketLabel, culture: null), ct), ct);
+                    senderEmail, senderName, request.ReceiverLegalName, ticketLabel, culture: senderCulture), ct), ct);
         }
 
         await SafeSendAsync(request.Id, "transfer-requested (team)", () =>
@@ -581,22 +581,37 @@ internal sealed class TicketTransferService(
         var ticketLabel = TicketLabel(
             attendee?.AttendeeName ?? request.ReceiverLegalName,
             attendee?.VendorTicketId ?? string.Empty);
-        var (senderEmail, senderName) = await SafeResolveSenderAsync(request.SenderUserId, request.Id, ct);
+        var (senderEmail, senderName, senderCulture) = await SafeResolveSenderAsync(request.SenderUserId, request.Id, ct);
 
         if (!string.IsNullOrWhiteSpace(senderEmail))
         {
             await SafeSendAsync(request.Id, "transfer-decision (sender)", () =>
                 emailService.SendAsync(emailMessages.TicketTransferDecision(
                     senderEmail, senderName, successful, ticketLabel,
-                    request.ReceiverLegalName, reason, culture: null), ct), ct);
+                    request.ReceiverLegalName, reason, culture: senderCulture), ct), ct);
         }
 
         if (!string.IsNullOrWhiteSpace(request.ReceiverEmail))
         {
+            // Language lookup is best-effort; it must not prevent delivery to the saved address.
+            var receiverCulture = "en";
+            try
+            {
+                var receiver = await userService.GetUserInfoAsync(request.ReceiverUserId, ct);
+                receiverCulture = receiver?.PreferredLanguage ?? "en";
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to resolve receiver language for transfer {TransferId}", request.Id);
+            }
             await SafeSendAsync(request.Id, "transfer-decision (receiver)", () =>
                 emailService.SendAsync(emailMessages.TicketTransferDecision(
                     request.ReceiverEmail, request.ReceiverLegalName, successful, ticketLabel,
-                    request.ReceiverLegalName, reason, culture: null), ct), ct);
+                    request.ReceiverLegalName, reason, culture: receiverCulture), ct), ct);
         }
     }
 
@@ -616,7 +631,7 @@ internal sealed class TicketTransferService(
         }
     }
 
-    private async Task<(string? Email, string Name)> SafeResolveSenderAsync(
+    private async Task<(string? Email, string Name, string Culture)> SafeResolveSenderAsync(
         Guid senderUserId, Guid transferId, CancellationToken ct)
     {
         try
@@ -631,7 +646,7 @@ internal sealed class TicketTransferService(
         {
             logger.LogError(ex, "Failed to resolve sender {SenderUserId} for transfer {TransferId} notifications",
                 senderUserId, transferId);
-            return (null, "there");
+            return (null, "there", "en");
         }
     }
 
@@ -653,12 +668,12 @@ internal sealed class TicketTransferService(
         }
     }
 
-    private async Task<(string? Email, string Name)> ResolveSenderAsync(Guid senderUserId, CancellationToken ct)
+    private async Task<(string? Email, string Name, string Culture)> ResolveSenderAsync(Guid senderUserId, CancellationToken ct)
     {
         var info = await userService.GetUserInfoAsync(senderUserId, ct);
         var email = await userEmailService.GetPrimaryEmailAsync(senderUserId, ct);
         var name = info?.BurnerName;
-        return (email, string.IsNullOrWhiteSpace(name) ? "there" : name);
+        return (email, string.IsNullOrWhiteSpace(name) ? "there" : name, info?.PreferredLanguage ?? "en");
     }
 
     // VendorMessage is capped at 2000 chars and the vendor client embeds the raw TicketTailor
