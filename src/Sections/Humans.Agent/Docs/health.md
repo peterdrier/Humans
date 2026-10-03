@@ -60,14 +60,14 @@ that enforces each:
   doc reads cannot reach arbitrary paths (`src/Sections/Humans.Agent/Services/Preload/AgentFeatureSpecReader.cs:116`,
   `src/Sections/Humans.Agent/Services/Preload/AgentSectionDocReader.cs:37`).
 - The tool loop is bounded (`src/Sections/Humans.Agent/Services/AgentService.cs:363`); cap-hit
-  forces synthesis (`src/Sections/Humans.Agent/Services/AgentService.cs:409`).
+  forces synthesis (`src/Sections/Humans.Agent/Services/AgentService.cs:407`).
 - A turn never ends with an empty assistant bubble, streamed or stored
   (`src/Sections/Humans.Agent/Services/AgentService.cs:417`).
 - `route_to_issue` never writes server-side (`src/Sections/Humans.Agent/Services/AgentToolDispatcher.cs:84`).
 - An incomplete preload corpus or community index is served but never cached, and a reload
   publishes nothing unless every fetch succeeded
-  (`src/Sections/Humans.Agent/Services/Preload/AgentPreloadCorpusBuilder.cs:46`,
-  `src/Sections/Humans.Agent/Services/Preload/AgentPreloadCorpusBuilder.cs:59`).
+  (`src/Sections/Humans.Agent/Services/Preload/AgentPreloadCorpusBuilder.cs:44`,
+  `src/Sections/Humans.Agent/Services/Preload/AgentPreloadCorpusBuilder.cs:57`).
 
 ## Seams
 
@@ -132,3 +132,4 @@ that enforces each:
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-08-28 | First doctoring: doc drift + narration purge, duplicate view record collapsed | peterdrier/Humans#1553 |
+| section-doctor | 2026-10-03 | Docs health check probes a doc that exists; section-guide reader drops its dead first fetch | pending |
