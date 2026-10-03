@@ -5,6 +5,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Calendar.Data;
 using Humans.Teams.Contracts;
 using Humans.Calendar.Services;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NodaTime;
@@ -143,7 +144,10 @@ public class CalendarServiceValidationTests
     public async Task CreateEventWithResultAsync_returns_validation_member_for_malformed_recurrence()
     {
         var repo = Substitute.For<ICalendarRepository>();
-        var service = BuildService(repo);
+        var logger = Substitute.For<ILogger<CalendarService>>();
+        var service = new CalendarService(repo,
+            new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
+            Substitute.For<IAuditLogService>(), logger);
         var dto = new CreateCalendarEventDto(
             "Planning",
             Description: null,
@@ -159,6 +163,9 @@ public class CalendarServiceValidationTests
         var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
+        var log = logger.ReceivedCalls().Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).GetArguments();
+        log[0].Should().Be(LogLevel.Warning);
+        log[3].Should().BeNull("invalid user input should not log an exception stack");
         result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceRule));
         result.ErrorMessage.Should().Be("Calendar_InvalidTimedRecurrence");
         await repo.DidNotReceive().AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>());
@@ -167,7 +174,11 @@ public class CalendarServiceValidationTests
     [HumansFact]
     public async Task UpdateEventWithResultAsync_returns_validation_member_for_unknown_timezone()
     {
-        var service = BuildService(Substitute.For<ICalendarRepository>());
+        var repo = Substitute.For<ICalendarRepository>();
+        var logger = Substitute.For<ILogger<CalendarService>>();
+        var service = new CalendarService(repo,
+            new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
+            Substitute.For<IAuditLogService>(), logger);
         var dto = new CreateCalendarEventDto(
             "Planning",
             Description: null,
@@ -183,6 +194,9 @@ public class CalendarServiceValidationTests
         var result = await service.UpdateEventWithResultAsync(Guid.NewGuid(), dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
+        var log = logger.ReceivedCalls().Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).GetArguments();
+        log[0].Should().Be(LogLevel.Warning);
+        log[3].Should().BeNull("invalid user input should not log an exception stack");
         result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceTimezone));
         result.ErrorMessage.Should().Be("Calendar_UnknownTimezone");
     }

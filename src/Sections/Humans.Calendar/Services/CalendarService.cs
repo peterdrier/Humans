@@ -111,7 +111,7 @@ internal sealed class CalendarService(
         }
         catch (ValidationException ex)
         {
-            logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
+            logger.LogWarning("Calendar event create rejected: {Reason}", ex.Message);
             return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex),
                 CalendarValidationErrorKey(ex, dto.IsAllDay));
         }
@@ -351,7 +351,7 @@ internal sealed class CalendarService(
         }
         catch (ValidationException ex)
         {
-            logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
+            logger.LogWarning("Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
             return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex),
                 CalendarValidationErrorKey(ex, dto.IsAllDay));
         }
