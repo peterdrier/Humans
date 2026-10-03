@@ -120,7 +120,6 @@ internal sealed class TicketTailorService : ITicketVendorService
     public async Task<IReadOnlyList<VendorTicketDto>> GetIssuedTicketsAsync(
         Instant? since, string eventId, CancellationToken ct = default)
     {
-        using var _ = _logger.TimeOperation();
         var tickets = new List<VendorTicketDto>();
         string? cursor = null;
         var seenCursors = new HashSet<string>(StringComparer.Ordinal);
@@ -133,10 +132,14 @@ internal sealed class TicketTailorService : ITicketVendorService
             if (cursor is not null)
                 url += $"&starting_after={cursor}";
 
-            using var response = await _httpClient.GetAsync(url, ct);
-            response.EnsureSuccessStatusCode();
+            TtPaginatedResponse<TtIssuedTicket>? body;
+            using (_logger.TimeOperation())
+            {
+                using var response = await _httpClient.GetAsync(url, ct);
+                response.EnsureSuccessStatusCode();
+                body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtIssuedTicket>>(JsonOptions, ct);
+            }
 
-            var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtIssuedTicket>>(JsonOptions, ct);
             if (body?.Data is null)
                 throw new HttpRequestException("TicketTailor pagination response is missing data.");
             if (body.Data.Count == 0)
@@ -163,7 +166,6 @@ internal sealed class TicketTailorService : ITicketVendorService
     public async Task<IReadOnlyList<VendorCheckInDto>> GetCheckInsAsync(
         Instant? since, string eventId, CancellationToken ct = default)
     {
-        using var _ = _logger.TimeOperation();
         var records = new List<TtCheckIn>();
         string? cursor = null;
         var seenCursors = new HashSet<string>(StringComparer.Ordinal);
@@ -178,10 +180,14 @@ internal sealed class TicketTailorService : ITicketVendorService
             if (cursor is not null)
                 url += $"&starting_after={cursor}";
 
-            using var response = await _httpClient.GetAsync(url, ct);
-            response.EnsureSuccessStatusCode();
+            TtPaginatedResponse<TtCheckIn>? body;
+            using (_logger.TimeOperation())
+            {
+                using var response = await _httpClient.GetAsync(url, ct);
+                response.EnsureSuccessStatusCode();
+                body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtCheckIn>>(JsonOptions, ct);
+            }
 
-            var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtCheckIn>>(JsonOptions, ct);
             if (body?.Data is null)
                 throw new HttpRequestException("TicketTailor pagination response is missing data.");
             if (body.Data.Count == 0)
