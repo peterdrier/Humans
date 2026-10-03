@@ -28,45 +28,10 @@ internal sealed class ConsentController(
 
         var (groups, history) = await consentService.GetConsentDashboardAsync(user.Id, HttpContext.RequestAborted);
 
-        var teamGroups = groups
-            .Select(g =>
-            {
-                var docViewModels = g.Documents.Select(d => new ConsentDocumentViewModel
-                {
-                    DocumentVersionId = d.DocumentVersionId,
-                    DocumentName = d.DocumentName,
-                    VersionNumber = d.VersionNumber,
-                    EffectiveFrom = d.EffectiveFrom.ToDateTimeUtc(),
-                    HasConsented = d.HasConsented,
-                    ConsentedAt = d.ConsentedAt?.ToDateTimeUtc(),
-                    ChangesSummary = d.ChangesSummary,
-                    LastUpdated = d.LastUpdated?.ToDateTimeUtc()
-                }).ToList();
-
-                return new ConsentTeamGroupViewModel
-                {
-                    TeamId = g.TeamId,
-                    TeamName = g.TeamName,
-                    Documents = docViewModels
-                        .OrderBy(d => d.HasConsented)
-                        .ThenBy(d => d.DocumentName, StringComparer.Ordinal)
-                        .ToList()
-                };
-            })
-            .OrderBy(tg => tg.AllConsented)
-            .ThenBy(tg => tg.TeamName, StringComparer.Ordinal)
-            .ToList();
-
         var viewModel = new ConsentIndexViewModel
         {
-            TeamGroups = teamGroups,
-            ConsentHistory = history.Take(10).Select(c => new ConsentHistoryViewModel
-            {
-                DocumentVersionId = c.DocumentVersionId,
-                DocumentName = c.DocumentName,
-                VersionNumber = c.VersionNumber,
-                ConsentedAt = c.ConsentedAt.ToDateTimeUtc()
-            }).ToList()
+            TeamGroups = groups,
+            ConsentHistory = history.Take(10).ToList()
         };
 
         return View(viewModel);

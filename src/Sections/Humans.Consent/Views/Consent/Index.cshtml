@@ -1,3 +1,4 @@
+@using NodaTime
 @model Humans.Consent.Models.ConsentIndexViewModel
 @{
     ViewData["Title"] = Localizer["ConsentIndex_Title"].Value;
@@ -26,12 +27,12 @@
         }
         else
         {
-            @foreach (var group in Model.TeamGroups)
+            @foreach (var group in Model.TeamGroups.OrderBy(g => g.Documents.All(d => d.HasConsented)).ThenBy(g => g.TeamName, StringComparer.Ordinal))
             {
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span class="fw-bold">@group.TeamName</span>
-                        @if (group.AllConsented)
+                        @if (group.Documents.All(d => d.HasConsented))
                         {
                             <span class="badge bg-success">@Localizer["Consent_AllConsented"]</span>
                         }
@@ -41,7 +42,7 @@
                         }
                     </div>
                     <div class="list-group list-group-flush">
-                        @foreach (var doc in group.Documents)
+                        @foreach (var doc in group.Documents.OrderBy(d => d.HasConsented).ThenBy(d => d.DocumentName, StringComparer.Ordinal))
                         {
                             <div class="list-group-item d-flex justify-content-between align-items-start">
                                 <div class="ms-2 me-auto">
@@ -49,12 +50,12 @@
                                         @doc.DocumentName
                                     </div>
                                     <small class="text-muted">
-                                        @Localizer["Consent_Version"] @doc.VersionNumber - @Localizer["Consent_EffectiveFrom"] @doc.EffectiveFrom.ToDate()
+                                        @Localizer["Consent_Version"] @doc.VersionNumber - @Localizer["Consent_EffectiveFrom"] @doc.EffectiveFrom.ToDate(DateTimeZone.Utc)
                                     </small>
                                     @if (doc.LastUpdated.HasValue)
                                     {
                                         <br />
-                                        <small class="text-muted">@Localizer["Consent_LastUpdated"] @doc.LastUpdated.Value.ToDate()</small>
+                                        <small class="text-muted">@Localizer["Consent_LastUpdated"] @doc.LastUpdated.Value.ToDate(DateTimeZone.Utc)</small>
                                     }
                                     @if (!string.IsNullOrEmpty(doc.ChangesSummary))
                                     {
@@ -67,7 +68,7 @@
                                     {
                                         <span class="badge bg-success mb-2">@Localizer["Consent_Consented"]</span>
                                         <br />
-                                        <small class="text-muted">@doc.ConsentedAt.ToDate()</small>
+                                        <small class="text-muted">@doc.ConsentedAt?.ToDate(DateTimeZone.Utc)</small>
                                     }
                                     else
                                     {
@@ -117,7 +118,7 @@
                                     <strong>@history.DocumentName</strong> (@history.VersionNumber)
                                 </a>
                                 <br />
-                                <small class="text-muted">@history.ConsentedAt.ToDateTime()</small>
+                                <small class="text-muted">@history.ConsentedAt.ToDateTime(DateTimeZone.Utc)</small>
                             </li>
                         }
                     </ul>

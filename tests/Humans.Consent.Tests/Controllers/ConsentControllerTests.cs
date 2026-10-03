@@ -1,3 +1,11 @@
+using System.Globalization;
+using Humans.Base.Extensions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Routing;
 using System.Security.Claims;
 using Humans.Consent.Models;
 using Humans.Consent.Services;
@@ -91,6 +99,72 @@ public sealed class ConsentControllerTests
         externalLogins: [],
         profile: profile,
         communicationPreferences: []);
+
+    [HumansFact]
+    public async Task Index_RendersPendingRowsFirstUtcDatesAndTenHistoryItems()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(userId, ActiveProfile()));
+        var stamp = Instant.FromUtc(2026, 1, 31, 23, 30);
+        ConsentDashboardDocument Document(string name, bool signed) => new(
+            Guid.NewGuid(), name, "v1", stamp, signed, signed ? stamp : null, "Changes", stamp);
+        _consentService.GetConsentDashboardAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ConsentDashboard([
+                new(Guid.NewGuid(), "Z-complete-team", [Document("Completed-document", true)]),
+                new(Guid.NewGuid(), "B-pending-team", [Document("Other-document", false)]),
+                new(Guid.NewGuid(), "A-pending-team", [Document("0-signed-document", true),
+                    Document("Zulu-pending-document", false), Document("Alpha-pending-document", false)])
+            ], Enumerable.Range(0, 11).Select(i => new ConsentDashboardHistoryItem(
+                Guid.NewGuid(), $"History{i:D2}", "v1", stamp)).ToList()));
+
+        var result = Assert.IsType<ViewResult>(await BuildSut(userId).Index());
+        var html = await RenderIndexAsync(Assert.IsType<ConsentIndexViewModel>(result.Model));
+
+        Assert.True(html.IndexOf("A-pending-team", StringComparison.Ordinal) < html.IndexOf("B-pending-team", StringComparison.Ordinal));
+        Assert.True(html.IndexOf("B-pending-team", StringComparison.Ordinal) < html.IndexOf("Z-complete-team", StringComparison.Ordinal));
+        Assert.True(html.IndexOf("Alpha-pending-document", StringComparison.Ordinal) < html.IndexOf("Zulu-pending-document", StringComparison.Ordinal));
+        Assert.True(html.IndexOf("Zulu-pending-document", StringComparison.Ordinal) < html.IndexOf("0-signed-document", StringComparison.Ordinal));
+        Assert.Contains("Jan 31, 2026", html);
+        Assert.Contains("Jan 31, 2026 23:30", html);
+        Assert.DoesNotContain("Feb 1, 2026", html);
+        Assert.Contains("History09", html);
+        Assert.DoesNotContain("History10", html);
+    }
+
+    private static async Task<string> RenderIndexAsync(ConsentIndexViewModel model)
+    {
+        using var culture = new CultureScope("en");
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            ApplicationName = typeof(ConsentControllerTests).Assembly.GetName().Name,
+            EnvironmentName = "Testing",
+        });
+        builder.Services.AddLocalization();
+        builder.Services.AddControllersWithViews().AddApplicationPart(typeof(ConsentResource).Assembly);
+        var url = Substitute.For<IUrlHelper>();
+        url.Action(Arg.Any<UrlActionContext>()).Returns("/");
+        var urls = Substitute.For<IUrlHelperFactory>();
+        urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
+        builder.Services.AddSingleton(urls);
+        await using var app = builder.Build();
+        using var scope = app.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var engine = services.GetRequiredService<IRazorViewEngine>();
+        var result = engine.GetView(null, "/Views/Consent/Index.cshtml", isMainPage: false);
+        Assert.True(result.Success, string.Join(", ", result.SearchedLocations ?? []));
+        var http = new DefaultHttpContext { RequestServices = services };
+        var route = new RouteData();
+        route.Values["controller"] = "Consent";
+        route.Values["action"] = "Index";
+        var action = new ActionContext(http, route, new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
+        var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary()) { Model = model };
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var context = new ViewContext(action, result.View, data,
+            new TempDataDictionary(http, Substitute.For<ITempDataProvider>()), writer, new HtmlHelperOptions());
+        await result.View.RenderAsync(context);
+        return writer.ToString();
+    }
 
     [HumansTheory]
     [InlineData("IndexViewer")]
