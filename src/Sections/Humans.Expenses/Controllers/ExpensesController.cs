@@ -99,7 +99,7 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
             var categories = await BuildCategoryOptionsAsync();
@@ -115,7 +115,7 @@ internal sealed class ExpensesController(
                 SubmitterUserId = user.Id,
             });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading new expense report form");
             SetError(localizer["Expenses_Flash_LoadFormFailed"]);
@@ -584,18 +584,18 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, _) = await RequireCurrentUserAsync();
+            var (errorResult, _) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
             // Visibility = report's View handler grant. NotFound on both miss + denial (no leak).
-            var owningReport = await service.GetReportOwningAttachmentAsync(attachmentId);
+            var owningReport = await service.GetReportOwningAttachmentAsync(attachmentId, HttpContext.RequestAborted);
             if (owningReport is null) return NotFound();
 
             var authResult = await authService.AuthorizeAsync(User, owningReport,
                 new ExpenseReportOperationRequirement(ExpenseReportOperation.View));
             if (!authResult.Succeeded) return NotFound();
 
-            var attachment = await service.TryReadAttachmentAsync(owningReport, attachmentId);
+            var attachment = await service.TryReadAttachmentAsync(owningReport, attachmentId, HttpContext.RequestAborted);
             if (attachment is null) return NotFound();
 
             // Inline only for the browser-renderable subset of the upload whitelist — no filename
@@ -605,7 +605,7 @@ internal sealed class ExpensesController(
 
             return File(attachment.Bytes, attachment.ContentType, attachment.OriginalFileName);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error streaming attachment {AttachmentId}", attachmentId);
             return NotFound();

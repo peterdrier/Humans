@@ -132,6 +132,8 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Invariants
 
+- New-report form user resolution and attachment download/inline reads honor request cancellation. Abandoned reads do not become error flashes or 404s; ordinary failures and attachment denial responses retain their existing behavior.
+
 - The Expenses index GET passes request cancellation to token-aware member, report, coordinator queue and cached creditor reads. Cancellation propagates rather than becoming a load-failure toast and empty page; existing tokenless Budget reads retain their contract.
 
 - A report follows the lifecycle: Draft → Submitted → (CoordinatorEndorsed →) Approved. `Approved` is terminal for the report — paid/unpaid is read from the member's Holded creditor ledger, never stamped on the report. Terminal alternate: Withdrawn (from Submitted/CoordinatorEndorsed/Approved). `ExpenseReportService` enforces all transitions; `IExpenseRepository` persists them atomically.

@@ -152,6 +152,91 @@ public sealed class ExpenseReportServiceTests
         await read.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, "User")]
+    [Xunit.InlineData(false, "Report")]
+    [Xunit.InlineData(false, "File")]
+    [Xunit.InlineData(true, "File")]
+    public async Task AbandonedAttachmentReads_CancelWithoutBecomingNotFound(bool inline, string boundary)
+    {
+        var (_, category) = SetupActiveYear();
+        var actorId = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(actorId, actorId, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, actorId, false, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+        await using var stream = new MemoryStream([1, 2, 3]);
+        var attachmentId = await _sut.AttachFileToLineAsync(
+            id, actorId, false, lineId, "receipt.pdf", "application/pdf", stream, Xunit.TestContext.Current.CancellationToken);
+        using var request = new CancellationTokenSource();
+        var abandon = false;
+        async ValueTask<UserInfo?> ReadActor(NSubstitute.Core.CallInfo call)
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            if (abandon && string.Equals(boundary, "Report", StringComparison.Ordinal)) await request.CancelAsync();
+            return UserInfo.Create(new User { Id = actorId }, [], [], [], null, []);
+        }
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(ReadActor);
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(async _ =>
+        {
+            if (abandon && string.Equals(boundary, "File", StringComparison.Ordinal)) await request.CancelAsync();
+            return AuthorizationResult.Success();
+        });
+        _fileStorage.TryReadAsync(ExpenseReportService.AttachmentKey(attachmentId, ".pdf"), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult<byte[]?>([4, 5, 6]);
+            });
+        var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance,
+            authorization, NullLogger<ExpensesController>.Instance, _localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            {
+                RequestAborted = request.Token,
+                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
+            } },
+        };
+        Task<IActionResult> ReadAttachment() => inline ? controller.AttachmentView(attachmentId) : controller.Attachment(attachmentId);
+
+        var file = (await ReadAttachment()).Should().BeOfType<FileContentResult>().Subject;
+        file.FileContents.Should().Equal(4, 5, 6);
+        file.ContentType.Should().Be("application/pdf");
+        file.FileDownloadName.Should().Be(inline ? "" : "receipt.pdf");
+        abandon = true;
+        if (string.Equals(boundary, "User", StringComparison.Ordinal)) await request.CancelAsync();
+        Func<Task> read = async () => await ReadAttachment();
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
+    public async Task AbandonedNewReportForm_CancelsItsUserReadWithoutShowingAnError()
+    {
+        SetupActiveYear();
+        var actorId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
+        });
+        var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance,
+            Substitute.For<IAuthorizationService>(), NullLogger<ExpensesController>.Instance, _localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            {
+                RequestAborted = request.Token,
+                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
+            } },
+        };
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        (await controller.New()).Should().BeOfType<ViewResult>();
+        await request.CancelAsync();
+        Func<Task> read = async () => await controller.New();
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        controller.TempData.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task CreateDraftAsync_CreatesReport_WithDraftStatusAndZeroTotal()
     {
