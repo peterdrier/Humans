@@ -193,13 +193,64 @@ internal sealed class CityPlanningService(
         Guid campSeasonId, string geoJson, double areaSqm, Guid modifiedByUserId,
         string note = "Saved", CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(geoJson) || !IsValidJson(geoJson))
+        if (string.IsNullOrWhiteSpace(geoJson) || !IsValidCampGeometry(geoJson))
             throw new ArgumentException("Invalid GeoJSON.", nameof(geoJson));
 
         var now = clock.GetCurrentInstant();
         var polygon = await repo.SavePolygonAndAppendHistoryAsync(
             campSeasonId, geoJson, areaSqm, modifiedByUserId, note, now, cancellationToken);
         return new CampPolygonSaveResult(polygon.GeoJson, polygon.AreaSqm);
+    }
+
+    private static bool IsValidCampGeometry(string value)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(value);
+            var geometry = document.RootElement;
+            if (geometry.ValueKind != JsonValueKind.Object) return false;
+            if (HasType(geometry, "Feature"))
+            {
+                if (!geometry.TryGetProperty("geometry", out geometry) ||
+                    geometry.ValueKind != JsonValueKind.Object) return false;
+            }
+            if (!geometry.TryGetProperty("coordinates", out var coordinates) ||
+                coordinates.ValueKind != JsonValueKind.Array || coordinates.GetArrayLength() == 0) return false;
+            if (HasType(geometry, "Polygon")) return IsPolygon(coordinates);
+            if (!HasType(geometry, "MultiPolygon")) return false;
+            return coordinates.EnumerateArray().All(IsPolygon);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        static bool HasType(JsonElement element, string type) =>
+            element.TryGetProperty("type", out var value) &&
+            value.ValueKind == JsonValueKind.String && string.Equals(value.GetString(), type, StringComparison.Ordinal);
+
+        static bool IsPolygon(JsonElement rings)
+        {
+            if (rings.ValueKind != JsonValueKind.Array || rings.GetArrayLength() == 0) return false;
+            foreach (var ring in rings.EnumerateArray())
+            {
+                if (ring.ValueKind != JsonValueKind.Array || ring.GetArrayLength() < 4) return false;
+                foreach (var position in ring.EnumerateArray())
+                {
+                    if (position.ValueKind != JsonValueKind.Array || position.GetArrayLength() < 2) return false;
+                    foreach (var coordinate in position.EnumerateArray())
+                        if (coordinate.ValueKind != JsonValueKind.Number ||
+                            !coordinate.TryGetDouble(out var number) || !double.IsFinite(number)) return false;
+                    if (position[1].GetDouble() is < -90 or > 90) return false;
+                }
+                var first = ring[0];
+                var last = ring[ring.GetArrayLength() - 1];
+                if (first.GetArrayLength() != last.GetArrayLength()) return false;
+                for (var i = 0; i < first.GetArrayLength(); i++)
+                    if (first[i].GetDouble() != last[i].GetDouble()) return false;
+            }
+            return true;
+        }
     }
 
     private static bool IsValidJson(string value)

@@ -107,7 +107,7 @@ internal sealed class CityPlanningApiController(
         }
         catch (ArgumentException ex)
         {
-            logger.LogWarning(ex, "Rejected camp polygon for {CampSeasonId}: {Reason}", campSeasonId, ex.Message);
+            logger.LogWarning("Rejected camp polygon for {CampSeasonId}: {Reason}", campSeasonId, ex.Message);
             return BadRequest("Invalid GeoJSON.");
         }
 

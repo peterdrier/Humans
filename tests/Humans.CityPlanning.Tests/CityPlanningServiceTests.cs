@@ -1,3 +1,4 @@
+using Xunit;
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
 using Humans.AuditLog.Contracts;
@@ -80,7 +81,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     {
         var campSeasonId = Guid.NewGuid();
         var userId = NewUserId();
-        const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]}}""";
+        const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
 
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 500.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
@@ -114,14 +115,49 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         polygon.AreaSqm.Should().Be(200.0);
     }
 
-    [HumansFact]
-    public async Task SaveCampPolygonAsync_InvalidGeoJson_Throws()
+    [HumansTheory]
+    [InlineData("{not-json")]
+    [InlineData("null")]
+    [InlineData("[]")]
+    [InlineData("{}")]
+    [InlineData("123")]
+    [InlineData("\"polygon\"")]
+    [InlineData("""{"type":"Feature"}""")]
+    [InlineData("""{"type":"Feature","geometry":null}""")]
+    [InlineData("""{"type":"Point","coordinates":[0,0]}""")]
+    [InlineData("""{"type":"FeatureCollection","features":[]}""")]
+    [InlineData("""{"type":"Polygon","coordinates":[]}""")]
+    [InlineData("""{"type":"Polygon","coordinates":[[]]}""")]
+    [InlineData("""{"type":"Polygon","coordinates":[[[0,0],[1,0],[0,0]]]}""")]
+    [InlineData("""{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[2,2]]]}""")]
+    [InlineData("""{"type":"Polygon","coordinates":[[[0],[1,0],[1,1],[0]]]}""")]
+    [InlineData("""{"type":"Polygon","coordinates":[[[0,0],[1e400,0],[1,1],[0,0]]]}""")]
+    [InlineData("""{"type":"Polygon","coordinates":[[[0,0],[1,91],[1,1],[0,0]]]}""")]
+    [InlineData("""{"type":"Polygon","coordinates":[[[0,0],["1",0],[1,1],[0,0]]]}""")]
+    [InlineData("""{"type":"MultiPolygon","coordinates":[[]]}""")]
+    public async Task SaveCampPolygonAsync_InvalidGeoJson_Throws(string geoJson)
     {
         var act = async () => await _sut.SaveCampPolygonAsync(
-            Guid.NewGuid(), "{not-json", 100.0, NewUserId(), cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), geoJson, 100.0, NewUserId(), cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("Invalid GeoJSON.*");
+        (await CityPlanningDb.CampPolygons.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansTheory]
+    [InlineData("""{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0.0,0.0]]]}""")]
+    [InlineData("""{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[4,0],[4,4],[0,0]],[[1,1],[2,1],[2,2],[1,1]]]}}""")]
+    [InlineData("""{"type":"Polygon","coordinates":[[[0,0,3],[1,0,3],[1,1,3],[0,0,3]]]}""")]
+    [InlineData("""{"type":"MultiPolygon","coordinates":[[[[0,0],[1,0],[1,1],[0,0]]],[[[2,2],[3,2],[3,3],[2,2]]]]}""")]
+    [InlineData("""{"type":"Feature","geometry":{"type":"MultiPolygon","coordinates":[[[[0,0],[1,0],[1,1],[0,0]]]]}}""")]
+    public async Task SaveCampPolygonAsync_ValidAreaGeometry_RoundTrips(string geoJson)
+    {
+        var saved = await _sut.SaveCampPolygonAsync(Guid.NewGuid(), geoJson, 100, NewUserId(), cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        saved.GeoJson.Should().Be(geoJson);
+        (await CityPlanningDb.CampPolygons.SingleAsync(Xunit.TestContext.Current.CancellationToken)).GeoJson.Should().Be(geoJson);
+        (await CityPlanningDb.CampPolygonHistories.SingleAsync(Xunit.TestContext.Current.CancellationToken)).GeoJson.Should().Be(geoJson);
     }
 
     [HumansFact]
@@ -673,8 +709,8 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var camp2026Id = Guid.NewGuid();
         var userId = NewUserId();
 
-        await _sut.SaveCampPolygonAsync(season2026Id, """{"type":"Feature"}""", 100, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
-        await _sut.SaveCampPolygonAsync(season2027Id, """{"type":"Feature"}""", 200, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(season2026Id, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(season2027Id, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 200, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>
@@ -698,7 +734,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var seasonWithoutId = Guid.NewGuid();
         var userId = NewUserId();
 
-        await _sut.SaveCampPolygonAsync(seasonWithId, """{"type":"Feature"}""", 100, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(seasonWithId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>
@@ -761,9 +797,9 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
                 }));
 
         Clock.Advance(Duration.FromSeconds(1));
-        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature"}""", 100.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
         Clock.Advance(Duration.FromSeconds(1));
-        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature"}""", 200.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 200.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         var history = await _sut.GetCampPolygonHistoryAsync(campSeasonId, Xunit.TestContext.Current.CancellationToken);
 
@@ -788,7 +824,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
-        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature"}""", 100.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         var history = await _sut.GetCampPolygonHistoryAsync(campSeasonId, Xunit.TestContext.Current.CancellationToken);
 
@@ -802,7 +838,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campSeasonId = Guid.NewGuid();
         var campId = Guid.NewGuid();
         var userId = NewUserId();
-        const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]}}""";
+        const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -822,7 +858,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campSeasonId = Guid.NewGuid();
         var campId = Guid.NewGuid();
         var userId = NewUserId();
-        const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]}}""";
+        const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
