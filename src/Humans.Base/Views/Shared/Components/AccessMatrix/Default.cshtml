@@ -12,7 +12,7 @@
 }
 
 <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#@modalId"
-        title="Section Help">
+        title="@Localizer["SectionHelp_Title"].Value">
     <i class="fa-solid fa-circle-info"></i>
 </button>
 
@@ -23,7 +23,7 @@
                 <h5 class="modal-title" id="@(modalId)-label" style="color: var(--h-aged-ink-light);">
                     @Model.SectionName
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Localizer["Common_Close"].Value"></button>
             </div>
             <div class="modal-body pt-2">
                 @if (tabCount > 1)
@@ -37,7 +37,7 @@
                                         data-bs-target="#@(modalId)-guide" type="button" role="tab"
                                         aria-controls="@(modalId)-guide"
                                         aria-selected="@(defaultTab == "guide" ? "true" : "false")">
-                                    <i class="fa-solid fa-book-open me-1"></i> Guide
+                                    <i class="fa-solid fa-book-open me-1"></i> @Localizer["SectionHelp_Guide"]
                                 </button>
                             </li>
                         }
@@ -49,7 +49,7 @@
                                         data-bs-target="#@(modalId)-glossary" type="button" role="tab"
                                         aria-controls="@(modalId)-glossary"
                                         aria-selected="@(defaultTab == "glossary" ? "true" : "false")">
-                                    <i class="fa-solid fa-spell-check me-1"></i> Glossary
+                                    <i class="fa-solid fa-spell-check me-1"></i> @Localizer["SectionHelp_Glossary"]
                                 </button>
                             </li>
                         }
@@ -61,7 +61,7 @@
                                         data-bs-target="#@(modalId)-matrix" type="button" role="tab"
                                         aria-controls="@(modalId)-matrix"
                                         aria-selected="@(defaultTab == "matrix" ? "true" : "false")">
-                                    <i class="fa-solid fa-table-cells me-1"></i> Access Matrix
+                                    <i class="fa-solid fa-table-cells me-1"></i> @Localizer["SectionHelp_AccessMatrix"]
                                 </button>
                             </li>
                         }
@@ -94,7 +94,7 @@
                             <table class="table table-sm mb-0">
                                 <thead>
                                     <tr>
-                                        <th class="text-uppercase small text-muted" style="color: var(--h-aged-ink-light) !important;">Feature</th>
+                                        <th class="text-uppercase small text-muted" style="color: var(--h-aged-ink-light) !important;">@Localizer["SectionHelp_Feature"]</th>
                                         @foreach (var role in Model.AccessMatrix!.Roles)
                                         {
                                             <th class="text-center text-uppercase small text-muted" style="color: var(--h-aged-ink-light) !important;">@role</th>
