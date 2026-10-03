@@ -215,14 +215,20 @@ internal sealed class GoogleController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> AllGroups()
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
-            var result = await googleSyncService.GetAllDomainGroupsAsync();
-            var teams = (await googleAdminService.GetActiveTeamsAsync())
+            var result = await googleSyncService.GetAllDomainGroupsAsync(ct);
+            var teams = (await googleAdminService.GetActiveTeamsAsync(ct))
                 .OrderBy(t => t.Name, StringComparer.Ordinal)
                 .ToList();
             ViewBag.Teams = teams;
             return View(result);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Domain group listing cancelled by caller");
+            throw;
         }
         catch (Exception ex)
         {

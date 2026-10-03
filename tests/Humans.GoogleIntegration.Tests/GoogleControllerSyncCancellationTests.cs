@@ -5,7 +5,7 @@ using Humans.GoogleIntegration.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Humans.GoogleIntegration.Services;
 using Humans.Teams.Contracts;
@@ -26,11 +26,44 @@ namespace Humans.GoogleIntegration.Tests;
 /// </remarks>
 public class GoogleControllerSyncCancellationTests
 {
+    private readonly ILogger<GoogleController> _logger = Substitute.For<ILogger<GoogleController>>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly ITeamResourceService _resources = Substitute.For<ITeamResourceService>();
     private readonly IGoogleAdminService _admin = Substitute.For<IGoogleAdminService>();
     private readonly IGoogleSyncService _syncService = Substitute.For<IGoogleSyncService>();
     private readonly IGoogleGroupSync _groupSync = Substitute.For<IGoogleGroupSync>();
+
+    [HumansFact]
+    public async Task AllGroups_ForwardsBrowserTokenToGroupAndTeamReads()
+    {
+        var controller = BuildSut(alreadyAbortedRequest: true);
+        var ct = controller.HttpContext.RequestAborted;
+        _syncService.GetAllDomainGroupsAsync(Arg.Any<CancellationToken>()).Returns(new AllGroupsResult());
+        _admin.GetActiveTeamsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<TeamSummary>());
+
+        (await controller.AllGroups()).Should().BeOfType<ViewResult>();
+
+        await _syncService.Received(1).GetAllDomainGroupsAsync(ct);
+        await _admin.Received(1).GetActiveTeamsAsync(ct);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task AllGroups_SeparatesCallerAndDependencyCancellation(bool callerAborted)
+    {
+        var controller = BuildSut(alreadyAbortedRequest: callerAborted);
+        var failure = new OperationCanceledException("Group listing cancelled", controller.HttpContext.RequestAborted);
+        _syncService.GetAllDomainGroupsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AllGroupsResult>(failure));
+        var act = () => controller.AllGroups();
+        if (callerAborted) (await act.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(failure);
+        else (await act()).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(GoogleController.Index));
+
+        var args = _logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(callerAborted ? LogLevel.Warning : LogLevel.Error);
+        args[3].Should().BeSameAs(callerAborted ? null : failure);
+    }
 
     [HumansTheory]
     [Xunit.InlineData(false)]
@@ -163,7 +196,7 @@ public class GoogleControllerSyncCancellationTests
             _resources,
             Substitute.For<IEmailProvisioningService>(),
             _admin,
-            NullLogger<GoogleController>.Instance);
+            _logger);
 
         var aborted = new CancellationTokenSource();
         if (alreadyAbortedRequest)
