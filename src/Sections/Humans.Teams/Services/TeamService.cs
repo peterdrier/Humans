@@ -2091,8 +2091,15 @@ internal sealed class TeamService(
             TeamName = GetTeamName(tjr.TeamId),
             tjr.Status,
             tjr.Message,
+            tjr.ReviewNotes,
             RequestedAt = tjr.RequestedAt.ToIso8601(),
-            ResolvedAt = tjr.ResolvedAt.ToIso8601()
+            ResolvedAt = tjr.ResolvedAt.ToIso8601(),
+            StateHistory = tjr.StateHistory.OrderBy(h => h.ChangedAt).Select(h => new
+            {
+                h.Status,
+                ChangedAt = h.ChangedAt.ToIso8601(),
+                h.Notes
+            }).ToList()
         }).ToList());
 
         var earlyEntrySlice = new UserDataSlice(TeamEarlyEntry, eeGrants.Select(g => new

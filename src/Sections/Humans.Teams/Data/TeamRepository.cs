@@ -1195,6 +1195,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return await db.TeamJoinRequests
             .AsNoTracking()
             .Include(tjr => tjr.Team)
+            .Include(tjr => tjr.StateHistory)
             .Where(tjr => tjr.UserId == userId)
             .ToListAsync(ct);
     }

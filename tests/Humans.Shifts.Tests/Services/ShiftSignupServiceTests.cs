@@ -106,6 +106,30 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             _localizer);
     }
 
+    [HumansFact]
+    public async Task ContributeForUserAsync_IncludesSignupLastUpdateWithoutAReview()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        ShiftsDb.ShiftSignups.Add(new ShiftSignup
+        {
+            Id = Guid.NewGuid(), UserId = userId, ShiftId = shift.Id,
+            Status = SignupStatus.Cancelled, CreatedAt = TestNow,
+            UpdatedAt = TestNow + Duration.FromHours(1), StatusReason = "Shift cancelled"
+        });
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
+
+        var slices = await _service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var slice = slices.Single(x => string.Equals(x.SectionName, "ShiftSignups", StringComparison.Ordinal));
+        var signup = System.Text.Json.JsonSerializer.SerializeToElement(slice.Data).EnumerateArray().Single();
+        signup.GetProperty("CreatedAt").GetString().Should().Be("2026-06-15T12:00:00Z");
+        signup.GetProperty("UpdatedAt").GetString().Should().Be("2026-06-15T13:00:00Z");
+        signup.GetProperty("ReviewedAt").ValueKind.Should().Be(System.Text.Json.JsonValueKind.Null);
+        signup.GetProperty("StatusReason").GetString().Should().Be("Shift cancelled");
+    }
+
     [HumansTheory]
     [InlineData("blocked")]
     [InlineData("partial")]

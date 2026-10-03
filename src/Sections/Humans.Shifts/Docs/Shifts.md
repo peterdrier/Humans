@@ -231,6 +231,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+- The `ShiftSignups` GDPR export includes each signup’s UTC last-update timestamp, including system cancellations without a reviewer date.
+
 - Instant-toggle HTTP failures keep the existing shift and description rows, restore the button for retry, and show the localized network-error toast; only successful row fragments replace them.
 
 - Browse and My shifts GETs forward request cancellation to viewer and cached per-user row reads; My shifts also forwards it to active-event and team-name reads.
