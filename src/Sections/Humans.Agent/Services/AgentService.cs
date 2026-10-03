@@ -643,15 +643,15 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         var shaped = conversations.Select(c => new
         {
             c.Id,
-            c.StartedAt,
-            c.LastMessageAt,
+            StartedAt = c.StartedAt.ToIso8601(),
+            LastMessageAt = c.LastMessageAt.ToIso8601(),
             c.Locale,
             c.MessageCount,
             Messages = c.Messages.Select(m => new
             {
                 m.Role,
                 m.Content,
-                m.CreatedAt,
+                CreatedAt = m.CreatedAt.ToIso8601(),
                 m.Model,
                 m.RefusalReason,
                 m.HandedOffToFeedbackId

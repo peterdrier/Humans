@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using AwesomeAssertions.Execution;
+using System.Text.Json;
 using Humans.Agent.Services.Stores;
 using Humans.Agent.Services;
 using Humans.Agent.Data;
@@ -17,6 +19,36 @@ namespace Humans.Agent.Tests;
 
 public class AgentServiceTests
 {
+    [HumansFact]
+    public async Task Export_formats_conversation_and_message_dates_and_excludes_other_users()
+    {
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var (service, client) = await BuildService(settings => settings.Enabled = true);
+        foreach (var ownerId in new[] { userId, otherUserId })
+        {
+            client.EnqueueTurn(new AgentTurnToken("Answer", null, null),
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            await foreach (var _ in service.AskAsync(new AgentTurnRequest(
+                Guid.Empty, ownerId, ownerId == userId ? "My question" : "Other person's secret", "es"),
+                Xunit.TestContext.Current.CancellationToken)) { }
+        }
+
+        var slices = await service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var payload = JsonSerializer.Serialize(slices.Single().Data);
+        payload.Should().Contain("My question").And.NotContain("Other person's secret");
+        using var document = JsonDocument.Parse(payload);
+        document.RootElement.GetArrayLength().Should().Be(1);
+        var conversation = document.RootElement[0];
+        var messages = conversation.GetProperty("Messages");
+        messages.GetArrayLength().Should().Be(2);
+        using var scope = new AssertionScope();
+        conversation.GetProperty("StartedAt").GetRawText().Should().Be("\"2026-04-21T12:00:00Z\"");
+        conversation.GetProperty("LastMessageAt").GetRawText().Should().Be("\"2026-04-21T12:00:00Z\"");
+        foreach (var message in messages.EnumerateArray())
+            message.GetProperty("CreatedAt").GetRawText().Should().Be("\"2026-04-21T12:00:00Z\"");
+    }
+
     [HumansTheory]
     [Xunit.InlineData("en")]
     [Xunit.InlineData("es")]
