@@ -835,13 +835,13 @@ internal sealed class ProfileController(
     {
         try
         {
-            var user = await GetCurrentUserInfoAsync();
+            var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
             if (user is null)
                 return NotFound();
 
             return View(model: user.Id);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Failed to load communication preferences");
             SetError(localizer["Users_Profile_CommunicationPreferencesLoadFailed"].Value);

@@ -290,6 +290,7 @@ public class ProfileControllerEditTests
     [InlineData("Privacy")]
     [InlineData("DietaryMedical")]
     [InlineData("OutboxAfterViewer")]
+    [InlineData("CommunicationPreferences")]
     public async Task ProfileReadPages_StopLoadingAfterRequestCancellation(string page)
     {
         using var request = new CancellationTokenSource();
@@ -313,12 +314,42 @@ public class ProfileControllerEditTests
         {
             "Privacy" => () => _controller.Privacy(),
             "DietaryMedical" => () => _controller.DietaryMedical(),
+            "CommunicationPreferences" => () => _controller.CommunicationPreferences(),
             _ => () => _controller.MyOutbox(),
         };
         (await load()).Should().BeOfType<ViewResult>();
         abandon = true;
         if (!string.Equals(page, "OutboxAfterViewer", StringComparison.Ordinal))
             await request.CancelAsync();
+        await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AccountWallPages_StopLoadingAfterRequestCancellation(bool deletion)
+    {
+        using var request = new CancellationTokenSource();
+        _controller.HttpContext.RequestAborted = request.Token;
+        ((ClaimsIdentity)_controller.User.Identity!).AddClaim(
+            new Claim(Humans.Base.Authorization.RoleChecks.UserStateClaimType, nameof(UserState.Suspended)));
+        var now = Instant.FromUtc(2026, 10, 3, 0, 0);
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(new User
+            {
+                Id = _userId, PreferredLanguage = "en", DeletionRequestedAt = now,
+                DeletionScheduledFor = now + Duration.FromDays(30),
+            }.ToUserInfo());
+        });
+        var wall = new UserController(_userService, _accountDeletionService, Substitute.For<IStringLocalizer<UsersResource>>())
+        {
+            ControllerContext = _controller.ControllerContext,
+        };
+        Func<Task<IActionResult>> load = deletion ? wall.Deletion : wall.Status;
+        (await load()).Should().BeOfType<ViewResult>();
+        await request.CancelAsync();
         await load.Should().ThrowAsync<OperationCanceledException>();
     }
 

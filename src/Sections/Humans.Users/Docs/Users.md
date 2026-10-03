@@ -194,6 +194,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- Account-status, pending-deletion and communication-preferences GETs retain request cancellation during viewer resolution; cancellation propagates without an error flash. Deletion and preference POSTs keep their existing mutation boundaries.
+
 - The login page’s locked-account error and dismissal label render in all six supported cultures. Authentication and lockout behavior are unchanged.
 
 - OAuth login (`ExternalLoginService.CompleteExternalLoginAsync`, dispatched from `AccountController.ExternalLoginCallback`) checks verified `UserEmails`, then unverified `UserEmails` / `User.Email`, before creating a new account — preventing duplicate accounts when the same email exists on another user in any form. The locked-out branch additionally re-links a stale OAuth login from a merged source account to the active target account.
