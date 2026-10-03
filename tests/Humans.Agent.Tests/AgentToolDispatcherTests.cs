@@ -519,6 +519,24 @@ public class AgentToolDispatcherTests
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Dependency unavailable");
     }
 
+    [HumansFact]
+    public async Task GetShiftDetails_dependency_json_failure_is_not_a_malformed_argument()
+    {
+        var settings = Substitute.For<ISettingsService>();
+        var failure = new System.Text.Json.JsonException("Stored event settings could not be decoded");
+        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<EventSettingsInfo?>(failure));
+        var logger = Substitute.For<ILogger<AgentToolDispatcher>>();
+        var dispatcher = MakeDispatcher(burnSettings: settings, logger: logger);
+        var arguments = System.Text.Json.JsonSerializer.Serialize(new { shiftId = Guid.NewGuid() });
+
+        var act = () => dispatcher.DispatchAsync(new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails, arguments),
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<System.Text.Json.JsonException>()).Which.Should().BeSameAs(failure);
+        logger.ReceivedCalls().Should().BeEmpty();
+    }
+
     private static AgentToolDispatcher MakeDispatcher(
         Humans.AuditLog.Contracts.IAuditViewerService? auditViewer = null,
         IShiftView? shiftView = null,
