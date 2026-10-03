@@ -1015,36 +1015,6 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task SetProfilePictureContentTypeAsync_RefreshesProfilePictureSlice()
-    {
-        var userId = Guid.NewGuid();
-        var profileId = Guid.NewGuid();
-        var sut = CreateSut();
-        await PrimeAsync(sut, SampleUserInfo(userId));
-
-        _inner.SetProfilePictureContentTypeAsync(userId, "image/webp", Arg.Any<CancellationToken>())
-            .Returns(new UserProfilePictureContentTypeResult(true, profileId, "image/png", "image/webp"));
-
-        StubRefreshEntry(userId, new Profile
-        {
-            Id = profileId,
-            UserId = userId,
-            BurnerName = "Alice",
-            ProfilePictureContentType = "image/webp",
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
-        });
-
-        var result = await sut.SetProfilePictureContentTypeAsync(userId, "image/webp", Xunit.TestContext.Current.CancellationToken);
-
-        result.Saved.Should().BeTrue();
-        result.PreviousProfilePictureContentType.Should().Be("image/png");
-        var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        refreshed!.Profile.Should().NotBeNull();
-        refreshed.Profile!.ProfilePictureContentType.Should().Be("image/webp");
-    }
-
-    [HumansFact]
     public async Task AnonymizeProfileForDeletionAsync_RefreshesAnonymizedProfileSlice()
     {
         var userId = Guid.NewGuid();

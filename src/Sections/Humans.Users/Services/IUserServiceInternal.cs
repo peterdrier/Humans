@@ -98,16 +98,6 @@ internal interface IUserServiceInternal : IUserService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Sets the profile-picture content-type column that gates UserInfo custom
-    /// picture rendering. The caller owns filesystem writes and uses the old
-    /// content type returned here to remove stale files.
-    /// </summary>
-    Task<UserProfilePictureContentTypeResult> SetProfilePictureContentTypeAsync(
-        Guid userId,
-        string contentType,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Anonymizes profile-owned personal data for GDPR deletion and returns the
     /// previous picture metadata so the orchestrator can remove filesystem
     /// bytes after the DB read gate has been cleared.

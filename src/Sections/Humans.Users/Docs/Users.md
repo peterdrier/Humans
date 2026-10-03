@@ -698,7 +698,7 @@ Admin-only flows for the section's cross-account hygiene (the `/Profile/Admin/*`
 
 ## Architecture
 
-**Owning services:** `ProfileService` (`IProfilePictureService` — picture storage only), `ProfileEditorService` (`IProfileEditorService` — validates and orchestrates profile-edit saves, delegating the actual persist to `IUserService`), `ContactFieldService`, `UserEmailService`, `CommunicationPreferenceService`, `EmailProblemsService`. Account merge and duplicate detection are Part 1's (`AccountMergeService`, `DuplicateAccountService`).
+**Owning services:** `ProfileService` (`IProfilePictureService` — read-only pictures and migration snapshots), `ProfileEditorService` (`IProfileEditorService` — validates and orchestrates profile-edit saves, delegating the actual persist to `IUserService`), `ContactFieldService`, `UserEmailService`, `CommunicationPreferenceService`, `EmailProblemsService`. Account merge and duplicate detection are Part 1's (`AccountMergeService`, `DuplicateAccountService`).
 **Owned tables:** `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`, `profile_languages`
 `IUserRepository`, `IUserEmailRepository` and `ICommunicationPreferenceRepository` are the only code paths that touch these tables via `DbContext`. Repositories are Singleton, using `IDbContextFactory<UsersDbContext>` and short-lived contexts per method.
 - **Caching.** Profile field storage (save, dietary/medical, volunteer history, anonymize) is on `UserService`; readers get the single unified `UserInfo` projection served by `CachingUserService` (Singleton, `Humans.Users/Data/`) — see Part 1's caching-decorator bullet. There is no separate profile-only cache or warmup service (`Docs/health.md`).

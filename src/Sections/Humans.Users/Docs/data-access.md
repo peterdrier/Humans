@@ -34,10 +34,9 @@ storage paths).
 |-------|-----|
 | Profiles | R (storage-path lookup) |
 
-Cross-section calls via `IUserService` (delegates the content-type DB write).
-Uses `IFileStorage` for the picture bytes. No `IMemoryCache`. The picture
-content type is written through `IUserService.SetProfilePictureContentTypeAsync`
-so the unified `UserInfo` read-model invalidates as a side effect.
+Uses `IUserServiceInternal` for migration-snapshot user lookups and `IFileStorage`
+to read picture bytes. No picture mutations or `IMemoryCache`; writes belong to
+the profile-edit flow below.
 
 ### ProfileEditorService (Scoped)
 
