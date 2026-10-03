@@ -36,12 +36,14 @@ internal sealed class AgentToolDispatcher(
         {
             using var doc = JsonDocument.Parse(call.JsonArguments);
             var args = doc.RootElement;
+            if (args.ValueKind != JsonValueKind.Object)
+                throw new JsonException("Tool arguments must be a JSON object.");
 
             switch (call.Name)
             {
                 case AgentToolNames.FetchFeatureSpec:
                     {
-                        var name = args.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+                        var name = ReadStringArgument(args, "name");
                         var body = await features.ReadAsync(name, cancellationToken);
                         return body is not null
                             ? new AnthropicToolResult(call.Id, body, IsError: false)
@@ -51,7 +53,7 @@ internal sealed class AgentToolDispatcher(
                     }
                 case AgentToolNames.FetchSectionGuide:
                     {
-                        var key = args.TryGetProperty("section", out var s) ? s.GetString() ?? "" : "";
+                        var key = ReadStringArgument(args, "section");
                         var body = await sections.ReadAsync(key, cancellationToken);
                         return body is not null
                             ? new AnthropicToolResult(call.Id, body, IsError: false)
@@ -61,7 +63,7 @@ internal sealed class AgentToolDispatcher(
                     }
                 case AgentToolNames.FetchCommunityFaq:
                     {
-                        var topic = args.TryGetProperty("topic", out var t) ? t.GetString() ?? "" : "";
+                        var topic = ReadStringArgument(args, "topic");
                         var body = await community.ReadAsync(topic, cancellationToken);
                         return body is not null
                             ? new AnthropicToolResult(call.Id, CommunityFaqReader.WrapWithProvenance(body), IsError: false)
@@ -76,13 +78,17 @@ internal sealed class AgentToolDispatcher(
                     }
                 case AgentToolNames.GetShiftDetails:
                     {
-                        var shiftIdString = args.TryGetProperty("shiftId", out var sid) ? sid.GetString() ?? "" : "";
+                        var shiftIdString = ReadStringArgument(args, "shiftId");
                         if (!Guid.TryParse(shiftIdString, out var shiftKey))
                             return new AnthropicToolResult(call.Id, "shiftId must be a valid GUID.", IsError: true);
                         return await DispatchGetShiftDetailsAsync(call.Id, userId, shiftKey, cancellationToken);
                     }
                 case AgentToolNames.RouteToIssue:
                     {
+                        // Validate before confirming: AgentService reads these strings to build the proposal.
+                        _ = ReadStringArgument(args, "title");
+                        _ = ReadStringArgument(args, "description");
+                        _ = ReadStringArgument(args, "category");
                         // No DB write — AgentService inspects the call args and emits an
                         // AgentIssueProposal frame so the client can pre-fill the issue
                         // submission form. The tool result here is just an LLM-facing
@@ -97,9 +103,18 @@ internal sealed class AgentToolDispatcher(
         }
         catch (JsonException ex)
         {
-            logger.LogWarning(ex, "Agent sent malformed JSON arguments for tool {ToolName}", call.Name);
+            logger.LogWarning("Agent sent malformed JSON arguments for tool {ToolName}: {Reason}", call.Name, ex.Message);
             return new AnthropicToolResult(call.Id, "Malformed tool arguments (expected JSON object).", IsError: true);
         }
+    }
+
+    private static string ReadStringArgument(JsonElement args, string name)
+    {
+        if (!args.TryGetProperty(name, out var value) || value.ValueKind == JsonValueKind.Null)
+            return "";
+        if (value.ValueKind != JsonValueKind.String)
+            throw new JsonException($"Tool argument '{name}' must be a string.");
+        return value.GetString() ?? "";
     }
 
     /// <summary>
