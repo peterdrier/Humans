@@ -53,6 +53,8 @@ All routes are `AdminOnly`.
 
 ## Invariants
 
+- Audience debug tables normalize the requested page and allowed page size once before slicing. Rows and pager state use the same available page, including the last page for oversized requests and page one for empty tables.
+
 - `IMailerLiteService` exposes reads + five narrow outbound writes: `CreateGroupAsync`, `AssignSubscriberToGroupAsync`, `UnassignSubscriberFromGroupAsync`, `BulkImportSubscribersToGroupAsync`, and `DeleteSubscriberAsync` (GDPR Article 17 erasure, nobodies-collective/Humans#853). The set of allowed write methods is pinned by `MailerLiteArchitectureTests.IMailerLiteService_OnlyAllowsAudienceWrites`.
 - The four audience-management writes target an ML group whose `Name` starts with `"Humans - "`; `MailerLiteClient` runtime-rejects those against non-`"Humans - "` groups with `InvalidOperationException` (pinned by `MailerLiteClientWriteGuardTests`). `DeleteSubscriberAsync` takes no group — erasure targets a subscriber, not a group, so the group guard does not apply.
 - All `IMailerLiteAudience` implementations target group names starting with `"Humans - "`. Pinned by `MailerLiteArchitectureTests.AllAudiences_UseHumansPrefix`. Audience keys and group names are unique across registrations (pinned by `AllAudiences_HaveUniqueGroupNamesAndKeys`).
