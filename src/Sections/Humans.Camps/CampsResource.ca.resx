@@ -327,4 +327,7 @@
   <data name="Camps_Validation_ImageExtension" xml:space="preserve"><value>El nom del fitxer d’imatge ha d’acabar en .jpg, .jpeg, .png o .webp.</value></data>
   <data name="Camps_Flash_WithdrawRequiresPending" xml:space="preserve"><value>Només es pot retirar una sol·licitud de pertinença pendent.</value></data>
   <data name="Camps_Flash_LeaveRequiresActive" xml:space="preserve"><value>Només es pot abandonar una pertinença activa al campament.</value></data>
+  <data name="Camps_Flash_ApproveRequiresPending" xml:space="preserve"><value>Només es pot aprovar una sol·licitud de pertinença pendent.</value></data>
+  <data name="Camps_Flash_RejectRequiresPending" xml:space="preserve"><value>Només es pot rebutjar una sol·licitud de pertinença pendent.</value></data>
+  <data name="Camps_Flash_RemoveRequiresActive" xml:space="preserve"><value>Només es pot eliminar una pertinença activa al campament.</value></data>
 </root>

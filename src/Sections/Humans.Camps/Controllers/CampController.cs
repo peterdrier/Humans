@@ -926,7 +926,7 @@ internal sealed class CampController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Approve camp membership failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, ex.Message);
-            SetError(ex.Message);
+            SetError(campsLocalizer[ex.Message].Value);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -948,7 +948,7 @@ internal sealed class CampController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Reject camp membership failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, ex.Message);
-            SetError(ex.Message);
+            SetError(campsLocalizer[ex.Message].Value);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -970,7 +970,7 @@ internal sealed class CampController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Remove camp member failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, ex.Message);
-            SetError(ex.Message);
+            SetError(campsLocalizer[ex.Message].Value);
         }
 
         return RedirectToAction(nameof(Members), new { slug });

@@ -322,6 +322,58 @@ public class CampControllerTests
     }
 
     [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task ManagedMembershipActions_LocalizeMissingMemberAndStatusGuards(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var localizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
+        var actorId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: actorId);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUserInfo(actorId)));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var controller = BuildController(actorId, localizer);
+        foreach (var (action, key) in new[]
+        {
+            ("Approve", "Camps_Flash_ApproveRequiresPending"),
+            ("Reject", "Camps_Flash_RejectRequiresPending"),
+            ("Remove", "Camps_Flash_RemoveRequiresActive"),
+            ("Approve", "Camps_Flash_RoleMemberNotFound"),
+            ("Reject", "Camps_Flash_RoleMemberNotFound"),
+            ("Remove", "Camps_Flash_RoleMemberNotFound"),
+        })
+        {
+            var failure = new InvalidOperationException(key);
+            Task<IActionResult> result;
+            switch (action)
+            {
+                case "Approve":
+                    _camps.ApproveCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure);
+                    result = controller.ApproveMembership(camp.Slug, memberId); break;
+                case "Reject":
+                    _camps.RejectCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure);
+                    result = controller.RejectMembership(camp.Slug, memberId); break;
+                case "Remove":
+                    _camps.RemoveCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure);
+                    result = controller.RemoveMembership(camp.Slug, memberId); break;
+                default: throw new InvalidOperationException("Unknown test action");
+            }
+            (await result).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Members");
+            var expected = localizer[key];
+            expected.ResourceNotFound.Should().BeFalse();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
+        }
+    }
+
+    [HumansTheory]
     [InlineData("Approve", false)]
     [InlineData("Reject", false)]
     [InlineData("Remove", false)]
@@ -339,7 +391,7 @@ public class CampControllerTests
         _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUserInfo(actorId)));
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
-        var reason = action is "Withdraw" ? "Camps_Flash_RoleMemberNotFound" : "Camp member record not found.";
+        const string reason = "Camps_Flash_RoleMemberNotFound";
         _campsLocalizer[reason].Returns(new LocalizedString(reason, "Member not found"));
         Exception failure = unexpected ? new IOException("Storage unavailable") : new InvalidOperationException(reason);
         switch (action)
@@ -368,7 +420,7 @@ public class CampControllerTests
         var result = (await act()).Should().BeOfType<RedirectToActionResult>().Subject;
         result.ActionName.Should().Be(action is "Withdraw" ? "Details" : "Members");
         result.RouteValues!["slug"].Should().Be(camp.Slug);
-        controller.TempData[TempDataKeys.ErrorMessage].Should().Be(action is "Withdraw" ? "Member not found" : reason);
+        controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Member not found");
         var args = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
         args[0].Should().Be(LogLevel.Warning);
         args[3].Should().BeNull();

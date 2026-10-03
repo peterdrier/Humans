@@ -327,4 +327,7 @@
   <data name="Camps_Validation_ImageExtension" xml:space="preserve"><value>Der Bilddateiname muss auf .jpg, .jpeg, .png oder .webp enden.</value></data>
   <data name="Camps_Flash_WithdrawRequiresPending" xml:space="preserve"><value>Nur ein ausstehender Mitgliedschaftsantrag kann zurückgezogen werden.</value></data>
   <data name="Camps_Flash_LeaveRequiresActive" xml:space="preserve"><value>Nur eine aktive Camp-Mitgliedschaft kann beendet werden.</value></data>
+  <data name="Camps_Flash_ApproveRequiresPending" xml:space="preserve"><value>Nur ein ausstehender Mitgliedschaftsantrag kann genehmigt werden.</value></data>
+  <data name="Camps_Flash_RejectRequiresPending" xml:space="preserve"><value>Nur ein ausstehender Mitgliedschaftsantrag kann abgelehnt werden.</value></data>
+  <data name="Camps_Flash_RemoveRequiresActive" xml:space="preserve"><value>Nur eine aktive Camp-Mitgliedschaft kann entfernt werden.</value></data>
 </root>

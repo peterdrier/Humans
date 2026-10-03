@@ -1026,6 +1026,33 @@ public sealed class CampServiceTests : CampsTestHarness
         }
     }
 
+    [HumansTheory]
+    [InlineData("Approve", "Camps_Flash_ApproveRequiresPending")]
+    [InlineData("Reject", "Camps_Flash_RejectRequiresPending")]
+    [InlineData("Remove", "Camps_Flash_RemoveRequiresActive")]
+    public async Task ManagedMembershipAction_WrongStatus_ReturnsLocalizedGuardKey(string action, string key)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId, ct);
+        var actorId = Guid.NewGuid();
+        if (action is "Approve" or "Reject") await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, actorId, ct);
+        var previousStatus = action is "Remove" ? CampMemberStatus.Pending : CampMemberStatus.Active;
+        Func<Task> act = action switch
+        {
+            "Approve" => () => _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, actorId, ct),
+            "Reject" => () => _service.RejectCampMemberAsync(camp.Id, request.CampMemberId, actorId, ct),
+            "Remove" => () => _service.RemoveCampMemberAsync(camp.Id, request.CampMemberId, actorId, ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(action)),
+        };
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(key);
+        (await CampsDb.CampMembers.AsNoTracking().SingleAsync(m => m.Id == request.CampMemberId, ct)).Status.Should().Be(previousStatus);
+    }
+
     [HumansFact]
     public async Task ApproveCampMemberAsync_PendingRequest_SetsActiveAndNotifies()
     {
@@ -1076,7 +1103,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         // A lead of camp A tries to approve a member belonging to camp B.
         var act = () => _service.ApproveCampMemberAsync(campA.Id, requestInCampB.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_RoleMemberNotFound");
 
         // Camp B's pending row is untouched.
         var memberB = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == requestInCampB.CampMemberId, Xunit.TestContext.Current.CancellationToken);
@@ -1100,7 +1127,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         // A lead of camp A tries to reject a member belonging to camp B.
         var act = () => _service.RejectCampMemberAsync(campA.Id, requestInCampB.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_RoleMemberNotFound");
 
         var memberB = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == requestInCampB.CampMemberId, Xunit.TestContext.Current.CancellationToken);
         memberB.Status.Should().Be(CampMemberStatus.Pending);
@@ -1124,7 +1151,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         // A lead of camp A tries to remove an active member belonging to camp B.
         var act = () => _service.RemoveCampMemberAsync(campA.Id, requestInCampB.CampMemberId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_RoleMemberNotFound");
 
         var memberB = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == requestInCampB.CampMemberId, Xunit.TestContext.Current.CancellationToken);
         memberB.Status.Should().Be(CampMemberStatus.Active);

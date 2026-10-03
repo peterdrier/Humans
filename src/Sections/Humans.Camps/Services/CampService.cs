@@ -1328,11 +1328,11 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         CancellationToken cancellationToken = default)
     {
         var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken)
-            ?? throw new InvalidOperationException("Camp member record not found.");
+            ?? throw new InvalidOperationException("Camps_Flash_RoleMemberNotFound");
 
         if (member.Status != CampMemberStatus.Pending)
         {
-            throw new InvalidOperationException($"Cannot approve a camp member with status {member.Status}.");
+            throw new InvalidOperationException("Camps_Flash_ApproveRequiresPending");
         }
 
         var now = _clock.GetCurrentInstant();
@@ -1377,10 +1377,10 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         CancellationToken cancellationToken = default)
     {
         var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken)
-            ?? throw new InvalidOperationException("Camp member record not found.");
+            ?? throw new InvalidOperationException("Camps_Flash_RoleMemberNotFound");
 
         if (member.Status != CampMemberStatus.Pending)
-            throw new InvalidOperationException($"Cannot reject a camp member with status {member.Status}.");
+            throw new InvalidOperationException("Camps_Flash_RejectRequiresPending");
 
         var requesterUserId = member.UserId;
         var seasonId = member.CampSeasonId;
@@ -1419,10 +1419,10 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         CancellationToken cancellationToken = default)
     {
         var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken)
-            ?? throw new InvalidOperationException("Camp member record not found.");
+            ?? throw new InvalidOperationException("Camps_Flash_RoleMemberNotFound");
 
         if (member.Status != CampMemberStatus.Active)
-            throw new InvalidOperationException($"Cannot remove a camp member with status {member.Status}.");
+            throw new InvalidOperationException("Camps_Flash_RemoveRequiresActive");
 
         await TransitionMemberToRemovedAsync(
             member, removedByUserId,
