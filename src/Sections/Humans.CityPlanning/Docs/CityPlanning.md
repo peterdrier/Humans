@@ -117,7 +117,7 @@ The admin page also carries a **bulk polygon import**: `barrio-map/admin-import.
 lower-cased name or slug, previews the matches, and then issues one ordinary
 `PUT /api/city-planning/camp-polygons/{campSeasonId}` per match with the note
 `Imported {timestamp}`. There is no server-side import endpoint — an import is N saves and
-gets N history rows for free.
+gets one history row per successful save. HTTP failures and network exceptions are collected per camp; remaining reviewed matches are attempted, and the result reports both successes and failed camp names.
 
 The container entity CRUD for barrio leads is served by `ContainerController` at `/Camp/{slug}/Containers`. The placement API for all containers is served by `CityPlanningApiController` at `/api/city-planning/containers/*` — placement is a City Planning concern even though the container entity belongs to the Containers section.
 

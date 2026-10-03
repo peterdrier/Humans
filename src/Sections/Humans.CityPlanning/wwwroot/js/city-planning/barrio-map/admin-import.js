@@ -203,17 +203,22 @@ async function handleConfirm() {
 
     try {
         for (const item of pendingImport.matched) {
-            const resp = await fetch(`/api/city-planning/camp-polygons/${item.campSeasonId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': token,
-                },
-                body: JSON.stringify({ geoJson: item.geoJson, areaSqm: item.newAreaSqm, note }),
-            });
-            if (resp.ok) {
-                successCount++;
-            } else {
+            try {
+                const resp = await fetch(`/api/city-planning/camp-polygons/${item.campSeasonId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token,
+                    },
+                    body: JSON.stringify({ geoJson: item.geoJson, areaSqm: item.newAreaSqm, note }),
+                });
+                if (resp.ok) {
+                    successCount++;
+                } else {
+                    failures.push(item.campName);
+                }
+            } catch (error) {
+                console.error('Failed to import barrio polygon', item.campSeasonId, error);
                 failures.push(item.campName);
             }
         }
