@@ -174,7 +174,8 @@ export function updateSaveButton() {
     const hasValidPolygon = features.some(f =>
         f.geometry.type === 'Polygon' && (f.geometry.coordinates[0]?.length ?? 0) >= 4);
     const editing = hasValidPolygon && appState.activeCampSeasonId;
-    document.getElementById('save-btn').disabled = !editing;
+    const saveButton = document.getElementById('save-btn');
+    saveButton.disabled = !editing || saveButton.dataset.saving === 'true';
     document.getElementById('cancel-btn')?.classList.toggle('d-none', !appState.activeCampSeasonId);
 
     if (hasValidPolygon) {
