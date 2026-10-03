@@ -56,7 +56,10 @@ public sealed class StoreControllerRecordPaymentTests
         var settings = Substitute.For<ISettingsService>();
         settings.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         var camps = Substitute.For<ICampServiceRead>();
+        camps.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
         var teams = Substitute.For<ITeamServiceRead>();
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        _repo.GetActiveProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
         var clock = new FakeClock(Instant.FromUtc(2026, 9, 1, 10, 0));
         _repo.GetOrderWithLinesAndPaymentsAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_order);
         _repo.GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
@@ -74,7 +77,11 @@ public sealed class StoreControllerRecordPaymentTests
 
         var users = Substitute.For<IUserServiceRead>();
         users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(_userId)));
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return new ValueTask<UserInfo?>(MakeUserInfo(_userId));
+            });
         var localizer = Substitute.For<IStringLocalizer<StoreResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
@@ -93,6 +100,22 @@ public sealed class StoreControllerRecordPaymentTests
     private static UserInfo MakeUserInfo(Guid id) => new(
         id, "Tester", false, "en", null, Instant.FromUtc(2026, 1, 1, 0, 0), null, null, null, null, null,
         false, false, null, null, null, null, null, null, [], [], [], null, []);
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StorePages_CancelAtViewerResolution(bool detail)
+    {
+        using var request = new CancellationTokenSource();
+        var controller = BuildController(RoleNames.Admin);
+        controller.HttpContext.RequestAborted = request.Token;
+        Task<IActionResult> ReadPage() => detail
+            ? controller.Order(_order.Id, request.Token)
+            : controller.Index(request.Token);
+        (await ReadPage()).Should().BeOfType<ViewResult>();
+        await request.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPage);
+    }
 
     [HumansFact]
     public async Task StoreAdmin_is_forbidden_to_record_a_refund()

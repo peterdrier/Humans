@@ -47,7 +47,7 @@ internal sealed class FeedbackController(
         FeedbackStatus? status, FeedbackCategory? category, Guid? reporterUserId,
         Guid? assignedTo, Guid? team, bool unassigned, Guid? selected, CancellationToken ct)
     {
-        var (userMissing, user) = await RequireCurrentUserAsync();
+        var (userMissing, user) = await RequireCurrentUserAsync(ct);
         if (userMissing is not null) return userMissing;
 
         var reports = await feedbackService.GetFeedbackListAsync(

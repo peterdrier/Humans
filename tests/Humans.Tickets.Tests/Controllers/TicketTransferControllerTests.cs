@@ -21,6 +21,34 @@ namespace Humans.Tickets.Tests.Controllers;
 
 public class TicketTransferControllerTests
 {
+    [HumansFact]
+    public async Task Index_CancelsAtViewerResolution()
+    {
+        using var request = new CancellationTokenSource();
+        var id = Guid.NewGuid();
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = id }, [], [], [], null, []));
+        });
+        var transfers = Substitute.For<ITicketTransferService>();
+        transfers.GetMyAttendeesAsync(id, Arg.Any<CancellationToken>()).Returns([]);
+        transfers.GetBySenderAsync(id, Arg.Any<CancellationToken>()).Returns([]);
+        var controller = new TicketTransferController(transfers, Substitute.For<IEarlyEntryService>(),
+            users, NullLogger<TicketTransferController>.Instance, Substitute.For<IStringLocalizer<TicketsResource>>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            {
+                RequestAborted = request.Token,
+                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, id.ToString())], "Test")),
+            } },
+        };
+        (await controller.Index(request.Token)).Should().BeOfType<ViewResult>();
+        await request.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.Index(request.Token));
+    }
+
     [HumansTheory]
     [InlineData(false, false)]
     [InlineData(false, true)]

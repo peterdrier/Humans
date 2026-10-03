@@ -87,7 +87,7 @@ internal sealed class AgentController(
         bool refusalsOnly = false, Guid? userId = null,
         int page = 0, CancellationToken cancellationToken = default)
     {
-        var (missing, currentUser) = await RequireCurrentUserAsync();
+        var (missing, currentUser) = await RequireCurrentUserAsync(cancellationToken);
         if (missing is not null) return missing;
 
         var isAdmin = User.IsInRole(RoleNames.Admin);
@@ -101,7 +101,7 @@ internal sealed class AgentController(
     [HttpGet("Conversation/{id:guid}")]
     public async Task<IActionResult> Conversation(Guid id, CancellationToken cancellationToken)
     {
-        var (missing, currentUser) = await RequireCurrentUserAsync();
+        var (missing, currentUser) = await RequireCurrentUserAsync(cancellationToken);
         if (missing is not null) return missing;
 
         // Ownership mismatch returns 404 (not 403) per Agent.md invariant 7
@@ -116,7 +116,7 @@ internal sealed class AgentController(
     [HttpGet("Conversations/{id:guid}")]
     public async Task<IActionResult> ConversationDetail(Guid id, CancellationToken cancellationToken)
     {
-        var (missing, currentUser) = await RequireCurrentUserAsync();
+        var (missing, currentUser) = await RequireCurrentUserAsync(cancellationToken);
         if (missing is not null) return missing;
 
         var isAdmin = User.IsInRole(RoleNames.Admin);

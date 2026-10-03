@@ -204,6 +204,8 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 ## Invariants
 
+- Store index and order GETs retain request cancellation during viewer resolution as well as their existing token-capable reads. Payment, invoice and order mutations retain their existing token boundaries.
+
 - An order has **exactly one counterparty** — `CampSeasonId` xor `TeamId` is non-null. The invariant is service-enforced (in `Service.CreateOrderAsync` / `CreateTeamOrderAsync`), not DB-enforced.
 - **Team orders are non-billable.** `UpdateCounterpartyAsync`, `RecordStripePaymentAsync`, `CreateStripeCheckoutSessionAsync`, and `IssueInvoiceAsync` reject any order whose `TeamId is not null` with `InvalidOperationException`. The auth handler also permanently denies the `EditCounterparty` and `Pay` operations on team orders regardless of role.
 - A team order is restricted to a **department** (top-level team — `ParentTeamId is null`). Sub-team orders are not supported.

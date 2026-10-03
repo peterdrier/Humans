@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Agent.Tests;
 
@@ -59,14 +60,46 @@ public class AgentControllerTests
         controller.Response.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
     }
 
+    [HumansTheory]
+    [InlineData("Conversations")]
+    [InlineData("Conversation")]
+    [InlineData("ConversationDetail")]
+    public async Task ConversationPages_CancelAtViewerResolution(string page)
+    {
+        using var request = new CancellationTokenSource();
+        var agent = Substitute.For<IAgentService>();
+        agent.GetHistoryAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+        var controller = MakeController(agent, enabled: true);
+        controller.HttpContext.RequestAborted = request.Token;
+        var id = Guid.NewGuid();
+        Task<IActionResult> ReadPage() => page switch
+        {
+            "Conversations" => controller.Conversations(cancellationToken: request.Token),
+            "Conversation" => controller.Conversation(id, request.Token),
+            "ConversationDetail" => controller.ConversationDetail(id, request.Token),
+            _ => throw new ArgumentOutOfRangeException(nameof(page)),
+        };
+        var healthy = await ReadPage();
+        if (string.Equals(page, "Conversations", StringComparison.Ordinal))
+            healthy.Should().BeOfType<ViewResult>();
+        else
+            healthy.Should().BeOfType<NotFoundResult>();
+        await request.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPage);
+    }
+
     private static AgentController MakeController(IAgentService agent, bool enabled)
     {
         var userId = Guid.NewGuid();
         var users = Substitute.For<IUserServiceRead>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
-                new User { Id = userId, DisplayName = "T", PreferredLanguage = "en" },
-                [], [], [], profile: null, [])));
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return new ValueTask<UserInfo?>(UserInfo.Create(
+                    new User { Id = userId, DisplayName = "T", PreferredLanguage = "en" },
+                    [], [], [], profile: null, []));
+            });
 
         var settings = Substitute.For<IAgentSettingsService>();
         settings.Current.Returns(new AgentSettingsDto(

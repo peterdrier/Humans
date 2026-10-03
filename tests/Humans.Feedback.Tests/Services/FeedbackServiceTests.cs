@@ -564,6 +564,39 @@ public sealed class FeedbackServiceTests
         model.Reporters.Select(r => r.DisplayName).Should().Equal("Alice", "Bob");
     }
 
+    [HumansFact]
+    public async Task Index_CancelsAtViewerResolutionBeforeReadingReports()
+    {
+        using var request = new CancellationTokenSource();
+        var id = Guid.NewGuid();
+        SeedUser(id, "Viewer", "viewer@example.com");
+        var users = Substitute.For<IUserServiceRead>();
+        var cancelledAtViewer = false;
+        users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var token = call.Arg<CancellationToken>();
+            cancelledAtViewer = token.IsCancellationRequested;
+            token.ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(_people[id]);
+        });
+        users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(_people.Values.ToList());
+        var teams = Substitute.For<ITeamServiceRead>();
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var controller = new FeedbackController(_service, teams, users, NullLogger<FeedbackController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            {
+                RequestAborted = request.Token,
+                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, id.ToString())], "Test")),
+            } },
+        };
+        Task<IActionResult> ReadPage() => controller.Index(null, null, null, null, null, false, null, request.Token);
+        (await ReadPage()).Should().BeOfType<ViewResult>();
+        await request.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPage);
+        cancelledAtViewer.Should().BeTrue();
+    }
+
     private async Task<FeedbackReport> CreateTestReport(FeedbackStatus status = FeedbackStatus.Open)
     {
         var userId = Guid.NewGuid();

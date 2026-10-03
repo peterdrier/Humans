@@ -82,6 +82,8 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 
 ## Invariants
 
+- Member transfer-index GETs propagate request cancellation to viewer resolution before ticket, transfer and early-entry reads. Transfer POST boundaries are unchanged.
+
 - Member transfer Submit/Cancel validation errors resolve through Tickets resources in all six cultures. Unknown failure text stays in logs; the wizard and cancellation toast use translated fallbacks.
 - Transfer row DTOs carry sender/decider IDs; their names are rendered by the existing human components. Row assembly does not load unused user-name snapshots, so a profile lookup cannot fail a committed response or prevent a transfer list from loading. Transfer/attendee reads remain required.
 
