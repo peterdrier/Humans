@@ -40,7 +40,7 @@
 # IShiftManagementService, and with them NotificationInboxService and
 # ShiftManagementService, out of both checks.
 service_interfaces() {
-  local decls seed pat new merged i
+  local decls seed pat new merged
   decls=$(find src -name '*.cs' -type f -not -path '*/obj/*' -not -path '*/bin/*' -print0 \
           | xargs -0 awk 'FNR==1{printf "\n"} {printf "%s ", $0}' \
           | { grep -oE 'interface +I[A-Za-z0-9_]+[^{;]*' || [ "$?" -eq 1 ]; } \
@@ -50,7 +50,8 @@ service_interfaces() {
          | sed -E 's/[ <:].*//') || return
   seed=$(printf 'IApplicationService\nIOrchestrator\n%s\n' "$seed" \
          | grep -v '^$' | sort -u) || return
-  for i in 1 2 3 4; do
+  # Follow inheritance to a fixed point; interface depth does not limit services.
+  while true; do
     pat=$(echo "$seed" | paste -sd'|') || return
     new=$(echo "$decls" | { grep -E ":.*\b($pat)\b" || [ "$?" -eq 1 ]; } | sed -E 's/[ <:].*//' | sort -u) || return
     merged=$(printf '%s\n%s\n' "$seed" "$new" | sort -u) || return

@@ -537,6 +537,47 @@ else
   FAIL=$((FAIL+1))
 fi
 
+# Service discovery follows arbitrary inheritance depth, including diamonds and
+# cycles, without counting unrelated interfaces as application services.
+if python3 - "$SCRIPT_DIR/lib-service-classes.sh" <<'PYTEST'
+import pathlib, subprocess, sys, tempfile
+helper = pathlib.Path(sys.argv[1]).resolve()
+with tempfile.TemporaryDirectory() as directory:
+    root = pathlib.Path(directory)
+    services = root / 'src/Sections/Humans.Example/Services'
+    services.mkdir(parents=True)
+    (root / 'src/Humans.Web/Services').mkdir(parents=True)
+    declarations = [
+        f'public interface ILevel{i} : ' + ('IApplicationService' if i == 0 else f'ILevel{i - 1}') + ' {}'
+        for i in range(8)
+    ]
+    declarations += [
+        'public interface IDiamond : ILevel2, ILevel7 {}',
+        'public interface ICycleA : ICycleB, IDiamond {}',
+        'public interface ICycleB : ICycleA {}',
+        'public interface IUnrelatedA : IUnrelatedB {}',
+        'public interface IUnrelatedB : IUnrelatedA {}',
+        'internal class DeepService : ILevel7 {}',
+        'internal class DiamondService : IDiamond {}',
+        'internal class CycleService : ICycleB {}',
+        'internal class UnrelatedService : IUnrelatedA {}',
+    ]
+    (services / 'Example.cs').write_text('\n'.join(declarations))
+    result = subprocess.run(
+        ['bash', '-c', 'set -euo pipefail; source "$1"; service_classes', 'fixture', str(helper)],
+        cwd=root, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result
+    names = {line.split('|')[1].split(',')[0] for line in result.stdout.splitlines()}
+    assert names == {'DeepService', 'Diamond', 'CycleB'}, result.stdout
+PYTEST
+then
+  echo "PASS [test 14]: service discovery follows deep inheritance to a fixed point"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 14]: service inheritance discovery"
+  FAIL=$((FAIL+1))
+fi
+
 echo "═══ Summary ═══"
 echo "Passed: $PASS"
 echo "Failed: $FAIL"
