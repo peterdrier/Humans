@@ -515,8 +515,8 @@ public class AgentServiceTests
     [HumansFact]
     public async Task Ask_continues_the_tool_loop_when_a_tool_call_is_truncated_by_max_tokens()
     {
-        // nobodies-collective/Humans#963 — a max_tokens cutoff mid tool-call JSON used to
-        // discard the call outright: the loop only ever continued on StopReason=="tool_use".
+        // nobodies-collective/Humans#963 — a max_tokens cutoff mid tool-call JSON must not
+        // discard the call: the loop continues on a tool call even when StopReason isn't "tool_use".
         // AnthropicClient still closes the current content block before the stream ends, so a
         // (possibly malformed) AnthropicToolCall reaches AgentService even on a max_tokens stop.
         var userId = Guid.NewGuid();
@@ -573,10 +573,9 @@ public class AgentServiceTests
     [HumansFact]
     public async Task Ask_persists_an_assistant_message_when_an_exception_escapes_the_turn()
     {
-        // nobodies-collective/Humans#963 — 4 of 11 conversations in #952's log evidence never
-        // reached AppendMessageAsync for the assistant turn because an exception escaped the
-        // stream between the user message being written and the assistant message being
-        // written. A failed turn must still leave a trace in the transcript.
+        // nobodies-collective/Humans#963 — an exception escaping the stream between the user
+        // message write and the assistant message write must not skip AppendMessageAsync.
+        // A failed turn must still leave a trace in the transcript.
         var userId = Guid.NewGuid();
         var dispatcher = Substitute.For<IAgentToolDispatcher>();
         dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())

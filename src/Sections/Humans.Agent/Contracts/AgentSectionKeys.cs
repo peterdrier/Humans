@@ -4,9 +4,9 @@ namespace Humans.Agent.Contracts;
 
 /// <summary>
 /// The section keys the agent's <c>fetch_section_guide</c> tool accepts, and the aliases that
-/// resolve onto them. Pure data with no I/O, so both the Infrastructure reader that fetches
-/// <c>docs/sections/{key}.md</c> and the Web layer that renders the preload corpus can depend on
-/// it inward (design-rules.md §1) instead of on each other.
+/// resolve onto them. Pure data with no I/O, so both the reader that fetches
+/// <c>src/Sections/Humans.{key}/Docs/{key}.md</c> and the Web layer that renders the preload
+/// corpus can depend on it inward (design-rules.md §1) instead of on each other.
 /// </summary>
 public static class AgentSectionKeys
 {
@@ -59,7 +59,7 @@ public static class AgentSectionKeys
 
     /// <summary>
     /// Resolves a caller-supplied section key — canonical, any casing, or a known alias — to the
-    /// canonical key whose <c>docs/sections/{key}.md</c> file backs it. Casing matters because
+    /// canonical key whose <c>{key}.md</c> invariants doc backs it. Casing matters because
     /// GitHub paths are case-sensitive and LLMs routinely lowercase the key (e.g. "shifts"), so
     /// the fetched filename must be the canonical one ("Shifts.md").
     /// </summary>

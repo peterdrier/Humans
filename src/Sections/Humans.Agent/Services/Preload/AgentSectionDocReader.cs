@@ -17,16 +17,13 @@ internal sealed class AgentSectionDocReader(
     IMemoryCache cache,
     ILogger<AgentSectionDocReader> logger)
 {
-    internal const string FolderPath = "docs/sections";
     private const string CacheKeyPrefix = "agent:section:";
 
     /// <summary>
-    /// Where a section at G5 keeps its invariants doc (nobodies-collective/Humans#866
-    /// design §7a): inside its own project rather than in <c>docs/sections</c>. Probed as
-    /// a fallback so the tool keeps working across the migration without a per-section
-    /// path map — the same convention for whichever side of the move they are on.
-    /// Internal because <c>SectionAnnotations</c> reports the same folder on
-    /// /Debug/Sections; a second copy of the path would be a second thing to get wrong.
+    /// Where a section keeps its invariants doc: inside its own project
+    /// (nobodies-collective/Humans#866 design §7a). Internal because <c>SectionAnnotations</c>
+    /// reports the same folder on /Debug/Sections and the docs health check probes it; a second
+    /// copy of the path would be a second thing to get wrong.
     /// </summary>
     internal static string SectionProjectFolder(string key) => $"src/Sections/Humans.{key}/Docs";
 
@@ -45,7 +42,8 @@ internal sealed class AgentSectionDocReader(
 
         try
         {
-            var body = await FetchAsync(canonicalKey, cancellationToken);
+            var body = await source.GetMarkdownAsync(
+                SectionProjectFolder(canonicalKey), canonicalKey, cancellationToken);
             cache.Set(cacheKey, body, HoldForever);
             return body;
         }
@@ -56,8 +54,8 @@ internal sealed class AgentSectionDocReader(
             // memory/code/always-log-problems.md so a missing section guide is visible in
             // the prod log viewer (which only renders Warning+) instead of disappearing.
             logger.LogWarning(
-                "Section guide {Section} not found on GitHub in {Folders}",
-                canonicalKey, $"{FolderPath}, {SectionProjectFolder(canonicalKey)}");
+                "Section guide {Section} not found on GitHub in {Folder}",
+                canonicalKey, SectionProjectFolder(canonicalKey));
             return null;
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
@@ -65,19 +63,6 @@ internal sealed class AgentSectionDocReader(
             logger.LogWarning(ex,
                 "Failed to fetch agent section guide {Section} from GitHub; returning null", canonicalKey);
             return null;
-        }
-    }
-
-    private async Task<string> FetchAsync(string canonicalKey, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await source.GetMarkdownAsync(FolderPath, canonicalKey, cancellationToken);
-        }
-        catch (NotFoundException)
-        {
-            return await source.GetMarkdownAsync(
-                SectionProjectFolder(canonicalKey), canonicalKey, cancellationToken);
         }
     }
 

@@ -70,7 +70,7 @@ public class AgentPreloadCorpusBuilderTests
         // Rough token estimate: 1 token ≈ 3.8 chars for English/Spanish mix.
         // The index is just keys + taglines; section bodies are fetched on demand
         // via fetch_section_guide. 2K tokens leaves enormous headroom under the
-        // Anthropic ITPM budget that previously bounded this corpus at ~25K.
+        // Anthropic ITPM budget.
         var estimatedTokens = text.Length / 3.8;
         estimatedTokens.Should().BeLessThan(2_000, "Tier1 preload is now a section index; full bodies are fetched on demand");
     }

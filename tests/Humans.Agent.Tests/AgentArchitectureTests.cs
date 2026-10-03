@@ -7,16 +7,8 @@ namespace Humans.Agent.Tests;
 
 /// <summary>
 /// Architecture tests enforcing the section shape for Agent
-/// (nobodies-collective/Humans#866, G5).
+/// (nobodies-collective/Humans#866).
 /// </summary>
-/// <remarks>
-/// Replaces <c>Humans.Application.Tests/Architecture/AgentArchitectureTests.cs</c>, whose three
-/// tests all pinned the Application/Infrastructure split the section no longer has: they
-/// asserted that <c>AgentService</c> sat in <c>Humans.Application</c> without EF Core, that the
-/// five helpers sat in <c>Humans.Infrastructure.Services.Agent</c>, and that their interfaces
-/// sat in <c>Humans.Application</c>. One assembly with one internal surface subsumes all three
-/// (design §15 step 11).
-/// </remarks>
 public class AgentArchitectureTests
 {
     [HumansFact]

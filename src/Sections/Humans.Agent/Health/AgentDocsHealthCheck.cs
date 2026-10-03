@@ -1,4 +1,5 @@
 using Humans.Agent.Contracts;
+using Humans.Agent.Services.Preload;
 using Humans.Base.Interfaces;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -16,26 +17,20 @@ namespace Humans.Agent.Health;
 /// Goes through <see cref="IGuideContentSource"/> directly rather than the cached
 /// readers inside Humans.Agent so the probe genuinely re-tests GitHub on every call.
 /// A cached reader would refresh the sliding expiration off one warm fetch and keep
-/// reporting Healthy through a revoked token / outage / moved canary. That is also why
-/// the two folder paths below are spelled out here rather than read off the section:
-/// both canaries are Base docs (docs/sections/_Index.md, docs/features/global/gdpr-export.md),
-/// so this check depends on nothing Agent owns except whether the feature is on.
+/// reporting Healthy through a revoked token / outage / moved canary.
 /// </summary>
 internal sealed class AgentDocsHealthCheck(
     IAgentAvailability agent,
     IGuideContentSource source,
     ILogger<AgentDocsHealthCheck> logger) : IHealthCheck
 {
-    private const string SectionsFolder = "docs/sections";
     private const string FeaturesFolder = "docs/features/global";
 
-    // The canary for docs/sections. This probe fetches the folder path literally and
-    // has no src/Sections/Humans.{key}/Docs fallback, unlike AgentSectionDocReader, so
-    // it must name a doc that does not move — and any section's invariants doc
-    // eventually moves into its own project. _Index.md is the map between
-    // docs/sections and the sections' own Docs folders, so it stays in
-    // docs/sections for as long as the folder itself is worth probing.
-    private const string ProbeSectionDoc = "_Index";
+    // The section-guide canary: this section's own invariants doc, at the per-section folder
+    // convention fetch_section_guide reads. It moves only if the section does, and this check
+    // moves with it.
+    private const string ProbeSectionDoc = "Agent";
+    private static readonly string SectionsFolder = AgentSectionDocReader.SectionProjectFolder(ProbeSectionDoc);
 
     // A stable feature-spec canary — fetched from a different folder (docs/features/global)
     // than sections, so a folder-level fetch regression on one folder doesn't mask
@@ -53,7 +48,7 @@ internal sealed class AgentDocsHealthCheck(
 
         if (!await TryFetchAsync(SectionsFolder, ProbeSectionDoc, cancellationToken))
             return HealthCheckResult.Degraded(
-                $"agent grounding docs unreachable — docs/sections/{ProbeSectionDoc}.md could not be fetched from GitHub; " +
+                $"agent grounding docs unreachable — {SectionsFolder}/{ProbeSectionDoc}.md could not be fetched from GitHub; " +
                 "fetch_section_guide will return errors and the preload index will be empty");
 
         if (!await TryFetchAsync(FeaturesFolder, ProbeFeature, cancellationToken))

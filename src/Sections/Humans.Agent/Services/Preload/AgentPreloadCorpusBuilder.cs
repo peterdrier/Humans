@@ -11,11 +11,9 @@ namespace Humans.Agent.Services.Preload;
 /// in <see cref="IMemoryCache"/> until an admin-triggered reload swaps it.
 /// </summary>
 /// <remarks>
-/// <see cref="IAgentPreloadAugmentor"/> is required, not optional. It used to default to
-/// <c>null</c> with a <c>is not null</c> guard around its four blocks — which meant a missing
-/// Shell registration produced a corpus quietly stripped of the access matrix, the glossaries,
-/// the route map and the FAQ, with no startup failure and no log line. Required makes DI fail
-/// loudly instead (peterdrier/Humans#1259).
+/// <see cref="IAgentPreloadAugmentor"/> is required, not optional — a missing Shell registration
+/// must fail DI loudly rather than build a corpus quietly stripped of the access matrix,
+/// glossaries, route map and FAQ (peterdrier/Humans#1259).
 /// </remarks>
 internal sealed class AgentPreloadCorpusBuilder(
     AgentSectionDocReader sections,

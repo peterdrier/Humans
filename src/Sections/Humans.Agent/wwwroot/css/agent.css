@@ -13,8 +13,7 @@
     .agent-panel { transition: none !important; }
 }
 
-/* Help widget — single FAB + popover menu replacing former
-   IssuesWidget + AgentWidget bubbles (issue #627). */
+/* Help widget — single FAB + popover menu (nobodies-collective/Humans#627). */
 .help-widget-menu-item {
     display: flex;
     align-items: center;
@@ -42,7 +41,7 @@
     }
 }
 
-/* Transcript view (/Agent/Conversation/{id}) — issue #632. Styled to match
+/* Transcript view (/Agent/Conversation/{id}) — nobodies-collective/Humans#632. Styled to match
    the live chat panel above so the user sees a familiar bubble layout. */
 .agent-transcript {
     display: flex;

@@ -46,53 +46,26 @@ public class AgentSectionDocReaderTests
         var content = await reader.ReadAsync(key, TestContext.Current.CancellationToken);
 
         content.Should().NotBeNullOrEmpty();
-        source.LastFolder.Should().Be(AgentSectionDocReader.FolderPath);
+        source.LastFolder.Should().Be("src/Sections/Humans.Shifts/Docs");
         source.LastStem.Should().Be("Shifts", "the reader must canonicalize the key, not pass caller casing");
     }
 
     /// <summary>
     /// A whitelisted key with no matching file is unreachable at runtime and fails silently —
     /// <see cref="AgentSectionDocReader"/> swallows the GitHub 404 and returns null, and the
-    /// docs health check only probes Shifts, so a typo would never surface. The repo is the
-    /// source these docs are served from, so the local folder is the authority.
+    /// docs health check probes one canary, so a typo would never surface. The repo is the
+    /// source these docs are served from, so the local tree is the authority.
     /// </summary>
     [HumansFact]
     public void Every_whitelisted_section_has_a_matching_doc_file()
     {
         var root = LocateRepoRoot();
-        var stems = Directory
-            .GetFiles(Path.Combine(root, "docs", "sections"), "*.md")
-            // A section at G5 carries its invariants doc in its own project
-            // (nobodies-collective/Humans#866 design §7a); the reader probes both folders.
-            .Concat(Directory.GetFiles(
-                Path.Combine(root, "src", "Sections"), "*.md", SearchOption.AllDirectories))
-            .Select(Path.GetFileNameWithoutExtension)
-            .ToHashSet(StringComparer.Ordinal);
 
-        // Ordinal, not OrdinalIgnoreCase: GitHub paths are case-sensitive, and the reader
+        // File.Exists is case-sensitive on the CI runner, as GitHub paths are; the reader
         // fetches "{canonicalKey}.md" verbatim.
         MakeReader(new FakeSource()).KnownSections.Should().OnlyContain(
-            key => stems.Contains(key),
-            "every whitelisted key is fetched as {key}.md with exact casing");
-    }
-
-    /// <summary>
-    /// A section that has moved to its own project (nobodies-collective/Humans#866) no longer
-    /// has a docs/sections file; the reader must fall through to the section project rather
-    /// than swallowing the 404 and returning null, which is how the agent silently lost a
-    /// whole section's guide.
-    /// </summary>
-    [HumansFact]
-    public async Task ReadAsync_falls_back_to_the_section_project_folder()
-    {
-        var source = new FakeSource { FailFoldersWith404 = [AgentSectionDocReader.FolderPath] };
-        var reader = MakeReader(source);
-
-        var content = await reader.ReadAsync("Store", TestContext.Current.CancellationToken);
-
-        content.Should().NotBeNullOrEmpty();
-        source.LastFolder.Should().Be("src/Sections/Humans.Store/Docs");
-        source.LastStem.Should().Be("Store");
+            key => File.Exists(Path.Combine(root, AgentSectionDocReader.SectionProjectFolder(key), key + ".md")),
+            "every whitelisted key is fetched as src/Sections/Humans.{key}/Docs/{key}.md with exact casing");
     }
 
     /// <summary>
@@ -199,7 +172,6 @@ public class AgentSectionDocReaderTests
         public string? LastFolder { get; private set; }
         public string? LastStem { get; private set; }
         public Exception? FailWith { get; set; }
-        public IReadOnlyCollection<string> FailFoldersWith404 { get; init; } = [];
 
         public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException("Agent reader must use the folder-parameterized overload.");
@@ -209,8 +181,6 @@ public class AgentSectionDocReaderTests
             CallCount++;
             LastFolder = folderPath;
             LastStem = fileStem;
-            if (FailFoldersWith404.Contains(folderPath, StringComparer.Ordinal))
-                throw new NotFoundException("missing", System.Net.HttpStatusCode.NotFound);
             if (FailWith is not null) throw FailWith;
             return Task.FromResult($"# {fileStem}\n\nBody.");
         }

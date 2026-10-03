@@ -143,9 +143,8 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         }, cancellationToken);
 
         // From here on, a thrown exception (or client disconnect) would otherwise leave the
-        // user message above with no matching assistant reply (nobodies-collective/Humans#963:
-        // 4 of 11 conversations in nobodies-collective/Humans#952's log evidence never reached the AppendMessageAsync
-        // below because something threw between the two writes). `await foreach` forbids
+        // user message above with no matching assistant reply (nobodies-collective/Humans#963,
+        // nobodies-collective/Humans#952). `await foreach` forbids
         // `yield` inside its implicit try/finally, so drive the inner enumerator manually —
         // that lets MoveNextAsync be wrapped in try/catch while still streaming tokens live.
         // Shared with RunTurnAsync so the failure path below can still bill a turn that broke
@@ -182,9 +181,8 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                     if (turnFailure is OperationCanceledException && cancellationToken.IsCancellationRequested)
                     {
                         // Expected (client disconnect), not a bug — Warning, not Error. The
-                        // finally still persists the trace: nobodies-collective/Humans#952's log evidence showed
-                        // conversations with no assistant message at all, and a disconnect is
-                        // one plausible cause.
+                        // finally still persists the trace, so a disconnect never leaves
+                        // a conversation with no assistant message (nobodies-collective/Humans#952).
                         _logger.LogWarning(
                             "Agent turn cancelled (likely client disconnect) before completion for conversation {ConversationId}",
                             conversation.Id);
@@ -410,8 +408,8 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         }
 
         // Never end a turn silently (nobodies-collective/Humans#952): a truncated or
-        // exhausted tool loop can leave assistantBuffer empty, which used to persist
-        // and yield a blank bubble. Fill in fallback prose so the transcript and the
+        // exhausted tool loop can leave assistantBuffer empty and yield a blank
+        // bubble. Fill in fallback prose so the transcript and the
         // admin conversation view always show what the user saw.
         var assistantText = assistantBuffer.ToString();
         if (string.IsNullOrWhiteSpace(assistantText))
@@ -422,9 +420,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                 // blank stored message makes the admin conversation view misleading.
                 // Persist the fallback without streaming it: when no prose arrives the
                 // widget renders its own localized handoff line live, and a streamed
-                // delta would override that localization. The persisted copy uses
-                // the widget's Help_Agent_IssueProposed resource key so a history reload
-                // shows the same sentence the user saw.
+                // delta would override that localization.
                 assistantText = LocalizedReply("Help_Agent_IssueProposed", conversation.Locale);
             }
             else
@@ -491,8 +487,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
 
     private static readonly System.Resources.ResourceManager ReplyResources = new(typeof(AgentResource));
 
-    // Match the supported member locale, with the same English fallback as the old switches.
-    // Handoff history and the live widget share Help_Agent_IssueProposed rather than mirrored text.
+    // Conversation locale when supported, else the default culture.
     private static string LocalizedReply(string resourceKey, string? locale)
     {
         var culture = CultureInfo.GetCultureInfo(
