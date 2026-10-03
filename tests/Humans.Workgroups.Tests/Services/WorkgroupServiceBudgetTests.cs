@@ -8,12 +8,71 @@ using Humans.Workgroups.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using Xunit;
+using Humans.Workgroups.Data;
 
 namespace Humans.Workgroups.Tests.Services;
 
 /// <summary>The budget allocation: amount on the register, account through Finance, never a twin.</summary>
 public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
 {
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SetBudget_AccountResolutionSurvivesRequestCancellation(bool linkExisting)
+    {
+        var group = await SeedWorkgroupAsync();
+        var actor = group.Members.Single().UserId;
+        using var cancellation = new CancellationTokenSource();
+        int? requested = linkExisting ? 62900170 : null;
+        Finance.CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), requested, Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                return new HoldedExpenseAccountRef(62900170, "account", "Workgroups", !linkExisting);
+            });
+
+        var result = await NewService().SetBudgetAsync(group.Id, actor, new WorkgroupBudgetSave(100m, requested), cancellation.Token);
+
+        result!.Created.Should().Be(!linkExisting);
+        await Finance.Received(1).CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), requested, CancellationToken.None);
+        await using var db = OpenContext();
+        var saved = (await db.Workgroups.FindAsync([group.Id], Ct))!;
+        saved.BudgetAmount.Should().Be(100m);
+        saved.HoldedAccountId.Should().Be("account");
+        (await db.LogEntries.CountAsync(e => e.WorkgroupId == group.Id && e.Kind == WorkgroupLogKind.BudgetSet, Ct)).Should().Be(1);
+        AuditLog.ReceivedCalls().Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task SetBudget_ExistingBindingFinishesLogAfterRequestCancellation()
+    {
+        var group = await SeedWorkgroupAsync();
+        await BindAsync(group.Id, 62900160, "account", 100m);
+        using var cancellation = new CancellationTokenSource();
+        var real = new WorkgroupRepository(DbFactory);
+        var repository = Substitute.For<IWorkgroupRepository>();
+        repository.GetWorkgroupAsync(group.Id, Arg.Any<CancellationToken>())
+            .Returns(c => real.GetWorkgroupAsync(group.Id, c.Arg<CancellationToken>()));
+        repository.UpdateWorkgroupAsync(Arg.Any<Workgroup>(), Arg.Any<CancellationToken>())
+            .Returns(async c =>
+            {
+                c.Arg<CancellationToken>().Should().Be(cancellation.Token);
+                await real.UpdateWorkgroupAsync(c.Arg<Workgroup>(), c.Arg<CancellationToken>());
+                await cancellation.CancelAsync();
+            });
+        repository.AddLogEntryAsync(Arg.Any<WorkgroupLogEntry>(), Arg.Any<CancellationToken>())
+            .Returns(c => real.AddLogEntryAsync(c.Arg<WorkgroupLogEntry>(), c.Arg<CancellationToken>()));
+
+        await NewService(repository).SetBudgetAsync(group.Id, group.Members.Single().UserId, new WorkgroupBudgetSave(200m, null), cancellation.Token);
+
+        await using var db = OpenContext();
+        (await db.Workgroups.FindAsync([group.Id], Ct))!.BudgetAmount.Should().Be(200m);
+        (await db.LogEntries.CountAsync(e => e.WorkgroupId == group.Id && e.Kind == WorkgroupLogKind.BudgetSet, Ct)).Should().Be(1);
+        await repository.DidNotReceive().AddLogEntryAsync(Arg.Any<WorkgroupLogEntry>(), cancellation.Token);
+        await Finance.DidNotReceive().CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+        AuditLog.ReceivedCalls().Should().ContainSingle();
+    }
+
     [HumansFact]
     public async Task SetBudget_FirstTime_CreatesTheAccountNamedAfterTheGroup()
     {

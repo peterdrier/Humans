@@ -516,7 +516,11 @@ internal sealed partial class WorkgroupService(
             && (workgroup.HoldedAccountNumber is null
                 || (save.ExistingAccountNum is { } wanted && wanted != workgroup.HoldedAccountNumber));
         if (needsAccount)
+        {
+            // Account resolution can create remote state; finish its local binding and record.
+            ct = CancellationToken.None;
             account = await ResolveBudgetAccountAsync(workgroup, save.ExistingAccountNum, ct);
+        }
 
         var now = clock.GetCurrentInstant();
         workgroup.BudgetAmount = save.Amount;
@@ -527,6 +531,8 @@ internal sealed partial class WorkgroupService(
         }
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);
+        // Amount-only saves also need their log and audit after browser cancellation.
+        ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.BudgetSet, now, BudgetLogBody(workgroup), ct,
             authorUserId: actorUserId);
