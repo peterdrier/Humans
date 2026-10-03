@@ -241,4 +241,5 @@
   <data name="Teams_Notification_ViewTeam" xml:space="preserve"><value>View team</value></data>
   <data name="Teams_Notification_JoinRejected" xml:space="preserve"><value>Your request to join {0} was not approved</value></data>
   <data name="Teams_Notification_MemberRemoved" xml:space="preserve"><value>You were removed from {0}</value></data>
+  <data name="Teams_TeamDetail_Calendar" xml:space="preserve"><value>Team calendar</value></data>
 </root>

@@ -577,4 +577,5 @@
   <data name="Teams_Notification_ViewTeam" xml:space="preserve"><value>Ver equipo</value></data>
   <data name="Teams_Notification_JoinRejected" xml:space="preserve"><value>No se ha aprobado tu solicitud para unirte a {0}</value></data>
   <data name="Teams_Notification_MemberRemoved" xml:space="preserve"><value>Se te ha eliminado de {0}</value></data>
+  <data name="Teams_TeamDetail_Calendar" xml:space="preserve"><value>Calendario del equipo</value></data>
 </root>
