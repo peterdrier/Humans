@@ -116,8 +116,9 @@ that enforces each:
   (`LocalizedReply`), not `IStringLocalizer`: the culture is the conversation's stored locale,
   not the request's. The route_to_issue fallback is persisted only, and uses the same
   `Help_Agent_IssueProposed` key the widget renders live.
-- **`AgentDocsHealthCheck` bypasses the cached readers** and probes canaries that don't move
-  (`docs/sections/_Index.md`) so the probe genuinely re-tests GitHub each call.
+- **`AgentDocsHealthCheck` bypasses the cached readers** so the probe genuinely re-tests GitHub
+  each call; its section canary is this section's own `Agent.md`, which moves only with the
+  section.
 - **Retention job logs at Warning** on deletion so the entry shows in the prod log viewer
   (Warning+ only).
 - **`SectionAnnotations` publishes canonical keys only** — aliases are spellings, not sections.
