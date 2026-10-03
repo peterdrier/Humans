@@ -51,15 +51,15 @@ that enforces each:
 - Over any cap is 429 before the provider (`src/Sections/Humans.Agent/Controllers/AgentController.cs:60`),
   and the service persists the refusal (`src/Sections/Humans.Agent/Services/AgentService.cs:93`).
 - Every refused turn persists a message with `RefusalReason`
-  (`src/Sections/Humans.Agent/Services/AgentService.cs:801`); a failed or disconnected turn
+  (`src/Sections/Humans.Agent/Services/AgentService.cs:796`, `src/Sections/Humans.Agent/Services/AgentService.cs:824`); a failed or disconnected turn
   persists an error trace and is billed for what it consumed
-  (`src/Sections/Humans.Agent/Services/AgentService.cs:234`).
+  (`src/Sections/Humans.Agent/Services/AgentService.cs:231`, `src/Sections/Humans.Agent/Services/AgentService.cs:236`).
 - A member reads only their own conversations; mismatch is 404
-  (`src/Sections/Humans.Agent/Services/AgentService.cs:522`, `src/Sections/Humans.Agent/Controllers/AgentController.cs:111`).
+  (`src/Sections/Humans.Agent/Services/AgentService.cs:517`, `src/Sections/Humans.Agent/Controllers/AgentController.cs:111`).
 - The tool whitelist is closed (`src/Sections/Humans.Agent/Services/AgentToolDispatcher.cs:29`);
   doc reads cannot reach arbitrary paths (`src/Sections/Humans.Agent/Services/Preload/AgentFeatureSpecReader.cs:116`,
   `src/Sections/Humans.Agent/Services/Preload/AgentSectionDocReader.cs:37`).
-- The tool loop is bounded (`src/Sections/Humans.Agent/Services/AgentService.cs:363`); cap-hit
+- The tool loop is bounded (`src/Sections/Humans.Agent/Services/AgentService.cs:361`); cap-hit
   forces synthesis (`src/Sections/Humans.Agent/Services/AgentService.cs:407`).
 - A turn never ends with an empty assistant bubble, streamed or stored
   (`src/Sections/Humans.Agent/Services/AgentService.cs:417`).
