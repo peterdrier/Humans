@@ -388,7 +388,8 @@ internal sealed class FeedbackService(
         {
             try
             {
-                await fileStorage.DeleteAsync(key, ct);
+                // The rows have committed; cancellation must not strand their screenshots.
+                await fileStorage.DeleteAsync(key, CancellationToken.None);
             }
             catch (Exception ex)
             {
