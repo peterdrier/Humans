@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 using NSubstitute;
 
@@ -29,6 +30,89 @@ namespace Humans.Teams.Tests.Controllers;
 
 public class TeamControllerPageContentTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("create", false)]
+    [Xunit.InlineData("edit", false)]
+    [Xunit.InlineData("delete", false)]
+    [Xunit.InlineData("create", true)]
+    [Xunit.InlineData("edit", true)]
+    [Xunit.InlineData("delete", true)]
+    public async Task TeamMutation_RejectionsKeepReasonWithoutStack_AndUnexpectedHandling(
+        string action, bool unexpected)
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var teams = Substitute.For<ITeamManagementService>();
+        var logger = Substitute.For<ILogger<TeamController>>();
+        var auth = Substitute.For<IAuthorizationService>();
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Success());
+        var teamId = Guid.NewGuid();
+        const string reason = "The team hierarchy does not permit this change";
+        Exception failure = unexpected ? new IOException("Database unavailable") : new InvalidOperationException(reason);
+        teams.CreateTeamWithGoogleGroupAsync("", null, false)
+            .ReturnsForAnyArgs(Task.FromException<TeamWithGroupResult>(failure));
+        teams.UpdateTeamWithGoogleGroupAsync(teamId, "", null, false, false)
+            .ReturnsForAnyArgs(Task.FromException<TeamWithGroupResult>(failure));
+        teams.DeleteTeamAsync(teamId).ReturnsForAnyArgs(Task.FromException(failure));
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var http = new DefaultHttpContext { RequestServices = services };
+        var controller = new TeamController(
+            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserServiceRead>(),
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
+            new ConfigurationRegistry(), SystemClock.Instance, auth, logger)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        TeamFormViewModelBase model = string.Equals(action, "create", StringComparison.Ordinal)
+            ? new CreateTeamViewModel { Name = "Alpha" }
+            : new EditTeamViewModel { Id = teamId, Name = "Alpha", IsActive = true };
+        Task<IActionResult> MutateAsync() => action switch
+        {
+            "create" => controller.CreateTeam((CreateTeamViewModel)model),
+            "edit" => controller.EditTeam(teamId, (EditTeamViewModel)model),
+            _ => controller.DeleteTeam(teamId)
+        };
+
+        if (unexpected)
+        {
+            if (string.Equals(action, "create", StringComparison.Ordinal))
+            {
+                (await MutateAsync()).Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+                var error = logger.ReceivedCalls().Should().ContainSingle(call =>
+                    string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
+                error[0].Should().Be(LogLevel.Error);
+                error[3].Should().BeSameAs(failure);
+            }
+            else
+            {
+                Func<Task> act = async () => await MutateAsync();
+                await act.Should().ThrowAsync<IOException>();
+                logger.ReceivedCalls().Should().BeEmpty();
+            }
+            return;
+        }
+
+        var result = await MutateAsync();
+        if (string.Equals(action, "delete", StringComparison.Ordinal))
+            result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(TeamController.Summary));
+        else
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        if (string.Equals(action, "edit", StringComparison.Ordinal))
+            controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(reason);
+        else
+            controller.TempData["ErrorMessage"].Should().Be(reason);
+        var args = logger.ReceivedCalls().Should().ContainSingle(call =>
+            string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
+        args[0].Should().Be(LogLevel.Warning);
+        args[3].Should().BeNull();
+        args[2]!.ToString().Should().Contain(reason);
+        if (!string.Equals(action, "create", StringComparison.Ordinal))
+            args[2]!.ToString().Should().Contain(teamId.ToString());
+    }
+
     [HumansTheory]
     [Xunit.InlineData("birthdays", "viewer")]
     [Xunit.InlineData("my", "viewer")]
