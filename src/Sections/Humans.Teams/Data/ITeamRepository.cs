@@ -418,13 +418,6 @@ internal interface ITeamRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Role assignments for a member, with their <c>TeamRoleDefinition</c>
-    /// + <c>TeamRoleDefinition.Team</c> eagerly loaded, tracked for removal.
-    /// </summary>
-    Task<IReadOnlyList<TeamRoleAssignment>> FindAssignmentsForMemberForMutationAsync(
-        Guid teamMemberId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns distinct user ids whose membership belongs to role definitions
     /// matching the predicate <c>IsManagement &amp;&amp; TeamId == teamId</c>.
     /// Used by <c>UpdateTeamAsync</c> to invalidate shift authorization when a

@@ -589,17 +589,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
     // TeamRoleAssignment
     // ==========================================================================
 
-    public async Task<IReadOnlyList<TeamRoleAssignment>> FindAssignmentsForMemberForMutationAsync(
-        Guid teamMemberId, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.Set<TeamRoleAssignment>()
-            .Include(a => a.TeamRoleDefinition)
-                .ThenInclude(d => d.Team)
-            .Where(a => a.TeamMemberId == teamMemberId)
-            .ToListAsync(ct);
-    }
-
     public async Task AddAssignmentAsync(TeamRoleAssignment assignment, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
