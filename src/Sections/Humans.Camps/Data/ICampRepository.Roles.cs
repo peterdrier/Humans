@@ -38,28 +38,12 @@ internal partial interface ICampRepository
     Task<IReadOnlyList<CampSpecialRole>> GetExistingSpecialRolesAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the distinct set of user ids that currently hold the given
-    /// special role on any season. Used by <c>SystemTeamSyncJob</c> to compute
-    /// Barrio Leads team membership.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetSpecialRoleHolderUserIdsAsync(
-        CampSpecialRole specialRole, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the distinct user ids holding the given special role on the
     /// specified season (non-deactivated definition). Used to source the camp
     /// detail "Contact the leads" recipient list and admin/CSV lead columns.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetSpecialRoleHolderUserIdsForSeasonAsync(
         Guid campSeasonId, CampSpecialRole specialRole, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns true if the user currently holds the given special role on any
-    /// camp/season. Used by <c>SystemTeamSyncJob</c> for the Barrio Leads team
-    /// member-check path.
-    /// </summary>
-    Task<bool> IsSpecialRoleHolderAnywhereAsync(
-        Guid userId, CampSpecialRole specialRole, CancellationToken ct = default);
 
     Task<bool> DefinitionNameExistsAsync(string name, Guid? excludingId, CancellationToken ct = default);
 

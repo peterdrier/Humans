@@ -149,18 +149,6 @@ internal sealed partial class CampRepository : ICampRepository
         return true;
     }
 
-    public async Task<IReadOnlyList<int>> GetCampYearsAsync(
-        Guid campId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampSeasons
-            .AsNoTracking()
-            .Where(s => s.CampId == campId)
-            .Select(s => s.Year)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<string>?> DeleteCampAsync(
         Guid campId, CancellationToken ct = default)
     {
