@@ -25,6 +25,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -81,6 +82,7 @@ public sealed class IssuesServiceTests
     private readonly IIssuesBadgeCacheInvalidator _issuesBadge;
     private readonly IIssuesRepository _repository;
     private readonly IssuesApplicationService _service;
+    private readonly ILogger<IssuesApplicationService> _logger = Substitute.For<ILogger<IssuesApplicationService>>();
 
     private readonly IssuesDbContext _issuesDb;
 
@@ -130,7 +132,7 @@ public sealed class IssuesServiceTests
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, SectionCatalog, Domain.TestIssueQueues.Shipped(),
-            NullLogger<IssuesApplicationService>.Instance);
+            _logger);
     }
 
     private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
@@ -823,6 +825,10 @@ public sealed class IssuesServiceTests
         result.Succeeded.Should().BeFalse();
         result.NotFound.Should().BeTrue();
         result.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+        _logger.ReceivedCalls().Should().ContainSingle(call =>
+            call.GetMethodInfo().Name == "Log" &&
+            (LogLevel)call.GetArguments()[0]! == LogLevel.Warning &&
+            call.GetArguments()[3] == null);
     }
 
     // ==========================================================================
@@ -929,6 +935,10 @@ public sealed class IssuesServiceTests
         result.Succeeded.Should().BeFalse();
         result.NotFound.Should().BeTrue();
         result.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+        _logger.ReceivedCalls().Should().ContainSingle(call =>
+            call.GetMethodInfo().Name == "Log" &&
+            (LogLevel)call.GetArguments()[0]! == LogLevel.Warning &&
+            call.GetArguments()[3] == null);
     }
 
     // ==========================================================================
@@ -1061,6 +1071,10 @@ public sealed class IssuesServiceTests
         result.Succeeded.Should().BeFalse();
         result.NotFound.Should().BeFalse();
         result.ErrorMessage.Should().Contain("Cannot change section");
+        _logger.ReceivedCalls().Should().ContainSingle(call =>
+            call.GetMethodInfo().Name == "Log" &&
+            (LogLevel)call.GetArguments()[0]! == LogLevel.Warning &&
+            call.GetArguments()[3] == null);
     }
 
     [HumansFact]
@@ -1099,6 +1113,10 @@ public sealed class IssuesServiceTests
         result.Succeeded.Should().BeFalse();
         result.NotFound.Should().BeTrue();
         result.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+        _logger.ReceivedCalls().Should().ContainSingle(call =>
+            call.GetMethodInfo().Name == "Log" &&
+            (LogLevel)call.GetArguments()[0]! == LogLevel.Warning &&
+            call.GetArguments()[3] == null);
     }
 
     // ==========================================================================

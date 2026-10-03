@@ -119,6 +119,8 @@ Known area labels in the member submission form, issue list and detail view use 
 
 ## Invariants
 
+- Mutation result wrappers log missing/inaccessible issues and terminal-section rejections at Warning without exception stacks; unexpected failures retain Error logs and their exceptions.
+
 - Every issue is linked to the human who submitted it (`ReporterUserId` is required).
 - Status flows Triage → Open → InProgress → Resolved/WontFix/Duplicate. Transitioning out of a terminal status clears `ResolvedAt` and `ResolvedByUserId`.
 - A reporter posting a comment on a terminal issue **auto-reopens** it to `Open` (audit-logged as `AuditAction.IssueStatusChanged` with actor = the reporter).
