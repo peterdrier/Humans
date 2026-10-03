@@ -34,6 +34,7 @@ function preview() {
     };
     vm.createContext(context); vm.runInContext(script, context);
     return { read, response, fileInput, error, shows: () => shows, fetches: () => fetches,
+        seed: () => vm.runInContext("pendingImport = { matched: [{ campSeasonId: 'old' }], unrecognized: [] };", context),
         pending: () => vm.runInContext('pendingImport', context), run: () => vm.runInContext('handlePreview()', context),
         changeFile: () => fileInput.files = [{ size: 15, text: () => Promise.resolve('different-file') }],
         button: elements['import-preview-btn'] };
@@ -85,3 +86,20 @@ test('unchanged selected file still produces its reviewed match', async () => {
     assert.equal(p.pending().matched[0].newAreaSqm, 12);
     assert.equal(p.button.disabled, false);
 });
+
+for (const name of [42, { unexpected: 'object' }]) {
+    test(`malformed camp metadata produces a preview error: ${JSON.stringify(name)}`, async () => {
+        const p = preview();
+        p.seed();
+        const loading = p.run();
+        p.read.resolve(JSON.stringify({ type: 'FeatureCollection', features: [
+            { type: 'Feature', properties: { campName: name }, geometry: { type: 'Polygon', coordinates: [] } },
+        ] }));
+        p.response.resolve(stateResponse());
+        await loading;
+        assert.equal(p.shows(), 0);
+        assert.equal(p.pending(), null);
+        assert.equal(p.error.textContent, 'Unable to preview this GeoJSON file. Check its features and camp names.');
+        assert.equal(p.button.disabled, false);
+    });
+}

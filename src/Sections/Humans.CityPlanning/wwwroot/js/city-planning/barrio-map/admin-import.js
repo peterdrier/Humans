@@ -134,8 +134,16 @@ async function handlePreview() {
         }
 
         if (file !== fileInput.files?.[0]) return;
-        const lookup = buildCampLookup(state);
-        const { matched, unrecognized } = matchFeatures(parsed.features, lookup);
+        let matched, unrecognized;
+        try {
+            const lookup = buildCampLookup(state);
+            ({ matched, unrecognized } = matchFeatures(parsed.features, lookup));
+        } catch (error) {
+            console.error('admin-import: failed to match GeoJSON features', error);
+            pendingImport = null;
+            showError('Unable to preview this GeoJSON file. Check its features and camp names.');
+            return;
+        }
         pendingImport = { matched, unrecognized };
 
         renderPreviewModal(matched, unrecognized);
