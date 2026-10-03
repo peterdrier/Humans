@@ -1195,7 +1195,8 @@ internal sealed class Service(
                 + $"{t.SupplierAccountNum} (file {fileName}).",
                 actorUserId, t.UserId, nameof(User));
 
-        await SendPayoutEmailsAsync(transfers, ct);
+        // The payout is committed: abandoning the download must not suppress its notifications.
+        await SendPayoutEmailsAsync(transfers, CancellationToken.None);
 
         return new SepaPayoutResult(fileName, xml, null);
     }
