@@ -1383,9 +1383,13 @@ public sealed class IssuesServiceTests
         SeedUser(bobId, "Bob").Email = "b@b.com";
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's first");
+        var firstId = await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's first");
         await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's second");
         await SeedIssueRowAsync(bobId, IssueStatus.Open, "Bob's");
+        var first = await _issuesDb.Issues.FirstAsync(i => i.Id == firstId, Xunit.TestContext.Current.CancellationToken);
+        first.UserAgent = "Test browser";
+        first.AdditionalContext = "browser details | roles: Volunteer";
+        await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var slices = await _service.ContributeForUserAsync(aliceId, Xunit.TestContext.Current.CancellationToken);
 
@@ -1393,6 +1397,13 @@ public sealed class IssuesServiceTests
         slices[0].SectionName.Should().Be("Issues");
         var data = slices[0].Data.Should().BeAssignableTo<System.Collections.IEnumerable>().Subject;
         data.Cast<object>().Should().HaveCount(2);
+        var exported = System.Text.Json.JsonSerializer.SerializeToElement(slices[0].Data);
+        var firstExport = exported.EnumerateArray().Single(i => string.Equals(i.GetProperty("Title").GetString(), "Alice's first", StringComparison.Ordinal));
+        firstExport.GetProperty("UserAgent").GetString().Should().Be(first.UserAgent);
+        firstExport.GetProperty("AdditionalContext").GetString().Should().Be(first.AdditionalContext);
+        var secondExport = exported.EnumerateArray().Single(i => string.Equals(i.GetProperty("Title").GetString(), "Alice's second", StringComparison.Ordinal));
+        secondExport.GetProperty("UserAgent").GetString().Should().BeNull();
+        secondExport.GetProperty("AdditionalContext").GetString().Should().BeNull();
     }
 
     [HumansFact]

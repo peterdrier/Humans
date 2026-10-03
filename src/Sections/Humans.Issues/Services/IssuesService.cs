@@ -802,6 +802,8 @@ internal sealed class IssuesService(
             i.Section,
             i.Status,
             i.PageUrl,
+            i.UserAgent,
+            i.AdditionalContext,
             CreatedAt = i.CreatedAt.ToIso8601(),
             ResolvedAt = i.ResolvedAt.ToIso8601(),
             Comments = i.Comments.OrderBy(c => c.CreatedAt).Select(c => new
