@@ -32,6 +32,37 @@ namespace Humans.Calendar.Tests.Services;
 public class CalendarServiceValidationTests
 {
     [HumansTheory]
+    [InlineData("FREQ=DAILY;COUNT=3", false)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", false)]
+    [InlineData("FREQ=DAILY;COUNT=3", true)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", true)]
+    public async Task EventWithResultAsync_InvalidDuration_is_a_validation_failure(string rule, bool update)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo);
+        var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+
+        var eventId = Guid.NewGuid();
+        repo.UpdateAsync(eventId, Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.ArgAt<Action<Humans.Calendar.Domain.CalendarEvent>>(1)(new() { Id = eventId });
+                return true;
+            });
+        var dto = new CreateCalendarEventDto(
+            "Invalid duration", null, null, null, Guid.NewGuid(),
+            start, start.Minus(Duration.FromHours(1)), false, rule, "UTC");
+        var result = update
+            ? await service.UpdateEventWithResultAsync(eventId, dto, Guid.NewGuid(), TestContext.Current.CancellationToken)
+            : await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Calendar_InvalidTimedEvent");
+        await repo.DidNotReceive().AddAsync(
+            Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("  ")]

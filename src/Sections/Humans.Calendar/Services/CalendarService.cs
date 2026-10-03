@@ -65,8 +65,6 @@ internal sealed class CalendarService(
             IsAllDay = dto.IsAllDay,
             RecurrenceRule = dto.RecurrenceRule,
             RecurrenceTimezone = dto.RecurrenceTimezone,
-            RecurrenceUntilUtc = dto.IsAllDay ? null : ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc),
-            RecurrenceUntilDate = dto.IsAllDay ? ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null,
             CreatedByUserId = createdByUserId,
             CreatedAt = now,
             UpdatedAt = now,
@@ -75,6 +73,9 @@ internal sealed class CalendarService(
         var errors = ev.Validate();
         if (errors.Count > 0)
             throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
+
+        ev.RecurrenceUntilUtc = dto.IsAllDay ? null : ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
+        ev.RecurrenceUntilDate = dto.IsAllDay ? ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null;
 
         await repo.AddAsync(ev, ct);
 
@@ -303,13 +304,14 @@ internal sealed class CalendarService(
             ev.IsAllDay = dto.IsAllDay;
             ev.RecurrenceRule = dto.RecurrenceRule;
             ev.RecurrenceTimezone = dto.RecurrenceTimezone;
-            ev.RecurrenceUntilUtc = dto.IsAllDay ? null : ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
-            ev.RecurrenceUntilDate = dto.IsAllDay ? ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null;
             ev.UpdatedAt = now;
 
             var errors = ev.Validate();
             if (errors.Count > 0)
                 throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
+
+            ev.RecurrenceUntilUtc = dto.IsAllDay ? null : ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
+            ev.RecurrenceUntilDate = dto.IsAllDay ? ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null;
 
             mutated = ev;
         }, ct);
