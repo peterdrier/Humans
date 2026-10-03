@@ -4,7 +4,7 @@
     var totalPending = Model.TeamGroups.Sum(g => g.Documents.Count(d => !d.HasConsented));
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Consent_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["ConsentIndex_Title"]</li>

@@ -248,6 +248,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Invariants
 
+- Member tier-application and assembly-vote pages localize breadcrumb navigation labels in all six supported cultures.
+
 - Application-admin paging computes offsets without integer overflow; extreme pages cannot wrap into earlier applications.
 
 - Application list, create-form, detail, admin list/detail and term-expiry review GETs propagate request cancellation through viewer and application reads. Submission, withdrawal and expiry correction keep their mutation boundaries.

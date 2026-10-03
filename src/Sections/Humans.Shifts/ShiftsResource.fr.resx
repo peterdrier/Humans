@@ -43,6 +43,7 @@
   <data name="Shifts_SignedUp" xml:space="preserve">
     <value>Inscrits</value>
   </data>
+  <data name="Shifts_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
   <data name="Shifts_Pending" xml:space="preserve">
     <value>(en attente)</value>
   </data>

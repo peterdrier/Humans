@@ -127,6 +127,8 @@ Three controllers serve this section.
 
 ## Invariants
 
+- The member consent dashboard and review pages localize breadcrumb navigation labels in all six supported cultures.
+
 - Consent dashboard and review reads carry request cancellation through viewer resolution, the stub-profile check and dashboard/document reads. Submit and its invalid-form redisplay retain their existing mutation boundaries.
 
 - Consent records are immutable. Database triggers prevent UPDATE and DELETE operations on `consent_records`. Only INSERT is allowed to maintain GDPR audit trail integrity (§12).
