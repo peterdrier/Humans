@@ -838,11 +838,9 @@ internal sealed class ExpensesController(
         if (ids.Count == 0) return new Dictionary<Guid, string>();
 
         var users = await _userService.GetUserInfosAsync(ids, ct);
-        return ids.ToDictionary(
-            id => id,
-            id => users.TryGetValue(id, out var u) && !string.IsNullOrWhiteSpace(u.BurnerName)
-                ? u.BurnerName
-                : "(unknown)");
+        return ids
+            .Where(id => users.TryGetValue(id, out var user) && !string.IsNullOrWhiteSpace(user.BurnerName))
+            .ToDictionary(id => id, id => users[id].BurnerName);
     }
 
     /// <summary>Active-year budget category id → department label. Categories in the department

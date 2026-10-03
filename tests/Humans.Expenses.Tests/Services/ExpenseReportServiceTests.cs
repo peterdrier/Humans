@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using System.Security.Claims;
 using Humans.Expenses.Controllers;
+using Humans.Expenses.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -302,6 +303,44 @@ public sealed class ExpenseReportServiceTests
         if (!cancelAfterViewer) await request.CancelAsync();
         Func<Task> read = async () => await ReadPage();
         await read.Should().ThrowAsync<OperationCanceledException>();
+        controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Review_LeavesMissingAndBlankSubmitterNamesToTheLocalizedViewFallback()
+    {
+        var (year, category) = SetupActiveYear();
+        var viewerId = Guid.NewGuid();
+        var namedId = Guid.NewGuid();
+        var blankId = Guid.NewGuid();
+        var missingId = Guid.NewGuid();
+        foreach (var userId in new[] { namedId, blankId, missingId })
+            await SeedReportWithStatus(Guid.NewGuid(), userId, category.Id, year.Id, ExpenseReportStatus.Submitted);
+        _userService.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(
+            new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
+            {
+                [namedId] = UserInfo.Create(new User { Id = namedId, BurnerName = "Known member" }, [], [], [], null, []),
+                [blankId] = UserInfo.Create(new User { Id = blankId, BurnerName = " " }, [], [], [], null, []),
+            }));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Success());
+        var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance,
+            authorization, NullLogger<ExpensesController>.Instance, _localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "test")),
+            } },
+        };
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+
+        var model = (await controller.Review()).Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<ExpenseReviewViewModel>().Subject;
+        model.Reports.Should().HaveCount(3);
+        model.SubmitterNames.Should().ContainSingle().Which.Should().Be(new KeyValuePair<Guid, string>(namedId, "Known member"));
         controller.TempData.Should().BeEmpty();
     }
 
