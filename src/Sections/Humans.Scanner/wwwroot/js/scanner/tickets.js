@@ -16,6 +16,8 @@ export function initTicketScanner(refs) {
     let currentLookup = 0;
     const lookup = async (value) => {
         const request = ++currentLookup;
+        card.replaceChildren();
+        card.setAttribute('aria-busy', 'true');
         try {
             const resp = await fetch(`${cardUrl}?barcode=${encodeURIComponent(value)}`);
             if (resp.ok) {
@@ -27,6 +29,8 @@ export function initTicketScanner(refs) {
         } catch (err) {
             console.error('Scanner: ticket lookup failed', err);
             if (request === currentLookup) showLookupFailed();
+        } finally {
+            if (request === currentLookup) card.setAttribute('aria-busy', 'false');
         }
     };
 
