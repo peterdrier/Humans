@@ -1,11 +1,7 @@
 @using Humans.Shifts.ViewComponents
 @model DashboardShiftsViewModel
 
-@{
-    var hasUpcomingShifts = Model.NextShifts.Count > 0 || Model.PendingCount > 0;
-}
-
-@if (hasUpcomingShifts)
+@if (Model.HasUpcomingShifts)
 {
     <div class="row justify-content-center mb-5">
         <div class="col-lg-8">

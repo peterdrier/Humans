@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
@@ -16,7 +15,6 @@ public sealed class DashboardShiftsViewComponent(
     IShiftManagementServiceRead shiftMgmt,
     IShiftView shiftView,
     IBurnSettingsService burnSettings,
-    ITeamServiceRead teamService,
     IMembershipCalculatorRead membershipCalculator,
     IClock clock,
     ILogger<DashboardShiftsViewComponent> logger) : ViewComponent
@@ -49,12 +47,11 @@ public sealed class DashboardShiftsViewComponent(
         var urgentShifts = isShiftBrowsingOpen
             ? await UrgentShiftsAsync(activeEvent!.Id, ct)
             : [];
-        var (nextShifts, pendingCount) = isShiftBrowsingOpen
-            ? await NextShiftsAsync(userId, activeEvent!.Id, ct)
-            : ((IReadOnlyList<DashboardShiftSignup>)[], 0);
+        var hasUpcomingShifts = isShiftBrowsingOpen
+            && await HasUpcomingShiftsAsync(userId, activeEvent!.Id, ct);
 
         return View(new DashboardShiftsViewModel(
-            userId, isVolunteerMember, isShiftBrowsingOpen, urgentShifts, nextShifts, pendingCount));
+            userId, isVolunteerMember, isShiftBrowsingOpen, urgentShifts, hasUpcomingShifts));
     }
 
     private async Task<IReadOnlyList<UrgentShiftInfo>> UrgentShiftsAsync(Guid eventSettingsId, CancellationToken ct)
@@ -74,35 +71,15 @@ public sealed class DashboardShiftsViewComponent(
         }
     }
 
-    private async Task<(IReadOnlyList<DashboardShiftSignup> NextShifts, int PendingCount)> NextShiftsAsync(
-        Guid userId, Guid eventSettingsId, CancellationToken ct)
+    private async Task<bool> HasUpcomingShiftsAsync(Guid userId, Guid eventSettingsId, CancellationToken ct)
     {
         try
         {
             var now = clock.GetCurrentInstant();
             var userView = await shiftView.GetUserAsync(userId, ct);
-            var userSignups = userView.Signups.Where(s => s.EventSettingsId == eventSettingsId).ToList();
-            var pendingCount = userSignups
-                .Where(s => s.Status == SignupStatus.Pending)
-                .Select(s => s.SignupBlockId ?? s.Id)
-                .Distinct()
-                .Count();
-
-            var confirmedSignups = userSignups.Where(s => s.Status == SignupStatus.Confirmed).ToList();
-            var teamsById = await teamService.GetTeamsAsync(ct);
-
-            var nextShifts = confirmedSignups
-                .Where(s => s.AbsoluteEnd > now)
-                .Select(s => new DashboardShiftSignup(
-                    s.RotaName,
-                    teamsById.TryGetValue(s.TeamId, out var team) ? team.Name : "Unknown",
-                    s.AbsoluteStart,
-                    s.AbsoluteEnd))
-                .OrderBy(s => s.AbsoluteStart)
-                .Take(3)
-                .ToList();
-
-            return (nextShifts, pendingCount);
+            return userView.Signups.Any(s => s.EventSettingsId == eventSettingsId
+                && (s.Status == SignupStatus.Pending
+                    || (s.Status == SignupStatus.Confirmed && s.AbsoluteEnd > now)));
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -111,7 +88,7 @@ public sealed class DashboardShiftsViewComponent(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load user signups for dashboard");
-            return ([], 0);
+            return false;
         }
     }
 }
@@ -121,8 +98,4 @@ internal sealed record DashboardShiftsViewModel(
     bool IsVolunteerMember,
     bool IsShiftBrowsingOpen,
     IReadOnlyList<UrgentShiftInfo> UrgentShifts,
-    IReadOnlyList<DashboardShiftSignup> NextShifts,
-    int PendingCount);
-
-/// <summary>Dashboard-shaped confirmed signup entry with the department name resolved.</summary>
-internal sealed record DashboardShiftSignup(string RotaName, string DepartmentName, Instant AbsoluteStart, Instant AbsoluteEnd);
+    bool HasUpcomingShifts);

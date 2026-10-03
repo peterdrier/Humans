@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 7
-inbox:
-  - added: 2026-10-03
-    id: SHIFTS-6
-    what: "DashboardShiftsViewComponent.NextShiftsAsync fetches team names, sorts and constructs DashboardShiftSignup rows that no view renders; DashboardShifts/Default.cshtml uses only NextShifts.Count > 0 or PendingCount > 0. Compute that boolean from the existing IShiftView summary instead. Found during the nightly production-code sweep."
-    review: panel
+inbox: []

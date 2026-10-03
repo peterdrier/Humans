@@ -287,6 +287,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 Invalid rota and shift edits redisplay the team shift page without saving. Only the submitted editor opens with its attempted values and validation errors; other editors retain their persisted values.
 
+- **Member dashboard shift card:** while shift browsing is open, a pending signup or a confirmed signup ending after now in the active event selects the signup card. The host computes only that presence flag from `IShiftView`; `ShiftSignupsViewComponent` renders signup details.
+
 ## Negative Access Rules
 
 - Self-signup, including all-day ranges and onboarding/dietary form replay, requires an existing `UserState.Active` account. Privileged/conflict flags do not bypass account eligibility. Named Active humans may still sign up before consent completion; explicit admin-on-behalf Voluntell paths retain their own authorization.
