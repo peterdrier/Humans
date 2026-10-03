@@ -224,6 +224,31 @@ public class CalendarServiceValidationTests
             Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData("20260329T023000", "Europe/Madrid", 2026, 3, 29, 1, 30)]
+    [InlineData("20261025T023000", "Europe/Madrid", 2026, 10, 25, 0, 30)]
+    [InlineData("20111229", "Pacific/Apia", 2011, 12, 30, 10, 0)]
+    public async Task CreateEventWithResultAsync_LocalUntil_uses_occurrence_timezone_resolution(
+        string until, string timezone, int year, int month, int day, int hour, int minute)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo);
+        var expectedUntil = Instant.FromUtc(year, month, day, hour, minute);
+        var start = expectedUntil.Minus(Duration.FromDays(3));
+
+        var result = await service.CreateEventWithResultAsync(
+            new CreateCalendarEventDto(
+                "Timezone-transition recurrence", null, null, null, Guid.NewGuid(),
+                start, start + Duration.FromHours(1), false,
+                $"FREQ=DAILY;UNTIL={until}", timezone),
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
+        await repo.Received(1).AddAsync(
+            Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e => e.RecurrenceUntilUtc == expectedUntil),
+            Arg.Any<CancellationToken>());
+    }
+
     // ==========================================================================
     // Audit-best-effort invariant
     // ==========================================================================

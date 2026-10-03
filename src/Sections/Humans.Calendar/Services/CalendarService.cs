@@ -194,11 +194,11 @@ internal sealed class CalendarService(
                 if (val.Contains('T'))
                 {
                     var local = DateFormattingExtensions.IcalBasicDateTimePattern.Parse(val).Value;
-                    return local.InZoneStrictly(zone).ToInstant();
+                    return local.InZoneLeniently(zone).ToInstant();
                 }
                 // DATE form — treat UNTIL as end-of-day in the rule's timezone.
                 var date = DateFormattingExtensions.IcalBasicDatePattern.Parse(val).Value;
-                return (date.PlusDays(1).AtMidnight()).InZoneStrictly(zone).ToInstant();
+                return date.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
             }
             else if (string.Equals(key, "COUNT", StringComparison.OrdinalIgnoreCase))
             {
