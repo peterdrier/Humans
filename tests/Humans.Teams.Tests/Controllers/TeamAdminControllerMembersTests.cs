@@ -15,6 +15,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -23,6 +25,72 @@ namespace Humans.Teams.Tests.Controllers;
 
 public class TeamAdminControllerMembersTests
 {
+    [HumansTheory]
+    [InlineData("reject", false)]
+    [InlineData("remove", false)]
+    [InlineData("add", false)]
+    [InlineData("reject", true)]
+    [InlineData("remove", true)]
+    [InlineData("add", true)]
+    public async Task ExpectedRejection_PreservesFeedbackAndContextWithoutStack_UnexpectedFailurePropagates(
+        string action, bool unexpected)
+    {
+        var actorId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var instant = Instant.FromUtc(2026, 1, 1, 0, 0);
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, instant, []);
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], [], null, [])));
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        const string reason = "The requested membership change is not permitted";
+        Exception failure = unexpected ? new IOException("Database unavailable") : new InvalidOperationException(reason);
+        teams.RejectJoinRequestAsync(targetId, actorId, "Reason").Returns(Task.FromException(failure));
+        teams.RemoveMemberAsync(team.Id, targetId, actorId).Returns(Task.FromException(failure));
+        teams.AddMemberToTeamAsync(team.Id, targetId, actorId).Returns(Task.FromException<TeamMember>(failure));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var logger = Substitute.For<ILogger<TeamAdminController>>();
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "Test"))
+        };
+        var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
+            Substitute.For<IGoogleSyncService>(), users, Substitute.For<IEmailProvisioningService>(), authorization,
+            logger, Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketServiceRead>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        Task<IActionResult> ActAsync() => action switch
+        {
+            "reject" => controller.RejectRequest(team.Slug, targetId, new ApproveRejectRequestModel { Notes = "Reason" }),
+            "remove" => controller.RemoveMember(team.Slug, targetId),
+            _ => controller.AddMember(team.Slug, new AddMemberModel { UserId = targetId })
+        };
+        if (unexpected)
+        {
+            Func<Task> act = async () => await ActAsync();
+            await act.Should().ThrowAsync<IOException>();
+            logger.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+
+        var redirect = (await ActAsync()).Should().BeOfType<RedirectToActionResult>().Which;
+        redirect.ActionName.Should().Be(nameof(TeamAdminController.Members));
+        redirect.RouteValues!["slug"].Should().Be(team.Slug);
+        controller.TempData[TempDataKeys.ErrorMessage].Should().Be(reason);
+        var args = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(LogLevel.Warning);
+        args[3].Should().BeNull();
+        args[2]!.ToString().Should().Contain(reason).And.Contain(actorId.ToString())
+            .And.Contain(team.Id.ToString()).And.Contain(targetId.ToString());
+    }
+
     [HumansTheory]
     [InlineData("viewer")]
     [InlineData("team")]

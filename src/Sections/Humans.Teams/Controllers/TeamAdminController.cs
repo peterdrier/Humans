@@ -83,7 +83,7 @@ internal sealed class TeamAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to reject join request {RequestId} for team {TeamId} by user {UserId}", requestId, team.Id, user.Id);
+            logger.LogWarning("Failed to reject join request {RequestId} for team {TeamId} by user {UserId}: {Reason}", requestId, team.Id, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -265,7 +265,7 @@ internal sealed class TeamAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to remove member {MemberUserId} from team {TeamId} by user {UserId}", userId, team.Id, user.Id);
+            logger.LogWarning("Failed to remove member {MemberUserId} from team {TeamId} by user {UserId}: {Reason}", userId, team.Id, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -296,7 +296,7 @@ internal sealed class TeamAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to add member {MemberUserId} to team {TeamId} by user {UserId}", model.UserId, team.Id, user.Id);
+            logger.LogWarning("Failed to add member {MemberUserId} to team {TeamId} by user {UserId}: {Reason}", model.UserId, team.Id, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
