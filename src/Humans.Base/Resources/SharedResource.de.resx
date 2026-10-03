@@ -484,38 +484,8 @@
   <data name="MyTeams_View" xml:space="preserve">
     <value>Anzeigen</value>
   </data>
-  <data name="Admin_CannotStartReview" xml:space="preserve">
-    <value>Prüfung kann nicht gestartet werden. Der Antrag befindet sich nicht im Status „Eingereicht".</value>
-  </data>
-  <data name="Admin_ReviewStarted" xml:space="preserve">
-    <value>Prüfung für diesen Antrag gestartet.</value>
-  </data>
-  <data name="Admin_CannotApprove" xml:space="preserve">
-    <value>Genehmigung nicht möglich. Der Antrag muss in Prüfung sein.</value>
-  </data>
-  <data name="Admin_ApplicationApproved" xml:space="preserve">
-    <value>Antrag genehmigt.</value>
-  </data>
-  <data name="Admin_CannotReject" xml:space="preserve">
-    <value>Ablehnung nicht möglich. Der Antrag muss in Prüfung sein.</value>
-  </data>
   <data name="Admin_ProvideRejectionReason" xml:space="preserve">
     <value>Bitte geben Sie einen Ablehnungsgrund an.</value>
-  </data>
-  <data name="Admin_ApplicationRejected" xml:space="preserve">
-    <value>Antrag abgelehnt.</value>
-  </data>
-  <data name="Admin_CannotRequestInfo" xml:space="preserve">
-    <value>Weitere Informationen können nicht angefordert werden. Der Antrag muss in Prüfung sein.</value>
-  </data>
-  <data name="Admin_SpecifyInfoNeeded" xml:space="preserve">
-    <value>Bitte geben Sie an, welche Informationen benötigt werden.</value>
-  </data>
-  <data name="Admin_MoreInfoRequested" xml:space="preserve">
-    <value>Weitere Informationen wurden vom Antragsteller angefordert.</value>
-  </data>
-  <data name="Admin_UnknownAction" xml:space="preserve">
-    <value>Unbekannte Aktion.</value>
   </data>
   <data name="Admin_MemberSuspended" xml:space="preserve">
     <value>Human wurde gesperrt.</value>

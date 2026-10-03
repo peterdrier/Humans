@@ -484,38 +484,8 @@
   <data name="MyTeams_View" xml:space="preserve">
     <value>Veure</value>
   </data>
-  <data name="Admin_CannotStartReview" xml:space="preserve">
-    <value>No es pot iniciar la revisió. La sol·licitud no està en estat Enviada.</value>
-  </data>
-  <data name="Admin_ReviewStarted" xml:space="preserve">
-    <value>Revisió iniciada per a aquesta sol·licitud.</value>
-  </data>
-  <data name="Admin_CannotApprove" xml:space="preserve">
-    <value>No es pot aprovar. La sol·licitud ha d'estar en revisió.</value>
-  </data>
-  <data name="Admin_ApplicationApproved" xml:space="preserve">
-    <value>Sol·licitud aprovada.</value>
-  </data>
-  <data name="Admin_CannotReject" xml:space="preserve">
-    <value>No es pot rebutjar. La sol·licitud ha d'estar en revisió.</value>
-  </data>
   <data name="Admin_ProvideRejectionReason" xml:space="preserve">
     <value>Si us plau, indica un motiu per al rebuig.</value>
-  </data>
-  <data name="Admin_ApplicationRejected" xml:space="preserve">
-    <value>Sol·licitud rebutjada.</value>
-  </data>
-  <data name="Admin_CannotRequestInfo" xml:space="preserve">
-    <value>No es pot sol·licitar més informació. La sol·licitud ha d'estar en revisió.</value>
-  </data>
-  <data name="Admin_SpecifyInfoNeeded" xml:space="preserve">
-    <value>Si us plau, especifica quina informació es necessita.</value>
-  </data>
-  <data name="Admin_MoreInfoRequested" xml:space="preserve">
-    <value>S'ha sol·licitat més informació al sol·licitant.</value>
-  </data>
-  <data name="Admin_UnknownAction" xml:space="preserve">
-    <value>Acció desconeguda.</value>
   </data>
   <data name="Admin_MemberSuspended" xml:space="preserve">
     <value>Aquest human ha estat suspès.</value>

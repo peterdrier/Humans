@@ -276,17 +276,7 @@
   <!-- ======================== -->
 
   <!-- Admin Controller TempData -->
-  <data name="Admin_CannotStartReview" xml:space="preserve"><value>Cannot start review. Application is not in Submitted state.</value></data>
-  <data name="Admin_ReviewStarted" xml:space="preserve"><value>Review started for this application.</value></data>
-  <data name="Admin_CannotApprove" xml:space="preserve"><value>Cannot approve. Application must be under review.</value></data>
-  <data name="Admin_ApplicationApproved" xml:space="preserve"><value>Application approved.</value></data>
-  <data name="Admin_CannotReject" xml:space="preserve"><value>Cannot reject. Application must be under review.</value></data>
   <data name="Admin_ProvideRejectionReason" xml:space="preserve"><value>Please provide a reason for rejection.</value></data>
-  <data name="Admin_ApplicationRejected" xml:space="preserve"><value>Application rejected.</value></data>
-  <data name="Admin_CannotRequestInfo" xml:space="preserve"><value>Cannot request more info. Application must be under review.</value></data>
-  <data name="Admin_SpecifyInfoNeeded" xml:space="preserve"><value>Please specify what information is needed.</value></data>
-  <data name="Admin_MoreInfoRequested" xml:space="preserve"><value>More information has been requested from the applicant.</value></data>
-  <data name="Admin_UnknownAction" xml:space="preserve"><value>Unknown action.</value></data>
   <data name="Admin_MemberSuspended" xml:space="preserve"><value>Human has been suspended.</value></data>
   <data name="Admin_MemberUnsuspended" xml:space="preserve"><value>Human has been unsuspended.</value></data>
   <data name="Admin_VolunteerApproved" xml:space="preserve"><value>Human has been approved.</value></data>
