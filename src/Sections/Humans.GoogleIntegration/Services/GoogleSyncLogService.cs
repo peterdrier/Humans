@@ -1,4 +1,5 @@
 using Humans.Base.Enums;
+using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
@@ -86,7 +87,19 @@ internal sealed class GoogleSyncLogService(
     {
         var entries = await repo.GetAllByUserIdsContributorAsync(
             await UserIdsWithMergedSourcesAsync(userId, ct), ct);
-        return [new UserDataSlice(GoogleSyncLog, await ToViewsAsync(entries, ct))];
+        var views = await ToViewsAsync(entries, ct);
+        return [new UserDataSlice(GoogleSyncLog, views.Select(view => new
+        {
+            view.Action,
+            OccurredAt = view.OccurredAt.ToIso8601(),
+            view.Description,
+            view.ResourceName,
+            view.UserEmail,
+            view.Role,
+            view.Source,
+            view.Success,
+            view.ErrorMessage
+        }).ToList())];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =

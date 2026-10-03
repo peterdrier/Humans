@@ -184,6 +184,8 @@ The section's `/Google/Resource/{id}` and `/Google/Human/{id}` pages emit `<vc:g
 
 The read/write split is deliberate: `IGoogleSyncLogViewer` and its `GoogleSyncLogView` DTO are public only because a cross-assembly ViewComponent's constructor parameters must be. The write side, `IGoogleSyncLogService`, stays `internal` — nothing outside this section appends to the log.
 
+The GDPR sync-log export preserves the viewer fields and resolves resource names, but formats `OccurredAt` as UTC ISO 8601 so download JSON contains a timestamp. Page rendering retains the public viewer DTO.
+
 ### Repository surface
 
 - **`ISyncSettingsRepository`** — owns `sync_service_settings`. Unique index on `ServiceType` (`SyncServiceSettingsConfiguration.cs:34`). One row per `SyncServiceType`, seeded (reserved GUID block 0002).
