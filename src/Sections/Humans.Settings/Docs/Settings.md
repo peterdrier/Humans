@@ -78,7 +78,7 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
 | BuildStartOffset | int | Negative; `≤ FirstCrewStartOffset` |
 | EventEndOffset / StrikeEndOffset | int | |
 | FirstCrew/SetupWeek/PreEventWeek/FinishingWeekendStartOffset | int | Strictly ascending, all negative |
-| EarlyEntryCapacity | JSON `Dictionary<int,int>` | Step function, day offset → capacity |
+| EarlyEntryCapacity | JSON `Dictionary<int,int>` | Step function, day offset → capacity; dictionary equality and hashing ignore insertion order |
 | BarriosEarlyEntryAllocation | JSON, nullable | |
 | EarlyEntryClose | Instant, nullable | |
 | EarlyEntryStartOffset | int?, nullable | Negative day offset from `GateOpeningDate`; null until configured. Validated `BuildStartOffset ≤ value < 0`. Resolved date = `GateOpeningDate.PlusDays(offset)`. Moved from Camps' `CampSettings.EeStartDate` (nobodies-collective#1633); Camps' `IEarlyEntryProvider` reads it via `ISettingsService`. No data carried across sections — an admin re-enters the value here after the cutover. |

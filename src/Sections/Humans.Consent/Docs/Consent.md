@@ -53,7 +53,7 @@ Aggregate-local nav `LegalDocument.Versions` kept. Cross-domain nav `LegalDocume
 | LegalDocumentId | Guid | FK → `legal_documents` |
 | VersionNumber | string (50) | Display label |
 | CommitSha | string (40) | |
-| Content | jsonb | `Dictionary<string, string>` keyed by language code; `"es"` is canonical/legally binding |
+| Content | jsonb | `Dictionary<string, string>` keyed by language code; `"es"` is canonical/legally binding; equality and hashing ignore insertion order |
 | EffectiveFrom | Instant | |
 | RequiresReConsent | bool | |
 | CreatedAt | Instant | |
