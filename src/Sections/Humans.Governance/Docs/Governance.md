@@ -297,6 +297,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Triggers
 
+- The member's tier-application GDPR export includes saved update and renewal-reminder timestamps as UTC ISO-8601 text; an unsent reminder stays null. Existing application and history fields remain present, and other applicants' records are excluded.
+
 - When an application is submitted: nav badge and notification meter caches are invalidated so the Board's pending-application count updates. `NotificationSource.ApplicationSubmitted` is retired — no new rows emit it (historical rows only); submission no longer dispatches an in-app notification.
 - When an application is approved: the human's tier is updated on their profile (`IUserService.SetMembershipTierAsync`), they are added to the Colaboradors or Asociados system team via `ISystemTeamSync`, an audit-log entry is written (`AuditAction.TierApplicationApproved`), an approval email is sent (`GovernanceEmails.ApplicationApproved` via `IEmailService.SendAsync`), and an in-app notification is dispatched (`NotificationSource.ApplicationApproved`). Email + notification are best-effort.
 - When an application is rejected: an audit-log entry is written (`AuditAction.TierApplicationRejected`), a rejection email is sent (`GovernanceEmails.ApplicationRejected` via `IEmailService.SendAsync`), and an in-app notification is dispatched (`NotificationSource.ApplicationRejected`). Email + notification are best-effort.
