@@ -46,6 +46,7 @@
   <data name="Profile_Title" xml:space="preserve">
     <value>El meu perfil</value>
   </data>
+  <data name="Users_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegació</value></data>
   <data name="Profile_ActionRequired" xml:space="preserve">
     <value>Acció requerida:</value>
   </data>

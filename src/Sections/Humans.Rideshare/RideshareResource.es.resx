@@ -55,6 +55,7 @@
   <data name="Enum_InterestStatus_Withdrawn" xml:space="preserve"><value>Retirado</value></data>
   <!-- Board -->
   <data name="Rideshare_Title" xml:space="preserve"><value>Compartir coche</value></data>
+  <data name="Rideshare_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegación</value></data>
   <data name="Rideshare_BoardIntro" xml:space="preserve"><value>Quienes conducen publican el viaje que van a hacer; quienes buscan sitio marcan dónde necesitan que les recojan. Encontraos en el mapa y saludad.</value></data>
   <data name="Rideshare_BackToBoard" xml:space="preserve"><value>Volver al tablón</value></data>
   <data name="Rideshare_OfferARide" xml:space="preserve"><value>Ofrecer un viaje</value></data>

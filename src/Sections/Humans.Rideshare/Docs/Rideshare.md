@@ -220,6 +220,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 
 ## Invariants
 
+- Offer, request and My Rides pages localize the breadcrumb navigation landmark in all six cultures.
+
 - **The list works independently of the map.** Interest forms remain usable from the server-rendered cards when the map library, WebGL, map load or board data request fails.
 
 - **No anonymous postings.** Every trip, request, and interest is bound to a real Humans profile (`UserId`/`FromUserId`).
