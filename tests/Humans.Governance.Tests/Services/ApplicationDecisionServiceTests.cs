@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Humans.Governance.Controllers;
+using Humans.Base;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
@@ -903,6 +904,47 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         (await controller.BoardVotingDetail(app.Id, cancellation.Token)).Should().BeOfType<ViewResult>();
         abandonAfterApplicant = true;
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.BoardVotingDetail(app.Id, cancellation.Token));
+    }
+
+    [HumansTheory]
+    [InlineData("Index")]
+    [InlineData("Create")]
+    [InlineData("Details")]
+    [InlineData("Admin")]
+    [InlineData("AdminDetail")]
+    [InlineData("AdminTermExpiry")]
+    public async Task ApplicationPages_CancelAbandonedReads(string page)
+    {
+        using var request = new CancellationTokenSource();
+        var viewerId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(
+            string.Equals(page, "Create", StringComparison.Ordinal) ? Guid.NewGuid() : viewerId);
+        _userService.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(new User { Id = viewerId }.ToUserInfo());
+        });
+        var controller = new GovernanceApplicationsController(_service, _userService,
+            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            {
+                RequestAborted = request.Token,
+                User = new ClaimsPrincipal(new ClaimsIdentity([
+                    new Claim(ClaimTypes.NameIdentifier, viewerId.ToString()), new Claim(ClaimTypes.Role, RoleNames.Admin)], "Test")),
+            } },
+        };
+        Task<IActionResult> ReadPage() => page switch
+        {
+            "Index" => controller.Index(), "Create" => controller.Create(),
+            "Details" => controller.Details(app.Id), "Admin" => controller.Admin(null, null),
+            "AdminDetail" => controller.AdminDetail(app.Id), "AdminTermExpiry" => controller.AdminTermExpiry(),
+            _ => throw new ArgumentOutOfRangeException(nameof(page)),
+        };
+
+        (await ReadPage()).Should().BeOfType<ViewResult>();
+        await request.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPage);
     }
 
     // --- GetUserApplicationDetailAsync ---

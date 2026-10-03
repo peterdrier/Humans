@@ -24,11 +24,11 @@ internal sealed class GovernanceApplicationsController(
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
-        var applications = await applicationDecisionService.GetUserApplicationsAsync(user.Id);
+        var applications = await applicationDecisionService.GetUserApplicationsAsync(user.Id, HttpContext.RequestAborted);
 
         var hasPendingApplication = applications.Any(a =>
             a.Status == ApplicationStatus.Submitted);
@@ -60,11 +60,11 @@ internal sealed class GovernanceApplicationsController(
     [HttpGet("Create")]
     public async Task<IActionResult> Create()
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
-        var applications = await applicationDecisionService.GetUserApplicationsAsync(user.Id);
+        var applications = await applicationDecisionService.GetUserApplicationsAsync(user.Id, HttpContext.RequestAborted);
         var hasPending = applications.Any(a => a.Status == ApplicationStatus.Submitted);
 
         if (hasPending)
@@ -143,11 +143,11 @@ internal sealed class GovernanceApplicationsController(
     [HttpGet("Details/{id:guid}")]
     public async Task<IActionResult> Details(Guid id)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
-        var application = await applicationDecisionService.GetUserApplicationDetailAsync(id, user.Id);
+        var application = await applicationDecisionService.GetUserApplicationDetailAsync(id, user.Id, HttpContext.RequestAborted);
         if (application is null)
             return NotFound();
 
@@ -215,7 +215,7 @@ internal sealed class GovernanceApplicationsController(
     {
         var pageSize = 20;
         var (items, totalCount) = await applicationDecisionService.GetFilteredApplicationsAsync(
-            status, tier, page, pageSize);
+            status, tier, page, pageSize, HttpContext.RequestAborted);
 
         var applications = items.Select(a => new AdminApplicationViewModel
         {
@@ -247,7 +247,7 @@ internal sealed class GovernanceApplicationsController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> AdminTermExpiry()
     {
-        var rows = await applicationDecisionService.GetTermExpiryDriftAsync();
+        var rows = await applicationDecisionService.GetTermExpiryDriftAsync(HttpContext.RequestAborted);
         return View("~/Views/Governance/Applications/AdminTermExpiry.cshtml", rows);
     }
 
@@ -269,7 +269,7 @@ internal sealed class GovernanceApplicationsController(
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> AdminDetail(Guid id)
     {
-        var application = await applicationDecisionService.GetApplicationDetailAsync(id);
+        var application = await applicationDecisionService.GetApplicationDetailAsync(id, HttpContext.RequestAborted);
 
         if (application is null)
         {
