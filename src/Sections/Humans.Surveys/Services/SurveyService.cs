@@ -732,6 +732,11 @@ internal sealed class SurveyService(
         var emailsQueued = 0;
         var failed = 0;
 
+        // Once invitations are stamped, later sends skip them. Finish their emails and audit
+        // as one batch even if the admin abandons the request after the first save.
+        ct.ThrowIfCancellationRequested();
+        var sendCt = CancellationToken.None;
+
         foreach (var userId in netNew)
         {
             if (!emails.TryGetValue(userId, out var email))
@@ -747,7 +752,7 @@ internal sealed class SurveyService(
             {
                 inv = existing;
                 await repo.UpdateInvitationStatusAsync(
-                    inv.Id, EmailOutboxStatus.Queued, now, ct);
+                    inv.Id, EmailOutboxStatus.Queued, now, sendCt);
             }
             else
             {
@@ -760,7 +765,7 @@ internal sealed class SurveyService(
                     LatestEmailStatus = EmailOutboxStatus.Queued,
                     CreatedAt = now,
                 };
-                await repo.AddInvitationAndSaveAsync(inv, ct);
+                await repo.AddInvitationAndSaveAsync(inv, sendCt);
             }
             invitationsCreated++;
 
@@ -778,19 +783,15 @@ internal sealed class SurveyService(
                 var msg = emailMessages.SurveyInvitation(
                     email, name, title, token, culture, customSubject, customMessage);
 
-                await emailService.SendAsync(msg, ct);
+                await emailService.SendAsync(msg, sendCt);
                 emailsQueued++;
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex,
                     "Failed to enqueue survey invitation email for user {UserId} invitation {InvitationId} in survey {SurveyId}",
                     userId, inv.Id, surveyId);
-                await repo.UpdateInvitationStatusAsync(inv.Id, EmailOutboxStatus.Failed, now, ct);
+                await repo.UpdateInvitationStatusAsync(inv.Id, EmailOutboxStatus.Failed, now, sendCt);
                 failed++;
             }
         }
