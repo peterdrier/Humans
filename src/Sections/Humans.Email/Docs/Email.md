@@ -112,6 +112,8 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 
 ## Invariants
 
+- The shared composer preview renders only its latest request per modal. Earlier successes or failures cannot overwrite the current draft’s preview, and separate modals remain independent.
+
 - Every outgoing email queued through `OutboxEmailService` writes a row to `email_outbox_messages` before any transport attempt — the audit trail for delivery. The single exception is `EmailMessage.DoNotPersist`, which hands the message straight to `IEmailTransport` and writes no row; it is set by exactly one template, `account_deleted`, because its recipient is a human the Article 17 cascade has just erased and a row would re-create their address, name and body. Such a message is never retried: retrying would mean keeping the address in order to retry with it.
 - `ProcessEmailOutboxJob` (Hangfire recurring, every minute — `*/1 * * * *`) selects rows with `SentAt IS NULL`, `RetryCount < OutboxMaxRetries`, `NextRetryAt <= now` (or null), and `PickedUpAt < now − 5 min` (or null). The batch is bounded by `OutboxBatchSize` and ordered **time-sensitive templates first, then FIFO by `CreatedAt` within each class** — see the priority invariant below. Selected rows are stamped `PickedUpAt = now` to block concurrent runs from picking the same rows, then sent one at a time through `IEmailTransport.SendAsync` with a 1-second throttle delay between successful sends.
 - While `IsEmailSendingPaused = "true"`, the job returns immediately — no rows are picked up.
