@@ -1,5 +1,4 @@
 using Humans.AuditLog.Contracts;
-using System.Diagnostics.CodeAnalysis;
 using NodaTime;
 using Humans.Base.Extensions;
 using Humans.Base.Constants;
@@ -687,11 +686,11 @@ internal sealed class TicketQueryService(
         // Matched in-memory against the verified emails already carried on each loaded
         // UserInfo — no extra DB round-trip.
         HashSet<Guid>? emailMatchUserIds = null;
-        if (HasSearchTerm(search, 1))
+        if (search.HasSearchTerm(1))
         {
             var term = search.Trim();
             emailMatchUserIds = allUsers
-                .Where(u => u.UserEmails.Any(e => e.IsVerified && ContainsIgnoreCase(e.Email, term)))
+                .Where(u => u.UserEmails.Any(e => e.IsVerified && e.Email.ContainsOrdinalIgnoreCase(term)))
                 .Select(u => u.Id)
                 .ToHashSet();
         }
@@ -763,11 +762,11 @@ internal sealed class TicketQueryService(
             filtered = filtered.Where(r => r.Tier == parsedTier);
         }
 
-        if (HasSearchTerm(search, 1))
+        if (search.HasSearchTerm(1))
         {
             filtered = filtered.Where(r =>
-                ContainsIgnoreCase(r.Name, search) ||
-                ContainsIgnoreCase(r.Email, search) ||
+                r.Name.ContainsOrdinalIgnoreCase(search) ||
+                r.Email.ContainsOrdinalIgnoreCase(search) ||
                 (emailMatchUserIds is not null && emailMatchUserIds.Contains(r.UserId)));
         }
 
@@ -1013,13 +1012,6 @@ internal sealed class TicketQueryService(
         // identity keeps being served from memory until the process restarts.
         cacheInvalidator.InvalidateAll();
     }
-
-    private static bool HasSearchTerm(
-        [NotNullWhen(true)] string? value, int minLength = 2) =>
-        !string.IsNullOrWhiteSpace(value) && value.Trim().Length >= minLength;
-
-    private static bool ContainsIgnoreCase(string? source, string value) =>
-        source?.Contains(value, StringComparison.OrdinalIgnoreCase) == true;
 
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
         ticketRepository.GetOrderDriftAsync(ct);

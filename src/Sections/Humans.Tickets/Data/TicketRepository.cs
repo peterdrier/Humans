@@ -678,7 +678,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.TicketOrders.AsNoTracking().Include(o => o.Attendees).AsQueryable();
 
-        if (HasSearchTerm(search, 1))
+        if (search.HasSearchTerm(1))
         {
             var normalizedSearch = search.ToLowerInvariant();
 #pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
@@ -758,7 +758,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         if (!string.IsNullOrEmpty(filterOrderId))
             query = query.Where(a => a.TicketOrder.VendorOrderId == filterOrderId);
 
-        if (HasSearchTerm(search, 1))
+        if (search.HasSearchTerm(1))
         {
             var normalizedSearch = search.ToLowerInvariant();
 #pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
@@ -1007,10 +1007,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         return await ctx.TicketAttendees
             .CountAsync(a => a.MatchedUserId == targetUserId, ct);
     }
-
-    private static bool HasSearchTerm(
-        [NotNullWhen(true)] string? value, int minLength = 2) =>
-        !string.IsNullOrWhiteSpace(value) && value.Trim().Length >= minLength;
 
     private static IQueryable<TicketOrder> ApplyOrderSorting(
         IQueryable<TicketOrder> query, string? sortBy, bool sortDesc)
