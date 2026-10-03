@@ -132,6 +132,7 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Invariants
 
+- Report detail/edit, new-line, line/proof, IBAN, and review GETs propagate request cancellation through existing token-capable report, profile, timeline, creditor, name, and failed-push reads. Shared report/IBAN helpers keep non-cancellable defaults for mutation callers; tokenless Budget and authorization interfaces are unchanged.
 - New-report form user resolution and attachment download/inline reads honor request cancellation. Abandoned reads do not become error flashes or 404s; ordinary failures and attachment denial responses retain their existing behavior.
 
 - The Expenses index GET passes request cancellation to token-aware member, report, coordinator queue and cached creditor reads. Cancellation propagates rather than becoming a load-failure toast and empty page; existing tokenless Budget reads retain their contract.

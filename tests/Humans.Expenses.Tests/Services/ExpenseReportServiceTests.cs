@@ -237,6 +237,74 @@ public sealed class ExpenseReportServiceTests
         controller.TempData.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("Detail", false)]
+    [Xunit.InlineData("Detail", true)]
+    [Xunit.InlineData("Edit", false)]
+    [Xunit.InlineData("Edit", true)]
+    [Xunit.InlineData("NewLine", false)]
+    [Xunit.InlineData("NewLine", true)]
+    [Xunit.InlineData("LineEdit", false)]
+    [Xunit.InlineData("LineEdit", true)]
+    [Xunit.InlineData("LineProofs", false)]
+    [Xunit.InlineData("LineProofs", true)]
+    [Xunit.InlineData("Iban", false)]
+    [Xunit.InlineData("Iban", true)]
+    [Xunit.InlineData("Review", false)]
+    [Xunit.InlineData("Review", true)]
+    public async Task AbandonedReportPages_CancelViewerAndOwningReportReads(string page, bool cancelAfterViewer)
+    {
+        var (year, category) = SetupActiveYear();
+        var actorId = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(actorId, actorId, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, actorId, false, "Invoice", 10m,
+            lineType: ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken);
+        await SeedReportWithStatus(Guid.NewGuid(), actorId, category.Id, year.Id, ExpenseReportStatus.Submitted);
+        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId).Returns(new HashSet<Guid>());
+        var actor = UserInfo.Create(new User { Id = actorId }, [], [], [], null, []);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [actorId] = actor }));
+        using var request = new CancellationTokenSource();
+        var abandon = false;
+        async ValueTask<UserInfo?> ReadActor(NSubstitute.Core.CallInfo call)
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            if (abandon && cancelAfterViewer) await request.CancelAsync();
+            return actor;
+        }
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(ReadActor);
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Failed());
+        var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance,
+            authorization, NullLogger<ExpensesController>.Instance, _localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            {
+                RequestAborted = request.Token,
+                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
+            } },
+        };
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        Task<IActionResult> ReadPage() => page switch
+        {
+            "Detail" => controller.Detail(id), "Edit" => controller.Edit(id),
+            "NewLine" => controller.NewLine(id), "LineEdit" => controller.LineEdit(id, lineId),
+            "LineProofs" => controller.LineProofs(id, lineId), "Iban" => controller.Iban(id),
+            "Review" => controller.Review(), _ => throw new ArgumentOutOfRangeException(nameof(page)),
+        };
+
+        (await ReadPage()).Should().BeOfType<ViewResult>();
+        controller.TempData.Should().BeEmpty();
+        abandon = true;
+        if (!cancelAfterViewer) await request.CancelAsync();
+        Func<Task> read = async () => await ReadPage();
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        controller.TempData.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task CreateDraftAsync_CreatesReport_WithDraftStatusAndZeroTotal()
     {
