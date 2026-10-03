@@ -139,9 +139,11 @@ internal sealed class AgentController(
         if (!isAdmin)
             return (await agent.GetHistoryAsync(currentUserId, take: 50, ct), false);
 
+        // Saturate large offsets so a valid page number cannot wrap into an earlier window.
+        var skip = (int)Math.Min((long)safePage * adminPageSize, int.MaxValue);
         // Fetch one extra row so the view knows whether an older page exists.
         var rows = await agent.ListAllConversationsForAdminAsync(
-            refusalsOnly, userId, adminPageSize + 1, safePage * adminPageSize, ct);
+            refusalsOnly, userId, adminPageSize + 1, skip, ct);
         return rows.Count > adminPageSize
             ? (rows.Take(adminPageSize).ToList(), true)
             : (rows, false);

@@ -86,7 +86,7 @@ else
                 <a class="page-link" asp-action="Conversations" asp-all-route-data="@RouteFor(Model.Page - 1)">Newer</a>
             </li>
             <li class="page-item @(Model.HasNext ? "" : "disabled")">
-                <a class="page-link" asp-action="Conversations" asp-all-route-data="@RouteFor(Model.Page + 1)">Older</a>
+                <a class="page-link" asp-action="Conversations" asp-all-route-data="@RouteFor((int)Math.Min((long)Model.Page + 1, int.MaxValue))">Older</a>
             </li>
         </ul>
     </nav>

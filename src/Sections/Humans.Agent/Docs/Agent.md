@@ -79,6 +79,8 @@ The member history page uses localized labels, including the link to each transc
 
 ## Invariants
 
+Admin conversation-list paging clamps negative page numbers to zero and calculates offsets without integer overflow. A page beyond the available history stays empty rather than wrapping into earlier conversations; the Older link also stays within the integer page range.
+
 Conversation list and transcript GETs propagate request cancellation through viewer resolution before their conversation reads; ownership denials remain 404.
 
 1. **Terms link, not gate.** The Assistant panel shows a persistent "AI Terms" link below the composer that opens `/Legal/agent-chat` (the rendered Agent Chat Terms from `nobodies-collective/legal`). There is no explicit consent step — opening the panel and sending a message constitutes use; the terms describe what's sent, retention, and rights. The team-required-doc consent flow (`IConsentServiceRead.GetPendingDocumentNamesAsync`) is intentionally NOT used here; agent use is opt-in, not a membership precondition.

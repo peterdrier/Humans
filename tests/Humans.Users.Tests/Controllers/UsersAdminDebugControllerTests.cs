@@ -61,6 +61,22 @@ public class UsersAdminDebugControllerTests
     }
 
     [HumansFact]
+    public async Task Index_large_page_does_not_wrap_to_the_first_page()
+    {
+        var users = new[] { MakeUserInfo(Guid.NewGuid(), "Human", true, false) };
+        var service = Substitute.For<IUserService>();
+        service.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>()).Returns(users);
+        var controller = new UsersAdminDebugController(service);
+        var first = (UsersDebugViewModel)((ViewResult)await controller.Index(page: 1, pageSize: 50)).Model!;
+        first.Rows.Should().ContainSingle();
+
+        var result = (UsersDebugViewModel)((ViewResult)await controller.Index(page: int.MaxValue, pageSize: 50)).Model!;
+        result.Rows.Should().BeEmpty();
+        result.TotalCount.Should().Be(1);
+        result.Page.Should().Be(int.MaxValue);
+    }
+
+    [HumansFact]
     public async Task Index_returns_paged_rows_from_snapshot()
     {
         var users = Enumerable.Range(0, 60)

@@ -93,6 +93,7 @@ internal sealed class TeamAdminController(
     [HttpGet("Members")]
     public async Task<IActionResult> Members(string slug, int page = 1)
     {
+        if (page < 1) page = 1;
         var pageSize = 20;
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
         if (teamError is not null)
@@ -107,7 +108,7 @@ internal sealed class TeamAdminController(
         var totalCount = allMembers.Count;
 
         var pagedMembers = allMembers
-            .Skip((page - 1) * pageSize)
+            .Skip((int)Math.Min(((long)page - 1) * pageSize, totalCount))
             .Take(pageSize)
             .ToList();
 

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Agent.Controllers;
+using Humans.Base.Constants;
 using Humans.Agent.Domain;
 using Humans.Agent.Models;
 using Humans.Agent.Services;
@@ -88,6 +89,31 @@ public class AgentControllerTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPage);
     }
 
+    [HumansTheory]
+    [InlineData(85899346)]
+    [InlineData(171798692)]
+    public async Task Conversations_LargePageDoesNotWrapToAnEarlierWindow(int page)
+    {
+        var rows = Enumerable.Range(0, 8).Select(_ => new AgentConversationListSnapshot(
+            Guid.NewGuid(), Guid.NewGuid(), "en", Instant.MinValue, Instant.MinValue, 1)).ToArray();
+        var agent = Substitute.For<IAgentService>();
+        agent.ListAllConversationsForAdminAsync(Arg.Any<bool>(), Arg.Any<Guid?>(), Arg.Any<int>(), Arg.Any<int>(),
+            Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var skip = call.ArgAt<int>(3);
+            if (skip < 0) throw new ArgumentOutOfRangeException(nameof(page), "Negative paging offset.");
+            return rows.Skip(skip).Take(call.ArgAt<int>(2)).ToArray();
+        });
+        var controller = MakeController(agent, enabled: true);
+        ((ClaimsIdentity)controller.User.Identity!).AddClaim(new Claim(ClaimTypes.Role, RoleNames.Admin));
+        var first = (AgentConversationsViewModel)((ViewResult)await controller.Conversations()).Model!;
+        first.Rows.Should().HaveCount(8);
+
+        var result = (AgentConversationsViewModel)((ViewResult)await controller.Conversations(page: page)).Model!;
+        result.Rows.Should().BeEmpty();
+        result.HasNext.Should().BeFalse();
+    }
+
     private static AgentController MakeController(IAgentService agent, bool enabled)
     {
         var userId = Guid.NewGuid();
@@ -100,6 +126,9 @@ public class AgentControllerTests
                     new User { Id = userId, DisplayName = "T", PreferredLanguage = "en" },
                     [], [], [], profile: null, []));
             });
+
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
         var settings = Substitute.For<IAgentSettingsService>();
         settings.Current.Returns(new AgentSettingsDto(

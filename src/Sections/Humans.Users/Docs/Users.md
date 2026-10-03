@@ -603,7 +603,7 @@ Admin-only flows for the section's cross-account hygiene (the `/Profile/Admin/*`
 | `/Users/Admin/AccountMerges` | Unified account-merge queue — pending merge requests **and** detected duplicate pairs (`UsersAdminAccountMergesController`, `AdminOnly` — see [Part 1 — Users / Identity](#part-1--users--identity)). Admin picks the survivor; the other account is folded in and tombstoned. |
 | `/Users/Admin/AccountMerges/Merge` | POST — merge a detected duplicate pair (no request row) |
 | `/Users/Admin/AccountMerges/{requestId}/Merge`, `/Dismiss`, `/Close` | POST — accept a pending request with the chosen survivor / dismiss it (`Rejected`) / close a request whose accounts are already merged |
-| `/Users/Admin/Debug` | Flat paginated/sortable table of every user, every column derived from the cached `UserInfo` snapshot — no secondary queries (`UsersAdminDebugController`, `AdminOnly`) |
+| `/Users/Admin/Debug` | Pages below one become one; large offsets cannot overflow back into earlier rows. Flat paginated/sortable table of every user, every column derived from the cached `UserInfo` snapshot — no secondary queries (`UsersAdminDebugController`, `AdminOnly`) |
 | `/Profile/Admin/EmailProblems` | List UserEmail invariant violations across all accounts (`ProfileAdminController`, `AdminOnly`) |
 | `/Profile/Admin/EmailProblems/DeleteOrphanEmail` | POST — delete a single orphan UserEmail row |
 | `/Profile/Admin/EmailProblems/BackfillLegacyEmails` | POST — create the missing `UserEmail` row for every user whose only address is the legacy Identity column |
