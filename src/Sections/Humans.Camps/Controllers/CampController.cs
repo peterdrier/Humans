@@ -738,8 +738,8 @@ internal sealed class CampController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Removing historical name {NameId} failed for camp {CampId}", nameId, camp.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Removing historical name {NameId} failed for camp {CampId}: {Reason}", nameId, camp.Id, ex.Message);
+            SetError(campsLocalizer[ex.Message].Value);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
@@ -800,8 +800,8 @@ internal sealed class CampController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Deleting image {ImageId} failed for camp {CampId} and slug {Slug}", imageId, camp.Id, slug);
-            SetError(ex.Message);
+            logger.LogWarning("Deleting image {ImageId} failed for camp {CampId} and slug {Slug}: {Reason}", imageId, camp.Id, slug, ex.Message);
+            SetError(campsLocalizer[ex.Message].Value);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });

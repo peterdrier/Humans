@@ -928,16 +928,16 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default)
     {
         var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken)
-            ?? throw new InvalidOperationException("Camp not found.");
+            ?? throw new InvalidOperationException("Camps_Flash_CampNotFound");
         if (camp.HistoricalNames.All(n => n.Id != historicalNameId))
         {
-            throw new InvalidOperationException("Historical name does not belong to the specified camp.");
+            throw new InvalidOperationException("Camps_Flash_HistoricalNameWrongCamp");
         }
 
         var removed = await _repo.RemoveHistoricalNameAsync(historicalNameId, cancellationToken);
         if (!removed)
         {
-            throw new InvalidOperationException("Historical name not found.");
+            throw new InvalidOperationException("Camps_Flash_HistoricalNameNotFound");
         }
     }
 
@@ -1037,14 +1037,14 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         Guid scopedCampId, Guid imageId, CancellationToken cancellationToken = default)
     {
         var image = await _repo.GetImageForMutationAsync(imageId, cancellationToken)
-            ?? throw new InvalidOperationException("Image not found.");
+            ?? throw new InvalidOperationException("Camps_Flash_ImageNotFound");
         if (image.CampId != scopedCampId)
         {
-            throw new InvalidOperationException("Image does not belong to the specified camp.");
+            throw new InvalidOperationException("Camps_Flash_ImageWrongCamp");
         }
 
         var result = await _repo.DeleteImageAsync(imageId, cancellationToken)
-            ?? throw new InvalidOperationException("Image not found.");
+            ?? throw new InvalidOperationException("Camps_Flash_ImageNotFound");
 
         await _auditLog.LogAsync(
             AuditAction.CampImageDeleted, nameof(CampImage), imageId,

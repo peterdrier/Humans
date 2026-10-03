@@ -330,4 +330,9 @@
   <data name="Camps_Flash_ApproveRequiresPending" xml:space="preserve"><value>Nur ein ausstehender Mitgliedschaftsantrag kann genehmigt werden.</value></data>
   <data name="Camps_Flash_RejectRequiresPending" xml:space="preserve"><value>Nur ein ausstehender Mitgliedschaftsantrag kann abgelehnt werden.</value></data>
   <data name="Camps_Flash_RemoveRequiresActive" xml:space="preserve"><value>Nur eine aktive Camp-Mitgliedschaft kann entfernt werden.</value></data>
+  <data name="Camps_Flash_CampNotFound" xml:space="preserve"><value>Camp nicht gefunden.</value></data>
+  <data name="Camps_Flash_HistoricalNameNotFound" xml:space="preserve"><value>Früherer Name nicht gefunden.</value></data>
+  <data name="Camps_Flash_HistoricalNameWrongCamp" xml:space="preserve"><value>Dieser frühere Name gehört nicht zu diesem Camp.</value></data>
+  <data name="Camps_Flash_ImageNotFound" xml:space="preserve"><value>Bild nicht gefunden.</value></data>
+  <data name="Camps_Flash_ImageWrongCamp" xml:space="preserve"><value>Dieses Bild gehört nicht zu diesem Camp.</value></data>
 </root>

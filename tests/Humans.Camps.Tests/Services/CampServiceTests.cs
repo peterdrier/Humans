@@ -1812,6 +1812,19 @@ public sealed class CampServiceTests : CampsTestHarness
         (await CampsDb.Camps.AsNoTracking().AnyAsync(c => c.Id == camp.Id, ct)).Should().Be(!deleteCamp);
     }
 
+    [HumansTheory]
+    [InlineData(false, "Camps_Flash_CampNotFound")]
+    [InlineData(true, "Camps_Flash_ImageNotFound")]
+    public async Task LeadDeletion_MissingRecord_ThrowsLocalizedGuard(bool image, string key)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Func<Task> act = image
+            ? () => _service.DeleteImageAsync(Guid.NewGuid(), Guid.NewGuid(), ct)
+            : () => _service.RemoveHistoricalNameAsync(Guid.NewGuid(), Guid.NewGuid(), ct);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(key);
+        _fileStorage.Files.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task DeleteImageAsync_WrongCamp_Throws()
     {
@@ -1824,7 +1837,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var action = () => _service.DeleteImageAsync(Guid.NewGuid(), upload.Image!.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not belong*");
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_ImageWrongCamp");
 
         var stillThere = await CampsDb.CampImages.AsNoTracking().FirstOrDefaultAsync(i => i.Id == upload.Image!.Id, Xunit.TestContext.Current.CancellationToken);
         stillThere.Should().NotBeNull();
@@ -1940,7 +1953,7 @@ public sealed class CampServiceTests : CampsTestHarness
         // Scope check resolves the scoped camp's aggregate, so the wrong camp must exist.
         var action = () => _service.RemoveHistoricalNameAsync(campB.Id, name.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not belong*");
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_HistoricalNameWrongCamp");
 
         var stillThere = await CampsDb.CampHistoricalNames.AsNoTracking().FirstOrDefaultAsync(n => n.Id == name.Id, Xunit.TestContext.Current.CancellationToken);
         stillThere.Should().NotBeNull();

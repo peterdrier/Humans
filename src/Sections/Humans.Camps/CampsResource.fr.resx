@@ -330,4 +330,9 @@
   <data name="Camps_Flash_ApproveRequiresPending" xml:space="preserve"><value>Seule une demande d’adhésion en attente peut être approuvée.</value></data>
   <data name="Camps_Flash_RejectRequiresPending" xml:space="preserve"><value>Seule une demande d’adhésion en attente peut être rejetée.</value></data>
   <data name="Camps_Flash_RemoveRequiresActive" xml:space="preserve"><value>Seule une adhésion active au camp peut être supprimée.</value></data>
+  <data name="Camps_Flash_CampNotFound" xml:space="preserve"><value>Camp introuvable.</value></data>
+  <data name="Camps_Flash_HistoricalNameNotFound" xml:space="preserve"><value>Ancien nom introuvable.</value></data>
+  <data name="Camps_Flash_HistoricalNameWrongCamp" xml:space="preserve"><value>Cet ancien nom n’appartient pas à ce camp.</value></data>
+  <data name="Camps_Flash_ImageNotFound" xml:space="preserve"><value>Image introuvable.</value></data>
+  <data name="Camps_Flash_ImageWrongCamp" xml:space="preserve"><value>Cette image n’appartient pas à ce camp.</value></data>
 </root>

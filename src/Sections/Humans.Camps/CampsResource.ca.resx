@@ -330,4 +330,9 @@
   <data name="Camps_Flash_ApproveRequiresPending" xml:space="preserve"><value>Només es pot aprovar una sol·licitud de pertinença pendent.</value></data>
   <data name="Camps_Flash_RejectRequiresPending" xml:space="preserve"><value>Només es pot rebutjar una sol·licitud de pertinença pendent.</value></data>
   <data name="Camps_Flash_RemoveRequiresActive" xml:space="preserve"><value>Només es pot eliminar una pertinença activa al campament.</value></data>
+  <data name="Camps_Flash_CampNotFound" xml:space="preserve"><value>No s’ha trobat el campament.</value></data>
+  <data name="Camps_Flash_HistoricalNameNotFound" xml:space="preserve"><value>No s’ha trobat el nom històric.</value></data>
+  <data name="Camps_Flash_HistoricalNameWrongCamp" xml:space="preserve"><value>Aquest nom històric no pertany a aquest campament.</value></data>
+  <data name="Camps_Flash_ImageNotFound" xml:space="preserve"><value>No s’ha trobat la imatge.</value></data>
+  <data name="Camps_Flash_ImageWrongCamp" xml:space="preserve"><value>Aquesta imatge no pertany a aquest campament.</value></data>
 </root>

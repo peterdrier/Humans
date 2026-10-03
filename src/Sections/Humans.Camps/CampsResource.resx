@@ -279,4 +279,9 @@
   <data name="Camps_Flash_ApproveRequiresPending" xml:space="preserve"><value>Only a pending membership request can be approved.</value></data>
   <data name="Camps_Flash_RejectRequiresPending" xml:space="preserve"><value>Only a pending membership request can be rejected.</value></data>
   <data name="Camps_Flash_RemoveRequiresActive" xml:space="preserve"><value>Only an active camp membership can be removed.</value></data>
+  <data name="Camps_Flash_CampNotFound" xml:space="preserve"><value>Camp not found.</value></data>
+  <data name="Camps_Flash_HistoricalNameNotFound" xml:space="preserve"><value>Historical name not found.</value></data>
+  <data name="Camps_Flash_HistoricalNameWrongCamp" xml:space="preserve"><value>This historical name does not belong to this camp.</value></data>
+  <data name="Camps_Flash_ImageNotFound" xml:space="preserve"><value>Image not found.</value></data>
+  <data name="Camps_Flash_ImageWrongCamp" xml:space="preserve"><value>This image does not belong to this camp.</value></data>
 </root>
