@@ -1516,29 +1516,40 @@ public class ServiceTests
         await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task AsyncPaymentSucceeded_out_of_order_records_paid_when_no_row_yet()
+    [HumansTheory]
+    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded, true)]
+    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed, false)]
+    public async Task AsyncPayment_out_of_order_preserves_terminal_state_after_completed_and_redelivery(
+        StoreCheckoutEventKind kind, bool succeeded)
     {
-        // Stripe delivered async_payment_succeeded before completed: no payment row exists yet.
-        // Record the settled money directly so it isn't lost; the later completed no-ops on the PI.
+        var status = succeeded ? PaymentStatus.Paid : PaymentStatus.Failed;
         var orderId = Guid.NewGuid();
+        Payment? recorded = null;
         _repo.GetPaymentByStripePaymentIntentIdAsync("pi_ooo", Arg.Any<CancellationToken>())
-            .Returns((Payment?)null);
+            .Returns(_ => recorded);
         _repo.StripePaymentIntentExistsAsync("pi_ooo", Arg.Any<CancellationToken>())
-            .Returns(false);
+            .Returns(_ => recorded is not null);
+        await _repo.AddPaymentAsync(Arg.Do<Payment>(p => recorded = p), Arg.Any<CancellationToken>());
+        var terminal = new StoreCheckoutWebhookEvent("evt_ooo", kind,
+            new StoreCheckoutSessionData("cs_ooo", orderId, "pi_ooo", 75m));
 
+        await _service.HandleStripeCheckoutWebhookEventAsync(terminal, TestContext.Current.CancellationToken);
         await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
-            "evt_ooo",
-            StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded,
-            new StoreCheckoutSessionData("cs_ooo", orderId, "pi_ooo", 75m)), TestContext.Current.CancellationToken);
+            "evt_completed_late", StoreCheckoutEventKind.CheckoutSessionCompleted,
+            new StoreCheckoutSessionData("cs_ooo", orderId, "pi_ooo", 75m, PaymentStatus: "unpaid")),
+            TestContext.Current.CancellationToken);
+        await _service.HandleStripeCheckoutWebhookEventAsync(terminal, TestContext.Current.CancellationToken);
 
-        await _repo.Received(1).AddPaymentAsync(
-            Arg.Is<Payment>(p =>
-                p.OrderId == orderId &&
-                p.StripePaymentIntentId == "pi_ooo" &&
-                p.AmountEur == 75m &&
-                p.Status == PaymentStatus.Paid),
-            Arg.Any<CancellationToken>());
+        recorded.Should().NotBeNull();
+        recorded!.Status.Should().Be(status);
+        recorded.OrderId.Should().Be(orderId);
+        recorded.StripePaymentIntentId.Should().Be("pi_ooo");
+        recorded.AmountEur.Should().Be(75m);
+        await _repo.Received(1).AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(AuditAction.StorePaymentRecorded, AuditEntityTypes.Payment,
+            recorded.Id, Arg.Is<string>(message => status != PaymentStatus.Failed || message.Contains("Failed")),
+            "StripeWebhook", orderId, AuditEntityTypes.Order);
     }
 
     [HumansFact]
@@ -1594,16 +1605,16 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AsyncPaymentFailed_with_no_row_is_a_noop()
+    public async Task AsyncPaymentFailed_with_no_row_and_missing_order_is_a_noop()
     {
-        // A failure with nothing pending means no money was ever owed here — do not create a row.
+        // Without order metadata the terminal failure cannot be attributed to an order.
         _repo.GetPaymentByStripePaymentIntentIdAsync("pi_nothing", Arg.Any<CancellationToken>())
             .Returns((Payment?)null);
 
         await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
             "evt_failed_orphan",
             StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed,
-            new StoreCheckoutSessionData("cs_nothing", Guid.NewGuid(), "pi_nothing", 50m)), TestContext.Current.CancellationToken);
+            new StoreCheckoutSessionData("cs_nothing", null, "pi_nothing", 50m)), TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());
