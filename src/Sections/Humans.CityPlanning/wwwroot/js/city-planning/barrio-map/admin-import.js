@@ -107,8 +107,11 @@ async function handlePreview() {
 
         let parsed;
         try {
-            parsed = JSON.parse(await file.text());
+            const contents = await file.text();
+            if (file !== fileInput.files?.[0]) return;
+            parsed = JSON.parse(contents);
         } catch (e) {
+            if (file !== fileInput.files?.[0]) return;
             console.error('admin-import: failed to parse GeoJSON file', e);
             showError(t('invalidJsonError'));
             return;
@@ -124,11 +127,13 @@ async function handlePreview() {
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             state = await resp.json();
         } catch (e) {
+            if (file !== fileInput.files?.[0]) return;
             console.error('admin-import: failed to fetch /api/city-planning/state', e);
             showError(t('fetchStateError'));
             return;
         }
 
+        if (file !== fileInput.files?.[0]) return;
         const lookup = buildCampLookup(state);
         const { matched, unrecognized } = matchFeatures(parsed.features, lookup);
         pendingImport = { matched, unrecognized };

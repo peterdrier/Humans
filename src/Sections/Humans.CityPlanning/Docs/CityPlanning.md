@@ -114,7 +114,7 @@ Admin sub-pages hosted on `CityPlanningController` under `/CityPlanning/BarrioMa
 
 The admin page also carries a **bulk polygon import**: `barrio-map/admin-import.js` reads
 `GET /api/city-planning/state`, matches the uploaded FeatureCollection's features to camps by
-lower-cased name or slug, previews the matches, and then issues one ordinary
+lower-cased name or slug, previews the matches only while the file that started loading is still selected (obsolete previews and errors are discarded), and then issues one ordinary
 `PUT /api/city-planning/camp-polygons/{campSeasonId}` per match with the note
 `Imported {timestamp}`. There is no server-side import endpoint — an import is N saves and
 gets one history row per successful save. HTTP failures and network exceptions are collected per camp; remaining reviewed matches are attempted, and the result reports both successes and failed camp names.
