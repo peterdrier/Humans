@@ -601,6 +601,45 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
+    public async Task ContributeForUserAsync_IncludesOwnPersonalAndCampSubmissionsAcrossStatuses()
+    {
+        var userId = Guid.NewGuid();
+        var submitted = Instant.FromUtc(2026, 5, 1, 12, 0);
+        var personal = new Event
+        {
+            Id = Guid.NewGuid(), SubmitterUserId = userId, Title = "My draft",
+            Description = "Personal description", Host = "My host name", LocationNote = "Near the fire",
+            StartAt = submitted, DurationMinutes = 60, SubmittedAt = submitted, LastUpdatedAt = submitted,
+            Status = EventStatus.Draft, AdminNotes = "Internal moderator note"
+        };
+        var camp = new Event
+        {
+            Id = Guid.NewGuid(), SubmitterUserId = userId, CampId = Guid.NewGuid(), Title = "My camp event",
+            Status = EventStatus.Withdrawn, StartAt = submitted, SubmittedAt = submitted,
+            LastUpdatedAt = submitted, IsRecurring = true, RecurrenceDays = "0,2", PriorityRank = 1
+        };
+        _repo.Events.AddRange([personal, camp,
+            new Event { Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(), Title = "Someone else's event" }]);
+
+        var slice = (await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken)).Single();
+        var json = System.Text.Json.JsonSerializer.SerializeToElement(slice.Data);
+        var events = json.GetProperty("SubmittedEvents").EnumerateArray().ToList();
+        events.Should().HaveCount(2);
+        var own = events.Single(e => e.GetProperty("Id").GetGuid() == personal.Id);
+        own.GetProperty("Title").GetString().Should().Be(personal.Title);
+        own.GetProperty("Description").GetString().Should().Be(personal.Description);
+        own.GetProperty("Host").GetString().Should().Be(personal.Host);
+        own.GetProperty("LocationNote").GetString().Should().Be(personal.LocationNote);
+        own.GetProperty("SubmittedAt").GetString().Should().Be("2026-05-01T12:00:00Z");
+        own.TryGetProperty("AdminNotes", out _).Should().BeFalse();
+        var campExport = events.Single(e => e.GetProperty("Id").GetGuid() == camp.Id);
+        campExport.GetProperty("CampId").GetGuid().Should().Be(camp.CampId!.Value);
+        campExport.GetProperty("RecurrenceDays").GetString().Should().Be("0,2");
+        json.GetProperty("Favourites").GetArrayLength().Should().Be(0);
+        json.GetProperty("Preference").ValueKind.Should().Be(System.Text.Json.JsonValueKind.Null);
+    }
+
+    [HumansFact]
     public async Task ContributeForUserAsync_ReturnsEmptySliceWhenUserHasNoData()
     {
         var slices = await _service.ContributeForUserAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);

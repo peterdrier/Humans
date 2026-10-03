@@ -678,9 +678,33 @@ internal sealed class EventService(
     {
         var favourites = await repo.GetFavouritesForContributorAsync(userId, ct);
         var preference = await repo.GetPreferenceAsync(userId, ct);
+        var submissions = (await repo.GetAllEventsForDashboardAsync(ct))
+            .Where(e => e.SubmitterUserId == userId);
 
         var shaped = new
         {
+            SubmittedEvents = submissions
+                .OrderBy(e => e.SubmittedAt)
+                .ThenBy(e => e.Id)
+                .Select(e => new
+                {
+                    e.Id,
+                    e.CampId,
+                    e.GuideSharedVenueId,
+                    e.CategoryId,
+                    e.Title,
+                    e.Description,
+                    e.LocationNote,
+                    e.Host,
+                    StartAt = e.StartAt.ToIso8601(),
+                    e.DurationMinutes,
+                    e.IsRecurring,
+                    e.RecurrenceDays,
+                    e.PriorityRank,
+                    Status = e.Status.ToString(),
+                    SubmittedAt = e.SubmittedAt.ToIso8601(),
+                    LastUpdatedAt = e.LastUpdatedAt.ToIso8601()
+                }).ToList(),
             Favourites = favourites
                 .OrderBy(f => f.CreatedAt)
                 .Select(f => new
