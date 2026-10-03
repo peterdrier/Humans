@@ -96,8 +96,12 @@ public sealed class CommunicationPreferenceSubscribedAtTests : ServiceTestHarnes
         // Preserve coverage of a historical default row transitioning to an explicit opt-in.
         await _repository.AddAsync(new CommunicationPreference
         {
-            Id = Guid.NewGuid(), UserId = userId, Category = MessageCategory.Marketing,
-            OptedOut = true, UpdatedAt = Clock.GetCurrentInstant(), UpdateSource = "Default"
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Category = MessageCategory.Marketing,
+            OptedOut = true,
+            UpdatedAt = Clock.GetCurrentInstant(),
+            UpdateSource = "Default"
         }, Xunit.TestContext.Current.CancellationToken);
 
         // Now opt in: existing row with OptedOut=true transitions to false
@@ -129,8 +133,12 @@ public sealed class CommunicationPreferenceSubscribedAtTests : ServiceTestHarnes
         // Preserve coverage of a historical default row transitioning to an explicit opt-in.
         await _repository.AddAsync(new CommunicationPreference
         {
-            Id = Guid.NewGuid(), UserId = userId, Category = MessageCategory.Marketing,
-            OptedOut = true, UpdatedAt = Clock.GetCurrentInstant(), UpdateSource = "Default"
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Category = MessageCategory.Marketing,
+            OptedOut = true,
+            UpdatedAt = Clock.GetCurrentInstant(),
+            UpdateSource = "Default"
         }, Xunit.TestContext.Current.CancellationToken);
 
         // Transition existing row: opted-out → opted-in via 4-arg overload

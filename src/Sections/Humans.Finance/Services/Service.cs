@@ -1199,7 +1199,7 @@ internal sealed class Service(
                 actorUserId, t.UserId, nameof(User));
 
         // The payout is committed: abandoning the download must not suppress its notifications.
-        await SendPayoutEmailsAsync(transfers, CancellationToken.None);
+        await SendPayoutEmailsAsync(transfers);
 
         return new SepaPayoutResult(fileName, xml, null);
     }
@@ -1211,8 +1211,9 @@ internal sealed class Service(
     /// the treasurer hands the file to the bank; booking only records that the money moved.
     /// Notification failures must not prevent downloading the already-saved file.
     /// </summary>
-    private async Task SendPayoutEmailsAsync(IReadOnlyList<SepaPayoutTransfer> transfers, CancellationToken ct)
+    private async Task SendPayoutEmailsAsync(IReadOnlyList<SepaPayoutTransfer> transfers)
     {
+        var ct = CancellationToken.None;
         var userIds = transfers.Select(t => t.UserId).Distinct().ToList();
         IReadOnlyDictionary<Guid, UserInfo> infos;
         IReadOnlyDictionary<Guid, string> targets;
@@ -1220,10 +1221,6 @@ internal sealed class Service(
         {
             infos = await users.GetUserInfosAsync(userIds, ct);
             targets = await userEmails.GetNotificationTargetEmailsAsync(userIds, ct);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
         }
         catch (Exception ex)
         {
@@ -1246,10 +1243,6 @@ internal sealed class Service(
             {
                 await emailService.SendAsync(emails.SepaPayoutGenerated(
                     recipient, member.BurnerName, t.Amount, t.IbanMasked, member.PreferredLanguage), ct);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
             }
             catch (Exception ex)
             {

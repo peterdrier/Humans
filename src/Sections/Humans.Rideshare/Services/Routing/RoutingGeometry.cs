@@ -5,8 +5,7 @@ namespace Humans.Rideshare.Services.Routing;
 internal static class RoutingGeometry
 {
     internal static bool IsPoint(JsonElement geometry) =>
-        HasType(geometry, "Point") && geometry.TryGetProperty("coordinates", out var position) && IsPosition(position) &&
-        position[0].GetDouble() is >= -180 and <= 180;
+        HasType(geometry, "Point") && geometry.TryGetProperty("coordinates", out var position) && IsPosition(position);
 
     internal static bool IsLineString(JsonElement geometry) =>
         HasType(geometry, "LineString") && geometry.TryGetProperty("coordinates", out var positions) &&
@@ -23,6 +22,6 @@ internal static class RoutingGeometry
         foreach (var coordinate in position.EnumerateArray())
             if (coordinate.ValueKind != JsonValueKind.Number || !coordinate.TryGetDouble(out var number) ||
                 !double.IsFinite(number)) return false;
-        return position[1].GetDouble() is >= -90 and <= 90;
+        return position[0].GetDouble() is >= -180 and <= 180 && position[1].GetDouble() is >= -90 and <= 90;
     }
 }

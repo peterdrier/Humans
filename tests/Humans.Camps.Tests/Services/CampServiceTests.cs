@@ -1769,8 +1769,10 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = await CreateTestCamp();
         var image = new CampImage
         {
-            Id = Guid.NewGuid(), CampId = camp.Id,
-            StoragePath = "uploads/camps/test/photo.jpg", UploadedAt = Clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            CampId = camp.Id,
+            StoragePath = "uploads/camps/test/photo.jpg",
+            UploadedAt = Clock.GetCurrentInstant()
         };
         CampsDb.CampImages.Add(image);
         await SaveAllAsync(ct);

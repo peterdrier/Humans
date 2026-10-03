@@ -133,6 +133,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [InlineData("""{"type":"Polygon","coordinates":[[[0],[1,0],[1,1],[0]]]}""")]
     [InlineData("""{"type":"Polygon","coordinates":[[[0,0],[1e400,0],[1,1],[0,0]]]}""")]
     [InlineData("""{"type":"Polygon","coordinates":[[[0,0],[1,91],[1,1],[0,0]]]}""")]
+    [InlineData("""{"type":"Polygon","coordinates":[[[0,0],[181,0],[1,1],[0,0]]]}""")]
     [InlineData("""{"type":"Polygon","coordinates":[[[0,0],["1",0],[1,1],[0,0]]]}""")]
     [InlineData("""{"type":"MultiPolygon","coordinates":[[]]}""")]
     public async Task SaveCampPolygonAsync_InvalidGeoJson_Throws(string geoJson)

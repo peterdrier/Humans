@@ -80,7 +80,10 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
             var now = Clock.GetCurrentInstant();
             var model = new MeetingFormViewModel
             {
-                Slug = workgroup.Slug, Title = "Meeting", StartUtc = now, EndUtc = now
+                Slug = workgroup.Slug,
+                Title = "Meeting",
+                StartUtc = now,
+                EndUtc = now
             };
             result = await controller.SaveMeeting(workgroup.Slug, model, Ct);
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);

@@ -241,7 +241,7 @@ internal sealed class CityPlanningService(
                     foreach (var coordinate in position.EnumerateArray())
                         if (coordinate.ValueKind != JsonValueKind.Number ||
                             !coordinate.TryGetDouble(out var number) || !double.IsFinite(number)) return false;
-                    if (position[1].GetDouble() is < -90 or > 90) return false;
+                    if (position[0].GetDouble() is < -180 or > 180 || position[1].GetDouble() is < -90 or > 90) return false;
                 }
                 var first = ring[0];
                 var last = ring[ring.GetArrayLength() - 1];

@@ -74,8 +74,12 @@ public class CachingUserServiceTests
         var userId = Guid.NewGuid();
         var preference = new CommunicationPreference
         {
-            Id = Guid.NewGuid(), UserId = userId, Category = MessageCategory.Marketing,
-            OptedOut = false, UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0), UpdateSource = "Profile"
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Category = MessageCategory.Marketing,
+            OptedOut = false,
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdateSource = "Profile"
         };
         var options = new DbContextOptionsBuilder<UsersDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString(), new InMemoryDatabaseRoot()).Options;

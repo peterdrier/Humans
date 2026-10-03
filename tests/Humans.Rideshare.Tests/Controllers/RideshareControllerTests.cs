@@ -168,12 +168,16 @@ public sealed class RideshareControllerTests
         var memberController = BuildController();
         var controller = new RideshareAdminController(_rideshare, _users, _localizer, Substitute.For<IClock>(), logger)
         {
-            ControllerContext = memberController.ControllerContext, TempData = memberController.TempData
+            ControllerContext = memberController.ControllerContext,
+            TempData = memberController.TempData
         };
         var model = new RideshareSettingsViewModel
         {
-            DestinationLabel = "Burn", InboundWindowStart = "2026-07-03", InboundWindowEnd = "2026-07-01",
-            OutboundWindowStart = "2026-07-10", OutboundWindowEnd = "2026-07-11"
+            DestinationLabel = "Burn",
+            InboundWindowStart = "2026-07-03",
+            InboundWindowEnd = "2026-07-01",
+            OutboundWindowStart = "2026-07-10",
+            OutboundWindowEnd = "2026-07-11"
         };
 
         (await controller.Index(model, Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);

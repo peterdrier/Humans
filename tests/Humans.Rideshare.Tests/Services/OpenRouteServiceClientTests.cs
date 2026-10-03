@@ -130,6 +130,7 @@ public sealed class OpenRouteServiceClientTests
     [Xunit.InlineData("""{"type":"LineString","coordinates":[[2.35],[2.4,43.2]]}""")]
     [Xunit.InlineData("""{"type":"LineString","coordinates":[[1e400,48.85],[2.4,43.2]]}""")]
     [Xunit.InlineData("""{"type":"LineString","coordinates":[[2.35,91],[2.4,43.2]]}""")]
+    [Xunit.InlineData("""{"type":"LineString","coordinates":[[181,48],[2,43]]}""")]
     [Xunit.InlineData("""{"type":"LineString","coordinates":[["2.35",48.85],[2.4,43.2]]}""")]
     public async Task Directions_InvalidGeometry_ReturnsNullAndWarns(string geometry)
     {

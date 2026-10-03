@@ -134,25 +134,41 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var now = Clock.GetCurrentInstant();
         var request = new TeamJoinRequest
         {
-            Id = Guid.NewGuid(), TeamId = team.Id, UserId = user.Id,
-            Status = TeamJoinRequestStatus.Rejected, RequestedAt = now - Duration.FromHours(1),
-            ResolvedAt = now, Message = "Please let me join", ReviewNotes = "No vacancies"
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = user.Id,
+            Status = TeamJoinRequestStatus.Rejected,
+            RequestedAt = now - Duration.FromHours(1),
+            ResolvedAt = now,
+            Message = "Please let me join",
+            ReviewNotes = "No vacancies"
         };
         request.StateHistory.Add(new TeamJoinRequestStateHistory
         {
-            Id = Guid.NewGuid(), TeamJoinRequestId = request.Id, Status = TeamJoinRequestStatus.Rejected,
-            ChangedAt = now, ChangedByUserId = Guid.NewGuid(), Notes = "No vacancies"
+            Id = Guid.NewGuid(),
+            TeamJoinRequestId = request.Id,
+            Status = TeamJoinRequestStatus.Rejected,
+            ChangedAt = now,
+            ChangedByUserId = Guid.NewGuid(),
+            Notes = "No vacancies"
         });
         request.StateHistory.Add(new TeamJoinRequestStateHistory
         {
-            Id = Guid.NewGuid(), TeamJoinRequestId = request.Id, Status = TeamJoinRequestStatus.Pending,
-            ChangedAt = request.RequestedAt, ChangedByUserId = user.Id, Notes = "Requested membership"
+            Id = Guid.NewGuid(),
+            TeamJoinRequestId = request.Id,
+            Status = TeamJoinRequestStatus.Pending,
+            ChangedAt = request.RequestedAt,
+            ChangedByUserId = user.Id,
+            Notes = "Requested membership"
         });
         TeamsDb.TeamJoinRequests.Add(request);
         TeamsDb.TeamJoinRequests.Add(new TeamJoinRequest
         {
-            Id = Guid.NewGuid(), TeamId = team.Id, UserId = Guid.NewGuid(),
-            RequestedAt = now, Message = "Someone else's request"
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = Guid.NewGuid(),
+            RequestedAt = now,
+            Message = "Someone else's request"
         });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         TeamsDb.ChangeTracker.Clear();

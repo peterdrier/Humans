@@ -113,9 +113,13 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var userId = Guid.NewGuid();
         ShiftsDb.ShiftSignups.Add(new ShiftSignup
         {
-            Id = Guid.NewGuid(), UserId = userId, ShiftId = shift.Id,
-            Status = SignupStatus.Cancelled, CreatedAt = TestNow,
-            UpdatedAt = TestNow + Duration.FromHours(1), StatusReason = "Shift cancelled"
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            ShiftId = shift.Id,
+            Status = SignupStatus.Cancelled,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow + Duration.FromHours(1),
+            StatusReason = "Shift cancelled"
         });
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())

@@ -211,7 +211,8 @@ internal sealed class Service(
             if (!IsFiniteNumber(properties.GetProperty("center_lng"))
                 || !IsFiniteNumber(properties.GetProperty("center_lat"))
                 || !IsFiniteNumber(properties.GetProperty("rotation_degrees"))) return false;
-            if (properties.GetProperty("center_lat").GetDouble() is < -90 or > 90) return false;
+            if (properties.GetProperty("center_lng").GetDouble() is < -180 or > 180
+                || properties.GetProperty("center_lat").GetDouble() is < -90 or > 90) return false;
 
             var coordinates = geometry.GetProperty("coordinates");
             if (coordinates.GetArrayLength() == 0) return false;
@@ -221,7 +222,7 @@ internal sealed class Service(
                 foreach (var position in ring.EnumerateArray())
                 {
                     if (position.GetArrayLength() < 2 || position.EnumerateArray().Any(n => !IsFiniteNumber(n))) return false;
-                    if (position[1].GetDouble() is < -90 or > 90) return false;
+                    if (position[0].GetDouble() is < -180 or > 180 || position[1].GetDouble() is < -90 or > 90) return false;
                 }
                 if (!ring[0].EnumerateArray().Select(n => n.GetDouble())
                     .SequenceEqual(ring[ring.GetArrayLength() - 1].EnumerateArray().Select(n => n.GetDouble()))) return false;

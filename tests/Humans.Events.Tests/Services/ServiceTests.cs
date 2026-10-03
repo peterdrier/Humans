@@ -607,16 +607,32 @@ public sealed class EventServiceTests
         var submitted = Instant.FromUtc(2026, 5, 1, 12, 0);
         var personal = new Event
         {
-            Id = Guid.NewGuid(), SubmitterUserId = userId, Title = "My draft",
-            Description = "Personal description", Host = "My host name", LocationNote = "Near the fire",
-            StartAt = submitted, DurationMinutes = 60, SubmittedAt = submitted, LastUpdatedAt = submitted,
-            Status = EventStatus.Draft, AdminNotes = "Internal moderator note"
+            Id = Guid.NewGuid(),
+            SubmitterUserId = userId,
+            Title = "My draft",
+            Description = "Personal description",
+            Host = "My host name",
+            LocationNote = "Near the fire",
+            StartAt = submitted,
+            DurationMinutes = 60,
+            SubmittedAt = submitted,
+            LastUpdatedAt = submitted,
+            Status = EventStatus.Draft,
+            AdminNotes = "Internal moderator note"
         };
         var camp = new Event
         {
-            Id = Guid.NewGuid(), SubmitterUserId = userId, CampId = Guid.NewGuid(), Title = "My camp event",
-            Status = EventStatus.Withdrawn, StartAt = submitted, SubmittedAt = submitted,
-            LastUpdatedAt = submitted, IsRecurring = true, RecurrenceDays = "0,2", PriorityRank = 1
+            Id = Guid.NewGuid(),
+            SubmitterUserId = userId,
+            CampId = Guid.NewGuid(),
+            Title = "My camp event",
+            Status = EventStatus.Withdrawn,
+            StartAt = submitted,
+            SubmittedAt = submitted,
+            LastUpdatedAt = submitted,
+            IsRecurring = true,
+            RecurrenceDays = "0,2",
+            PriorityRank = 1
         };
         _repo.Events.AddRange([personal, camp,
             new Event { Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(), Title = "Someone else's event" }]);

@@ -117,7 +117,9 @@ public sealed class ServicePlacementTests
     [InlineData("rotation_degrees", "1e400")]
     [InlineData("center_lat", "90.01")]
     [InlineData("center_lat", "-90.01")]
+    [InlineData("center_lng", "180.01")]
     [InlineData("coordinates", "[[[0,0],[0,90.01],[1,1],[0,0]]]")]
+    [InlineData("coordinates", "[[[0,0],[180.01,1],[1,1],[0,0]]]")]
     [InlineData("coordinates", "[[[0,0],[0,1],[\"1\",1],[0,0]]]")]
     public async Task SavePlacementAsync_RejectsMalformedMapDataWithoutChangingPlacementOrAudit(string field, string value)
     {

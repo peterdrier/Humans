@@ -19,7 +19,8 @@ public sealed class CalendarOccurrenceExpanderTests
         var duration = autumnOverlap ? Duration.FromMinutes(30) : Duration.Zero;
         var expected = start.Plus(Duration.FromDays(1));
         var info = BuildInfo(start: start, end: start.Plus(duration), recurrenceRule: "FREQ=DAILY;COUNT=2")
-            with { RecurrenceTimezone = "Europe/Madrid" };
+            with
+        { RecurrenceTimezone = "Europe/Madrid" };
         var from = expected.Minus(Duration.FromMinutes(autumnOverlap ? 30 : 15));
         var to = expected.Plus(Duration.FromMinutes(30));
 
@@ -40,7 +41,8 @@ public sealed class CalendarOccurrenceExpanderTests
         var start = Instant.FromUtc(2026, 6, 1, 10, 0);
         var lastStart = Instant.FromUtc(2026, 6, 3, 10, 0);
         var info = BuildInfo(start: start, end: start.Plus(Duration.FromHours(3)), recurrenceRule: rule)
-            with { RecurrenceUntilUtc = lastStart };
+            with
+        { RecurrenceUntilUtc = lastStart };
         var from = lastStart.Plus(Duration.FromHours(1));
         var to = lastStart.Plus(Duration.FromHours(4));
 

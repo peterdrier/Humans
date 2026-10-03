@@ -167,7 +167,8 @@ public sealed class CachingConsentServiceTests
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         var user = UserInfo.Create(new User { Id = userId }, [], [], [], null, [])
-            with { MergedUserIds = [Guid.NewGuid()] };
+            with
+        { MergedUserIds = [Guid.NewGuid()] };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _inner.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(user.AllUserIds.ToDictionary(id => id, _ => (IReadOnlySet<Guid>)new HashSet<Guid>()));
