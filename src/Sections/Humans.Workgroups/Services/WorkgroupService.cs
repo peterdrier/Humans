@@ -221,6 +221,8 @@ internal sealed partial class WorkgroupService(
             CreatedAt = now,
             UpdatedAt = now
         }, ct);
+        // The change committed; finish its log or notice independently of the browser.
+        ct = CancellationToken.None;
 
         await NotifyAsync(info.CoordinatorUserIds(), NotificationSource.WorkgroupReportingDue,
             "Workgroups_Todo_StatusRequested_Title", info, Trimmed(question), ct);
@@ -251,6 +253,8 @@ internal sealed partial class WorkgroupService(
             edit.Audience, edit.TargetDate, edit.DiscordChannelUrl);
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);
+        // The change committed; finish its log or notice independently of the browser.
+        ct = CancellationToken.None;
 
         if (scopeChanged)
         {

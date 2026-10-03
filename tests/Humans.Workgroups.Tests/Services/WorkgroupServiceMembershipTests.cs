@@ -19,6 +19,54 @@ namespace Humans.Workgroups.Tests.Services;
 public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
 {
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RegisterEditOrStatusRequest_FinishesAfterCommittedWrite(bool statusRequest)
+    {
+        var group = await SeedWorkgroupAsync();
+        var actor = group.Members.Single().UserId;
+        var people = await Users.GetUserInfosAsync([actor], Ct);
+        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(c =>
+            {
+                c.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(people);
+            });
+        using var cancellation = new CancellationTokenSource();
+        var real = new WorkgroupRepository(DbFactory);
+        var repository = Substitute.For<IWorkgroupRepository>();
+        repository.GetWorkgroupAsync(group.Id, Arg.Any<CancellationToken>())
+            .Returns(c => real.GetWorkgroupAsync(group.Id, c.Arg<CancellationToken>()));
+        repository.UpdateWorkgroupAsync(Arg.Any<Workgroup>(), Arg.Any<CancellationToken>())
+            .Returns(async c =>
+            {
+                c.Arg<CancellationToken>().Should().Be(cancellation.Token);
+                await real.UpdateWorkgroupAsync(c.Arg<Workgroup>(), c.Arg<CancellationToken>());
+                await cancellation.CancelAsync();
+            });
+        repository.AddLogEntryAsync(Arg.Any<WorkgroupLogEntry>(), Arg.Any<CancellationToken>())
+            .Returns(async c =>
+            {
+                c.Arg<CancellationToken>().Should().Be(statusRequest ? cancellation.Token : CancellationToken.None);
+                await real.AddLogEntryAsync(c.Arg<WorkgroupLogEntry>(), c.Arg<CancellationToken>());
+                if (statusRequest) await cancellation.CancelAsync();
+            });
+        var service = NewService(repository);
+        if (statusRequest) await service.RequestStatusAsync(group.Id, actor, "Progress?", cancellation.Token);
+        else await service.EditRegisterAsync(group.Id, actor,
+            new WorkgroupRegisterEdit(group.Name, group.Purpose, "Changed deliverable",
+                group.DeliverableKind, group.Audience, group.TargetDate, group.DiscordChannelUrl), cancellation.Token);
+
+        await using var db = OpenContext();
+        (await db.LogEntries.SingleAsync(e => e.WorkgroupId == group.Id, Ct)).Kind
+            .Should().Be(statusRequest ? WorkgroupLogKind.StatusRequested : WorkgroupLogKind.ScopeChanged);
+        if (statusRequest)
+            Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
+                .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
+        else (await db.Workgroups.FindAsync([group.Id], Ct))!.Deliverable.Should().Be("Changed deliverable");
+    }
+
+    [HumansTheory]
     [InlineData("join")]
     [InlineData("leave")]
     [InlineData("handover")]
