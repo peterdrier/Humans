@@ -313,6 +313,8 @@ internal sealed class EventService(
                     ? EventRecurrenceDays.OffsetsToDisplayDays(existing.RecurrenceDays, gateOpeningDate)
                     : string.Empty;
                 var rowDays = row.IsRecurring ? row.RecurrenceDays ?? string.Empty : string.Empty;
+                var recurrenceChanged = existing.IsRecurring != row.IsRecurring
+                    || !EventRecurrenceDays.SameDays(existingDays, rowDays);
 
                 var changed =
                     !string.Equals(existing.Title, row.Title, StringComparison.Ordinal) ||
@@ -322,8 +324,7 @@ internal sealed class EventService(
                     existing.DurationMinutes != row.DurationMinutes ||
                     !string.Equals(existing.LocationNote ?? string.Empty, row.LocationNote ?? string.Empty, StringComparison.Ordinal) ||
                     !string.Equals(existing.Host ?? string.Empty, row.Host ?? string.Empty, StringComparison.Ordinal) ||
-                    existing.IsRecurring != row.IsRecurring ||
-                    !EventRecurrenceDays.SameDays(existingDays, rowDays) ||
+                    recurrenceChanged ||
                     existing.PriorityRank != row.PriorityRank;
 
                 if (!changed) continue;
@@ -336,7 +337,10 @@ internal sealed class EventService(
                 existing.LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote;
                 existing.Host = string.IsNullOrEmpty(row.Host) ? null : row.Host;
                 existing.IsRecurring = row.IsRecurring;
-                existing.RecurrenceDays = row.IsRecurring ? recurrenceOffsets : null;
+                // Unchanged weekday labels cannot express a subset of repeated weekdays.
+                // Preserve the authored offsets when another field is edited.
+                if (recurrenceChanged || !row.IsRecurring)
+                    existing.RecurrenceDays = row.IsRecurring ? recurrenceOffsets : null;
                 existing.PriorityRank = row.PriorityRank;
 
                 // One path for every existing status: UpdateAndResubmitAsync keeps a

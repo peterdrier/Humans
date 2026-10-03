@@ -811,6 +811,31 @@ public sealed class EventServiceTests
         _repo.Events.Count.Should().Be(countBefore); // no INSERT of the existing event
     }
 
+    [HumansTheory]
+    [InlineData("Wed", "0")]
+    [InlineData("Thu", "1,8")]
+    public async Task BulkImportAsync_TitleEditPreservesRecurrenceUnlessWeekdaysChange(string days, string expectedOffsets)
+    {
+        var gate = new LocalDate(2026, 7, 8);
+        var campId = Guid.NewGuid();
+        var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.Add(category);
+        var existing = ExistingEvent(campId, category.Id, EventStatus.Approved);
+        existing.IsRecurring = true;
+        existing.RecurrenceDays = "0";
+        _repo.Events.Add(existing);
+
+        var result = await _service.BulkImportAsync(
+            campId, Guid.NewGuid(), [Row(id: existing.Id, title: "Renamed", isRecurring: true, recurrenceDays: days)],
+            gate, 8, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeFalse();
+        result.UpdatedCount.Should().Be(1);
+        existing.Title.Should().Be("Renamed");
+        existing.RecurrenceDays.Should().Be(expectedOffsets);
+        existing.Status.Should().Be(EventStatus.Pending);
+    }
+
     [HumansFact]
     public async Task BulkImportAsync_RecurrenceDayNameRoundTrip_IsNoOp()
     {
