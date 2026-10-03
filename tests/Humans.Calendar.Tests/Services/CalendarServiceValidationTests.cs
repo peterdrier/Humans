@@ -182,6 +182,27 @@ public class CalendarServiceValidationTests
     }
 
     [HumansFact]
+    public async Task CreateEventWithResultAsync_UTC_until_is_independent_of_server_timezone()
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo);
+        var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+
+        var result = await service.CreateEventWithResultAsync(
+            new CreateCalendarEventDto(
+                "UTC-bounded daily events", null, null, null, Guid.NewGuid(),
+                start, start + Duration.FromHours(1), false,
+                "FREQ=DAILY;UNTIL=20260603T100000Z", "Europe/Madrid"),
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
+        await repo.Received(1).AddAsync(
+            Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e =>
+                e.RecurrenceUntilUtc == Instant.FromUtc(2026, 6, 3, 10, 0)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task CreateEventWithResultAsync_DATE_until_persists_the_end_of_that_local_day()
     {
         var repo = Substitute.For<ICalendarRepository>();

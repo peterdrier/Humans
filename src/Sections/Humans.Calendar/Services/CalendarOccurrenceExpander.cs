@@ -188,10 +188,20 @@ internal static class CalendarOccurrenceExpander
         Instant from, Instant to, Guid? teamId)
     {
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-        return snapshot.Where(e => (teamId is null || e.OwningTeamId == teamId) &&
-            (e.Exceptions.Count > 0 || (e.IsAllDay
-                ? e.StartDate <= to.InZone(zone).Date && (e.RecurrenceUntilDate is null || e.RecurrenceUntilDate >= from.InZone(zone).Date)
-                : e.StartUtc <= to && (e.RecurrenceUntilUtc is null || e.RecurrenceUntilUtc >= from)))).ToList();
+        return snapshot.Where(e =>
+        {
+            if (teamId is not null && e.OwningTeamId != teamId) return false;
+            if (e.Exceptions.Count > 0) return true;
+            if (e.IsAllDay)
+                return e.StartDate <= to.InZone(zone).Date &&
+                    (e.RecurrenceUntilDate is null || e.RecurrenceUntilDate >= from.InZone(zone).Date);
+
+            // UNTIL bounds occurrence starts, while COUNT stores the final end.
+            // Allow duration conservatively; expansion applies the exact overlap check.
+            var duration = (e.EndUtc ?? e.StartUtc!.Value) - e.StartUtc!.Value;
+            return e.StartUtc <= to &&
+                (e.RecurrenceUntilUtc is null || e.RecurrenceUntilUtc.Value.Plus(duration) >= from);
+        }).ToList();
     }
 
     // Older date events may have a DATE-TIME UNTIL. Interpret it in their original zone once.

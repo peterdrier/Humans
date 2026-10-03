@@ -9,6 +9,28 @@ namespace Humans.Calendar.Tests.Services;
 public sealed class CalendarOccurrenceExpanderTests
 {
     [HumansTheory]
+    [Xunit.InlineData("FREQ=DAILY;UNTIL=20260603T100000Z")]
+    [Xunit.InlineData("FREQ=DAILY;UNTIL=20260603T100000")]
+    public void WindowAfterUntil_KeepsFinalOccurrenceWhileItStillOverlaps(string rule)
+    {
+        var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+        var lastStart = Instant.FromUtc(2026, 6, 3, 10, 0);
+        var info = BuildInfo(start: start, end: start.Plus(Duration.FromHours(3)), recurrenceRule: rule)
+            with { RecurrenceUntilUtc = lastStart };
+        var from = lastStart.Plus(Duration.FromHours(1));
+        var to = lastStart.Plus(Duration.FromHours(4));
+
+        var matched = CalendarOccurrenceExpander.FilterForWindow([info], from, to, null);
+        var occurrence = CalendarOccurrenceExpander.Expand(matched, from, to,
+            new Dictionary<Guid, string>(), NullLogger.Instance).Should().ContainSingle().Subject;
+
+        occurrence.OccurrenceStartUtc.Should().Be(lastStart);
+        occurrence.OccurrenceEndUtc.Should().Be(lastStart.Plus(Duration.FromHours(3)));
+        CalendarOccurrenceExpander.Expand(matched, lastStart.Plus(Duration.FromHours(3)), to,
+            new Dictionary<Guid, string>(), NullLogger.Instance).Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public void Expand_IncludesZeroDurationEventAtWindowStart(bool recurring)

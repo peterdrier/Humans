@@ -183,14 +183,13 @@ internal sealed class CalendarService(
             if (string.Equals(key, "UNTIL", StringComparison.OrdinalIgnoreCase))
             {
                 // RFC 5545 allows UNTIL as either DATE-TIME (YYYYMMDDTHHMMSS[Z]) or DATE (YYYYMMDD).
-                var invariant = System.Globalization.CultureInfo.InvariantCulture;
                 var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
                 if (zone is null) return null;
 
                 if (val.EndsWith('Z'))
                 {
-                    var dt = DateTimeOffset.ParseExact(val, "yyyyMMdd'T'HHmmss'Z'", invariant);
-                    return Instant.FromDateTimeOffset(dt);
+                    return DateFormattingExtensions.IcalBasicDateTimePattern.Parse(val[..^1]).Value
+                        .InUtc().ToInstant();
                 }
                 if (val.Contains('T'))
                 {
