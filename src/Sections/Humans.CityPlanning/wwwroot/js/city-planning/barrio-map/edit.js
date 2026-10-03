@@ -228,6 +228,7 @@ export function updateSaveButton() {
 // --- History ---
 
 let historyVersion = 0;
+let restoreInProgress = false;
 const historyPanel = document.getElementById('history-panel');
 historyPanel.addEventListener('hide.bs.offcanvas', () => { historyVersion++; });
 historyPanel.addEventListener('hidden.bs.offcanvas', () => {
@@ -289,6 +290,7 @@ export async function loadHistory(campSeasonId, canEdit = false) {
             });
         });
         list.querySelectorAll('.restore-btn').forEach(btn => {
+            btn.disabled = restoreInProgress;
             btn.addEventListener('click', () => restoreVersion(btn.dataset.id, id));
         });
     }
@@ -298,9 +300,14 @@ export async function loadHistory(campSeasonId, canEdit = false) {
 
 export async function restoreVersion(historyId, campSeasonId) {
     const id = campSeasonId ?? appState.activeCampSeasonId;
-    if (!id) return;
+    if (!id || restoreInProgress) return;
     if (!confirm('Restore this version?')) return;
 
+    const version = historyVersion;
+    const editId = appState.activeCampSeasonId;
+    const draft = JSON.stringify(appState.draw.getAll().features);
+    restoreInProgress = true;
+    document.getElementById('history-list').querySelectorAll('.restore-btn').forEach(btn => { btn.disabled = true; });
     const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
     let resp;
     try {
@@ -312,8 +319,13 @@ export async function restoreVersion(historyId, campSeasonId) {
         console.error('Failed to restore barrio polygon', error);
         alert('Restore failed.');
         return;
+    } finally {
+        restoreInProgress = false;
+        document.getElementById('history-list').querySelectorAll('.restore-btn').forEach(btn => { btn.disabled = false; });
     }
     if (resp.ok) {
+        if (version !== historyVersion || editId !== appState.activeCampSeasonId ||
+            draft !== JSON.stringify(appState.draw.getAll().features)) return;
         bootstrap.Offcanvas.getInstance(document.getElementById('history-panel'))?.hide();
         exitEditMode();
     } else {
