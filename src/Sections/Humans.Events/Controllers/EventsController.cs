@@ -770,9 +770,15 @@ internal sealed class EventsController(
             SetError(localizer["Events_Upload_ParseErrorDetail", ex.Message].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
-        catch (Exception ex)
+        catch (CsvHelper.BadDataException ex)
         {
             logger.LogWarning("Bulk CSV parse failed for camp slug {Slug}: {Message}", slug, ex.Message);
+            SetError(localizer["Events_Upload_ParseFailed"].Value);
+            return RedirectToAction(nameof(MySubmissions));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Bulk CSV parse failed for camp slug {Slug}: {Message}", slug, ex.Message);
             SetError(localizer["Events_Upload_ParseFailed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }

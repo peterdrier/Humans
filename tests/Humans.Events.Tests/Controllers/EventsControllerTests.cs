@@ -18,7 +18,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using NSubstitute;
@@ -34,6 +35,7 @@ namespace Humans.Events.Tests.Controllers;
 /// </summary>
 public class EventsControllerTests
 {
+    private readonly ILogger<EventsController> _logger = Substitute.For<ILogger<EventsController>>();
     private readonly IEventService _guide = Substitute.For<IEventService>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
@@ -315,6 +317,70 @@ public class EventsControllerTests
         return guideEvent.Id;
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("format")]
+    [Xunit.InlineData("quote")]
+    [Xunit.InlineData("io")]
+    [Xunit.InlineData("caller-cancel")]
+    [Xunit.InlineData("dependency-cancel")]
+    public async Task BulkUpload_SeparatesInputErrorsFromUnexpectedFailures(string failureKind)
+    {
+        var userId = Guid.NewGuid();
+        var camp = new CampInfo(Guid.NewGuid(), "camp", "camp@example.org", "", false, 0, []);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        StubEditableGuideSettings();
+        _localizer[Arg.Any<string>()].Returns(c => new LocalizedString(c.Arg<string>(), c.Arg<string>()));
+        _localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(c => new LocalizedString(c.Arg<string>(), c.Arg<string>()));
+        var controller = BuildController(userId);
+        using var services = new ServiceCollection().AddLogging().BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        controller.ControllerContext.ActionDescriptor = new ControllerActionDescriptor { ActionName = nameof(EventsController.BulkUploadImport) };
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        controller.Url = Substitute.For<IUrlHelper>();
+        var file = Substitute.For<IFormFile>();
+        file.Length.Returns(100);
+        using var cancellation = new CancellationTokenSource();
+        Exception? failure = null;
+        if (string.Equals(failureKind, "caller-cancel", StringComparison.Ordinal))
+        {
+            await cancellation.CancelAsync();
+            controller.HttpContext.RequestAborted = cancellation.Token;
+            failure = new OperationCanceledException(cancellation.Token);
+        }
+        else if (string.Equals(failureKind, "dependency-cancel", StringComparison.Ordinal))
+            failure = new OperationCanceledException("Upload storage cancelled");
+        else if (string.Equals(failureKind, "io", StringComparison.Ordinal))
+            failure = new IOException("Upload stream unavailable");
+        if (failure is not null) file.OpenReadStream().Returns<Stream>(_ => throw failure);
+        else
+        {
+            const string header = "Id,Barrio,Status,Title,Description,Category,Date,StartTime,DurationMinutes,LocationNote,Host,IsRecurring,RecurrenceDays,PriorityRank";
+            var csv = string.Equals(failureKind, "quote", StringComparison.Ordinal)
+                ? header + "\n,Camp,,Bad\"quote,Description,Workshop,2026-08-01,09:30,60,,,false,,1\n"
+                : "MissingRequiredColumns\nrow";
+            file.OpenReadStream().Returns(_ => new MemoryStream(System.Text.Encoding.UTF8.GetBytes(csv)));
+        }
+        var act = () => controller.BulkUploadImport(camp.Slug, file);
+        if (string.Equals(failureKind, "caller-cancel", StringComparison.Ordinal))
+        {
+            await act.Should().ThrowAsync<OperationCanceledException>();
+            _logger.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            (await act()).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(EventsController.MySubmissions));
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(string.Equals(failureKind, "format", StringComparison.Ordinal)
+                ? "Events_Upload_ParseErrorDetail" : "Events_Upload_ParseFailed");
+            var args = _logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+            args[0].Should().Be(failure is null ? LogLevel.Warning : LogLevel.Error);
+            args[3].Should().BeSameAs(failure);
+            args[2]!.ToString().Should().Contain(camp.Slug);
+        }
+        _guide.ReceivedCalls().Should().NotContain(c => string.Equals(c.GetMethodInfo().Name, nameof(IEventService.BulkImportAsync), StringComparison.Ordinal));
+    }
+
     private void StubEditableGuideSettings()
     {
         var settingsId = Guid.NewGuid();
@@ -346,7 +412,7 @@ public class EventsControllerTests
         _users.GetUserInfoAsync(currentUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(currentUserId, "Current User")));
 
-        return new EventsController(_guide, _users, _camps, _authz, _clock, NullLogger<EventsController>.Instance, _localizer)
+        return new EventsController(_guide, _users, _camps, _authz, _clock, _logger, _localizer)
         {
             ControllerContext = new ControllerContext
             {
