@@ -139,7 +139,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         var items = await query
             .OrderBy(t => t.SystemTeamType) // arch:db-sort-ok admin page window
             .ThenBy(t => t.Name) // arch:db-sort-ok admin page window
-            .Skip((page - 1) * pageSize)
+            .Skip((int)Math.Clamp(((long)page - 1) * pageSize, 0, int.MaxValue))
             .Take(pageSize)
             .ToListAsync(ct);
 

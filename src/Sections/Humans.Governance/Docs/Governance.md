@@ -248,6 +248,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Invariants
 
+- Application-admin paging computes offsets without integer overflow; extreme pages cannot wrap into earlier applications.
+
 - Application list, create-form, detail, admin list/detail and term-expiry review GETs propagate request cancellation through viewer and application reads. Submission, withdrawal and expiry correction keep their mutation boundaries.
 - Governance overview GETs propagate request cancellation to user and index-data reads; Board-voting detail GETs retain it when resolving the viewer after loading the application.
 

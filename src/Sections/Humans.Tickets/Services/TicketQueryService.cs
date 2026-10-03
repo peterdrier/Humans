@@ -701,7 +701,7 @@ internal sealed class TicketQueryService(
 
         var totalCount = filtered.Count;
         var pagedHumans = filtered
-            .Skip((page - 1) * pageSize)
+            .Skip((int)Math.Clamp(((long)page - 1) * pageSize, 0, int.MaxValue))
             .Take(pageSize)
             .Select(r => new WhoHasntBoughtRowDto
             {

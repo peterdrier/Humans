@@ -39,6 +39,41 @@ public sealed class TicketRepositoryTests : IDisposable
 
     // ── GetSyncStateAsync / PersistSyncStateAsync ────────────────────────────
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task TicketPages_LargePageDoesNotWrapToEarlierRows(bool attendees)
+    {
+        var now = _clock.GetCurrentInstant();
+        var order = new TicketOrder
+        {
+            Id = Guid.NewGuid(), VendorOrderId = "order", VendorEventId = "event", BuyerName = "Human",
+            BuyerEmail = "human@example.com", Currency = "EUR", PaymentStatus = TicketPaymentStatus.Paid,
+            PurchasedAt = now, SyncedAt = now,
+        };
+        _dbContext.TicketOrders.Add(order);
+        _dbContext.TicketAttendees.Add(new TicketAttendee
+        {
+            Id = Guid.NewGuid(), TicketOrderId = order.Id, VendorTicketId = "ticket", VendorEventId = "event",
+            AttendeeName = "Human", Status = TicketAttendeeStatus.Valid, SyncedAt = now,
+        });
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        async Task<(int Count, int Total)> ReadPage(int page)
+        {
+            if (attendees)
+            {
+                var result = await _repo.GetAttendeesPageAsync(null, "name", false, page, 50, null, null, null, null, false,
+                    Xunit.TestContext.Current.CancellationToken);
+                return (result.Rows.Count, result.TotalCount);
+            }
+            var orders = await _repo.GetOrdersPageAsync(null, "date", false, page, 50, null, null, null,
+                Xunit.TestContext.Current.CancellationToken);
+            return (orders.Rows.Count, orders.TotalCount);
+        }
+        (await ReadPage(1)).Should().Be((1, 1));
+        (await ReadPage(int.MaxValue)).Should().Be((0, 1));
+    }
+
     [HumansFact]
     public async Task GetSyncStateAsync_ReturnsSingletonRow()
     {

@@ -29,6 +29,17 @@ public sealed class ApplicationRepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetFilteredAsync_LargePageDoesNotWrapToEarlierApplications()
+    {
+        SeedApp();
+        var first = await _repo.GetFilteredAsync(null, null, 1, 50, Xunit.TestContext.Current.CancellationToken);
+        first.Items.Should().ContainSingle();
+        var result = await _repo.GetFilteredAsync(null, null, int.MaxValue, 50, Xunit.TestContext.Current.CancellationToken);
+        result.Items.Should().BeEmpty();
+        result.TotalCount.Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task GetByIdAsync_IncludesAggregateLocalNavs()
     {
         var app = SeedApp();

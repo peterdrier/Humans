@@ -116,6 +116,8 @@ No one reads audit entries anonymously. The `/AuditLog` dashboard is gated to Bo
 
 ## Invariants
 
+- Audit-list paging computes offsets without integer overflow; pages beyond the available entries stay empty and counts remain unchanged.
+
 - The Audit Log GET forwards request cancellation through the viewer to repository and name reads; an abandoned page does not complete its data load.
 
 - Audit entries are append-only. `IAuditLogRepository` exposes `AddAsync` and `GetXxxAsync` — **no** `UpdateAsync`, **no** `DeleteAsync`, **no** `RemoveAsync`.

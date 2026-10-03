@@ -70,7 +70,7 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
             // arch:db-sort-ok admin page window over role assignments
             .OrderBy(ra => ra.RoleName)
             .ThenByDescending(ra => ra.ValidFrom) // arch:db-sort-ok admin page window tie-breaker
-            .Skip((page - 1) * pageSize)
+            .Skip((int)Math.Clamp(((long)page - 1) * pageSize, 0, int.MaxValue))
             .Take(pageSize)
             .ToListAsync(ct);
 

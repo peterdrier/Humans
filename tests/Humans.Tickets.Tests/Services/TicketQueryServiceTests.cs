@@ -78,6 +78,17 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
+    public async Task GetWhoHasntBoughtAsync_LargePageDoesNotWrapToEarlierHumans()
+    {
+        WireWhoHasntBoughtDependencies(CreateUser("Human", "human@example.com"));
+        var first = await _service.GetWhoHasntBoughtAsync(null, null, null, null, 1, 50);
+        first.Humans.Should().ContainSingle();
+        var result = await _service.GetWhoHasntBoughtAsync(null, null, null, null, int.MaxValue, 50);
+        result.Humans.Should().BeEmpty();
+        result.TotalCount.Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task EraseForUserAsync_scrubs_ticket_and_transfer_data_then_drops_the_warmed_projection()
     {
         var userId = Guid.NewGuid();

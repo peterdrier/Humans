@@ -33,6 +33,18 @@ public class AuditLogRepositoryTests
     }
 
     [HumansFact]
+    public async Task GetFilteredAsync_LargePageDoesNotWrapToEarlierEntries()
+    {
+        await _sut.AddAsync(MakeEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
+        var first = await _sut.GetFilteredAsync(null, 1, 50, Xunit.TestContext.Current.CancellationToken);
+        first.Items.Should().ContainSingle();
+        var result = await _sut.GetFilteredAsync(null, int.MaxValue, 50, Xunit.TestContext.Current.CancellationToken);
+        result.Items.Should().BeEmpty();
+        result.TotalCount.Should().Be(1);
+        result.AnomalyCount.Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task AddAsync_PersistsEntry_VisibleOnNextRead()
     {
         var entry = MakeEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid());

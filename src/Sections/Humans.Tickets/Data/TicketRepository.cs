@@ -706,7 +706,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         query = ApplyOrderSorting(query, sortBy, sortDesc);
 
         var rows = await query
-            .Skip((page - 1) * pageSize)
+            .Skip((int)Math.Clamp(((long)page - 1) * pageSize, 0, int.MaxValue))
             .Take(pageSize)
             .Select(o => new OrderRow
             {
@@ -806,7 +806,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         query = ApplyAttendeeSorting(query, sortBy, sortDesc);
 
         var rows = await query
-            .Skip((page - 1) * pageSize)
+            .Skip((int)Math.Clamp(((long)page - 1) * pageSize, 0, int.MaxValue))
             .Take(pageSize)
             .Select(a => new AttendeeRow
             {

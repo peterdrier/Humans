@@ -60,7 +60,7 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
 
         var items = await query
             .OrderBy(a => a.SubmittedAt) // arch:db-sort-ok pagination ordering for Skip/Take
-            .Skip((page - 1) * pageSize)
+            .Skip((int)Math.Clamp(((long)page - 1) * pageSize, 0, int.MaxValue))
             .Take(pageSize)
             .ToListAsync(ct);
 

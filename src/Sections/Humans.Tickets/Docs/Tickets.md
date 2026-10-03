@@ -82,6 +82,8 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 
 ## Invariants
 
+- Order, attendee and who-has-not-bought paging computes offsets without integer overflow; extreme pages cannot wrap into earlier rows. Filters, ordering and total counts are unchanged.
+
 - Member transfer-index GETs propagate request cancellation to viewer resolution before ticket, transfer and early-entry reads. Transfer POST boundaries are unchanged.
 
 - Member transfer Submit/Cancel validation errors resolve through Tickets resources in all six cultures. Unknown failure text stays in logs; the wizard and cancellation toast use translated fallbacks.

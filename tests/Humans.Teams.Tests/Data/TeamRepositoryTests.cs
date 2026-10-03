@@ -46,6 +46,17 @@ public sealed class TeamRepositoryTests : IDisposable
     // ==========================================================================
 
     [HumansFact]
+    public async Task GetAllForAdminAsync_LargePageDoesNotWrapToEarlierTeams()
+    {
+        await SeedTeamAsync("Team");
+        var first = await _repo.GetAllForAdminAsync(1, 50, Xunit.TestContext.Current.CancellationToken);
+        first.Items.Should().ContainSingle();
+        var result = await _repo.GetAllForAdminAsync(int.MaxValue, 50, Xunit.TestContext.Current.CancellationToken);
+        result.Items.Should().BeEmpty();
+        result.TotalCount.Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task GetByIdAsync_ReturnsTeam_WhenPresent()
     {
         var team = await SeedTeamAsync("Test");
