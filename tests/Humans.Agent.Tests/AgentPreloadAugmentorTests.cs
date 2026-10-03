@@ -129,8 +129,8 @@ public class AgentPreloadAugmentorTests
 
     /// <summary>
     /// The glossary block is the only place the corpus prints something that looks like a
-    /// <c>fetch_section_guide</c> argument, and the model takes it literally: "## Profile Glossary"
-    /// produced seven dead-end lookups for section="Profile" (nobodies-collective/Humans#949).
+    /// <c>fetch_section_guide</c> argument, and the model takes it literally
+    /// (nobodies-collective/Humans#949).
     /// Every heading emitted here must be a key the reader can actually serve.
     /// </summary>
     [HumansFact]
@@ -155,7 +155,7 @@ public class AgentPreloadAugmentorTests
         foreach (var heading in headings)
         {
             // Asserted against the key table itself rather than through AgentSectionDocReader,
-            // which is internal to Humans.Agent since the section's G5 move. The reader resolves
+            // which is internal to Humans.Agent. The reader resolves
             // the key through exactly this table before it fetches anything, so the check is the
             // same one, minus a stub GitHub source.
             AgentSectionKeys.TryResolve(heading, out _).Should().BeTrue(
@@ -267,9 +267,7 @@ public class AgentPreloadAugmentorTests
     }
 
     /// <summary>
-    /// The corpus is whatever DI discovered, not a list Base or the Agent keeps: every
-    /// contribution is rendered, and the flat order is the one the rows declare — several
-    /// sections' entries interleave, so registration order would reshuffle the corpus.
+    /// Rows render in their declared Order, not registration order.
     /// </summary>
     [HumansFact]
     public void AccessMatrix_renders_every_contribution_in_declared_row_order()

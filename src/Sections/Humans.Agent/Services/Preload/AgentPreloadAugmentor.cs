@@ -39,10 +39,9 @@ internal sealed class AgentPreloadAugmentor(
 
     public string BuildGlossariesMarkdown()
     {
-        // Glossary keys name help-widget pages, not docs/sections files. The model used to read
-        // "## Profile Glossary" out of this block and dead-end on fetch_section_guide("Profile") —
-        // seven times in production (nobodies-collective/Humans#949). Each block is emitted under
-        // the section key the tool actually accepts. Pages sharing a key are collected under one
+        // Glossary keys name help-widget pages, not docs/sections files. The model uses a heading it
+        // sees as a fetch_section_guide argument (nobodies-collective/Humans#949), so each block is
+        // emitted under the section key the tool accepts. Pages sharing a key are collected under one
         // heading but keep their own table and page label: several define the same term with
         // different emphasis ("Barrio Lead" three ways across the city-planning pages), so folding
         // them into one table would either duplicate the term or drop a definition.
