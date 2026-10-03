@@ -451,6 +451,8 @@ Lower values are more restrictive. A viewer with access level X can see fields w
 
 Per-user email addresses (login, verified, notifications). `UserEmail` has no `User` nav.
 
+Self and admin email-grid mutation rejections remain Warning logs with the member, email-row id, and reason, without exception stacks. Unexpected exception types propagate to normal error handling.
+
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
