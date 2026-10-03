@@ -126,7 +126,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Only authenticated humans may create, edit, or delete events, or manage exceptions (enforced by `[Authorize]` on `CalendarController`).
 - Unexpected create/edit failures return `Calendar_SaveFailed` for the controller to localize in all six cultures; detailed exceptions remain in server logs.
 - Every mutating action (create / update / delete / cancel-occurrence / override-occurrence) writes an `AuditLogEntry` with the actor's user ID.
-- Create and update result wrappers preserve caller cancellation; they do not turn a canceled operation into an ordinary validation or persistence failure. Malformed recurrence and unknown timezone rejections remain Warning logs with their reason, without exception stacks.
+- Create and update result wrappers preserve caller cancellation before commit; they do not turn a canceled operation into an ordinary validation or persistence failure. After any successful event or occurrence mutation, the cache refresh runs without the browser token, so an abort cannot make a committed write fail during refresh. Malformed recurrence and unknown timezone rejections remain Warning logs with their reason, without exception stacks.
 - Title is required (non-null, non-empty).
 - Create/edit form required, length and URL validation errors use shared resources in all six cultures; input limits and URL validation are unchanged.
 - Occurrence override text stays optional. The form enforces the stored title/description/location/URL limits (200/4000/500/2000), validates URLs, and redisplays localized errors before writing an exception.

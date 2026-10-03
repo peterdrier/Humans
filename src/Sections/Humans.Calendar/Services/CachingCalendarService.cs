@@ -11,7 +11,8 @@ namespace Humans.Calendar.Services;
 /// <summary>
 /// Singleton cache-backed calendar read service. Holds every non-soft-deleted
 /// <c>CalendarEventInfo</c> row with embedded exceptions, keyed by event id.
-/// Write methods delegate to the keyed inner service and refresh the read cache.
+/// Write methods delegate to the keyed inner service and refresh the committed read cache
+/// independently of browser cancellation.
 /// </summary>
 internal sealed class CachingCalendarService(
     IServiceScopeFactory scopeFactory,
@@ -135,7 +136,7 @@ internal sealed class CachingCalendarService(
     {
         var result = await WithInner(inner => inner.CreateEventWithResultAsync(dto, createdByUserId, ct));
         if (result.Succeeded && result.Event is not null)
-            await ReplaceAsync(result.Event.Id, ct);
+            await ReplaceAsync(result.Event.Id, CancellationToken.None);
         return result;
     }
 
@@ -144,21 +145,21 @@ internal sealed class CachingCalendarService(
     {
         var result = await WithInner(inner => inner.UpdateEventWithResultAsync(id, dto, updatedByUserId, ct));
         if (result.Succeeded)
-            await ReplaceAsync(id, ct);
+            await ReplaceAsync(id, CancellationToken.None);
         return result;
     }
 
     public async Task DeleteEventAsync(Guid id, Guid deletedByUserId, CancellationToken ct = default)
     {
         await WithInner(inner => inner.DeleteEventAsync(id, deletedByUserId, ct));
-        await ReplaceAsync(id, ct);
+        await ReplaceAsync(id, CancellationToken.None);
     }
 
     public async Task CancelOccurrenceAsync(
         Guid eventId, Instant? originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
     {
         await WithInner(inner => inner.CancelOccurrenceAsync(eventId, originalOccurrenceStartUtc, userId, ct, originalDate));
-        await ReplaceAsync(eventId, ct);
+        await ReplaceAsync(eventId, CancellationToken.None);
     }
 
     public async Task OverrideOccurrenceAsync(
@@ -166,7 +167,7 @@ internal sealed class CachingCalendarService(
         Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
     {
         await WithInner(inner => inner.OverrideOccurrenceAsync(eventId, originalOccurrenceStartUtc, dto, userId, ct, originalDate));
-        await ReplaceAsync(eventId, ct);
+        await ReplaceAsync(eventId, CancellationToken.None);
     }
 
     protected override async Task WarmAllAsync(CancellationToken ct)
