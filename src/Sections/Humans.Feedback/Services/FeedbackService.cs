@@ -354,6 +354,8 @@ internal sealed class FeedbackService(
                 fr.Category,
                 fr.Description,
                 fr.PageUrl,
+                fr.UserAgent,
+                fr.AdditionalContext,
                 fr.Status,
                 CreatedAt = fr.CreatedAt.ToIso8601(),
                 ResolvedAt = fr.ResolvedAt.ToIso8601(),
