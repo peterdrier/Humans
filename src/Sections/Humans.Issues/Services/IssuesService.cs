@@ -1098,7 +1098,11 @@ internal sealed class IssuesService(
     {
         var people = await users.GetUserInfosAsync(recipients, ct);
         foreach (var group in recipients.GroupBy(
-                     id => people.GetValueOrDefault(id)?.PreferredLanguage ?? "en",
+                     id =>
+                     {
+                         var language = people.GetValueOrDefault(id)?.PreferredLanguage;
+                         return language.IsSupportedCultureCode() ? language! : "en";
+                     },
                      StringComparer.OrdinalIgnoreCase))
         {
             try

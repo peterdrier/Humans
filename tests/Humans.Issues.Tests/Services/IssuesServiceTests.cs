@@ -472,6 +472,23 @@ public sealed class IssuesServiceTests
         stored.Status.Should().Be(IssueStatus.Open);
     }
 
+    [HumansFact]
+    public async Task IssueSubmitted_InvalidRecipientLanguage_DeliversEnglishNotice()
+    {
+        var reporter = SeedUser(Guid.NewGuid(), "Reporter");
+        var handler = SeedUser(Guid.NewGuid(), "Handler");
+        handler.PreferredLanguage = "invalid!";
+        _roleService.GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Guid>)[handler.Id]);
+
+        await _service.SubmitIssueAsync(reporter.Id, IssueCategory.Bug, "Title", "Detail",
+            null, null, null, null, null, ct: Xunit.TestContext.Current.CancellationToken);
+
+        var notice = _notificationService.ReceivedCalls().Single().GetArguments();
+        notice[3].Should().Be("New issue filed: Title");
+        ((IReadOnlyList<Guid>)notice[4]!).Should().Equal(handler.Id);
+    }
+
     [HumansTheory]
     [Xunit.InlineData(NotificationSource.IssueSubmitted)]
     [Xunit.InlineData(NotificationSource.IssueComment)]
