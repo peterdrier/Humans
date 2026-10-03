@@ -1,3 +1,4 @@
+using Xunit;
 using AwesomeAssertions;
 using Humans.Consent.Contracts;
 using Humans.Consent.Services;
@@ -157,27 +158,48 @@ public sealed class CachingConsentServiceTests
 
     // ── SubmitConsentAsync — synchronous cache refresh ───────────────────────
 
-    [HumansFact]
-    public async Task SubmitConsentAsync_Success_RefreshesRowBeforeReturning_SoNextReadHitsCache()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SubmitConsentAsync_Success_RefreshesRowBeforeReturning_SoNextReadHitsCache(bool cancelAfterCommit)
     {
+        using var cancellation = new CancellationTokenSource();
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
+        var user = UserInfo.Create(new User { Id = userId }, [], [], [], null, [])
+            with { MergedUserIds = [Guid.NewGuid()] };
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _inner.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(user.AllUserIds.ToDictionary(id => id, _ => (IReadOnlySet<Guid>)new HashSet<Guid>()));
         _inner.SubmitConsentAsync(userId, versionId, true, "1.2.3.4", "agent", Arg.Any<CancellationToken>())
-            .Returns(new ConsentSubmitResult(true, "Privacy"));
-        _inner.GetConsentedVersionIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<Guid>)new HashSet<Guid> { versionId });
+            .Returns(_ =>
+            {
+                if (cancelAfterCommit)
+                    cancellation.Cancel();
+                return new ConsentSubmitResult(true, "Privacy");
+            });
+        _inner.GetConsentedVersionIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
+                return (IReadOnlySet<Guid>)new HashSet<Guid> { versionId };
+            });
 
         var sut = CreateSut();
+        await sut.GetConsentMapForUsersAsync(user.AllUserIds, Xunit.TestContext.Current.CancellationToken);
+        _inner.ClearReceivedCalls();
         var result = await sut.SubmitConsentAsync(
-            userId, versionId, true, "1.2.3.4", "agent", Xunit.TestContext.Current.CancellationToken);
+            userId, versionId, true, "1.2.3.4", "agent", cancellation.Token);
 
         result.Success.Should().BeTrue();
-        // The refresh ran inline, through the same loader the lazy path uses.
-        await _inner.Received(1).GetConsentedVersionIdsAsync(userId, Arg.Any<CancellationToken>());
+        await _inner.Received(1).SubmitConsentAsync(userId, versionId, true, "1.2.3.4", "agent", cancellation.Token);
+        foreach (var id in user.AllUserIds)
+            await _inner.Received(1).GetConsentedVersionIdsAsync(id, CancellationToken.None);
 
-        // And the refreshed row serves the next read from cache — no inner call.
-        var map = await sut.GetConsentMapForUsersAsync([userId], Xunit.TestContext.Current.CancellationToken);
-        map[userId].Should().Contain(versionId);
+        // Every merge-chain alias serves the committed set without another inner read.
+        var map = await sut.GetConsentMapForUsersAsync(user.AllUserIds, Xunit.TestContext.Current.CancellationToken);
+        foreach (var id in user.AllUserIds)
+            map[id].Should().Contain(versionId);
         await _inner.DidNotReceive().GetConsentMapForUsersAsync(
             Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>());
     }
