@@ -86,6 +86,38 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         accountJson.Should().Contain("\"Email\":\"g@example.com\"");
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ContributeForUserAsync_ExportsKnownOrUnknownSubscriptionTimestamp(bool hasSubscribedAt)
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var subscribedAt = hasSubscribedAt ? Clock.GetCurrentInstant() : (NodaTime.Instant?)null;
+        _communicationPreferenceRepository.GetByUserIdReadOnlyAsync(
+                userId, TestContext.Current.CancellationToken)
+            .Returns(Task.FromResult<IReadOnlyList<CommunicationPreference>>([
+                new CommunicationPreference
+                {
+                    UserId = userId,
+                    Category = MessageCategory.Marketing,
+                    SubscribedAt = subscribedAt,
+                    UpdatedAt = Clock.GetCurrentInstant(),
+                    UpdateSource = "Profile",
+                }
+            ]));
+
+        var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        var slice = slices.Single(s => string.Equals(s.SectionName, UserService.CommunicationPreferences, StringComparison.Ordinal));
+        using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(slice.Data));
+        var preference = json.RootElement[0];
+        preference.GetProperty("SubscribedAt").GetString().Should().Be(
+            hasSubscribedAt ? "2026-03-01T12:00:00Z" : null);
+        preference.GetProperty("UpdateSource").GetString().Should().Be("Profile");
+    }
+
     [HumansFact]
     public async Task GetUsersWithLoginsButNoEmailsAsync_ComposesLoginAndUserEmailRepositories()
     {

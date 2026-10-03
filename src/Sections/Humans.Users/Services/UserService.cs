@@ -1056,6 +1056,7 @@ internal sealed class UserService(
             cp.Category,
             cp.OptedOut,
             cp.InboxEnabled,
+            SubscribedAt = cp.SubscribedAt.ToIso8601(),
             UpdatedAt = cp.UpdatedAt.ToIso8601(),
             cp.UpdateSource
         }).ToList());
