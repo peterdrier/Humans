@@ -240,6 +240,11 @@ export async function loadHistory(campSeasonId, canEdit = false) {
     const id = campSeasonId ?? appState.activeCampSeasonId;
     if (!id) return;
     const version = ++historyVersion;
+    // Bootstrap finishes closing asynchronously; let its old cleanup run before reopening.
+    if (historyPanel.classList.contains('hiding')) {
+        await new Promise(resolve => historyPanel.addEventListener('hidden.bs.offcanvas', resolve, { once: true }));
+        if (version !== historyVersion) return;
+    }
 
     if (appState.currentPopup) { appState.currentPopup.remove(); appState.currentPopup = null; }
 

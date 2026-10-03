@@ -6,8 +6,8 @@ const vm = require('node:vm');
 
 function historyPanel() {
     const events = {}, requests = [], previews = [];
-    let shows = 0, deletions = 0;
-    const panel = { addEventListener: (event, callback) => { (events[event] ||= []).push(callback); } };
+    let shows = 0, deletions = 0, hiding = false;
+    const panel = { classList: { contains: name => name === 'hiding' && hiding }, addEventListener: (event, callback) => { (events[event] ||= []).push(callback); } };
     const list = { innerHTML: '', querySelectorAll(selector) {
         if (selector !== '.preview-btn') return [];
         return [...this.innerHTML.matchAll(/data-id="([^"]+)" data-geojson="([^"]+)"/g)].map(match => ({
@@ -32,6 +32,8 @@ function historyPanel() {
     return { list, title, state, previews, requests, shows: () => shows, deletions: () => deletions,
         load: id => context.loadHistory(id),
         finish(index, id) { requests[index].resolveResponse({ ok: true, json: async () => [{ id: id + '-version', geoJson: '{}', modifiedByDisplayName: id, modifiedAt: 'Now', areaSqm: 50, note: id }] }); },
+        beginDismiss() { hiding = true; for (const callback of events['hide.bs.offcanvas'] || []) callback(); },
+        finishDismiss() { hiding = false; for (const callback of events['hidden.bs.offcanvas'] || []) callback(); },
         dismiss() { for (const event of ['hide.bs.offcanvas', 'hidden.bs.offcanvas']) for (const callback of events[event] || []) callback(); },
     };
 }
@@ -92,4 +94,29 @@ test('obsolete success cannot replace the latest failure message', async () => {
     const ui = historyPanel(); const a = ui.load('A'); const b = ui.load('B');
     ui.requests[1].reject(new Error('B failed')); await b; ui.finish(0, 'A'); await a;
     assert.ok(ui.list.innerHTML.includes('Load failed')); assert.equal(ui.shows(), 1);
+});
+
+test('new history waits for the previous close transition before fetching and reopening', async () => {
+    const ui = historyPanel();
+    const first = ui.load('A'); ui.finish(0, 'A'); await first;
+    ui.beginDismiss();
+    const second = ui.load('B');
+    assert.equal(ui.requests.length, 1, 'the closing panel must finish before the next history is rendered');
+    ui.finishDismiss(); await Promise.resolve();
+    assert.equal(ui.requests.length, 2);
+    ui.finish(1, 'B'); await second;
+    assert.ok(ui.list.innerHTML.includes('B-version'));
+    assert.equal(ui.shows(), 2);
+});
+
+test('only the latest history load resumes after a close transition', async () => {
+    const ui = historyPanel();
+    ui.beginDismiss();
+    const older = ui.load('A'), newer = ui.load('B');
+    assert.equal(ui.requests.length, 0);
+    ui.finishDismiss(); await Promise.resolve();
+    assert.equal(ui.requests.length, 1);
+    assert.ok(ui.requests[0].url.endsWith('/B/history'));
+    ui.finish(0, 'B'); await Promise.all([older, newer]);
+    assert.equal(ui.shows(), 1);
 });
