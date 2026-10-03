@@ -158,6 +158,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - Camp leads can only add/edit/delete their camp's containers when container placement is open. City-planning team members and CampAdmin are exempt.
 - CityPlanningSettings row is auto-created per year from `CampSettingsInfo.PublicYear`.
 - SignalR broadcasts polygon updates to all connected clients in real time.
+- Placement-note saves update the submitted container in local map state even if another container is opened while saving. A completed save or error cannot close or alter a newer notes-editing session.
 - The container placement map deliberately has **no SignalR channel and no MapboxDraw control** — placement saves are fire-and-forget per drop (single-user workflow is sufficient at this scale) and containers use a custom drag-to-move / drag-handle-to-rotate interaction. Only the barrio polygon map broadcasts real-time updates via `CityPlanningHub`.
 - Limit zone and official zones are stored as GeoJSON on CityPlanningSettings; out-of-bounds and overlap detection is client-side.
 - GeoJSON is stored in **`text`** columns (`CampPolygon.GeoJson`, `CampPolygonHistory.GeoJson`, `CityPlanningSettings.LimitZoneGeoJson` / `OfficialZonesGeoJson`), deliberately **not `jsonb`** — the app never queries inside the JSON structure; it round-trips whole FeatureCollections to the MapLibre client, so `jsonb`'s parse/index overhead buys nothing. (Contrast sibling Camp columns `Links` / `Vibes` / `OpenSeasons`, which use `jsonb`.)
