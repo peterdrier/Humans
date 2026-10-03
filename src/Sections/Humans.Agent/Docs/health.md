@@ -132,4 +132,4 @@ that enforces each:
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-08-28 | First doctoring: doc drift + narration purge, duplicate view record collapsed | peterdrier/Humans#1553 |
-| section-doctor | 2026-10-03 | Docs health check probes a doc that exists; section-guide reader drops its dead first fetch | pending |
+| section-doctor | 2026-10-03 | Docs health check probes a doc that exists; section-guide reader drops its dead first fetch | peterdrier/Humans#1893 |
