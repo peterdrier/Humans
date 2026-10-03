@@ -1720,9 +1720,9 @@ internal sealed class ExpenseReportService(
                 r.PayeeName,
                 PayeeIban = IbanFormatter.Mask(r.PayeeIban),
                 r.Total,
-                r.SubmittedAt,
-                r.ApprovedAt,
-                r.CreatedAt,
+                SubmittedAt = r.SubmittedAt?.ToIso8601(),
+                ApprovedAt = r.ApprovedAt?.ToIso8601(),
+                CreatedAt = r.CreatedAt.ToIso8601(),
                 Lines = r.Lines.Select(l => new
                 {
                     l.Id,
