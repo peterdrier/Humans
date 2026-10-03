@@ -2347,16 +2347,16 @@ internal sealed class Service(
             // outside the file and the payout row itself.
             new UserDataSlice(SepaPayouts, payouts.Select(p => new
             {
-                p.GeneratedAt,
+                GeneratedAt = p.GeneratedAt.ToIso8601(),
                 p.FileName,
                 p.SupplierAccountNum,
                 p.HoldedContactId,
                 p.CreditorName,
                 Iban = p.IbanMasked,
                 p.Amount,
-                p.BookedAt,
+                BookedAt = p.BookedAt?.ToIso8601(),
                 p.HoldedBankMovementId,
-                p.ReconciledAt,
+                ReconciledAt = p.ReconciledAt?.ToIso8601(),
             })),
         ];
     }

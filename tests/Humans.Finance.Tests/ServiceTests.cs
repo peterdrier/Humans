@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using AwesomeAssertions;
+using AwesomeAssertions.Execution;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Finance;
@@ -1893,7 +1894,9 @@ public class HoldedFinanceServiceTests
         _repo.GetSepaPayoutsForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<SepaPayoutExportRow>
             {
-                new(FixedNow, "nobodies-collective-2026-08-25-0309-4f1a9c02.xml", 40000004, "c1", "Ana Ruiz", "ES79****789", 12.34m, FixedNow, "bm-1", FixedNow),
+                new(FixedNow, "nobodies-collective-2026-08-25-0309-4f1a9c02.xml", 40000004, "c1", "Ana Ruiz", "ES79****789", 12.34m,
+                    FixedNow + Duration.FromHours(1), "bm-1", FixedNow + Duration.FromHours(2)),
+                new(FixedNow, "pending.xml", 40000004, "c1", "Ana Ruiz", "ES79****789", 23.45m, null, null, null),
             });
 
         var slices = await MakeService().ContributeForUserAsync(
@@ -1905,6 +1908,17 @@ public class HoldedFinanceServiceTests
         json.Should().Contain("ES79****789").And.Contain("12.34").And.Contain("BookedAt")
             .And.Contain("c1").And.Contain("bm-1").And.Contain("ReconciledAt")
             .And.NotContain(AnaIban, "the export masks the IBAN even though the payout row keeps it raw");
+        using var document = JsonDocument.Parse(json);
+        document.RootElement.GetArrayLength().Should().Be(2);
+        var booked = document.RootElement[0];
+        var pending = document.RootElement[1];
+        using var scope = new AssertionScope();
+        booked.GetProperty("GeneratedAt").GetRawText().Should().Be("\"2026-05-01T12:00:00Z\"");
+        booked.GetProperty("BookedAt").GetRawText().Should().Be("\"2026-05-01T13:00:00Z\"");
+        booked.GetProperty("ReconciledAt").GetRawText().Should().Be("\"2026-05-01T14:00:00Z\"");
+        pending.GetProperty("GeneratedAt").GetRawText().Should().Be("\"2026-05-01T12:00:00Z\"");
+        pending.GetProperty("BookedAt").ValueKind.Should().Be(JsonValueKind.Null);
+        pending.GetProperty("ReconciledAt").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     [HumansFact]
