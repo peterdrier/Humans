@@ -507,6 +507,8 @@ internal sealed partial class WorkgroupService
         w.EndedAt = now;
         w.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(w, ct);
+        // The end decision committed; complete its record, notices and access changes.
+        ct = CancellationToken.None;
 
         await AddSystemEntryAsync(w, WorkgroupLogKind.Ended, now,
             Trimmed(reasons) ?? reason.ToString(), ct,
