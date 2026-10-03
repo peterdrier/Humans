@@ -369,19 +369,39 @@ internal sealed class Service(
         if (uploads.Count == 0) return [];
 
         var rows = new List<ContainerImage>(uploads.Count);
-        for (var i = 0; i < uploads.Count; i++)
+        try
         {
-            var upload = uploads[i];
-            rows.Add(new ContainerImage
+            for (var i = 0; i < uploads.Count; i++)
             {
-                Id = Guid.NewGuid(),
-                ContainerId = containerId,
-                StoragePath = await SaveImageAsync(containerId, upload, ct),
-                ContentType = upload.ContentType,
-                FileName = DisplayFileName(upload.FileName),
-                SortOrder = firstSortOrder + i,
-                CreatedAt = now,
-            });
+                var upload = uploads[i];
+                rows.Add(new ContainerImage
+                {
+                    Id = Guid.NewGuid(),
+                    ContainerId = containerId,
+                    StoragePath = await SaveImageAsync(containerId, upload, ct),
+                    ContentType = upload.ContentType,
+                    FileName = DisplayFileName(upload.FileName),
+                    SortOrder = firstSortOrder + i,
+                    CreatedAt = now,
+                });
+            }
+        }
+        catch
+        {
+            // No database write has started; only these new files belong to the failed batch.
+            foreach (var row in rows)
+            {
+                try
+                {
+                    await fileStorage.DeleteAsync(row.StoragePath, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to delete staged image file {StoragePath} after container {ContainerId} upload failed",
+                        row.StoragePath, containerId);
+                }
+            }
+            throw;
         }
         return rows;
     }
