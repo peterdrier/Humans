@@ -16,6 +16,8 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
+using NSubstitute.ExceptionExtensions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
@@ -317,6 +319,61 @@ public class CampControllerTests
             expected.ResourceNotFound.Should().BeFalse();
             controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
         }
+    }
+
+    [HumansTheory]
+    [InlineData("Approve", false)]
+    [InlineData("Reject", false)]
+    [InlineData("Remove", false)]
+    [InlineData("Withdraw", false)]
+    [InlineData("Approve", true)]
+    [InlineData("Reject", true)]
+    [InlineData("Remove", true)]
+    [InlineData("Withdraw", true)]
+    public async Task MembershipAction_LogsExpectedRejectionAndPropagatesUnexpectedFailure(string action, bool unexpected)
+    {
+        var actorId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: actorId);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUserInfo(actorId)));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var reason = action is "Withdraw" ? "Camps_Flash_RoleMemberNotFound" : "Camp member record not found.";
+        _campsLocalizer[reason].Returns(new LocalizedString(reason, "Member not found"));
+        Exception failure = unexpected ? new IOException("Storage unavailable") : new InvalidOperationException(reason);
+        switch (action)
+        {
+            case "Approve": _camps.ApproveCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure); break;
+            case "Reject": _camps.RejectCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure); break;
+            case "Remove": _camps.RemoveCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure); break;
+            case "Withdraw": _camps.WithdrawCampMembershipRequestAsync(memberId, actorId).ThrowsAsync(failure); break;
+        }
+        var logger = Substitute.For<ILogger<CampController>>();
+        var controller = BuildController(actorId, logger: logger);
+        Func<Task<IActionResult>> act = action switch
+        {
+            "Approve" => () => controller.ApproveMembership(camp.Slug, memberId),
+            "Reject" => () => controller.RejectMembership(camp.Slug, memberId),
+            "Remove" => () => controller.RemoveMembership(camp.Slug, memberId),
+            "Withdraw" => () => controller.WithdrawMembershipRequest(camp.Slug, memberId),
+            _ => throw new ArgumentOutOfRangeException(nameof(action)),
+        };
+        if (unexpected)
+        {
+            await act.Should().ThrowAsync<IOException>().WithMessage("Storage unavailable");
+            logger.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+        var result = (await act()).Should().BeOfType<RedirectToActionResult>().Subject;
+        result.ActionName.Should().Be(action is "Withdraw" ? "Details" : "Members");
+        result.RouteValues!["slug"].Should().Be(camp.Slug);
+        controller.TempData[TempDataKeys.ErrorMessage].Should().Be(action is "Withdraw" ? "Member not found" : reason);
+        var args = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(LogLevel.Warning);
+        args[3].Should().BeNull();
+        args[2]!.ToString().Should().Contain(memberId.ToString()).And.Contain(reason);
+        args[2]!.ToString().Should().Contain((action is "Withdraw" ? actorId : camp.Id).ToString());
     }
 
     [HumansTheory]
@@ -775,7 +832,7 @@ public class CampControllerTests
     }
 
     private CampController BuildController(Guid? userId = null, IStringLocalizer<CampsResource>? campsLocalizer = null,
-        IStringLocalizer<SharedResource>? sharedLocalizer = null)
+        IStringLocalizer<SharedResource>? sharedLocalizer = null, ILogger<CampController>? logger = null)
     {
         var controller = new CampController(
             _camps,
@@ -786,7 +843,7 @@ public class CampControllerTests
             _users,
             _authorization,
             _clock,
-            NullLogger<CampController>.Instance,
+            logger ?? NullLogger<CampController>.Instance,
             campsLocalizer ?? _campsLocalizer,
             sharedLocalizer ?? _sharedLocalizer);
 

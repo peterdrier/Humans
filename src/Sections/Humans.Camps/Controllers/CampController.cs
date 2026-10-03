@@ -878,7 +878,7 @@ internal sealed class CampController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Withdraw camp membership request failed for member {MemberId} and user {UserId}", campMemberId, user.Id);
+            logger.LogWarning("Withdraw camp membership request failed for member {MemberId} and user {UserId}: {Reason}", campMemberId, user.Id, ex.Message);
             SetError(campsLocalizer[ex.Message].Value);
         }
 
@@ -925,7 +925,7 @@ internal sealed class CampController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Approve camp membership failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
+            logger.LogWarning("Approve camp membership failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -947,7 +947,7 @@ internal sealed class CampController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Reject camp membership failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
+            logger.LogWarning("Reject camp membership failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -969,7 +969,7 @@ internal sealed class CampController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Remove camp member failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
+            logger.LogWarning("Remove camp member failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, ex.Message);
             SetError(ex.Message);
         }
 
