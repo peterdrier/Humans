@@ -22,11 +22,11 @@ internal sealed class ConsentController(
 
     public async Task<IActionResult> Index()
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
-        var (groups, history) = await consentService.GetConsentDashboardAsync(user.Id);
+        var (groups, history) = await consentService.GetConsentDashboardAsync(user.Id, HttpContext.RequestAborted);
 
         var teamGroups = groups
             .Select(g =>
@@ -75,15 +75,15 @@ internal sealed class ConsentController(
     [HttpGet]
     public async Task<IActionResult> Review(Guid id)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
         // Stub profile (no legal name) cannot attest to a consent. Bounce to /Profile/Me/Edit.
-        if (await IsStubProfileAsync(user.Id))
+        if (await IsStubProfileAsync(user.Id, HttpContext.RequestAborted))
             return RedirectToProfileEditForStub();
 
-        var viewModel = await BuildConsentReviewViewModelAsync(id, user.Id);
+        var viewModel = await BuildConsentReviewViewModelAsync(id, user.Id, HttpContext.RequestAborted);
         if (viewModel is null)
             return NotFound();
 
@@ -157,9 +157,9 @@ internal sealed class ConsentController(
     private void SetConsentSubmitSuccessFlash(ConsentSubmitResult result) =>
         SetSuccess(string.Format(localizer["Consent_ThankYou"].Value, result.DocumentName));
 
-    private async Task<bool> IsStubProfileAsync(Guid userId)
+    private async Task<bool> IsStubProfileAsync(Guid userId, CancellationToken ct = default)
     {
-        var info = await _userService.GetUserInfoAsync(userId);
+        var info = await _userService.GetUserInfoAsync(userId, ct);
         return info is not null && info.IsStub;
     }
 
@@ -169,9 +169,9 @@ internal sealed class ConsentController(
         return RedirectToAction("Edit", "Profile");
     }
 
-    private async Task<ConsentDetailViewModel?> BuildConsentReviewViewModelAsync(Guid documentVersionId, Guid userId)
+    private async Task<ConsentDetailViewModel?> BuildConsentReviewViewModelAsync(Guid documentVersionId, Guid userId, CancellationToken ct = default)
     {
-        var detail = await consentService.GetConsentReviewDetailAsync(documentVersionId, userId);
+        var detail = await consentService.GetConsentReviewDetailAsync(documentVersionId, userId, ct);
 
         if (detail is null)
         {

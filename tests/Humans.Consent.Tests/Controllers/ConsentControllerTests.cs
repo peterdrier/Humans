@@ -92,6 +92,53 @@ public sealed class ConsentControllerTests
         profile: profile,
         communicationPreferences: []);
 
+    [HumansTheory]
+    [InlineData("IndexViewer")]
+    [InlineData("IndexDashboard")]
+    [InlineData("ReviewViewer")]
+    [InlineData("ReviewProfile")]
+    [InlineData("ReviewDetail")]
+    public async Task ConsentPages_StopLoadingAfterRequestCancellation(string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var ctrl = BuildSut(userId);
+        _http.RequestAborted = request.Token;
+        var abandon = false;
+        var reads = 0;
+        async ValueTask<UserInfo?> ReadUser(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            reads++;
+            if (abandon && ((reads == 1 && (string.Equals(boundary, "IndexDashboard", StringComparison.Ordinal)
+                    || string.Equals(boundary, "ReviewProfile", StringComparison.Ordinal)))
+                || (reads == 2 && string.Equals(boundary, "ReviewDetail", StringComparison.Ordinal))))
+                await request.CancelAsync();
+            return WrapInUserInfo(userId, ActiveProfile());
+        }
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(call => ReadUser(call.Arg<CancellationToken>()));
+        _consentService.GetConsentDashboardAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ConsentDashboard([], []);
+        });
+        _consentService.GetConsentReviewDetailAsync(Arg.Any<Guid>(), userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (ConsentReviewDetail?)null;
+        });
+        var index = boundary.StartsWith("Index", StringComparison.Ordinal);
+        Func<Task<IActionResult>> load = index ? ctrl.Index : () => ctrl.Review(Guid.NewGuid());
+        if (index) Assert.IsType<ViewResult>(await load());
+        else Assert.IsType<NotFoundResult>(await load());
+        reads = 0;
+        abandon = true;
+        if (boundary.EndsWith("Viewer", StringComparison.Ordinal))
+            await request.CancelAsync();
+        await Assert.ThrowsAsync<OperationCanceledException>(load);
+    }
+
     [HumansFact]
     public async Task Review_Get_StubProfile_RedirectsToProfileEdit()
     {
