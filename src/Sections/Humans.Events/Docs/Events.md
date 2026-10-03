@@ -174,6 +174,8 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 ## Invariants
 
+- Barrio bulk CSV uploads detect comma/semicolon separators from the first non-comment header line through CsvHelper’s quote-aware detector. Separators inside quoted working-column names cannot change the format; comments, reordered/extra columns and physical row numbers retain their existing behavior.
+
 - My Submissions, individual submit/edit forms, Schedule and Browse GETs preserve request cancellation through viewer, guide/burn settings, dropdown, submission, camp, favourite and submitter reads. Shared form helpers keep their default token for POST redisplays; event mutations and permission gates are unchanged.
 
 - Submissions are only accepted when `now >= EventGuideSettings.SubmissionOpenAt && now <= EventGuideSettings.SubmissionCloseAt`; the controller enforces this with `IClock` before creating or resubmitting.
