@@ -46,7 +46,7 @@
         Gdpr      — TicketQueryService is an Article 15 contributor.
     -->
     <ProjectReference Include="..\Humans.Budget\Humans.Budget.csproj" />
-    <ProjectReference Include="..\Humans.Campaigns.Contracts\Humans.Campaigns.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Campaigns\Humans.Campaigns.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />

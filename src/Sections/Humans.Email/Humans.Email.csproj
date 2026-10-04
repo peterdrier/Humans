@@ -34,7 +34,7 @@
       the graph stays acyclic: Humans.Campaigns references Humans.Email.Contracts back, and
       Humans.Email.Contracts names no Campaigns or Settings type.
     -->
-    <ProjectReference Include="..\Humans.Campaigns.Contracts\Humans.Campaigns.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Campaigns\Humans.Campaigns.csproj" />
     <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
   </ItemGroup>
 

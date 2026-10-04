@@ -18,7 +18,6 @@
     <Project Path="src/Sections/Humans.Camps/Humans.Camps.csproj" />
     <Project Path="src/Sections/Humans.Camps.Contracts/Humans.Camps.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Campaigns/Humans.Campaigns.csproj" />
-    <Project Path="src/Sections/Humans.Campaigns.Contracts/Humans.Campaigns.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Cantina/Humans.Cantina.csproj" />
     <Project Path="src/Sections/Humans.CityPlanning/Humans.CityPlanning.csproj" />
     <Project Path="src/Sections/Humans.CityPlanning.Contracts/Humans.CityPlanning.Contracts.csproj" />
