@@ -86,6 +86,50 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     // CreateBuildStrikeShiftsAsync
     // ============================================================
 
+    [HumansTheory]
+    [Xunit.InlineData(true, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(false, false)]
+    public async Task RotaWriteFailure_EvictsTheCommittedRota(bool create, bool failureAfterRotaSave)
+    {
+        var (settings, existing) = SeedRotaScenario(RotaPeriod.Event);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var rota = create ? new Rota
+        {
+            Id = Guid.NewGuid(), EventSettingsId = settings.Id, TeamId = existing.TeamId,
+            Name = "New rota", CreatedAt = TestNow, UpdatedAt = TestNow,
+        } : existing;
+        rota.Name = "Changed rota";
+        var real = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.GetEventSettingsByIdAsync(settings.Id, Arg.Any<CancellationToken>()).Returns(settings);
+        var failure = new IOException("Persistence acknowledgement failed");
+        repo.SaveRotaAsync(rota, Arg.Any<EntityMutationMode>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await real.SaveRotaAsync(rota, call.Arg<EntityMutationMode>(), call.Arg<CancellationToken>());
+                if (failureAfterRotaSave) throw failure;
+            });
+        repo.SetRotaTagsAsync(rota.Id, Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(failure));
+        string? cachedName = "Old snapshot";
+        var invalidator = Substitute.For<IShiftViewInvalidator>();
+        invalidator.When(x => x.InvalidateRota(rota.Id)).Do(_ => cachedName = null);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var service = new ShiftManagementService(
+            repo, AuditLog, AdminAuthorization, new ServiceLocatorBuilder().With(_teamService).Build(),
+            cache, invalidator, NewCalendarResolver(), Clock);
+        Func<Task> mutate = () => create
+            ? service.CreateRotaAsync(rota, [Guid.NewGuid()])
+            : service.UpdateRotaAsync(rota, [Guid.NewGuid()]);
+
+        (await mutate.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        cachedName ??= (await real.GetRotaAsync(
+            rota.Id, RotaReadShape.None, Xunit.TestContext.Current.CancellationToken))!.Name;
+        cachedName.Should().Be("Changed rota");
+    }
+
     [HumansFact]
     public async Task DeleteEventAsync_EvictsDashboardCaches()
     {
