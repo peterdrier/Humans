@@ -1143,7 +1143,7 @@ public class ServiceTests
         var act = () => _service.CreateStripeCheckoutSessionAsync(order, 20m, "https://humans.test/order", TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("A payment on this order is pending settlement*");
+            .WithMessage("Payment is disabled while a payment is pending settlement.");
         await _stripeService.DidNotReceive().CreateCheckoutSessionAsync(
             Arg.Any<Guid>(),
             Arg.Any<decimal>(),
@@ -1154,16 +1154,23 @@ public class ServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task CreateStripeCheckoutSessionAsync_rejects_amount_above_balance()
+    [HumansTheory]
+    [InlineData("en", "Payment amount cannot exceed the outstanding balance (EUR 10.00).")]
+    [InlineData("es", "El importe del pago no puede superar el saldo pendiente (EUR 10,00).")]
+    [InlineData("de", "Der Zahlungsbetrag darf den offenen Saldo nicht überschreiten (EUR 10,00).")]
+    [InlineData("it", "L’importo del pagamento non può superare il saldo residuo (EUR 10,00).")]
+    [InlineData("fr", "Le montant du paiement ne peut pas dépasser le solde dû (EUR 10,00).")]
+    [InlineData("ca", "L’import del pagament no pot superar el saldo pendent (EUR 10,00).")]
+    public async Task CreateStripeCheckoutSessionAsync_rejects_amount_above_balance_in_each_culture(string culture, string message)
     {
+        using var scope = new CultureScope(culture);
         var order = MakeOrderDto(balanceEur: 10m);
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
 
         var act = () => _service.CreateStripeCheckoutSessionAsync(order, 10.01m, "https://humans.test/order", TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Payment amount cannot exceed the outstanding balance*");
+            .WithMessage(message);
         await _stripeService.DidNotReceive().CreateCheckoutSessionAsync(
             Arg.Any<Guid>(),
             Arg.Any<decimal>(),
@@ -1183,7 +1190,7 @@ public class ServiceTests
         var act = () => _service.CreateStripeCheckoutSessionAsync(order, 5m, "https://humans.test/order", TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Stripe is not configured*");
+            .WithMessage("Stripe checkout is not configured for this environment.");
     }
 
     [HumansFact]

@@ -205,6 +205,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 ## Invariants
 
 - Member-facing order pages localize their breadcrumb navigation label in all six supported cultures.
+- Member checkout refusals use six-culture Store messages for configuration, pending payments, positive amounts and outstanding balance. Balance amounts follow the UI culture; rejection guards and the Stripe write boundary are unchanged.
 - Member line-add/remove validation errors use Store resources in all six cultures. Quantity results show the translated rule without an exception parameter-name suffix; rejection conditions and authorization remain unchanged.
 - Expected camp-order creation refusals (including a repeat submission when an order already exists) return the authorized caller to the index with a six-culture error notice. They do not create another order or an audit entry; non-leads remain denied before creation.
 

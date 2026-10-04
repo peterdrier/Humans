@@ -117,4 +117,6 @@
   <data name="Store_Error_RemoveLineIssued" xml:space="preserve"><value>No se pueden eliminar líneas de un pedido facturado</value></data>
   <data name="Store_Error_CampSeasonNotFound" xml:space="preserve"><value>Temporada del barrio {0} no encontrada.</value></data>
   <data name="Store_Error_CampOrderExists" xml:space="preserve"><value>La temporada del barrio {0} ya tiene un pedido en Store.</value></data>
+  <data name="Store_Error_PaymentPositive" xml:space="preserve"><value>El importe del pago debe ser mayor que cero.</value></data>
+  <data name="Store_Error_PaymentExceedsBalance" xml:space="preserve"><value>El importe del pago no puede superar el saldo pendiente (EUR {0:0.00}).</value></data>
 </root>

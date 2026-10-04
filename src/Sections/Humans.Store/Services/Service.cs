@@ -700,16 +700,16 @@ internal sealed class Service(
             throw new InvalidOperationException("Team orders are non-billable.");
 
         if (!stripeService.IsStoreCheckoutConfigured)
-            throw new InvalidOperationException("Stripe is not configured for this environment. Contact an admin.");
+            throw new InvalidOperationException(ErrorMessage("Store_StripeNotConfigured"));
 
         if (amountEur <= 0)
-            throw new InvalidOperationException("Payment amount must be greater than zero.");
+            throw new InvalidOperationException(ErrorMessage("Store_Error_PaymentPositive"));
 
         if (amountEur > order.BalanceEur)
-            throw new InvalidOperationException($"Payment amount cannot exceed the outstanding balance (EUR {order.BalanceEur:0.00}).");
+            throw new InvalidOperationException(ErrorMessage("Store_Error_PaymentExceedsBalance", order.BalanceEur));
 
         if (order.Payments.Any(p => p.Status == PaymentStatus.Pending))
-            throw new InvalidOperationException("A payment on this order is pending settlement. Wait for it to clear or fail before paying again.");
+            throw new InvalidOperationException(ErrorMessage("Store_PaymentDisabledPending"));
 
         var description = $"Nobodies Collective - {order.CounterpartyName ?? "Camp order"}";
 

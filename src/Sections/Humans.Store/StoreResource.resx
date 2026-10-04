@@ -154,4 +154,6 @@
   <data name="Store_Error_RemoveLineIssued" xml:space="preserve"><value>Cannot remove lines from an issued order</value></data>
   <data name="Store_Error_CampSeasonNotFound" xml:space="preserve"><value>Camp season {0} not found.</value></data>
   <data name="Store_Error_CampOrderExists" xml:space="preserve"><value>Camp season {0} already has a Store order.</value></data>
+  <data name="Store_Error_PaymentPositive" xml:space="preserve"><value>Payment amount must be greater than zero.</value></data>
+  <data name="Store_Error_PaymentExceedsBalance" xml:space="preserve"><value>Payment amount cannot exceed the outstanding balance (EUR {0:0.00}).</value></data>
 </root>
