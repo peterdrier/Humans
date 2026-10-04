@@ -37,7 +37,7 @@ In-app issue tracker (bugs, features, questions) with screenshots, role-routed t
 | Description | string | Issue body (max 5000) |
 | PageUrl | string? | URL captured by the floating widget (max 2000); null for `/Issues/New` and API submissions |
 | UserAgent | string? | Browser user agent (max 1000) |
-| AdditionalContext | string? | Extra context captured at submission (e.g., reporter's roles) (max 2000) |
+| AdditionalContext | string? | Extra context captured at submission (e.g., reporter's roles) (max 2000 UTF-16 units; truncation preserves surrogate pairs) |
 | ScreenshotFileName | string? | Original filename (max 256) |
 | ScreenshotStoragePath | string? | Relative path under `wwwroot/uploads/issues/{issueId}/` (max 512) |
 | ScreenshotContentType | string? | MIME type (`image/jpeg`, `image/png`, `image/webp`) (max 64) |

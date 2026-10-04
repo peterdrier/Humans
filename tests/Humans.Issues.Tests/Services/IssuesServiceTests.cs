@@ -439,6 +439,23 @@ public sealed class IssuesServiceTests
     // PostCommentAsync
     // ==========================================================================
 
+    [HumansTheory]
+    [InlineData(1999, "x", 2000)]
+    [InlineData(1999, "😀", 1999)]
+    [InlineData(1998, "😀", 2000)]
+    public async Task SubmitIssueAsync_bounds_context_without_splitting_surrogate_pairs(int prefixLength, string boundary, int expectedLength)
+    {
+        var prefix = new string('x', prefixLength);
+        var issue = await _service.SubmitIssueAsync(
+            Guid.NewGuid(), IssueCategory.Bug, "Title", "Desc",
+            section: null, pageUrl: null, userAgent: null,
+            additionalContext: prefix + boundary + "extra", screenshot: null,
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        issue.AdditionalContext!.Length.Should().Be(expectedLength);
+        issue.AdditionalContext.Should().Be(expectedLength == prefixLength ? prefix : prefix + boundary);
+    }
+
     [HumansFact]
     public async Task PostCommentAsync_reporter_on_terminal_auto_reopens_to_Open()
     {

@@ -381,7 +381,8 @@ internal sealed class VolunteerTrackingService(
         var trimmed = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
         if (trimmed is { Length: > 200 })
         {
-            trimmed = trimmed[..200];
+            var length = char.IsHighSurrogate(trimmed[199]) && char.IsLowSurrogate(trimmed[200]) ? 199 : 200;
+            trimmed = trimmed[..length];
         }
 
         var entry = new DayOffEntry(

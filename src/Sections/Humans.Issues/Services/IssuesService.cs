@@ -205,7 +205,9 @@ internal sealed class IssuesService(
             return null;
 
         var result = string.Join(" | ", parts);
-        return result.Length > 2000 ? result[..2000] : result;
+        if (result.Length <= 2000) return result;
+        var length = char.IsHighSurrogate(result[1999]) && char.IsLowSurrogate(result[2000]) ? 1999 : 2000;
+        return result[..length];
     }
 
     // ─── Reads ───

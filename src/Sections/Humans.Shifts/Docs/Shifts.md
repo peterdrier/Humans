@@ -92,6 +92,7 @@ Per-user per-event build-period coordination state. Drives the Volunteer Trackin
 - `BarrioSetupStartDate` (nullable `LocalDate`) — the day a volunteer left scheduled rotas to join camp set-up. From this day onwards their row renders blue and gap detection stops flagging missing days.
 - `SetByUserId` (nullable `Guid`) and `SetAt` (nullable `Instant`) — audit fields recording who last modified the camp-set-up marker and when, plus optional `Notes` free-text (max 500) from that coordinator. Cleared when the marker is cleared.
 - `DayOffs` (jsonb `List<DayOffEntry>`: `DayOffset`, optional `Reason`, `MarkedByUserId`, `MarkedAt`) — sparse day-off annotations, one entry per day offset (relative to `EventSettings.GateOpeningDate`, all negative for build days) where the coordinator has acknowledged the volunteer is off-site. Day-off days render striped grey on the heatmap and are excluded from gap counts.
+  Reasons are trimmed and capped at 200 UTF-16 units without splitting surrogate pairs; blank reasons remain null.
 
 **Table:** `volunteer_build_statuses`
 
