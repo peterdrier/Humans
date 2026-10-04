@@ -333,18 +333,25 @@ def extract_interface_symbols(ref: str) -> dict[str, dict[str, object]]:
                 if not match:
                     continue
                 current = match.group(1)
-                interfaces.setdefault(current, {"path": path, "methods": set()})
+                interfaces.setdefault(current, {"path": path, "methods": set(), "properties": set()})
                 depth = line.count("{") - line.count("}")
                 continue
 
+            previous_depth = depth
             depth += line.count("{") - line.count("}")
-            if "(" in line or pending_signature:
+            if pending_signature or (previous_depth == 1 and line != "}"):
                 pending_signature.append(line)
-                if ";" in line:
+                if depth == 1 and (line.endswith(";") or line.endswith("}")):
                     signature = normalize_signature(" ".join(pending_signature))
                     pending_signature.clear()
-                    if "(" in signature and ")" in signature:
+                    if line.endswith(";") and "(" in signature and ")" in signature:
                         interfaces[current]["methods"].add(signature)
+                    elif re.search(r"\{\s*(?:get|set|init)\s*;", signature):
+                        # Accessor blocks may span lines; canonical whitespace avoids
+                        # reporting a formatting-only change as new public surface.
+                        signature = re.sub(r"\s*([{};])\s*", r"\1 ", signature).strip()
+                        signature = signature.replace("{", " { ").replace(";", "; ")
+                        interfaces[current]["properties"].add(normalize_signature(signature))
 
             if depth <= 0:
                 current = None
@@ -363,24 +370,30 @@ def interface_delta(base: str, head: str) -> dict[str, object]:
     ]
 
     added_methods: dict[str, list[str]] = {}
+    added_properties: dict[str, list[str]] = {}
     for name in sorted(set(base_interfaces) & set(head_interfaces)):
         base_methods = base_interfaces[name]["methods"]
         head_methods = head_interfaces[name]["methods"]
         added = sorted(head_methods - base_methods)
         if added:
             added_methods[name] = added
+        added = sorted(head_interfaces[name]["properties"] - base_interfaces[name]["properties"])
+        if added:
+            added_properties[name] = added
 
     return {
         "new_interfaces": new_interfaces,
         "added_interface_methods": added_methods,
+        "added_interface_properties": added_properties,
     }
 
 
 def interface_delta_markdown(delta: dict[str, object]) -> str:
     new_interfaces = list(delta.get("new_interfaces", []))
     added_methods = dict(delta.get("added_interface_methods", {}))
-    if not new_interfaces and not added_methods:
-        return "### Interface Surface\n\nNo new interfaces or interface methods."
+    added_properties = dict(delta.get("added_interface_properties", {}))
+    if not new_interfaces and not added_methods and not added_properties:
+        return "### Interface Surface\n\nNo new interfaces or interface members."
 
     sections = ["### Interface Surface"]
     if new_interfaces:
@@ -389,6 +402,10 @@ def interface_delta_markdown(delta: dict[str, object]) -> str:
         sections.extend(["", "**Added interface methods**"])
         for name, methods in added_methods.items():
             sections.extend(["", f"`{md_safe(name)}`", "", bullet_list(list(methods))])
+    if added_properties:
+        sections.extend(["", "**Added interface properties**"])
+        for name, properties in added_properties.items():
+            sections.extend(["", f"`{md_safe(name)}`", "", bullet_list(list(properties))])
     return "\n".join(sections)
 
 
