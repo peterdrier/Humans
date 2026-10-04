@@ -345,4 +345,11 @@
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Inicia la previsualització</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Previsualitza l’agraïment</value></data>
   <data name="Surveys_PublicSlugTooLong" xml:space="preserve"><value>L’identificador de l’enllaç públic no pot superar els {0} caràcters.</value></data>
+  <data name="Surveys_InformationImagesMax" xml:space="preserve"><value>Un bloc informatiu pot contenir com a màxim {0} imatges.</value></data>
+  <data name="Surveys_InformationImageFileRequired" xml:space="preserve"><value>Selecciona un fitxer d’imatge per a cada fila d’imatges. Si un desament anterior ha fallat, torna a seleccionar el fitxer.</value></data>
+  <data name="Surveys_InformationImageEmpty" xml:space="preserve"><value>La imatge seleccionada és buida.</value></data>
+  <data name="Surveys_InformationImageTypeInvalid" xml:space="preserve"><value>Només es permeten imatges JPEG, PNG i WebP.</value></data>
+  <data name="Surveys_InformationImageTooLarge" xml:space="preserve"><value>Cada imatge d’un bloc informatiu ha d’ocupar menys de 10 MB.</value></data>
+  <data name="Surveys_InformationImageExtensionInvalid" xml:space="preserve"><value>Els noms dels fitxers d’imatge han d’acabar en .jpg, .jpeg, .png o .webp.</value></data>
+  <data name="Surveys_InformationImageNameTooLong" xml:space="preserve"><value>El nom del fitxer d’imatge ha de tenir {0} caràcters o menys.</value></data>
 </root>

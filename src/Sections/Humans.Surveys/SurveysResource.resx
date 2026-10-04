@@ -340,4 +340,11 @@
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Start preview</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Preview thank-you</value></data>
   <data name="Surveys_PublicSlugTooLong" xml:space="preserve"><value>The public link slug must be no longer than {0} characters.</value></data>
+  <data name="Surveys_InformationImagesMax" xml:space="preserve"><value>An Information item can have at most {0} images.</value></data>
+  <data name="Surveys_InformationImageFileRequired" xml:space="preserve"><value>Select an image file for every image row. If a previous save failed, select the file again.</value></data>
+  <data name="Surveys_InformationImageEmpty" xml:space="preserve"><value>The selected image is empty.</value></data>
+  <data name="Surveys_InformationImageTypeInvalid" xml:space="preserve"><value>Only JPEG, PNG, and WebP images are allowed.</value></data>
+  <data name="Surveys_InformationImageTooLarge" xml:space="preserve"><value>Each Information image must be under 10 MB.</value></data>
+  <data name="Surveys_InformationImageExtensionInvalid" xml:space="preserve"><value>Image filenames must end in .jpg, .jpeg, .png, or .webp.</value></data>
+  <data name="Surveys_InformationImageNameTooLong" xml:space="preserve"><value>Image filename must be {0} characters or fewer.</value></data>
 </root>

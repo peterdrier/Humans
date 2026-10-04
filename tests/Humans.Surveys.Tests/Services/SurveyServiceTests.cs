@@ -239,9 +239,16 @@ public class SurveyServiceTests
             image.StoragePath, content, Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task CreateAsync_rejects_an_information_image_filename_over_256_characters()
+    [HumansTheory]
+    [InlineData("en", "Image filename must be 256 characters or fewer.")]
+    [InlineData("es", "El nombre del archivo de imagen debe tener 256 caracteres o menos.")]
+    [InlineData("de", "Der Bilddateiname darf höchstens 256 Zeichen lang sein.")]
+    [InlineData("it", "Il nome del file immagine deve contenere al massimo 256 caratteri.")]
+    [InlineData("fr", "Le nom du fichier image ne doit pas dépasser 256 caractères.")]
+    [InlineData("ca", "El nom del fitxer d’imatge ha de tenir 256 caràcters o menys.")]
+    public async Task CreateAsync_rejects_an_information_image_filename_over_256_characters(string culture, string expectedMessage)
     {
+        using var cultureScope = new Humans.Base.Extensions.CultureScope(culture);
         await using var content = new MemoryStream([1, 2, 3]);
         var information = new QuestionInput(
             Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
@@ -258,7 +265,7 @@ public class SurveyServiceTests
             Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*256 characters or fewer*");
+            .WithMessage(expectedMessage);
         await _fileStorage.DidNotReceive().SaveAsync(
             Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }

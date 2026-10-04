@@ -2509,7 +2509,7 @@ internal sealed class SurveyService(
                 if (requestedImages.Count > MaxInformationImages)
                 {
                     throw new InvalidOperationException(
-                        $"An Information item can have at most {MaxInformationImages} images.");
+                        ErrorMessage("Surveys_InformationImagesMax", MaxInformationImages));
                 }
 
                 var preparedImages = new List<InformationImageInput>(requestedImages.Count);
@@ -2550,8 +2550,7 @@ internal sealed class SurveyService(
                     }
 
                     throw new InvalidOperationException(
-                        "Select an image file for every image row. " +
-                        "If a previous save failed, select the file again.");
+                        ErrorMessage("Surveys_InformationImageFileRequired"));
                 }
 
                 preparedQuestions.Add(question with
@@ -2585,25 +2584,25 @@ internal sealed class SurveyService(
         var fileName = DisplayFileName(upload.FileName);
         if (upload.Length <= 0)
         {
-            throw new InvalidOperationException("The selected image is empty.");
+            throw new InvalidOperationException(ErrorMessage("Surveys_InformationImageEmpty"));
         }
         if (!AllowedInformationImageContentTypes.Contains(upload.ContentType))
         {
-            throw new InvalidOperationException("Only JPEG, PNG, and WebP images are allowed.");
+            throw new InvalidOperationException(ErrorMessage("Surveys_InformationImageTypeInvalid"));
         }
         if (upload.Length > MaxInformationImageBytes)
         {
-            throw new InvalidOperationException("Each Information image must be under 10 MB.");
+            throw new InvalidOperationException(ErrorMessage("Surveys_InformationImageTooLarge"));
         }
         if (!AllowedInformationImageExtensions.Contains(Path.GetExtension(fileName)))
         {
             throw new InvalidOperationException(
-                "Image filenames must end in .jpg, .jpeg, .png, or .webp.");
+                ErrorMessage("Surveys_InformationImageExtensionInvalid"));
         }
         if (fileName.Length > MaxInformationImageFileNameLength)
         {
             throw new InvalidOperationException(
-                $"Image filename must be {MaxInformationImageFileNameLength} characters or fewer.");
+                ErrorMessage("Surveys_InformationImageNameTooLong", MaxInformationImageFileNameLength));
         }
 
         return fileName;
@@ -2950,6 +2949,10 @@ internal sealed class SurveyService(
     private static readonly IReadOnlySet<string> ReservedSlugs =
         new HashSet<string>(StringComparer.Ordinal) { "admin", "answer" };
 
+    private static string ErrorMessage(string resourceKey, params object[] arguments) =>
+        string.Format(CultureInfo.CurrentUICulture,
+            ErrorResources.GetString(resourceKey, CultureInfo.CurrentUICulture)!, arguments);
+
     /// <summary>Trims/lower-cases the slug (null when blank) and rejects reserved words.</summary>
     private static string? NormalizeSlug(string? slug)
     {
@@ -2958,10 +2961,7 @@ internal sealed class SurveyService(
         // PostgreSQL's varchar limit counts characters, not UTF-16 code units.
         if (normalized.EnumerateRunes().Count() > PublicSlugMaxLength)
         {
-            throw new InvalidOperationException(string.Format(
-                CultureInfo.CurrentUICulture,
-                ErrorResources.GetString("Surveys_PublicSlugTooLong", CultureInfo.CurrentUICulture)!,
-                PublicSlugMaxLength));
+            throw new InvalidOperationException(ErrorMessage("Surveys_PublicSlugTooLong", PublicSlugMaxLength));
         }
         if (ReservedSlugs.Contains(normalized))
         {

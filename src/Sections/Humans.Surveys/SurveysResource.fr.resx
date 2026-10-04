@@ -345,4 +345,11 @@
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Commencer l’aperçu</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Aperçu du remerciement</value></data>
   <data name="Surveys_PublicSlugTooLong" xml:space="preserve"><value>L’identifiant du lien public ne peut pas dépasser {0} caractères.</value></data>
+  <data name="Surveys_InformationImagesMax" xml:space="preserve"><value>Un bloc d’information peut contenir au maximum {0} images.</value></data>
+  <data name="Surveys_InformationImageFileRequired" xml:space="preserve"><value>Sélectionnez un fichier image pour chaque ligne d’images. Si un enregistrement précédent a échoué, sélectionnez à nouveau le fichier.</value></data>
+  <data name="Surveys_InformationImageEmpty" xml:space="preserve"><value>L’image sélectionnée est vide.</value></data>
+  <data name="Surveys_InformationImageTypeInvalid" xml:space="preserve"><value>Seules les images JPEG, PNG et WebP sont autorisées.</value></data>
+  <data name="Surveys_InformationImageTooLarge" xml:space="preserve"><value>Chaque image d’un bloc d’information doit faire moins de 10 Mo.</value></data>
+  <data name="Surveys_InformationImageExtensionInvalid" xml:space="preserve"><value>Les noms des fichiers image doivent se terminer par .jpg, .jpeg, .png ou .webp.</value></data>
+  <data name="Surveys_InformationImageNameTooLong" xml:space="preserve"><value>Le nom du fichier image ne doit pas dépasser {0} caractères.</value></data>
 </root>
