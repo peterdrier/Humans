@@ -5,7 +5,8 @@ description: Nightly debt work uses Sol with optional Luna helpers, batches simp
 
 Work actively for the full configured window, then finish the current task
 before completing the goal. One PR contains multiple independently validated
-fixes. Time is the only target: never give this worker a fix-count quota.
+fixes. Time is the only stopping rule: never give this worker a fix-count quota.
+The target is the ledger, which must end smaller ([[debt-ledger-must-shrink]]).
 
 **Why:** The first trial stopped after 89 seconds and only deleted a stale
 ledger row. Successful pipeline plumbing was mistaken for useful debt work.
@@ -15,8 +16,8 @@ Preserve its objective, deadline, and dangerous permissions if the harness
 must continue it. An early completion must reactivate the same goal after the
 current turn finishes, then continue with the actual clock and original deadline;
 it must not fail the run or publish early. Do not kill the task
-at the work deadline or reserve early wind-down time. Ledger cleanup and
-documentation do not count as substantive fixes; a ledger-only run cannot
+at the work deadline or reserve early wind-down time. Stale-row deletion and
+documentation do not count as substantive fixes (fixing a row's code does); a ledger-only run cannot
 publish a debt PR. Report real fixes, validation, elapsed time, and skipped
 candidates. Counts describe the result; they never determine when to stop.
 

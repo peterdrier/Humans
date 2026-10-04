@@ -5,7 +5,7 @@ description: Tech debt spotted mid-task goes in a ledger (section's `Docs/debt.y
 
 # Debt found mid-task goes in a debt ledger
 
-**Rule:** When you spot tech debt you are not going to fix in the current task, record it in a ledger so `/debt-sweep` picks it up — don't let it evaporate in a chat transcript, a run file, or a PR comment, and don't derail the current task to chase it.
+**Rule:** When you spot tech debt you are not going to fix in the current task, record it in a ledger so `/debt-sweep` picks it up (debt runs themselves add rows sparingly — [[debt-ledger-must-shrink]]) — don't let it evaporate in a chat transcript, a run file, or a PR comment, and don't derail the current task to chase it.
 
 **Exception:** pre-existing hand-maintained/derived counts in docs are never ledgered — the count in place is its own complete debt record ([`no-derived-aggregates-in-docs`](no-derived-aggregates-in-docs.md)).
 

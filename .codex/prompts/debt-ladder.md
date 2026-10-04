@@ -1,6 +1,9 @@
 # Nightly Debt Ladder
 
-A standing, top-down list of **work types**, not a nightly checklist. Make a
+A standing, top-down list of **work types**, not a nightly checklist. Open
+ledger rows come first: the rungs order and explain the work on them, and
+their Finds commands look for new debt only once no ledger row is actionable.
+The ledger must end every run smaller than it started (`daily-debt.md`). Make a
 brief rung-1 hygiene pass, then work substantive rungs top-down. After every
 fix, continue with another safe candidate until the work window elapses;
 then finish the current task. One run produces one PR containing all fixes.
@@ -24,7 +27,8 @@ the ids it closed.
 **Seed lists below are dated 2026-09-20** (from a full-corpus audit). Verify
 each is still true before touching it — code moves fast and a seed item that's
 already fixed is rung-1 work (close it), not rung-N work. Once a rung's seed
-list is exhausted, fall back to its **Finds** command for anything filed since.
+list is exhausted, work the open ledger rows that rung covers, then its
+**Finds** command for anything not yet in a ledger.
 
 ---
 

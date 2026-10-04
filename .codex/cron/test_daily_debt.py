@@ -24,6 +24,9 @@ class DailyDebtTests(unittest.TestCase):
         seed.mkdir()
         (seed / ".github").mkdir()
         (seed / ".github/pull_request_template.md").write_text("UNFILLED TEMPLATE\n- [ ] placeholder\n")
+        (seed / "docs/architecture").mkdir(parents=True)
+        (seed / "docs/architecture/debt-ledger.yml").write_text(
+            "inbox:\n  - id: CENTRAL-1\n  - id: CENTRAL-2\nthemes:\n  - id: some-theme\n")
         shutil.copytree(SOURCE / "cron", seed / ".codex/cron")
         shutil.copytree(SOURCE / "prompts", seed / ".codex/prompts")
         self.git(seed, "init", "-b", "main")
@@ -101,6 +104,10 @@ def commit(turn):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(str(turn))
     subprocess.run(["git", "add", str(path)], check=True, stdout=sys.stderr)
+    if turn == 1 and scenario not in ("ledger", "ledger-grows"):
+        ledger = pathlib.Path("docs/architecture/debt-ledger.yml")
+        ledger.write_text(ledger.read_text().replace("  - id: CENTRAL-2\\n", ""))
+        subprocess.run(["git", "add", str(ledger)], check=True, stdout=sys.stderr)
     subprocess.run(["git", "commit", "-qm", "Fix " + str(turn)], check=True, stdout=sys.stderr)
     if scenario == "dirty":
         path.write_text("unfinished")
@@ -122,7 +129,7 @@ for line in sys.stdin:
     elif method == "thread/goal/set":
         assert "tokenBudget" not in params
         assert ("cap, not a target" in params["objective"]) == (thread == "fixture-repair")
-        assert ("ONLY target" in params["objective"]) == (thread != "fixture-repair")
+        assert ("ONLY stopping rule" in params["objective"]) == (thread != "fixture-repair")
         if objective is None:
             objective = params["objective"]
         else:
@@ -164,7 +171,7 @@ for line in sys.stdin:
             continue
         assert "__WORK_" not in prompt
         assert "get_goal" in prompt
-        assert "Time is the only target" in prompt
+        assert "time is the only stopping rule" in prompt
         result = {}
     else:
         raise AssertionError(method)
@@ -234,6 +241,9 @@ for line in sys.stdin:
         body = (self.root / "pr-body").read_text()
         self.assertIn("Cumulative fixes: 2", body)
         self.assertIn("Runner validation:", body)
+        self.assertIn("Open rows: 2 → 1 (net -1).", body)
+        self.assertNotIn("did not shrink", body)
+        self.assertNotIn("--draft", published[0])
         self.assertIn("Goal time: 90s; actual worker time: 1m 31s; total run through validation: 1m 31s.", body)
         self.assertNotIn("UNFILLED TEMPLATE", body)
         self.assertNotIn("- [ ]", body)
@@ -306,6 +316,15 @@ for line in sys.stdin:
                 self.assertEqual(len(ids), len(set(ids)))
                 self.assertIn("Cumulative fixes: 3", (self.root / "pr-body").read_text())
                 self.assertEqual(len(self.git(self.clone, "log", "--oneline", "origin/main..HEAD").splitlines()), 3)
+
+    def test_ledger_that_did_not_shrink_publishes_failed_draft(self):
+        result, _, published = self.run_scenario("ledger-grows")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(published), 1)
+        self.assertIn("--draft", published[0])
+        body = (self.root / "pr-body").read_text()
+        self.assertIn("Open rows: 2 → 2 (net +0).", body)
+        self.assertIn("**Failed: the debt ledger did not shrink.**", body)
 
     def test_ledger_only_does_not_publish_or_run_dotnet(self):
         result, calls, published = self.run_scenario("ledger")

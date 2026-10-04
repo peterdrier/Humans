@@ -62,6 +62,18 @@ Gemini; both repos) at round 1. A finding on a commit you are reverting is resol
 `REVERTED — <sha> reverted in <new sha>`, no other triage. A finding that points at the
 same defect as a REPAIR verdict is fixed by that repair. Print the /fix triage table.
 
+**The ledger must shrink.** The runner prints `Open rows: <before> → <after>` under
+`## Ledger` and drafts the PR when the count did not fall. Rows the PR adds count against
+it: each added row needs a reason it could not be fixed tonight, or its commit is a REPAIR
+(fix it) or the row is removed. A ledger row that only reworded or moved debt is not a close.
+
+**Elevate Needs-Peter rows.** A row that truly cannot be fixed autonomously (approval,
+new public surface, policy) leaves the ledger for a GitHub issue: take the report's
+**Needs Peter** list in order, search for an existing issue first (cite it instead of
+filing), file the rest, and delete each elevated row in the round-1 commit with the issue
+in the commit message. **At most three new issues per review, follow-ups below included** —
+everything past the cap stays in the ledger for a later night. Never bulk-file.
+
 Follow-up issues (the /fix §5 criteria: real, P2+, not already tracked, out of this
 PR's scope) — plus any debt a REVERT verdict leaves unfixed that is worth doing properly —
 go on `peterdrier/Humans` ([`issue-home-routing`](../../../memory/process/issue-home-routing.md);
@@ -97,7 +109,8 @@ One PR comment, starting `## Debt review`:
 
 - the commit verdict table (all commits, one row each)
 - the /fix triage table
-- issues filed, owner-qualified
+- issues filed, owner-qualified, and the rows they replaced
+- the ledger line: open rows before → after this review
 - `Rounds spent: 1 of 3` and the pushed sha
 - a one-line recommendation: **merge**, **merge after steward rounds**, or **close**
   (more than half the substantive commits reverted)

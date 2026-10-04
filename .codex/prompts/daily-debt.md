@@ -32,16 +32,30 @@ what is already underway, then call `update_goal` with `complete`. There is
 no early wind-down allowance. Finishing the current task may extend the run;
 the wrapper's final build/test and publication happen afterward.
 
-**Time is the only target.** There is no fix-count quota, minimum, or maximum.
-Keep completing substantive fixes throughout the work window, however many
-that produces. Report the actual count afterward; never use it to decide
-when to stop. Ledger cleanup, stale-row deletion, documentation, and splitting
-one fix across commits are not substantive fixes. Neither is test-only work.
-Do not manufacture work, weaken validation, or make cosmetic edits to inflate the report.
+**The ledger is the target; time is the only stopping rule.** The debt
+ledgers — `inbox:` in `docs/architecture/debt-ledger.yml` plus `inbox:` in every
+`src/Sections/*/Docs/debt.yml` — are a holding bucket, not an archive. **Every
+run must end with fewer open rows than it started with; a run whose ledger did
+not shrink has failed**, however much else it fixed. Count open rows at the
+start (`git grep -hE '^\s+(- )?id: [A-Z][A-Z0-9]*-[0-9]+\s*$' HEAD -- docs/architecture/debt-ledger.yml 'src/Sections/*/Docs/debt.yml' | wc -l`);
+the wrapper counts again at the end and publishes a run that did not shrink
+the ledger as a draft marked failed.
 
-Do not sleep to consume the window. If a candidate needs approval, record
-why and continue down the ladder. If the seeded candidates drain, run the
-Finds commands and investigate other safe debt. A genuine external blocker
+Fixing the code a ledger row describes and deleting that row is a
+substantive fix — the most valuable kind. Deleting a row whose defect the code
+already fixed shrinks the ledger but is hygiene, not a fix. Documentation,
+test-only work and splitting one fix across commits are not substantive fixes.
+There is no fix-count quota; never use a count to decide when to stop. Do not
+manufacture work, weaken validation, or make cosmetic edits to inflate the report.
+
+Do not sleep to consume the window. If a ledger row truly cannot be fixed
+autonomously — it needs Peter's approval, new public surface or a policy
+decision — leave it, list its id under **Needs Peter** in the report with the
+one decision that would unblock it, and take the next row. The morning debt
+review elevates the most important of these to GitHub issues (at most three a
+night) and removes their rows, so order the list most important first. Only when
+no ledger row is actionable tonight, run the Finds commands for new debt.
+A genuine external blocker
 that prevents all progress is a failed/incomplete run, never successful
 early completion; report it honestly.
 
@@ -129,9 +143,17 @@ These come straight from this repo's own rules
 
 ## Production-code priorities
 
-Fix production defects, simplify existing production code, remove duplication
-or dead production paths, and repair executable tooling. Prioritize the
-underlying code problem, not the easiest ledger row to close.
+Close existing ledger rows before hunting new debt. Fix each row's underlying
+code problem properly — never close a row by rewording it, narrowing it to
+nothing, or moving it to another ledger. Beyond the ledger: fix production
+defects, simplify existing production code, remove duplication or dead
+production paths, and repair executable tooling.
+
+**Adding a row is a cost against the run's goal.** Fix what you find when it is
+safe to. Add a row only for a real defect you cannot fix unattended, and only
+when the run's closures already outnumber its additions — the net must stay
+negative. Do not record approval-blocked ideas, design preferences or "looked
+at it" notes as rows; put them under **Needs Peter** in the report instead.
 
 Tests support a production-code fix; they are never the objective of this
 sweep. Do not select missing coverage, controller-policy pins, test scaffolding,
@@ -236,21 +258,28 @@ down it.
 
 **Protocol:**
 
-1. Make a brief rung-1 hygiene pass (at most 15% of the work window), then
+1. Count the open ledger rows (command above) and note the number.
+2. Make a brief rung-1 hygiene pass (at most 15% of the work window), then
    descend to substantive work regardless of remaining stale rows. Hygiene
-   never counts as a fix and never ends a run.
-2. Work top-down through substantive rungs. Validate and commit each fix
-   or simple batch, then take another safe candidate. When a rung has no safe
-   work, record why and descend. One available item is not a reason to stop for the night.
-3. A rung's **Done-check** is the local validation gate. Run it once per
+   shrinks the ledger but never counts as a fix and never ends a run.
+3. Work the open ledger rows: oldest `added:` first, using the rungs' order
+   and mechanics when several are workable. Validate and commit each fix or
+   simple batch, delete the closed rows in the same commit, then take another.
+   Skip a row only when it needs approval or a decision (list it under
+   **Needs Peter**) or cannot be fixed safely unattended (say why).
+4. Only when no ledger row is actionable, work the rungs' Finds commands for
+   new debt. One available item is not a reason to stop for the night.
+5. A rung's **Done-check** is the local validation gate. Run it once per
    completed batch or individual fix before committing, then continue. The
    wrapper runs the final full gate once before publishing the single PR.
-4. Apply the timed goal's stopping conditions during batch discovery and
+6. Apply the timed goal's stopping conditions during batch discovery and
    after every commit. If no seeded items remain, investigate the Finds results; do not repeatedly recheck
    unchanged ledger rows or idle until the deadline.
 
 **Final report:** Once the native goal is complete, write cumulative Markdown
-for the ONE PR, listing each substantive fix, its ledger id (or file/symbol),
+for the ONE PR. Lead with the ledger: open rows at start → end, the ids
+closed, the ids added (each with why it could not be fixed tonight), and the
+**Needs Peter** list. Then list each substantive fix, its ledger id (or file/symbol),
 validation, and commit. Explain what changed in production code and why;
 do not present coverage additions as debt fixes. List hygiene separately,
 excluded from the substantive fix count. Include total work time, the actual substantive fix count
