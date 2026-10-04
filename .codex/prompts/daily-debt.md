@@ -52,8 +52,8 @@ Do not sleep to consume the window. If a ledger row truly cannot be fixed
 autonomously — it needs Peter's approval, new public surface or a policy
 decision — leave it, list its id under **Needs Peter** in the report with the
 one decision that would unblock it, and take the next row. The morning debt
-review elevates the most important of these to GitHub issues (at most three a
-night) and removes their rows, so order the list most important first. Only when
+review re-checks each one, fixes what it can, and elevates the rest to GitHub
+issues (at most three a night), so order the list most important first. Only when
 no ledger row is actionable tonight, run the Finds commands for new debt.
 A genuine external blocker
 that prevents all progress is a failed/incomplete run, never successful

@@ -67,11 +67,16 @@ same defect as a REPAIR verdict is fixed by that repair. Print the /fix triage t
 it: each added row needs a reason it could not be fixed tonight, or its commit is a REPAIR
 (fix it) or the row is removed. A ledger row that only reworded or moved debt is not a close.
 
-**Elevate Needs-Peter rows.** A row that truly cannot be fixed autonomously (approval,
-new public surface, policy) leaves the ledger for a GitHub issue: take the report's
-**Needs Peter** list in order, search for an existing issue first (cite it instead of
-filing), file the rest, and delete each elevated row in the round-1 commit with the issue
-in the commit message. **At most three new issues per review, follow-ups below included** —
+**Re-check Needs-Peter rows, then elevate.** Codex's **Needs Peter** list is a claim, not
+a verdict — something Codex couldn't fix may be fixable here. Take the list in order and
+verify each row against the code. Elevate it only when it truly needs Peter's decision
+(approval, new public surface, policy), never because the fix looked hard:
+
+- **Fixable without a decision** → fix it in the round-1 commit and delete the row.
+- **Stale** (already fixed) → delete the row.
+- **Truly needs Peter** → search for an existing issue first (cite it instead of filing),
+  file the rest, and delete each elevated row in the round-1 commit with the issue in the
+  commit message. **At most three new issues per review, follow-ups below included** —
 everything past the cap stays in the ledger for a later night. Never bulk-file.
 
 Follow-up issues (the /fix §5 criteria: real, P2+, not already tracked, out of this
