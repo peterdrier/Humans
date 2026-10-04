@@ -24,7 +24,6 @@
     <Project Path="src/Sections/Humans.Consent/Humans.Consent.csproj" />
     <Project Path="src/Sections/Humans.Onboarding/Humans.Onboarding.csproj" />
     <Project Path="src/Sections/Humans.Onboarding.Contracts/Humans.Onboarding.Contracts.csproj" />
-    <Project Path="src/Sections/Humans.Consent.Contracts/Humans.Consent.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Debug/Humans.Debug.csproj" />
     <Project Path="src/Sections/Humans.Development/Humans.Development.csproj" />
     <Project Path="src/Sections/Humans.Email/Humans.Email.csproj" />

@@ -94,7 +94,7 @@
          section in G5 lane 4b-2h (nobodies-collective/Humans#866). AuditLog reaches back only
          to Humans.Users.Contracts, never to this project — no cycle. -->
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <!--

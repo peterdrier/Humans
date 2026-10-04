@@ -16,7 +16,7 @@
     <ProjectReference Include="..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Sections\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\Sections\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
@@ -39,7 +39,6 @@
     <ProjectReference Include="..\Sections\Humans.Cantina\Humans.Cantina.csproj" />
     <ProjectReference Include="..\Sections\Humans.CityPlanning\Humans.CityPlanning.csproj" />
     <ProjectReference Include="..\Sections\Humans.Containers\Humans.Containers.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Sections\Humans.Debug\Humans.Debug.csproj" />
     <ProjectReference Include="..\Sections\Humans.Development\Humans.Development.csproj" />
     <ProjectReference Include="..\Sections\Humans.Email\Humans.Email.csproj" />
