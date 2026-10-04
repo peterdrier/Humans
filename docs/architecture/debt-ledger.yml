@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 70
+next_id: 71
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -513,4 +513,8 @@ inbox:
   - added: 2026-09-23
     id: CENTRAL-67
     what: "The erasure-coverage and DI-coverage tests find contributors by reflecting over IUserDataContributor implementers, so a new user-scoped section whose service never implements the contract leaves nothing to enumerate and both suites pass. The only guardrail is prose in docs/architecture/design-rules.md. nobodies-collective/Humans#1116 described exactly this and asked for an independent inventory (reflection over entities carrying a user foreign key), but it was closed when the section-name registry was removed, which fixed a different problem, and the gap is now tracked nowhere open. The fix is a cross-section test beside the existing coverage tests in tests/Humans.Web.Tests/Services/Gdpr/, plus a per-section export/erasure decision for whatever it surfaces (Calendar's CreatedByUserId is nobodies-collective/Humans#1199). Found by /section-doctor on Gdpr 2026-09-23."
+    review: panel
+  - added: 2026-10-04
+    id: CENTRAL-70
+    what: "Containers Service validators throw localized InvalidOperationException messages for names, images and placement geometry. CityPlanningApiController.SaveContainerPlacement identifies validation failure by comparing ex.Message to a localized ContainersResource value. This violates no-localized-exception-messages and couples failure classification to translated wording. A structured owner validation result should preserve existing localized form/API feedback while leaving exception messages developer-facing; public result/contract changes need approval. Found during the daily production sweep."
     review: panel
