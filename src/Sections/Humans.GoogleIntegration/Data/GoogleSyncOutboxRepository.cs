@@ -164,5 +164,11 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegra
     }
 
     private static string Truncate(string value)
-        => value.Length > LastErrorMaxLength ? value[..LastErrorMaxLength] : value;
+    {
+        if (value.Length <= LastErrorMaxLength) return value;
+        var length = LastErrorMaxLength;
+        if (char.IsHighSurrogate(value[length - 1]) && char.IsLowSurrogate(value[length]))
+            length--;
+        return value[..length];
+    }
 }

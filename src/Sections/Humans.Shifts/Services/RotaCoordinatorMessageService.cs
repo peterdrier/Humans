@@ -378,8 +378,14 @@ internal sealed class RotaCoordinatorMessageService(
             : $"{DateFormattingExtensions.OpsNoticeDatePattern.Format(local.Date)} @ {DateFormattingExtensions.TimeOfDayPattern.Format(local.TimeOfDay)}";
     }
 
-    private static string Truncate(string text, int max) =>
-        text.Length <= max ? text : text[..max] + "…";
+    private static string Truncate(string text, int max)
+    {
+        if (text.Length <= max) return text;
+        var length = max;
+        if (char.IsHighSurrogate(text[length - 1]) && char.IsLowSurrogate(text[length]))
+            length--;
+        return text[..length] + "…";
+    }
 
     private sealed record RotaSignupGroup(
         Guid RotaId,

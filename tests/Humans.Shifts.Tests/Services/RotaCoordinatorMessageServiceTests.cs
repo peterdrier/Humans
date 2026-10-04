@@ -224,9 +224,16 @@ public sealed class RotaCoordinatorMessageServiceTests
             Arg.Is<EmailMessage>(m => m.ReplyTo == "sender@example.com"), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task SendRotaMessageAsync_WritesOneAuditEntry_WithSenderActor()
+    [HumansTheory]
+    [Xunit.InlineData(0, "schedule change", "schedule change")]
+    [Xunit.InlineData(119, "xyz", "x…")]
+    [Xunit.InlineData(119, "😀tail", "…")]
+    [Xunit.InlineData(118, "😀tail", "😀…")]
+    public async Task SendRotaMessageAsync_WritesOneAuditEntry_WithSenderActor(int prefixLength, string tail, string expectedTail)
     {
+        var prefix = new string('x', prefixLength);
+        var message = prefix + tail;
+        var expectedSnippet = prefix + expectedTail;
         var rota = MakeRota(out _);
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
@@ -238,7 +245,7 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         StubUsers(sender, userA);
 
-        var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "schedule change", includeShifts: true, Xunit.TestContext.Current.CancellationToken);
+        var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, message, includeShifts: true, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.RecipientCount.Should().Be(1);
@@ -248,7 +255,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             AuditAction.CoordinatorRotaMessageSent,
             nameof(Rota),
             rota.Id,
-            Arg.Is<string>(d => d.Contains("schedule change") && d.Contains(rota.Name)),
+            Arg.Is<string>(d => d.Contains($"'{expectedSnippet}'", StringComparison.Ordinal) && d.Contains(rota.Name)),
             sender,
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
@@ -581,9 +588,16 @@ public sealed class RotaCoordinatorMessageServiceTests
             Arg.Is<EmailMessage>(m => m.ReplyTo == "sender@example.com"), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task SendTeamRotasMessageAsync_WritesOneAuditEntry_OnTeamEntity()
+    [HumansTheory]
+    [Xunit.InlineData(0, "schedule change", "schedule change")]
+    [Xunit.InlineData(119, "xyz", "x…")]
+    [Xunit.InlineData(119, "😀tail", "…")]
+    [Xunit.InlineData(118, "😀tail", "😀…")]
+    public async Task SendTeamRotasMessageAsync_WritesOneAuditEntry_OnTeamEntity(int prefixLength, string tail, string expectedTail)
     {
+        var prefix = new string('x', prefixLength);
+        var message = prefix + tail;
+        var expectedSnippet = prefix + expectedTail;
         var teamId = StubTeam();
         var es = StubEvent();
         var userA = Guid.NewGuid();
@@ -596,13 +610,13 @@ public sealed class RotaCoordinatorMessageServiceTests
             .Returns([rota]);
         StubUsers(sender, userA);
 
-        await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "schedule change", includeShifts: true, TeamRotasAudienceFilter.Default, Xunit.TestContext.Current.CancellationToken);
+        await CreateSut().SendTeamRotasMessageAsync(teamId, sender, message, includeShifts: true, TeamRotasAudienceFilter.Default, Xunit.TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
             AuditAction.CoordinatorTeamRotasMessageSent,
             nameof(Team),
             teamId,
-            Arg.Is<string>(d => d.Contains("schedule change") && d.Contains("Test Team")),
+            Arg.Is<string>(d => d.Contains($"'{expectedSnippet}'", StringComparison.Ordinal) && d.Contains("Test Team")),
             sender,
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
