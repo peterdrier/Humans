@@ -115,6 +115,8 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 ## Invariants
 
+- The queue detail panel accepts only the latest selection request’s response; earlier successes and unavailable responses cannot replace the selected item’s content or wire stale forms.
+
 - Every feedback report is linked to the human who submitted it.
 - **No code path creates a feedback report.** There is no service, repository, controller, or view component that writes a new `FeedbackReport` row.
 - Feedback status flows Open → Acknowledged → Resolved or WontFix; transitioning out of a terminal status (Resolved/WontFix) clears `ResolvedAt` and `ResolvedByUserId`.

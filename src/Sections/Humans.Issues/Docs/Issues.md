@@ -119,6 +119,8 @@ Known area labels in the member submission form, issue list and detail view use 
 
 ## Invariants
 
+- The queue detail panel accepts only the latest selection request’s response; earlier successes and unavailable responses cannot replace the selected item’s content or wire stale forms.
+
 - Mutation result wrappers log missing/inaccessible issues and terminal-section rejections at Warning without exception stacks; unexpected failures retain Error logs and their exceptions.
 
 - Every issue is linked to the human who submitted it (`ReporterUserId` is required).

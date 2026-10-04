@@ -197,7 +197,10 @@
 
 @section Scripts {
     <script>
+        let detailRequestVersion = 0;
+
         function loadDetail(reportId) {
+            const requestVersion = ++detailRequestVersion;
             document.querySelectorAll('.feedback-list-item').forEach(el => {
                 el.classList.remove('bg-body-tertiary', 'border-start', 'border-3', 'border-primary');
             });
@@ -211,6 +214,7 @@
             })
             .then(response => response.text())
             .then(html => {
+                if (requestVersion !== detailRequestVersion) return;
                 const panel = document.getElementById('detail-panel');
                 panel.innerHTML = html;
                 // Bind auto-submit on detail panel elements (innerHTML doesn't execute scripts)
