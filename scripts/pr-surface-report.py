@@ -314,6 +314,7 @@ def normalize_signature(signature: str) -> str:
 def extract_interface_symbols(ref: str) -> dict[str, dict[str, object]]:
     interfaces: dict[str, dict[str, object]] = {}
     interface_re = re.compile(r"\binterface\s+(I[A-Za-z0-9_]*)\b")
+    literal_re = re.compile(r'@"(?:[^"]|"")*"|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
 
     for path in git_files(ref, INTERFACE_SEARCH_ROOTS):
         if not is_interface_path(path):
@@ -328,24 +329,30 @@ def extract_interface_symbols(ref: str) -> dict[str, dict[str, object]]:
             if not line or line.startswith("["):
                 continue
 
+            code_line = literal_re.sub(lambda match: " " * len(match.group()), line)
             if current is None:
-                match = interface_re.search(line)
+                match = interface_re.search(code_line)
                 if not match:
                     continue
                 current = match.group(1)
                 interfaces.setdefault(current, {"path": path, "methods": set(), "properties": set()})
-                depth = line.count("{") - line.count("}")
+                depth = code_line.count("{") - code_line.count("}")
                 continue
 
             previous_depth = depth
-            depth += line.count("{") - line.count("}")
+            depth += code_line.count("{") - code_line.count("}")
             if pending_signature or (previous_depth == 1 and line != "}"):
                 pending_signature.append(line)
                 if depth == 1 and (line.endswith(";") or line.endswith("}")):
                     signature = normalize_signature(" ".join(pending_signature))
                     pending_signature.clear()
-                    if line.endswith(";") and "(" in signature and ")" in signature:
-                        interfaces[current]["methods"].add(signature)
+                    # Default interface implementations are behavior, not new surface.
+                    # Compare only the declaration for expression and block bodies.
+                    masked = literal_re.sub(lambda match: " " * len(match.group()), signature)
+                    body = re.search(r"=>|\{", masked)
+                    declaration = signature[:body.start()].strip() if body else signature
+                    if "(" in declaration and ")" in declaration:
+                        interfaces[current]["methods"].add(declaration)
                     elif re.search(r"\{\s*(?:get|set|init)\s*;", signature):
                         # Accessor blocks may span lines; canonical whitespace avoids
                         # reporting a formatting-only change as new public surface.
