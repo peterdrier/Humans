@@ -106,6 +106,7 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
         bobRow.TotalHours.Should().Be(0m);
         bobRow.ConfirmedSignupCount.Should().Be(0);
         bobRow.PendingSignupCount.Should().Be(1);
+        report.ByRota.Single().PendingSignupCount.Should().Be(1);
     }
 
     [HumansFact]
@@ -157,6 +158,11 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
         dept.PlannedHours.Should().Be(12m); // 4h * 3 slots
         dept.FilledHours.Should().Be(12m); // capped
         dept.TeamSlug.Should().Be("gate");
+        var rotaRow = report.ByRota.Single();
+        rotaRow.PlannedSlots.Should().Be(dept.PlannedSlots);
+        rotaRow.FilledSlots.Should().Be(dept.FilledSlots);
+        rotaRow.PlannedHours.Should().Be(dept.PlannedHours);
+        rotaRow.FilledHours.Should().Be(dept.FilledHours);
     }
 
     [HumansFact]
@@ -362,6 +368,8 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
         var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
         report.Should().NotBeNull();
         report.ByPerson.Single(p => p.UserId == alice.Id).BuildHours.Should().Be(10m); // 18:00 - 08:00
+        report.ByRota.Single().FilledHours.Should().Be(10m);
+        report.ByDepartment.Single().FilledHours.Should().Be(10m);
     }
 
     // ── Role-hours fixtures (cached TeamInfo projection the service reads) ─────────
