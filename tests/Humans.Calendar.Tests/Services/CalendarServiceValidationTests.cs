@@ -84,7 +84,7 @@ public class CalendarServiceValidationTests
 
         result.Succeeded.Should().BeFalse();
         result.NotFound.Should().Be(!dependencyFailure, "only a missing event row warrants the missing result");
-        result.ErrorMessage.Should().Be(dependencyFailure ? "Calendar_InvalidTimedEvent" : "Calendar event not found.");
+        result.ErrorMessage.Should().Be(dependencyFailure ? "Calendar_SaveFailed" : "Calendar event not found.");
         audit.ReceivedCalls().Should().BeEmpty();
     }
 
@@ -513,15 +513,22 @@ public class CalendarServiceValidationTests
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task EventMutation_UnexpectedWriteFailureReturnsLocalizedSaveKey(bool update)
+    [InlineData(false, null)]
+    [InlineData(true, null)]
+    [InlineData(false, "Required property missing in persistence metadata.")]
+    [InlineData(true, "Required property missing in persistence metadata.")]
+    [InlineData(false, "Calendar_CannotChangeEventType")]
+    [InlineData(true, "Calendar_CannotChangeEventType")]
+    public async Task EventMutation_UnexpectedWriteFailureReturnsLocalizedSaveKey(bool update, string? invalidOperationMessage)
     {
+        Exception failure = invalidOperationMessage is null
+            ? new IOException("database unavailable")
+            : new InvalidOperationException(invalidOperationMessage);
         var repo = Substitute.For<ICalendarRepository>();
         repo.AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new IOException("database unavailable")));
+            .Returns(Task.FromException(failure));
         repo.UpdateAsync(Arg.Any<Guid>(), Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(new IOException("database unavailable")));
+            .Returns(Task.FromException<bool>(failure));
         var service = BuildService(repo);
         var dto = new CreateCalendarEventDto(
             "Event", null, null, null, Guid.NewGuid(),
