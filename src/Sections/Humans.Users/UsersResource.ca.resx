@@ -1202,4 +1202,8 @@
   <data name="Users_EmailError_MergePending" xml:space="preserve"><value>Ja hi ha una sol·licitud de fusió pendent per a aquesta adreça de correu electrònic.</value></data>
   <data name="Users_EmailError_NotPendingVerification" xml:space="preserve"><value>No hi ha cap correu electrònic pendent de verificació.</value></data>
   <data name="Users_EmailError_VerificationExpired" xml:space="preserve"><value>L’enllaç de verificació ha caducat o no és vàlid.</value></data>
+  <data name="Users_EmailError_NotFound" xml:space="preserve"><value>No s’ha trobat el correu electrònic.</value></data>
+  <data name="Users_EmailError_VerifiedTargetOnly" xml:space="preserve"><value>Només les adreces de correu verificades poden rebre les notificacions.</value></data>
+  <data name="Users_EmailError_RemoveLastVerified" xml:space="preserve"><value>No pots eliminar el teu últim correu electrònic verificat. Afegeix primer un altre correu verificat per continuar rebent notificacions del sistema.</value></data>
+  <data name="Users_EmailError_RemoveTicketLinked" xml:space="preserve"><value>No pots eliminar aquest correu electrònic: està vinculat a la teva entrada de l’esdeveniment. Eliminar-lo podria desconnectar la teva entrada. Contacta amb una persona administradora si l’has de canviar.</value></data>
 </root>

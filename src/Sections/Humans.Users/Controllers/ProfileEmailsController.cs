@@ -101,7 +101,7 @@ internal sealed class ProfileEmailsController(
             logger.LogWarning(
                 "Rejected email add for user {UserId} ({Email}): {Reason}",
                 user.Id, model.NewEmail, ex.Message);
-            ModelState.AddModelError(nameof(model.NewEmail), FormatEmailValidationError(ex.Message));
+            ModelState.AddModelError(nameof(model.NewEmail), FormatEmailError(ex.Message));
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
         }
 
@@ -167,7 +167,7 @@ internal sealed class ProfileEmailsController(
         catch (ValidationException ex)
         {
             logger.LogInformation("Email verification validation failed for user {UserId}: {Message}", userId, ex.Message);
-            return VerifyEmailError(FormatEmailValidationError(ex.Message));
+            return VerifyEmailError(FormatEmailError(ex.Message));
         }
     }
 
@@ -195,13 +195,19 @@ internal sealed class ProfileEmailsController(
         ViewData["Message"] = string.Format(localizer["Profile_EmailVerified"].Value, result.Email);
         return View("VerifyEmailResult");
     }
-    private string FormatEmailValidationError(string message) => message switch
+    private string FormatEmailError(string message) => message switch
     {
         "Please enter a valid email address." => localizer["Users_EmailError_InvalidAddress"].Value,
         "This email address is already in your account." => localizer["Users_EmailError_AlreadyAdded"].Value,
         "A merge request is already pending for this email address." => localizer["Users_EmailError_MergePending"].Value,
         "No email pending verification." => localizer["Users_EmailError_NotPendingVerification"].Value,
         "The verification link has expired or is invalid." => localizer["Users_EmailError_VerificationExpired"].Value,
+        "Email not found." => localizer["Users_EmailError_NotFound"].Value,
+        "Only verified emails can be the notification target." => localizer["Users_EmailError_VerifiedTargetOnly"].Value,
+        "Cannot remove your primary email. Set another verified email as primary first, then remove this one." => localizer["EmailGrid_DeletePrimaryBlocked"].Value,
+        "Cannot remove your last verified email. Add another verified email first so you can still receive system notifications." => localizer["Users_EmailError_RemoveLastVerified"].Value,
+        "Cannot remove this email — it is linked to your event ticket. Removing it could disconnect your ticket. Contact an admin if you need to change it." => localizer["Users_EmailError_RemoveTicketLinked"].Value,
+        "Cannot unlink your last verified sign-in method. Add another verified email first so you can still sign in." => localizer["LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value,
         _ => message,
     };
 
@@ -239,7 +245,7 @@ internal sealed class ProfileEmailsController(
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
             logger.LogWarning("Failed to set primary email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
-            SetError(ex.Message);
+            SetError(FormatEmailError(ex.Message));
         }
 
         return RedirectToAction(nameof(Emails));
@@ -268,7 +274,7 @@ internal sealed class ProfileEmailsController(
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
             logger.LogWarning("Failed to set email visibility for email {EmailId} and user {UserId}: {Reason}", emailId, user.Id, ex.Message);
-            SetError(ex.Message);
+            SetError(FormatEmailError(ex.Message));
         }
 
         return RedirectToAction(nameof(Emails));
@@ -319,7 +325,7 @@ internal sealed class ProfileEmailsController(
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
             logger.LogWarning("Failed to delete email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
-            SetError(ex.Message);
+            SetError(FormatEmailError(ex.Message));
         }
 
         return RedirectToAction(nameof(Emails));
@@ -484,7 +490,7 @@ internal sealed class ProfileEmailsController(
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
             logger.LogWarning("Failed to unlink email {EmailId} for user {UserId}: {Reason}", id, user.Id, ex.Message);
-            SetError(ex.Message);
+            SetError(FormatEmailError(ex.Message));
         }
 
         return RedirectToAction(nameof(Emails));

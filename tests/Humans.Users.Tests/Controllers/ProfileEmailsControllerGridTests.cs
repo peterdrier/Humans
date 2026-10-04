@@ -185,6 +185,53 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansTheory]
+    [InlineData("en", "SetPrimary", "Only verified emails can be the notification target.", "Users_EmailError_VerifiedTargetOnly")]
+    [InlineData("es", "SetPrimary", "Only verified emails can be the notification target.", "Users_EmailError_VerifiedTargetOnly")]
+    [InlineData("de", "SetPrimary", "Only verified emails can be the notification target.", "Users_EmailError_VerifiedTargetOnly")]
+    [InlineData("it", "SetPrimary", "Only verified emails can be the notification target.", "Users_EmailError_VerifiedTargetOnly")]
+    [InlineData("fr", "SetPrimary", "Only verified emails can be the notification target.", "Users_EmailError_VerifiedTargetOnly")]
+    [InlineData("ca", "SetPrimary", "Only verified emails can be the notification target.", "Users_EmailError_VerifiedTargetOnly")]
+    [InlineData("es", "SetPrimary", "Email not found.", "Users_EmailError_NotFound")]
+    [InlineData("es", "SetEmailVisibility", "Email not found.", "Users_EmailError_NotFound")]
+    [InlineData("es", "DeleteEmail", "Email not found.", "Users_EmailError_NotFound")]
+    [InlineData("es", "DeleteEmail", "Cannot remove your primary email. Set another verified email as primary first, then remove this one.", "EmailGrid_DeletePrimaryBlocked")]
+    [InlineData("es", "DeleteEmail", "Cannot remove your last verified email. Add another verified email first so you can still receive system notifications.", "Users_EmailError_RemoveLastVerified")]
+    [InlineData("es", "DeleteEmail", "Cannot remove this email — it is linked to your event ticket. Removing it could disconnect your ticket. Contact an admin if you need to change it.", "Users_EmailError_RemoveTicketLinked")]
+    [InlineData("es", "Unlink", "Cannot unlink your last verified sign-in method. Add another verified email first so you can still sign in.", "LinkedAccounts_UnlinkBlockedLastSignInMethod")]
+    public async Task EmailMutation_LocalizesMemberRefusals(string language, string action, string reason, string key)
+    {
+        using var culture = new CultureScope(language);
+        using var resources = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var translations = resources.GetRequiredService<IStringLocalizer<UsersResource>>();
+        _localizer[Arg.Any<string>()].Returns(call => translations[call.Arg<string>()]);
+        Exception rejection = string.Equals(reason, "Email not found.", StringComparison.Ordinal)
+            ? new InvalidOperationException(reason) : new ValidationException(reason);
+        var emailId = Guid.NewGuid();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _userEmailService.SetPrimaryAsync(_userId, emailId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(rejection));
+        _userEmailService.SetVisibilityAsync(_userId, emailId, null, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(rejection));
+        _userEmailService.DeleteEmailAsync(_userId, emailId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(rejection));
+        _userEmailService.UnlinkAsync(_userId, emailId, _userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(rejection));
+
+        var result = action switch
+        {
+            "SetPrimary" => await _controller.SetPrimary(emailId, ct),
+            "SetEmailVisibility" => await _controller.SetEmailVisibility(emailId, null),
+            "DeleteEmail" => await _controller.DeleteEmail(emailId),
+            "Unlink" => await _controller.Unlink(emailId, ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(action)),
+        };
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        _controller.TempData["ErrorMessage"].Should().Be(translations[key].Value);
+        await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+    }
+
+    [HumansTheory]
     [InlineData("SetPrimary", true)]
     [InlineData("SetEmailVisibility", true)]
     [InlineData("DeleteEmail", true)]
