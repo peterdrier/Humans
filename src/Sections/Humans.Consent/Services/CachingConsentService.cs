@@ -215,8 +215,9 @@ internal sealed class CachingConsentService(
             // the rest of the chain serving the pre-submit consent set.
             foreach (var id in affectedIds)
                 Invalidate(id);
+            // The consent write succeeded; request cancellation must not interrupt its refresh.
             foreach (var id in affectedIds)
-                await ReplaceAsync(id, ct).ConfigureAwait(false);
+                await ReplaceAsync(id, CancellationToken.None).ConfigureAwait(false);
         }
 
         return result;

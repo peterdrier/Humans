@@ -272,7 +272,7 @@ internal sealed partial class UserRepository : IUserRepository
                     .ToList());
     }
 
-    public async Task<int> ReassignLoginsToUserAsync(
+    public async Task ReassignLoginsToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -308,12 +308,9 @@ internal sealed partial class UserRepository : IUserRepository
         {
             await ctx.SaveChangesAsync(ct);
         }
-
-        return await ctx.Set<IdentityUserLogin<Guid>>()
-            .CountAsync(l => l.UserId == targetUserId, ct);
     }
 
-    public async Task<int> ReassignEventParticipationToUserAsync(
+    public async Task ReassignEventParticipationToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -348,9 +345,6 @@ internal sealed partial class UserRepository : IUserRepository
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        return await ctx.EventParticipations
-            .CountAsync(ep => ep.UserId == targetUserId, ct);
     }
 
     private static int StatusPrecedence(ParticipationStatus status) => status switch

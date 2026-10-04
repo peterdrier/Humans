@@ -174,7 +174,8 @@ export function updateSaveButton() {
     const hasValidPolygon = features.some(f =>
         f.geometry.type === 'Polygon' && (f.geometry.coordinates[0]?.length ?? 0) >= 4);
     const editing = hasValidPolygon && appState.activeCampSeasonId;
-    document.getElementById('save-btn').disabled = !editing;
+    const saveButton = document.getElementById('save-btn');
+    saveButton.disabled = !editing || saveButton.dataset.saving === 'true';
     document.getElementById('cancel-btn')?.classList.toggle('d-none', !appState.activeCampSeasonId);
 
     if (hasValidPolygon) {
@@ -226,9 +227,24 @@ export function updateSaveButton() {
 
 // --- History ---
 
+let historyVersion = 0;
+let restoreInProgress = false;
+const historyPanel = document.getElementById('history-panel');
+historyPanel.addEventListener('hide.bs.offcanvas', () => { historyVersion++; });
+historyPanel.addEventListener('hidden.bs.offcanvas', () => {
+    appState.previewCampSeasonId = null;
+    if (!appState.activeCampSeasonId) appState.draw.deleteAll();
+});
+
 export async function loadHistory(campSeasonId, canEdit = false) {
     const id = campSeasonId ?? appState.activeCampSeasonId;
     if (!id) return;
+    const version = ++historyVersion;
+    // Bootstrap finishes closing asynchronously; let its old cleanup run before reopening.
+    if (historyPanel.classList.contains('hiding')) {
+        await new Promise(resolve => historyPanel.addEventListener('hidden.bs.offcanvas', resolve, { once: true }));
+        if (version !== historyVersion) return;
+    }
 
     if (appState.currentPopup) { appState.currentPopup.remove(); appState.currentPopup = null; }
 
@@ -237,6 +253,7 @@ export async function loadHistory(campSeasonId, canEdit = false) {
     if (titleEl && campName) titleEl.textContent = CONFIG.HISTORY_FOR_CAMP.replace('{0}', () => campName);
 
     const list = document.getElementById('history-list');
+    list.innerHTML = '';
 
     let history;
     try {
@@ -244,11 +261,13 @@ export async function loadHistory(campSeasonId, canEdit = false) {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         history = await resp.json();
     } catch (error) {
+        if (version !== historyVersion) return;
         console.error('Failed to load barrio polygon history', error);
         list.innerHTML = `<p class="text-danger text-center py-4">${escHtml(CONFIG.HISTORY_LOAD_FAILED)}</p>`;
         bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('history-panel')).show();
         return;
     }
+    if (version !== historyVersion) return;
     if (!history.length) {
         list.innerHTML = `<p class="text-muted text-center py-4">${escHtml(CONFIG.HISTORY_EMPTY)}</p>`;
     } else {
@@ -276,23 +295,24 @@ export async function loadHistory(campSeasonId, canEdit = false) {
             });
         });
         list.querySelectorAll('.restore-btn').forEach(btn => {
+            btn.disabled = restoreInProgress;
             btn.addEventListener('click', () => restoreVersion(btn.dataset.id, id));
         });
     }
 
-    const panel = document.getElementById('history-panel');
-    panel.addEventListener('hidden.bs.offcanvas', () => {
-        appState.previewCampSeasonId = null;
-        if (!appState.activeCampSeasonId) appState.draw.deleteAll();
-    }, { once: true });
-    bootstrap.Offcanvas.getOrCreateInstance(panel).show();
+    bootstrap.Offcanvas.getOrCreateInstance(historyPanel).show();
 }
 
 export async function restoreVersion(historyId, campSeasonId) {
     const id = campSeasonId ?? appState.activeCampSeasonId;
-    if (!id) return;
+    if (!id || restoreInProgress) return;
     if (!confirm('Restore this version?')) return;
 
+    const version = historyVersion;
+    const editId = appState.activeCampSeasonId;
+    const draft = JSON.stringify(appState.draw.getAll().features);
+    restoreInProgress = true;
+    document.getElementById('history-list').querySelectorAll('.restore-btn').forEach(btn => { btn.disabled = true; });
     const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
     let resp;
     try {
@@ -304,8 +324,13 @@ export async function restoreVersion(historyId, campSeasonId) {
         console.error('Failed to restore barrio polygon', error);
         alert('Restore failed.');
         return;
+    } finally {
+        restoreInProgress = false;
+        document.getElementById('history-list').querySelectorAll('.restore-btn').forEach(btn => { btn.disabled = false; });
     }
     if (resp.ok) {
+        if (version !== historyVersion || editId !== appState.activeCampSeasonId ||
+            draft !== JSON.stringify(appState.draw.getAll().features)) return;
         bootstrap.Offcanvas.getInstance(document.getElementById('history-panel'))?.hide();
         exitEditMode();
     } else {

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using System.Text.Encodings.Web;
 using Humans.Base.ViewComponents;
 using Humans.Users.Contracts;
 using Humans.Users.Controllers;
@@ -8,6 +9,11 @@ using Humans.Web.Hosting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Razor.Hosting;
+using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.AspNetCore.Routing;
@@ -19,6 +25,37 @@ namespace Humans.Web.Tests.ViewComponents;
 
 public class HumanViewComponentTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("", "?")]
+    [Xunit.InlineData("Alice", "A")]
+    [Xunit.InlineData("🐝 Bee", "🐝")]
+    [Xunit.InlineData("A\u0301da", "A\u0301")]
+    [Xunit.InlineData("👩‍🚒 Fire", "👩‍🚒")]
+    [Xunit.InlineData("👌🏽 Human", "👌🏽")]
+    [Xunit.InlineData("🇪🇸 Human", "🇪🇸")]
+    [Xunit.InlineData("<Admin", "<")]
+    public async Task Fallback_avatar_renders_a_complete_first_text_element(string name, string initial)
+    {
+        var item = new RazorCompiledItemLoader().LoadItems(typeof(HumanViewComponent).Assembly)
+            .Single(i => string.Equals(i.Identifier, "/Views/Shared/Components/Human/Default.cshtml", StringComparison.Ordinal));
+        var page = (RazorPage<HumanViewModel>)Activator.CreateInstance(item.Type)!;
+        var html = Substitute.For<IHtmlHelper<HumanViewModel>>();
+        html.Raw(Arg.Any<string>()).Returns(call => new HtmlString(call.Arg<string>()));
+        item.Type.GetProperty("Html")!.SetValue(page, html);
+        page.HtmlEncoder = HtmlEncoder.Default;
+        using var writer = new StringWriter();
+        var data = new ViewDataDictionary<HumanViewModel>(new EmptyModelMetadataProvider(), new ModelStateDictionary())
+        {
+            Model = new HumanViewModel { DisplayName = name, Layout = HumanLayout.Avatar, Size = 32 },
+        };
+        page.ViewContext = new ViewContext { Writer = writer, ViewData = data };
+        page.ViewData = data;
+
+        await page.ExecuteAsync();
+
+        writer.ToString().Should().Contain($">{HtmlEncoder.Default.Encode(initial)}</div>");
+    }
+
     /// <summary>
     /// <see cref="HumanViewComponent"/> lives in Base and names Users' controllers by string, so a
     /// controller split leaves it pointing at a route that no longer exists. <c>Url.Action</c> then

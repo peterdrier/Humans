@@ -1,4 +1,5 @@
 <script>
+    const removeLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(SharedLocalizer["Common_Remove"].Value));
     document.getElementById('add-link')?.addEventListener('click', function() {
         const container = document.getElementById('links-container');
         if (container.querySelectorAll('.link-entry').length >= 10) return;
@@ -6,6 +7,7 @@
         div.className = 'input-group mb-2 link-entry';
         div.innerHTML = '<input type="url" name="Links" class="form-control" placeholder="https://" />' +
             '<button type="button" class="btn btn-outline-danger remove-link"><i class="fa-solid fa-times"></i></button>';
+        div.querySelector('.remove-link').setAttribute('aria-label', removeLabel);
         container.appendChild(div);
     });
 

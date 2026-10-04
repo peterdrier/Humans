@@ -83,7 +83,7 @@ internal sealed class TeamAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to reject join request {RequestId} for team {TeamId} by user {UserId}", requestId, team.Id, user.Id);
+            logger.LogWarning("Failed to reject join request {RequestId} for team {TeamId} by user {UserId}: {Reason}", requestId, team.Id, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -93,6 +93,7 @@ internal sealed class TeamAdminController(
     [HttpGet("Members")]
     public async Task<IActionResult> Members(string slug, int page = 1)
     {
+        if (page < 1) page = 1;
         var pageSize = 20;
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
         if (teamError is not null)
@@ -107,7 +108,7 @@ internal sealed class TeamAdminController(
         var totalCount = allMembers.Count;
 
         var pagedMembers = allMembers
-            .Skip((page - 1) * pageSize)
+            .Skip((int)Math.Min(((long)page - 1) * pageSize, totalCount))
             .Take(pageSize)
             .ToList();
 
@@ -264,7 +265,7 @@ internal sealed class TeamAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to remove member {MemberUserId} from team {TeamId} by user {UserId}", userId, team.Id, user.Id);
+            logger.LogWarning("Failed to remove member {MemberUserId} from team {TeamId} by user {UserId}: {Reason}", userId, team.Id, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -295,7 +296,7 @@ internal sealed class TeamAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to add member {MemberUserId} to team {TeamId} by user {UserId}", model.UserId, team.Id, user.Id);
+            logger.LogWarning("Failed to add member {MemberUserId} to team {TeamId} by user {UserId}: {Reason}", model.UserId, team.Id, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -384,25 +385,25 @@ internal sealed class TeamAdminController(
     [HttpGet("Resources")]
     public async Task<IActionResult> Resources(string slug)
     {
-        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
 
-        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug, HttpContext.RequestAborted);
         if (team is null)
         {
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id, HttpContext.RequestAborted))
         {
             return Forbid();
         }
 
-        var resources = await teamResourceService.GetTeamResourcesAsync(team.Id);
-        var serviceAccountEmail = await teamResourceService.GetServiceAccountEmailAsync();
+        var resources = await teamResourceService.GetTeamResourcesAsync(team.Id, HttpContext.RequestAborted);
+        var serviceAccountEmail = await teamResourceService.GetServiceAccountEmailAsync(HttpContext.RequestAborted);
 
         var viewModel = new TeamResourcesViewModel
         {
@@ -1239,14 +1240,14 @@ internal sealed class TeamAdminController(
         return Json(combined);
     }
 
-    private async Task<bool> CanManageResourcesAsync(Team team, Guid userId)
+    private async Task<bool> CanManageResourcesAsync(Team team, Guid userId, CancellationToken ct = default)
     {
         if (RoleChecks.IsTeamsAdminBoardOrAdmin(User))
             return true;
 
         // Sub-team managers cannot manage Google resources — check at department level.
         var checkTeamId = team.ParentTeamId ?? team.Id;
-        return await teamResourceService.CanManageTeamResourcesAsync(checkTeamId, userId);
+        return await teamResourceService.CanManageTeamResourcesAsync(checkTeamId, userId, ct);
     }
 
     private static void PopulateEditTeamPageModel(EditTeamPageViewModel model, Team team)

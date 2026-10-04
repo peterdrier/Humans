@@ -8,6 +8,7 @@ public enum HumanLayout { Text, Avatar, AvatarName, Card }
 
 public enum HumanLink { None, Public, Admin }
 
+/// <summary>Renders a member’s name and picture; its read honors browser cancellation.</summary>
 public class HumanViewComponent(IUserServiceRead userService, IUrlHelperFactory urlHelperFactory) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(
@@ -25,7 +26,7 @@ public class HumanViewComponent(IUserServiceRead userService, IUrlHelperFactory 
 
         if (userId != Guid.Empty)
         {
-            var info = await userService.GetUserInfoAsync(userId);
+            var info = await userService.GetUserInfoAsync(userId, HttpContext.RequestAborted);
             if (info is not null)
             {
                 displayName = info.BurnerName;
@@ -80,6 +81,7 @@ public class HumanViewComponent(IUserServiceRead userService, IUrlHelperFactory 
 public class HumanViewModel
 {
     public Guid UserId { get; init; }
+    /// <summary>Member display name; fallback avatars show its first complete Unicode text element.</summary>
     public string DisplayName { get; init; } = "";
     public string? ProfilePictureUrl { get; init; }
     public HumanLayout Layout { get; init; }

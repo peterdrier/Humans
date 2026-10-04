@@ -2,10 +2,13 @@
 @model Humans.Teams.Models.TeamDetailViewModel
 @{
     ViewData["Title"] = Model.Name;
+    var systemTeamLabel = Model.SystemTeamType is { } teamType
+        ? SharedLocalizer.EnumDisplay(teamType)
+        : string.Empty;
 }
 
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Teams_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
         @if (Model.ParentTeam != null)
@@ -27,7 +30,7 @@
                     {
                         @if (Model.IsSystemTeam)
                         {
-                            <span class="badge bg-secondary">@Model.SystemTeamType @SharedLocalizer["Teams_Member"]</span>
+                            <span class="badge bg-secondary">@systemTeamLabel @SharedLocalizer["Teams_Member"]</span>
                         }
                         @if (Model.IsCurrentUserMember)
                         {
@@ -53,7 +56,7 @@
                 @if (Model.IsAuthenticated && Model.IsSystemTeam)
                 {
                     <div class="alert alert-info mb-0">
-                        @string.Format(Localizer["TeamDetail_SystemTeamInfo"].Value, Model.SystemTeamType)
+                        @string.Format(Localizer["TeamDetail_SystemTeamInfo"].Value, systemTeamLabel)
                     </div>
                 }
             </div>
@@ -303,7 +306,7 @@
                     }
 
                     <a asp-controller="Calendar" asp-action="Team" asp-route-teamId="@Model.Id" class="btn btn-outline-secondary w-100 mt-2">
-                        Team calendar
+                        @Localizer["Teams_TeamDetail_Calendar"]
                     </a>
 
                     @{

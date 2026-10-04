@@ -55,6 +55,11 @@
   <data name="Common_Close" xml:space="preserve">
     <value>Chiudi</value>
   </data>
+  <data name="SectionHelp_Title" xml:space="preserve"><value>Guida alla sezione</value></data>
+  <data name="SectionHelp_Guide" xml:space="preserve"><value>Guida</value></data>
+  <data name="SectionHelp_Glossary" xml:space="preserve"><value>Glossario</value></data>
+  <data name="SectionHelp_AccessMatrix" xml:space="preserve"><value>Matrice degli accessi</value></data>
+  <data name="SectionHelp_Feature" xml:space="preserve"><value>Funzionalità</value></data>
   <data name="EmailComposer_Preview" xml:space="preserve">
     <value>Anteprima</value>
   </data>
@@ -163,6 +168,7 @@
   <data name="Login_SignInFailed" xml:space="preserve">
     <value>Accesso non riuscito. Questo può accadere se hai impiegato troppo tempo o se il tuo browser ha bloccato i cookie. Per favore riprova.</value>
   </data>
+  <data name="Login_LockedOut" xml:space="preserve"><value>Questo account è bloccato. Contatta un amministratore se hai bisogno di aiuto per accedere.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve">
     <value>Accesso negato</value>
   </data>
@@ -271,13 +277,13 @@
     <value>Accordi</value>
   </data>
   <data name="Dashboard_MembershipTier" xml:space="preserve">
-    <value>Livello di adesione</value>
+    <value>Categoria di adesione</value>
   </data>
   <data name="Dashboard_TierApplicationPending" xml:space="preserve">
-    <value>La tua domanda di livello è in attesa di esame da parte del Consiglio.</value>
+    <value>La tua domanda di categoria è in attesa di esame da parte del Consiglio.</value>
   </data>
   <data name="Dashboard_TierActive" xml:space="preserve">
-    <value>Il tuo livello di adesione è attivo.</value>
+    <value>La tua categoria di adesione è attiva.</value>
   </data>
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Esamina accordi</value>
@@ -374,7 +380,7 @@
     <value>Coordinatore</value>
   </data>
   <data name="Profile_MembershipTier" xml:space="preserve">
-    <value>Livello di adesione</value>
+    <value>Categoria di adesione</value>
   </data>
   <data name="Profile_MotivationRequired" xml:space="preserve">
     <value>Una dichiarazione di motivazione è richiesta per le domande di Colaborador e Asociado.</value>
@@ -478,38 +484,8 @@
   <data name="MyTeams_View" xml:space="preserve">
     <value>Visualizza</value>
   </data>
-  <data name="Admin_CannotStartReview" xml:space="preserve">
-    <value>Impossibile avviare l'esame. La domanda non è nello stato "Presentata".</value>
-  </data>
-  <data name="Admin_ReviewStarted" xml:space="preserve">
-    <value>Esame avviato per questa domanda.</value>
-  </data>
-  <data name="Admin_CannotApprove" xml:space="preserve">
-    <value>Impossibile approvare. La domanda deve essere in fase di esame.</value>
-  </data>
-  <data name="Admin_ApplicationApproved" xml:space="preserve">
-    <value>Domanda approvata.</value>
-  </data>
-  <data name="Admin_CannotReject" xml:space="preserve">
-    <value>Impossibile rifiutare. La domanda deve essere in fase di esame.</value>
-  </data>
   <data name="Admin_ProvideRejectionReason" xml:space="preserve">
     <value>Fornisca un motivo per il rifiuto.</value>
-  </data>
-  <data name="Admin_ApplicationRejected" xml:space="preserve">
-    <value>Domanda rifiutata.</value>
-  </data>
-  <data name="Admin_CannotRequestInfo" xml:space="preserve">
-    <value>Impossibile richiedere ulteriori informazioni. La domanda deve essere in fase di esame.</value>
-  </data>
-  <data name="Admin_SpecifyInfoNeeded" xml:space="preserve">
-    <value>Specifichi quali informazioni sono necessarie.</value>
-  </data>
-  <data name="Admin_MoreInfoRequested" xml:space="preserve">
-    <value>Ulteriori informazioni sono state richieste al candidato.</value>
-  </data>
-  <data name="Admin_UnknownAction" xml:space="preserve">
-    <value>Azione sconosciuta.</value>
   </data>
   <data name="Admin_MemberSuspended" xml:space="preserve">
     <value>Il human è stato sospeso.</value>
@@ -640,7 +616,7 @@
     <value>Approvato</value>
   </data>
   <data name="AdminHuman_MembershipTier" xml:space="preserve">
-    <value>Livello di adesione</value>
+    <value>Categoria di adesione</value>
   </data>
   <data name="AdminHuman_Active" xml:space="preserve">
     <value>Attivo</value>
@@ -693,7 +669,7 @@
     <comment>{0} = formatted date</comment>
   </data>
   <data name="Dashboard_TermExpired" xml:space="preserve">
-    <value>Il tuo mandato è scaduto. Invia una domanda di rinnovo per ripristinare il tuo livello.</value>
+    <value>Il tuo mandato è scaduto. Invia una domanda di rinnovo per ripristinare la tua categoria.</value>
   </data>
   <data name="Dashboard_RenewNow" xml:space="preserve">
     <value>Rinnova ora</value>
@@ -1312,4 +1288,17 @@
   <data name="EmailComposer_SendToMeError" xml:space="preserve"><value>Impossibile inviare l'email di prova. Riprova.</value></data>
   <data name="EmailComposer_SendToMeRateLimited" xml:space="preserve"><value>Troppe email di prova. Attendi un minuto e riprova.</value></data>
   <data name="EmailComposer_SendToMeNoAddress" xml:space="preserve"><value>Il tuo account non ha un indirizzo email a cui inviare.</value></data>
+  <data name="Validation_Required" xml:space="preserve"><value>Questo campo è obbligatorio.</value></data>
+  <data name="Validation_MaxLength" xml:space="preserve"><value>Inserisci al massimo {1} caratteri.</value></data>
+  <data name="Validation_Range" xml:space="preserve"><value>Inserisci un valore compreso tra {1} e {2}.</value></data>
+  <data name="Validation_InvalidCharacters" xml:space="preserve"><value>Questo campo contiene caratteri non validi.</value></data>
+  <data name="Validation_EmailAddress" xml:space="preserve"><value>Inserisci un indirizzo email valido.</value></data>
+  <data name="Validation_InvalidValue" xml:space="preserve"><value>Inserisci un valore valido.</value></data>
+  <data name="Validation_Number" xml:space="preserve"><value>Inserisci un numero.</value></data>
+  <data name="Enum_SystemTeamType_Volunteers" xml:space="preserve"><value>Volontari</value></data>
+  <data name="Enum_SystemTeamType_Coordinators" xml:space="preserve"><value>Coordinatori</value></data>
+  <data name="Enum_SystemTeamType_Board" xml:space="preserve"><value>Consiglio direttivo</value></data>
+  <data name="Enum_SystemTeamType_Asociados" xml:space="preserve"><value>Asociados</value></data>
+  <data name="Enum_SystemTeamType_Colaboradores" xml:space="preserve"><value>Colaboradores</value></data>
+  <data name="Enum_SystemTeamType_BarrioLeads" xml:space="preserve"><value>Responsabili dei camp</value></data>
 </root>

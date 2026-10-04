@@ -75,6 +75,9 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
   the whole cascade retries the next day rather than leaving data behind.
 - A request-aborted guest export propagates cancellation rather than redirecting
   with a failed-download message; other export failures retain that message.
+- Caller cancellation during export contributor work is logged at Warning without
+  a stack trace and re-thrown. Contributor cancellation without an aborted caller
+  remains an Error with its exception, like other contributor faults.
 - **Erasure runs the identity collapse last, and takes only an id.**
   The contributor whose `ErasesLast` is `true` erases last, so sections
   that still need the human's addresses to reach an external processor (the
@@ -117,7 +120,8 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
 
 - `ExportForUserAsync` writes no data and raises no notification. It logs one
   informational line per export (`user … exported their data (N sections)`) and
-  one error line per contributor failure.
+  one error line per contributor fault; caller cancellation during contributor
+  work writes a warning without its exception.
 - `EraseForUserAsync` writes through the contributors (each erases its own
   section) and raises no notification itself — the audit entry and confirmation
   email belong to the Users deletion lifecycle. It logs one error line per

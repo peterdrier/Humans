@@ -39,8 +39,9 @@ internal sealed class SearchController(
             var results = await searchService.SearchAsync(trimmed, filter, ct);
             return BuildViewModel(results, filter);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
+            logger.LogWarning("Global search request cancelled");
             // User navigated away — let ASP.NET handle it (don't return a 200 shell).
             throw;
         }

@@ -16,11 +16,11 @@ internal sealed class GovernanceController(
 {
     public async Task<IActionResult> Index()
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
-        var data = await governanceIndexService.GetIndexDataAsync(user.Id);
+        var data = await governanceIndexService.GetIndexDataAsync(user.Id, HttpContext.RequestAborted);
 
         var viewModel = new GovernanceIndexViewModel
         {

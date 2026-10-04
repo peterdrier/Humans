@@ -49,6 +49,42 @@ public class BackdoorIssuesControllerTests
         };
     }
 
+    [HumansFact]
+    public async Task AbandonedReadRequests_CancelIssueLoads()
+    {
+        var id = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        _sut.HttpContext.RequestAborted = request.Token;
+        _issues.GetIssueListAsync(Arg.Any<IssueListFilter>(), Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]);
+            });
+        _issues.GetIssueByIdAsync(id, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult<IssueDetail?>(MakeDetail(id, KeyOwnerId));
+            });
+        _issues.GetThreadAsync(id, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult<IReadOnlyList<IssueThreadEvent>>([]);
+            });
+        Func<Task<IActionResult>>[] reads =
+        [() => _sut.List(null, null, null, null), () => _sut.Get(id), () => _sut.GetComments(id)];
+        foreach (var read in reads)
+            (await read()).Should().BeOfType<OkObjectResult>();
+        await request.CancelAsync();
+        foreach (var read in reads)
+        {
+            Func<Task> operation = async () => await read();
+            await operation.Should().ThrowAsync<OperationCanceledException>();
+        }
+    }
+
     private static IssueListSnapshot MakeSnapshot(Guid? id = null) => new(
         Id: id ?? Guid.NewGuid(),
         Status: IssueStatus.Open,

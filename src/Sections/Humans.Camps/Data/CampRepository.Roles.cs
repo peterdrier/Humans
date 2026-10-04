@@ -49,18 +49,6 @@ internal sealed partial class CampRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetSpecialRoleHolderUserIdsAsync(
-        CampSpecialRole specialRole, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampRoleAssignments.AsNoTracking()
-            .Where(a => a.Definition.SpecialRole == specialRole
-                && a.Definition.DeactivatedAt == null)
-            .Select(a => a.CampMember.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetSpecialRoleHolderUserIdsForSeasonAsync(
         Guid campSeasonId, CampSpecialRole specialRole, CancellationToken ct = default)
     {
@@ -73,16 +61,6 @@ internal sealed partial class CampRepository
             .Select(a => a.CampMember.UserId)
             .Distinct()
             .ToListAsync(ct);
-    }
-
-    public async Task<bool> IsSpecialRoleHolderAnywhereAsync(
-        Guid userId, CampSpecialRole specialRole, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampRoleAssignments.AsNoTracking()
-            .AnyAsync(a => a.CampMember.UserId == userId
-                && a.Definition.SpecialRole == specialRole
-                && a.Definition.DeactivatedAt == null, ct);
     }
 
     public async Task<bool> DefinitionSlugExistsAsync(string slug, Guid? excludingId, CancellationToken ct = default)
@@ -279,7 +257,7 @@ internal sealed partial class CampRepository
     // Account-merge fold
     // ==========================================================================
 
-    public async Task<int> ReassignMembershipsToUserAsync(
+    public async Task ReassignMembershipsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -290,7 +268,7 @@ internal sealed partial class CampRepository
             .Where(m => m.UserId == sourceUserId)
             .ToListAsync(ct);
         if (sourceMembers.Count == 0)
-            return await ctx.CampMembers.CountAsync(m => m.UserId == targetUserId, ct);
+            return;
 
         var sourceSeasonIds = sourceMembers.Select(m => m.CampSeasonId).Distinct().ToList();
 
@@ -385,7 +363,5 @@ internal sealed partial class CampRepository
                 sourceMembers.Where(m => collidingMemberToTarget.ContainsKey(m.Id)));
             await ctx.SaveChangesAsync(ct);
         }
-
-        return await ctx.CampMembers.CountAsync(m => m.UserId == targetUserId, ct);
     }
 }

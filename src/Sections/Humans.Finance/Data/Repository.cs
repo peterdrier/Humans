@@ -151,16 +151,16 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default)
+    public async Task<HoldedCreditorContact?> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var existing = await ctx.HoldedCreditorContacts
             .FirstOrDefaultAsync(c => c.UserId == userId, ct);
-        if (existing is null) return false;
+        if (existing is null) return null;
 
         ctx.HoldedCreditorContacts.Remove(existing);
         await ctx.SaveChangesAsync(ct);
-        return true;
+        return existing;
     }
 
     // ── SEPA payouts ──────────────────────────────────────────────────────────

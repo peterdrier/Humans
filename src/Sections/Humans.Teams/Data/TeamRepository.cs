@@ -139,7 +139,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         var items = await query
             .OrderBy(t => t.SystemTeamType) // arch:db-sort-ok admin page window
             .ThenBy(t => t.Name) // arch:db-sort-ok admin page window
-            .Skip((page - 1) * pageSize)
+            .Skip((int)Math.Clamp(((long)page - 1) * pageSize, 0, int.MaxValue))
             .Take(pageSize)
             .ToListAsync(ct);
 
@@ -199,13 +199,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .ToListAsync(ct);
 
         return rows.Select(r => (r.Id, r.ParentTeamId!.Value)).ToList();
-    }
-
-    public async Task AddTeamAsync(Team team, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        db.Teams.Add(team);
-        await db.SaveChangesAsync(ct);
     }
 
     public async Task UpdateTeamAsync(Team team, CancellationToken ct = default)
@@ -297,16 +290,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .Include(tm => tm.Team)
                 .ThenInclude(t => t.ParentTeam)
             .ToListAsync(ct);
-    }
-
-    public async Task<bool> IsAnyActiveCoordinatorAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.TeamMembers
-            .AsNoTracking()
-            .AnyAsync(tm => tm.UserId == userId
-                && tm.Role == TeamMemberRole.Coordinator
-                && tm.LeftAt == null, ct);
     }
 
     public async Task<IReadOnlyList<Guid>> GetUserCoordinatorTeamIdsAsync(
@@ -424,32 +407,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .FirstOrDefaultAsync(r => r.Id == requestId, ct);
     }
 
-    public async Task<IReadOnlyList<TeamJoinRequest>> GetAllPendingWithTeamsAsync(CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.TeamJoinRequests
-            .AsNoTracking()
-            .Include(r => r.Team)
-            .Where(r => r.Status == TeamJoinRequestStatus.Pending)
-            .OrderBy(r => r.RequestedAt) // arch:db-sort-ok aggregate chronology
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<TeamJoinRequest>> GetPendingForTeamIdsAsync(
-        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default)
-    {
-        if (teamIds.Count == 0)
-            return [];
-
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.TeamJoinRequests
-            .AsNoTracking()
-            .Include(r => r.Team)
-            .Where(r => teamIds.Contains(r.TeamId) && r.Status == TeamJoinRequestStatus.Pending)
-            .OrderBy(r => r.RequestedAt) // arch:db-sort-ok aggregate chronology
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<TeamJoinRequest>> GetPendingForTeamAsync(
         Guid teamId, CancellationToken ct = default)
     {
@@ -487,7 +444,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<int> ReassignActiveJoinRequestsAsync(
+    public async Task ReassignActiveJoinRequestsAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -504,7 +461,8 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
 
         foreach (var src in sourceRows)
         {
-            if (targetPendingTeamIdSet.Contains(src.TeamId))
+            if (src.Status == TeamJoinRequestStatus.Pending
+                && targetPendingTeamIdSet.Contains(src.TeamId))
             {
                 // Target already has an active pending request to this team —
                 // drop source's row (target's stands).
@@ -521,9 +479,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         }
 
         await db.SaveChangesAsync(ct);
-
-        return await db.TeamJoinRequests
-            .CountAsync(r => r.UserId == targetUserId, ct);
     }
 
     // ==========================================================================
@@ -631,51 +586,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
     // ==========================================================================
     // TeamRoleAssignment
     // ==========================================================================
-
-    public async Task<IReadOnlyList<TeamRoleAssignment>> FindAssignmentsForMemberForMutationAsync(
-        Guid teamMemberId, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.Set<TeamRoleAssignment>()
-            .Include(a => a.TeamRoleDefinition)
-                .ThenInclude(d => d.Team)
-            .Where(a => a.TeamMemberId == teamMemberId)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<TeamRoleAssignment>> FindAssignmentsForMembersForMutationAsync(
-        IReadOnlyCollection<Guid> teamMemberIds, CancellationToken ct = default)
-    {
-        if (teamMemberIds.Count == 0)
-            return [];
-
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.Set<TeamRoleAssignment>()
-            .Include(a => a.TeamRoleDefinition)
-                .ThenInclude(d => d.Team)
-            .Where(a => teamMemberIds.Contains(a.TeamMemberId))
-            .ToListAsync(ct);
-    }
-
-    public async Task<bool> MemberHasOtherManagementAssignmentAsync(
-        Guid teamMemberId, Guid excludingAssignmentId, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.Set<TeamRoleAssignment>()
-            .AnyAsync(a => a.TeamMemberId == teamMemberId
-                && a.Id != excludingAssignmentId
-                && a.TeamRoleDefinition.IsManagement, ct);
-    }
-
-    public async Task<TeamRoleAssignment?> FindAssignmentForMutationAsync(
-        Guid roleDefinitionId, Guid teamMemberId, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.Set<TeamRoleAssignment>()
-            .Include(a => a.TeamMember)
-            .FirstOrDefaultAsync(a => a.TeamRoleDefinitionId == roleDefinitionId
-                && a.TeamMemberId == teamMemberId, ct);
-    }
 
     public async Task AddAssignmentAsync(TeamRoleAssignment assignment, CancellationToken ct = default)
     {
@@ -1195,6 +1105,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return await db.TeamJoinRequests
             .AsNoTracking()
             .Include(tjr => tjr.Team)
+            .Include(tjr => tjr.StateHistory)
             .Where(tjr => tjr.UserId == userId)
             .ToListAsync(ct);
     }

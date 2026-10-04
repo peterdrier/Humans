@@ -86,7 +86,7 @@
                         <div class="notification-checkbox-col">
                             <input type="checkbox" class="form-check-input notification-select"
                                    data-notification-id="@item.Id" data-notification-class="actionable"
-                                   aria-label="Select notification" />
+                                   aria-label="@Localizer["Notifications_SelectNotification"]" />
                         </div>
                         <div class="flex-grow-1">
                             <partial name="_NotificationRow" model="item" />
@@ -119,7 +119,7 @@
                         <div class="notification-checkbox-col">
                             <input type="checkbox" class="form-check-input notification-select"
                                    data-notification-id="@item.Id" data-notification-class="informational"
-                                   aria-label="Select notification" />
+                                   aria-label="@Localizer["Notifications_SelectNotification"]" />
                         </div>
                         <div class="flex-grow-1">
                             <partial name="_NotificationRow" model="item" />

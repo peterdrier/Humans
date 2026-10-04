@@ -1,4 +1,11 @@
 using AwesomeAssertions;
+using Humans.Base;
+using Humans.Base.Extensions;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Humans.Calendar.Models;
 using Humans.Calendar.Services.Dtos;
 using Xunit;
@@ -57,4 +64,39 @@ public sealed class CalendarEventFormViewModelTests
     {
         CalendarEventFormViewModel.ErrorFieldFor(serviceMember).Should().BeEmpty();
     }
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void EventForm_LocalizesRequiredLengthAndUrlErrors(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+
+        void AssertError(CalendarEventFormViewModel model, string field, string key, params object[] arguments)
+        {
+            var context = new ActionContext { HttpContext = new DefaultHttpContext { RequestServices = services } };
+            validator.Validate(context, null, "", model);
+            var expected = localizer[key, arguments];
+            expected.ResourceNotFound.Should().BeFalse();
+            context.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
+        }
+
+        AssertError(new(), "Title", "Validation_Required");
+        AssertError(new() { Title = "Meeting", RecurrenceTimezone = null! }, "RecurrenceTimezone", "Validation_Required");
+        AssertError(new() { Title = new string('x', 201) }, "Title", "Validation_MaxLength", "", 200);
+        AssertError(new() { Description = new string('x', 4001) }, "Description", "Validation_MaxLength", "", 4000);
+        AssertError(new() { Location = new string('x', 501) }, "Location", "Validation_MaxLength", "", 500);
+        AssertError(new() { LocationUrl = "https://example.com/" + new string('x', 2000) }, "LocationUrl", "Validation_MaxLength", "", 2000);
+        AssertError(new() { LocationUrl = "invalid" }, "LocationUrl", "Validation_InvalidValue");
+    }
+
 }

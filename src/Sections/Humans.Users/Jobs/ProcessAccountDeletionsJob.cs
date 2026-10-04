@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Hangfire;
 using NodaTime;
 using Humans.Base.Interfaces;
@@ -101,7 +102,8 @@ internal sealed class ProcessAccountDeletionsJob(
                             await emailService.SendAsync(emailMessages.AccountDeleted(
                                 summary.OriginalEmail,
                                 summary.OriginalDisplayName,
-                                summary.PreferredLanguage),
+                                summary.PreferredLanguage.IsSupportedCultureCode()
+                                    ? summary.PreferredLanguage : CultureCatalog.DefaultCultureCode),
                                 cancellationToken);
                         }
                         catch (Exception ex)

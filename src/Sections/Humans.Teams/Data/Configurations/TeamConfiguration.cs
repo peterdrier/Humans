@@ -91,7 +91,9 @@ internal sealed class TeamConfiguration : IEntityTypeConfiguration<Team>
                 v => v == null ? null : JsonSerializer.Serialize(v, JsonEnumOptions),
                 v => v == null ? null : JsonSerializer.Deserialize<List<CallToAction>>(v, JsonEnumOptions),
                 new ValueComparer<List<CallToAction>?>(
-                    (a, b) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual(b)),
+                    (a, b) => (a == null && b == null) || (a != null && b != null
+                        && a.Select(c => new { c.Text, c.Url, c.Style })
+                            .SequenceEqual(b.Select(c => new { c.Text, c.Url, c.Style }))),
                     v => v == null ? 0 : v.Aggregate(0, (hash, item) => HashCode.Combine(hash, item.Text, item.Url, item.Style)),
                     v => v == null ? null : v.Select(c => new CallToAction { Text = c.Text, Url = c.Url, Style = c.Style }).ToList()));
 

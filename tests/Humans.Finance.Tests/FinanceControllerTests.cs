@@ -31,7 +31,10 @@ public class FinanceControllerTests
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
 
     private FinanceController MakeController() =>
-        new(_users, _finance, _connector, NullLogger<FinanceController>.Instance);
+        new(_users, _finance, _connector, NullLogger<FinanceController>.Instance)
+        {
+            ControllerContext = new() { HttpContext = new DefaultHttpContext() }
+        };
 
     /// <summary>A controller wired with a real HttpContext and TempData, for actions
     /// (<see cref="FinanceController.GenerateSepa"/>) that need <c>GetCurrentUserId</c> or
@@ -79,6 +82,26 @@ public class FinanceControllerTests
     private static CreditorsPageVm PageOf(IActionResult result) =>
         result.Should().BeOfType<ViewResult>().Subject.Model
             .Should().BeOfType<CreditorsPageVm>().Subject;
+
+    [HumansFact]
+    public async Task Creditors_PropagatesBrowserCancellationDuringMemberNameLookup()
+    {
+        Accounts([Row(40000001, "Ana", 0m, Bound(Ana, 40000001))]);
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return (IReadOnlyDictionary<Guid, UserInfo>)new Dictionary<Guid, UserInfo>();
+            });
+        var controller = MakeControllerWithHttpContext(Ana);
+        (await controller.Creditors(null, null)).Should().BeOfType<ViewResult>();
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        controller.HttpContext.RequestAborted = aborted.Token;
+
+        var read = () => controller.Creditors(null, null);
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
 
     // ─── Sorting ─────────────────────────────────────────────────────────────────
 

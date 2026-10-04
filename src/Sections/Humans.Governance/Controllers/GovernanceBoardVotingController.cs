@@ -68,7 +68,7 @@ internal sealed class GovernanceBoardVotingController(
         if (application is null)
             return NotFound();
 
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(ct);
         if (currentUser is null)
             return NotFound();
 

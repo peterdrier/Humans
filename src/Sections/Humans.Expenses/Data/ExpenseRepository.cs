@@ -112,7 +112,11 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             .FirstOrDefaultAsync(r => r.Id == reportId, ct);
         if (report is null) return false;
         line.ExpenseReportId = reportId;
-        line.SortOrder = await ctx.ExpenseLines.CountAsync(l => l.ExpenseReportId == reportId, ct);
+        var sortOrders = await ctx.ExpenseLines
+            .Where(l => l.ExpenseReportId == reportId)
+            .Select(l => l.SortOrder)
+            .ToListAsync(ct);
+        line.SortOrder = sortOrders.DefaultIfEmpty(-1).Max() + 1;
         // Proof rows back an invoice line for review only — they never count toward the total.
         if (line.ParentLineId is null) report.Total += line.Amount;
         ctx.ExpenseLines.Add(line);

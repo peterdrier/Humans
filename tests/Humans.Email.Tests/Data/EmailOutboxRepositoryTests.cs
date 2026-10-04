@@ -355,18 +355,22 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         reloaded.PickedUpAt.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task MarkFailedAsync_TruncatesLongErrors()
+    [HumansTheory]
+    [Xunit.InlineData(3999, "x", "x")]
+    [Xunit.InlineData(3999, "😀", "")]
+    [Xunit.InlineData(3998, "😀", "😀")]
+    public async Task MarkFailedAsync_TruncatesLongErrors(int prefixLength, string tail, string expectedTail)
     {
         var msg = BuildMessage();
         await _repo.AddAsync(msg, Xunit.TestContext.Current.CancellationToken);
 
-        var longMsg = new string('x', 5000);
+        var prefix = new string('x', prefixLength);
+        var longMsg = prefix + tail + new string('y', 1000);
         await _repo.MarkFailedAsync(msg.Id, _clock.GetCurrentInstant(), longMsg,
             _clock.GetCurrentInstant() + Duration.FromMinutes(1), Xunit.TestContext.Current.CancellationToken);
 
         var reloaded = await _dbContext.EmailOutboxMessages.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
-        reloaded.LastError!.Length.Should().Be(4000);
+        reloaded.LastError.Should().Be(prefix + expectedTail);
     }
 
     // ==========================================================================

@@ -10,45 +10,45 @@
     <p class="text-muted">@Model.TotalCount orders found</p>
 
     @{
-        Func<TicketOrderRow, IHtmlContent> orderIdCell =
+        Func<OrderRow, IHtmlContent> orderIdCell =
             @<text><small><code>@item.VendorOrderId</code></small></text>;
-        Func<TicketOrderRow, IHtmlContent> dateCell =
+        Func<OrderRow, IHtmlContent> dateCell =
             @<text>@item.PurchasedAt.ToWeekdayDayMonth()</text>;
-        Func<TicketOrderRow, IHtmlContent> attendeesCell =
+        Func<OrderRow, IHtmlContent> attendeesCell =
             @<text><a asp-action="Attendees" asp-route-filterOrderId="@item.VendorOrderId">@item.AttendeeCount</a></text>;
-        Func<TicketOrderRow, IHtmlContent> emailCell =
+        Func<OrderRow, IHtmlContent> emailCell =
             @<text><small>@item.BuyerEmail</small></text>;
-        Func<TicketOrderRow, IHtmlContent> discountCell = @<text>
+        Func<OrderRow, IHtmlContent> discountCell = @<text>
             @if (item.DiscountAmount.HasValue)
             {
-                <span title="@(item.DiscountCode ?? "")">-@item.DiscountAmount.Value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span>
+                <span title="@(item.DiscountCode ?? "")">-@item.DiscountAmount.Value.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</span>
             }
             else
             {
                 <span class="text-muted">&mdash;</span>
             }
         </text>;
-        Func<TicketOrderRow, IHtmlContent> donationCell = @<text>
+        Func<OrderRow, IHtmlContent> donationCell = @<text>
             @if (item.DonationAmount > 0)
             {
-                <span>@item.DonationAmount.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span>
+                <span>@item.DonationAmount.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</span>
             }
             else
             {
                 <span class="text-muted">&mdash;</span>
             }
         </text>;
-        Func<TicketOrderRow, IHtmlContent> vatCell = @<text>
+        Func<OrderRow, IHtmlContent> vatCell = @<text>
             @if (item.VatAmount > 0)
             {
-                <span>@item.VatAmount.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span>
+                <span>@item.VatAmount.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</span>
             }
             else
             {
                 <span class="text-muted">&mdash;</span>
             }
         </text>;
-        Func<TicketOrderRow, IHtmlContent> methodCell = @<text>
+        Func<OrderRow, IHtmlContent> methodCell = @<text>
             @if (item.PaymentMethod != null)
             {
                 <small>@(item.PaymentMethodDetail != null ? $"{item.PaymentMethod}/{item.PaymentMethodDetail}" : item.PaymentMethod)</small>
@@ -58,27 +58,27 @@
                 <span class="text-muted">&mdash;</span>
             }
         </text>;
-        Func<TicketOrderRow, IHtmlContent> stripeFeeCell = @<text>
+        Func<OrderRow, IHtmlContent> stripeFeeCell = @<text>
             @if (item.StripeFee.HasValue)
             {
-                @item.StripeFee.Value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)
+                @item.StripeFee.Value.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)
             }
             else
             {
                 <span class="text-muted">&mdash;</span>
             }
         </text>;
-        Func<TicketOrderRow, IHtmlContent> ttFeeCell = @<text>
+        Func<OrderRow, IHtmlContent> ttFeeCell = @<text>
             @if (item.ApplicationFee.HasValue)
             {
-                @item.ApplicationFee.Value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)
+                @item.ApplicationFee.Value.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)
             }
             else
             {
                 <span class="text-muted">&mdash;</span>
             }
         </text>;
-        Func<TicketOrderRow, IHtmlContent> matchedCell = @<text>
+        Func<OrderRow, IHtmlContent> matchedCell = @<text>
             @if (item.MatchedUserId.HasValue)
             {
                 <vc:human user-id="@item.MatchedUserId.Value" link="Admin" />

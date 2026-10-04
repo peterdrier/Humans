@@ -448,8 +448,11 @@ public class VolunteerTrackingServiceTests
         stored.DayOffs[0].Reason.Should().Be("city visit");
     }
 
-    [HumansFact]
-    public async Task SetDayOffAsync_trims_reason_and_truncates_at_200_chars()
+    [HumansTheory]
+    [Xunit.InlineData(199, "x", 200)]
+    [Xunit.InlineData(199, "😀", 199)]
+    [Xunit.InlineData(198, "😀", 200)]
+    public async Task SetDayOffAsync_trims_reason_and_truncates_at_200_chars(int prefixLength, string boundary, int expectedLength)
     {
         var es = MakeEvent(buildStartOffset: -5);
         var trackingRepo = new FakeVolunteerTrackingRepository(
@@ -459,13 +462,15 @@ public class VolunteerTrackingServiceTests
         await sut.SetDayOffAsync(Guid.NewGuid(), -3, "   ", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         var blank = trackingRepo.UpsertDayOffCalls.Last().Entry.Reason;
 
-        var oversized = new string('x', 250);
+        var prefix = new string('x', prefixLength);
+        var oversized = prefix + boundary + "extra";
         await sut.SetDayOffAsync(Guid.NewGuid(), -2, oversized, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         var capped = trackingRepo.UpsertDayOffCalls.Last().Entry.Reason;
 
         blank.Should().BeNull();
         capped.Should().NotBeNull();
-        capped.Length.Should().Be(200);
+        capped.Length.Should().Be(expectedLength);
+        capped.Should().Be(expectedLength == prefixLength ? prefix : prefix + boundary);
     }
 
     [HumansFact]
@@ -883,9 +888,9 @@ public class VolunteerTrackingServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<int> ReassignAvailabilityToUserAsync(
+        public Task ReassignAvailabilityToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default)
-            => Task.FromResult(0);
+            => Task.CompletedTask;
 
         public Task<IReadOnlyList<int>> UpsertCampSetupAsync(
             Guid userId, Guid eventSettingsId, LocalDate? barrioSetupStartDate,

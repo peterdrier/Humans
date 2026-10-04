@@ -29,8 +29,6 @@ internal sealed class LocalizedText : IEquatable<LocalizedText>
         return string.Empty;
     }
 
-    public bool HasCulture(string culture) => _values.TryGetValue(culture, out var v) && !string.IsNullOrEmpty(v);
-
     public bool Equals(LocalizedText? other) =>
         other is not null && _values.Count == other._values.Count &&
         _values.All(kv => other._values.TryGetValue(kv.Key, out var o) && string.Equals(o, kv.Value, StringComparison.Ordinal));

@@ -1,3 +1,5 @@
+using Humans.Base.Constants;
+using Humans.Base.Extensions;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Teams.Domain;
@@ -47,11 +49,12 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
-    private SystemTeamSyncJob CreateJob()
+    private SystemTeamSyncJob CreateJob(IMembershipCalculatorRead? membershipCalculator = null, ITeamResourceService? resources = null)
     {
         _googleClient.IsConfigured.Returns(true);
         var services = new ServiceCollection();
-        services.AddSingleton(Substitute.For<IMembershipCalculatorRead>());
+        services.AddSingleton(membershipCalculator ?? Substitute.For<IMembershipCalculatorRead>());
+        services.AddSingleton(resources ?? Substitute.For<ITeamResourceService>());
         var provider = services.BuildServiceProvider();
 
         return new SystemTeamSyncJob(
@@ -69,6 +72,91 @@ public class SystemTeamSyncJobBarrioLeadsTests
             _metrics,
             NullLogger<SystemTeamSyncJob>.Instance,
             _clock);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("es", "es")]
+    [Xunit.InlineData(null, "en")]
+    [Xunit.InlineData("", "en")]
+    [Xunit.InlineData("pt", "en")]
+    [Xunit.InlineData("fr-FR", "en")]
+    [Xunit.InlineData("not a culture!", "en")]
+    public async Task SyncVolunteersTeam_emails_added_members_in_supported_language(string? language, string expectedLanguage)
+    {
+        using var culture = new CultureScope("fr");
+        var member = new User { Id = Guid.NewGuid(), BurnerName = "Member", PreferredLanguage = language! };
+        var profile = new ProfileInfo(
+            Id: Guid.NewGuid(),
+            BurnerName: "Member",
+            FirstName: "First",
+            LastName: "Last",
+            City: null,
+            CountryCode: null,
+            Latitude: null,
+            Longitude: null,
+            PlaceId: null,
+            Bio: null,
+            Pronouns: null,
+            BirthdayDay: null,
+            BirthdayMonth: null,
+            EmergencyContactName: null,
+            EmergencyContactPhone: null,
+            EmergencyContactRelationship: null,
+            DietaryPreference: null,
+            Allergies: [],
+            AllergyOtherText: null,
+            Intolerances: [],
+            IntoleranceOtherText: null,
+            MedicalConditions: null,
+            HasCustomPicture: false,
+            ProfilePictureContentType: null,
+            CreatedAt: _clock.GetCurrentInstant(),
+            UpdatedAt: _clock.GetCurrentInstant(),
+            AdminNotes: null,
+            ContributionInterests: null,
+            BoardNotes: null,
+            Iban: null,
+            IsApproved: false,
+            MembershipTier: MembershipTier.Volunteer,
+            ConsentCheckStatus: null,
+            ConsentCheckAt: null,
+            ConsentCheckedByUserId: null,
+            ConsentCheckNotes: null,
+            RejectionReason: null,
+            RejectedAt: null,
+            RejectedByUserId: null,
+            NoPriorBurnExperience: false,
+            ContactFields: [],
+            Languages: [],
+            VolunteerHistory: []);
+        var user = UserInfo.Create(member,
+            [new UserEmail { Id = Guid.NewGuid(), UserId = member.Id, Email = "member@example.com", IsVerified = true, IsPrimary = true }],
+            [], [], profile, []);
+        var team = new TeamInfo(SystemTeamIds.Volunteers, "Volunteers", null, "volunteers",
+            true, true, SystemTeamType.Volunteers, false, false, false, false, default, []);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new[] { user });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [user.Id] = user }));
+        var calculator = Substitute.For<IMembershipCalculatorRead>();
+        calculator.GetUsersWithAllRequiredConsentsForTeamAsync(
+            Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(user.Id)), team.Id, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { user.Id });
+        var resources = Substitute.For<ITeamResourceService>();
+        resources.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>()).Returns(Array.Empty<GoogleResourceSnapshot>());
+
+        await CreateJob(calculator, resources).SyncVolunteersTeamAsync(cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        await _teamService.Received(1).ApplySystemTeamMembershipDeltaAsync(team.Id,
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(user.Id)),
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 0), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await _googleSyncService.Received(1).AddUserToTeamResourcesAsync(team.Id, user.Id,
+            Arg.Any<CancellationToken>(), GoogleSyncSource.SystemTeamSync);
+        var message = _emailService.ReceivedCalls().Should().ContainSingle().Which.GetArguments()[0]
+            .Should().BeOfType<EmailMessage>().Subject;
+        message.RecipientEmail.Should().Be("member@example.com");
+        message.Subject.Should().EndWith($"#{expectedLanguage}");
+        System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be("fr");
     }
 
     private SystemTeamMembershipSnapshot StubBarrioLeadsTeam(IEnumerable<TeamMember>? activeMembers = null)

@@ -9,9 +9,9 @@ namespace Humans.Finance.Tests;
 
 /// <summary>
 /// The builder is pure, so every rule it enforces is asserted here rather than through a service.
-/// The schema check is not a separate test: <see cref="SepaPaymentFileBuilder.Build"/> validates
-/// every file it returns against the embedded official XSD, so any test that gets a string back has
-/// already proved the file validates.
+/// <see cref="SepaPaymentFileBuilder.Build"/> validates every file it returns against the embedded
+/// official XSD, so any test that gets a string back has already proved the file validates; the one
+/// schema test below proves the check refuses a file that does not.
 /// </summary>
 public class SepaPaymentFileBuilderTests
 {
@@ -63,6 +63,17 @@ public class SepaPaymentFileBuilderTests
         tx.Element(Ns + "Amt")!.Element(Ns + "InstdAmt")!.Value.Should().Be("12.34");
         tx.Element(Ns + "CdtrAcct")!.Descendants(Ns + "IBAN").Single().Value.Should().Be(AnaIban);
         tx.Element(Ns + "RmtInf")!.Elements(Ns + "Ustrd").Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public void Schema_FileMissingTheDebtorAccount_IsRefused()
+    {
+        var doc = Parse(SepaPaymentFileBuilder.Build(Request(Ana())));
+        doc.Descendants(Ns + "DbtrAcct").Single().Remove();
+
+        var act = () => SepaSchema.Validate(doc.ToString());
+
+        act.Should().Throw<SepaPaymentFileException>().WithMessage("*pain.001.001.09*");
     }
 
     [HumansFact]

@@ -1,9 +1,11 @@
+using System.Globalization;
 using System.Net;
 using Humans.Base.Configuration;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Tickets.Services;
@@ -12,13 +14,15 @@ namespace Humans.Tickets.Services;
 /// Tickets' own email templates: one method per template, each returning a ready
 /// <see cref="EmailMessage"/> (content plus the routing policy Tickets chooses —
 /// template name and opt-out category) for the single
-/// <see cref="IEmailService.SendAsync"/> path. The transfer copy is hardcoded English,
-/// as it was in the renderer; localizing it is tracked in peterdrier/Humans#1657
-/// (memory/architecture/email-templates-live-in-sender.md, peterdrier/Humans#1651).
+/// <see cref="IEmailService.SendAsync"/> path. The member-facing copy lives in Tickets' own
+/// resx set and is rendered in the recipient's culture inside a <see cref="CultureScope"/>; the
+/// ticket-team notice stays English (memory/architecture/email-templates-live-in-sender.md,
+/// peterdrier/Humans#1651).
 /// Pure — no I/O, no persistence.
 /// </summary>
 internal sealed class TicketsEmails(
     IOptions<EmailSettings> settings,
+    IStringLocalizer<TicketsResource> localizer,
     ILogger<TicketsEmails> logger)
 {
     private readonly EmailSettings _settings = settings.Value;
@@ -27,20 +31,12 @@ internal sealed class TicketsEmails(
     public EmailMessage TicketTransferRequested(
         string senderEmail, string senderName, string receiverName, string ticketLabel, string? culture = null)
     {
-        // Kept for parity with the deleted renderer; takes effect once the copy is localized (peterdrier/Humans#1657).
         using (new CultureScope(culture, logger))
         {
-            var name = Encode(senderName);
-            var receiver = Encode(receiverName);
-            var ticket = Encode(ticketLabel);
             return new EmailMessage(
                 senderEmail, senderName,
-                "Ticket transfer requested",
-                $"""
-                    <p>Hi {name},</p>
-                    <p>We've received your request to transfer ticket <strong>{ticket}</strong> to <strong>{receiver}</strong>.</p>
-                    <p>Our ticketing team will process this and let you know shortly. No further action is needed from you.</p>
-                    """,
+                localizer["Tickets_TicketTransfer_Email_Requested_Subject"].Value,
+                Lf("Tickets_TicketTransfer_Email_Requested_Body", Encode(senderName), Encode(ticketLabel), Encode(receiverName)),
                 "ticket_transfer_requested", MessageCategory.System);
         }
     }
@@ -80,39 +76,33 @@ internal sealed class TicketsEmails(
         string toEmail, string toName, bool successful, string ticketLabel, string receiverName,
         string? reason, string? culture = null)
     {
-        // Kept for parity with the deleted renderer; takes effect once the copy is localized (peterdrier/Humans#1657).
         using (new CultureScope(culture, logger))
         {
             var name = Encode(toName);
-            var receiver = Encode(receiverName);
             var ticket = Encode(ticketLabel);
+            var receiver = Encode(receiverName);
             if (successful)
             {
                 return new EmailMessage(
                     toEmail, toName,
-                    "Ticket transfer complete",
-                    $"""
-                        <p>Hi {name},</p>
-                        <p>The transfer of ticket <strong>{ticket}</strong> to <strong>{receiver}</strong> is complete.</p>
-                        """,
+                    localizer["Tickets_TicketTransfer_Email_Completed_Subject"].Value,
+                    Lf("Tickets_TicketTransfer_Email_Completed_Body", name, ticket, receiver),
                     "ticket_transfer_completed", MessageCategory.System);
             }
 
             var reasonHtml = string.IsNullOrWhiteSpace(reason)
                 ? ""
-                : $"<p><strong>Reason:</strong> {Encode(reason)}</p>";
+                : Lf("Tickets_TicketTransfer_Email_Cancelled_Reason", Encode(reason));
             return new EmailMessage(
                 toEmail, toName,
-                "Ticket transfer cancelled",
-                $"""
-                    <p>Hi {name},</p>
-                    <p>The requested transfer of ticket <strong>{ticket}</strong> to <strong>{receiver}</strong> was not completed.</p>
-                    {reasonHtml}
-                    <p>If you have questions, reply to this email and our ticketing team will help.</p>
-                    """,
+                localizer["Tickets_TicketTransfer_Email_Cancelled_Subject"].Value,
+                Lf("Tickets_TicketTransfer_Email_Cancelled_Body", name, ticket, receiver, reasonHtml),
                 "ticket_transfer_cancelled", MessageCategory.System);
         }
     }
+
+    private string Lf(string key, params object[] args) =>
+        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 }

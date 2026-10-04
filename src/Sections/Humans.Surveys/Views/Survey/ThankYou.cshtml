@@ -11,7 +11,7 @@
             <partial name="_PreviewNotice"
                      model="@(new SurveyPreviewNoticeModel(
                          Model.PreviewSurveyId!.Value,
-                         "No response was submitted.",
+                         Localizer["Surveys_PreviewThankYouNotice"].Value,
                          "mt-4 mb-0"))" />
         }
         <div class="card mt-4">

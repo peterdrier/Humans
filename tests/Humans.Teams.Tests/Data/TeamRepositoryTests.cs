@@ -10,6 +10,7 @@ using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
+using Xunit;
 
 #pragma warning disable CS0618
 
@@ -44,6 +45,46 @@ public sealed class TeamRepositoryTests : IDisposable
     // ==========================================================================
     // Team reads
     // ==========================================================================
+
+    [HumansTheory]
+    [InlineData(nameof(CallToAction.Text))]
+    [InlineData(nameof(CallToAction.Url))]
+    [InlineData(nameof(CallToAction.Style))]
+    public async Task CallsToActionChangeTracking_OnlyMarksChangedValues(string changedField)
+    {
+        var team = await SeedTeamAsync("Page");
+        var action = new CallToAction { Text = "Join", Url = "/join", Style = CallToActionStyle.Secondary };
+        team.CallsToAction = [action];
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _dbContext.ChangeTracker.DetectChanges();
+        _dbContext.Entry(team).Property(t => t.CallsToAction).IsModified.Should().BeFalse();
+        (await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+
+        switch (changedField)
+        {
+            case nameof(CallToAction.Text): action.Text = "Volunteer"; break;
+            case nameof(CallToAction.Url): action.Url = "/volunteer"; break;
+            case nameof(CallToAction.Style): action.Style = CallToActionStyle.Primary; break;
+        }
+
+        _dbContext.ChangeTracker.DetectChanges();
+        _dbContext.Entry(team).Property(t => t.CallsToAction).IsModified.Should().BeTrue();
+        (await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        var stored = await _repo.GetByIdAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+        stored!.CallsToAction.Should().ContainSingle().Which.Should().BeEquivalentTo(action);
+    }
+
+    [HumansFact]
+    public async Task GetAllForAdminAsync_LargePageDoesNotWrapToEarlierTeams()
+    {
+        await SeedTeamAsync("Team");
+        var first = await _repo.GetAllForAdminAsync(1, 50, Xunit.TestContext.Current.CancellationToken);
+        first.Items.Should().ContainSingle();
+        var result = await _repo.GetAllForAdminAsync(int.MaxValue, 50, Xunit.TestContext.Current.CancellationToken);
+        result.Items.Should().BeEmpty();
+        result.TotalCount.Should().Be(1);
+    }
 
     [HumansFact]
     public async Task GetByIdAsync_ReturnsTeam_WhenPresent()
@@ -169,6 +210,70 @@ public sealed class TeamRepositoryTests : IDisposable
 
         memberships.Should().ContainSingle()
             .Which.Should().Be((activeMember.Id, team.Id));
+    }
+
+    [HumansTheory]
+    [InlineData(TeamJoinRequestStatus.Pending, true)]
+    [InlineData(TeamJoinRequestStatus.Approved, false)]
+    [InlineData(TeamJoinRequestStatus.Rejected, false)]
+    [InlineData(TeamJoinRequestStatus.Withdrawn, false)]
+    public async Task ReassignActiveJoinRequestsAsync_CollapsesOnlyPendingSourceRequests(
+        TeamJoinRequestStatus sourceStatus, bool shouldCollapse)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var team = await SeedTeamAsync("Merge requests");
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var sourceRequest = new TeamJoinRequest
+        {
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = source,
+            Status = sourceStatus,
+            RequestedAt = _clock.GetCurrentInstant(),
+            Message = "Source request"
+        };
+        sourceRequest.StateHistory.Add(new TeamJoinRequestStateHistory
+        {
+            Id = Guid.NewGuid(),
+            TeamJoinRequestId = sourceRequest.Id,
+            Status = sourceStatus,
+            ChangedAt = _clock.GetCurrentInstant(),
+            ChangedByUserId = source,
+            Notes = "Recorded transition"
+        });
+        var targetRequest = new TeamJoinRequest
+        {
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = target,
+            Status = TeamJoinRequestStatus.Pending,
+            RequestedAt = _clock.GetCurrentInstant()
+        };
+        await _dbContext.TeamJoinRequests.AddRangeAsync([sourceRequest, targetRequest], ct);
+        await _dbContext.SaveChangesAsync(ct);
+
+        await _repo.ReassignActiveJoinRequestsAsync(source, target, ct);
+
+        var requests = await _dbContext.TeamJoinRequests.AsNoTracking().ToListAsync(ct);
+        requests.Should().ContainSingle(r => r.Id == targetRequest.Id
+            && r.UserId == target && r.Status == TeamJoinRequestStatus.Pending);
+        requests.Should().NotContain(r => r.UserId == source);
+        if (shouldCollapse)
+        {
+            requests.Should().ContainSingle();
+        }
+        else
+        {
+            requests.Should().HaveCount(2);
+            requests.Should().ContainSingle(r => r.Id == sourceRequest.Id
+                && r.UserId == target && r.Status == sourceStatus && r.Message == "Source request");
+            var history = await _dbContext.TeamJoinRequestStateHistories.AsNoTracking()
+                .SingleAsync(h => h.TeamJoinRequestId == sourceRequest.Id, ct);
+            history.Status.Should().Be(sourceStatus);
+            history.ChangedByUserId.Should().Be(source);
+            history.Notes.Should().Be("Recorded transition");
+        }
     }
 
     [HumansFact]

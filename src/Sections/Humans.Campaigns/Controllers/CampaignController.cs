@@ -18,7 +18,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Index()
     {
-        var campaigns = await campaignService.GetAllAsync();
+        var campaigns = await campaignService.GetAllAsync(HttpContext.RequestAborted);
         return View(campaigns);
     }
 
@@ -41,12 +41,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
             title, description, emailSubject, emailBodyTemplate, replyToAddress, currentUser.Id);
         if (!result.Success)
         {
-            if (string.Equals(result.ErrorKey, "TitleRequired", StringComparison.Ordinal))
-                ModelState.AddModelError(nameof(title), "Title is required.");
-            else if (string.Equals(result.ErrorKey, "EmailSubjectRequired", StringComparison.Ordinal))
-                ModelState.AddModelError(nameof(emailSubject), "Email subject is required.");
-            else if (string.Equals(result.ErrorKey, "EmailBodyTemplateRequired", StringComparison.Ordinal))
-                ModelState.AddModelError(nameof(emailBodyTemplate), "Email body template is required.");
+            AddCampaignFormError(result.ErrorKey);
 
             ViewBag.Title2 = title;
             ViewBag.Description = description;
@@ -64,7 +59,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Edit(Guid id)
     {
-        var campaign = await campaignService.GetByIdAsync(id);
+        var campaign = await campaignService.GetByIdAsync(id, HttpContext.RequestAborted);
         if (campaign is null) return NotFound();
         return View(campaign);
     }
@@ -86,12 +81,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
 
         if (!updated.Success)
         {
-            if (string.Equals(updated.ErrorKey, "TitleRequired", StringComparison.Ordinal))
-                ModelState.AddModelError(nameof(title), "Title is required.");
-            else if (string.Equals(updated.ErrorKey, "EmailSubjectRequired", StringComparison.Ordinal))
-                ModelState.AddModelError(nameof(emailSubject), "Email subject is required.");
-            else if (string.Equals(updated.ErrorKey, "EmailBodyTemplateRequired", StringComparison.Ordinal))
-                ModelState.AddModelError(nameof(emailBodyTemplate), "Email body template is required.");
+            AddCampaignFormError(updated.ErrorKey);
 
             var campaign = await campaignService.GetByIdAsync(id);
             if (campaign is null)
@@ -111,11 +101,28 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
         return RedirectToAction(nameof(Detail), new { id });
     }
 
+    private void AddCampaignFormError(string? errorKey)
+    {
+        var error = errorKey switch
+        {
+            "TitleRequired" => ("title", "Title is required."),
+            "EmailSubjectRequired" => ("emailSubject", "Email subject is required."),
+            "EmailBodyTemplateRequired" => ("emailBodyTemplate", "Email body template is required."),
+            "TitleTooLong" => ("title", "Title must be at most 200 characters."),
+            "DescriptionTooLong" => ("description", "Description must be at most 2000 characters."),
+            "EmailSubjectTooLong" => ("emailSubject", "Email subject must be at most 1000 characters."),
+            "ReplyToAddressTooLong" => ("replyToAddress", "Reply-To address must be at most 320 characters."),
+            "ReplyToAddressInvalid" => ("replyToAddress", "Enter a valid Reply-To email address."),
+            _ => (string.Empty, "Campaign could not be saved."),
+        };
+        ModelState.AddModelError(error.Item1, error.Item2);
+    }
+
     [HttpGet("{id:guid}")]
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> Detail(Guid id)
     {
-        var page = await campaignService.GetDetailPageAsync(id);
+        var page = await campaignService.GetDetailPageAsync(id, HttpContext.RequestAborted);
         if (page is null) return NotFound();
 
         return View(new CampaignDetailViewModel
@@ -222,7 +229,7 @@ internal sealed class CampaignController(CampaignService campaignService, IUserS
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SendWave(Guid id, Guid? teamId)
     {
-        var page = await campaignService.GetSendWavePageAsync(id, teamId);
+        var page = await campaignService.GetSendWavePageAsync(id, teamId, HttpContext.RequestAborted);
         if (page is null) return NotFound();
 
         if (page.Campaign.Status != CampaignStatus.Active)

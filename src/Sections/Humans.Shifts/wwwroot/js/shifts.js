@@ -54,6 +54,7 @@
       headers: { 'X-Requested-With': 'XMLHttpRequest' },
       body: fd
     }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
       var redirect = r.headers.get('X-Redirect');
       if (redirect) { window.location = redirect; return null; }
       var toastType = r.headers.get('X-Toast-Type');

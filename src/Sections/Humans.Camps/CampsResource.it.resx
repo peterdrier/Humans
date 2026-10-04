@@ -248,6 +248,10 @@
   <data name="Camps_Flash_SeasonWithdrawn" xml:space="preserve"><value>Stagione ritirata.</value></data>
   <data name="Camps_Flash_SeasonFull" xml:space="preserve"><value>Stagione contrassegnata come piena.</value></data>
   <data name="Camps_Flash_NameRequired" xml:space="preserve"><value>Il nome non può essere vuoto.</value></data>
+  <data name="Camps_Flash_ReservedName" xml:space="preserve"><value>Il nome '{0}' genera uno slug riservato.</value></data>
+  <data name="Camps_Flash_SeasonNotOpen" xml:space="preserve"><value>La stagione {0} non è aperta alle iscrizioni.</value></data>
+  <data name="Camps_Flash_SeasonAlreadyExists" xml:space="preserve"><value>Il camp ha già una stagione per {0}.</value></data>
+  <data name="Camps_Flash_NoPreviousSeason" xml:space="preserve"><value>Non c’è una stagione precedente da cui copiare.</value></data>
   <data name="Camps_Flash_HistoricalNameAdded" xml:space="preserve"><value>Nome storico aggiunto.</value></data>
   <data name="Camps_Flash_HistoricalNameRemoved" xml:space="preserve"><value>Nome storico rimosso.</value></data>
   <data name="Camps_Flash_ImageRequired" xml:space="preserve"><value>Seleziona un file da caricare.</value></data>
@@ -316,4 +320,20 @@
   <data name="Camps_Notification_SeasonClosed" xml:space="preserve"><value>La stagione {0} per {1} non è più aperta</value></data>
   <data name="Camps_Notification_SeasonClosedBody" xml:space="preserve"><value>La tua richiesta in sospeso di unirti a questo camp non verrà esaminata perché la stagione è stata ritirata o respinta.</value></data>
   <data name="Camps_Notification_RoleAssigned" xml:space="preserve"><value>Ti è stato assegnato il ruolo {0}.</value></data>
+  <data name="Camps_Validation_ImageCount" xml:space="preserve"><value>Un barrio può avere al massimo 5 immagini.</value></data>
+  <data name="Camps_Validation_ImageType" xml:space="preserve"><value>Sono consentite solo immagini JPEG, PNG e WebP.</value></data>
+  <data name="Camps_Validation_ImageSize" xml:space="preserve"><value>L’immagine deve essere inferiore a 10 MB.</value></data>
+  <data name="Camps_Validation_ImageFilenameLength" xml:space="preserve"><value>Il nome del file immagine non può superare i 256 caratteri.</value></data>
+  <data name="Camps_Validation_ImageExtension" xml:space="preserve"><value>Il nome del file immagine deve terminare con .jpg, .jpeg, .png o .webp.</value></data>
+  <data name="Camps_Flash_WithdrawRequiresPending" xml:space="preserve"><value>È possibile ritirare solo una richiesta di adesione in attesa.</value></data>
+  <data name="Camps_Flash_LeaveRequiresActive" xml:space="preserve"><value>È possibile lasciare solo un’adesione attiva al campo.</value></data>
+  <data name="Camps_Flash_ApproveRequiresPending" xml:space="preserve"><value>Si può approvare solo una richiesta di adesione in attesa.</value></data>
+  <data name="Camps_Flash_RejectRequiresPending" xml:space="preserve"><value>Si può rifiutare solo una richiesta di adesione in attesa.</value></data>
+  <data name="Camps_Flash_RemoveRequiresActive" xml:space="preserve"><value>Si può rimuovere solo un’adesione attiva al campo.</value></data>
+  <data name="Camps_Flash_CampNotFound" xml:space="preserve"><value>Campo non trovato.</value></data>
+  <data name="Camps_Flash_HistoricalNameNotFound" xml:space="preserve"><value>Nome storico non trovato.</value></data>
+  <data name="Camps_Flash_HistoricalNameWrongCamp" xml:space="preserve"><value>Questo nome storico non appartiene a questo campo.</value></data>
+  <data name="Camps_Flash_ImageNotFound" xml:space="preserve"><value>Immagine non trovata.</value></data>
+  <data name="Camps_Flash_ImageWrongCamp" xml:space="preserve"><value>Questa immagine non appartiene a questo campo.</value></data>
+  <data name="Camps_Notification_MessageReceived" xml:space="preserve"><value>Nuovo messaggio per {0} - controlla la tua email</value></data>
 </root>

@@ -82,11 +82,11 @@
     </form>
 
     @{
-        Func<CodeDetailRow, IHtmlContent> codeCell =
+        Func<CodeDetailDto, IHtmlContent> codeCell =
             @<text><code>@item.Code</code></text>;
-        Func<CodeDetailRow, IHtmlContent> recipientCell =
+        Func<CodeDetailDto, IHtmlContent> recipientCell =
             @<text><vc:human user-id="@item.RecipientUserId" link="Admin" /></text>;
-        Func<CodeDetailRow, IHtmlContent> statusCell = @<text>
+        Func<CodeDetailDto, IHtmlContent> statusCell = @<text>
             @{
                 var badgeClass = item.Status switch
                 {
@@ -97,7 +97,7 @@
             }
             <span class="badge @badgeClass">@item.Status</span>
         </text>;
-        Func<CodeDetailRow, IHtmlContent> redeemedAtCell = @<text>
+        Func<CodeDetailDto, IHtmlContent> redeemedAtCell = @<text>
             @if (item.RedeemedAt.HasValue)
             {
                 @item.RedeemedAt.Value.ToDate()
@@ -107,7 +107,7 @@
                 <span class="text-muted">&mdash;</span>
             }
         </text>;
-        Func<CodeDetailRow, IHtmlContent> redeemedByCell = @<text>
+        Func<CodeDetailDto, IHtmlContent> redeemedByCell = @<text>
             @if (item.RedeemedByName != null)
             {
                 <text>@item.RedeemedByName</text>
@@ -118,7 +118,7 @@
                 <span class="text-muted">&mdash;</span>
             }
         </text>;
-        Func<CodeDetailRow, IHtmlContent> orderCell = @<text>
+        Func<CodeDetailDto, IHtmlContent> orderCell = @<text>
             @if (item.RedeemedOrderVendorId != null)
             {
                 <small><code>@item.RedeemedOrderVendorId</code></small>

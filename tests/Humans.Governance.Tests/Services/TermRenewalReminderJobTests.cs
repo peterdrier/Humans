@@ -21,6 +21,10 @@ public sealed class TermRenewalReminderJobTests
     [HumansTheory]
     [Xunit.InlineData("es")]
     [Xunit.InlineData("unsupported")]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(" ")]
+    [Xunit.InlineData("not a culture!")]
+    [Xunit.InlineData("fr-FR")]
     public async Task ExecuteAsync_LocalizesNoticeAndDateWithoutLeakingRecipientCulture(string language)
     {
         using var serverCulture = new CultureScope("fr");
@@ -54,6 +58,10 @@ public sealed class TermRenewalReminderJobTests
         args[0].Should().Be(NotificationSource.TermRenewalReminder);
         ((IReadOnlyList<Guid>)args[4]!).Should().ContainSingle().Which.Should().Be(userId);
         var spanish = string.Equals(language, "es", StringComparison.Ordinal);
+        var expectedCulture = spanish ? "es" : "en";
+        await email.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == "applicant@example.com"
+                && m.Subject.EndsWith("#" + expectedCulture, StringComparison.Ordinal)), CancellationToken.None);
         args[3].Should().Be(spanish ? $"Tu período como Colaborador vence el {expectedDate}" : $"Your Colaborador term expires {expectedDate}");
         args[5].Should().Be(spanish ? "Presenta una solicitud de renovación para mantener tu categoría de membresía." : "Submit a renewal application to maintain your membership tier.");
         args[6].Should().Be("/Governance/Applications");

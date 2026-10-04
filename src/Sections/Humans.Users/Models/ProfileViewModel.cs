@@ -20,18 +20,18 @@ internal sealed class ProfileViewModel
 
     public string? CustomProfilePictureUrl { get; set; }
 
-    [Required]
-    [StringLength(100)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(100, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "Burner Name")]
     public string BurnerName { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(100)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(100, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "Legal First Name")]
     public string FirstName { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(100)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(100, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "Legal Last Name(s)")]
     public string LastName { get; set; } = string.Empty;
 
@@ -43,38 +43,38 @@ internal sealed class ProfileViewModel
     /// </summary>
     public bool IsOwnProfile { get; set; }
 
-    [StringLength(256)]
+    [StringLength(256, ErrorMessage = "Validation_MaxLength")]
     public string? City { get; set; }
 
     [Display(Name = "Country")]
-    [StringLength(2)]
+    [StringLength(2, ErrorMessage = "Validation_MaxLength")]
     public string? CountryCode { get; set; }
 
     public double? Latitude { get; set; }
 
     public double? Longitude { get; set; }
 
-    [StringLength(512)]
+    [StringLength(512, ErrorMessage = "Validation_MaxLength")]
     public string? PlaceId { get; set; }
 
     public string? LocationDisplay => !string.IsNullOrEmpty(City) && !string.IsNullOrEmpty(CountryCode)
         ? $"{City}, {CountryCode}"
         : City ?? CountryCode;
 
-    [StringLength(1000)]
+    [StringLength(1000, ErrorMessage = "Validation_MaxLength")]
     [DataType(DataType.MultilineText)]
     public string? Bio { get; set; }
 
-    [StringLength(100)]
+    [StringLength(100, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "Pronouns")]
     public string? Pronouns { get; set; }
 
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     [DataType(DataType.MultilineText)]
     [Display(Name = "How I'd Like to Contribute")]
     public string? ContributionInterests { get; set; }
 
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     [DataType(DataType.MultilineText)]
     [Display(Name = "Notes for the Board")]
     public string? BoardNotes { get; set; }
@@ -83,13 +83,13 @@ internal sealed class ProfileViewModel
     /// Birthday month (1-12) for the edit form.
     /// </summary>
     [Display(Name = "Birthday")]
-    [Range(1, 12)]
+    [Range(1, 12, ErrorMessage = "Validation_Range")]
     public int? BirthdayMonth { get; set; }
 
     /// <summary>
     /// Birthday day (1-31) for the edit form.
     /// </summary>
-    [Range(1, 31)]
+    [Range(1, 31, ErrorMessage = "Validation_Range")]
     public int? BirthdayDay { get; set; }
 
     /// <summary>
@@ -115,15 +115,15 @@ internal sealed class ProfileViewModel
         }
     }
 
-    [StringLength(256)]
+    [StringLength(256, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "Emergency Contact Name")]
     public string? EmergencyContactName { get; set; }
 
-    [StringLength(50)]
+    [StringLength(50, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "Emergency Contact Phone")]
     public string? EmergencyContactPhone { get; set; }
 
-    [StringLength(100)]
+    [StringLength(100, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "Emergency Contact Relationship")]
     public string? EmergencyContactRelationship { get; set; }
 
@@ -178,28 +178,28 @@ internal sealed class ProfileViewModel
     /// Motivation statement for Colaborador/Asociado application.
     /// Required when SelectedTier is not Volunteer during initial setup.
     /// </summary>
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     [DataType(DataType.MultilineText)]
     public string? ApplicationMotivation { get; set; }
 
     /// <summary>
     /// Additional information for the application.
     /// </summary>
-    [StringLength(1000)]
+    [StringLength(1000, ErrorMessage = "Validation_MaxLength")]
     [DataType(DataType.MultilineText)]
     public string? ApplicationAdditionalInfo { get; set; }
 
     /// <summary>
     /// Asociado-only: significant contribution to Nowhere or another Burn.
     /// </summary>
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     [DataType(DataType.MultilineText)]
     public string? ApplicationSignificantContribution { get; set; }
 
     /// <summary>
     /// Asociado-only: understanding of the asociado role and why they want it.
     /// </summary>
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     [DataType(DataType.MultilineText)]
     public string? ApplicationRoleUnderstanding { get; set; }
 
@@ -275,7 +275,7 @@ internal sealed class ProfileViewModel
     /// <summary>
     /// Free-text detail when "Other" allergy is selected.
     /// </summary>
-    [StringLength(500)]
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? AllergyOtherText { get; set; }
 
     /// <summary>
@@ -393,18 +393,18 @@ internal sealed class ContactFieldEditViewModel
 {
     public Guid? Id { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public ContactFieldType FieldType { get; set; }
 
-    [StringLength(100)]
+    [StringLength(100, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "Custom Label")]
     public string? CustomLabel { get; set; }
 
-    [Required]
-    [StringLength(500)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string Value { get; set; } = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public ContactFieldVisibility Visibility { get; set; } = ContactFieldVisibility.AllActiveProfiles;
 
     public int DisplayOrder { get; set; }
@@ -433,16 +433,16 @@ internal sealed class VolunteerHistoryEntryEditViewModel
 {
     public Guid? Id { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     [Display(Name = "Date")]
     public string DateString { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(256)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(256, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "Event Name")]
     public string EventName { get; set; } = string.Empty;
 
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     [DataType(DataType.MultilineText)]
     public string? Description { get; set; }
 
@@ -498,11 +498,11 @@ internal sealed class ProfileLanguageEditViewModel
 {
     public Guid? Id { get; set; }
 
-    [Required]
-    [StringLength(10)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(10, ErrorMessage = "Validation_MaxLength")]
     public string LanguageCode { get; set; } = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public LanguageProficiency Proficiency { get; set; }
 }
 

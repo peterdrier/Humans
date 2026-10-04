@@ -6,13 +6,30 @@ using Humans.Finance.Models;
 namespace Humans.Finance.Services;
 
 /// <summary>
-/// The <c>/Finance/Holded</c> screen's read model. Internal: the screen lives in this section, so
-/// nothing outside it consumes this — the cross-section surface stays
+/// What only Finance's own <c>/Finance/*</c> screens call. Internal: the screens live in this
+/// section, so nothing outside it consumes this — the cross-section surface stays
 /// <see cref="Contracts.IHoldedFinanceService"/>. Mirrors the Holded section's own
 /// <c>IHoldedAdminService</c>, for the same reason.
 /// </summary>
 internal interface IHoldedFinanceAdminService : IApplicationService
 {
+    /// <summary>The <c>/Finance/HoldedAccounts</c> plan: every active-year budget category with its
+    /// mapped, proposed or orphaned Holded expense account, numbered from <paramref name="blockStart"/>.</summary>
+    Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(int blockStart, CancellationToken ct = default);
+
+    /// <summary>Creates the plan's missing accounts in Holded and maps them; additive only.</summary>
+    Task<int> ProvisionAsync(int blockStart, bool addAll, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Manually binds a member to an existing Holded creditor account by 400000xx number.
+    /// Fails, writing nothing, when the account is already bound or no Holded contact carries it.</summary>
+    Task<CreditorBindResult> SetCreditorContactAsync(
+        Guid userId, int supplierAccountNum, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Clears the member's creditor binding — the remedy for a wrong bind or a collision. Removes
+    /// the whole row, not just the number: the contact id alone merges two members' payables just as
+    /// thoroughly. The next push re-resolves. False when nothing was bound.</summary>
+    Task<bool> ClearCreditorContactAsync(Guid userId, Guid actorUserId, CancellationToken ct = default);
+
     /// <summary>Everything <c>/Finance/Holded</c> renders, from the local cache only — no Holded
     /// HTTP call, so the page cannot inherit the connector's timeout
     /// (nobodies-collective/Humans#976).</summary>

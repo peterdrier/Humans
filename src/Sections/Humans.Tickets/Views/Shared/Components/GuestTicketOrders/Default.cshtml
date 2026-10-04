@@ -14,7 +14,7 @@
                 @if (Model.Count > 0)
                 {
                     Func<UserTicketOrderSummary, IHtmlContent> amountCell =
-                        r => new HtmlString($"{Html.Encode(r.TotalAmount.ToString("N2", CultureInfo.CurrentCulture))} {Html.Encode(r.Currency)}");
+                        r => new HtmlString($"{Html.Encode(r.TotalAmount.ToString("N2", CultureInfo.CurrentUICulture))} {Html.Encode(r.Currency)}");
                     var ticketsTable = TableModel.For(Model)
                         .Column(SharedLocalizer["Guest_TicketsHeader_Purchased"].Value, r => r.PurchasedAt.ToDateTimeUtc().ToDate())
                         .Column(SharedLocalizer["Guest_TicketsHeader_Buyer"].Value, r => r.BuyerName)

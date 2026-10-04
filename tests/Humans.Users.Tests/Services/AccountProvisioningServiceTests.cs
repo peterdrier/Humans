@@ -122,10 +122,10 @@ public class AccountProvisioningServiceTests
         public Task<bool> AnonymizeForMergeAsync(
             Guid sourceUserId, Guid targetUserId, Instant now, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<int> ReassignLoginsToUserAsync(
+        public Task ReassignLoginsToUserAsync(
             Guid sourceUserId, Guid targetUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<int> ReassignEventParticipationToUserAsync(
+        public Task ReassignEventParticipationToUserAsync(
             Guid sourceUserId, Guid targetUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task SetLastConsentReminderSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) =>
@@ -155,7 +155,7 @@ public class AccountProvisioningServiceTests
             IReadOnlyList<ContactField> toRemove,
             CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<int> ReassignToUserAsync(
+        public Task ReassignToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
@@ -198,7 +198,7 @@ public class AccountProvisioningServiceTests
             Instant now,
             CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<int> ReassignSubAggregatesToUserAsync(
+        public Task ReassignSubAggregatesToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task ReconcileCVEntriesAsync(
@@ -221,7 +221,7 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByAddressAsync(
             string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<int> ReassignUserEmailsToUserAsync(
+        public Task ReassignUserEmailsToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetAllUserEmailsAsync(CancellationToken ct = default) =>

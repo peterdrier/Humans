@@ -1,3 +1,13 @@
+using Humans.Base.Extensions;
+using System.Text.Json;
+using System.Security.Claims;
+using Humans.Governance.Controllers;
+using Humans.Base;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
+using NSubstitute.Core;
+using Xunit;
 using Humans.Auth.Contracts;
 using Humans.Governance.Domain;
 using NodaTime.Testing;
@@ -545,9 +555,17 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await _userService.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ApproveAsync_EmailsApplicantViaUserServiceLookup()
+    [HumansTheory]
+    [InlineData(true, "en", "en")]
+    [InlineData(true, "es", "es")]
+    [InlineData(true, "", "en")]
+    [InlineData(true, " ", "en")]
+    [InlineData(true, "not a culture!", "en")]
+    [InlineData(true, "fr-FR", "en")]
+    [InlineData(false, "fr-FR", "en")]
+    public async Task Decision_EmailsApplicantViaUserServiceLookup(bool approve, string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId);
         await SeedBoardVoteAsync(app.Id);
@@ -560,7 +578,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             BurnerName = "Alice",
             UserName = "alice@test.com",
             Email = "alice@test.com",
-            PreferredLanguage = "en"
+            PreferredLanguage = language
         };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user.ToUserInfo());
         _userEmailService.GetNotificationTargetEmailsAsync(
@@ -569,13 +587,18 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(
                 new Dictionary<Guid, string> { [userId] = "alice@test.com" }));
 
-        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
+        var result = approve
+            ? await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken)
+            : await _service.RejectAsync(app.Id, Guid.NewGuid(), "Reason", null, Xunit.TestContext.Current.CancellationToken);
+        result.Success.Should().BeTrue();
+        var templateName = approve ? "application_approved" : "application_rejected";
+        var subjectKey = approve ? "Governance_Email_ApplicationApproved_Subject" : "Governance_Email_ApplicationRejected_Subject";
 
         await _emailService.Received().SendAsync(
-            Arg.Is<EmailMessage>(m => m.TemplateName == "application_approved"
+            Arg.Is<EmailMessage>(m => m.TemplateName == templateName
                 && m.RecipientEmail == "alice@test.com"
                 && m.RecipientName == "Alice"
-                && m.Subject == "Governance_Email_ApplicationApproved_Subject#en"),
+                && m.Subject == subjectKey + "#" + expectedCulture),
             Arg.Any<CancellationToken>());
     }
 
@@ -868,6 +891,86 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         vote.VotedAt.Should().Be(votedAt);
     }
 
+    [HumansFact]
+    public async Task BoardVotingDetail_CancelsViewerReadAfterApplicationLoads()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var applicantId = Guid.NewGuid();
+        var viewerId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(applicantId);
+        var abandonAfterApplicant = false;
+        async ValueTask<UserInfo?> ReadUser(CallInfo call)
+        {
+            var id = call.Arg<Guid>();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            if (abandonAfterApplicant && id == applicantId) await cancellation.CancelAsync();
+            return new User { Id = id, DisplayName = "Member", Email = "member@example.com" }.ToUserInfo();
+        }
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(ReadUser);
+        var controller = new GovernanceBoardVotingController(_userService, _service,
+            NullLogger<GovernanceBoardVotingController>.Instance, Substitute.For<IStringLocalizer<GovernanceResource>>())
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "Test")),
+                }
+            },
+        };
+
+        (await controller.BoardVotingDetail(app.Id, cancellation.Token)).Should().BeOfType<ViewResult>();
+        abandonAfterApplicant = true;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.BoardVotingDetail(app.Id, cancellation.Token));
+    }
+
+    [HumansTheory]
+    [InlineData("Index")]
+    [InlineData("Create")]
+    [InlineData("Details")]
+    [InlineData("Admin")]
+    [InlineData("AdminDetail")]
+    [InlineData("AdminTermExpiry")]
+    public async Task ApplicationPages_CancelAbandonedReads(string page)
+    {
+        using var request = new CancellationTokenSource();
+        var viewerId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(
+            string.Equals(page, "Create", StringComparison.Ordinal) ? Guid.NewGuid() : viewerId);
+        _userService.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(new User { Id = viewerId }.ToUserInfo());
+        });
+        var controller = new GovernanceApplicationsController(_service, _userService,
+            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = request.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([
+                    new Claim(ClaimTypes.NameIdentifier, viewerId.ToString()), new Claim(ClaimTypes.Role, RoleNames.Admin)], "Test")),
+                }
+            },
+        };
+        Task<IActionResult> ReadPage() => page switch
+        {
+            "Index" => controller.Index(),
+            "Create" => controller.Create(),
+            "Details" => controller.Details(app.Id),
+            "Admin" => controller.Admin(null, null),
+            "AdminDetail" => controller.AdminDetail(app.Id),
+            "AdminTermExpiry" => controller.AdminTermExpiry(),
+            _ => throw new ArgumentOutOfRangeException(nameof(page)),
+        };
+
+        (await ReadPage()).Should().BeOfType<ViewResult>();
+        await request.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPage);
+    }
+
     // --- GetUserApplicationDetailAsync ---
 
     [HumansFact]
@@ -935,6 +1038,32 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.Should().NotBeNull();
         result.History.Should().HaveCount(1);
         result.History[0].Status.Should().Be(ApplicationStatus.Withdrawn);
+    }
+
+    [HumansTheory]
+    [InlineData(5, "", 5, "")]
+    [InlineData(110, "", 100, "...")]
+    [InlineData(99, "😀 tail", 99, "...")]
+    [InlineData(98, "😀 tail", 98, "😀...")]
+    public async Task Admin_preview_preserves_unicode_and_original_motivation(
+        int prefixLength, string suffix, int expectedPrefixLength, string expectedSuffix)
+    {
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        var motivation = new string('x', prefixLength) + suffix;
+        app.Motivation = motivation;
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var controller = new GovernanceApplicationsController(_service, _userService,
+            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var result = (await controller.Admin(null, null)).Should().BeOfType<ViewResult>().Subject;
+        var model = result.Model.Should().BeOfType<Humans.Governance.Models.AdminApplicationListViewModel>().Subject;
+        model.Applications.Should().ContainSingle().Which.MotivationPreview.Should()
+            .Be(new string('x', expectedPrefixLength) + expectedSuffix);
+        (await GovernanceDb.Applications.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
+            .Motivation.Should().Be(motivation);
     }
 
     // --- GetFilteredApplicationsAsync ---
@@ -1133,6 +1262,31 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             VotedAt = Clock.GetCurrentInstant()
         });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUserAsync_IncludesApplicationLifecycleTimesOnlyForTheOwner(bool reminderSent)
+    {
+        var userId = Guid.NewGuid();
+        var application = await SeedSubmittedApplicationAsync(userId);
+        application.UpdatedAt = Instant.FromUtc(2026, 10, 2, 23, 30);
+        application.RenewalReminderSentAt = reminderSent ? Instant.FromUtc(2026, 10, 3, 8, 15) : null;
+        var otherApplication = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        otherApplication.Motivation = "Another member's application";
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var slices = await _service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(
+            slices.Single(slice => string.Equals(slice.SectionName, ApplicationDecisionService.Applications, StringComparison.Ordinal)).Data));
+        var row = json.RootElement.EnumerateArray().Should().ContainSingle().Subject;
+
+        row.GetProperty("Motivation").GetString().Should().Be(application.Motivation);
+        row.GetProperty("SubmittedAt").GetString().Should().NotBeNullOrEmpty();
+        row.GetProperty("UpdatedAt").GetString().Should().Be("2026-10-02T23:30:00Z");
+        row.GetProperty("RenewalReminderSentAt").GetString()
+            .Should().Be(reminderSent ? "2026-10-03T08:15:00Z" : null);
     }
 
     private async Task<MemberApplication> SeedSubmittedApplicationAsync(

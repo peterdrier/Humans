@@ -122,12 +122,18 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 ## Invariants
 
+- Member event history supplies localized empty text to the shared audit component in all six cultures; its event predicate and history entries are unchanged.
+
+- Month headings, grid weekday headings and recurrence weekday labels follow the selected UI culture in all six languages. Input culture stays English; Monday-first ordering, recurrence codes and timezone handling are unchanged.
+
 - Every `CalendarEvent` has a non-null `OwningTeamId` — a bare Guid naming a team, with no database FK constraint and no navigation property.
 - Only authenticated humans may create, edit, or delete events, or manage exceptions (enforced by `[Authorize]` on `CalendarController`).
 - Unexpected create/edit failures return `Calendar_SaveFailed` for the controller to localize in all six cultures; detailed exceptions remain in server logs.
 - Every mutating action (create / update / delete / cancel-occurrence / override-occurrence) writes an `AuditLogEntry` with the actor's user ID.
-- Create and update result wrappers preserve caller cancellation; they do not turn a canceled operation into an ordinary validation or persistence failure.
+- Create and update result wrappers preserve caller cancellation before commit; they do not turn a canceled operation into an ordinary validation or persistence failure. After any successful event or occurrence mutation, the cache refresh runs without the browser token, so an abort cannot make a committed write fail during refresh. Malformed recurrence and unknown timezone rejections remain Warning logs with their reason, without exception stacks.
 - Title is required (non-null, non-empty).
+- Create/edit form required, length and URL validation errors use shared resources in all six cultures; input limits and URL validation are unchanged.
+- Occurrence override text stays optional. The form enforces the stored title/description/location/URL limits (200/4000/500/2000), validates URLs, and redisplays localized errors before writing an exception.
 - Calendar form parse and fallback validation messages use `CalendarResource` in every supported culture. Timed service validation results also return resource keys for malformed recurrence, unknown timezone, and invalid event fields, while detailed diagnostics stay in server logs. Recurrence errors remain attached to their specific form field.
 - Timed events require `StartUtc <= EndUtc` and have no date fields. All-day writes require `StartDate < EndDateExclusive` and have no start/end instants.
 - Zero-duration timed occurrences are included when their start is in `[from, to)`, including the window's start. Positive-duration occurrences must overlap the window; an occurrence ending exactly at `from` is excluded.
@@ -136,7 +142,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Timed recurrence requires an RRULE and IANA timezone together. All-day recurrence uses DATE DTSTART/DTEND and date-only UNTIL; sub-day recurrence rules are rejected on writes.
 - Calendar month, list, agenda, and team windows — plus the Create form's initial date and timezone — use the browser-reported session timezone when available; otherwise they use Madrid, the community default. Each calendar page names its zone in a picker; choosing another zone sets the session timezone.
 - The Edit and occurrence-override forms render timed events in the series' stored zone, or the viewer's zone for one-off events (which store none), and read posted times in the zone chosen on the form.
-- `RecurrenceUntilUtc` bounds timed series; `RecurrenceUntilDate` bounds all-day series. Snapshot prefiltering uses the corresponding type and retains rows with exceptions, which can move outside either series boundary.
+- `RecurrenceUntilUtc` bounds timed series; `RecurrenceUntilDate` bounds all-day series. Event fields are validated before calculating either bound, so invalid durations produce validation errors rather than recurrence-library failures. UTC `UNTIL` values are parsed independently of the server timezone; cutoff parsing accepts the same letter casing as recurrence validation. Local cutoffs use the same lenient timezone resolution as occurrences, including skipped or repeated local times. Timed snapshot prefiltering allows occurrence duration beyond `UNTIL`, which limits starts rather than ends; expansion checks exact overlap. Rows with exceptions are retained because they can move outside either series boundary.
 - All-day duration is a calendar-day count across every recurrence, including DST changes. A start-only override retains that count.
 - All-day occurrence URLs carry an ISO date; timed occurrence URLs carry an ISO instant. The editor renders date-only inputs for all-day series, and service validation rejects timed overrides for them.
 - Timed occurrence overrides cannot end before their effective start (the overridden start, or the original occurrence when start is omitted). Zero-duration overrides remain valid; a start-only override retains the series duration. Invalid replacements leave any previous exception unchanged.
@@ -147,6 +153,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Timed exceptions retain the unique `(EventId, OriginalOccurrenceStartUtc)` index; all-day exceptions upsert by event and original date under their own unique `(EventId, OriginalOccurrenceDate)` index.
 - The event form composes the RRULE client-side from a recurrence picker (Repeats, interval, weekdays, monthly day-vs-nth-weekday, ends never/on date/after N); the posted field is still `RecurrenceRule` and server validation is unchanged. Timed picker rules end with a floating end-of-day `UNTIL=YYYYMMDDT235959` (read in the recurrence timezone; a date-only UNTIL would drop the last day's occurrence); all-day rules use date-only `UNTIL=YYYYMMDD`. On edit, a rule the picker cannot reproduce exactly selects Custom and keeps the raw text untouched.
 - Recurrence expands in-memory through Ical.Net: local times for timed events, floating dates for all-day events.
+- Timed recurrence expansion uses a conservative local upper bound, then checks instant overlap. The earlier occurrence in a repeated clock hour remains visible when the window ends during its later repetition.
 - A member has at most one `CalendarFeedToken`, keyed by their user id, and none until they first open `/Calendar`. Minting is lazy and idempotent, and never replaces a token already there: two first views racing each other both try to insert the same primary key, and the loser adopts the winner's token rather than failing or revoking a live subscription. Rotation is the one path that replaces the row, and is last-write-wins by design. GDPR erasure deletes it, and an account merge deletes the eliminated account's row rather than moving it — the survivor keeps their own feed and the dead account's URL stops working.
 
 - A failed or cancelled post-write cache reload evicts the affected event and marks the event cache cold; the next window read reloads from source, including newly created events. The reload failure still propagates.

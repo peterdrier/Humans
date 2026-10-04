@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
@@ -94,7 +95,9 @@ public class EmailProvisioningServiceTests
         IUserService UserService,
         IGoogleWorkspaceUserService WorkspaceUserService,
         IUserEmailService UserEmailService,
-        ITeamService TeamService);
+        ITeamService TeamService,
+        INotificationEmitter Notifications,
+        IEmailService Emails);
 
     private static ProvisioningFixture BuildFixture()
     {
@@ -114,15 +117,16 @@ public class EmailProvisioningServiceTests
 
         return new ProvisioningFixture(
             service, userService, workspace, userEmail,
-            teamService);
+            teamService, notify, email);
     }
 
-    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile, string language = "en", string? email = null) => UserInfo.Create(
         user: new User
         {
             Id = userId,
             DisplayName = profile.BurnerName,
-            PreferredLanguage = "en",
+            PreferredLanguage = language,
+            Email = email,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         },
         userEmails: [],
@@ -205,15 +209,28 @@ public class EmailProvisioningServiceTests
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ProvisionNobodiesEmailAsync_AllowsWhenPrefixIsFree()
+    [HumansTheory]
+    [InlineData("en", "Your @nobodies.team account is ready", "View profile", "en")]
+    [InlineData("es", "Tu cuenta @nobodies.team está lista", "Ver perfil", "es")]
+    [InlineData("de", "Dein @nobodies.team-Konto ist bereit", "Profil ansehen", "de")]
+    [InlineData("it", "Il tuo account @nobodies.team è pronto", "Visualizza profilo", "it")]
+    [InlineData("fr", "Ton compte @nobodies.team est prêt", "Voir le profil", "fr")]
+    [InlineData("ca", "El teu compte @nobodies.team està llest", "Mostra el perfil", "ca")]
+    [InlineData("xx", "Your @nobodies.team account is ready", "View profile", "en")]
+    [InlineData("", "Your @nobodies.team account is ready", "View profile", "en")]
+    [InlineData(" ", "Your @nobodies.team account is ready", "View profile", "en")]
+    [InlineData("not a culture!", "Your @nobodies.team account is ready", "View profile", "en")]
+    [InlineData("fr-FR", "Your @nobodies.team account is ready", "View profile", "en")]
+    public async Task ProvisionNobodiesEmailAsync_FreePrefix_LocalizesRecipientNotice(
+        string language, string expectedTitle, string expectedAction, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var f = BuildFixture();
 
         var userId = Guid.NewGuid();
         StubTargetUser(f, userId);
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(firstName: "Person", lastName: "Test")));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(firstName: "Person", lastName: "Test"), language, "recovery@example.com"));
         f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmailEditDto>());
 
@@ -231,6 +248,18 @@ public class EmailProvisioningServiceTests
 
         result.Success.Should().BeTrue();
         result.FullEmail.Should().Be("bob@nobodies.team");
+        await f.Emails.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == "recovery@example.com"
+                && m.TemplateName == "workspace_credentials"
+                && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)
+                && m.HtmlBody.Contains("bob@nobodies.team", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+        var notice = f.Notifications.ReceivedCalls().Single().GetArguments();
+        notice[3].Should().Be(expectedTitle);
+        ((IReadOnlyList<Guid>)notice[4]!).Should().Equal(userId);
+        ((string)notice[5]!).Should().Contain("bob@nobodies.team");
+        notice[6].Should().Be("/Profile");
+        notice[7].Should().Be(expectedAction);
 
         await f.WorkspaceUserService.Received(1).ProvisionAccountAsync(
             "bob@nobodies.team", "Person", "Test",

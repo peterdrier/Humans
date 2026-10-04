@@ -218,7 +218,16 @@ public class ServiceTeamOrdersTests
                 // sub-team the user coordinates — must NOT appear in the index
                 [subteamId] = MakeDepartment(subteamId, "Build Sub", userId, parentTeamId: deptId),
             });
-        _repo.GetOrderForTeamAsync(deptId, 2026, Arg.Any<CancellationToken>()).Returns((Order?)null);
+        var orderId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        _repo.GetOrdersForTeamsWithLinesAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { deptId })),
+                2026, Arg.Any<CancellationToken>())
+            .Returns([new Order
+            {
+                Id = orderId, TeamId = deptId, Year = 2026,
+                Lines = { new() { Id = Guid.NewGuid(), ProductId = productId, Qty = 2, UnitPriceSnapshot = 10m } }
+            }]);
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<Product>());
 
@@ -227,7 +236,10 @@ public class ServiceTeamOrdersTests
         data.Counterparties.Should().HaveCount(1);
         data.Counterparties[0].CounterpartyType.Should().Be(OrderCounterpartyType.Team);
         data.Counterparties[0].CounterpartyId.Should().Be(deptId);
-        data.Counterparties[0].Orders.Should().BeEmpty();
+        var order = data.Counterparties[0].Orders.Should().ContainSingle().Subject;
+        order.Id.Should().Be(orderId);
+        order.CounterpartyDisplayName.Should().Be("Build");
+        order.BalanceEur.Should().Be(20m);
     }
 
     [HumansFact]

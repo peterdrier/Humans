@@ -43,6 +43,7 @@
   <data name="Governance_Title" xml:space="preserve">
     <value>Gouvernance</value>
   </data>
+  <data name="Governance_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
   <data name="GovernanceApplication_Title" xml:space="preserve">
     <value>Candidature de gouvernance</value>
   </data>
@@ -86,7 +87,7 @@
     <value>Bienvenue ! Vous êtes désormais Asociado/a de Nobodies Collective.</value>
   </data>
   <data name="Governance_Tier" xml:space="preserve">
-    <value>Niveau</value>
+    <value>Catégorie</value>
   </data>
   <data name="Governance_TermExpiry" xml:space="preserve">
     <value>Le mandat expire</value>
@@ -152,7 +153,7 @@
     <value>Nouvelle candidature</value>
   </data>
   <data name="GovernanceCreate_Lead" xml:space="preserve">
-    <value>Les Colaboradores et Asociados assument des responsabilités de gouvernance. Choisissez le niveau qui correspond le mieux à votre implication.</value>
+    <value>Les Colaboradores et Asociados assument des responsabilités de gouvernance. Choisissez la catégorie qui correspond le mieux à votre implication.</value>
   </data>
   <data name="GovernanceCreate_MotivationPlaceholder" xml:space="preserve">
     <value>Veuillez partager votre motivation pour nous rejoindre...</value>
@@ -266,7 +267,7 @@
     <value>Candidat</value>
   </data>
   <data name="BoardVoting_Tier" xml:space="preserve">
-    <value>Niveau</value>
+    <value>Catégorie</value>
   </data>
   <data name="BoardVoting_Details" xml:space="preserve">
     <value>Détails</value>
@@ -314,7 +315,7 @@
     <value>Rejeter</value>
   </data>
   <data name="BoardVoting_ApproveConfirm" xml:space="preserve">
-    <value>Cela approuvera la candidature et accordera le niveau de membres. Continuer ?</value>
+    <value>Cela approuvera la candidature et accordera la catégorie de membres. Continuer ?</value>
   </data>
   <data name="BoardVoting_RejectConfirm" xml:space="preserve">
     <value>Cela rejettera la candidature. Continuer ?</value>
@@ -703,7 +704,7 @@
 &lt;p&gt;Votre mandat de &lt;strong&gt;{1}&lt;/strong&gt; expire le &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;Si vous souhaitez continuer en tant que {1}, veuillez soumettre une demande de renouvellement avant la fin de votre mandat.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Soumettre une demande de renouvellement&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Sans renouvellement, vous resterez un human actif mais n'aurez plus l'accès de niveau {1}.&lt;/p&gt;
+&lt;p&gt;Sans renouvellement, vous resterez un human actif mais n'aurez plus l'accès de catégorie {1}.&lt;/p&gt;
 &lt;p&gt;Merci pour votre engagement !&lt;br/&gt;L'équipe Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment>
   </data>

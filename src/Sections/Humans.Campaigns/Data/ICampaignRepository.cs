@@ -152,10 +152,9 @@ internal interface ICampaignRepository : IRepository
     /// target; on a same-campaign collision the target's grant wins and the
     /// source's is dropped. <paramref name="updatedAt"/> is discarded —
     /// <c>CampaignGrant</c> has no <c>UpdatedAt</c>; the parameter exists for
-    /// <c>IUserMerge</c> signature parity. Returns the target's grant count
-    /// after the move.
+    /// <c>IUserMerge</c> signature parity.
     /// </summary>
-    Task<int> ReassignGrantsToUserAsync(
+    Task ReassignGrantsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,

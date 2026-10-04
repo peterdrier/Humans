@@ -82,6 +82,20 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 
 ## Invariants
 
+- The admin participation-backfill form GET retains browser cancellation through its default-year lookup; CSV submission and writes retain their existing boundaries.
+
+- The onsite roster GET retains request cancellation for its active-year settings lookup before reading the roster; scanner access, filters and newest-check-in ordering remain unchanged.
+
+- The self/admin profile ticket-holdings card passes browser cancellation to its holdings and early-entry reads. Public profile viewers remain excluded before any ticket lookup; self/admin empty-card behavior is unchanged.
+
+- Guest order totals format amounts in the selected UI culture and retain each order’s currency code.
+
+- Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant. Dashboard cards, order and attendee amounts, VIP splits, fee rates and sales aggregate totals use the same UI culture; chart JSON stays numeric.
+
+- Order, attendee and who-has-not-bought paging computes offsets without integer overflow; extreme pages cannot wrap into earlier rows. Filters, ordering and total counts are unchanged.
+
+- Member transfer-index GETs propagate request cancellation to viewer resolution before ticket, transfer and early-entry reads. Transfer POST boundaries are unchanged.
+
 - Member transfer Submit/Cancel validation errors resolve through Tickets resources in all six cultures. Unknown failure text stays in logs; the wizard and cancellation toast use translated fallbacks.
 - Transfer row DTOs carry sender/decider IDs; their names are rendered by the existing human components. Row assembly does not load unused user-name snapshots, so a profile lookup cannot fail a committed response or prevent a transfer list from loading. Transfer/attendee reads remain required.
 
@@ -89,6 +103,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 - Ticket orders and attendees are synced from the external vendor — they cannot be manually created or edited from this app.
 - Stripe enrichment (`PaymentMethod`, `PaymentMethodDetail`, `StripeFee`, `ApplicationFee`) is preserved across re-syncs and only re-run for orders that have a `StripePaymentIntentId` and are still missing fee data; if `IStripeService.IsConfigured` is false the pass is silently skipped.
 - VAT is computed locally per order using VIP-split logic on attendees with `Status` in (`Valid`, `CheckedIn`): ticket base = Σ min(price, 315) minus the order's `DiscountAmount` (floored at 0), VAT = base × 10/110 rounded once per order. Discount codes reduce the taxable ticket part, never the VIP donation. Orders not in `Paid` status carry `VatAmount = 0`. The vendor's tax line is intentionally ignored.
+- Dashboard list and reporting pages render the section's service DTO rows directly; page models carry only paging/filter state and presentation metadata. The attendees view renders the VIP badge and split only above `TicketConstants.VipThresholdEuros`.
 - All `/Tickets` dashboard aggregate metrics (`TicketsSold`, `Revenue`, `NetRevenue`, fee totals, `UnmatchedOrderCount`, the daily-sales chart, the per-payment-method fee breakdown) are computed only over orders with `PaymentStatus == Paid`; ticket counts within those are further restricted to attendees with `Status` in (`Valid`, `CheckedIn`). Refunded/Cancelled/Pending orders are still synced and visible on `/Tickets/Orders` (with the new Status column on Recent Orders) but never contribute to dashboard totals. The "unmatched orders" badge links to `/Tickets/Orders?filterMatched=false&filterPaymentStatus=Paid` so the count and the drill-down agree.
 - The monthly accountant recap on `/Tickets/SalesAggregates` (and its `/Tickets/Export/AccountantReport` CSV) is the one exception to that: it buckets by purchase month in **Europe/Madrid**, and refunded orders contribute their original gross (`Refunded Gross`) and their Stripe/Ticket Tailor fees, which a refund does not return. `Ticket Income incl VAT` is built over the `Valid`/`CheckedIn` seats exactly as `ComputeOrderVat` builds the VAT base — Σ min(price, 315) less the order's `DiscountAmount`, floored at zero per order — so it equals the base `VatAmount` was charged on. The order gross cannot stand in for it: a transfer voids a seat and adds a live replacement at the same price without changing `TotalAmount`; `ex VAT` is that less the VAT. The derivation lives once in `TicketQueryService`; the view and the CSV only render it.
 - Auto-matching uses normalized email comparison (`NormalizingEmailComparer`) against verified UserEmails rows only. Collisions among verified rows (a data-integrity error, should not happen) leave the email unmatched and emit `LogError`; nobody gets the ticket match. Buyer match writes `TicketOrder.MatchedUserId`; attendee match writes `TicketAttendee.MatchedUserId` independently.
@@ -103,6 +118,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 - The member ticket-status card localizes its transfer link through `TicketsResource` in all supported cultures.
 - Admin decisions: **"Process transfer"** runs the automated TicketTailor void(-to-hold)+reissue and, on success, sets `Approved` and writes the swapped local attendee rows; on a partial failure (`VoidSucceededIssueFailed`) **"Retry reissue"** re-issues from the held seat (one click) and, on success, sets `Approved`; **"Mark successful"** sets `Approved` with no vendor call; **"Cancel transfer"** requires a reason and sets `Rejected`. On vendor failure the request stays `Pending` with the diagnostic recorded; a partial request can't be cancelled, rejected, or re-processed — only Retry or Mark successful. The next ticket sync reconciles `ticket_attendees`.
 - Transfer decisions (including Sender cancel and Retry reissue) share an in-process gate across service instances. Status is reloaded inside the gate, and it is held through vendor writes, local persistence, audit, and notifications; overlapping submissions cannot void or issue the same transfer twice. Retry waits without request cancellation because the original void has already committed.
+- Vendor failure details retain their 1500 UTF-16 code-unit prefix budget plus an ellipsis, without splitting a Unicode surrogate pair. The surrounding diagnostic still records the failed stage and held seat.
 - Request creation emails the Sender + `tickets@nobodies.team`; a decision emails the Sender + Receiver. Notification lookup and delivery are best-effort after the lifecycle change has persisted, but request cancellation is always rethrown rather than logged as a delivery failure.
 - `TicketSyncState` is a singleton row (Id = 1). `LastSyncAt` is the resume cursor passed back to the vendor as `updated_at.gte` on the next run. A sync stuck in `Running` for >30 minutes is auto-reset to `Error` by `GetDashboardStatsAsync` (crash recovery).
 - A vendor 5xx/transport failure **and** a vendor request timeout are both transient: `LastSyncAt` is preserved, `SyncStatus` returns to `Idle`, and the job retries next run without rethrowing. Only a genuine fault (anything else, including a real cancellation) sets `SyncStatus = Error`, persists `LastError`, and rethrows.
@@ -127,7 +143,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 | `/Tickets` | GET | `TicketAdminBoardOrAdmin` | Summary dashboard |
 | `/Tickets/Orders` | GET | `TicketAdminBoardOrAdmin` | Paginated order list |
 | `/Tickets/Attendees` | GET | `TicketAdminBoardOrAdmin` | Paginated attendee list |
-| `/Tickets/Codes` | GET | `TicketAdminBoardOrAdmin` | Discount code redemption tracking |
+| `/Tickets/Codes` | GET | `TicketAdminBoardOrAdmin` | Discount code redemption tracking; code and recipient-name search ignores surrounding whitespace |
 | `/Tickets/WhoHasntBought` | GET | `TicketAdminBoardOrAdmin` | Active Volunteers without a ticket |
 | `/Tickets/SalesAggregates` | GET | `TicketAdminBoardOrAdmin` | Weekly + monthly + quarterly aggregate reports, by ticket type, discount codes by campaign |
 | `/Tickets/Sync` | POST | `TicketAdminOrAdmin` | Trigger incremental sync |
@@ -183,7 +199,7 @@ Outbound (what Tickets injects; the project references are the authority — `Hu
 - **EarlyEntry:** `IEarlyEntryService.GetForUserAsync` — the viewer's own earliest entry date on the holder-facing stub surfaces (see Invariants).
 - **Stripe:** `IStripeService.GetPaymentDetailsAsync` populates `PaymentMethod` / `PaymentMethodDetail` / `StripeFee` / `ApplicationFee` per order. Configured via `STRIPE_TICKETS_KEY`; if `IsConfigured` is false, enrichment is skipped silently and the dashboard's fee breakdown stays empty.
 - **Audit:** `IAuditLogService.LogAsync` — the transfer actions above plus `TicketContactsImported` and `TicketDonationsExported` (every donor-list download). `<vc:audit-log>` on the transfer detail page is the AuditLog section's component.
-- **Email:** `IEmailService.SendAsync` with the section's own `TicketsEmails` builder (`TicketTransferRequested`, `TicketTransferTeamNotification`, `TicketTransferDecision`). Tickets owns this copy and its `/Email/EmailPreview` samples (peterdrier/Humans#1651); it is hardcoded English, not localized, and localizing it is tracked in peterdrier/Humans#1657.
+- **Email:** `IEmailService.SendAsync` with the section's own `TicketsEmails` builder (`TicketTransferRequested`, `TicketTransferTeamNotification`, `TicketTransferDecision`). Tickets owns this copy and its `/Email/EmailPreview` samples (peterdrier/Humans#1651); the member-facing copy lives in `TicketsResource` in all six cultures and renders in the recipient's supported saved language (sender and receiver via `IUserServiceRead`), falling back to English for blank, invalid or unsupported preferences; the ticket-team notice stays English.
 - **GDPR:** `TicketQueryService` implements `IUserDataContributor` — export slices `TicketOrders` and `TicketAttendeeMatches`; erasure tombstones as described under Triggers.
 - **Users (account merge, inbound-by-registration):** `TicketSyncService` implements `IUserMerge`; `AccountMergeService.FoldAsync` calls `ReassignAsync`, which delegates to `ITicketRepository.ReassignToUserAsync`.
 

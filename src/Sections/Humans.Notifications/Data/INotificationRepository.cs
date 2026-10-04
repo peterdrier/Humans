@@ -196,11 +196,10 @@ internal interface INotificationRepository : IRepository
     /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
     /// Same-Notification collision: if the target already has a recipient
     /// row on the same parent <c>NotificationId</c>, the source's row is
-    /// dropped (target wins). The shared parent <c>Notification</c> row is
-    /// not touched. Returns the count of recipient rows attributed to
-    /// <paramref name="targetUserId"/> after the move.
+    /// dropped (target wins). Shared-resolution attribution is also reassigned
+    /// to the target user.
     /// </summary>
-    Task<int> ReassignRecipientsToUserAsync(
+    Task ReassignRecipientsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         CancellationToken ct = default);

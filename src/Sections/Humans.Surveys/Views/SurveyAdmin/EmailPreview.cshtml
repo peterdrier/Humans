@@ -1,35 +1,35 @@
 @model SurveyEmailPreviewViewModel
 
 @{
-    ViewData["Title"] = "Survey email preview";
+    ViewData["Title"] = Localizer["Surveys_EmailPreviewTitle"].Value;
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Surveys_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
-        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">Surveys</a></li>
-        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.SurveyId">Edit survey</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Email preview</li>
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">@Localizer["Survey_Admin_Common_AdminBreadcrumb"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Survey_Admin_Index_Title"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.SurveyId">@Localizer["Survey_Admin_Builder_TitleEdit"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Survey_Admin_PreviewMenu_PreviewEmail"]</li>
     </ol>
 </nav>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Survey email preview</h1>
-    <span class="badge bg-secondary">Preview only</span>
+    <h1 class="mb-0">@Localizer["Surveys_EmailPreviewTitle"]</h1>
+    <span class="badge bg-secondary">@Localizer["Surveys_PreviewOnly"]</span>
 </div>
 
 <p class="text-muted">
-    This is the invitation that would be sent to the currently logged-in user.
+    @Localizer["Surveys_EmailPreviewDescription"]
 </p>
 
 <div class="card">
     <div class="card-header small">
-        <div><strong>To:</strong> @Model.Recipient</div>
-        <div><strong>Subject:</strong> @Model.Subject</div>
+        <div><strong>@Localizer["Surveys_EmailPreviewTo"]</strong> @Model.Recipient</div>
+        <div><strong>@Localizer["Surveys_EmailPreviewSubject"]</strong> @Model.Subject</div>
     </div>
     <div class="card-body p-0">
         <iframe srcdoc="@Model.HtmlBody"
-                title="Survey invitation email preview"
+                title="@Localizer["Surveys_EmailPreviewFrameTitle"]"
                 class="w-100 border-0"
                 style="height: 600px;"
                 sandbox></iframe>

@@ -178,7 +178,9 @@
                     <span class="fw-medium me-3" style="min-width: 180px;">@entry.EventName</span>
                     @if (!string.IsNullOrEmpty(entry.Description))
                     {
-                        <span class="text-muted text-truncate" style="font-size: 0.9em;">@(entry.Description.Length > 80 ? entry.Description[..80] + "..." : entry.Description)</span>
+                        var previewLength = entry.Description.Length > 80
+                            && char.IsHighSurrogate(entry.Description[79]) && char.IsLowSurrogate(entry.Description[80]) ? 79 : 80;
+                        <span class="text-muted text-truncate" style="font-size: 0.9em;">@(entry.Description.Length > 80 ? entry.Description[..previewLength] + "..." : entry.Description)</span>
                     }
                 </div>
             }

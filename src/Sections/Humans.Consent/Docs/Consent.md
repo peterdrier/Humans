@@ -53,7 +53,7 @@ Aggregate-local nav `LegalDocument.Versions` kept. Cross-domain nav `LegalDocume
 | LegalDocumentId | Guid | FK → `legal_documents` |
 | VersionNumber | string (50) | Display label |
 | CommitSha | string (40) | |
-| Content | jsonb | `Dictionary<string, string>` keyed by language code; `"es"` is canonical/legally binding |
+| Content | jsonb | `Dictionary<string, string>` keyed by language code; `"es"` is canonical/legally binding; equality and hashing ignore insertion order |
 | EffectiveFrom | Instant | |
 | RequiresReConsent | bool | |
 | CreatedAt | Instant | |
@@ -127,16 +127,23 @@ Three controllers serve this section.
 
 ## Invariants
 
+- The consent dashboard renders section service DTOs directly, sorting pending teams/documents before signed ones and then by ordinal name. It retains UTC date display and the ten most recent history rows; the controller does not copy DTOs into duplicate row models.
+
+- The member consent dashboard and review pages localize breadcrumb navigation labels in all six supported cultures.
+
+- Consent dashboard and review reads carry request cancellation through viewer resolution, the stub-profile check and dashboard/document reads. Submit and its invalid-form redisplay retain their existing mutation boundaries.
+
 - Consent records are immutable. Database triggers prevent UPDATE and DELETE operations on `consent_records`. Only INSERT is allowed to maintain GDPR audit trail integrity (§12).
 - Legal documents can be global (required of all humans) or team-scoped (required when joining a specific team).
-- Sync emails consolidate only outstanding required documents belonging to each recipient’s teams. Optional updates and required updates already signed by that recipient do not trigger a consent email.
+- Sync emails consolidate only outstanding required documents belonging to each recipient’s teams. Optional updates and required updates already signed by that recipient do not trigger a consent email. Emails use the recipient’s supported saved language, with English fallback for missing or unsupported preferences.
 - When all required global documents have active consent, the human's consent check status transitions from unset to Pending.
 - Legal documents are synced from a GitHub repository by a background job.
 - GitHub document reads use the configured `GitHub:Branch`, including both directory discovery and translated file content for the anonymous `/Legal` pages.
 - When a new document version is published, existing consents for the old version become stale and re-consent is required.
 - Per-user reads on `consent_records` chain-follow merge tombstones via the resolved record's `UserInfo.AllUserIds` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge, DB triggers (`prevent_consent_record_update`, `prevent_consent_record_delete`) make any rewrite physically impossible.
 
-- A successful consent submission evicts every affected merge-chain cache key before inline reloads start. A failed or cancelled reload therefore leaves no alias serving the pre-submit consent set; the failure propagates and later reads reload the committed state.
+- Once a consent record is saved, required-consent checks, suspension-notification resolution, suspension restoration, and inline cache refreshes finish independently of request cancellation. Validation and the consent write retain the caller token.
+- A successful consent submission evicts every affected merge-chain cache key before inline reloads start. A failed reload therefore leaves no alias serving the pre-submit consent set; the failure propagates and later reads reload the committed state.
 
 ## Negative Access Rules
 
@@ -150,6 +157,7 @@ Three controllers serve this section.
 - When a Consent Coordinator clears a consent check: `Profile.IsApproved` is set to true and `ConsentCheckStatus = Cleared`. This is an audit annotation only — `ClearConsentCheckAsync` provisions no team; Volunteers membership and app access are independent of CC review.
 - When a Consent Coordinator flags a consent check: `Profile.IsApproved` is set to false and `ConsentCheckStatus = Flagged`. This is an audit annotation only — `FlagConsentCheckAsync` provisions/deprovisions no team; Volunteers membership and app access are unaffected. `RejectSignupAsync` (which sets `RejectedAt`) is the CC's only actual kick-out lever.
 - When a new document version is published: affected humans are notified to re-consent. A background job sends re-consent reminders.
+- Re-consent reminder emails render in each recipient’s supported preferred language, with English fallback for blank, malformed or unsupported preferences.
 - The reminder job attempts every eligible recipient before reporting per-recipient preparation, enqueue, or cooldown-stamp failures. Failed enqueues do not stamp the cooldown; successful reminders retain it. Collected failures still fail the job so Hangfire can retry, skipping recipients already in cooldown.
 - A background job suspends humans who no longer have valid consents for required documents.
 
@@ -177,7 +185,7 @@ Three controllers serve this section.
 - `ILegalDocumentRepository` (impl `LegalDocumentRepository` in `Humans.Consent/Data/`) is the only code path that touches `legal_documents` and `document_versions` via `DbContext`.
 - `IConsentRepository` (impl `ConsentRepository` in `Humans.Consent/Data/`) is the only code path that touches `consent_records` via `DbContext`. Exposes `AddAsync` and `GetXxxAsync` only — no `UpdateAsync`/`DeleteAsync`.
 - **Decorator decision (T-04, 2026-05-16)** — Two-layer cache landed:
-  - **Global** — `CachingLegalDocumentSyncService` (Singleton in `Humans.Consent.Services`) wraps `LegalDocumentSyncService` (inner, keyed Scoped; also the sole writer, implementing both `ILegalDocumentSyncService` and `IAdminLegalDocumentService`). Holds the active+required document set as `LegalDocumentInfo[]` keyed by document id, plus a version-id → document-id index. Serves `GetActiveRequiredDocumentsForTeamsAsync`, `GetRequiredDocumentVersionsForTeamAsync`, `GetRequiredVersionsAsync`, `GetVersionByIdAsync` from cache. `LegalDocumentSyncService` calls `ILegalDocumentCacheInvalidator.InvalidateAll()` directly after each successful repository write (admin create/update/archive/version-summary, GitHub-sync version add/touch) — there is no SaveChanges interceptor (nobodies-collective/Humans#751). Eager warmup at startup: the decorator inherits `TrackedCache<Guid, LegalDocumentInfo>` with `warmOnStartup: true`, so its own `IHostedService.StartAsync` drives `WarmAllAsync` at boot (non-fatal); no separate warmup hosted service. Team names are stitched at warm time via `ITeamService.GetTeamsWithParentsAsync` so the cache build never walks a cross-domain nav.
+  - **Global** — `CachingLegalDocumentSyncService` (Singleton in `Humans.Consent.Services`) wraps `LegalDocumentSyncService` (inner, keyed Scoped; also the sole writer, implementing both `ILegalDocumentSyncService` and `IAdminLegalDocumentService`). Holds the active+required document set as `LegalDocumentInfo[]` keyed by document id, plus a version-id → document-id index. Serves `GetActiveRequiredDocumentsForTeamsAsync`, `GetRequiredDocumentVersionsForTeamAsync`, `GetRequiredVersionsAsync`, `GetVersionByIdAsync` from cache. `LegalDocumentSyncService` calls `ILegalDocumentCacheInvalidator.InvalidateAll()` directly after each successful repository write (admin create/update/archive/version-summary, GitHub-sync version add/touch) — there is no SaveChanges interceptor (nobodies-collective/Humans#751). Eager warmup at startup: the decorator inherits `TrackedCache<Guid, LegalDocumentInfo>` with `warmOnStartup: true`, so its own `IHostedService.StartAsync` drives `WarmAllAsync` at boot (non-fatal); no separate warmup hosted service. Team names are stitched at warm time via `ITeamServiceRead.GetTeamsWithParentsAsync` so the cache build never walks a cross-domain nav.
   - **Per-user** — `CachingConsentService` (Singleton in `Humans.Consent.Services`) wraps `ConsentService` (inner, keyed Scoped). Holds `UserConsentInfo` (the user's explicitly consented version-id set, with the merge source-id chain unioned at warm time) keyed by user id. Serves `GetConsentedVersionIdsAsync`, `GetConsentMapForUsersAsync`, and `GetRequiredConsentRowsForUserAsync` from cache. Lazy per-user warm. **Synchronous refresh on `SubmitConsentAsync`**: the decorator override refreshes the user (and any merged-source-id tombstones) via `ReplaceAsync` inline before returning, so the controller's next-page consent-banner check observes the fresh state. `AccountMergeService.FoldAsync` evicts both source and target post-commit so the surviving target's cached set rebuilds against the new chain.
   - `LegalDocumentService` (Statutes page) keeps its own `IMemoryCache` for the GitHub-fetched anonymous statutes content (zero DB access, pure I/O cache; out of scope for T-04).
   - Architecture tests pin the decorators' dual-interface shape: `ConsentArchitectureTests.{CachingConsentService_ImplementsBothServiceAndInvalidator, CachingLegalDocumentSyncService_ImplementsBothServiceAndInvalidator, CachingConsentService_DeclaresSubmitConsentAsync}`.

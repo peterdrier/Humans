@@ -327,7 +327,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
         return rows.Count;
     }
 
-    public async Task<int> ReassignGrantsToUserAsync(
+    public async Task ReassignGrantsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -361,8 +361,5 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        return await ctx.CampaignGrants
-            .CountAsync(g => g.UserId == targetUserId, ct);
     }
 }

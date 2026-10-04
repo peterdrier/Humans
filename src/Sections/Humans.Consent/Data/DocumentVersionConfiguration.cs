@@ -31,7 +31,8 @@ internal sealed class DocumentVersionConfiguration : IEntityTypeConfiguration<Do
                      ?? new Dictionary<string, string>(StringComparer.Ordinal),
                 new ValueComparer<Dictionary<string, string>>(
                     (a, b) => a != null && b != null && a.Count == b.Count && a.All(kv => b.ContainsKey(kv.Key) && string.Equals(kv.Value, b[kv.Key], StringComparison.Ordinal)),
-                    v => v.Aggregate(0, (hash, kv) => HashCode.Combine(hash, StringComparer.Ordinal.GetHashCode(kv.Key), StringComparer.Ordinal.GetHashCode(kv.Value))),
+                    // Dictionary equality ignores insertion order; combine entry hashes commutatively.
+                    v => v.Aggregate(0, (hash, kv) => hash ^ HashCode.Combine(StringComparer.Ordinal.GetHashCode(kv.Key), StringComparer.Ordinal.GetHashCode(kv.Value))),
                     v => new Dictionary<string, string>(v, StringComparer.Ordinal)));
 
         builder.Property(dv => dv.EffectiveFrom)

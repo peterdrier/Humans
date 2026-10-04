@@ -47,6 +47,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     private static readonly HashSet<string> AllowedImageExtensions =
         new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
     private const int MaxImageFileNameLength = 256;
+    private const int MaxCampSlugLength = 256;
 
     public CampService(
         ICampRepository repo,
@@ -87,16 +88,20 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         CancellationToken cancellationToken = default)
     {
         var slug = SlugHelper.GenerateSlug(name);
+        if (slug.Length == 0)
+            slug = "camp";
         if (SlugHelper.IsReservedCampSlug(slug))
         {
-            throw new InvalidOperationException($"The name '{name}' generates a reserved slug.");
+            throw new InvalidOperationException("Camps_Flash_ReservedName");
         }
 
         var baseSlug = slug;
         var suffix = 2;
         while (await _repo.SlugExistsAsync(slug, cancellationToken))
         {
-            slug = $"{baseSlug}-{suffix}";
+            var suffixText = "-" + suffix.ToString(CultureInfo.InvariantCulture);
+            var prefixLength = Math.Min(baseSlug.Length, MaxCampSlugLength - suffixText.Length);
+            slug = baseSlug[..prefixLength].TrimEnd('-') + suffixText;
             suffix++;
         }
 
@@ -491,16 +496,16 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         var settings = await GetSettingsAsync(cancellationToken);
         if (!settings.OpenSeasons.Contains(year))
         {
-            throw new InvalidOperationException($"Season {year} is not open for registration.");
+            throw new InvalidOperationException("Camps_Flash_SeasonNotOpen");
         }
 
         if (await _repo.SeasonExistsAsync(campId, year, cancellationToken))
         {
-            throw new InvalidOperationException($"Camp already has a season for {year}.");
+            throw new InvalidOperationException("Camps_Flash_SeasonAlreadyExists");
         }
 
         var previousSeason = await _repo.GetLatestSeasonAsync(campId, cancellationToken)
-            ?? throw new InvalidOperationException("No previous season to copy from.");
+            ?? throw new InvalidOperationException("Camps_Flash_NoPreviousSeason");
 
         var hasApprovedSeason = await _repo.HasApprovedSeasonAsync(campId, cancellationToken);
 
@@ -882,26 +887,25 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             scope.Complete();
         }
 
-        // Outside the transaction: file deletes cannot be rolled back, and a failure here
-        // must not undo the DB work.
+        await _auditLog.LogAsync(
+            AuditAction.CampDeleted, nameof(Camp), campId,
+            $"Camp {campId} permanently deleted",
+            "CampService");
+
+        // Metadata and audit have committed; file cleanup must finish independently of the request.
         foreach (var path in deletedImagePaths)
         {
             try
             {
-                await _fileStorage.DeleteAsync(path, cancellationToken);
+                await _fileStorage.DeleteAsync(path, CancellationToken.None);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 _logger.LogWarning(ex,
                     "Failed to delete camp image file at {StoragePath} during camp delete for {CampId}; DB row already removed",
                     path, campId);
             }
         }
-
-        await _auditLog.LogAsync(
-            AuditAction.CampDeleted, nameof(Camp), campId,
-            $"Camp {campId} permanently deleted",
-            "CampService");
 
     }
 
@@ -924,16 +928,16 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default)
     {
         var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken)
-            ?? throw new InvalidOperationException("Camp not found.");
+            ?? throw new InvalidOperationException("Camps_Flash_CampNotFound");
         if (camp.HistoricalNames.All(n => n.Id != historicalNameId))
         {
-            throw new InvalidOperationException("Historical name does not belong to the specified camp.");
+            throw new InvalidOperationException("Camps_Flash_HistoricalNameWrongCamp");
         }
 
         var removed = await _repo.RemoveHistoricalNameAsync(historicalNameId, cancellationToken);
         if (!removed)
         {
-            throw new InvalidOperationException("Historical name not found.");
+            throw new InvalidOperationException("Camps_Flash_HistoricalNameNotFound");
         }
     }
 
@@ -962,28 +966,28 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         var imageCount = await _repo.CountImagesAsync(campId, cancellationToken);
         if (imageCount >= 5)
         {
-            return CampImageUploadResult.Failure("Maximum 5 images per camp.");
+            return CampImageUploadResult.Failure("Camps_Validation_ImageCount");
         }
 
         if (!AllowedImageContentTypes.Contains(contentType))
         {
-            return CampImageUploadResult.Failure("Only JPEG, PNG, and WebP images are allowed.");
+            return CampImageUploadResult.Failure("Camps_Validation_ImageType");
         }
 
         if (length > 10 * 1024 * 1024)
         {
-            return CampImageUploadResult.Failure("Image must be under 10MB.");
+            return CampImageUploadResult.Failure("Camps_Validation_ImageSize");
         }
 
         // Security: extension whitelist prevents image/jpeg + .html (static middleware would serve as HTML).
         fileName = DisplayFileName(fileName);
         if (fileName.Length > MaxImageFileNameLength)
-            return CampImageUploadResult.Failure($"Image filename must be {MaxImageFileNameLength} characters or fewer.");
+            return CampImageUploadResult.Failure("Camps_Validation_ImageFilenameLength");
 
         var ext = Path.GetExtension(fileName);
         if (!AllowedImageExtensions.Contains(ext))
         {
-            return CampImageUploadResult.Failure("Image filename must end in .jpg, .jpeg, .png, or .webp.");
+            return CampImageUploadResult.Failure("Camps_Validation_ImageExtension");
         }
         var storageKey = $"uploads/camps/{campId}/{Guid.NewGuid()}{ext}";
         await _fileStorage.SaveAsync(storageKey, fileStream, cancellationToken);
@@ -995,7 +999,6 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             FileName = fileName,
             StoragePath = storageKey,
             ContentType = contentType,
-            SortOrder = imageCount,
             UploadedAt = _clock.GetCurrentInstant()
         };
 
@@ -1033,31 +1036,32 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         Guid scopedCampId, Guid imageId, CancellationToken cancellationToken = default)
     {
         var image = await _repo.GetImageForMutationAsync(imageId, cancellationToken)
-            ?? throw new InvalidOperationException("Image not found.");
+            ?? throw new InvalidOperationException("Camps_Flash_ImageNotFound");
         if (image.CampId != scopedCampId)
         {
-            throw new InvalidOperationException("Image does not belong to the specified camp.");
+            throw new InvalidOperationException("Camps_Flash_ImageWrongCamp");
         }
 
         var result = await _repo.DeleteImageAsync(imageId, cancellationToken)
-            ?? throw new InvalidOperationException("Image not found.");
-
-        try
-        {
-            await _fileStorage.DeleteAsync(result.StoragePath, cancellationToken);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(ex,
-                "Failed to delete camp image file at {StoragePath} for image {ImageId}; DB row already removed",
-                result.StoragePath, imageId);
-        }
+            ?? throw new InvalidOperationException("Camps_Flash_ImageNotFound");
 
         await _auditLog.LogAsync(
             AuditAction.CampImageDeleted, nameof(CampImage), imageId,
             $"Deleted image {imageId}",
             "CampService",
             relatedEntityId: result.CampId, relatedEntityType: nameof(Camp));
+
+        // Metadata and audit have committed; file cleanup must finish independently of the request.
+        try
+        {
+            await _fileStorage.DeleteAsync(result.StoragePath, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to delete camp image file at {StoragePath} for image {ImageId}; DB row already removed",
+                result.StoragePath, imageId);
+        }
 
     }
 
@@ -1291,7 +1295,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     }
 
     // Notification storage holds 200 Unicode characters; retain the full title in the body.
-    private static (string Title, string? Body) PrepareNoticeCopy(string title, string? body = null)
+    internal static (string Title, string? Body) PrepareNoticeCopy(string title, string? body = null)
     {
         if (title.EnumerateRunes().Count() <= 200)
             return (title, body);
@@ -1323,11 +1327,11 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         CancellationToken cancellationToken = default)
     {
         var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken)
-            ?? throw new InvalidOperationException("Camp member record not found.");
+            ?? throw new InvalidOperationException("Camps_Flash_RoleMemberNotFound");
 
         if (member.Status != CampMemberStatus.Pending)
         {
-            throw new InvalidOperationException($"Cannot approve a camp member with status {member.Status}.");
+            throw new InvalidOperationException("Camps_Flash_ApproveRequiresPending");
         }
 
         var now = _clock.GetCurrentInstant();
@@ -1372,10 +1376,10 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         CancellationToken cancellationToken = default)
     {
         var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken)
-            ?? throw new InvalidOperationException("Camp member record not found.");
+            ?? throw new InvalidOperationException("Camps_Flash_RoleMemberNotFound");
 
         if (member.Status != CampMemberStatus.Pending)
-            throw new InvalidOperationException($"Cannot reject a camp member with status {member.Status}.");
+            throw new InvalidOperationException("Camps_Flash_RejectRequiresPending");
 
         var requesterUserId = member.UserId;
         var seasonId = member.CampSeasonId;
@@ -1414,10 +1418,10 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         CancellationToken cancellationToken = default)
     {
         var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken)
-            ?? throw new InvalidOperationException("Camp member record not found.");
+            ?? throw new InvalidOperationException("Camps_Flash_RoleMemberNotFound");
 
         if (member.Status != CampMemberStatus.Active)
-            throw new InvalidOperationException($"Cannot remove a camp member with status {member.Status}.");
+            throw new InvalidOperationException("Camps_Flash_RemoveRequiresActive");
 
         await TransitionMemberToRemovedAsync(
             member, removedByUserId,
@@ -1483,10 +1487,10 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default)
     {
         var member = await _repo.GetMemberForOwnMutationAsync(campMemberId, userId, cancellationToken)
-            ?? throw new InvalidOperationException("Camp member record not found.");
+            ?? throw new InvalidOperationException("Camps_Flash_RoleMemberNotFound");
 
         if (member.Status != CampMemberStatus.Pending)
-            throw new InvalidOperationException($"Cannot withdraw a camp member request with status {member.Status}.");
+            throw new InvalidOperationException("Camps_Flash_WithdrawRequiresPending");
 
         await TransitionMemberToRemovedAsync(
             member, userId,
@@ -1504,12 +1508,12 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         var member = await _repo.GetMemberForOwnMutationAsync(campMemberId, userId, cancellationToken);
         if (member is null)
         {
-            return CampMembershipMutationResult.Failure("Camp member record not found.");
+            return CampMembershipMutationResult.Failure("Camps_Flash_RoleMemberNotFound");
         }
 
         if (member.Status != CampMemberStatus.Active)
         {
-            return CampMembershipMutationResult.Failure($"Cannot leave a camp membership with status {member.Status}.");
+            return CampMembershipMutationResult.Failure("Camps_Flash_LeaveRequiresActive");
         }
 
         await TransitionMemberToRemovedAsync(

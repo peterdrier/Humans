@@ -331,4 +331,17 @@
   <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>Umfrage nicht gefunden.</value></data>
   <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>Für dein Konto ist keine Benachrichtigungs-E-Mail hinterlegt.</value></data>
   <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>Die Vorschau-E-Mail zur Umfrage konnte nicht in die Warteschlange gestellt werden.</value></data>
+  <data name="Surveys_PreviewOnly" xml:space="preserve"><value>Nur Vorschau</value></data>
+  <data name="Surveys_SendPreviewEmail" xml:space="preserve"><value>Vorschau-E-Mail an mich senden</value></data>
+  <data name="Surveys_PreviewIntroNotice" xml:space="preserve"><value>Du kannst diese Umfrage ansehen, aber es werden keine Antworten oder Aktivitäten gespeichert.</value></data>
+  <data name="Surveys_PreviewPageNotice" xml:space="preserve"><value>Antworten und Aktivitäten werden nicht gespeichert. Bedingte Fragen werden zur Prüfung angezeigt.</value></data>
+  <data name="Surveys_PreviewThankYouNotice" xml:space="preserve"><value>Es wurde keine Antwort eingereicht.</value></data>
+  <data name="Surveys_EmailPreviewTitle" xml:space="preserve"><value>E-Mail-Vorschau der Umfrage</value></data>
+  <data name="Surveys_EmailPreviewDescription" xml:space="preserve"><value>Dies ist die Einladung, die an die aktuell angemeldete Person gesendet würde.</value></data>
+  <data name="Surveys_EmailPreviewTo" xml:space="preserve"><value>An:</value></data>
+  <data name="Surveys_EmailPreviewSubject" xml:space="preserve"><value>Betreff:</value></data>
+  <data name="Surveys_EmailPreviewFrameTitle" xml:space="preserve"><value>Vorschau der Einladungs-E-Mail zur Umfrage</value></data>
+  <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Brotkrümelnavigation</value></data>
+  <data name="Surveys_StartPreview" xml:space="preserve"><value>Vorschau starten</value></data>
+  <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Dankesseite ansehen</value></data>
 </root>

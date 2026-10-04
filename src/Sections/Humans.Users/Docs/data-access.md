@@ -34,16 +34,16 @@ storage paths).
 |-------|-----|
 | Profiles | R (storage-path lookup) |
 
-Cross-section calls via `IUserService` (delegates the content-type DB write).
-Uses `IFileStorage` for the picture bytes. No `IMemoryCache`. The picture
-content type is written through `IUserService.SetProfilePictureContentTypeAsync`
-so the unified `UserInfo` read-model invalidates as a side effect.
+Uses `IUserServiceInternal` for migration-snapshot user lookups and `IFileStorage`
+to read picture bytes. No picture mutations or `IMemoryCache`; writes belong to
+the profile-edit flow below.
 
 ### ProfileEditorService (Scoped)
 
 No repository. Per-user serialization wrapper that fans out to
-`IUserService.SaveProfileAsync` for the row writes and `IFileStorage` for
-the picture file. No `IMemoryCache`.
+`IUserServiceInternal.SaveProfileAsync` for row writes and picture upload bytes,
+which are saved before publishing their content-type metadata. Uses `IFileStorage`
+only to clean up superseded files after that save. No `IMemoryCache`.
 
 ### ContactFieldService (Scoped)
 
@@ -112,9 +112,9 @@ model.
 
 No repository, no cache, no direct DB access. Section-internal diagnostics over
 `IUserEmailService` and `IUserService`: `ScanAsync` builds the
-`EmailProblemsReport` for the admin email-health screen,
-`IsGhostExternalLoginsUserAsync` flags accounts whose only identity is an
-external login, and `BackfillLegacyIdentityEmailsAsync` returns the
+`EmailProblemsReport` for the admin email-health screen, including accounts
+whose only identity is an external login. `BackfillLegacyIdentityEmailsAsync`
+returns the
 `(UserId, Email)` pairs still missing a `UserEmail` row. Timestamps come from
 `IClock`.
 

@@ -43,6 +43,7 @@
   <data name="Governance_Title" xml:space="preserve">
     <value>Governance</value>
   </data>
+  <data name="Governance_BreadcrumbNavigation" xml:space="preserve"><value>Navigationspfad</value></data>
   <data name="GovernanceApplication_Title" xml:space="preserve">
     <value>Governance-Antrag</value>
   </data>
@@ -86,7 +87,7 @@
     <value>Willkommen! Sie sind jetzt Asociado/a von Nobodies Collective.</value>
   </data>
   <data name="Governance_Tier" xml:space="preserve">
-    <value>Stufe</value>
+    <value>Kategorie</value>
   </data>
   <data name="Governance_TermExpiry" xml:space="preserve">
     <value>Amtszeit endet</value>
@@ -152,7 +153,7 @@
     <value>Neuer Antrag</value>
   </data>
   <data name="GovernanceCreate_Lead" xml:space="preserve">
-    <value>Colaboradores und Asociados übernehmen Governance-Verantwortung. Wähle die Stufe, die am besten zu deinem Engagement passt.</value>
+    <value>Colaboradores und Asociados übernehmen Governance-Verantwortung. Wähle die Kategorie, die am besten zu deinem Engagement passt.</value>
   </data>
   <data name="GovernanceCreate_MotivationPlaceholder" xml:space="preserve">
     <value>Bitte teilen Sie Ihre Motivation für den Beitritt mit...</value>
@@ -266,7 +267,7 @@
     <value>Antragsteller</value>
   </data>
   <data name="BoardVoting_Tier" xml:space="preserve">
-    <value>Stufe</value>
+    <value>Kategorie</value>
   </data>
   <data name="BoardVoting_Details" xml:space="preserve">
     <value>Details</value>
@@ -314,7 +315,7 @@
     <value>Ablehnen</value>
   </data>
   <data name="BoardVoting_ApproveConfirm" xml:space="preserve">
-    <value>Dies genehmigt den Antrag und gewährt die Mitgliedschaftsstufe. Fortfahren?</value>
+    <value>Dies genehmigt den Antrag und gewährt die Mitgliedschaftskategorie. Fortfahren?</value>
   </data>
   <data name="BoardVoting_RejectConfirm" xml:space="preserve">
     <value>Dies lehnt den Antrag ab. Fortfahren?</value>

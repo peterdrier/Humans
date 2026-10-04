@@ -91,8 +91,9 @@ robbed, automation everywhere else.**
 - Everything around those control points is automated: the Holded push, the balance reads, the
   SEPA file generation, the sync loops.
 - Holded is the source of truth for what's owed (the balance is derived from its daybook, never
-  tracked in Humans), and Humans never writes journal entries by hand — settlement goes through
-  Holded's own payment API so the accountant sees a normal ledger.
+  tracked in Humans), and Humans posts nothing outside a booking — settlement goes through
+  Holded's own payment API, plus one journal entry for whatever no open document covers, so the
+  accountant sees a normal ledger.
 
 ## Status (2026-09-06)
 

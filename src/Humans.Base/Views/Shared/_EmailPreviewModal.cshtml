@@ -63,6 +63,8 @@
         var subjectBox = document.getElementById(modalId + 'Subject');
         var modalEl = document.getElementById(modalId);
         if (!frame || !errorBox || !modalEl) { return; }
+        // Keep ordering on the frame: another composer partial can reinstall this function.
+        var version = frame._humansPreviewVersion = (frame._humansPreviewVersion || 0) + 1;
 
         errorBox.classList.add('d-none');
         if (subjectBox) { subjectBox.classList.add('d-none'); }
@@ -88,6 +90,7 @@
                 return resp.json();
             })
             .then(function (data) {
+                if (version !== frame._humansPreviewVersion) return;
                 frame.srcdoc = data.html;
                 if (subjectBox && data.subject) {
                     subjectBox.querySelector('span').textContent = data.subject;
@@ -95,6 +98,7 @@
                 }
             })
             .catch(function () {
+                if (version !== frame._humansPreviewVersion) return;
                 errorBox.textContent = errorText;
                 errorBox.classList.remove('d-none');
             });

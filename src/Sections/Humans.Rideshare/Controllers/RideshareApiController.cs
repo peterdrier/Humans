@@ -19,7 +19,8 @@ internal sealed class RideshareApiController(
     IRideshareService rideshare,
     IUserServiceRead users,
     IStringLocalizer<RideshareResource> localizer,
-    IClock clock) : ApiControllerBase(users)
+    IClock clock,
+    ILogger<RideshareApiController> logger) : ApiControllerBase(users)
 {
     [HttpGet("board")]
     public async Task<IActionResult> Board([FromQuery] string? date, [FromQuery] RideshareDirection? direction, CancellationToken ct)
@@ -36,7 +37,7 @@ internal sealed class RideshareApiController(
         var people = await UserService.GetUserInfosAsync(
             trips.Select(t => t.UserId).Concat(requests.Select(r => r.UserId)).Distinct().ToList(), ct);
 
-        var json = BoardFeatureCollection.Build(snapshot, day, dir, user.Id, people, localizer);
+        var json = BoardFeatureCollection.Build(snapshot, day, dir, user.Id, people, localizer, logger);
         return Content(json, "application/geo+json");
     }
 }

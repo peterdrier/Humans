@@ -4,7 +4,7 @@
     ViewData["Title"] = isEdit ? Localizer["Events_Submission_EditTitle"].Value : Localizer["Events_Submission_SubmitTitle"].Value;
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Events_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Events" asp-action="MySubmissions">@Localizer["Events_MySubmissionsTitle"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@(isEdit ? Localizer["Events_Submission_Edit"] : Localizer["Events_Submission_New"])</li>
@@ -106,7 +106,7 @@
                         @for (var mins = 15; mins <= 480; mins += 15)
                         {
                             var label = EventDurationFormatter.Format(mins, Localizer);
-                            <option value="@mins" selected="@(mins == Model.DurationMinutes ? "selected" : null)">@label</option>
+                            <option value="@mins" selected="@(mins == (Model.IsAllDay ? 60 : Model.DurationMinutes) ? "selected" : null)">@label</option>
                         }
                     </select>
                     <span asp-validation-for="DurationMinutes" class="text-danger"></span>
@@ -184,17 +184,12 @@
             var allDayCheck = document.getElementById('IsAllDay');
             var startTimeField = document.getElementById('startTimeField');
             var durationField = document.getElementById('durationField');
-            var durationSelect = document.getElementById('durationSelect');
-            var startTimeInput = startTimeField ? startTimeField.querySelector('input') : null;
 
             function applyAllDay() {
                 if (!allDayCheck) return;
                 var allDay = allDayCheck.checked;
                 if (startTimeField) startTimeField.style.display = allDay ? 'none' : '';
                 if (durationField) durationField.style.display = allDay ? 'none' : '';
-                if (allDay && durationSelect) {
-                    durationSelect.value = '1440';
-                }
             }
 
             if (allDayCheck) {

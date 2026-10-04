@@ -32,6 +32,18 @@ public sealed class RoleAssignmentRepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetFilteredAsync_LargePageDoesNotWrapToEarlierAssignments()
+    {
+        var now = _clock.GetCurrentInstant();
+        await SeedAssignmentAsync(Guid.NewGuid(), RoleNames.Board, now - Duration.FromDays(1), null);
+        var first = await _repo.GetFilteredAsync(null, true, 1, 50, now, Xunit.TestContext.Current.CancellationToken);
+        first.Items.Should().ContainSingle();
+        var result = await _repo.GetFilteredAsync(null, true, int.MaxValue, 50, now, Xunit.TestContext.Current.CancellationToken);
+        result.Items.Should().BeEmpty();
+        result.TotalCount.Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task AddAsync_PersistsAssignment()
     {
         var userId = Guid.NewGuid();

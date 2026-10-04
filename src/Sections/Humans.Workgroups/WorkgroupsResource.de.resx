@@ -34,6 +34,7 @@
 
   <!-- Enums -->
   <data name="Enum_WorkgroupStatus_Applied" xml:space="preserve"><value>Beantragt</value></data>
+  <data name="Workgroups_BreadcrumbNavigation" xml:space="preserve"><value>Navigationspfad</value></data>
   <data name="Enum_WorkgroupStatus_Referred" xml:space="preserve"><value>An den Vorstand weitergeleitet</value></data>
   <data name="Enum_WorkgroupStatus_Active" xml:space="preserve"><value>Aktiv</value></data>
   <data name="Enum_WorkgroupStatus_Refused" xml:space="preserve"><value>Abgelehnt</value></data>

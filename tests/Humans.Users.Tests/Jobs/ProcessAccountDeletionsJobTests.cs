@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
@@ -67,9 +68,16 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
     }
 
-    [HumansFact]
-    public async Task ExecuteAsync_AnonymizesAndLogsAndEmailsEachDueAccount()
+    [HumansTheory]
+    [Xunit.InlineData("en", "en")]
+    [Xunit.InlineData("es", "es")]
+    [Xunit.InlineData("", "en")]
+    [Xunit.InlineData(" ", "en")]
+    [Xunit.InlineData("not a culture!", "en")]
+    [Xunit.InlineData("fr-FR", "en")]
+    public async Task ExecuteAsync_AnonymizesAndLogsAndEmailsEachDueAccount(string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var userId = Guid.NewGuid();
 
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
@@ -79,7 +87,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             .Returns(new AnonymizedAccountSummary(
                 OriginalEmail: "test@example.com",
                 OriginalDisplayName: "Test User",
-                PreferredLanguage: "en"));
+                PreferredLanguage: language));
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -98,7 +106,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "account_deleted"
                 && m.RecipientEmail == "test@example.com" && m.RecipientName == "Test User"
-                && m.Subject.EndsWith("#en", StringComparison.Ordinal)),
+                && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
     }
 

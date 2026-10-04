@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Models;
@@ -32,6 +33,8 @@ internal static class FacilitatedMessageRequestBuilder
             sender.BurnerName,
             model.Message,
             model.IncludeContactInfo,
-            recipient.PreferredLanguage);
+            recipient.PreferredLanguage.IsSupportedCultureCode()
+                ? recipient.PreferredLanguage
+                : CultureCatalog.DefaultCultureCode);
     }
 }

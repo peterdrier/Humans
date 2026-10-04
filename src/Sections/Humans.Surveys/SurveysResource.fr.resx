@@ -331,4 +331,17 @@
   <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>Sondage introuvable.</value></data>
   <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>Aucune adresse e-mail de notification n’est associée à votre compte.</value></data>
   <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>L’e-mail d’aperçu du sondage n’a pas pu être mise en file d’attente.</value></data>
+  <data name="Surveys_PreviewOnly" xml:space="preserve"><value>Aperçu uniquement</value></data>
+  <data name="Surveys_SendPreviewEmail" xml:space="preserve"><value>M’envoyer l’e-mail d’aperçu</value></data>
+  <data name="Surveys_PreviewIntroNotice" xml:space="preserve"><value>Vous pouvez consulter ce questionnaire, mais aucune réponse ni activité ne sera enregistrée.</value></data>
+  <data name="Surveys_PreviewPageNotice" xml:space="preserve"><value>Les réponses et l’activité ne sont pas enregistrées. Les questions conditionnelles sont affichées pour pouvoir les examiner.</value></data>
+  <data name="Surveys_PreviewThankYouNotice" xml:space="preserve"><value>Aucune réponse n’a été soumise.</value></data>
+  <data name="Surveys_EmailPreviewTitle" xml:space="preserve"><value>Aperçu de l’e-mail du questionnaire</value></data>
+  <data name="Surveys_EmailPreviewDescription" xml:space="preserve"><value>Voici l’invitation qui serait envoyée à la personne actuellement connectée.</value></data>
+  <data name="Surveys_EmailPreviewTo" xml:space="preserve"><value>À :</value></data>
+  <data name="Surveys_EmailPreviewSubject" xml:space="preserve"><value>Objet :</value></data>
+  <data name="Surveys_EmailPreviewFrameTitle" xml:space="preserve"><value>Aperçu de l’e-mail d’invitation au questionnaire</value></data>
+  <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
+  <data name="Surveys_StartPreview" xml:space="preserve"><value>Commencer l’aperçu</value></data>
+  <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Aperçu du remerciement</value></data>
 </root>

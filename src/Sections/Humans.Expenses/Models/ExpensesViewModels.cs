@@ -41,10 +41,10 @@ internal sealed class ExpenseNewViewModel
 {
     public IReadOnlyList<BudgetCategoryOption> Categories { get; set; } = [];
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public Guid BudgetCategoryId { get; set; }
 
-    [StringLength(500)]
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? Note { get; set; }
 
     /// <summary>The member the report will belong to. Defaults to the viewer; only a finance admin
@@ -59,7 +59,7 @@ internal sealed class ExpenseEditViewModel
 
     public Guid BudgetCategoryId { get; set; }
 
-    [StringLength(500)]
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? Note { get; set; }
 }
 
@@ -154,10 +154,10 @@ internal sealed class ExpenseLineProofsViewModel
 
 internal sealed class AddLineInputModel
 {
-    [Required, StringLength(500)]
+    [Required(ErrorMessage = "Validation_Required"), StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string Description { get; set; } = "";
 
-    [Required, Range(0.01, 1_000_000)]
+    [Required(ErrorMessage = "Validation_Required"), Range(0.01, 1_000_000, ErrorMessage = "Validation_Range")]
     public decimal Amount { get; set; }
 
     /// <summary>Receipt (default) or Invoice; the service rejects travel types on this path.</summary>
@@ -169,13 +169,13 @@ internal sealed class AddLineInputModel
 
 internal sealed class EditLineInputModel
 {
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public Guid LineId { get; set; }
 
-    [Required, StringLength(500)]
+    [Required(ErrorMessage = "Validation_Required"), StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string Description { get; set; } = "";
 
-    [Required, Range(0.01, 1_000_000)]
+    [Required(ErrorMessage = "Validation_Required"), Range(0.01, 1_000_000, ErrorMessage = "Validation_Range")]
     public decimal Amount { get; set; }
 }
 
@@ -243,6 +243,6 @@ internal sealed class ExpenseIbanViewModel
     public bool CanRemoveIban =>
         ReportStatus is not (ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed);
 
-    [StringLength(34)]
+    [StringLength(34, ErrorMessage = "Validation_MaxLength")]
     public string? Iban { get; set; }
 }

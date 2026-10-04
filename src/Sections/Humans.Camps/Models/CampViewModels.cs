@@ -136,22 +136,36 @@ internal sealed class CampLeadViewModel
 // Registration form
 internal class CampRegisterViewModel
 {
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(256, ErrorMessage = "Validation_MaxLength")]
     public string Name { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(256, ErrorMessage = "Validation_MaxLength")]
+    [EmailAddress(ErrorMessage = "Validation_EmailAddress")]
     public string ContactEmail { get; set; } = string.Empty;
+    [StringLength(64, ErrorMessage = "Validation_MaxLength")]
     public string ContactPhone { get; set; } = string.Empty;
     public List<string> Links { get; set; } = [];
     public bool IsSwissCamp { get; set; }
     public bool HideHistoricalNames { get; set; }
     public int TimesAtNowhere { get; set; }
     public string? HistoricalNames { get; set; }
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(4000, ErrorMessage = "Validation_MaxLength")]
     public string BlurbLong { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(1000, ErrorMessage = "Validation_MaxLength")]
     public string BlurbShort { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(256, ErrorMessage = "Validation_MaxLength")]
     public string Languages { get; set; } = string.Empty;
     public YesNoMaybe AcceptingMembers { get; set; }
     public YesNoMaybe KidsWelcome { get; set; }
     public KidsVisitingPolicy KidsVisiting { get; set; }
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string? KidsAreaDescription { get; set; }
     public PerformanceSpaceStatus HasPerformanceSpace { get; set; }
+    [StringLength(1000, ErrorMessage = "Validation_MaxLength")]
     public string? PerformanceTypes { get; set; }
     public List<CampVibe> Vibes { get; set; } = [];
     public AdultPlayspacePolicy AdultPlayspace { get; set; }
@@ -231,8 +245,8 @@ internal sealed class CampContactViewModel
     public string CampSlug { get; set; } = string.Empty;
     public string CampName { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(2000, MinimumLength = 1)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string Message { get; set; } = string.Empty;
 
     public bool IncludeContactInfo { get; set; } = true;

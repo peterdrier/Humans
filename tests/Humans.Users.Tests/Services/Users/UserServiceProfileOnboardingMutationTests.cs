@@ -87,6 +87,85 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
+    public async Task ContributeForUserAsync_ExportsOwnEmailLifecycleAndGoogleSyncState()
+    {
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUser(otherUserId);
+        var createdAt = Clock.GetCurrentInstant();
+        await Db.UserEmails.AddRangeAsync([
+            new UserEmail
+            {
+                Id = Guid.NewGuid(), UserId = userId, Email = "google@example.com",
+                IsVerified = true, IsPrimary = true, IsGoogle = true,
+                GoogleEmailStatus = GoogleEmailStatus.Rejected,
+                CreatedAt = createdAt,
+                UpdatedAt = createdAt.Plus(NodaTime.Duration.FromHours(2)),
+                VerificationSentAt = createdAt.Plus(NodaTime.Duration.FromHours(1)),
+            },
+            new UserEmail
+            {
+                Id = Guid.NewGuid(), UserId = userId, Email = "manual@example.com",
+                CreatedAt = createdAt, UpdatedAt = createdAt,
+            },
+            new UserEmail
+            {
+                Id = Guid.NewGuid(), UserId = otherUserId, Email = "other@example.com",
+                CreatedAt = createdAt, UpdatedAt = createdAt,
+            }], TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+        var slice = slices.Single(s => string.Equals(s.SectionName, UserService.UserEmails, StringComparison.Ordinal));
+        using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(slice.Data));
+        var emails = json.RootElement.EnumerateArray().ToList();
+        emails.Should().HaveCount(2);
+        var google = emails.Single(e => string.Equals(e.GetProperty("Email").GetString(), "google@example.com", StringComparison.Ordinal));
+        google.GetProperty("IsGoogle").GetBoolean().Should().BeTrue();
+        google.GetProperty("GoogleEmailStatus").GetString().Should().Be("Rejected");
+        google.GetProperty("CreatedAt").GetString().Should().Be("2026-03-01T12:00:00Z");
+        google.GetProperty("UpdatedAt").GetString().Should().Be("2026-03-01T14:00:00Z");
+        google.GetProperty("VerificationSentAt").GetString().Should().Be("2026-03-01T13:00:00Z");
+        var manual = emails.Single(e => string.Equals(e.GetProperty("Email").GetString(), "manual@example.com", StringComparison.Ordinal));
+        manual.GetProperty("IsGoogle").GetBoolean().Should().BeFalse();
+        manual.GetProperty("GoogleEmailStatus").GetString().Should().Be("Unknown");
+        manual.GetProperty("VerificationSentAt").GetString().Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ContributeForUserAsync_ExportsKnownOrUnknownSubscriptionTimestamp(bool hasSubscribedAt)
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var subscribedAt = hasSubscribedAt ? Clock.GetCurrentInstant() : (NodaTime.Instant?)null;
+        _communicationPreferenceRepository.GetByUserIdReadOnlyAsync(
+                userId, TestContext.Current.CancellationToken)
+            .Returns(Task.FromResult<IReadOnlyList<CommunicationPreference>>([
+                new CommunicationPreference
+                {
+                    UserId = userId,
+                    Category = MessageCategory.Marketing,
+                    SubscribedAt = subscribedAt,
+                    UpdatedAt = Clock.GetCurrentInstant(),
+                    UpdateSource = "Profile",
+                }
+            ]));
+
+        var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        var slice = slices.Single(s => string.Equals(s.SectionName, UserService.CommunicationPreferences, StringComparison.Ordinal));
+        using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(slice.Data));
+        var preference = json.RootElement[0];
+        preference.GetProperty("SubscribedAt").GetString().Should().Be(
+            hasSubscribedAt ? "2026-03-01T12:00:00Z" : null);
+        preference.GetProperty("UpdateSource").GetString().Should().Be("Profile");
+    }
+
+    [HumansFact]
     public async Task GetUsersWithLoginsButNoEmailsAsync_ComposesLoginAndUserEmailRepositories()
     {
         var userWithEmail = SeedUser(Guid.NewGuid(), "Has Email");

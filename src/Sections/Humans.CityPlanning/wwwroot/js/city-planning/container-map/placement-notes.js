@@ -5,6 +5,7 @@ import { updatePlacementNotes }  from './api.js';
 
 let _modalEl       = null;
 let _form          = null;
+let _openVersion   = 0;
 let _current       = null;   // container currently shown in the modal
 let _onSaved       = null;   // callback(container.id, { placementNotes, placementImageUrl, placementImageFileName })
 let _bound         = false;
@@ -22,6 +23,7 @@ export function initPlacementNotes(onSaved) {
 
 export function openPlacementNotes(container) {
     if (!_modalEl) return;
+    _openVersion++;
     _current = container;
 
     _modalEl.querySelector('[data-role="container-name"]').textContent = container.name;
@@ -49,6 +51,7 @@ export function openPlacementNotes(container) {
     const saveBtn = _modalEl.querySelector('[data-role="save-btn"]');
     const canEdit = !!container.canEdit;
     fieldset.disabled = !canEdit;
+    saveBtn.disabled = false;
     saveBtn.classList.toggle('d-none', !canEdit);
 
     bootstrap.Modal.getOrCreateInstance(_modalEl).show();
@@ -56,22 +59,26 @@ export function openPlacementNotes(container) {
 
 async function onSubmit(e) {
     e.preventDefault();
+    const containerId = _current.id;
+    const version = _openVersion;
     const err = _modalEl.querySelector('[data-role="error"]');
     const saveBtn = _modalEl.querySelector('[data-role="save-btn"]');
     err.classList.add('d-none');
     saveBtn.disabled = true;
     try {
-        const result = await updatePlacementNotes(_current.id, CONFIG.YEAR, new FormData(_form));
-        _onSaved?.(_current.id, {
+        const result = await updatePlacementNotes(containerId, CONFIG.YEAR, new FormData(_form));
+        _onSaved?.(containerId, {
             placementNotes: result.placementNotes ?? null,
             placementImageUrl: result.placementImageUrl ?? null,
             placementImageFileName: result.placementImageFileName ?? null,
         });
-        bootstrap.Modal.getOrCreateInstance(_modalEl).hide();
+        if (version === _openVersion) bootstrap.Modal.getOrCreateInstance(_modalEl).hide();
     } catch (ex) {
-        err.textContent = ex.message;
-        err.classList.remove('d-none');
+        if (version === _openVersion) {
+            err.textContent = ex.message;
+            err.classList.remove('d-none');
+        }
     } finally {
-        saveBtn.disabled = false;
+        if (version === _openVersion) saveBtn.disabled = false;
     }
 }

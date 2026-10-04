@@ -93,12 +93,6 @@ internal partial interface ICampRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the set of distinct years any season exists for the camp.
-    /// Used for cache invalidation.
-    /// </summary>
-    Task<IReadOnlyList<int>> GetCampYearsAsync(Guid campId, CancellationToken ct = default);
-
-    /// <summary>
     /// Delete a camp and all cascaded children (seasons, leads, images,
     /// historical names). Returns the storage paths of deleted images so the
     /// service can remove them from the filesystem. Returns null if the camp
@@ -221,7 +215,7 @@ internal partial interface ICampRepository : IRepository
     Task<int> CountImagesAsync(Guid campId, CancellationToken ct = default);
 
     /// <summary>
-    /// Persist a new image record.
+    /// Persist a new image record after the camp's highest remaining display position.
     /// </summary>
     Task AddImageAsync(CampImage image, CancellationToken ct = default);
 

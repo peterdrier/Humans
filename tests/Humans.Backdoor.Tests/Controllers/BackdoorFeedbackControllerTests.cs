@@ -49,6 +49,37 @@ public class BackdoorFeedbackControllerTests
         };
     }
 
+    [HumansFact]
+    public async Task AbandonedReadRequests_CancelFeedbackLoads()
+    {
+        var id = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        _sut.HttpContext.RequestAborted = request.Token;
+        _feedback.GetFeedbackListAsync(Arg.Any<FeedbackStatus?>(), Arg.Any<FeedbackCategory?>(),
+                limit: Arg.Any<int>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult<IReadOnlyList<FeedbackReportInfo>>([]);
+            });
+        _feedback.GetFeedbackByIdAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<FeedbackReportInfo?>(null);
+        });
+        (await _sut.List(null, null)).Should().BeOfType<OkObjectResult>();
+        (await _sut.Get(id)).Should().BeOfType<NotFoundResult>();
+        (await _sut.GetMessages(id)).Should().BeOfType<NotFoundResult>();
+        await request.CancelAsync();
+        Func<Task<IActionResult>>[] reads =
+        [() => _sut.List(null, null), () => _sut.Get(id), () => _sut.GetMessages(id)];
+        foreach (var read in reads)
+        {
+            Func<Task> operation = async () => await read();
+            await operation.Should().ThrowAsync<OperationCanceledException>();
+        }
+    }
+
     // ==========================================================================
     // Every write records the key owner as the actor
     // ==========================================================================

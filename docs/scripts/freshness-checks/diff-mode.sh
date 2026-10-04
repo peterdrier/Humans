@@ -59,7 +59,12 @@ fi
 source "$SCRIPT_DIR/lib-editorial-docs.sh"
 
 # ─── Test 1: Catalog parses (structural smoke) ────────────────────────
-N_MECHANICAL=$(grep -cE '^\s+- id:\s+' "$CATALOG" || echo 0)
+# grep -c already prints zero for no matches; status 1 is valid empty input,
+# while read failures (including partial output) must not become a clean count.
+if ! N_MECHANICAL=$(grep -cE '^\s+- id:\s+' "$CATALOG" || [ "$?" -eq 1 ]); then
+  echo "FAIL [test 1]: could not count mechanical catalog entries"
+  exit 1
+fi
 # NB: the range must start AFTER the editorial_trees: line, because that line
 # itself matches /^[a-z]/ and would close the range immediately — which is why
 # this reported "0 editorial trees" while the catalog listed ten.
@@ -534,6 +539,89 @@ then
   PASS=$((PASS+1))
 else
   echo "FAIL [test 13]: statistics/history input failure handling"
+  FAIL=$((FAIL+1))
+fi
+
+# Service discovery follows arbitrary inheritance depth, including diamonds and
+# cycles, without counting unrelated interfaces as application services.
+if python3 - "$SCRIPT_DIR/lib-service-classes.sh" <<'PYTEST'
+import pathlib, subprocess, sys, tempfile
+helper = pathlib.Path(sys.argv[1]).resolve()
+with tempfile.TemporaryDirectory() as directory:
+    root = pathlib.Path(directory)
+    services = root / 'src/Sections/Humans.Example/Services'
+    services.mkdir(parents=True)
+    (root / 'src/Humans.Web/Services').mkdir(parents=True)
+    declarations = [
+        f'public interface ILevel{i} : ' + ('IApplicationService' if i == 0 else f'ILevel{i - 1}') + ' {}'
+        for i in range(8)
+    ]
+    declarations += [
+        'public interface IDiamond : ILevel2, ILevel7 {}',
+        'public interface ICycleA : ICycleB, IDiamond {}',
+        'public interface ICycleB : ICycleA {}',
+        'public interface IUnrelatedA : IUnrelatedB {}',
+        'public interface IUnrelatedB : IUnrelatedA {}',
+        'internal class DeepService : ILevel7 {}',
+        'internal class DiamondService : IDiamond {}',
+        'internal class CycleService : ICycleB {}',
+        'internal class UnrelatedService : IUnrelatedA {}',
+    ]
+    (services / 'Example.cs').write_text('\n'.join(declarations))
+    result = subprocess.run(
+        ['bash', '-c', 'set -euo pipefail; source "$1"; service_classes', 'fixture', str(helper)],
+        cwd=root, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result
+    names = {line.split('|')[1].split(',')[0] for line in result.stdout.splitlines()}
+    assert names == {'DeepService', 'Diamond', 'CycleB'}, result.stdout
+PYTEST
+then
+  echo "PASS [test 14]: service discovery follows deep inheritance to a fixed point"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 14]: service inheritance discovery"
+  FAIL=$((FAIL+1))
+fi
+
+# Exercise this script's actual catalog smoke-check prefix without recursively
+# running its remaining regression checks in each synthetic repository.
+if python3 - "$0" <<'PYTEST'
+import os, pathlib, subprocess, sys, tempfile
+script = pathlib.Path(sys.argv[1]).resolve()
+source = script.read_text().split('# ─── Test 2:', 1)[0]
+for mode in ('empty', 'five', 'failed', 'partial'):
+    with tempfile.TemporaryDirectory() as directory:
+        root = pathlib.Path(directory)
+        catalog = root / 'docs/architecture/freshness-catalog.yml'
+        catalog.parent.mkdir(parents=True)
+        entries = '' if mode == 'empty' else ''.join(f'  - id: fixture-{i}\n' for i in range(5))
+        catalog.write_text('mechanical:\n' + entries + 'editorial_trees:\nignore:\n')
+        env = os.environ.copy()
+        if mode in ('failed', 'partial'):
+            probes = root / 'probes'
+            probes.mkdir()
+            for command in ('grep', 'awk'):
+                probe = probes / command
+                probe.write_text('#!/bin/bash\n' + ('echo 5\n' if mode == 'partial' else '') + 'exit 42\n')
+                probe.chmod(0o755)
+            env['PATH'] = str(probes) + ':' + env['PATH']
+        result = subprocess.run(['bash', '-c', source, str(script)],
+                                cwd=root, env=env, capture_output=True, text=True, timeout=10)
+        if mode == 'five':
+            assert result.returncode == 0 and 'PASS [test 1]: catalog has 5 mechanical' in result.stdout, (result.returncode, result.stdout, result.stderr)
+        else:
+            assert 'FAIL [test 1]:' in result.stdout and 'PASS [test 1]:' not in result.stdout, (result.returncode, result.stdout, result.stderr)
+            if mode == 'empty':
+                assert 'only 0 mechanical entries' in result.stdout, (result.returncode, result.stdout, result.stderr)
+            else:
+                assert result.returncode != 0 and 'could not count' in result.stdout, (result.returncode, result.stdout, result.stderr)
+        assert 'integer expression expected' not in result.stderr, (result.returncode, result.stdout, result.stderr)
+PYTEST
+then
+  echo "PASS [test 15]: catalog counts reject zero entries and failed/partial reads"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 15]: catalog count failure handling"
   FAIL=$((FAIL+1))
 fi
 

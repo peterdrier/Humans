@@ -560,17 +560,18 @@ internal sealed class ExpenseReportService(
         var removedAttachments = await repo.RemoveLineAsync(reportId, lineId, ct)
             ?? throw new InvalidOperationException("Failed to remove line.");
 
+        // The deletion has committed; its audit and file cleanup must finish even if the request ends.
         await AuditOnBehalfEditAsync(report, actorUserId,
             removed is null
                 ? $"Removed line {lineId}"
-                : $"Removed line \"{removed.Description}\" €{removed.Amount}", ct);
+                : $"Removed line \"{removed.Description}\" €{removed.Amount}", CancellationToken.None);
 
         foreach (var attachment in removedAttachments)
         {
             try
             {
                 await fileStorage.DeleteAsync(
-                    AttachmentKey(attachment.Id, attachment.Extension), ct);
+                    AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
             }
             catch (Exception ex)
             {
@@ -1146,9 +1147,11 @@ internal sealed class ExpenseReportService(
             return;
         }
 
+        var language = submitter.PreferredLanguage;
         await emailService.SendAsync(emails.ReportApproved(
             recipient, submitter.BurnerName, reportId, approved.Payable,
-            IbanFormatter.Mask(approved.PayeeIban), submitter.PreferredLanguage), ct);
+            IbanFormatter.Mask(approved.PayeeIban),
+            language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);
     }
 
     public Task<ExpenseMutationResult> ApproveWithResultAsync(
@@ -1719,9 +1722,9 @@ internal sealed class ExpenseReportService(
                 r.PayeeName,
                 PayeeIban = IbanFormatter.Mask(r.PayeeIban),
                 r.Total,
-                r.SubmittedAt,
-                r.ApprovedAt,
-                r.CreatedAt,
+                SubmittedAt = r.SubmittedAt?.ToIso8601(),
+                ApprovedAt = r.ApprovedAt?.ToIso8601(),
+                CreatedAt = r.CreatedAt.ToIso8601(),
                 Lines = r.Lines.Select(l => new
                 {
                     l.Id,

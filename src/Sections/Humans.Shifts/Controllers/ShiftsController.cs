@@ -43,7 +43,7 @@ internal sealed class ShiftsController(
     [HttpGet("")]
     public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, string? day = null, bool showFull = false, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null, [FromQuery(Name = "periods")] List<string>? periods = null)
     {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
@@ -58,7 +58,7 @@ internal sealed class ShiftsController(
                            (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
 
         // Cached ShiftUserView, already event-scoped.
-        var userView = await shiftView.GetUserAsync(user.Id);
+        var userView = await shiftView.GetUserAsync(user.Id, HttpContext.RequestAborted);
         var userSignups = userView.Signups;
         var hasSignups = userSignups.Count > 0;
         var userActiveSignupsForUi = await LoadUserActiveSignupsForUiAsync(user.Id);
@@ -321,16 +321,16 @@ internal sealed class ShiftsController(
     [HttpGet("Mine")]
     public async Task<IActionResult> Mine()
     {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
 
-        var es = await burnSettings.GetActiveAsync();
+        var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
 
         // Cached ShiftUserView, event-scoped (empty when no active event).
-        var userView = await shiftView.GetUserAsync(user.Id);
+        var userView = await shiftView.GetUserAsync(user.Id, HttpContext.RequestAborted);
         var signups = userView.Signups;
 
         var now = clock.GetCurrentInstant();
@@ -360,7 +360,7 @@ internal sealed class ShiftsController(
         IReadOnlyDictionary<Guid, string> mineTeamNames = new Dictionary<Guid, string>();
         if (teamIds.Count > 0)
         {
-            var teamsById = await teamService.GetTeamsAsync();
+            var teamsById = await teamService.GetTeamsAsync(HttpContext.RequestAborted);
             mineTeamNames = teamIds
                 .Where(teamsById.ContainsKey)
                 .ToDictionary(id => id, id => teamsById[id].Name);

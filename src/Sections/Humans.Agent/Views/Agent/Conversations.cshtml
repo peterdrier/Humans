@@ -1,4 +1,5 @@
 @model AgentConversationsViewModel
+@inject IStringLocalizer<SharedResource> SharedLocalizer
 @{
     ViewData["Title"] = Model.IsAdminView ? "Agent Conversations" : Localizer["Agent_HistoryTitle"].Value;
 }
@@ -43,7 +44,7 @@ else
     // Admins keep the existing token/tool-call diagnostic view.
     Func<AgentConversationRow, IHtmlContent> viewCell = Model.IsAdminView
         ? @<text><a asp-action="ConversationDetail" asp-route-id="@item.Conversation.Id">View</a></text>
-        : @<text><a asp-action="Conversation" asp-route-id="@item.Conversation.Id">View</a></text>;
+        : @<text><a asp-action="Conversation" asp-route-id="@item.Conversation.Id">@SharedLocalizer["Common_View"]</a></text>;
     var b = TableModel.For(Model.Rows);
     if (Model.IsAdminView)
     {
@@ -85,7 +86,7 @@ else
                 <a class="page-link" asp-action="Conversations" asp-all-route-data="@RouteFor(Model.Page - 1)">Newer</a>
             </li>
             <li class="page-item @(Model.HasNext ? "" : "disabled")">
-                <a class="page-link" asp-action="Conversations" asp-all-route-data="@RouteFor(Model.Page + 1)">Older</a>
+                <a class="page-link" asp-action="Conversations" asp-all-route-data="@RouteFor((int)Math.Min((long)Model.Page + 1, int.MaxValue))">Older</a>
             </li>
         </ul>
     </nav>

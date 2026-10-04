@@ -3,7 +3,9 @@ using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Events.Contracts;
 using Humans.Events.Services;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Humans.Events.Tests.Services;
 
@@ -17,7 +19,10 @@ namespace Humans.Events.Tests.Services;
 /// </summary>
 public sealed class EventsEmailsTests
 {
-    private static EventsEmails Create() => new(NullLogger<EventsEmails>.Instance);
+    private static EventsEmails Create() => new(
+        new StringLocalizer<EventsResource>(new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)),
+        NullLogger<EventsEmails>.Instance);
 
     [HumansFact]
     public void EventLifecycle_PicksTemplateFromStatus()
@@ -44,6 +49,15 @@ public sealed class EventsEmailsTests
         msg.RecipientName.Should().Be("Bob");
         msg.Category.Should().BeNull();
         msg.ReplyTo.Should().BeNull();
+    }
+
+    [HumansFact]
+    public void EventLifecycle_RendersInTheSubmittersCulture()
+    {
+        var msg = Create().EventLifecycle(
+            new EventLifecycleNotification(EventStatus.Approved, "Bob", "My Event", Culture: "es"), "bob@x.com");
+
+        msg.Subject.Should().Be("Tu evento ha sido aprobado");
     }
 
     [HumansFact]

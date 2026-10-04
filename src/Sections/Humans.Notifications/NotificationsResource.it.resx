@@ -76,6 +76,15 @@
   <data name="Notification_Section_WorkQueues" xml:space="preserve">
     <value>Code di lavoro</value>
   </data>
+  <data name="Notifications_Meter_ConsentReviewsPending" xml:space="preserve"><value>Revisioni del consenso in sospeso</value></data>
+  <data name="Notifications_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Domande in attesa del tuo voto</value></data>
+  <data name="Notifications_Meter_PendingAccountDeletions" xml:space="preserve"><value>Eliminazioni di account in sospeso</value></data>
+  <data name="Notifications_Meter_FailedGoogleSyncEvents" xml:space="preserve"><value>Sincronizzazioni Google non riuscite</value></data>
+  <data name="Notifications_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Profili di iscrizione in sospeso</value></data>
+  <data name="Notifications_Meter_TeamJoinRequestsPending" xml:space="preserve"><value>Richieste di adesione ai team in sospeso</value></data>
+  <data name="Notifications_Meter_TicketSyncError" xml:space="preserve"><value>Errore di sincronizzazione dei biglietti</value></data>
+  <data name="Notifications_Meter_CampJoinRequest" xml:space="preserve"><value>1 persona vuole unirsi al tuo camp</value></data>
+  <data name="Notifications_Meter_CampJoinRequests" xml:space="preserve"><value>{0} persone vogliono unirsi al tuo camp</value></data>
   <data name="Notification_MarkAllRead" xml:space="preserve">
     <value>Segna tutto come letto</value>
   </data>
@@ -136,10 +145,12 @@
   <data name="Notification_Bulk_Selected" xml:space="preserve">
     <value>{0} selezionati</value>
   </data>
+  <data name="Notifications_SelectNotification" xml:space="preserve"><value>Seleziona notifica</value></data>
   <data name="Notification_Bulk_Resolve" xml:space="preserve">
     <value>Risolvi selezionati</value>
   </data>
   <data name="Notification_Bulk_Dismiss" xml:space="preserve">
     <value>Ignora selezionati</value>
   </data>
+  <data name="Notification_Popup_LoadError" xml:space="preserve"><value>Impossibile caricare le notifiche. Riprova.</value></data>
 </root>

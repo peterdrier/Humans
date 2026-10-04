@@ -6,7 +6,7 @@
     var categories = d.Comments.Select(c => c.Category).Concat(d.CommentCategories).Distinct().ToList();
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Workgroups_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Workgroups_Title"]</a></li>
         <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></li>

@@ -75,12 +75,12 @@ longer needs a redeploy.
    their preferred language, `MessageCategory.System` (peterdrier/Humans#1820). Both come after the
    save so a rolled-back file leaves neither a ghost audit row nor a promise of money in the outbox.
    Notification failures are logged and do not block download of the saved file; a failed email
-   does not suppress later recipients. Request cancellation still propagates.
+   does not suppress later recipients. After the save, notifications finish independently of request cancellation.
 7. The XML streams back as `<org-slug>-<yyyy-MM-dd-HHmm>-<first 8 hex of the file id>.xml`. The
    stamp is minute-resolution, so the id suffix is what keeps two batches in one minute apart — the
    filename is the treasurer's handle on a downloaded copy and is quoted in the audit line.
 
-Any failure at any step refuses the **whole** batch with a message and persists nothing.
+Validation or file-construction failure refuses the **whole** batch and persists nothing. Post-save notification failures leave the saved file available.
 
 ## Booking a transfer into Holded
 
@@ -299,7 +299,7 @@ Server-side, all-or-nothing:
 The unmasked IBAN is stored only as sent: the generated XML and `sepa_payout_transfers.Iban`.
 Logs, audit descriptions, the SEPA page and the cross-section `HoldedCreditorAccountRow` carry
 `IbanFormatter.Mask(...)` output only; builder error messages mask the IBAN they name. An admin
-screen (`/Finance/CreditorStatement`) and the member's own view may show it in full.
+screen (`/Finance/Creditors/{accountNum}`) and the member's own view may show it in full.
 
 ## GDPR
 

@@ -43,6 +43,7 @@
   <data name="Shifts_SignedUp" xml:space="preserve">
     <value>Iscritti</value>
   </data>
+  <data name="Shifts_BreadcrumbNavigation" xml:space="preserve"><value>Percorso di navigazione</value></data>
   <data name="Shifts_Pending" xml:space="preserve">
     <value>(in attesa)</value>
   </data>
@@ -1224,4 +1225,35 @@
   <data name="Shifts_Notification_AssignedDay" xml:space="preserve"><value>Ti è stato assegnato un turno in {0} per il giorno {1}</value></data>
   <data name="Shifts_Notification_AssignedRange" xml:space="preserve"><value>Ti sono stati assegnati {1} turni in {0}</value></data>
   <data name="Shifts_Notification_AssignedRangeSingular" xml:space="preserve"><value>Ti è stato assegnato un turno in {0}</value></data>
+  <data name="ShiftInfo_Skill_Bartending" xml:space="preserve"><value>Servizio al bar</value></data>
+  <data name="ShiftInfo_Skill_FirstAid" xml:space="preserve"><value>Primo soccorso</value></data>
+  <data name="ShiftInfo_Skill_Driving" xml:space="preserve"><value>Guida</value></data>
+  <data name="ShiftInfo_Skill_Sound" xml:space="preserve"><value>Audio</value></data>
+  <data name="ShiftInfo_Skill_Electrical" xml:space="preserve"><value>Elettricità</value></data>
+  <data name="ShiftInfo_Skill_Construction" xml:space="preserve"><value>Costruzione</value></data>
+  <data name="ShiftInfo_Skill_Cooking" xml:space="preserve"><value>Cucina</value></data>
+  <data name="ShiftInfo_Skill_Art" xml:space="preserve"><value>Arte</value></data>
+  <data name="ShiftInfo_Skill_DJ" xml:space="preserve"><value>DJ</value></data>
+  <data name="ShiftInfo_Time_EarlyBird" xml:space="preserve"><value>Mattiniero/a</value></data>
+  <data name="ShiftInfo_Time_NightOwl" xml:space="preserve"><value>Nottambulo/a</value></data>
+  <data name="ShiftInfo_Time_AllDay" xml:space="preserve"><value>Tutto il giorno</value></data>
+  <data name="ShiftInfo_Time_NoPreference" xml:space="preserve"><value>Nessuna preferenza</value></data>
+  <data name="ShiftInfo_Time_EarlyBird_Description" xml:space="preserve"><value>Turni mattutini, allestimento e preparazione</value></data>
+  <data name="ShiftInfo_Time_NightOwl_Description" xml:space="preserve"><value>Turni serali e notturni</value></data>
+  <data name="ShiftInfo_Time_AllDay_Description" xml:space="preserve"><value>Flessibile, dalla mattina alla sera</value></data>
+  <data name="ShiftInfo_Time_NoPreference_Description" xml:space="preserve"><value>Accetto ciò che serve</value></data>
+  <data name="ShiftInfo_Quirk_SoberShift" xml:space="preserve"><value>Turno senza alcol né droghe</value></data>
+  <data name="ShiftInfo_Quirk_WorkInShade" xml:space="preserve"><value>Lavoro all’ombra</value></data>
+  <data name="ShiftInfo_Quirk_QuietWork" xml:space="preserve"><value>Lavoro tranquillo</value></data>
+  <data name="ShiftInfo_Quirk_PhysicalWorkOK" xml:space="preserve"><value>Lavoro fisico accettato</value></data>
+  <data name="ShiftInfo_Quirk_NoHeights" xml:space="preserve"><value>Niente lavori in altezza</value></data>
+  <data name="Enum_SignupStatus_Pending" xml:space="preserve"><value>In attesa</value></data>
+  <data name="Enum_SignupStatus_Confirmed" xml:space="preserve"><value>Confermato</value></data>
+  <data name="Enum_SignupStatus_Refused" xml:space="preserve"><value>Rifiutato</value></data>
+  <data name="Enum_SignupStatus_Bailed" xml:space="preserve"><value>Ritirato</value></data>
+  <data name="Enum_SignupStatus_Cancelled" xml:space="preserve"><value>Annullato</value></data>
+  <data name="Enum_SignupStatus_NoShow" xml:space="preserve"><value>Assente</value></data>
+  <data name="ShiftSignups_Title" xml:space="preserve"><value>Iscrizioni ai turni</value></data>
+  <data name="ShiftSignups_ConfirmedCount" xml:space="preserve"><value>{0} confermati</value></data>
+  <data name="ShiftSignups_MoreCount" xml:space="preserve"><value>+ {0} altri</value></data>
 </root>

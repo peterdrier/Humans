@@ -163,14 +163,15 @@ internal sealed class ConsentService(
         // SystemTeamSyncJob reconciles Volunteers/Coordinators on name + consents, decoupled from
         // the consent write (access never depended on it).
 
+        // Consent is committed; finish suspension cleanup even if the signing request ends.
         // Auto-resolve AccessSuspended notifications only after ALL required consents complete.
         try
         {
             var membershipCalc = serviceProvider.GetRequiredService<IMembershipCalculatorRead>();
-            if (await membershipCalc.HasAllRequiredConsentsAsync(userId, ct))
+            if (await membershipCalc.HasAllRequiredConsentsAsync(userId, CancellationToken.None))
             {
-                await notificationAutoResolve.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
-                await humanLifecycleService.RestoreConsentSuspensionAsync(userId, ct);
+                await notificationAutoResolve.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, CancellationToken.None);
+                await humanLifecycleService.RestoreConsentSuspensionAsync(userId, CancellationToken.None);
             }
         }
         catch (Exception ex)

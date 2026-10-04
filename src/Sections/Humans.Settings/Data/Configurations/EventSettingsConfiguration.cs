@@ -62,6 +62,7 @@ internal sealed class EventSettingsConfiguration : IEntityTypeConfiguration<Even
     private static bool NullableDictionaryEquals(Dictionary<int, int>? a, Dictionary<int, int>? b) =>
         DictionaryEquals(a, b);
 
+    // Dictionary equality ignores insertion order; combine entry hashes commutatively.
     private static int DictionaryHash(Dictionary<int, int> v) =>
-        v.Aggregate(0, (hash, kv) => HashCode.Combine(hash, kv.Key, kv.Value));
+        v.Aggregate(0, (hash, kv) => hash ^ HashCode.Combine(kv.Key, kv.Value));
 }

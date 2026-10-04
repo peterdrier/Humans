@@ -130,7 +130,7 @@ internal sealed class ProfileController(
             CampaignGrants = campaignGrants,
             // Onsite chip — own profile, always visible. Issue
             // nobodies-collective/Humans#736.
-            OnsiteSince = await ResolveOnsiteSinceAsync(info),
+            OnsiteSince = await ResolveOnsiteSinceAsync(info, ct),
             CanViewOnsiteChip = true,
         };
 
@@ -151,9 +151,9 @@ internal sealed class ProfileController(
     /// from the cached <see cref="UserInfo"/> snapshot — no extra DB hit. Issue
     /// nobodies-collective/Humans#736.
     /// </summary>
-    private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info)
+    private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info, CancellationToken ct)
     {
-        var active = await settingsService.GetActiveEventSettingsAsync();
+        var active = await settingsService.GetActiveEventSettingsAsync(ct);
         if (active is null || active.Year == 0) return null;
         return info.OnsiteSinceForYear(active.Year);
     }
@@ -249,9 +249,7 @@ internal sealed class ProfileController(
         // services are peers/leaves that must not call each other back.
         await RunPostProfileSaveOrchestrationAsync(user, model, isInitialSetup);
 
-        var contactFieldsResult = await SaveEditedContactFieldsOrNullAsync(model, user.Id, profileId);
-        if (contactFieldsResult is not null)
-            return contactFieldsResult;
+        await SaveEditedContactFieldsAsync(model, profileId);
 
         // Languages: remove-and-replace.
         var newLanguages = model.EditableLanguages
@@ -484,7 +482,7 @@ internal sealed class ProfileController(
         }
     }
 
-    private async Task<IActionResult?> SaveEditedContactFieldsOrNullAsync(ProfileViewModel model, Guid userId, Guid profileId)
+    private async Task SaveEditedContactFieldsAsync(ProfileViewModel model, Guid profileId)
     {
         var contactFieldDtos = model.EditableContactFields
             .Where(cf => !string.IsNullOrWhiteSpace(cf.Value))
@@ -498,18 +496,7 @@ internal sealed class ProfileController(
             ))
             .ToList();
 
-        try
-        {
-            await contactFieldService.SaveContactFieldsAsync(profileId, contactFieldDtos);
-            return null;
-        }
-        catch (ValidationException ex)
-        {
-            logger.LogWarning(ex, "Failed to save contact fields for user {UserId} and profile {ProfileId}", userId, profileId);
-            ModelState.AddModelError(string.Empty, ex.Message);
-            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-            return View(model);
-        }
+        await contactFieldService.SaveContactFieldsAsync(profileId, contactFieldDtos);
     }
 
     private async Task<(bool Success, byte[]? Data, string? ContentType)> TryReadProfilePictureUploadAsync(ProfileViewModel model)
@@ -636,11 +623,11 @@ internal sealed class ProfileController(
     [HttpGet("Me/Outbox")]
     public async Task<IActionResult> MyOutbox()
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
-        var messages = await emailOutboxService.GetMessagesForUserAsync(user.Id);
+        var messages = await emailOutboxService.GetMessagesForUserAsync(user.Id, HttpContext.RequestAborted);
 
         return View("Outbox", messages);
     }
@@ -648,7 +635,7 @@ internal sealed class ProfileController(
     [HttpGet("Me/Privacy")]
     public async Task<IActionResult> Privacy()
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
@@ -695,7 +682,7 @@ internal sealed class ProfileController(
     {
         try
         {
-            var user = await GetCurrentUserInfoAsync();
+            var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
             if (user is null)
                 return NotFound();
 
@@ -715,7 +702,7 @@ internal sealed class ProfileController(
 
             return View(vm);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to load dietary/medical info for user");
             SetError(localizer["Profile_DietaryMedical_LoadFailed"].Value);
@@ -835,13 +822,13 @@ internal sealed class ProfileController(
     {
         try
         {
-            var user = await GetCurrentUserInfoAsync();
+            var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
             if (user is null)
                 return NotFound();
 
             return View(model: user.Id);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Failed to load communication preferences");
             SetError(localizer["Users_Profile_CommunicationPreferencesLoadFailed"].Value);

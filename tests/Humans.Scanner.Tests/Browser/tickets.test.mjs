@@ -26,7 +26,11 @@ function scanner(t) {
         return call.promise;
     });
     t.mock.method(console, 'error', () => {});
-    const card = { innerHTML: 'initial', replaceChildren(child) { this.innerHTML = child.textContent; } };
+    const card = {
+        innerHTML: 'initial',
+        replaceChildren(...children) { this.innerHTML = children.map(child => child.textContent).join(''); },
+        setAttribute() {},
+    };
     const manualInput = { value: '' };
     let submit;
     initTicketScanner({

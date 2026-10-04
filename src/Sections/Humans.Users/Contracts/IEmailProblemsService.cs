@@ -12,15 +12,6 @@ public interface IEmailProblemsService : IApplicationService
     Task<EmailProblemsReport> ScanAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns true if the user is currently in the "ghost external logins"
-    /// set (has <c>AspNetUserLogins</c> rows but zero <c>UserEmail</c> rows).
-    /// Used by the admin "delete ghost logins" POST to re-verify the user
-    /// is still a ghost before deleting auth-table rows, since form fields
-    /// are client-controlled and the report may be stale.
-    /// </summary>
-    Task<bool> IsGhostExternalLoginsUserAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Backfills a verified <c>UserEmail</c> row from
     /// <c>User.IdentityEmailColumn</c> (the raw legacy AspNetIdentity column)
     /// for every user currently flagged by case 9

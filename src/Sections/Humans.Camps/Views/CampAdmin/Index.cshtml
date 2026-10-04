@@ -134,7 +134,7 @@
                                     @camp.Name
                                 </a>
                             </td>
-                            <td>@(camp.BlurbShort.Length > 100 ? camp.BlurbShort[..100] + "..." : camp.BlurbShort)</td>
+                            <td>@(camp.BlurbShort.Length > 100 ? camp.BlurbShort[..(char.IsHighSurrogate(camp.BlurbShort[99]) && char.IsLowSurrogate(camp.BlurbShort[100]) ? 99 : 100)] + "..." : camp.BlurbShort)</td>
                             <td>
                                 <input type="text" class="form-control form-control-sm" form="approve-@camp.SeasonId" name="notes" placeholder="Optional notes" />
                             </td>
@@ -186,7 +186,7 @@
         </text>;
     var withdrawnTable = TableModel.For(Model.WithdrawnCamps)
         .Template("Name", withdrawnNameCell)
-        .Column("Description", r => r.BlurbShort.Length > 100 ? r.BlurbShort[..100] + "..." : r.BlurbShort)
+        .Column("Description", r => r.BlurbShort.Length > 100 ? r.BlurbShort[..(char.IsHighSurrogate(r.BlurbShort[99]) && char.IsLowSurrogate(r.BlurbShort[100]) ? 99 : 100)] + "..." : r.BlurbShort)
         .Template("Actions", withdrawnReactivateCell, c => c.NoSort().End())
         .Build();
     <div class="card mb-4">

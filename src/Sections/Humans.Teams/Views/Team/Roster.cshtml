@@ -4,7 +4,7 @@
     ViewData["Title"] = Localizer["Roster_Title"].Value;
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Teams_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["Roster_Title"]</li>

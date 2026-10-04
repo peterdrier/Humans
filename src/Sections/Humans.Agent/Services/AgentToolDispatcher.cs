@@ -32,74 +32,103 @@ internal sealed class AgentToolDispatcher(
             return new AnthropicToolResult(call.Id, string.Create(CultureInfo.InvariantCulture, $"Unknown tool: {call.Name}"), IsError: true);
         }
 
+        string lookup;
+        var auditLimit = DefaultAuditHistoryLimit;
         try
         {
             using var doc = JsonDocument.Parse(call.JsonArguments);
             var args = doc.RootElement;
-
-            switch (call.Name)
+            if (args.ValueKind != JsonValueKind.Object)
+                throw new JsonException("Tool arguments must be a JSON object.");
+            lookup = call.Name switch
             {
-                case AgentToolNames.FetchFeatureSpec:
-                    {
-                        var name = args.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
-                        var body = await features.ReadAsync(name, cancellationToken);
-                        return body is not null
-                            ? new AnthropicToolResult(call.Id, body, IsError: false)
-                            : UnknownKey(call.Id,
-                                string.Create(CultureInfo.InvariantCulture, $"Feature spec not found: {name}."),
-                                await features.KnownStemsAsync(cancellationToken));
-                    }
-                case AgentToolNames.FetchSectionGuide:
-                    {
-                        var key = args.TryGetProperty("section", out var s) ? s.GetString() ?? "" : "";
-                        var body = await sections.ReadAsync(key, cancellationToken);
-                        return body is not null
-                            ? new AnthropicToolResult(call.Id, body, IsError: false)
-                            : UnknownKey(call.Id,
-                                string.Create(CultureInfo.InvariantCulture, $"Unknown section: {key}."),
-                                sections.KnownSections);
-                    }
-                case AgentToolNames.FetchCommunityFaq:
-                    {
-                        var topic = args.TryGetProperty("topic", out var t) ? t.GetString() ?? "" : "";
-                        var body = await community.ReadAsync(topic, cancellationToken);
-                        return body is not null
-                            ? new AnthropicToolResult(call.Id, CommunityFaqReader.WrapWithProvenance(body), IsError: false)
-                            : UnknownKey(call.Id,
-                                string.Create(CultureInfo.InvariantCulture, $"Unknown community FAQ topic: {topic}."),
-                                (await community.ListTopicsAsync(cancellationToken)).Entries.Select(e => e.Topic));
-                    }
-                case AgentToolNames.GetAuditHistory:
-                    {
-                        var limit = ParseAuditHistoryLimit(args);
-                        return await DispatchGetAuditHistoryAsync(call.Id, userId, limit, cancellationToken);
-                    }
-                case AgentToolNames.GetShiftDetails:
-                    {
-                        var shiftIdString = args.TryGetProperty("shiftId", out var sid) ? sid.GetString() ?? "" : "";
-                        if (!Guid.TryParse(shiftIdString, out var shiftKey))
-                            return new AnthropicToolResult(call.Id, "shiftId must be a valid GUID.", IsError: true);
-                        return await DispatchGetShiftDetailsAsync(call.Id, userId, shiftKey, cancellationToken);
-                    }
-                case AgentToolNames.RouteToIssue:
-                    {
-                        // No DB write — AgentService inspects the call args and emits an
-                        // AgentIssueProposal frame so the client can pre-fill the issue
-                        // submission form. The tool result here is just an LLM-facing
-                        // confirmation telling it the turn is over.
-                        return new AnthropicToolResult(call.Id,
-                            "Proposal queued. The system will pre-fill an issue submission form for the user. Stop and await the next user turn.",
-                            IsError: false);
-                    }
-                default:
-                    return new AnthropicToolResult(call.Id, string.Create(CultureInfo.InvariantCulture, $"Tool dispatch not implemented: {call.Name}"), IsError: true);
+                AgentToolNames.FetchFeatureSpec => ReadStringArgument(args, "name"),
+                AgentToolNames.FetchSectionGuide => ReadStringArgument(args, "section"),
+                AgentToolNames.FetchCommunityFaq => ReadStringArgument(args, "topic"),
+                AgentToolNames.GetShiftDetails => ReadStringArgument(args, "shiftId"),
+                _ => "",
+            };
+            if (string.Equals(call.Name, AgentToolNames.GetAuditHistory, StringComparison.Ordinal))
+                auditLimit = ParseAuditHistoryLimit(args);
+            if (string.Equals(call.Name, AgentToolNames.RouteToIssue, StringComparison.Ordinal))
+            {
+                // AgentService reads these strings to build the proposal after confirmation.
+                _ = ReadStringArgument(args, "title");
+                _ = ReadStringArgument(args, "description");
+                _ = ReadStringArgument(args, "category");
             }
         }
         catch (JsonException ex)
         {
-            logger.LogWarning(ex, "Agent sent malformed JSON arguments for tool {ToolName}", call.Name);
+            logger.LogWarning("Agent sent malformed JSON arguments for tool {ToolName}: {Reason}", call.Name, ex.Message);
             return new AnthropicToolResult(call.Id, "Malformed tool arguments (expected JSON object).", IsError: true);
         }
+
+        switch (call.Name)
+        {
+            case AgentToolNames.FetchFeatureSpec:
+                {
+                    var name = lookup;
+                    var body = await features.ReadAsync(name, cancellationToken);
+                    return body is not null
+                        ? new AnthropicToolResult(call.Id, body, IsError: false)
+                        : UnknownKey(call.Id,
+                            string.Create(CultureInfo.InvariantCulture, $"Feature spec not found: {name}."),
+                            await features.KnownStemsAsync(cancellationToken));
+                }
+            case AgentToolNames.FetchSectionGuide:
+                {
+                    var key = lookup;
+                    var body = await sections.ReadAsync(key, cancellationToken);
+                    return body is not null
+                        ? new AnthropicToolResult(call.Id, body, IsError: false)
+                        : UnknownKey(call.Id,
+                            string.Create(CultureInfo.InvariantCulture, $"Unknown section: {key}."),
+                            sections.KnownSections);
+                }
+            case AgentToolNames.FetchCommunityFaq:
+                {
+                    var topic = lookup;
+                    var body = await community.ReadAsync(topic, cancellationToken);
+                    return body is not null
+                        ? new AnthropicToolResult(call.Id, CommunityFaqReader.WrapWithProvenance(body), IsError: false)
+                        : UnknownKey(call.Id,
+                            string.Create(CultureInfo.InvariantCulture, $"Unknown community FAQ topic: {topic}."),
+                            (await community.ListTopicsAsync(cancellationToken)).Entries.Select(e => e.Topic));
+                }
+            case AgentToolNames.GetAuditHistory:
+                {
+                    return await DispatchGetAuditHistoryAsync(call.Id, userId, auditLimit, cancellationToken);
+                }
+            case AgentToolNames.GetShiftDetails:
+                {
+                    var shiftIdString = lookup;
+                    if (!Guid.TryParse(shiftIdString, out var shiftKey))
+                        return new AnthropicToolResult(call.Id, "shiftId must be a valid GUID.", IsError: true);
+                    return await DispatchGetShiftDetailsAsync(call.Id, userId, shiftKey, cancellationToken);
+                }
+            case AgentToolNames.RouteToIssue:
+                {
+                    // No DB write — AgentService inspects the call args and emits an
+                    // AgentIssueProposal frame so the client can pre-fill the issue
+                    // submission form. The tool result here is just an LLM-facing
+                    // confirmation telling it the turn is over.
+                    return new AnthropicToolResult(call.Id,
+                        "Proposal queued. The system will pre-fill an issue submission form for the user. Stop and await the next user turn.",
+                        IsError: false);
+                }
+            default:
+                return new AnthropicToolResult(call.Id, string.Create(CultureInfo.InvariantCulture, $"Tool dispatch not implemented: {call.Name}"), IsError: true);
+        }
+    }
+
+    private static string ReadStringArgument(JsonElement args, string name)
+    {
+        if (!args.TryGetProperty(name, out var value) || value.ValueKind == JsonValueKind.Null)
+            return "";
+        if (value.ValueKind != JsonValueKind.String)
+            throw new JsonException($"Tool argument '{name}' must be a string.");
+        return value.GetString() ?? "";
     }
 
     /// <summary>

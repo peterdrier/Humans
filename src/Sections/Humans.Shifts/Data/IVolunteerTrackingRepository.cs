@@ -54,7 +54,7 @@ internal interface IVolunteerTrackingRepository : IRepository
     /// <summary>
     /// Account-merge fold for general availability rows.
     /// </summary>
-    Task<int> ReassignAvailabilityToUserAsync(
+    Task ReassignAvailabilityToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,

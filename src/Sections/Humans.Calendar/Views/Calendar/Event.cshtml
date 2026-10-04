@@ -144,7 +144,8 @@
     </p>
 
     <vc:audit-log entity-type="@AuditEntityTypes.CalendarEvent" entity-id="@Model.Event.Id"
-        title="@Localizer["Calendar_ChangeHistory"].Value" limit="50" />
+        title="@Localizer["Calendar_ChangeHistory"].Value"
+        empty-text="@Localizer["Calendar_NoAuditHistory"].Value" limit="50" />
 
     <p class="mt-3">
         <a class="btn btn-link" asp-action="Index">@Localizer["Calendar_BackToCalendar"]</a>

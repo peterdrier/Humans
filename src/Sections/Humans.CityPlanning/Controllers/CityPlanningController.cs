@@ -36,7 +36,7 @@ internal sealed class CityPlanningController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        var (error, user) = await RequireCurrentUserAsync();
+        var (error, user) = await RequireCurrentUserAsync(cancellationToken);
         if (error != null) return error;
 
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
@@ -56,7 +56,7 @@ internal sealed class CityPlanningController(
     [HttpGet("BarrioMap")]
     public async Task<IActionResult> BarrioMap(CancellationToken cancellationToken)
     {
-        var (error, user) = await RequireCurrentUserAsync();
+        var (error, user) = await RequireCurrentUserAsync(cancellationToken);
         if (error != null) return error;
 
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
@@ -267,7 +267,7 @@ internal sealed class CityPlanningController(
     [HttpGet("ContainerMap/{year:int}")]
     public async Task<IActionResult> ContainerMap(int year, CancellationToken cancellationToken)
     {
-        var (error, user) = await RequireCurrentUserAsync();
+        var (error, user) = await RequireCurrentUserAsync(cancellationToken);
         if (error != null) return error;
 
         var isMapAdmin = await IsMapAdminAsync();

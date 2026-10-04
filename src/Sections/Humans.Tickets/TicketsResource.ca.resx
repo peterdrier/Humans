@@ -83,4 +83,11 @@
   <data name="Tickets_TicketHoldings_OrderPlural" xml:space="preserve"><value>comandes</value></data>
   <data name="Tickets_TicketHoldings_Empty" xml:space="preserve"><value>No hi ha entrades.</value></data>
   <data name="Tickets_MemberTicketStatus_Transfers" xml:space="preserve"><value>Transferències…</value></data>
+  <data name="Tickets_TicketTransfer_Email_Requested_Subject" xml:space="preserve"><value>Sol·licitud de transferència d'entrada</value></data>
+  <data name="Tickets_TicketTransfer_Email_Requested_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Hem rebut la teva sol·licitud per transferir l'entrada &lt;strong&gt;{1}&lt;/strong&gt; a &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;El nostre equip d'entrades la tramitarà i t'avisarà aviat. No cal que facis res més.&lt;/p&gt;</value></data>
+  <data name="Tickets_TicketTransfer_Email_Completed_Subject" xml:space="preserve"><value>Transferència d'entrada completada</value></data>
+  <data name="Tickets_TicketTransfer_Email_Completed_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;La transferència de l'entrada &lt;strong&gt;{1}&lt;/strong&gt; a &lt;strong&gt;{2}&lt;/strong&gt; s'ha completat.&lt;/p&gt;</value></data>
+  <data name="Tickets_TicketTransfer_Email_Cancelled_Subject" xml:space="preserve"><value>Transferència d'entrada cancel·lada</value></data>
+  <data name="Tickets_TicketTransfer_Email_Cancelled_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;La transferència sol·licitada de l'entrada &lt;strong&gt;{1}&lt;/strong&gt; a &lt;strong&gt;{2}&lt;/strong&gt; no s'ha completat.&lt;/p&gt;{3}&lt;p&gt;Si tens preguntes, respon a aquest correu i el nostre equip d'entrades t'ajudarà.&lt;/p&gt;</value></data>
+  <data name="Tickets_TicketTransfer_Email_Cancelled_Reason" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Motiu:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
 </root>

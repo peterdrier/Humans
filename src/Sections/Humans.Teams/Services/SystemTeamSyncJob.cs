@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
@@ -626,9 +627,10 @@ internal sealed class SystemTeamSyncJob(
                 try
                 {
                     var email = user.Email!;
+                    var language = user.PreferredLanguage;
                     await emailService.SendAsync(emailMessages.AddedToTeam(
                         email, user.BurnerName, team.Name, team.Slug,
-                        resourceTuples, user.PreferredLanguage), cancellationToken);
+                        resourceTuples, language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), cancellationToken);
                 }
                 catch (Exception ex)
                 {

@@ -13,8 +13,8 @@ internal sealed class SendMessageViewModel
     // client-side character counter) perceives them, which would otherwise inflate the
     // bound string past what the user counted. Normalise on bind so the length check
     // below — and the stored/relayed message — agree with what the user sees.
-    [Required]
-    [StringLength(2000, MinimumLength = 1)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string Message
     {
         get => _message;

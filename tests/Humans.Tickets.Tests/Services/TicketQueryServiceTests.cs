@@ -1,3 +1,4 @@
+using Xunit;
 using Humans.Tickets.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
@@ -74,6 +75,17 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         _campaignService.GetCodeTrackingAsync(Arg.Any<CancellationToken>())
             .Returns(new CampaignCodeTrackingData([], []));
+    }
+
+    [HumansFact]
+    public async Task GetWhoHasntBoughtAsync_LargePageDoesNotWrapToEarlierHumans()
+    {
+        WireWhoHasntBoughtDependencies(CreateUser("Human", "human@example.com"));
+        var first = await _service.GetWhoHasntBoughtAsync(null, null, null, null, 1, 50);
+        first.Humans.Should().ContainSingle();
+        var result = await _service.GetWhoHasntBoughtAsync(null, null, null, null, int.MaxValue, 50);
+        result.Humans.Should().BeEmpty();
+        result.TotalCount.Should().Be(1);
     }
 
     [HumansFact]
@@ -475,6 +487,23 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         result.ByTicketType.Should().BeEmpty();
         result.ByDiscountCampaign.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("  vol1\t", 1)]
+    [InlineData(" \tRecipient\n", 2)]
+    public async Task CodeTrackingSearch_IgnoresSurroundingWhitespace(string search, int expectedRows)
+    {
+        var campaignId = Guid.NewGuid();
+        StubCodeTracking(new CampaignCodeTrackingSummary(campaignId, "Volunteer Comps", TotalGrants: 2, Redeemed: 0),
+            [("VOL1", campaignId), ("VOL2", campaignId)]);
+
+        var result = await _service.GetCodeTrackingDataAsync(search);
+
+        result.Codes.Should().HaveCount(expectedRows);
+        result.Codes.Should().Contain(row => string.Equals(row.Code, "VOL1", StringComparison.Ordinal));
+        result.TotalCodesSent.Should().Be(2);
+        result.Campaigns.Should().ContainSingle();
     }
 
     [HumansFact]

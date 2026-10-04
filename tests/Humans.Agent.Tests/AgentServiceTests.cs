@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using AwesomeAssertions.Execution;
+using System.Text.Json;
 using Humans.Agent.Services.Stores;
 using Humans.Agent.Services;
 using Humans.Agent.Data;
@@ -17,6 +19,36 @@ namespace Humans.Agent.Tests;
 
 public class AgentServiceTests
 {
+    [HumansFact]
+    public async Task Export_formats_conversation_and_message_dates_and_excludes_other_users()
+    {
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var (service, client) = await BuildService(settings => settings.Enabled = true);
+        foreach (var ownerId in new[] { userId, otherUserId })
+        {
+            client.EnqueueTurn(new AgentTurnToken("Answer", null, null),
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            await foreach (var _ in service.AskAsync(new AgentTurnRequest(
+                Guid.Empty, ownerId, ownerId == userId ? "My question" : "Other person's secret", "es"),
+                Xunit.TestContext.Current.CancellationToken)) { }
+        }
+
+        var slices = await service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var payload = JsonSerializer.Serialize(slices.Single().Data);
+        payload.Should().Contain("My question").And.NotContain("Other person's secret");
+        using var document = JsonDocument.Parse(payload);
+        document.RootElement.GetArrayLength().Should().Be(1);
+        var conversation = document.RootElement[0];
+        var messages = conversation.GetProperty("Messages");
+        messages.GetArrayLength().Should().Be(2);
+        using var scope = new AssertionScope();
+        conversation.GetProperty("StartedAt").GetRawText().Should().Be("\"2026-04-21T12:00:00Z\"");
+        conversation.GetProperty("LastMessageAt").GetRawText().Should().Be("\"2026-04-21T12:00:00Z\"");
+        foreach (var message in messages.EnumerateArray())
+            message.GetProperty("CreatedAt").GetRawText().Should().Be("\"2026-04-21T12:00:00Z\"");
+    }
+
     [HumansTheory]
     [Xunit.InlineData("en")]
     [Xunit.InlineData("es")]
@@ -431,8 +463,16 @@ public class AgentServiceTests
             Arg.Any<Func<object, Exception?, string>>());
     }
 
-    [HumansFact]
-    public async Task Ask_stores_a_one_liner_when_route_to_issue_produces_no_preamble_text()
+    [HumansTheory]
+    [Xunit.InlineData(false, "x", "x", "Bug", "Bug")]
+    [Xunit.InlineData(true, "x", "x", "Bug", "Bug")]
+    [Xunit.InlineData(true, "😀", "", "Bug", "Bug")]
+    [Xunit.InlineData(false, "x", "x", "99", "Question")]
+    [Xunit.InlineData(false, "x", "x", "-1", "Question")]
+    [Xunit.InlineData(false, "x", "x", "unknown", "Question")]
+    [Xunit.InlineData(false, "x", "x", "question", "Question")]
+    public async Task Ask_stores_a_one_liner_when_route_to_issue_produces_no_preamble_text(
+        bool oversized, string boundary, string expectedBoundary, string category, string expectedCategory)
     {
         // nobodies-collective/Humans#952 — route_to_issue's proposal frame is the terminal
         // output for the client, but a blank stored Content makes the admin transcript
@@ -444,10 +484,14 @@ public class AgentServiceTests
                 call.Arg<AnthropicToolCall>().Id, "Proposal queued.", IsError: false)));
         var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher);
 
+        var titlePrefix = new string('t', 199);
+        var descriptionPrefix = new string('d', 4999);
+        var title = oversized ? titlePrefix + boundary + "extra" : "Broken link";
+        var description = oversized ? descriptionPrefix + boundary + "extra" : "The camps page 404s.";
+        var arguments = JsonSerializer.Serialize(new { title, category, description });
         client.EnqueueTurn(
             new AgentTurnToken(null, new AnthropicToolCall(
-                "tc1", AgentToolNames.RouteToIssue,
-                """{"title":"Broken link","category":"Bug","description":"The camps page 404s."}"""), null),
+                "tc1", AgentToolNames.RouteToIssue, arguments), null),
             new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "tool_use")));
 
         var tokens = new List<AgentTurnToken>();
@@ -463,7 +507,10 @@ public class AgentServiceTests
         // would override that localization for non-English users.
         tokens.Should().NotContain(t => t.TextDelta != null,
             "a proposal-only turn streams no prose so the widget's localized fallback applies");
-        tokens.Should().Contain(t => t.IssueProposal != null);
+        var proposal = tokens.Single(t => t.IssueProposal != null).IssueProposal!;
+        proposal.Title.Should().Be(oversized ? titlePrefix + expectedBoundary : title);
+        proposal.Description.Should().Be(oversized ? descriptionPrefix + expectedBoundary : description);
+        proposal.Category.ToString().Should().Be(expectedCategory);
 
         var finalizer = tokens.Last().Finalizer!;
         var transcript = await svc.GetConversationForUserAsync(

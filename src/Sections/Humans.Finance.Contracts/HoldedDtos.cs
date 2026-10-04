@@ -2,13 +2,6 @@ using NodaTime;
 
 namespace Humans.Finance.Contracts;
 
-public sealed record HoldedProvisioningRow(
-    Guid BudgetCategoryId, string CategoryName, string GroupName,
-    int? ExistingAccountNum, int? ProposedAccountNum, string Tag, string State); // Mapped|ToAdd|Orphan
-
-public sealed record HoldedProvisioningPlan(
-    IReadOnlyList<HoldedProvisioningRow> Rows, int NextNumber);
-
 /// <summary>One budget category's Holded actual, plus the approved purchase docs it sums.
 /// <c>Docs</c> is what the figure is made of — the year page renders it under the category so a
 /// wrong total can be traced to the document that caused it.</summary>

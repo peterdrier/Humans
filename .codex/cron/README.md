@@ -46,8 +46,8 @@ by the wrapper's measured goal time, actual worker time, total elapsed time
 through validation, and gate result. No unfilled template is appended.
 Failed/blocked goals, missing reports, or disconnection fail without publishing. A clean tree and final build/test gates still apply.
 
-If the final build or non-integration test gate fails, the wrapper starts up to
-`GATE_REPAIR_ATTEMPTS` (default `2`) short Codex repair passes. Each pass gets
+If the final build or non-integration test gate fails, the wrapper starts short Codex repair passes, capped at
+`GATE_REPAIR_ATTEMPTS` (default `2`) in total across both gates. Each pass gets
 the failure excerpt, must stay on the current branch, commit its repair, and
 has a separate `GATE_REPAIR_BUDGET` (default `15m`). The wrapper reruns the
 build and tests after each successful repair and still refuses to publish

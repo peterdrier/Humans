@@ -80,7 +80,7 @@ run_gate_repair() {
   rm -f "$repair_message"
   log "starting bounded Codex gate-repair pass for $failure_kind (deadline $repair_deadline)"
   export WORK_DIR="$work_dir" CODEX_MODEL="$codex_model" CODEX_EFFORT="$codex_effort" CODEX_DANGEROUS="$dangerous"
-  python3 "$work_dir/.codex/cron/run-goal.py" "$repair_prompt" "$repair_message" "$repair_deadline" \
+  python3 "$work_dir/.codex/cron/run-goal.py" "$repair_prompt" "$repair_message" "$repair_deadline" repair \
     >>"$log_file" 2>&1 || repair_exit=$?
   if (( repair_exit != 0 )); then
     log "gate-repair Codex session failed (exit $repair_exit)"
@@ -134,7 +134,7 @@ main() {
   PUSH_RETRIES="${PUSH_RETRIES:-4}"                            # retries after the first push attempt, network failures only
   MAX_OPEN_AUTO_PRS="${MAX_OPEN_AUTO_PRS:-1}"                  # skip the night when this many of this runner's PRs are already open
   LOG_RETENTION_DAYS="${LOG_RETENTION_DAYS:-30}"
-  GATE_REPAIR_ATTEMPTS="${GATE_REPAIR_ATTEMPTS:-2}"            # bounded Codex repair passes after a final build/test failure
+  GATE_REPAIR_ATTEMPTS="${GATE_REPAIR_ATTEMPTS:-2}"            # cap on TOTAL Codex repair passes across the build and test gates
   GATE_REPAIR_BUDGET="${GATE_REPAIR_BUDGET:-15m}"              # work window for each repair pass
   # Applies to the wrapper and dotnet test commands launched by Codex.
   # Integration tests are outside nightly runs and manual runner trials.

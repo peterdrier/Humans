@@ -9,6 +9,7 @@ using Humans.Teams.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Base.Enums;
+using Humans.Base.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -110,9 +111,15 @@ public sealed class RotaCoordinatorMessageServiceTests
         result.Error.Should().Contain("no active signups");
     }
 
-    [HumansFact]
-    public async Task SendRotaMessageAsync_FansOut_OneEmailPerDistinctUser()
+    [HumansTheory]
+    [Xunit.InlineData("es", "es")]
+    [Xunit.InlineData("", "en")]
+    [Xunit.InlineData(" ", "en")]
+    [Xunit.InlineData("not a culture!", "en")]
+    [Xunit.InlineData("fr-FR", "en")]
+    public async Task SendRotaMessageAsync_FansOut_OneEmailPerDistinctUser(string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var rota = MakeRota(out _);
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
@@ -131,13 +138,22 @@ public sealed class RotaCoordinatorMessageServiceTests
         ]);
 
         StubUsers(sender, userA, userB);
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
+            {
+                [userA] = MakeUserInfoWithEmail(userA, "a@example.com", "Usera", language),
+                [userB] = MakeUserInfoWithEmail(userB, "b@example.com", "Userb"),
+            }));
 
         await CreateSut().SendRotaMessageAsync(rota.Id, sender, "hello team", includeShifts: true, Xunit.TestContext.Current.CancellationToken);
 
         await _emailService.Received(1).SendAsync(
-            Arg.Is<EmailMessage>(m => m.RecipientEmail == "a@example.com"), Arg.Any<CancellationToken>());
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == "a@example.com"
+                && m.Subject == $"Shifts_Email_CoordinatorRotaMessage_Subject#{expectedCulture}"), Arg.Any<CancellationToken>());
         await _emailService.Received(1).SendAsync(
-            Arg.Is<EmailMessage>(m => m.RecipientEmail == "b@example.com"), Arg.Any<CancellationToken>());
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == "b@example.com"
+                && m.Subject == "Shifts_Email_CoordinatorRotaMessage_Subject#en"), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -208,9 +224,16 @@ public sealed class RotaCoordinatorMessageServiceTests
             Arg.Is<EmailMessage>(m => m.ReplyTo == "sender@example.com"), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task SendRotaMessageAsync_WritesOneAuditEntry_WithSenderActor()
+    [HumansTheory]
+    [Xunit.InlineData(0, "schedule change", "schedule change")]
+    [Xunit.InlineData(119, "xyz", "x…")]
+    [Xunit.InlineData(119, "😀tail", "…")]
+    [Xunit.InlineData(118, "😀tail", "😀…")]
+    public async Task SendRotaMessageAsync_WritesOneAuditEntry_WithSenderActor(int prefixLength, string tail, string expectedTail)
     {
+        var prefix = new string('x', prefixLength);
+        var message = prefix + tail;
+        var expectedSnippet = prefix + expectedTail;
         var rota = MakeRota(out _);
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
@@ -222,7 +245,7 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         StubUsers(sender, userA);
 
-        var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "schedule change", includeShifts: true, Xunit.TestContext.Current.CancellationToken);
+        var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, message, includeShifts: true, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.RecipientCount.Should().Be(1);
@@ -232,7 +255,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             AuditAction.CoordinatorRotaMessageSent,
             nameof(Rota),
             rota.Id,
-            Arg.Is<string>(d => d.Contains("schedule change") && d.Contains(rota.Name)),
+            Arg.Is<string>(d => d.Contains($"'{expectedSnippet}'", StringComparison.Ordinal) && d.Contains(rota.Name)),
             sender,
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
@@ -464,9 +487,15 @@ public sealed class RotaCoordinatorMessageServiceTests
             Arg.Is<EmailMessage>(m => m.TemplateName == "coordinator_team_rotas_message"), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task SendTeamRotasMessageAsync_DedupesRecipient_AcrossMultipleRotas()
+    [HumansTheory]
+    [Xunit.InlineData("es", "es")]
+    [Xunit.InlineData("", "en")]
+    [Xunit.InlineData(" ", "en")]
+    [Xunit.InlineData("not a culture!", "en")]
+    [Xunit.InlineData("fr-FR", "en")]
+    public async Task SendTeamRotasMessageAsync_DedupesRecipient_AcrossMultipleRotas(string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var teamId = StubTeam();
         var es = StubEvent();
 
@@ -483,6 +512,12 @@ public sealed class RotaCoordinatorMessageServiceTests
             .Returns([rotaA, rotaB]);
 
         StubUsers(sender, userA);
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
+            {
+                [userA] = MakeUserInfoWithEmail(userA, "a@example.com", "Usera", language),
+            }));
 
         var result = await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello", includeShifts: true, TeamRotasAudienceFilter.Default, Xunit.TestContext.Current.CancellationToken);
 
@@ -493,6 +528,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m =>
                 m.RecipientEmail == "a@example.com"
+                && m.Subject == $"Shifts_Email_CoordinatorTeamRotasMessage_Subject#{expectedCulture}"
                 && m.HtmlBody.Contains("Aardvark", StringComparison.Ordinal)
                 && m.HtmlBody.Contains("Beaver", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
@@ -552,9 +588,16 @@ public sealed class RotaCoordinatorMessageServiceTests
             Arg.Is<EmailMessage>(m => m.ReplyTo == "sender@example.com"), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task SendTeamRotasMessageAsync_WritesOneAuditEntry_OnTeamEntity()
+    [HumansTheory]
+    [Xunit.InlineData(0, "schedule change", "schedule change")]
+    [Xunit.InlineData(119, "xyz", "x…")]
+    [Xunit.InlineData(119, "😀tail", "…")]
+    [Xunit.InlineData(118, "😀tail", "😀…")]
+    public async Task SendTeamRotasMessageAsync_WritesOneAuditEntry_OnTeamEntity(int prefixLength, string tail, string expectedTail)
     {
+        var prefix = new string('x', prefixLength);
+        var message = prefix + tail;
+        var expectedSnippet = prefix + expectedTail;
         var teamId = StubTeam();
         var es = StubEvent();
         var userA = Guid.NewGuid();
@@ -567,13 +610,13 @@ public sealed class RotaCoordinatorMessageServiceTests
             .Returns([rota]);
         StubUsers(sender, userA);
 
-        await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "schedule change", includeShifts: true, TeamRotasAudienceFilter.Default, Xunit.TestContext.Current.CancellationToken);
+        await CreateSut().SendTeamRotasMessageAsync(teamId, sender, message, includeShifts: true, TeamRotasAudienceFilter.Default, Xunit.TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
             AuditAction.CoordinatorTeamRotasMessageSent,
             nameof(Team),
             teamId,
-            Arg.Is<string>(d => d.Contains("schedule change") && d.Contains("Test Team")),
+            Arg.Is<string>(d => d.Contains($"'{expectedSnippet}'", StringComparison.Ordinal) && d.Contains("Test Team")),
             sender,
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
@@ -892,7 +935,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
     };
 
-    private static UserInfo MakeUserInfoWithEmail(Guid id, string email, string displayName)
+    private static UserInfo MakeUserInfoWithEmail(Guid id, string email, string displayName, string language = "en")
     {
         var user = new User
         {
@@ -901,7 +944,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             // Mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
             // UserInfo.BurnerName reads User.BurnerName only (#1098).
             BurnerName = displayName,
-            PreferredLanguage = "en",
+            PreferredLanguage = language,
             Email = email,
             EmailConfirmed = true,
         };

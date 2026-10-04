@@ -54,6 +54,7 @@ internal sealed class UsersAdminController(
         int page = 1,
         CancellationToken ct = default)
     {
+        search = search?.Trim();
         var allUsers = await _userService.GetAllRawUserInfosAsync(ct).ConfigureAwait(false);
         var allUserIds = allUsers.Select(u => u.Id).ToList();
         var notificationEmails =

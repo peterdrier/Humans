@@ -18,8 +18,10 @@
             </h5>
             @if (!string.IsNullOrEmpty(Model.Description))
             {
+                var previewLength = Model.Description.Length > 150
+                    && char.IsHighSurrogate(Model.Description[149]) && char.IsLowSurrogate(Model.Description[150]) ? 149 : 150;
                 <div class="card-text text-muted small mt-2 mb-0">
-                    @Html.SanitizedMarkdown(Model.Description.Length > 150 ? Model.Description.Substring(0, 150) + "..." : Model.Description)
+                    @Html.SanitizedMarkdown(Model.Description.Length > 150 ? Model.Description[..previewLength] + "..." : Model.Description)
                 </div>
             }
         </div>

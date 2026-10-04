@@ -178,7 +178,10 @@
 
 @section Scripts {
     <script>
+        let detailRequestVersion = 0;
+
         function loadIssueDetail(issueId) {
+            const requestVersion = ++detailRequestVersion;
             document.querySelectorAll('.issues-list-item').forEach(el => el.classList.remove('table-active'));
             const selected = document.querySelector(`[data-issue-id="${issueId}"]`);
             if (selected) selected.classList.add('table-active');
@@ -190,6 +193,7 @@
                 ? r.text()
                 : '<div class="d-flex align-items-center justify-content-center h-100 text-muted"><p>@Localizer["Issue_Unavailable"]</p></div>')
             .then(html => {
+                if (requestVersion !== detailRequestVersion) return;
                 const panel = document.getElementById('detail-panel');
                 panel.innerHTML = html;
                 document.querySelectorAll('#detail-panel .detail-auto-submit').forEach(el => {

@@ -3,7 +3,7 @@
     ViewData["Title"] = string.Format(Localizer["JoinTeam_Title"].Value, Model.TeamName);
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Teams_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
         <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@Model.TeamSlug">@Model.TeamName</a></li>

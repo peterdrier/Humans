@@ -85,12 +85,6 @@ internal sealed class EmailProblemsService(IUserEmailService userEmailService, I
         return new EmailProblemsReport(clock.GetCurrentInstant(), problems);
     }
 
-    public async Task<bool> IsGhostExternalLoginsUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        var ghosts = await userService.GetUsersWithLoginsButNoEmailsAsync(ct);
-        return ghosts.Contains(userId);
-    }
-
     public async Task<IReadOnlyList<(Guid UserId, string Email)>> BackfillLegacyIdentityEmailsAsync(
         Guid actorUserId, CancellationToken ct = default)
     {

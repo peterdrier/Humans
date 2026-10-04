@@ -149,18 +149,6 @@ internal sealed partial class CampRepository : ICampRepository
         return true;
     }
 
-    public async Task<IReadOnlyList<int>> GetCampYearsAsync(
-        Guid campId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampSeasons
-            .AsNoTracking()
-            .Where(s => s.CampId == campId)
-            .Select(s => s.Year)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<string>?> DeleteCampAsync(
         Guid campId, CancellationToken ct = default)
     {
@@ -376,6 +364,11 @@ internal sealed partial class CampRepository : ICampRepository
     public async Task AddImageAsync(CampImage image, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var sortOrders = await ctx.CampImages
+            .Where(i => i.CampId == image.CampId)
+            .Select(i => i.SortOrder)
+            .ToListAsync(ct);
+        image.SortOrder = sortOrders.DefaultIfEmpty(-1).Max() + 1;
         ctx.CampImages.Add(image);
         await ctx.SaveChangesAsync(ct);
     }

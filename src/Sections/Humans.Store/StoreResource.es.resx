@@ -41,6 +41,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="Enum_OrderCounterpartyType_Camp" xml:space="preserve"><value>Barrio</value></data>
+  <data name="Store_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegación</value></data>
   <data name="Enum_OrderCounterpartyType_Team" xml:space="preserve"><value>Equipo</value></data>
   <data name="Store_AdminCatalog" xml:space="preserve"><value>Catálogo</value></data>
   <data name="Store_AdminPayments" xml:space="preserve"><value>Pagos</value></data>
@@ -106,4 +107,5 @@
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Fianzas devueltas</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Importe a reembolsar</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>Solo se puede emitir la factura cuando el saldo del pedido es cero.</value></data>
+  <data name="Store_ColAction" xml:space="preserve"><value>Acción</value></data>
 </root>

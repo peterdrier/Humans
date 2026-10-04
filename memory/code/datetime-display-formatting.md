@@ -5,7 +5,7 @@ description: Render dates via `DateFormattingExtensions` — `ToDate`/`ToWeekday
 
 All date/time formatting goes through the one home `Humans.Base.Extensions.DateFormattingExtensions`; an inline format string anywhere else is a build error — see [`datetime-format-single-home`](../architecture/datetime-format-single-home.md) (HUM0030).
 
-**Display** — 5 culture-ordered methods (no `Display` prefix; bare name = culture display, `ToInvariant*` = machine). Day/month order *and* names follow the request culture (`en` → `Jun 5`, `es` → `5 jun`):
+**Display** — 5 culture-ordered methods (no `Display` prefix; bare name = culture display, `ToInvariant*` = machine). Day/month order *and* names follow `CurrentUICulture` (the request UI language), independently of the English `CurrentCulture` used for numeric/date parsing (`en` → `Jun 5`, `es` → `5 jun`):
 `ToTime`, `ToMonthDayTime`, `ToWeekdayDayMonth`, `ToDate`, `ToDateTime`. Niche distinct shapes: `ToMonthYear`, `ToMonthName`, `ToMonthAbbrev`, `ToTimeWithSeconds`. There is deliberately no bare month-day or weekday+date+time — a date worth showing gets a year (`ToDate`) or a weekday (`ToWeekdayDayMonth`). For an `Instant` in a request/view, the ambient overloads in `Humans.Base.Extensions.DateTimeDisplayExtensions` resolve the user's timezone from session; pass an explicit `DateTimeZone` for an event's zone.
 
 **Machine / invariant** (stable, culture-independent — exports, APIs, filenames, audit, JSON):

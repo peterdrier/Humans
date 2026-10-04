@@ -18,43 +18,6 @@ internal sealed class CommunicationPreferenceService(
     IAuditLogService auditLog,
     ILogger<CommunicationPreferenceService> logger) : ICommunicationPreferenceService, IUserMerge
 {
-    public async Task<IReadOnlyList<CommunicationPreferenceSnapshot>> GetPreferencesAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        var existing = await repository.GetByUserIdAsync(userId, cancellationToken);
-
-        var now = clock.GetCurrentInstant();
-        var toAdd = new List<CommunicationPreference>();
-
-        foreach (var category in MessageCategoryExtensions.ActiveCategories)
-        {
-            if (existing.Any(cp => cp.Category == category))
-                continue;
-
-            var pref = new CommunicationPreference
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Category = category,
-                OptedOut = category.DefaultOptedOut(),
-                UpdatedAt = now,
-                UpdateSource = "Default",
-            };
-            toAdd.Add(pref);
-            existing.Add(pref);
-        }
-
-        if (toAdd.Count > 0)
-        {
-            existing = await repository.AddDefaultsOrReloadAsync(userId, toAdd, cancellationToken);
-        }
-
-        return existing
-            .OrderBy(cp => cp.Category)
-            .Select(ToSnapshot)
-            .ToList();
-    }
-
     public async Task<CommunicationPreferenceSnapshot?> GetPreferenceOrNullAsync(
         Guid userId, MessageCategory category, CancellationToken cancellationToken = default)
     {
@@ -72,15 +35,6 @@ internal sealed class CommunicationPreferenceService(
             .Select(ToSnapshot)
             .ToList();
     }
-
-    private static CommunicationPreferenceSnapshot ToSnapshot(CommunicationPreference preference) =>
-        new(
-            preference.Category,
-            preference.OptedOut,
-            preference.InboxEnabled,
-            preference.UpdateSource,
-            preference.UpdatedAt,
-            preference.SubscribedAt);
 
     private static CommunicationPreferenceSnapshot ToSnapshot(CommunicationPreferenceInfo preference) =>
         new(
@@ -249,10 +203,6 @@ internal sealed class CommunicationPreferenceService(
         IReadOnlyList<Guid> userIds, MessageCategory category,
         CancellationToken cancellationToken = default) =>
         await repository.GetUsersWithInboxDisabledAsync(userIds, category, cancellationToken);
-
-    public async Task<bool> HasAnyPreferencesAsync(
-        Guid userId, CancellationToken cancellationToken = default) =>
-        await repository.HasAnyAsync(userId, cancellationToken);
 
     public async Task<IReadOnlySet<Guid>> GetUsersWithAnyPreferencesAsync(
         IReadOnlyList<Guid> userIds, CancellationToken cancellationToken = default) =>

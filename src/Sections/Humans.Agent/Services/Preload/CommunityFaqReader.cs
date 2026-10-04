@@ -249,7 +249,8 @@ internal sealed class CommunityFaqReader(
             var text = line.Trim();
             if (text.Length <= 200) return text;
             // Trim back to the last word boundary so the routing summary doesn't cut mid-word.
-            var cut = text[..200];
+            var length = char.IsHighSurrogate(text[199]) && char.IsLowSurrogate(text[200]) ? 199 : 200;
+            var cut = text[..length];
             var lastSpace = cut.LastIndexOf(' ');
             return (lastSpace > 0 ? cut[..lastSpace] : cut) + "…";
         }

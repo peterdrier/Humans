@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -43,14 +42,10 @@ internal static class HoldedMatcher
         return sb.ToString();
     }
 
-    /// <summary>Account (A) wins over tag (B); else None.</summary>
-    public static HoldedMatchResult Match(
-        string? bookedAccountId, IReadOnlyList<string> tags, IReadOnlyList<HoldedMatchEntry> map) =>
-        Match(bookedAccountId, tags, map, ImmutableHashSet<string>.Empty);
-
-    /// <summary>As above, then a booked account in <paramref name="managedAccountIds"/> (Finance's
-    /// registry of accounts outside the budget map) is an Account match with no category — attributed,
-    /// so it stays off the Unmatched queue, but outside every budget year's actuals.</summary>
+    /// <summary>Account (A) wins over tag (B); else None. A booked account in
+    /// <paramref name="managedAccountIds"/> (Finance's registry of accounts outside the budget map) is
+    /// an Account match with no category — attributed, so it stays off the Unmatched queue, but outside
+    /// every budget year's actuals.</summary>
     public static HoldedMatchResult Match(
         string? bookedAccountId, IReadOnlyList<string> tags, IReadOnlyList<HoldedMatchEntry> map,
         IReadOnlySet<string> managedAccountIds)

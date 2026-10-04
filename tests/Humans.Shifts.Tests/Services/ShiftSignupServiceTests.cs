@@ -16,6 +16,7 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Base.Enums;
 using Humans.Base.Constants;
+using Humans.Base.Extensions;
 using ShiftSignupService = Humans.Shifts.Services.ShiftSignupService;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
@@ -104,6 +105,34 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             NullLogger<ShiftSignupService>.Instance,
             _users,
             _localizer);
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_IncludesSignupLastUpdateWithoutAReview()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        ShiftsDb.ShiftSignups.Add(new ShiftSignup
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            ShiftId = shift.Id,
+            Status = SignupStatus.Cancelled,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow + Duration.FromHours(1),
+            StatusReason = "Shift cancelled"
+        });
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
+
+        var slices = await _service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var slice = slices.Single(x => string.Equals(x.SectionName, "ShiftSignups", StringComparison.Ordinal));
+        var signup = System.Text.Json.JsonSerializer.SerializeToElement(slice.Data).EnumerateArray().Single();
+        signup.GetProperty("CreatedAt").GetString().Should().Be("2026-06-15T12:00:00Z");
+        signup.GetProperty("UpdatedAt").GetString().Should().Be("2026-06-15T13:00:00Z");
+        signup.GetProperty("ReviewedAt").ValueKind.Should().Be(System.Text.Json.JsonValueKind.Null);
+        signup.GetProperty("StatusReason").GetString().Should().Be("Shift cancelled");
     }
 
     [HumansTheory]
@@ -1542,6 +1571,25 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         await AuditLog.Received(1).LogAsync(
             AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
             Arg.Is<string>(s => s.Contains("(pending)")),
+            userId,
+            userId, nameof(User));
+    }
+
+    [HumansFact]
+    public async Task SignUp_WritesEnglishAuditDate_RegardlessOfUiCulture()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        SignupResult result;
+        using (new CultureScope("es"))
+            result = await _service.SignUpAsync(userId, shift.Id);
+
+        result.Success.Should().BeTrue();
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
+            Arg.Is<string>(s => s.Contains("on Thu Jul 2 (confirmed)")),
             userId,
             userId, nameof(User));
     }

@@ -27,7 +27,7 @@ public class HoldedMatcherTests
             new HoldedMatchEntry(CatA, "acc-1", "comms"),
             new HoldedMatchEntry(CatB, "acc-2", "staff"),
         };
-        var r = HoldedMatcher.Match("acc-1", new[] { "staff" }, map);
+        var r = HoldedMatcher.Match("acc-1", new[] { "staff" }, map, new HashSet<string>(StringComparer.Ordinal));
         r.CategoryId.Should().Be(CatA);
         r.Source.Should().Be(HoldedMatchSource.Account);
     }
@@ -36,7 +36,7 @@ public class HoldedMatcherTests
     public void Match_falls_back_to_tag_when_account_unmapped()
     {
         var map = new[] { new HoldedMatchEntry(CatB, "acc-2", "staff") };
-        var r = HoldedMatcher.Match("acc-generic", new[] { "Staff" }, map);
+        var r = HoldedMatcher.Match("acc-generic", new[] { "Staff" }, map, new HashSet<string>(StringComparer.Ordinal));
         r.CategoryId.Should().Be(CatB);
         r.Source.Should().Be(HoldedMatchSource.Tag);
     }
@@ -45,7 +45,7 @@ public class HoldedMatcherTests
     public void Match_returns_none_when_nothing_resolves()
     {
         var map = new[] { new HoldedMatchEntry(CatB, "acc-2", "staff") };
-        var r = HoldedMatcher.Match("acc-generic", new[] { "unknown" }, map);
+        var r = HoldedMatcher.Match("acc-generic", new[] { "unknown" }, map, new HashSet<string>(StringComparer.Ordinal));
         r.CategoryId.Should().BeNull();
         r.Source.Should().Be(HoldedMatchSource.None);
     }

@@ -236,8 +236,10 @@ document.addEventListener('click', function (e) {
     if (!wrapper || !btn || !popup) return;
 
     var isOpen = false;
+    var popupRequestVersion = 0;
 
     function openPopup() {
+        var requestVersion = ++popupRequestVersion;
         popup.style.display = 'block';
         btn.setAttribute('aria-expanded', 'true');
         isOpen = true;
@@ -249,13 +251,18 @@ document.addEventListener('click', function (e) {
                 return r.text();
             })
             .then(function (html) {
+                if (!isOpen || requestVersion !== popupRequestVersion) return;
                 if (content) content.innerHTML = html;
                 bindPopupClose();
                 bindPopupMarkAllRead();
                 trapFocus();
             })
             .catch(function () {
-                if (content) content.innerHTML = '<div class="text-center py-3 text-muted"><i class="fa-solid fa-bell text-muted mb-2" style="font-size:1.5rem"></i><p class="mb-0 small">Could not load notifications.</p></div>';
+                if (!isOpen || requestVersion !== popupRequestVersion) return;
+                if (content) {
+                    content.innerHTML = '<div class="text-center py-3 text-muted"><i class="fa-solid fa-bell text-muted mb-2" style="font-size:1.5rem"></i><p class="mb-0 small"></p></div>';
+                    content.querySelector('p').textContent = btn.getAttribute('data-load-error') || '';
+                }
             });
     }
 
@@ -358,7 +365,7 @@ function showToast(message, type) {
     closeBtn.type = 'button';
     closeBtn.className = 'btn-close me-2 m-auto';
     closeBtn.setAttribute('data-bs-dismiss', 'toast');
-    closeBtn.setAttribute('aria-label', 'Close');
+    closeBtn.setAttribute('aria-label', container.dataset.closeLabel);
     wrapper.appendChild(closeBtn);
     toastEl.appendChild(wrapper);
     container.appendChild(toastEl);

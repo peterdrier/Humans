@@ -68,7 +68,8 @@ else
         var table = builder
             .Column(Localizer["Expenses_ColSubmittedBy"].Value, r => Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : SharedLocalizer["Common_Unknown"].Value)
             .Column(Localizer["Expenses_ColDepartment"].Value, r => Model.DepartmentNames.TryGetValue(r.BudgetCategoryId, out var dept) ? dept : SharedLocalizer["Common_Unknown"].Value, c => c.SelectFilter())
-            .Column(Localizer["Expenses_ColSubject"].Value, r => r.Note is { Length: > 80 } n ? n[..80] + "…" : r.Note)
+            .Column(Localizer["Expenses_ColSubject"].Value, r => r.Note is { Length: > 80 } n
+                ? n[..(char.IsHighSurrogate(n[79]) && char.IsLowSurrogate(n[80]) ? 79 : 80)] + "…" : r.Note)
             @* Requested is the receipts total; a capped report pays the cap instead, so all three
                stay visible. Currency() rather than a template so they sort numerically — and a
                populated Max amount is already the signal that Payable was cut. *@

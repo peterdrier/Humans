@@ -8,19 +8,19 @@ internal sealed class CalendarEventFormViewModel
 {
     public Guid? Id { get; set; }
 
-    [Required, StringLength(200)]
+    [Required(ErrorMessage = "Validation_Required"), StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string Title { get; set; } = string.Empty;
 
-    [StringLength(4000)]
+    [StringLength(4000, ErrorMessage = "Validation_MaxLength")]
     public string? Description { get; set; }
 
-    [StringLength(500)]
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? Location { get; set; }
 
-    [StringLength(2000), Url]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength"), Url(ErrorMessage = "Validation_InvalidValue")]
     public string? LocationUrl { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public Guid OwningTeamId { get; set; }
 
     public DateTime? StartLocal { get; set; }
@@ -40,7 +40,7 @@ internal sealed class CalendarEventFormViewModel
 
     public string? RecurrenceRule { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public string RecurrenceTimezone { get; set; } = "Europe/Madrid";
 
     public IReadOnlyList<TeamOption> TeamOptions { get; set; } = [];

@@ -107,8 +107,11 @@ async function handlePreview() {
 
         let parsed;
         try {
-            parsed = JSON.parse(await file.text());
+            const contents = await file.text();
+            if (file !== fileInput.files?.[0]) return;
+            parsed = JSON.parse(contents);
         } catch (e) {
+            if (file !== fileInput.files?.[0]) return;
             console.error('admin-import: failed to parse GeoJSON file', e);
             showError(t('invalidJsonError'));
             return;
@@ -124,13 +127,23 @@ async function handlePreview() {
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             state = await resp.json();
         } catch (e) {
+            if (file !== fileInput.files?.[0]) return;
             console.error('admin-import: failed to fetch /api/city-planning/state', e);
             showError(t('fetchStateError'));
             return;
         }
 
-        const lookup = buildCampLookup(state);
-        const { matched, unrecognized } = matchFeatures(parsed.features, lookup);
+        if (file !== fileInput.files?.[0]) return;
+        let matched, unrecognized;
+        try {
+            const lookup = buildCampLookup(state);
+            ({ matched, unrecognized } = matchFeatures(parsed.features, lookup));
+        } catch (error) {
+            console.error('admin-import: failed to match GeoJSON features', error);
+            pendingImport = null;
+            showError('Unable to preview this GeoJSON file. Check its features and camp names.');
+            return;
+        }
         pendingImport = { matched, unrecognized };
 
         renderPreviewModal(matched, unrecognized);
@@ -203,17 +216,22 @@ async function handleConfirm() {
 
     try {
         for (const item of pendingImport.matched) {
-            const resp = await fetch(`/api/city-planning/camp-polygons/${item.campSeasonId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': token,
-                },
-                body: JSON.stringify({ geoJson: item.geoJson, areaSqm: item.newAreaSqm, note }),
-            });
-            if (resp.ok) {
-                successCount++;
-            } else {
+            try {
+                const resp = await fetch(`/api/city-planning/camp-polygons/${item.campSeasonId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token,
+                    },
+                    body: JSON.stringify({ geoJson: item.geoJson, areaSqm: item.newAreaSqm, note }),
+                });
+                if (resp.ok) {
+                    successCount++;
+                } else {
+                    failures.push(item.campName);
+                }
+            } catch (error) {
+                console.error('Failed to import barrio polygon', item.campSeasonId, error);
                 failures.push(item.campName);
             }
         }

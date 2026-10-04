@@ -31,8 +31,8 @@ internal sealed class EmailController(
     [HttpGet("EmailOutbox")]
     public async Task<IActionResult> EmailOutbox()
     {
-        var stats = await outboxService.GetOutboxStatsAsync();
-        var dailyCounts = await outboxService.GetDailySendCountsAsync();
+        var stats = await outboxService.GetOutboxStatsAsync(cancellationToken: HttpContext.RequestAborted);
+        var dailyCounts = await outboxService.GetDailySendCountsAsync(cancellationToken: HttpContext.RequestAborted);
 
         var viewModel = new EmailOutboxViewModel
         {
@@ -53,7 +53,7 @@ internal sealed class EmailController(
     [HttpGet("EmailOutbox/BackfillDailyCounts")]
     public async Task<IActionResult> BackfillDailyCountsPreview()
     {
-        var preview = await outboxService.PreviewDailySendCountBackfillAsync();
+        var preview = await outboxService.PreviewDailySendCountBackfillAsync(HttpContext.RequestAborted);
         return View(new BackfillDailyCountsViewModel
         {
             RowsToAdd = preview.RowsToAdd,

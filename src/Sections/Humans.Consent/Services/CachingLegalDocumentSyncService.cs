@@ -202,7 +202,7 @@ internal sealed class CachingLegalDocumentSyncService(
     {
         // Pull every active+required document with versions. LegalDocument
         // carries a bare TeamId (memory/architecture/no-cross-section-ef-joins.md);
-        // team display names are stitched here via ITeamService.
+        // team display names are stitched here via ITeamServiceRead.
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ILegalDocumentSyncService>(InnerServiceKey);
         var allDocs = await inner.GetActiveDocumentsAsync(ct);
@@ -210,13 +210,13 @@ internal sealed class CachingLegalDocumentSyncService(
             .Where(d => d.IsActive && d.IsRequired)
             .ToList();
 
-        var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
+        var teamService = scope.ServiceProvider.GetRequiredService<ITeamServiceRead>();
         var teamIds = docs.Select(d => d.TeamId).Distinct().ToList();
         var teams = teamIds.Count == 0
             ? new Dictionary<Guid, TeamInfo>()
             : await teamService.GetTeamsWithParentsAsync(teamIds, ct);
 
-        // Resolve team display names via ITeamService — scoped, so
+        // Resolve team display names via ITeamServiceRead — scoped, so
         // pulled through a fresh DI scope per-warm.
         var versionIndex = new Dictionary<Guid, Guid>();
 

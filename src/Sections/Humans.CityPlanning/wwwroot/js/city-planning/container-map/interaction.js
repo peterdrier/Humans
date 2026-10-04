@@ -55,6 +55,7 @@ export function initInteraction(map, onSave, onSelect) {
  * Used when user clicks an unplaced card in the sidebar.
  */
 export function activateContainer(container, centerLng, centerLat) {
+    resetGesture();
     _activeContainer = container;
     _currentCenter   = { lng: centerLng, lat: centerLat };
     _currentRotation = 0;
@@ -72,6 +73,7 @@ export function activateContainer(container, centerLng, centerLat) {
  * Select an already-placed container for repositioning.
  */
 export function selectPlacedContainer(container) {
+    resetGesture();
     const f = JSON.parse(container.locationGeoJson);
     _activeContainer = container;
     _currentCenter   = { lng: f.properties.center_lng, lat: f.properties.center_lat };
@@ -90,6 +92,7 @@ export function selectPlacedContainer(container) {
  * Deactivate the current container (e.g. another card was clicked).
  */
 export function deactivate() {
+    resetGesture();
     _activeContainer = null;
     _activeFeature   = null;
     updateActiveSource(_map, null);
@@ -128,20 +131,34 @@ function scheduleRender() {
     _rafScheduled = true;
     requestAnimationFrame(() => {
         _rafScheduled = false;
-        if (_pendingDrag && _activeContainer) {
-            _currentCenter = _pendingDrag;
-            _pendingDrag = null;
-        }
-        if (_pendingRotate !== null && _activeContainer) {
-            _currentRotation = rotationFromBearing(_pendingRotate);
-            _pendingRotate = null;
-        }
-        if (!_activeContainer) return;
-        _activeFeature = buildContainerPolygon(_currentCenter.lng, _currentCenter.lat, _currentRotation);
-        _activeFeature.properties.name = _activeContainer.name;
-        updateActiveSource(_map, _activeFeature);
-        repositionHandle();
+        renderPending();
     });
+}
+
+function resetGesture() {
+    _isDragging = false;
+    _isRotating = false;
+    _dragStartLngLat = null;
+    _dragStartCenter = null;
+    _pendingDrag = null;
+    _pendingRotate = null;
+    mapCanvas().style.cursor = '';
+}
+
+function renderPending() {
+    if (!_activeContainer || (!_pendingDrag && _pendingRotate === null)) return;
+    if (_pendingDrag) {
+        _currentCenter = _pendingDrag;
+        _pendingDrag = null;
+    }
+    if (_pendingRotate !== null) {
+        _currentRotation = rotationFromBearing(_pendingRotate);
+        _pendingRotate = null;
+    }
+    _activeFeature = buildContainerPolygon(_currentCenter.lng, _currentCenter.lat, _currentRotation);
+    _activeFeature.properties.name = _activeContainer.name;
+    updateActiveSource(_map, _activeFeature);
+    repositionHandle();
 }
 
 function onMapMouseMove(e) {
@@ -159,6 +176,7 @@ async function onMapMouseUp() {
     if (!_isDragging) return;
     _isDragging = false;
     mapCanvas().style.cursor = '';
+    renderPending();
     if (_activeContainer && _activeFeature) {
         await _onSave?.(_activeContainer, _activeFeature);
     }
@@ -190,6 +208,7 @@ function onDocumentMouseMove(e) {
 async function onDocumentMouseUp() {
     if (!_isRotating) return;
     _isRotating = false;
+    renderPending();
     if (_activeContainer && _activeFeature) {
         await _onSave?.(_activeContainer, _activeFeature);
     }

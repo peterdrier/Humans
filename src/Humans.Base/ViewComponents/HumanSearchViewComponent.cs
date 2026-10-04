@@ -8,7 +8,7 @@ namespace Humans.Base.ViewComponents;
 /// Inline person picker — visible search box + hidden value input + type-ahead
 /// dropdown backed by <c>/api/profiles/search</c>. The canonical inline-picker
 /// pattern (see <c>memory/architecture/person-search.md</c>); the typed
-/// replacement for the old human-search partial.
+/// replacement for the old human-search partial. Prefill reads honor browser cancellation.
 /// </summary>
 public sealed class HumanSearchViewComponent(IUserServiceRead userService) : ViewComponent
 {
@@ -29,7 +29,7 @@ public sealed class HumanSearchViewComponent(IUserServiceRead userService) : Vie
         string? selectedBurnerName = null;
         if (selectedUserId is { } id)
         {
-            var info = await userService.GetUserInfoAsync(id);
+            var info = await userService.GetUserInfoAsync(id, HttpContext.RequestAborted);
             if (info?.IsActive == true)
             {
                 selectedBurnerName = info.BurnerName;

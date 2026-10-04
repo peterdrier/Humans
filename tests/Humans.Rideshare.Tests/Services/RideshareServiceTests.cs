@@ -1,6 +1,7 @@
 using System.Collections;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Extensions;
 using Humans.Notifications.Contracts;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Services;
@@ -673,6 +674,35 @@ public sealed class RideshareServiceTests : RideshareTestHarness
             "Bo is interested in your ride", Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == driver),
             Arg.Is<string?>(b => b!.Contains("Paris") && b.Contains("1 seat") && b.Contains("Room for a tent?")),
             "/Rideshare/Mine", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("invalid/culture")]
+    [InlineData("pt")]
+    public async Task InterestNotification_UnsupportedRecipientLanguage_FallsBackToEnglish(string language)
+    {
+        var driver = SeedUser("Ada");
+        var rider = SeedUser("Bo");
+        var trip = await SeedTripAsync(driver);
+        var recipient = await Users.GetUserInfoAsync(driver, Ct);
+        Users.GetUserInfoAsync(driver, Arg.Any<CancellationToken>())
+            .Returns(recipient! with { PreferredLanguage = language });
+        string englishDate;
+        using (new CultureScope("en"))
+            englishDate = trip.DepartureDate.ToWeekdayDayMonth();
+        using var actorCulture = new CultureScope("fr");
+
+        await NewService().ExpressInterestAsync(rider, trip.Id, null, 1, null, Ct);
+
+        await Notifications.Received(1).SendAsync(
+            NotificationSource.RideshareInterestReceived, NotificationClass.Actionable, Arg.Any<NotificationPriority>(),
+            "Bo is interested in your ride", Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == driver),
+            Arg.Is<string?>(b => b!.Contains(englishDate) && b.Contains("1 seat")),
+            "/Rideshare/Mine", "Open Rideshare", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be("fr");
+        System.Globalization.CultureInfo.CurrentCulture.Name.Should().Be("fr");
     }
 
     [HumansFact]

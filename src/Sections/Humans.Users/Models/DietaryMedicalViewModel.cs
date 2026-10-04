@@ -5,20 +5,20 @@ namespace Humans.Users.Models;
 
 internal sealed class DietaryMedicalViewModel
 {
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public string DietaryPreference { get; set; } = string.Empty;
 
     public List<string> Allergies { get; set; } = [];
 
-    [StringLength(500)]
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? AllergyOtherText { get; set; }
 
     public List<string> Intolerances { get; set; } = [];
 
-    [StringLength(500)]
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? IntoleranceOtherText { get; set; }
 
-    [StringLength(4000)]
+    [StringLength(4000, ErrorMessage = "Validation_MaxLength")]
     public string? MedicalConditions { get; set; }
 
     // Carryover from the redirect-then-replay flow

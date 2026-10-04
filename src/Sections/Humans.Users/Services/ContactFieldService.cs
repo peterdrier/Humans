@@ -1,3 +1,5 @@
+using Humans.Base.Extensions;
+using Microsoft.Extensions.Localization;
 using Humans.Auth.Contracts;
 using NodaTime;
 using Humans.Users.Data.Repositories;
@@ -17,13 +19,9 @@ internal sealed class ContactFieldService(
     IRoleAssignmentService roleAssignmentService,
     IUserInfoInvalidator userInfoInvalidator,
     IClock clock,
-    ILogger<ContactFieldService> logger) : IContactFieldService, IUserMerge
+    ILogger<ContactFieldService> logger,
+    IStringLocalizer<UsersResource> localizer) : IContactFieldService, IUserMerge
 {
-    // Request-scoped cache for viewer permissions (avoid N+1 in listing).
-    private bool? _cachedIsBoardMember;
-    private bool? _cachedIsAnyCoordinator;
-    private HashSet<Guid>? _cachedViewerTeamIds;
-
     public async Task<IReadOnlyList<ContactFieldDto>> GetVisibleContactFieldsAsync(
         Guid userId,
         Guid viewerUserId,
@@ -42,7 +40,8 @@ internal sealed class ContactFieldService(
             .Select(cf => new ContactFieldDto(
                 cf.Id,
                 cf.FieldType,
-                cf.FieldType == ContactFieldType.Other ? cf.CustomLabel ?? "Other" : cf.FieldType.ToString(),
+                cf.FieldType == ContactFieldType.Other && cf.CustomLabel is not null
+                    ? cf.CustomLabel : localizer.EnumDisplay(cf.FieldType),
                 cf.Value,
                 cf.Visibility))
             .ToList();
@@ -138,35 +137,30 @@ internal sealed class ContactFieldService(
         if (ownerUserId == viewerUserId)
             return ContactFieldVisibility.BoardOnly;
 
-        _cachedIsBoardMember ??= await roleAssignmentService.IsUserBoardMemberAsync(viewerUserId, cancellationToken);
-        if (_cachedIsBoardMember.Value)
+        if (await roleAssignmentService.IsUserBoardMemberAsync(viewerUserId, cancellationToken))
             return ContactFieldVisibility.BoardOnly;
 
-        if (_cachedViewerTeamIds is null)
-        {
-            var allTeams = (await teamService.GetTeamsAsync(cancellationToken)).Values;
-            var viewerMemberships = allTeams
-                .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == viewerUserId) })
-                .Where(x => x.Membership is not null)
-                .ToList();
-            _cachedIsAnyCoordinator = viewerMemberships.Any(x => x.Membership!.Role == TeamMemberRole.Coordinator);
-            _cachedViewerTeamIds = viewerMemberships
-                .Where(x => x.TeamInfo.SystemTeamType != SystemTeamType.Volunteers)
-                .Select(x => x.TeamInfo.Id)
-                .ToHashSet();
-        }
-
-        if (_cachedIsAnyCoordinator!.Value)
+        // Permissions belong to this viewer, not to the scoped service instance.
+        var allTeams = (await teamService.GetTeamsAsync(cancellationToken)).Values;
+        var viewerMemberships = allTeams
+            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == viewerUserId) })
+            .Where(x => x.Membership is not null)
+            .ToList();
+        if (viewerMemberships.Any(x => x.Membership!.Role == TeamMemberRole.Coordinator))
             return ContactFieldVisibility.CoordinatorsAndBoard;
 
-        // Shared team excluding Volunteers.
-        var ownerTeamIds = (await teamService.GetTeamsAsync(cancellationToken)).Values
-            .Where(t => t.SystemTeamType != SystemTeamType.Volunteers
-                     && t.Members.Any(m => m.UserId == ownerUserId))
-            .Select(t => t.Id)
+        var viewerTeamIds = viewerMemberships
+            .Where(x => x.TeamInfo.SystemTeamType != SystemTeamType.Volunteers)
+            .Select(x => x.TeamInfo.Id)
             .ToHashSet();
 
-        if (_cachedViewerTeamIds.Intersect(ownerTeamIds).Any())
+        // Shared team excluding Volunteers, from the same team snapshot as the viewer.
+        var ownerTeamIds = allTeams
+            .Where(t => t.SystemTeamType != SystemTeamType.Volunteers
+                     && t.Members.Any(m => m.UserId == ownerUserId))
+            .Select(t => t.Id);
+
+        if (viewerTeamIds.Overlaps(ownerTeamIds))
             return ContactFieldVisibility.MyTeams;
 
         return ContactFieldVisibility.AllActiveProfiles;

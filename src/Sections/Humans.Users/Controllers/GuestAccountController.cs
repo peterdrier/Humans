@@ -37,16 +37,16 @@ internal sealed class GuestAccountController(
     {
         try
         {
-            var (userId, tokenCategory, _) = await ResolveUserIdOrTokenAsync(utoken);
+            var (userId, tokenCategory, _) = await ResolveUserIdOrTokenAsync(utoken, HttpContext.RequestAborted);
             if (userId is null)
                 return Challenge();
 
-            var model = await BuildCommunicationPreferencesViewModelAsync(userId.Value);
+            var model = await BuildCommunicationPreferencesViewModelAsync(userId.Value, HttpContext.RequestAborted);
             model.UnsubscribeToken = utoken;
             model.HighlightCategory = tokenCategory;
             return View(model);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Failed to load communication preferences");
             SetError(localizer["Users_Profile_CommunicationPreferencesLoadFailed"].Value);
@@ -142,9 +142,9 @@ internal sealed class GuestAccountController(
     }
 
     /// <summary>Resolves user from session, else unsubscribe token. FromToken=true → MagicLink source.</summary>
-    private async Task<(Guid? UserId, MessageCategory? TokenCategory, bool FromToken)> ResolveUserIdOrTokenAsync(string? utoken)
+    private async Task<(Guid? UserId, MessageCategory? TokenCategory, bool FromToken)> ResolveUserIdOrTokenAsync(string? utoken, CancellationToken ct = default)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user is not null)
             return (user.Id, null, false);
 
@@ -155,18 +155,18 @@ internal sealed class GuestAccountController(
         if (result.Status != TokenValidationStatus.Valid)
             return (null, null, false);
 
-        var exists = await FindUserInfoByIdAsync(result.UserId);
+        var exists = await FindUserInfoByIdAsync(result.UserId, ct);
         return exists is not null
             ? (result.UserId, result.Category, true)
             : (null, null, false);
     }
 
-    private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId)
+    private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId, CancellationToken ct)
     {
-        var prefs = await commPrefService.GetPreferencesReadOnlyAsync(userId);
+        var prefs = await commPrefService.GetPreferencesReadOnlyAsync(userId, ct);
         var prefsByCategory = prefs.ToDictionary(p => p.Category);
 
-        var hasTicketOrder = (await ticketQueryService.GetUserTicketHoldingsAsync(userId))
+        var hasTicketOrder = (await ticketQueryService.GetUserTicketHoldingsAsync(userId, ct))
             .HasTicketAttendeeMatch;
 
         var categories = new List<CategoryPreferenceItem>();
@@ -180,10 +180,6 @@ internal sealed class GuestAccountController(
             categories.Add(new CategoryPreferenceItem
             {
                 Category = category,
-                DisplayName = category == MessageCategory.Ticketing
-                    ? $"Ticketing — {clock.GetCurrentInstant().InUtc().Year}"
-                    : category.ToDisplayName(),
-                Description = category.ToDescription(),
                 // No row → category's domain default (Marketing is opt-out-by-default,
                 // so a missing row renders unchecked). Matches the panel view component.
                 EmailEnabled = pref is null ? !category.DefaultOptedOut() : !pref.OptedOut,
@@ -194,6 +190,10 @@ internal sealed class GuestAccountController(
             });
         }
 
-        return new CommunicationPreferencesViewModel { Categories = categories };
+        return new CommunicationPreferencesViewModel
+        {
+            Categories = categories,
+            TicketingYear = clock.GetCurrentInstant().InUtc().Year,
+        };
     }
 }

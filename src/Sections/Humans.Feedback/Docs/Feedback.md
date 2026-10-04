@@ -25,6 +25,8 @@ Historical in-app feedback reports (bugs, feature requests, questions) with scre
 
 - A **Feedback Report** is a historical in-app submission from a human — a bug report, feature request, or question. It captures the page URL, optional screenshot, and conversation thread between the reporter and admins. No new reports can be created.
 - **Feedback status** tracks the lifecycle: Open, Acknowledged, Resolved, or WontFix.
+- The admin list bounds description previews to 100 UTF-16 units plus an ellipsis without splitting surrogate pairs; historical descriptions remain complete.
+- List and detail URL previews preserve surrogate pairs at their 30/40-unit limits plus ellipses; the stored URL and full detail display remain complete.
 
 ## Data Model
 
@@ -107,12 +109,14 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 | Actor | Capabilities |
 |-------|--------------|
-| Admin | The **only** human actor. View all historical reports at `/Feedback` and `/Feedback/{id}`, update status, assign to humans and/or teams, link GitHub issues, and reply on any report (replies queue an email and dispatch an in-app notification to the reporter). Every action is gated by the controller-level `PolicyNames.AdminOnly`; the index and detail GETs pass the browser abort token through their report, team, assignee, and reporter reads. |
+| Admin | The **only** human actor. View all historical reports at `/Feedback` and `/Feedback/{id}`, update status, assign to humans and/or teams, link GitHub issues, and reply on any report (replies queue an email and dispatch an in-app notification to the reporter). Every action is gated by the controller-level `PolicyNames.AdminOnly`; the index and detail GETs pass the browser abort token through their viewer, report, team, assignee, and reporter reads. |
 | API (key auth) | List, get, post messages, update status, update assignment, set GitHub issue via `/api/backdoor/feedback`. The controller lives in `Humans.Backdoor` and calls this section through `IFeedbackTriage` (nobodies-collective/Humans#1128); the key resolves to a human, so an API reply is attributed exactly like one typed in the UI. No report-creation endpoint. |
 
 `RoleNames.FeedbackAdmin` still exists as an assignable role (it appears on the Staff page and in the Guide, and still admits the holder to the `/Admin` shell via `AnyAdminRole`), but it **no longer grants any Feedback access**. Its former policy `PolicyNames.FeedbackAdminOrAdmin` and role group `RoleGroups.FeedbackAdminOrAdmin` were deleted with the lockdown.
 
 ## Invariants
+
+- The queue detail panel accepts only the latest selection request’s response; earlier successes and unavailable responses cannot replace the selected item’s content or wire stale forms.
 
 - Every feedback report is linked to the human who submitted it.
 - **No code path creates a feedback report.** There is no service, repository, controller, or view component that writes a new `FeedbackReport` row.
@@ -121,7 +125,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - Only Admin can see feedback reports — including a report's own reporter, who has no route into the section any more.
 - Every message posted through `FeedbackService.PostMessageAsync` is an admin reply: it stamps `LastAdminMessageAt`, emails the reporter, and dispatches an in-app notification. Reporter messages exist only on historical rows.
 - "Needs reply" is derived: true when the reporter has posted a message more recent than any admin reply (`LastReporterMessageAt > LastAdminMessageAt`) or when the report is still Open and no admin has ever replied. The nav-badge count uses the same rule and excludes Resolved/WontFix.
-- A report can optionally be assigned to a human and/or a team. Both assignments are independent and nullable.
+- A report can optionally be assigned to a human and/or a team. Both assignments are independent and nullable. The list’s 12-unit assignee-name previews preserve whole UTF-16 surrogate pairs; tooltips retain the complete names.
 - Status changes, assignment changes and GitHub links are audit-logged via `AuditAction.FeedbackStatusChanged`, `AuditAction.FeedbackAssignmentChanged` and `AuditAction.FeedbackGitHubLinked`. Every mutation takes the acting user; the `"API"` actor string remains only as the fallback for a caller that resolved to nobody.
 - Admin replies send the response email **before** persisting the new message — if SMTP throws, the message and `LastAdminMessageAt` are never committed, so the request can be retried without duplicating the admin reply. The in-app notification is best-effort post-save.
 
@@ -134,7 +138,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 ## Triggers
 
-- When an admin posts a message on a report, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendAsync(FeedbackEmails.FeedbackResponse(...))`. After the message is persisted, a localized in-app `NotificationSource.FeedbackResponse` notification is also dispatched in the reporter's preferred language.
+- When an admin posts a message on a report, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendAsync(FeedbackEmails.FeedbackResponse(...))`. After the message is persisted, a localized in-app `NotificationSource.FeedbackResponse` notification is also dispatched in the reporter's supported saved language. Both email and notice fall back to English for blank, invalid or unsupported preferences.
 - When a message is posted or a status changes, the nav-badge cache is invalidated via `INavBadgeCacheInvalidator`.
 - When an account merge accepts, `FeedbackService.ReassignAsync` (`IUserMerge`) re-FKs `FeedbackReport.UserId` / `AssignedToUserId` / `ResolvedByUserId` and `FeedbackMessage.SenderUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section) inside an ambient `TransactionScope`.
 
@@ -147,7 +151,8 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - **Notifications:** `INotificationEmitter.SendAsync` — `NotificationSource.FeedbackResponse` in-app notification dispatched after an admin reply is persisted.
 - **Audit Log:** `IAuditLogService.LogAsync` — status, assignment and GitHub-link changes (`AuditAction.FeedbackStatusChanged`, `AuditAction.FeedbackAssignmentChanged`, `AuditAction.FeedbackGitHubLinked`).
 - **Caching:** the actionable badge count is cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL, Static) and invalidated via `INavBadgeCacheInvalidator` whenever the count could have changed.
-- **GDPR:** implements `IUserDataContributor` to export the reporter's feedback reports and message contents under `FeedbackService.FeedbackReports`, and to erase them on Article 17 request — reports the person filed are hard-deleted with their messages and screenshots, while a reply they left on someone else's report stays with authorship detached (`SenderUserId` nulled), per its `ErasureDeclaration`.
+- **GDPR:** implements `IUserDataContributor` to export the reporter's feedback reports, stored browser/submission context (including null when absent), and message contents under `FeedbackService.FeedbackReports`, and to erase them on Article 17 request — reports the person filed are hard-deleted with their messages and screenshots, while a reply they left on someone else's report stays with authorship detached (`SenderUserId` nulled), per its `ErasureDeclaration`.
+- Screenshot cleanup follows committed erasure without caller cancellation; storage failures are logged and do not reverse the erasure.
 - **Agent:** `AgentConversationId` is a plain FK column on `feedback_reports` (no EF FK constraint). Reports with `Source = AgentUnresolved` originate from the agent's retired `route_to_feedback` tool. Transcript resolution goes through the Agent section's services when needed. `IFeedbackServiceRead.GetOpenFeedbackIdsForUserAsync` still feeds `AgentUserSnapshotProvider`.
 
 ## Architecture

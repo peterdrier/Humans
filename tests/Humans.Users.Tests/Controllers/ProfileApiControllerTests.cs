@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Users.Tests.Controllers;
 
@@ -154,6 +155,43 @@ public class ProfileApiControllerTests
             profileLanguages: [],
             volunteerHistory: [],
             communicationPreferences: []);
+    }
+
+    [HumansTheory]
+    [InlineData("search")]
+    [InlineData("count")]
+    [InlineData("lookup")]
+    public async Task Profile_reads_cancel_during_current_user_resolution(string action)
+    {
+        var viewer = MakeUser(Guid.NewGuid());
+        var targetId = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
+        var sut = BuildSut(viewer);
+        using var request = new CancellationTokenSource();
+        sut.HttpContext.RequestAborted = request.Token;
+        _userService.GetUserInfoAsync(viewer.Id, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return new ValueTask<UserInfo?>(MakeViewerUserInfo(viewer));
+            });
+        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(targetId, profileId)));
+        _userService.SearchUsersAsync(Arg.Any<string>(), Arg.Any<PersonSearchFields>(),
+                Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { MakeSearchResult(targetId, profileId, "Target Burner") });
+
+        Task<IActionResult> ReadAsync() => action switch
+        {
+            "search" => sut.Search("Target", ct: request.Token),
+            "count" => sut.BurnerNameCount("Target", request.Token),
+            _ => sut.GetByUserId(targetId, request.Token)
+        };
+
+        (await ReadAsync()).Should().BeOfType<OkObjectResult>();
+        await request.CancelAsync();
+        Func<Task> abandonedRead = async () => await ReadAsync();
+        await abandonedRead.Should().ThrowAsync<OperationCanceledException>();
     }
 
     // ==========================================================================

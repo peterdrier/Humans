@@ -46,6 +46,7 @@
   <data name="Profile_Title" xml:space="preserve">
     <value>Mi perfil</value>
   </data>
+  <data name="Users_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegación</value></data>
   <data name="Profile_ActionRequired" xml:space="preserve">
     <value>Acción requerida:</value>
   </data>
@@ -270,7 +271,7 @@
     <value>Nota: Siempre puedes solicitar cambiar esto más adelante.</value>
   </data>
   <data name="ProfileEdit_TierLocked" xml:space="preserve">
-    <value>Tu nivel está bloqueado porque tienes una solicitud activa o pendiente.</value>
+    <value>Tu categoría está bloqueada porque tienes una solicitud activa o pendiente.</value>
   </data>
   <data name="ProfileEdit_ApplicationSection" xml:space="preserve">
     <value>Solicitud</value>
@@ -1078,6 +1079,7 @@
   <!-- ======================== -->
   <!-- Enum display names       -->
   <!-- ======================== -->
+  <data name="Enum_ContactFieldType_Email" xml:space="preserve"><value>Correo</value></data>
   <data name="Enum_ContactFieldType_Discord" xml:space="preserve"><value>Discord</value></data>
   <data name="Enum_ContactFieldType_Other" xml:space="preserve"><value>Otro</value></data>
   <data name="Enum_ContactFieldType_Phone" xml:space="preserve"><value>Teléfono</value></data>
@@ -1175,4 +1177,24 @@
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Tu acceso ha sido suspendido: {0}</value></data>
   <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Ver perfil</value></data>
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Falta el consentimiento a los documentos requeridos (plazo de gracia vencido)</value></data>
+  <data name="CommPrefs_Name_System" xml:space="preserve"><value>Sistema</value></data>
+  <data name="CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Códigos de campañas</value></data>
+  <data name="CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Mensajes entre personas</value></data>
+  <data name="CommPrefs_Name_Ticketing" xml:space="preserve"><value>Entradas</value></data>
+  <data name="CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Novedades del voluntariado</value></data>
+  <data name="CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Novedades de los equipos</value></data>
+  <data name="CommPrefs_Name_Governance" xml:space="preserve"><value>Gobernanza</value></data>
+  <data name="CommPrefs_Name_Marketing" xml:space="preserve"><value>Marketing</value></data>
+  <data name="CommPrefs_Description_System" xml:space="preserve"><value>Notificaciones importantes sobre la cuenta, el consentimiento y la seguridad. Siempre activadas.</value></data>
+  <data name="CommPrefs_Description_CampaignCodes" xml:space="preserve"><value>Códigos de descuento, ayudas y códigos para canjear campañas. Siempre activados.</value></data>
+  <data name="CommPrefs_Description_FacilitatedMessages" xml:space="preserve"><value>Mensajes que otras personas te envían a través de Humans.</value></data>
+  <data name="CommPrefs_Description_Ticketing" xml:space="preserve"><value>Confirmaciones de compra e información del evento.</value></data>
+  <data name="CommPrefs_Description_VolunteerUpdates" xml:space="preserve"><value>Cambios de turnos, actualizaciones del horario y notificaciones del voluntariado.</value></data>
+  <data name="CommPrefs_Description_TeamUpdates" xml:space="preserve"><value>Permisos de Drive, incorporaciones y bajas en los equipos.</value></data>
+  <data name="CommPrefs_Description_Governance" xml:space="preserve"><value>Votaciones de la Junta, solicitudes de nivel, asignaciones de roles y revisiones de incorporación.</value></data>
+  <data name="CommPrefs_Description_Marketing" xml:space="preserve"><value>Lista de correo y promociones.</value></data>
+  <data name="CommPrefs_TicketingYear" xml:space="preserve"><value>Entradas — {0}</value></data>
+  <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Bloqueado — tienes una entrada para este año</value></data>
+  <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Operaciones del evento</value></data>
+  <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Novedades de la comunidad</value></data>
 </root>

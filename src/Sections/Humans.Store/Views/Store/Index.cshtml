@@ -74,7 +74,7 @@ else
                             @foreach (var order in cp.Orders)
                             {
                                 <tr>
-                                    <td><span class="badge bg-secondary">@order.State</span></td>
+                                    <td><span class="badge bg-secondary">@Localizer.EnumDisplay(order.State)</span></td>
                                     @if (cp.CounterpartyType == OrderCounterpartyType.Camp)
                                     {
                                         <td class="text-end">@((order.LinesSubtotalEur + order.VatTotalEur).ToEuro())</td>
@@ -127,7 +127,7 @@ else
     Func<ProductDto, IHtmlContent> catalogPriceCell =
         @<text>
             @item.UnitPriceInclVatEur.ToEuro()
-            <div class="text-muted small">(@item.UnitPriceEur.ToEuro() + @item.VatRatePercent.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture)% VAT)</div>
+            <div class="text-muted small">@Localizer["Store_UnitPriceBreakdown", item.UnitPriceEur.ToEuro(), item.VatRatePercent.ToString("0.##", System.Globalization.CultureInfo.CurrentUICulture)]</div>
         </text>;
     var catalogTable = TableModel.For(Model.Catalog)
         .Column(Localizer["Store_ColName"].Value, r => r.Name)

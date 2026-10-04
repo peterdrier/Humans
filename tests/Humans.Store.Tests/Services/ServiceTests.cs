@@ -64,7 +64,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetIndexDataAsync_lists_led_camp_from_camp_info()
+    public async Task GetIndexDataAsync_selects_highest_balance_camp_order_with_live_prices()
     {
         var userId = Guid.NewGuid();
         var campId = Guid.NewGuid();
@@ -74,17 +74,43 @@ public class ServiceTests
             {
                 MakeCampInfo(campId, seasonId, "Camp Alpha", userId)
             });
-        _repo.GetOrdersForCampSeasonAsync(seasonId, Arg.Any<CancellationToken>())
-            .Returns(new List<Order>());
-        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new List<Product>());
+        var product = MakeProduct(name: "Tent", price: 50m, vat: 0m);
+        product.IsActive = false;
+        var lowerBalanceId = Guid.NewGuid();
+        var higherBalanceId = Guid.NewGuid();
+        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { seasonId })),
+                Arg.Any<CancellationToken>())
+            .Returns([
+                new Order
+                {
+                    Id = lowerBalanceId, CampSeasonId = seasonId, Year = 2026,
+                    Lines = { new() { Id = Guid.NewGuid(), ProductId = product.Id, Qty = 1, UnitPriceSnapshot = 1m } },
+                    Payments = { new() { AmountEur = 45m, Status = PaymentStatus.Paid } }
+                },
+                new Order
+                {
+                    Id = higherBalanceId, CampSeasonId = seasonId, Year = 2026,
+                    Lines = { new() { Id = Guid.NewGuid(), ProductId = product.Id, Qty = 2, UnitPriceSnapshot = 1m } },
+                    Payments = { new() { AmountEur = 20m, Status = PaymentStatus.Paid } }
+                }
+            ]);
+        _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([product]);
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([product]);
 
         var result = await _service.GetIndexDataAsync(userId, ct: TestContext.Current.CancellationToken);
 
-        result.Counterparties.Should().ContainSingle().Which.Should().Match<CounterpartyOrders>(counterparty =>
-            counterparty.CounterpartyType == OrderCounterpartyType.Camp &&
-            counterparty.CounterpartyId == seasonId &&
-            counterparty.DisplayName == "Camp Alpha");
+        var counterparty = result.Counterparties.Should().ContainSingle().Subject;
+        counterparty.CounterpartyType.Should().Be(OrderCounterpartyType.Camp);
+        counterparty.CounterpartyId.Should().Be(seasonId);
+        counterparty.DisplayName.Should().Be("Camp Alpha");
+        var order = counterparty.Orders.Should().ContainSingle().Subject;
+        order.Id.Should().Be(higherBalanceId);
+        order.CounterpartyDisplayName.Should().Be("Camp Alpha");
+        order.BalanceEur.Should().Be(80m);
+        order.Lines.Should().ContainSingle().Subject.ProductName.Should().Be("Tent");
+        await _repo.Received(1).GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1516,29 +1542,40 @@ public class ServiceTests
         await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task AsyncPaymentSucceeded_out_of_order_records_paid_when_no_row_yet()
+    [HumansTheory]
+    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded, true)]
+    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed, false)]
+    public async Task AsyncPayment_out_of_order_preserves_terminal_state_after_completed_and_redelivery(
+        StoreCheckoutEventKind kind, bool succeeded)
     {
-        // Stripe delivered async_payment_succeeded before completed: no payment row exists yet.
-        // Record the settled money directly so it isn't lost; the later completed no-ops on the PI.
+        var status = succeeded ? PaymentStatus.Paid : PaymentStatus.Failed;
         var orderId = Guid.NewGuid();
+        Payment? recorded = null;
         _repo.GetPaymentByStripePaymentIntentIdAsync("pi_ooo", Arg.Any<CancellationToken>())
-            .Returns((Payment?)null);
+            .Returns(_ => recorded);
         _repo.StripePaymentIntentExistsAsync("pi_ooo", Arg.Any<CancellationToken>())
-            .Returns(false);
+            .Returns(_ => recorded is not null);
+        await _repo.AddPaymentAsync(Arg.Do<Payment>(p => recorded = p), Arg.Any<CancellationToken>());
+        var terminal = new StoreCheckoutWebhookEvent("evt_ooo", kind,
+            new StoreCheckoutSessionData("cs_ooo", orderId, "pi_ooo", 75m));
 
+        await _service.HandleStripeCheckoutWebhookEventAsync(terminal, TestContext.Current.CancellationToken);
         await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
-            "evt_ooo",
-            StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded,
-            new StoreCheckoutSessionData("cs_ooo", orderId, "pi_ooo", 75m)), TestContext.Current.CancellationToken);
+            "evt_completed_late", StoreCheckoutEventKind.CheckoutSessionCompleted,
+            new StoreCheckoutSessionData("cs_ooo", orderId, "pi_ooo", 75m, PaymentStatus: "unpaid")),
+            TestContext.Current.CancellationToken);
+        await _service.HandleStripeCheckoutWebhookEventAsync(terminal, TestContext.Current.CancellationToken);
 
-        await _repo.Received(1).AddPaymentAsync(
-            Arg.Is<Payment>(p =>
-                p.OrderId == orderId &&
-                p.StripePaymentIntentId == "pi_ooo" &&
-                p.AmountEur == 75m &&
-                p.Status == PaymentStatus.Paid),
-            Arg.Any<CancellationToken>());
+        recorded.Should().NotBeNull();
+        recorded!.Status.Should().Be(status);
+        recorded.OrderId.Should().Be(orderId);
+        recorded.StripePaymentIntentId.Should().Be("pi_ooo");
+        recorded.AmountEur.Should().Be(75m);
+        await _repo.Received(1).AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(AuditAction.StorePaymentRecorded, AuditEntityTypes.Payment,
+            recorded.Id, Arg.Is<string>(message => status != PaymentStatus.Failed || message.Contains("Failed")),
+            "StripeWebhook", orderId, AuditEntityTypes.Order);
     }
 
     [HumansFact]
@@ -1594,16 +1631,16 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AsyncPaymentFailed_with_no_row_is_a_noop()
+    public async Task AsyncPaymentFailed_with_no_row_and_missing_order_is_a_noop()
     {
-        // A failure with nothing pending means no money was ever owed here — do not create a row.
+        // Without order metadata the terminal failure cannot be attributed to an order.
         _repo.GetPaymentByStripePaymentIntentIdAsync("pi_nothing", Arg.Any<CancellationToken>())
             .Returns((Payment?)null);
 
         await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
             "evt_failed_orphan",
             StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed,
-            new StoreCheckoutSessionData("cs_nothing", Guid.NewGuid(), "pi_nothing", 50m)), TestContext.Current.CancellationToken);
+            new StoreCheckoutSessionData("cs_nothing", null, "pi_nothing", 50m)), TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());

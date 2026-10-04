@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Base.Extensions;
 using Humans.Budget.Services;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -74,6 +75,35 @@ public class TicketingBudgetServiceTests
         week.Revenue.Should().Be(150m);
         week.StripeFees.Should().Be(3.5m);
         week.TicketTailorFees.Should().Be(1.5m);
+    }
+
+    [HumansFact]
+    public async Task SyncActualsAsync_BuildsEnglishWeekLabels_RegardlessOfUiCulture()
+    {
+        // Actuals rows are matched by description, so a non-English operator sync must not
+        // produce differently-labelled rows for the same week.
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<TicketOrderInfo>
+            {
+                BuildOrder(Instant.FromUtc(2026, 3, 2, 8, 0), 100m, 2m, 1m, TicketAttendeeStatus.Valid),
+            });
+
+        List<TicketingWeeklyActuals>? capturedActuals = null;
+        _budgetService.SyncTicketingActualsAsync(
+                Arg.Any<Guid>(),
+                Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(1);
+
+        string expected;
+        using (new CultureScope("en"))
+            expected = $"{new LocalDate(2026, 3, 2).ToWeekdayDayMonth()}–{new LocalDate(2026, 3, 8).ToWeekdayDayMonth()}";
+
+        using (new CultureScope("es"))
+            await CreateSut().SyncActualsAsync(Guid.NewGuid(), actorUserId: null, Xunit.TestContext.Current.CancellationToken);
+
+        capturedActuals.Should().ContainSingle().Which.WeekLabel.Should().Be(expected);
     }
 
     [HumansFact]

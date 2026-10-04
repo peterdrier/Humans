@@ -99,25 +99,6 @@ internal sealed class EventSettings : IBurnSettingsInfo
 
     public ICollection<Rota> Rotas { get; } = new List<Rota>();
 
-    /// <summary>
-    /// Gets the cumulative EE capacity for a given day offset using step function lookup.
-    /// Returns the capacity for the largest key ≤ dayOffset, or 0 if no key qualifies.
-    /// </summary>
-    public int GetEarlyEntryCapacityForDay(int dayOffset)
-    {
-        if (EarlyEntryCapacity.Count == 0)
-            return 0;
-
-        var applicableKey = int.MinValue;
-        foreach (var key in EarlyEntryCapacity.Keys)
-        {
-            if (key <= dayOffset && key > applicableKey)
-                applicableKey = key;
-        }
-
-        return applicableKey == int.MinValue ? 0 : EarlyEntryCapacity[applicableKey];
-    }
-
     // The early-entry clock rule lives on IBurnSettingsInfo as a default
     // implementation so entity and DTO share one copy. C# does not surface a
     // default implementation through the concrete type, so these two forward to

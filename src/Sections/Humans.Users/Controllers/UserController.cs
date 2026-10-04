@@ -33,7 +33,7 @@ internal sealed class UserController(
             return RedirectToAction("Index", "Home");
         }
 
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         var viewModel = new AccountStatusViewModel
         {
             State = state.Value,
@@ -47,7 +47,7 @@ internal sealed class UserController(
     [HttpGet("Deletion")]
     public async Task<IActionResult> Deletion()
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 

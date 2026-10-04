@@ -41,6 +41,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="Enum_EventStatus_Approved" xml:space="preserve"><value>Approuvé</value></data>
+  <data name="Events_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
   <data name="Enum_EventStatus_Draft" xml:space="preserve"><value>Brouillon</value></data>
   <data name="Enum_EventStatus_Pending" xml:space="preserve"><value>En attente</value></data>
   <data name="Enum_EventStatus_Rejected" xml:space="preserve"><value>Rejeté</value></data>
@@ -168,4 +169,12 @@
   <data name="Events_Upload_RowRecurringBoolean" xml:space="preserve"><value>Ligne {0} : IsRecurring doit être true ou false.</value></data>
   <data name="Events_Upload_ParseFailed" xml:space="preserve"><value>Impossible d’analyser le CSV. Téléchargez un nouveau modèle et vérifiez le format du fichier.</value></data>
   <data name="Events_Upload_ParseErrorDetail" xml:space="preserve"><value>Impossible d’analyser le CSV : {0}</value></data>
+  <data name="Events_Email_Pending_Subject" xml:space="preserve"><value>Nous avons bien reçu la soumission de votre événement</value></data>
+  <data name="Events_Email_Pending_Body" xml:space="preserve"><value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Nous avons bien reçu votre événement &lt;strong&gt;{1}&lt;/strong&gt; ; il est maintenant dans la file de modération. Vous serez prévenu(e) dès qu'il aura été examiné.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Voir vos soumissions&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_Email_Approved_Subject" xml:space="preserve"><value>Votre événement a été approuvé</value></data>
+  <data name="Events_Email_Approved_Body" xml:space="preserve"><value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Votre événement &lt;strong&gt;{1}&lt;/strong&gt; a été approuvé et apparaîtra dans le guide des événements.&lt;/p&gt;</value></data>
+  <data name="Events_Email_Rejected_Subject" xml:space="preserve"><value>La soumission de votre événement n'a pas été approuvée</value></data>
+  <data name="Events_Email_Rejected_Body" xml:space="preserve"><value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Votre événement &lt;strong&gt;{1}&lt;/strong&gt; n'a pas été approuvé pour le guide des événements.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Motif :&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Vous pouvez modifier et soumettre à nouveau votre événement ici : &lt;a href="{3}"&gt;Modifier l'événement&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_Email_ResubmitRequested_Subject" xml:space="preserve"><value>Des modifications sont demandées pour votre événement</value></data>
+  <data name="Events_Email_ResubmitRequested_Body" xml:space="preserve"><value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;L'équipe de modération demande des modifications à votre événement &lt;strong&gt;{1}&lt;/strong&gt; avant de pouvoir l'approuver.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Commentaires :&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Merci de le mettre à jour et de le soumettre à nouveau ici : &lt;a href="{3}"&gt;Modifier l'événement&lt;/a&gt;&lt;/p&gt;</value></data>
 </root>

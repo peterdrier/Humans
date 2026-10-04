@@ -55,6 +55,7 @@
   <data name="Enum_InterestStatus_Withdrawn" xml:space="preserve"><value>Withdrawn</value></data>
   <!-- Board -->
   <data name="Rideshare_Title" xml:space="preserve"><value>Rideshare</value></data>
+  <data name="Rideshare_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
   <data name="Rideshare_BoardIntro" xml:space="preserve"><value>Drivers post the ride they're making; riders drop a pin where they need picking up. Spot each other on the map and say hello.</value></data>
   <data name="Rideshare_BackToBoard" xml:space="preserve"><value>Back to the board</value></data>
   <data name="Rideshare_OfferARide" xml:space="preserve"><value>Offer a ride</value></data>

@@ -6,14 +6,18 @@ using Humans.Shifts.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Constants;
 using Humans.Base;
+using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
+using NSubstitute.ExceptionExtensions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
@@ -34,6 +38,36 @@ public class CampControllerTests
     private readonly IStringLocalizer<CampsResource> _campsLocalizer = Substitute.For<IStringLocalizer<CampsResource>>();
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Register_stops_loading_when_the_request_is_abandoned(bool cancelAfterSettings)
+    {
+        using var request = new CancellationTokenSource();
+        var abandon = false;
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            if (abandon && cancelAfterSettings) await request.CancelAsync();
+            return new CampSettingsInfo(2026, [2026]);
+        });
+        _cityPlanning.GetRegistrationInfoAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return "Registration instructions";
+        });
+        var controller = BuildController(Guid.NewGuid());
+        controller.HttpContext.RequestAborted = request.Token;
+        (await controller.Register()).Should().BeOfType<ViewResult>();
+        controller.ViewData["SeasonYear"].Should().Be(2026);
+        controller.ViewData["RegistrationInfo"].Should().Be("Registration instructions");
+
+        abandon = true;
+        if (!cancelAfterSettings) await request.CancelAsync();
+        Func<Task> load = async () => await controller.Register();
+        await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [HumansFact]
     public void UploadImage_allows_one_valid_image_without_accepting_a_larger_request()
     {
@@ -45,6 +79,400 @@ public class CampControllerTests
             .GetField("_bytes", BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(limit)
             .Should().Be(11L * 1024 * 1024);
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task CampForms_ValidateExistingFieldLimitsBeforeWriting(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var shared = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+        var userId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: userId);
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+
+        foreach (var edit in new[] { false, true })
+        {
+            var model = edit ? new CampEditViewModel() : new CampRegisterViewModel();
+            // MVC converts an empty posted email field to null before validation.
+            model.ContactEmail = null!;
+            var controller = BuildController(userId);
+            controller.HttpContext.RequestServices = services;
+            validator.Validate(controller.ControllerContext, null, "", model);
+            foreach (var field in new[] { "Name", "ContactEmail", "BlurbLong", "BlurbShort", "Languages" })
+            {
+                controller.ModelState.Should().ContainKey(field);
+                controller.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage
+                    .Should().Be(shared["Validation_Required"].Value);
+            }
+
+            controller.ModelState.Clear();
+            model.Name = new string('n', 257);
+            model.ContactEmail = new string('a', 245) + "@example.com";
+            model.ContactPhone = "+" + new string('1', 64);
+            model.BlurbLong = new string('x', 4001);
+            model.BlurbShort = new string('x', 1001);
+            model.Languages = new string('x', 257);
+            model.KidsAreaDescription = new string('x', 2001);
+            model.PerformanceTypes = new string('x', 1001);
+            validator.Validate(controller.ControllerContext, null, "", model);
+            foreach (var (field, max) in new[]
+            {
+                ("Name", 256), ("ContactEmail", 256), ("ContactPhone", 64), ("BlurbLong", 4000),
+                ("BlurbShort", 1000), ("Languages", 256), ("KidsAreaDescription", 2000), ("PerformanceTypes", 1000)
+            })
+            {
+                controller.ModelState.Should().ContainKey(field);
+                controller.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage
+                    .Should().Be(shared["Validation_MaxLength", field, max].Value);
+            }
+
+            var result = edit ? await controller.Edit(camp.Slug, (CampEditViewModel)model) : await controller.Register(model);
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+
+            controller.ModelState.Clear();
+            model.Name = new string('n', 256);
+            model.ContactEmail = new string('a', 244) + "@example.com";
+            model.ContactPhone = "+" + new string('1', 63);
+            model.BlurbLong = new string('x', 4000);
+            model.BlurbShort = new string('x', 1000);
+            model.Languages = new string('x', 256);
+            model.KidsAreaDescription = new string('x', 2000);
+            model.PerformanceTypes = new string('x', 1000);
+            validator.Validate(controller.ControllerContext, null, "", model);
+            controller.ModelState.IsValid.Should().BeTrue();
+
+            controller.ModelState.Clear();
+            model.ContactEmail = "invalid email";
+            validator.Validate(controller.ControllerContext, null, "", model);
+            controller.ModelState.Should().ContainKey("ContactEmail");
+            controller.ModelState["ContactEmail"]!.Errors.Should().ContainSingle().Which.ErrorMessage
+                .Should().Be(shared["Validation_EmailAddress"].Value);
+        }
+        _camps.ReceivedCalls().Should().NotContain(call =>
+            call.GetMethodInfo().Name == "CreateCampAsync" || call.GetMethodInfo().Name == "UpdateCampAsync");
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task RegistrationAndRenewal_LocalizeRuleFailures(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var localizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
+        var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        var reservedKey = "Camps_Flash_ReservedName";
+        _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0,
+                default!, null, 0, default)
+            .ReturnsForAnyArgs(Task.FromException<Camp>(new InvalidOperationException(reservedKey)));
+        var controller = BuildController(userId, localizer);
+        var model = new CampRegisterViewModel { Name = "Register" };
+
+        (await controller.Register(model)).Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        var expected = localizer[reservedKey, model.Name];
+        expected.ResourceNotFound.Should().BeFalse();
+        controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
+
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: userId);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        foreach (var key in new[]
+        {
+            "Camps_Flash_SeasonNotOpen", "Camps_Flash_SeasonAlreadyExists", "Camps_Flash_NoPreviousSeason"
+        })
+        {
+            _camps.OptInToSeasonAsync(camp.Id, 2027, Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<CampSeason>(new InvalidOperationException(key)));
+            (await controller.OptIn(camp.Slug, 2027)).Should().BeOfType<RedirectToActionResult>();
+            expected = localizer[key, 2027];
+            expected.ResourceNotFound.Should().BeFalse();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task Register_LocalizesThePhoneFieldInValidationErrors(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var campsLocalizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
+        var sharedLocalizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(2026, [2026]));
+        var controller = BuildController(Guid.NewGuid(), campsLocalizer, sharedLocalizer);
+        var model = new CampRegisterViewModel { ContactPhone = "612 345 678" };
+
+        var result = await controller.Register(model);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        var label = campsLocalizer["Camp_ContactPhoneLabel"];
+        label.ResourceNotFound.Should().BeFalse();
+        var expected = sharedLocalizer["Validation_PhoneE164", label.Value];
+        expected.ResourceNotFound.Should().BeFalse();
+        controller.ModelState[nameof(model.ContactPhone)]!.Errors.Should().ContainSingle()
+            .Which.ErrorMessage.Should().Be(expected.Value);
+        _camps.ReceivedCalls().Should().NotContain(call => call.GetMethodInfo().Name == "CreateCampAsync");
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task UploadImage_LocalizesValidationFailures(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var localizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
+        var userId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: userId);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var controller = BuildController(userId, localizer);
+        using var content = new MemoryStream([1]);
+        var file = new FormFile(content, 0, 1, "file", "camp.jpg") { Headers = new HeaderDictionary(), ContentType = "image/jpeg" };
+        foreach (var key in new[]
+        {
+            "Camps_Validation_ImageCount", "Camps_Validation_ImageType", "Camps_Validation_ImageSize",
+            "Camps_Validation_ImageFilenameLength", "Camps_Validation_ImageExtension"
+        })
+        {
+            _camps.UploadImageAsync(camp.Id, Arg.Any<Stream>(), "camp.jpg", "image/jpeg", 1, Arg.Any<CancellationToken>())
+                .Returns(CampImageUploadResult.Failure(key));
+
+            await controller.UploadImage(camp.Slug, file);
+
+            var expected = localizer[key];
+            expected.ResourceNotFound.Should().BeFalse();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task SelfMembershipActions_LocalizeRuleFailures(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var localizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
+        var userId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
+        var controller = BuildController(userId, localizer);
+
+        foreach (var key in new[] { "Camps_Flash_RoleMemberNotFound", "Camps_Flash_LeaveRequiresActive" })
+        {
+            _camps.LeaveCampAsync(memberId, userId, Arg.Any<CancellationToken>())
+                .Returns(CampMembershipMutationResult.Failure(key));
+            await controller.LeaveMembership(camp.Slug, memberId);
+            var expected = localizer[key];
+            expected.ResourceNotFound.Should().BeFalse();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
+        }
+        foreach (var key in new[] { "Camps_Flash_RoleMemberNotFound", "Camps_Flash_WithdrawRequiresPending" })
+        {
+            _camps.WithdrawCampMembershipRequestAsync(memberId, userId, Arg.Any<CancellationToken>())
+                .Returns(Task.FromException(new InvalidOperationException(key)));
+            await controller.WithdrawMembershipRequest(camp.Slug, memberId);
+            var expected = localizer[key];
+            expected.ResourceNotFound.Should().BeFalse();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task LeadActions_LocalizeGuardFailures(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var localizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
+        var actorId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: actorId);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUserInfo(actorId)));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var logger = Substitute.For<ILogger<CampController>>();
+        var controller = BuildController(actorId, localizer, logger: logger);
+        foreach (var (action, key) in new[]
+        {
+            ("Approve", "Camps_Flash_ApproveRequiresPending"),
+            ("Reject", "Camps_Flash_RejectRequiresPending"),
+            ("Remove", "Camps_Flash_RemoveRequiresActive"),
+            ("Approve", "Camps_Flash_RoleMemberNotFound"),
+            ("Reject", "Camps_Flash_RoleMemberNotFound"),
+            ("Remove", "Camps_Flash_RoleMemberNotFound"),
+            ("RemoveHistoricalName", "Camps_Flash_CampNotFound"),
+            ("RemoveHistoricalName", "Camps_Flash_HistoricalNameNotFound"),
+            ("RemoveHistoricalName", "Camps_Flash_HistoricalNameWrongCamp"),
+            ("DeleteImage", "Camps_Flash_ImageNotFound"),
+            ("DeleteImage", "Camps_Flash_ImageWrongCamp"),
+        })
+        {
+            logger.ClearReceivedCalls();
+            var failure = new InvalidOperationException(key);
+            Task<IActionResult> result;
+            switch (action)
+            {
+                case "Approve":
+                    _camps.ApproveCampMemberAsync(camp.Id, targetId, actorId).ThrowsAsync(failure);
+                    result = controller.ApproveMembership(camp.Slug, targetId); break;
+                case "Reject":
+                    _camps.RejectCampMemberAsync(camp.Id, targetId, actorId).ThrowsAsync(failure);
+                    result = controller.RejectMembership(camp.Slug, targetId); break;
+                case "Remove":
+                    _camps.RemoveCampMemberAsync(camp.Id, targetId, actorId).ThrowsAsync(failure);
+                    result = controller.RemoveMembership(camp.Slug, targetId); break;
+                case "RemoveHistoricalName":
+                    _camps.RemoveHistoricalNameAsync(camp.Id, targetId).ThrowsAsync(failure);
+                    result = controller.RemoveHistoricalName(camp.Slug, targetId); break;
+                case "DeleteImage":
+                    _camps.DeleteImageAsync(camp.Id, targetId).ThrowsAsync(failure);
+                    result = controller.DeleteImage(camp.Slug, targetId); break;
+                default: throw new InvalidOperationException("Unknown test action");
+            }
+            (await result).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(action is "RemoveHistoricalName" or "DeleteImage" ? "Edit" : "Members");
+            var expected = localizer[key];
+            expected.ResourceNotFound.Should().BeFalse();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
+            var args = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+            args[0].Should().Be(LogLevel.Warning);
+            args[3].Should().BeNull();
+            args[2]!.ToString().Should().Contain(targetId.ToString()).And.Contain(camp.Id.ToString()).And.Contain(key);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("Approve", false)]
+    [InlineData("Reject", false)]
+    [InlineData("Remove", false)]
+    [InlineData("Withdraw", false)]
+    [InlineData("Approve", true)]
+    [InlineData("Reject", true)]
+    [InlineData("Remove", true)]
+    [InlineData("Withdraw", true)]
+    public async Task MembershipAction_LogsExpectedRejectionAndPropagatesUnexpectedFailure(string action, bool unexpected)
+    {
+        var actorId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: actorId);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUserInfo(actorId)));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        const string reason = "Camps_Flash_RoleMemberNotFound";
+        _campsLocalizer[reason].Returns(new LocalizedString(reason, "Member not found"));
+        Exception failure = unexpected ? new IOException("Storage unavailable") : new InvalidOperationException(reason);
+        switch (action)
+        {
+            case "Approve": _camps.ApproveCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure); break;
+            case "Reject": _camps.RejectCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure); break;
+            case "Remove": _camps.RemoveCampMemberAsync(camp.Id, memberId, actorId).ThrowsAsync(failure); break;
+            case "Withdraw": _camps.WithdrawCampMembershipRequestAsync(memberId, actorId).ThrowsAsync(failure); break;
+        }
+        var logger = Substitute.For<ILogger<CampController>>();
+        var controller = BuildController(actorId, logger: logger);
+        Func<Task<IActionResult>> act = action switch
+        {
+            "Approve" => () => controller.ApproveMembership(camp.Slug, memberId),
+            "Reject" => () => controller.RejectMembership(camp.Slug, memberId),
+            "Remove" => () => controller.RemoveMembership(camp.Slug, memberId),
+            "Withdraw" => () => controller.WithdrawMembershipRequest(camp.Slug, memberId),
+            _ => throw new ArgumentOutOfRangeException(nameof(action)),
+        };
+        if (unexpected)
+        {
+            await act.Should().ThrowAsync<IOException>().WithMessage("Storage unavailable");
+            logger.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+        var result = (await act()).Should().BeOfType<RedirectToActionResult>().Subject;
+        result.ActionName.Should().Be(action is "Withdraw" ? "Details" : "Members");
+        result.RouteValues!["slug"].Should().Be(camp.Slug);
+        controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Member not found");
+        var args = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(LogLevel.Warning);
+        args[3].Should().BeNull();
+        args[2]!.ToString().Should().Contain(memberId.ToString()).And.Contain(reason);
+        args[2]!.ToString().Should().Contain((action is "Withdraw" ? actorId : camp.Id).ToString());
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void ContactForm_LocalizesRequiredAndLengthMessages(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+        foreach (var (message, key, arguments) in new (string, string, object[])[]
+        {
+            ("", "Validation_Required", ["Message"]),
+            (new string('x', 2001), "Validation_MaxLength", ["Message", 2000])
+        })
+        {
+            var context = new ActionContext { HttpContext = new DefaultHttpContext { RequestServices = services } };
+            validator.Validate(context, null, "", new CampContactViewModel { Message = message });
+            var expected = localizer[key, arguments];
+            expected.ResourceNotFound.Should().BeFalse();
+            context.ModelState["Message"]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
+        }
     }
 
     [HumansFact]
@@ -472,7 +900,8 @@ public class CampControllerTests
             .Returns(Task.FromResult(camps));
     }
 
-    private CampController BuildController(Guid? userId = null)
+    private CampController BuildController(Guid? userId = null, IStringLocalizer<CampsResource>? campsLocalizer = null,
+        IStringLocalizer<SharedResource>? sharedLocalizer = null, ILogger<CampController>? logger = null)
     {
         var controller = new CampController(
             _camps,
@@ -483,9 +912,9 @@ public class CampControllerTests
             _users,
             _authorization,
             _clock,
-            NullLogger<CampController>.Instance,
-            _campsLocalizer,
-            _sharedLocalizer);
+            logger ?? NullLogger<CampController>.Instance,
+            campsLocalizer ?? _campsLocalizer,
+            sharedLocalizer ?? _sharedLocalizer);
 
         var services = new ServiceCollection();
         services.AddLogging();

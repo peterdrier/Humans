@@ -12,53 +12,53 @@ internal sealed class OfferFormViewModel
 {
     public Guid? Id { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public RideshareDirection Direction { get; set; }
 
-    [Required, StringLength(200)]
+    [Required(ErrorMessage = "Validation_Required"), StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string MemberPlaceLabel { get; set; } = string.Empty;
 
     /// <summary>Null = geocode the label.</summary>
-    [Range(-90, 90)]
+    [Range(-90, 90, ErrorMessage = "Validation_Range")]
     public double? Latitude { get; set; }
 
-    [Range(-180, 180)]
+    [Range(-180, 180, ErrorMessage = "Validation_Range")]
     public double? Longitude { get; set; }
 
     /// <summary>One place label per line, in travel order.</summary>
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string? WaypointLabels { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public string DepartureDate { get; set; } = string.Empty;
 
-    [Range(1, 30)]
+    [Range(1, 30, ErrorMessage = "Validation_Range")]
     public int ExpectedDurationDays { get; set; } = 1;
 
-    [StringLength(1000)]
+    [StringLength(1000, ErrorMessage = "Validation_MaxLength")]
     public string? OvernightPlan { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public VehicleType VehicleType { get; set; }
 
-    [Range(1, 20)]
+    [Range(1, 20, ErrorMessage = "Validation_Range")]
     public int SeatsOffered { get; set; } = 1;
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public LuggageSize LuggageCapacity { get; set; }
 
-    [StringLength(500)]
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? CapacityNote { get; set; }
 
-    [StringLength(500)]
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? Restrictions { get; set; }
 
     public bool WillingToDetour { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public CostSharing CostSharing { get; set; }
 
-    [StringLength(500)]
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? CostNote { get; set; }
 
     public bool IsEdit => Id.HasValue;

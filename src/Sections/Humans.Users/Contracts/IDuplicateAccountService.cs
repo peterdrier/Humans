@@ -14,11 +14,6 @@ public interface IDuplicateAccountService : IApplicationService
     /// across User.Email and UserEmail.Email (case-insensitive, gmail/googlemail equivalence).
     /// </summary>
     Task<IReadOnlyList<DuplicateAccountGroup>> DetectDuplicatesAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Gets detailed info about a specific duplicate group for resolution.
-    /// </summary>
-    Task<DuplicateAccountGroup?> GetDuplicateGroupAsync(Guid userId1, Guid userId2, CancellationToken ct = default);
 }
 
 /// <summary>

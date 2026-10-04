@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using AwesomeAssertions;
 using NSubstitute;
 using Humans.Agent.Services;
@@ -323,27 +324,29 @@ public class AgentToolDispatcherTests
         result.Content.Should().Contain("Proposal queued");
     }
 
-    [HumansFact]
-    public async Task RouteToIssue_reports_an_error_when_max_tokens_truncated_its_arguments()
+    [HumansTheory]
+    [InlineData("{\"title\":\"truncated")]
+    [InlineData("[]")]
+    [InlineData("{\"title\":42}")]
+    [InlineData("{\"description\":[]}")]
+    [InlineData("{\"category\":true}")]
+    public async Task RouteToIssue_reports_an_error_for_malformed_arguments(string arguments)
     {
-        // nobodies-collective/Humans#963 dispatches max_tokens-truncated tool calls instead of
-        // discarding them, which raised the question of whether route_to_issue — the one tool
-        // whose result is a canned success string — could tell the model "Proposal queued" for
-        // a payload AgentService then drops, leaving the user with no issue form. It can't:
-        // DispatchAsync parses the arguments once, up front, for every tool, so a truncated
-        // payload fails before the per-tool switch is ever reached. Pinning that ordering here
-        // because the canned success sits below it and would be wrong if the parse ever moved.
-        var dispatcher = MakeDispatcher();
+        var logger = Substitute.For<ILogger<AgentToolDispatcher>>();
+        var dispatcher = MakeDispatcher(logger: logger);
 
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.RouteToIssue,
-                """{"title":"Calendar feature","category":"Feature","description":"User asked ab"""),
+                arguments),
             userId: Guid.Parse("22222222-2222-2222-2222-222222222222"),
             Xunit.TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeTrue(
             "the model must learn the proposal failed so it can retry, not be told it was queued");
         result.Content.Should().NotContain("Proposal queued");
+        logger.ReceivedCalls().Should().ContainSingle(call =>
+            call.GetMethodInfo().Name == "Log" &&
+            (LogLevel)call.GetArguments()[0]! == LogLevel.Warning && call.GetArguments()[3] == null);
     }
 
     [HumansFact]
@@ -482,11 +485,64 @@ public class AgentToolDispatcherTests
             throw new InvalidOperationException("github unreachable");
     }
 
+    [HumansTheory]
+    [InlineData(AgentToolNames.FetchFeatureSpec, "{\"name\":42}")]
+    [InlineData(AgentToolNames.FetchSectionGuide, "{\"section\":[]}")]
+    [InlineData(AgentToolNames.FetchCommunityFaq, "{\"topic\":{}}")]
+    [InlineData(AgentToolNames.GetShiftDetails, "{\"shiftId\":true}")]
+    [InlineData(AgentToolNames.GetAuditHistory, "null")]
+    public async Task Malformed_tool_argument_types_return_an_error_without_reading_audit(string tool, string arguments)
+    {
+        var audit = new StubAuditViewer();
+        var dispatcher = MakeDispatcher(auditViewer: audit);
+
+        var result = await dispatcher.DispatchAsync(new AnthropicToolCall("t1", tool, arguments),
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.IsError.Should().BeTrue();
+        result.Content.Should().Contain("Malformed tool arguments");
+        audit.LastLimit.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetAuditHistory_dependency_invalid_operation_is_not_a_malformed_argument()
+    {
+        var audit = Substitute.For<Humans.AuditLog.Contracts.IAuditViewerService>();
+        audit.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>>(
+                new InvalidOperationException("Dependency unavailable")));
+        var dispatcher = MakeDispatcher(auditViewer: audit);
+
+        var act = () => dispatcher.DispatchAsync(new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, "{}"),
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Dependency unavailable");
+    }
+
+    [HumansFact]
+    public async Task GetShiftDetails_dependency_json_failure_is_not_a_malformed_argument()
+    {
+        var settings = Substitute.For<ISettingsService>();
+        var failure = new System.Text.Json.JsonException("Stored event settings could not be decoded");
+        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<EventSettingsInfo?>(failure));
+        var logger = Substitute.For<ILogger<AgentToolDispatcher>>();
+        var dispatcher = MakeDispatcher(burnSettings: settings, logger: logger);
+        var arguments = System.Text.Json.JsonSerializer.Serialize(new { shiftId = Guid.NewGuid() });
+
+        var act = () => dispatcher.DispatchAsync(new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails, arguments),
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<System.Text.Json.JsonException>()).Which.Should().BeSameAs(failure);
+        logger.ReceivedCalls().Should().BeEmpty();
+    }
+
     private static AgentToolDispatcher MakeDispatcher(
         Humans.AuditLog.Contracts.IAuditViewerService? auditViewer = null,
         IShiftView? shiftView = null,
         ISettingsService? burnSettings = null,
-        Humans.Base.Interfaces.IGuideContentSource? source = null)
+        Humans.Base.Interfaces.IGuideContentSource? source = null,
+        ILogger<AgentToolDispatcher>? logger = null)
     {
         var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
             new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
@@ -503,7 +559,7 @@ public class AgentToolDispatcherTests
             source, cache,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<
                 CommunityFaqReader>.Instance);
-        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<AgentToolDispatcher>.Instance;
+        logger ??= Microsoft.Extensions.Logging.Abstractions.NullLogger<AgentToolDispatcher>.Instance;
         return new AgentToolDispatcher(
             sections,
             features,

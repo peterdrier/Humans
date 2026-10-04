@@ -1,9 +1,7 @@
 using Humans.Surveys.Contracts;
 using System.Globalization;
-using System.Text.Json;
 using Humans.Base.Csv;
 using Humans.Surveys.Services;
-using Humans.Surveys.Domain;
 using NodaTime.Text;
 
 namespace Humans.Surveys.Models;
@@ -46,32 +44,13 @@ internal static class SurveyCsvExportBuilder
 
                 foreach (var q in export.Questions)
                 {
-                    cells.Add(byQuestion.TryGetValue(q.QuestionId, out var answer) ? CellValue(q, answer) : string.Empty);
+                    cells.Add(byQuestion.TryGetValue(q.QuestionId, out var answer) ? SurveyResponsesMarkdownBuilder.CellValue(q, answer) : string.Empty);
                 }
 
                 csv.WriteRow(cells.ToArray());
             }
         });
     }
-
-    /// <summary>The cell content for one answer: choice values flattened <c>a|b</c>, free text verbatim, the rating integer, or JSON for Grid selections and ranked ballots.</summary>
-    private static string CellValue(SurveyExportQuestion question, SurveyExportAnswer answer) => question.Type switch
-    {
-        SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice =>
-            string.Join("|", answer.SelectedValues),
-        SurveyQuestionType.Grid =>
-            JsonSerializer.Serialize(
-                (answer.GridSelections ?? new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal))
-                .ToDictionary(
-                    selection => selection.Key,
-                    selection => selection.Value,
-                    StringComparer.Ordinal)),
-        SurveyQuestionType.RankedChoice =>
-            answer.RankedBallot is null ? string.Empty : JsonSerializer.Serialize(answer.RankedBallot),
-        SurveyQuestionType.Rating =>
-            answer.RatingValue?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-        _ => answer.TextValue ?? string.Empty,
-    };
 
     /// <summary>Resolved prompt, suffixed with the short question id only when another question shares the same prompt.</summary>
     private static string QuestionHeader(SurveyExportQuestion question, IReadOnlyList<SurveyExportQuestion> all)

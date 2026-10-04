@@ -1,4 +1,12 @@
+using Humans.Base.Extensions;
 using AwesomeAssertions;
+using System.Security.Claims;
+using Humans.Expenses.Controllers;
+using Humans.Expenses.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using System.Globalization;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
@@ -116,6 +124,242 @@ public sealed class ExpenseReportServiceTests
         communicationPreferences: []);
 
     // ─────────────────────────────── 4.2 ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task AbandonedExpensesIndex_CancelsReadsInsteadOfShowingAnErrorView()
+    {
+        var actorId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
+        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId).Returns(new HashSet<Guid>());
+        using var request = new CancellationTokenSource();
+        var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance,
+            Substitute.For<IAuthorizationService>(), NullLogger<ExpensesController>.Instance, _localizer)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
+                    RequestAborted = request.Token
+                }
+            }
+        };
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        (await controller.Index()).Should().BeOfType<ViewResult>();
+        controller.TempData.Should().BeEmpty();
+        await request.CancelAsync();
+        Func<Task> read = async () => await controller.Index();
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, "User")]
+    [Xunit.InlineData(false, "Report")]
+    [Xunit.InlineData(false, "File")]
+    [Xunit.InlineData(true, "File")]
+    public async Task AbandonedAttachmentReads_CancelWithoutBecomingNotFound(bool inline, string boundary)
+    {
+        var (_, category) = SetupActiveYear();
+        var actorId = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(actorId, actorId, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, actorId, false, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+        await using var stream = new MemoryStream([1, 2, 3]);
+        var attachmentId = await _sut.AttachFileToLineAsync(
+            id, actorId, false, lineId, "receipt.pdf", "application/pdf", stream, Xunit.TestContext.Current.CancellationToken);
+        using var request = new CancellationTokenSource();
+        var abandon = false;
+        async ValueTask<UserInfo?> ReadActor(NSubstitute.Core.CallInfo call)
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            if (abandon && string.Equals(boundary, "Report", StringComparison.Ordinal)) await request.CancelAsync();
+            return UserInfo.Create(new User { Id = actorId }, [], [], [], null, []);
+        }
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(ReadActor);
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(async _ =>
+        {
+            if (abandon && string.Equals(boundary, "File", StringComparison.Ordinal)) await request.CancelAsync();
+            return AuthorizationResult.Success();
+        });
+        _fileStorage.TryReadAsync(ExpenseReportService.AttachmentKey(attachmentId, ".pdf"), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult<byte[]?>([4, 5, 6]);
+            });
+        var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance,
+            authorization, NullLogger<ExpensesController>.Instance, _localizer)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = request.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
+                }
+            },
+        };
+        Task<IActionResult> ReadAttachment() => inline ? controller.AttachmentView(attachmentId) : controller.Attachment(attachmentId);
+
+        var file = (await ReadAttachment()).Should().BeOfType<FileContentResult>().Subject;
+        file.FileContents.Should().Equal(4, 5, 6);
+        file.ContentType.Should().Be("application/pdf");
+        file.FileDownloadName.Should().Be(inline ? "" : "receipt.pdf");
+        abandon = true;
+        if (string.Equals(boundary, "User", StringComparison.Ordinal)) await request.CancelAsync();
+        Func<Task> read = async () => await ReadAttachment();
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
+    public async Task AbandonedNewReportForm_CancelsItsUserReadWithoutShowingAnError()
+    {
+        SetupActiveYear();
+        var actorId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
+        });
+        var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance,
+            Substitute.For<IAuthorizationService>(), NullLogger<ExpensesController>.Instance, _localizer)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = request.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
+                }
+            },
+        };
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        (await controller.New()).Should().BeOfType<ViewResult>();
+        await request.CancelAsync();
+        Func<Task> read = async () => await controller.New();
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Detail", false)]
+    [Xunit.InlineData("Detail", true)]
+    [Xunit.InlineData("Edit", false)]
+    [Xunit.InlineData("Edit", true)]
+    [Xunit.InlineData("NewLine", false)]
+    [Xunit.InlineData("NewLine", true)]
+    [Xunit.InlineData("LineEdit", false)]
+    [Xunit.InlineData("LineEdit", true)]
+    [Xunit.InlineData("LineProofs", false)]
+    [Xunit.InlineData("LineProofs", true)]
+    [Xunit.InlineData("Iban", false)]
+    [Xunit.InlineData("Iban", true)]
+    [Xunit.InlineData("Review", false)]
+    [Xunit.InlineData("Review", true)]
+    public async Task AbandonedReportPages_CancelViewerAndOwningReportReads(string page, bool cancelAfterViewer)
+    {
+        var (year, category) = SetupActiveYear();
+        var actorId = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(actorId, actorId, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, actorId, false, "Invoice", 10m,
+            lineType: ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken);
+        await SeedReportWithStatus(Guid.NewGuid(), actorId, category.Id, year.Id, ExpenseReportStatus.Submitted);
+        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId).Returns(new HashSet<Guid>());
+        var actor = UserInfo.Create(new User { Id = actorId }, [], [], [], null, []);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [actorId] = actor }));
+        using var request = new CancellationTokenSource();
+        var abandon = false;
+        async ValueTask<UserInfo?> ReadActor(NSubstitute.Core.CallInfo call)
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            if (abandon && cancelAfterViewer) await request.CancelAsync();
+            return actor;
+        }
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(ReadActor);
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Failed());
+        var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance,
+            authorization, NullLogger<ExpensesController>.Instance, _localizer)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = request.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
+                }
+            },
+        };
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        Task<IActionResult> ReadPage() => page switch
+        {
+            "Detail" => controller.Detail(id),
+            "Edit" => controller.Edit(id),
+            "NewLine" => controller.NewLine(id),
+            "LineEdit" => controller.LineEdit(id, lineId),
+            "LineProofs" => controller.LineProofs(id, lineId),
+            "Iban" => controller.Iban(id),
+            "Review" => controller.Review(),
+            _ => throw new ArgumentOutOfRangeException(nameof(page)),
+        };
+
+        (await ReadPage()).Should().BeOfType<ViewResult>();
+        controller.TempData.Should().BeEmpty();
+        abandon = true;
+        if (!cancelAfterViewer) await request.CancelAsync();
+        Func<Task> read = async () => await ReadPage();
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Review_LeavesMissingAndBlankSubmitterNamesToTheLocalizedViewFallback()
+    {
+        var (year, category) = SetupActiveYear();
+        var viewerId = Guid.NewGuid();
+        var namedId = Guid.NewGuid();
+        var blankId = Guid.NewGuid();
+        var missingId = Guid.NewGuid();
+        foreach (var userId in new[] { namedId, blankId, missingId })
+            await SeedReportWithStatus(Guid.NewGuid(), userId, category.Id, year.Id, ExpenseReportStatus.Submitted);
+        _userService.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(
+            new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
+            {
+                [namedId] = UserInfo.Create(new User { Id = namedId, BurnerName = "Known member" }, [], [], [], null, []),
+                [blankId] = UserInfo.Create(new User { Id = blankId, BurnerName = " " }, [], [], [], null, []),
+            }));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Success());
+        var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance,
+            authorization, NullLogger<ExpensesController>.Instance, _localizer)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "test")),
+                }
+            },
+        };
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+
+        var model = (await controller.Review()).Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<ExpenseReviewViewModel>().Subject;
+        model.Reports.Should().HaveCount(3);
+        model.SubmitterNames.Should().ContainSingle().Which.Should().Be(new KeyValuePair<Guid, string>(namedId, "Known member"));
+        controller.TempData.Should().BeEmpty();
+    }
 
     [HumansFact]
     public async Task CreateDraftAsync_CreatesReport_WithDraftStatusAndZeroTotal()
@@ -921,8 +1165,10 @@ public sealed class ExpenseReportServiceTests
         result.ErrorMessage.Should().Contain("receipt and invoice");
     }
 
-    [HumansFact]
-    public async Task RemoveLineAsync_InvoiceLine_RemovesItsProofRows_AndTheirFiles()
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task RemoveLineAsync_InvoiceLine_RemovesItsProofRows_AndTheirFiles(bool cancelAtAudit)
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -934,14 +1180,38 @@ public sealed class ExpenseReportServiceTests
         await _expenseRepo.AddAttachmentAsync(proofAttachment, Xunit.TestContext.Current.CancellationToken);
         await _expenseRepo.SetLineAttachmentAsync(proofId, proofAttachment.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await _sut.RemoveLineAsync(id, submitter, false, invoiceId, Xunit.TestContext.Current.CancellationToken);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>()).Returns(
+            call => new ValueTask<UserInfo?>(ReadMemberAsync(call.ArgAt<CancellationToken>(1))));
+        async Task<UserInfo?> ReadMemberAsync(CancellationToken readCt)
+        {
+            if (cancelAtAudit) await cancellation.CancelAsync();
+            readCt.ThrowIfCancellationRequested();
+            return null;
+        }
+        var fileDeleted = false;
+        var auditBeforeCleanup = false;
+        _fileStorage.DeleteAsync(
+            $"uploads/expense-attachments/{proofAttachment.Id}{proofAttachment.Extension}",
+            Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            auditBeforeCleanup = AuditLog.ReceivedCalls().Any(c =>
+                Equals(c.GetArguments()[0], AuditAction.ExpenseEditedOnBehalf));
+            if (!cancelAtAudit) await cancellation.CancelAsync();
+            call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
+            fileDeleted = true;
+        });
+
+        await _sut.RemoveLineAsync(id, Guid.NewGuid(), true, invoiceId, cancellation.Token);
 
         var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
         loaded!.Lines.Should().BeEmpty();
         loaded.Total.Should().Be(0m);
+        auditBeforeCleanup.Should().BeTrue();
+        fileDeleted.Should().BeTrue();
         await _fileStorage.Received(1).DeleteAsync(
             $"uploads/expense-attachments/{proofAttachment.Id}{proofAttachment.Extension}",
-            Arg.Any<CancellationToken>());
+            CancellationToken.None);
     }
 
     [HumansFact]
@@ -2088,16 +2358,22 @@ public sealed class ExpenseReportServiceTests
             actor);
     }
 
-    [HumansFact]
-    public async Task ApproveAsync_EmailsTheSubmitter_WithTheCappedAmountAndAMaskedIban()
+    [HumansTheory]
+    [Xunit.InlineData("es", "es", "25,00 €")]
+    [Xunit.InlineData("", "en", "25.00 €")]
+    [Xunit.InlineData(" ", "en", "25.00 €")]
+    [Xunit.InlineData("not-a-culture", "en", "25.00 €")]
+    [Xunit.InlineData("pt", "en", "25.00 €")]
+    public async Task ApproveAsync_EmailsTheSubmitter_WithTheCappedAmountAndAMaskedIban(string language, string expectedCulture, string amount)
     {
+        using var actorCulture = new CultureScope("fr");
         // peterdrier/Humans#1820: the one moment a member hears that money is coming.
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var reportId = Guid.NewGuid();
         await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted, payeeIban: "ES9121000418450200051332", total: 40m);
-        StubSubmitter(submitter, "Ana", "ana@example.com", "es");
+        StubSubmitter(submitter, "Ana", "ana@example.com", language);
 
         var ok = await _sut.ApproveAsync(reportId, Guid.NewGuid(), null, 25m, Xunit.TestContext.Current.CancellationToken);
         ok.Should().BeTrue();
@@ -2106,8 +2382,8 @@ public sealed class ExpenseReportServiceTests
             Arg.Is<EmailMessage>(m => m.TemplateName == "expense_approved"
                 && m.RecipientEmail == "ana@example.com"
                 && m.RecipientName == "Ana"
-                && m.Subject.EndsWith("#es")
-                && m.HtmlBody.Contains("25,00 €")
+                && m.Subject.EndsWith("#" + expectedCulture, StringComparison.Ordinal)
+                && m.HtmlBody.Contains(amount, StringComparison.Ordinal)
                 && m.HtmlBody.Contains("ES91****332")
                 && !m.HtmlBody.Contains("ES9121000418450200051332")
                 && m.HtmlBody.Contains($"{TestExpensesEmails.BaseUrl}/Expenses/{reportId}")),

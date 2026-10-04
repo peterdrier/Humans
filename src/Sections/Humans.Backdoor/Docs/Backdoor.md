@@ -53,7 +53,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | Route | Access | Serves |
 |-------|--------|--------|
 | `/api/backdoor/logs` | read | The in-memory log ring (`InMemoryLogSink`, Base) |
-| `/api/backdoor/agent/conversations` | read | Agent conversation transcripts — list, one conversation, its messages — via `IAgentTranscriptRead` |
+| `/api/backdoor/agent/conversations` | read | Agent conversation transcripts — list, one conversation, its messages; list previews retain a 200 UTF-16 code-unit cap without splitting Unicode surrogate pairs — via `IAgentTranscriptRead` |
 | `/api/backdoor/issues` | read + write | The issue queue, via `IIssueTriage` |
 | `/api/backdoor/feedback` | read + write | The feedback queue, via `IFeedbackTriage` |
 | `/api/backdoor/surveys` | read | Survey definitions, responses and aggregates, via `ISurveyAnalysisRead` |
@@ -81,6 +81,8 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 | Admin | All Board capabilities. Additionally: allocate, rotate and revoke anyone's key from `/Backdoor` |
 
 ## Invariants
+
+- Issues list/detail/comments GETs and legacy Feedback list/detail/messages GETs pass request cancellation to their existing read contracts, including issue display-name reads. Write calls retain their existing cancellation boundaries.
 
 - A key resolves to exactly one human, and that human is installed as the request principal — `ClaimTypes.NameIdentifier` plus one `ClaimTypes.Role` claim per active role assignment — so every write records a real actor and every log line is enriched with them. The Issues queue read consults those role claims to scope its result (see below), and the Notifications read passes the whole principal on so its meters are role-gated the same way the bell is; Agent, Feedback, Logs, Store, and Surveys reads do not. Finance's routes authorize imperatively: each action calls `IAuthorizationService.AuthorizeAsync` against the installed principal — `PolicyNames.FinanceAdminOrAdmin` for the finance-wide routes (creditor accounts, ledger, category map, SEPA transfers, Holded sync), and `PolicyNames.ExpenseReportView` (a named policy Expenses' own `SectionPolicies` registers, wrapping its internal `ExpenseReportOperationRequirement(View)`/handler) for a single report or attachment — the same check `ExpensesController` uses, not a bespoke Backdoor check (peterdrier/Humans#1838).
 - Every `/api/backdoor/issues/*` route is fetched as the key's owner — id, roles and admin flag — so a Board-only key lists the Board-only queue, and an issue whose id it happens to hold but whose queue would not list it is a 404 to read, to comment on and to patch. Issues enforces that itself, on the same `IssueSectionRouting.CanHandle` the browser reads, so a key reaches exactly as far as its holder does in the browser.

@@ -17,12 +17,19 @@ window.initGateKeypad = function (container, onComplete) {
     var pad = container.querySelector('[data-gate-pad]');
     var value = '';
     var done = false;
+    var completionTimer = null;
 
     function render() {
         dots.forEach(function (dot, i) { dot.classList.toggle('gate-dot-filled', i < value.length); });
     }
 
-    function reset() { value = ''; done = false; render(); }
+    function reset() {
+        clearTimeout(completionTimer);
+        completionTimer = null;
+        value = '';
+        done = false;
+        render();
+    }
 
     if (pad) {
         pad.addEventListener('click', function (e) {
@@ -39,7 +46,10 @@ window.initGateKeypad = function (container, onComplete) {
                 done = true; // lock further taps until reset, so a stray tap can't queue a 5th digit
                 var pin = value;
                 // Let the 4th dot paint before we submit/navigate.
-                setTimeout(function () { onComplete(pin); }, 120);
+                completionTimer = setTimeout(function () {
+                    completionTimer = null;
+                    onComplete(pin);
+                }, 120);
             }
         });
     }

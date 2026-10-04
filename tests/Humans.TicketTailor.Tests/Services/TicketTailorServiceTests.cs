@@ -7,8 +7,11 @@ namespace Humans.TicketTailor.Tests.Services;
 
 public class TicketTailorServiceTests
 {
-    [HumansFact]
-    public async Task GetOrdersAsync_TimesEachPageSeparately_NotTheWholeLoop()
+    [HumansTheory]
+    [Xunit.InlineData("GetOrdersAsync")]
+    [Xunit.InlineData("GetIssuedTicketsAsync")]
+    [Xunit.InlineData("GetCheckInsAsync")]
+    public async Task PaginatedRead_TimesEachPageSeparately_NotTheWholeLoop(string operation)
     {
         // nobodies-collective/Humans#946: HttpClient.Timeout applies per request and the timing extension's Error
         // threshold is calibrated for one request — timing the whole paginated loop instead
@@ -18,21 +21,32 @@ public class TicketTailorServiceTests
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
-            data = new[] { new { id = "ord_1", total = 100, status = "completed", created_at = 1716811200L } },
+            data = new[] { new { id = "ord_1", issued_ticket_id = "ticket_1", quantity = 1, total = 100, status = "completed", created_at = 1716811200L } },
             links = new { next = "more" }
         });
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
-            data = new[] { new { id = "ord_2", total = 100, status = "completed", created_at = 1716811200L } },
+            data = new[] { new { id = "ord_2", issued_ticket_id = "ticket_2", quantity = 1, total = 100, status = "completed", created_at = 1716811200L } },
             links = new { next = (string?)null }
         });
 
         var registry = OperationTimingRegistry.Instance;
-        const string key = "TicketTailorService.GetOrdersAsync";
+        var key = $"TicketTailorService.{operation}";
         var before = registry.GetTimings().FirstOrDefault(t => string.Equals(t.Key, key, StringComparison.Ordinal))?.Count ?? 0;
 
         var service = TicketTailorTestHost.CreateService(handler);
-        await service.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+        switch (operation)
+        {
+            case "GetOrdersAsync":
+                await service.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+                break;
+            case "GetIssuedTicketsAsync":
+                await service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+                break;
+            case "GetCheckInsAsync":
+                await service.GetCheckInsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+                break;
+        }
 
         var after = registry.GetTimings().Single(t => string.Equals(t.Key, key, StringComparison.Ordinal)).Count;
         (after - before).Should().Be(2, "one timing scope should be recorded per page, not once for the whole call");

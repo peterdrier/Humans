@@ -12,31 +12,31 @@ internal sealed class RequestFormViewModel
 {
     public Guid? Id { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public RideshareDirection Direction { get; set; }
 
-    [Required, StringLength(200)]
+    [Required(ErrorMessage = "Validation_Required"), StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string PickupPlaceLabel { get; set; } = string.Empty;
 
     /// <summary>Null = geocode the label.</summary>
-    [Range(-90, 90)]
+    [Range(-90, 90, ErrorMessage = "Validation_Range")]
     public double? Latitude { get; set; }
 
-    [Range(-180, 180)]
+    [Range(-180, 180, ErrorMessage = "Validation_Range")]
     public double? Longitude { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public string DesiredDate { get; set; } = string.Empty;
 
-    [Range(1, 20)]
+    [Range(1, 20, ErrorMessage = "Validation_Range")]
     public int PartySize { get; set; } = 1;
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public LuggageSize LuggageLoad { get; set; }
 
     public bool CanContributeToFuel { get; set; } = true;
 
-    [StringLength(1000)]
+    [StringLength(1000, ErrorMessage = "Validation_MaxLength")]
     public string? Notes { get; set; }
 
     public bool IsEdit => Id.HasValue;

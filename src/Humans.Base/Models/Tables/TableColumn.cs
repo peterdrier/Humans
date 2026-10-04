@@ -83,6 +83,9 @@ public sealed class TableColumnOptions
         string.IsNullOrEmpty(current) ? addition : $"{current} {addition}";
 }
 
+/// <summary>
+/// Formats currency and number cells in the UI culture, keeping sort values invariant.
+/// </summary>
 public sealed class TableColumn<TRow>(
     string header,
     CellFormat format,
@@ -125,8 +128,8 @@ public sealed class TableColumn<TRow>(
         {
             CellFormat.Date => Encoded(((Instant)raw).ToDate()),
             CellFormat.DateTime => Encoded(((Instant)raw).ToDateTime()),
-            CellFormat.Currency => Encoded(ToDecimal(raw).ToString("N2", CultureInfo.CurrentCulture)),
-            CellFormat.Number => Encoded(ToDecimal(raw).ToString("#,##0.##", CultureInfo.CurrentCulture)),
+            CellFormat.Currency => Encoded(ToDecimal(raw).ToString("N2", CultureInfo.CurrentUICulture)),
+            CellFormat.Number => Encoded(ToDecimal(raw).ToString("#,##0.##", CultureInfo.CurrentUICulture)),
             CellFormat.EnumBadge => Badge((Enum)raw),
             CellFormat.BoolIcon => (bool)raw ? CheckContent : NullContent,
             _ => Encoded(raw.ToString() ?? string.Empty),

@@ -136,19 +136,19 @@ internal sealed class WorkgroupFormViewModel
 
     public string? Slug { get; init; }
 
-    [Required]
-    [StringLength(200)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string Name { get; set; } = string.Empty;
 
     /// <summary>Matches the 4,000-character <c>workgroups.Purpose</c> column, so an overlong
     /// paste is a validation error on the form rather than a SaveChangesAsync failure.</summary>
-    [Required]
-    [StringLength(4000)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(4000, ErrorMessage = "Validation_MaxLength")]
     public string Purpose { get; set; } = string.Empty;
 
     /// <summary>The group's promise, in one line. Changing it writes a ScopeChanged entry.</summary>
-    [Required]
-    [StringLength(500)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string Deliverable { get; set; } = string.Empty;
 
     public WorkgroupDeliverableKind DeliverableKind { get; set; }
@@ -157,7 +157,7 @@ internal sealed class WorkgroupFormViewModel
 
     public LocalDate? TargetDate { get; set; }
 
-    [StringLength(500)]
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? DiscordChannelUrl { get; set; }
 
     /// <summary>Optional second name on the register; the applicant is always the first.</summary>
@@ -190,15 +190,15 @@ internal sealed class MeetingFormViewModel
 
     public required string Slug { get; init; }
 
-    [Required]
-    [StringLength(200)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string Title { get; set; } = string.Empty;
 
     public Instant StartUtc { get; set; }
 
     public Instant EndUtc { get; set; }
 
-    [StringLength(200)]
+    [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string? Location { get; set; }
 
     public string? LocationUrl { get; set; }
@@ -237,10 +237,10 @@ internal sealed class LogEntryFormViewModel
 
     public LocalDate OccurredOn { get; set; }
 
-    [StringLength(200)]
+    [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string? Title { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public string Body { get; set; } = string.Empty;
 
     public static LogEntryFormViewModel FromEntry(string slug, WorkgroupLogEntryInfo e) => new()
@@ -262,8 +262,8 @@ internal sealed class DocumentFormViewModel
 
     public required string Slug { get; init; }
 
-    [Required]
-    [StringLength(200)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string Title { get; set; } = string.Empty;
 
     public WorkgroupDocumentKind Kind { get; set; }

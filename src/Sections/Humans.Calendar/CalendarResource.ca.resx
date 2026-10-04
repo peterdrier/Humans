@@ -164,4 +164,5 @@
   <data name="Calendar_IcalRegenerateConfirm" xml:space="preserve"><value>Això invalidarà l'URL actual. Continuar?</value></data>
   <data name="Calendar_IcalRegenerate" xml:space="preserve"><value>Regenerar l'URL</value></data>
   <data name="Calendar_IcalRegenerated" xml:space="preserve"><value>URL d'iCal regenerada.</value></data>
+  <data name="Calendar_NoAuditHistory" xml:space="preserve"><value>No hi ha historial d’auditoria.</value></data>
 </root>

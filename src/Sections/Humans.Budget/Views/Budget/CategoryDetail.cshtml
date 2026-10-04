@@ -78,7 +78,7 @@
     <div class="mb-4">
         <div class="d-flex justify-content-between mb-1">
             <small class="text-muted">@Localizer["Budget_Utilization"]</small>
-            <small class="text-muted">@pct.ToString("N0")%</small>
+            <small class="text-muted">@pct.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)%</small>
         </div>
         <div class="progress" style="height: 8px;">
             <div class="progress-bar @barClass" style="width: @Math.Min(pct, 100).ToString("N0")%"></div>

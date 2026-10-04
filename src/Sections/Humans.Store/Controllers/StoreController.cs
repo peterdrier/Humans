@@ -29,7 +29,7 @@ internal sealed class StoreController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         // Full store admins and TeamsAdmins read every counterparty; TeamsAdmins
@@ -67,7 +67,7 @@ internal sealed class StoreController(
     [HttpGet("Order/{id:guid}")]
     public async Task<IActionResult> Order(Guid id, CancellationToken ct)
     {
-        var (errorResult, _) = await RequireCurrentUserAsync();
+        var (errorResult, _) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var order = await storeService.GetOrderAsync(id, ct);

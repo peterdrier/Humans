@@ -228,7 +228,7 @@
                             <span class="badge @GetPhaseBadge(item.Signup.Shift, es)">@GetPhase(item.Signup.Shift, es)</span>
                         </text>;
                         Func<MySignupItem, IHtmlContent> pastStatusCell = @<text>
-                            <span class="badge bg-secondary">@item.Signup.Status</span>
+                            <span class="badge bg-secondary">@Localizer.EnumDisplay(item.Signup.Status)</span>
                         </text>;
                         var pastTable = TableModel.For(Model.Past)
                             .Column(Localizer["Shifts_Department"].Value, r => r.DepartmentName)

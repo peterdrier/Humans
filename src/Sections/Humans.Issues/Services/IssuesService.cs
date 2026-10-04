@@ -205,7 +205,9 @@ internal sealed class IssuesService(
             return null;
 
         var result = string.Join(" | ", parts);
-        return result.Length > 2000 ? result[..2000] : result;
+        if (result.Length <= 2000) return result;
+        var length = char.IsHighSurrogate(result[1999]) && char.IsLowSurrogate(result[2000]) ? 1999 : 2000;
+        return result[..length];
     }
 
     // ─── Reads ───
@@ -532,9 +534,9 @@ internal sealed class IssuesService(
             await UpdateStatusAsync(issueId, viewer, newStatus, actorUserId, ct);
             return IssueMutationResult.Success();
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            logger.LogWarning(ex, "Issue {IssueId} not found during UpdateStatus", issueId);
+            logger.LogWarning("Issue {IssueId} not found during UpdateStatus", issueId);
             return IssueMutationResult.Missing("Issue not found.");
         }
         catch (Exception ex)
@@ -599,9 +601,9 @@ internal sealed class IssuesService(
             await UpdateAssigneeAsync(issueId, viewer, newAssigneeUserId, actorUserId, ct);
             return IssueMutationResult.Success();
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            logger.LogWarning(ex, "Issue {IssueId} not found during UpdateAssignee", issueId);
+            logger.LogWarning("Issue {IssueId} not found during UpdateAssignee", issueId);
             return IssueMutationResult.Missing("Issue not found.");
         }
         catch (Exception ex)
@@ -659,7 +661,7 @@ internal sealed class IssuesService(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Issue {IssueId} UpdateSection rejected: {Reason}", issueId, ex.Message);
+            logger.LogWarning("Issue {IssueId} UpdateSection rejected: {Reason}", issueId, ex.Message);
             return IssueMutationResult.Failed(ex.Message);
         }
         catch (Exception ex)
@@ -698,9 +700,9 @@ internal sealed class IssuesService(
             await SetGitHubIssueNumberAsync(issueId, viewer, githubIssueNumber, actorUserId, ct);
             return IssueMutationResult.Success();
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            logger.LogWarning(ex, "Issue {IssueId} not found during SetGitHubIssue", issueId);
+            logger.LogWarning("Issue {IssueId} not found during SetGitHubIssue", issueId);
             return IssueMutationResult.Missing("Issue not found.");
         }
         catch (Exception ex)
@@ -802,6 +804,8 @@ internal sealed class IssuesService(
             i.Section,
             i.Status,
             i.PageUrl,
+            i.UserAgent,
+            i.AdditionalContext,
             CreatedAt = i.CreatedAt.ToIso8601(),
             ResolvedAt = i.ResolvedAt.ToIso8601(),
             Comments = i.Comments.OrderBy(c => c.CreatedAt).Select(c => new
@@ -934,13 +938,14 @@ internal sealed class IssuesService(
             emails.TryGetValue(issue.ReporterUserId, out var to) &&
             !string.IsNullOrWhiteSpace(to))
         {
+            var language = reporter.PreferredLanguage;
             await email.SendAsync(emailMessages.IssueComment(
                 to,
                 reporter.BurnerName,
                 issue.Title,
                 comment.Content,
                 $"/Issues/{issue.Id}",
-                reporter.PreferredLanguage),
+                language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode),
                 ct);
         }
         else
@@ -1096,7 +1101,11 @@ internal sealed class IssuesService(
     {
         var people = await users.GetUserInfosAsync(recipients, ct);
         foreach (var group in recipients.GroupBy(
-                     id => people.GetValueOrDefault(id)?.PreferredLanguage ?? "en",
+                     id =>
+                     {
+                         var language = people.GetValueOrDefault(id)?.PreferredLanguage;
+                         return language.IsSupportedCultureCode() ? language! : "en";
+                     },
                      StringComparer.OrdinalIgnoreCase))
         {
             try

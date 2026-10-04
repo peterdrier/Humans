@@ -20,6 +20,14 @@ internal static class ProfilePictureProcessor
                 image.Resize(new MagickGeometry(MaxProfilePictureLongSide, MaxProfilePictureLongSide));
             }
 
+            // Display the photo without publishing its location or camera metadata.
+            var colorProfile = image.GetColorProfile();
+            image.Strip();
+            if (colorProfile is not null)
+            {
+                image.SetProfile(colorProfile);
+            }
+
             image.Format = MagickFormat.Jpeg;
             image.Quality = 85;
             return (image.ToByteArray(), "image/jpeg");

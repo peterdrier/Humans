@@ -87,18 +87,8 @@
         container.innerHTML = html;
     }
 
-    function debounce(fn, delay) {
-        var timer;
-        return function () {
-            var args = arguments;
-            clearTimeout(timer);
-            timer = setTimeout(function () {
-                fn.apply(null, args);
-            }, delay);
-        };
-    }
-
-    document.addEventListener('input', debounce(function (e) {
+    var searches = new WeakMap();
+    document.addEventListener('input', function (e) {
         var input = e.target;
         if (!input.classList.contains('volunteer-search-input')) {
             return;
@@ -111,17 +101,30 @@
             return;
         }
 
+        var state = searches.get(input);
+        if (!state) {
+            state = { version: 0, timer: null };
+            searches.set(input, state);
+        }
+        clearTimeout(state.timer);
+        var version = ++state.version;
+        resultsDiv.innerHTML = '';
         if (query.length < 2) {
-            resultsDiv.innerHTML = '';
             return;
         }
 
-        var url = searchUrl + '?shiftId=' + encodeURIComponent(shiftId) + '&query=' + encodeURIComponent(query);
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(function (resp) { return resp.json(); })
-            .then(function (data) { renderResults(data, shiftId, resultsDiv); })
-            .catch(function () {
-                resultsDiv.innerHTML = '<p class="text-danger small mb-0">' + escapeHtml(errorText) + '</p>';
-            });
-    }, 300));
+        state.timer = setTimeout(function () {
+            var url = searchUrl + '?shiftId=' + encodeURIComponent(shiftId) + '&query=' + encodeURIComponent(query);
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (resp) { return resp.json(); })
+                .then(function (data) {
+                    if (version !== state.version) return;
+                    renderResults(data, shiftId, resultsDiv);
+                })
+                .catch(function () {
+                    if (version !== state.version) return;
+                    resultsDiv.innerHTML = '<p class="text-danger small mb-0">' + escapeHtml(errorText) + '</p>';
+                });
+        }, 300);
+    });
 }());

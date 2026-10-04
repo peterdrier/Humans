@@ -104,16 +104,18 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         rec.AvailableDayOffsets.Should().BeEquivalentTo([-3, -2]);
     }
 
-    [HumansFact]
-    public async Task SetDayAvailability_RemovesOffset()
+    [HumansTheory]
+    [Xunit.InlineData(-2)]
+    [Xunit.InlineData(-15)]
+    public async Task SetDayAvailability_RemovesOffset(int dayOffset)
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        await _service.SetAvailabilityAsync(userId, esId, [-3, -2]);
+        await _service.SetAvailabilityAsync(userId, esId, [-3, dayOffset]);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, -2, false, Xunit.TestContext.Current.CancellationToken);
+            userId, esId, dayOffset, false, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeTrue();
         var rec = await ShiftsDb.GeneralAvailability.AsNoTracking()
@@ -121,32 +123,38 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         rec.AvailableDayOffsets.Should().BeEquivalentTo([-3]);
     }
 
-    [HumansFact]
-    public async Task SetDayAvailability_CreatesRowWhenNoneExists()
+    [HumansTheory]
+    [Xunit.InlineData(-14)]
+    [Xunit.InlineData(-1)]
+    public async Task SetDayAvailability_CreatesRowWhenNoneExists(int dayOffset)
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, -1, true, Xunit.TestContext.Current.CancellationToken);
+            userId, esId, dayOffset, true, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeTrue();
         var rec = await ShiftsDb.GeneralAvailability.AsNoTracking()
             .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         rec.Should().NotBeNull();
-        rec.AvailableDayOffsets.Should().BeEquivalentTo([-1]);
+        rec.AvailableDayOffsets.Should().BeEquivalentTo([dayOffset]);
     }
 
-    [HumansFact]
-    public async Task SetDayAvailability_RejectsPositiveOffset()
+    [HumansTheory]
+    [Xunit.InlineData(-15, false)]
+    [Xunit.InlineData(0, false)]
+    [Xunit.InlineData(2, false)]
+    [Xunit.InlineData(-2, true)]
+    public async Task SetDayAvailability_RejectsOffsetOutsideKnownBuildPeriod(int dayOffset, bool missingCalendar)
     {
         var userId = Guid.NewGuid();
-        var esId = SeedEventSettings();
+        var esId = missingCalendar ? Guid.NewGuid() : SeedEventSettings();
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, 2, true, Xunit.TestContext.Current.CancellationToken);
+            userId, esId, dayOffset, true, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeFalse();
         var rec = await ShiftsDb.GeneralAvailability.AsNoTracking()

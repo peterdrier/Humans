@@ -1,4 +1,5 @@
 using Humans.Shifts.Domain;
+using AwesomeAssertions;
 using System.Security.Claims;
 using Humans.Onboarding;
 using Humans.Shifts.Services.Dtos;
@@ -76,6 +77,41 @@ public class ShiftsControllerUserActiveSignupsTests
 
         _shiftView.GetUserAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new ShiftUserView(_userId, null, null, null, [], []));
+    }
+
+    [HumansTheory]
+    [InlineData(false, "viewer")]
+    [InlineData(false, "rows")]
+    [InlineData(true, "viewer")]
+    [InlineData(true, "rows")]
+    [InlineData(true, "event")]
+    [InlineData(true, "teams")]
+    public async Task MemberPageReads_ObserveRequestCancellation(bool mine, string boundary)
+    {
+        var controller = BuildSut();
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        controller.HttpContext.RequestAborted = aborted.Token;
+        _signupService.GetByUserAsync(_userId).Returns([]);
+        if (string.Equals(boundary, "viewer", StringComparison.Ordinal))
+            _userService.GetUserInfoAsync(_userId, aborted.Token)
+                .Returns(ValueTask.FromCanceled<UserInfo?>(aborted.Token));
+        else if (string.Equals(boundary, "event", StringComparison.Ordinal))
+            _burnSettings.GetActiveAsync(aborted.Token).Returns(Task.FromCanceled<BurnSettingsInfo?>(aborted.Token));
+        else if (string.Equals(boundary, "rows", StringComparison.Ordinal))
+            _shiftView.GetUserAsync(_userId, aborted.Token)
+                .Returns(ValueTask.FromCanceled<ShiftUserView>(aborted.Token));
+        else
+        {
+            _shiftView.GetUserAsync(_userId, Arg.Any<CancellationToken>()).Returns(
+                new ShiftUserView(_userId, null, null, null, [],
+                    [MakeSignup(ActiveBurnId, "Gate", 1, new LocalTime(10, 0), SignupStatus.Confirmed)]));
+            _teamService.GetTeamsAsync(aborted.Token)
+                .Returns(Task.FromCanceled<IReadOnlyDictionary<Guid, TeamInfo>>(aborted.Token));
+        }
+
+        var act = () => mine ? controller.Mine() : controller.Index(null, null, null, null);
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]

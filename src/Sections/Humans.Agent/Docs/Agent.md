@@ -67,6 +67,8 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 
 `FeedbackReport.Source` (`FeedbackSource` enum: `UserReport`, `AgentUnresolved`) and `FeedbackReport.AgentConversationId` (plain nullable Guid column, no EF FK constraint, no nav property). Owned by Feedback section. The Agent no longer writes these — historical rows produced by the original `route_to_feedback` auto-create flow remain queryable through the Feedback admin filter. Cross-section linkage was by FK column only.
 
+The member history page uses localized labels, including the link to each transcript, in all six supported cultures.
+
 ## Actors & Roles
 
 | Actor | Capability |
@@ -76,6 +78,12 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 | Anyone else (anonymous) | Widget not rendered; endpoints return 401 |
 
 ## Invariants
+
+- FAQ overview routing summaries keep their 200-character prefix and word-boundary trimming without splitting UTF-16 surrogate pairs; complete source bodies are unchanged.
+
+Admin conversation-list paging clamps negative page numbers to zero and calculates offsets without integer overflow. A page beyond the available history stays empty rather than wrapping into earlier conversations; the Older link also stays within the integer page range.
+
+Conversation list and transcript GETs propagate request cancellation through viewer resolution before their conversation reads; ownership denials remain 404.
 
 1. **Terms link, not gate.** The Assistant panel shows a persistent "AI Terms" link below the composer that opens `/Legal/agent-chat` (the rendered Agent Chat Terms from `nobodies-collective/legal`). There is no explicit consent step — opening the panel and sending a message constitutes use; the terms describe what's sent, retention, and rights. The team-required-doc consent flow (`IConsentServiceRead.GetPendingDocumentNamesAsync`) is intentionally NOT used here; agent use is opt-in, not a membership precondition.
 <!-- NOTE: Data sent to Anthropic per turn: display name, preferred locale, tier, approved flag, role assignments (names + expiry), team memberships (names only), consent pending list, open ticket IDs, open feedback IDs, open shift IDs, and conversation messages. Data NOT sent: email, phone, birthday, dietary/medical fields, payment info, profile picture, other users' personal data. Anthropic DPA: 30-day retention for abuse monitoring, no training on API inputs. GDPR export (IUserDataContributor) and retention purge (AgentConversationRetentionJob) cover the full lifecycle. -->
@@ -90,8 +98,12 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
    `Help_Agent_IssueProposed` key so the live reply and transcript cannot drift.
    The widget’s browser error/status messages and Close label are localized too; its
    rendered data attributes supply all browser messages, including the handoff fallback.
+   Interrupted streams retain partial answers and issue handoffs with a localized error
+   note. EOF without a finalizer is an interruption; a received finalizer protects the
+   completed reply from subsequent transport failures.
 7. **Append-only conversations per user.** A user can only post to conversations they own. `AgentController` rejects cross-user access with 404.
 8. **Issue handoff is propose-only.** `route_to_issue` carries `{title, category, description}`. The dispatcher never writes a row server-side; the SSE stream emits an `issueProposal` token and the client opens the Issues submission modal pre-filled. The user reviews and submits via `/Issues/Submit`. Historical legacy auto-created `FeedbackReport.AgentConversationId` links are immutable.
+   Unrecognized categories, including undefined numeric enum values, fall back to Question.
 <!-- route_to_issue is propose-only; do not revert to server-side auto-creation of FeedbackReport rows. -->
 9. **Retention.** Conversations older than `AgentSettings.RetentionDays` are hard-deleted daily.
 10. **Single provider.** One `AnthropicClient` instance, one configured model at a time. No multi-provider fallback in Phase 1.
@@ -99,7 +111,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 12. **A doc-fetch miss is recoverable, never a dead end.** `fetch_section_guide` / `fetch_feature_spec` / `fetch_community_faq` name the accepted keys in their error string so the model can correct its own call. `AgentSectionKeys` (`Humans.Agent.Contracts`) owns the accepted key set and additionally resolves the help-widget key namespace onto section keys (`Profile`/`Profiles`→`Users`, `OnboardingReview`→`Onboarding`, `LegalAndConsent`→`Consent`, `Admin`/`Board`→`Governance`, `Barrios`→`Camps`, `CityPlanning*`→`CityPlanning`, `ContainerMap`→`Containers`); every alias target must be whitelisted, and every glossary heading the preload corpus emits must resolve.
 <!-- NOTE: Model default is Sonnet 4.6 (not Haiku). Prototype validated that Haiku is ~3x cheaper (~$7/mo vs ~$20/mo at 5 sessions/day x 4 turns) but Sonnet's precision and grounding matter for a support helper — both are production-viable but Sonnet is more concise and confidently grounded. The model is admin-configurable at AgentSettings.Model so the org can revisit after real usage data. -->
 
-13. **A `max_tokens` cutoff mid tool-call JSON continues the tool loop, not a dead end.** `AnthropicClient` closes the current content block on truncation regardless of stop reason, so `AgentService` treats `stop_reason == "max_tokens"` the same as `"tool_use"` for loop continuation (nobodies-collective/Humans#963). Truncated/unparseable tool-call arguments are swapped for `{}` before the call is replayed to the provider (`ReplayableToolCalls`) — the API rejects an unmatched `tool_use` block otherwise — while the dispatcher still sees and reports the original malformed payload for the current call.
+13. **A `max_tokens` cutoff mid tool-call JSON continues the tool loop, not a dead end.** `AnthropicClient` closes the current content block on truncation regardless of stop reason, so `AgentService` treats `stop_reason == "max_tokens"` the same as `"tool_use"` for loop continuation (nobodies-collective/Humans#963). Truncated/unparseable tool-call arguments are swapped for `{}` before the call is replayed to the provider (`ReplayableToolCalls`) — the API rejects an unmatched `tool_use` block otherwise — while the dispatcher still sees and reports the original malformed payload for the current call. Non-object roots and incorrectly typed string arguments also return a recoverable tool error before any lookup or issue-proposal confirmation. Missing/null strings retain their existing empty-value behavior. Malformed arguments are logged at Warning with their reason, without exception stacks; Only argument parsing and validation are classified as malformed arguments; dependency failures, including `JsonException`, propagate to the turn’s Error handler.
 14. **A turn that throws or disconnects mid-stream never leaves an orphaned user message.** `AskAsync` drives the turn's async enumerator manually (an `await foreach` can't wrap `yield` in try/catch) so a thrown exception or an early disposal from a client disconnect both fall through to a `finally`: an assistant message with `RefusalReason = "error"` is persisted, stamped with whatever provider usage the turn accumulated before it broke, and that usage is billed through the normal rate-limit path — never a silent zero-cost failure (nobodies-collective/Humans#963, #990). A turn that reached its own finalizer (fully persisted normally) skips this fallback.
 
 ## Negative Access Rules
@@ -114,7 +126,7 @@ Read-only HTTP surface for QA/prod chat-history review by dev tooling and a dev-
 
 | Endpoint | Purpose |
 |----------|---------|
-| `GET /api/backdoor/agent/conversations?refusalsOnly&handoffsOnly&userId&take&skip` | Conversation summaries. `take` clamped 1–200 (default 50). Each row includes `RefusalCount` (messages with `RefusalReason`), `HandoffCount` (legacy `HandedOffToFeedbackId` links plus `route_to_issue` invocations recorded in `FetchedDocs`), `LastUserMessagePreview` (200 char cap), `UserDisplayName` resolved via `IUserServiceRead.GetUserInfosAsync`. |
+| `GET /api/backdoor/agent/conversations?refusalsOnly&handoffsOnly&userId&take&skip` | Conversation summaries. `take` clamped 1–200 (default 50). Each row includes `RefusalCount` (messages with `RefusalReason`), `HandoffCount` (legacy `HandedOffToFeedbackId` links plus `route_to_issue` invocations recorded in `FetchedDocs`), `LastUserMessagePreview` (200 UTF-16 code-unit cap, preserving Unicode surrogate pairs), `UserDisplayName` resolved via `IUserServiceRead.GetUserInfosAsync`. |
 | `GET /api/backdoor/agent/conversations/{id}` | Full conversation envelope + ordered messages (Role, Content, CreatedAt, Model, RefusalReason, HandedOffToFeedbackId, FetchedDocs). |
 | `GET /api/backdoor/agent/conversations/{id}/messages` | Messages-only view (same per-message shape). |
 
@@ -122,7 +134,7 @@ Missing, unknown or revoked key → 401. Unknown id → 404. Mutations (deletion
 
 ## Triggers
 
-- On `route_to_issue` tool call: no server-side write. `AgentService` yields an `AgentIssueProposal` token; the client opens the Issues modal pre-filled. The user submits (or doesn't) via `/Issues/Submit` — admin triage filtering hooks into the Issues section, not Agent.
+- On `route_to_issue` tool call: no server-side write. `AgentService` yields an `AgentIssueProposal` token; the client opens the Issues modal pre-filled. Proposal titles and descriptions retain the form's 200/5000 UTF-16 code-unit limits without splitting a Unicode surrogate pair. The user submits (or doesn't) via `/Issues/Submit` — admin triage filtering hooks into the Issues section, not Agent.
 - On `AgentSettings` update: `IAgentSettingsStore` reloads the singleton; next request sees the new value.
 - On user deletion: no cross-section cascade. Agent owns no FK to `users`; orphaned `agent_conversations` rows are cleaned up by `AgentConversationRetentionJob` within `RetentionDays`. `FeedbackReport.AgentConversationId` is owned by Feedback and is left as-is (the column may dangle if the conversation was purged; readers must tolerate `null` lookups).
 
@@ -133,7 +145,7 @@ Missing, unknown or revoked key → 401. Unknown id → 404. Mutations (deletion
 - **Consent (Legal)** — the Consent section's `LegalDocumentService` resolves the `agent-chat` slug to the `AgentChat/` folder in the legal repo and renders content at `/Legal/agent-chat`. The Assistant panel links there from the composer footer — a URL-only dependency; Agent injects nothing from Consent for it.
 - **Users / Auth / Teams / Consent / Tickets / Shifts** — `IAgentUserSnapshotProvider` composes the per-turn user context from `IUserServiceRead.GetUserInfoAsync`, `IRoleAssignmentService.GetActiveForUserAsync`, `ITeamServiceRead.GetTeamsAsync`, `IConsentServiceRead.GetPendingDocumentNamesAsync` (surfaces pending docs in snapshot — not a gate), `ITicketServiceRead.GetUserTicketHoldingsAsync` (`OpenTicketOrderIds`), `IShiftView.GetUserAsync`, and `ISettingsService.GetActiveEventSettingsAsync`. `IFeedbackServiceRead.GetOpenFeedbackIdsForUserAsync` is also called — see Feedback bullet above.
 - **Base (inward, publishing)** — `SectionAnnotations` (`ISectionAnnotations`) publishes one "Agent doc key" annotation per `AgentSectionKeys.All` canonical key into `ISectionCatalog`, so `/Debug/Sections` shows where the assistant answers from a first-party doc and where it falls back to the community FAQ (nobodies-collective/Humans#1509). Canonical keys only, not aliases: an alias is a spelling the model uses, not a section with a doc. The key set stays a deliberate subset — operator-only sections are off it — and the catalog checks it, never derives it. A `SectionCatalogTests` case pins that every canonical key names a real section.
-- **GDPR** — `AgentService` implements `IUserDataContributor` so per-user export pulls conversation history. User deletion does not cascade into Agent; orphan rows expire via the retention job.
+- **GDPR** — `AgentService` implements `IUserDataContributor` so per-user export pulls conversation history. Conversation start/last-message and message creation dates serialize as UTC ISO 8601 strings. User deletion hard-deletes conversations and cascades to their messages; the retention job also purges old conversations.
 
 ## Architecture
 

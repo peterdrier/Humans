@@ -34,7 +34,7 @@ internal sealed class FinanceController(
     [HttpGet("HoldedAccounts")]
     public async Task<IActionResult> HoldedAccounts(int blockStart = 62900100)
     {
-        var plan = await holdedFinance.GetProvisioningPlanAsync(blockStart);
+        var plan = await holdedConnector.GetProvisioningPlanAsync(blockStart, HttpContext.RequestAborted);
         ViewBag.BlockStart = blockStart;
         return View(plan);
     }
@@ -43,9 +43,10 @@ internal sealed class FinanceController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ProvisionHoldedAccounts(int blockStart, bool addAll)
     {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
         try
         {
-            var n = await holdedFinance.ProvisionAsync(blockStart, addAll);
+            var n = await holdedConnector.ProvisionAsync(blockStart, addAll, actorUserId);
             SetSuccess($"Provisioned {n} Holded account(s).");
         }
         catch (Exception ex)
@@ -58,19 +59,19 @@ internal sealed class FinanceController(
 
     [HttpGet("HoldedUnmatched")]
     public async Task<IActionResult> HoldedUnmatched()
-        => View(await holdedFinance.GetUnmatchedAsync());
+        => View(await holdedFinance.GetUnmatchedAsync(HttpContext.RequestAborted));
 
     [HttpGet("Creditors")]
     public async Task<IActionResult> Creditors(string? sort, string? dir)
     {
-        var (rows, unresolved) = await holdedFinance.ListCreditorAccountsAsync();
+        var (rows, unresolved) = await holdedFinance.ListCreditorAccountsAsync(HttpContext.RequestAborted);
 
         var names = new Dictionary<Guid, string>();
         var boundIds = rows.SelectMany(r => r.Bindings).Select(b => b.UserId)
             .Concat(unresolved.Select(b => b.UserId))
             .Distinct().ToList();
         if (boundIds.Count > 0)
-            foreach (var kv in await UserService.GetUserInfosAsync(boundIds))
+            foreach (var kv in await UserService.GetUserInfosAsync(boundIds, HttpContext.RequestAborted))
                 names[kv.Key] = kv.Value.BurnerName;
 
         // The page shows one balance, inverted so a positive figure is money owed to the member.
@@ -228,7 +229,7 @@ internal sealed class FinanceController(
     [HttpGet("Creditors/{accountNum:int}")]
     public async Task<IActionResult> CreditorStatement(int accountNum)
     {
-        var ledger = await holdedFinance.GetCreditorLedgerAsync(accountNum);
+        var ledger = await holdedFinance.GetCreditorLedgerAsync(accountNum, HttpContext.RequestAborted);
         if (ledger is null) return NotFound();
 
         // Controllers assemble and sort the presentation model: newest activity first.
@@ -244,9 +245,10 @@ internal sealed class FinanceController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BindCreditor(Guid userId, int supplierAccountNum, string? returnUrl)
     {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
         try
         {
-            var result = await holdedFinance.SetCreditorContactAsync(userId, supplierAccountNum);
+            var result = await holdedConnector.SetCreditorContactAsync(userId, supplierAccountNum, actorUserId);
             if (result.Succeeded)
                 SetSuccess($"Bound member to creditor account {supplierAccountNum}.");
             else
@@ -267,9 +269,10 @@ internal sealed class FinanceController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnbindCreditor(Guid userId, string? returnUrl)
     {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
         try
         {
-            if (await holdedFinance.ClearCreditorContactAsync(userId))
+            if (await holdedConnector.ClearCreditorContactAsync(userId, actorUserId))
                 SetSuccess("Cleared the member's creditor account binding.");
             else
                 SetError("That member has no creditor account binding to clear.");

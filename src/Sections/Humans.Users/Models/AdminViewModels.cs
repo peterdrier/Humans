@@ -115,14 +115,6 @@ internal sealed class CreateRoleAssignmentViewModel
     public List<string> AvailableRoles { get; set; } = [];
 }
 
-internal sealed class EndRoleAssignmentViewModel
-{
-    public Guid Id { get; set; }
-    public Guid UserId { get; set; }
-    public string RoleName { get; set; } = string.Empty;
-    public string? Notes { get; set; }
-}
-
 internal sealed class AccountMergeQueueViewModel
 {
     public List<AccountMergeRowViewModel> Rows { get; set; } = [];

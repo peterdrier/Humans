@@ -17,6 +17,7 @@ In-app issue tracker (bugs, features, questions) with screenshots, role-routed t
 - **Section** is a string drawn from whatever `IIssueQueueOwner` implementations DI discovers, or `null`, enforced on both write paths. The declared set is not hand-listed here — it's whatever sections register, pinned by `tests/Humans.Web.Tests/Sections/IssueQueueOwnerTests.cs`. As of this writing: Budget, Camps, CityPlanning, Legal (Consent), Governance, Onboarding, Profiles (Users), Scanner, Shifts, Teams, Tickets. Stored as a string so the set of queues can change without migrations. A key with no registered owner is coerced to `null`; null-section issues fall to the Admin queue only.
 - A **Handler** is a user who can triage, assign, change status of, or comment as a non-reporter on an issue: `Admin`, or any role the owning section listed on its `IIssueQueueOwner` declaration (`IssueSectionRouting.RolesFor(issue.Section)`).
 - **Ball-in-court** is **derived**, not stored: compare the latest comment's `SenderUserId` to `Issue.ReporterUserId`. There is no boolean column for "needs reply" — it is computed at read time.
+- Browser queue and detail GETs honor request cancellation through current-user, issue, thread, reporter and assignee display reads. Abandoning a page propagates cancellation rather than finishing its queries.
 - The Detail view's **activity thread has no event table**: creation and status/assignee/section/GitHub-link events are reconstructed at read time from the audit log (the `AuditAction.Issue*` values, fetched via `IAuditLogService`) and merged chronologically with `IssueComment` rows in `IssuesService`. The audit log is the source of truth for inline events — do not add an issue-events schema.
 - **Issue status** tracks the lifecycle: Triage, Open, InProgress, Resolved, WontFix, Duplicate. Resolved/WontFix/Duplicate are terminal.
 
@@ -36,7 +37,7 @@ In-app issue tracker (bugs, features, questions) with screenshots, role-routed t
 | Description | string | Issue body (max 5000) |
 | PageUrl | string? | URL captured by the floating widget (max 2000); null for `/Issues/New` and API submissions |
 | UserAgent | string? | Browser user agent (max 1000) |
-| AdditionalContext | string? | Extra context captured at submission (e.g., reporter's roles) (max 2000) |
+| AdditionalContext | string? | Extra context captured at submission (e.g., reporter's roles) (max 2000 UTF-16 units; truncation preserves surrogate pairs) |
 | ScreenshotFileName | string? | Original filename (max 256) |
 | ScreenshotStoragePath | string? | Relative path under `wwwroot/uploads/issues/{issueId}/` (max 512) |
 | ScreenshotContentType | string? | MIME type (`image/jpeg`, `image/png`, `image/webp`) (max 64) |
@@ -101,6 +102,8 @@ Two controllers serve this section:
 - `IssuesController` (`/Issues`, `/Issues/New`, `/Issues/{id}`, `/Issues/{id}/Comments`, `/Issues/{id}/Status`, `/Issues/{id}/Assignee`, `/Issues/{id}/Section`, `/Issues/{id}/GitHubIssue`) — cookie-authenticated humans.
 - `BackdoorIssuesController` (`/api/backdoor/issues/*`) — API-key authenticated; the key resolves to its owner, who becomes the request principal. Used by Claude Code agents and external integrations.
 
+Member submission required-field and length errors use shared translations in all six cultures, for both the form and widget validation response. Existing input limits are unchanged.
+
 Known area labels in the member submission form, issue list and detail view use the viewer’s UI culture. Dropdowns sort the localized labels; stored `Issue.Section` routing keys stay unchanged. The index controller also orders the admin reporter dropdown alphabetically; the service returns names and counts without display ordering.
 
 `Issue.Section` selects which roles see the issue in their queue (see `IssueSectionRouting.RolesFor`); a null section is Admin-only. Section is editable by handlers as long as the issue is non-terminal — re-routing an issue is just changing its `Section` string.
@@ -116,7 +119,12 @@ Known area labels in the member submission form, issue list and detail view use 
 
 ## Invariants
 
+- The queue detail panel accepts only the latest selection request’s response; earlier successes and unavailable responses cannot replace the selected item’s content or wire stale forms.
+
+- Mutation result wrappers log missing/inaccessible issues and terminal-section rejections at Warning without exception stacks; unexpected failures retain Error logs and their exceptions.
+
 - Every issue is linked to the human who submitted it (`ReporterUserId` is required).
+- The GDPR export includes stored browser user agent and submission context alongside the reporter’s issues and comments; it excludes issues reported by other people.
 - Status flows Triage → Open → InProgress → Resolved/WontFix/Duplicate. Transitioning out of a terminal status clears `ResolvedAt` and `ResolvedByUserId`.
 - A reporter posting a comment on a terminal issue **auto-reopens** it to `Open` (audit-logged as `AuditAction.IssueStatusChanged` with actor = the reporter).
 - A handler may post a comment and atomically mark the issue resolved in the same request ("Comment & mark resolved"). The status change is audit-logged after the comment is persisted.
@@ -141,8 +149,8 @@ Known area labels in the member submission form, issue list and detail view use 
 ## Triggers
 
 - Issue notices are previews bounded to 200 Unicode characters for titles and 2,000 for bodies. Oversized titles are retained in the body before the detail excerpt; ellipses mark shortened copy. The issue link exposes the complete stored description or comment.
-- When an issue is submitted, an in-app `NotificationSource.IssueSubmitted` notification fans out to every handler for whom the issue is in-queue (Admins + role-holders of `IssueSectionRouting.RolesFor(issue.Section)`), excluding the reporter, using `sourceKey: issue.Id.ToString()`. The nav-badge actionable count for those same handlers is invalidated in the same step. When the issue transitions to a terminal status, `IssuesService` calls `ResolveSubmittedNotificationsAsync`, which resolves those `IssueSubmitted` notifications by that sourceKey. In-app issue titles, status bodies and action labels are rendered per recipient `PreferredLanguage`. A failed language-group preparation or delivery is logged without blocking later groups.
-- When a comment is posted, an in-app notification fans out to the **other party** — handlers + assignee when the reporter comments, the reporter + assignee when a handler comments. Email is sent **only when a handler comments** (to the reporter), via `IUserEmailService.GetNotificationTargetEmailsAsync` + a localized `IEmailService.SendAsync(IssuesEmails.IssueComment(...))` queued through the email outbox (`OutboxEmailService` in production). Reporter→handler comments are in-app only — handlers see the new comment in their queue without an email ping.
+- When an issue is submitted, an in-app `NotificationSource.IssueSubmitted` notification fans out to every handler for whom the issue is in-queue (Admins + role-holders of `IssueSectionRouting.RolesFor(issue.Section)`), excluding the reporter, using `sourceKey: issue.Id.ToString()`. The nav-badge actionable count for those same handlers is invalidated in the same step. When the issue transitions to a terminal status, `IssuesService` calls `ResolveSubmittedNotificationsAsync`, which resolves those `IssueSubmitted` notifications by that sourceKey. In-app issue titles, status bodies and action labels are rendered per supported recipient `PreferredLanguage`, with English fallback for missing or unsupported preferences. A failed language-group preparation or delivery is logged without blocking later groups.
+- When a comment is posted, an in-app notification fans out to the **other party** — handlers + assignee when the reporter comments, the reporter + assignee when a handler comments. Email is sent **only when a handler comments** (to the reporter), via `IUserEmailService.GetNotificationTargetEmailsAsync` + a localized `IEmailService.SendAsync(IssuesEmails.IssueComment(...))` queued through the email outbox (`OutboxEmailService` in production). Reporter→handler comments are in-app only — handlers see the new comment in their queue without an email ping. Comment emails use the reporter’s supported language, with English fallback for missing or unsupported preferences.
 - When status changes, the reporter and current assignee are notified.
 - When an issue is assigned, the new assignee is notified.
 - In-app recipients are the ids the user read resolves to: a reporter or assignee id merged away since the issue was filed is delivered to its survivor, and the actor/sender is excluded by resolved id. `UpdateAssigneeAsync` stores the resolved id, and the Detail assignee dropdown selects the survivor's option for a stored id that was merged away.

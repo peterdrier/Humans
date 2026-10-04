@@ -162,15 +162,15 @@ internal sealed class CampController(
             : []
         };
 
-    private async Task PopulateRegisterSeasonYearAsync()
+    private async Task PopulateRegisterSeasonYearAsync(CancellationToken ct = default)
     {
-        var settings = await _campService.GetSettingsAsync();
+        var settings = await _campService.GetSettingsAsync(ct);
         ViewData["SeasonYear"] = settings.OpenSeasons.OrderByDescending(y => y).FirstOrDefault();
     }
 
-    private async Task PopulateRegistrationInfoAsync()
+    private async Task PopulateRegistrationInfoAsync(CancellationToken ct = default)
     {
-        ViewData["RegistrationInfo"] = await cityPlanningService.GetRegistrationInfoAsync();
+        ViewData["RegistrationInfo"] = await cityPlanningService.GetRegistrationInfoAsync(ct);
     }
 
     [AllowAnonymous]
@@ -340,14 +340,14 @@ internal sealed class CampController(
     [HttpGet("Register")]
     public async Task<IActionResult> Register()
     {
-        await PopulateRegisterSeasonYearAsync();
+        await PopulateRegisterSeasonYearAsync(HttpContext.RequestAborted);
         if ((int?)ViewData["SeasonYear"] == 0)
         {
             SetError(campsLocalizer["Camps_Flash_RegistrationClosed"].Value);
             return RedirectToAction(nameof(Index));
         }
 
-        await PopulateRegistrationInfoAsync();
+        await PopulateRegistrationInfoAsync(HttpContext.RequestAborted);
         return View(new CampRegisterViewModel());
     }
 
@@ -408,7 +408,7 @@ internal sealed class CampController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning(ex, "Camp registration failed for user {UserId} in year {Year}", user.Id, year);
-            ModelState.AddModelError(string.Empty, ex.Message);
+            ModelState.AddModelError(string.Empty, campsLocalizer[ex.Message, model.Name].Value);
             await PopulateRegisterSeasonYearAsync();
             await PopulateRegistrationInfoAsync();
             return View(model);
@@ -634,7 +634,7 @@ internal sealed class CampController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning(ex, "Camp opt-in failed for camp {CampId}, slug {Slug}, and year {Year}", camp.Id, slug, year);
-            SetError(ex.Message);
+            SetError(campsLocalizer[ex.Message, year].Value);
         }
 
         return RedirectToAction(nameof(Edit), new { slug, year });
@@ -738,8 +738,8 @@ internal sealed class CampController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Removing historical name {NameId} failed for camp {CampId}", nameId, camp.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Removing historical name {NameId} failed for camp {CampId}: {Reason}", nameId, camp.Id, ex.Message);
+            SetError(campsLocalizer[ex.Message].Value);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
@@ -776,7 +776,7 @@ internal sealed class CampController(
         }
         else
         {
-            SetError(result.ErrorMessage ?? campsLocalizer["Camps_Flash_ImageUploadFailed"].Value);
+            SetError(campsLocalizer[result.ErrorMessage ?? "Camps_Flash_ImageUploadFailed"].Value);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
@@ -800,8 +800,8 @@ internal sealed class CampController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Deleting image {ImageId} failed for camp {CampId} and slug {Slug}", imageId, camp.Id, slug);
-            SetError(ex.Message);
+            logger.LogWarning("Deleting image {ImageId} failed for camp {CampId} and slug {Slug}: {Reason}", imageId, camp.Id, slug, ex.Message);
+            SetError(campsLocalizer[ex.Message].Value);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
@@ -878,8 +878,8 @@ internal sealed class CampController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Withdraw camp membership request failed for member {MemberId} and user {UserId}", campMemberId, user.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Withdraw camp membership request failed for member {MemberId} and user {UserId}: {Reason}", campMemberId, user.Id, ex.Message);
+            SetError(campsLocalizer[ex.Message].Value);
         }
 
         return RedirectToAction(nameof(Details), new { slug });
@@ -903,7 +903,7 @@ internal sealed class CampController(
         }
         else
         {
-            SetError(result.ErrorMessage ?? campsLocalizer["Camps_Flash_MembershipLeaveFailed"].Value);
+            SetError(campsLocalizer[result.ErrorMessage ?? "Camps_Flash_MembershipLeaveFailed"].Value);
         }
 
         return RedirectToAction(nameof(Details), new { slug });
@@ -925,8 +925,8 @@ internal sealed class CampController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Approve camp membership failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Approve camp membership failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, ex.Message);
+            SetError(campsLocalizer[ex.Message].Value);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -947,8 +947,8 @@ internal sealed class CampController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Reject camp membership failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Reject camp membership failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, ex.Message);
+            SetError(campsLocalizer[ex.Message].Value);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -969,8 +969,8 @@ internal sealed class CampController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Remove camp member failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Remove camp member failed for member {MemberId} and camp {CampId}: {Reason}", campMemberId, camp.Id, ex.Message);
+            SetError(campsLocalizer[ex.Message].Value);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -1333,7 +1333,7 @@ internal sealed class CampController(
         if (!string.IsNullOrWhiteSpace(phone) && !phone.TrimStart().StartsWith("+", StringComparison.Ordinal))
         {
             ModelState.AddModelError(fieldName,
-                sharedLocalizer["Validation_PhoneE164", "Contact Phone"].Value);
+                sharedLocalizer["Validation_PhoneE164", campsLocalizer["Camp_ContactPhoneLabel"].Value].Value);
         }
     }
 

@@ -120,7 +120,7 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
 | `/Gate/Decision` | POST | `GateAdmit` | Record the agent's Yes/No decision (incl. supervisor override); enqueue vendor mirror on admit |
 | `/Gate/Claim` | GET (`ScannerAccess`) / POST (`GateAdmit`) | — | Pick who is scanning → hands off to the PIN keypad |
 | `/Gate/ClaimPin` | POST | `GateAdmit` | Set/verify the staffer's PIN, then stamp the scanning session. Both POSTs require the posted id to be an active member and the id the user read resolves to: a merged-away id fails closed rather than claiming the session as its survivor |
-| `/Gate/Leaderboard` | GET | `ScannerAccess` | Per-staffer scan tallies |
+| `/Gate/Leaderboard` | GET | `ScannerAccess` | Service tally DTOs rendered directly, ordered by admitted then total scans (descending); names resolved by the Human component |
 | `/Gate/Admin` | GET/POST | `TicketAdminOrAdmin` | Staff PIN admin — settings (cutoff, minor age threshold) moved to `/Settings#gate` (peterdrier/Humans#1634) |
 | `/Gate/Admin/SetPin` | POST | `TicketAdminOrAdmin` | Admin enrol/change any staffer's PIN (incl. supervisors) |
 | `/Gate/Admin/ResetPin` | POST | `TicketAdminOrAdmin` | Admin clear a staffer's PIN (they re-enrol on next claim) |
@@ -138,6 +138,8 @@ unreachable since peterdrier#1075 — nothing links to them. Deletion is planned
 nobodies-collective/Humans#933.)
 
 ## Invariants
+
+- Resetting the shared PIN keypad cancels its pending delayed completion. Closing the supervisor override with Cancel cannot submit the PIN afterward; a reopened panel submits only its new entry.
 
 - The cutoff is evaluated against the server clock; `ClientScanAt` never influences it.
 - A barcode can be admitted at most once (atomic unique index + pre-check); re-entry is governed

@@ -120,11 +120,11 @@ function makePlacedCard(c) {
         ${c.description ? `<div class="small text-truncate opacity-75">${escHtml(c.description)}</div>` : ''}
         <div class="mt-1 d-flex gap-1">
             <button class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:11px;"
-                data-locate-id="${c.id}" title="Center map on this container">
+                data-locate-id="${c.id}" title="${escHtml(CONFIG.I18N.CENTER_ON_CONTAINER)}" aria-label="${escHtml(CONFIG.I18N.CENTER_ON_CONTAINER)}">
                 <i class="fa-solid fa-location-dot"></i>
             </button>
             <button class="btn btn-outline-info btn-sm py-0 px-2" style="font-size:11px;"
-                data-info-id="${c.id}" title="Placement notes">
+                data-info-id="${c.id}" title="${escHtml(CONFIG.I18N.PLACEMENT_NOTES)}" aria-label="${escHtml(CONFIG.I18N.PLACEMENT_NOTES)}">
                 <i class="fa-solid fa-circle-info"></i>
             </button>
             ${c.canEdit ? `<button class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size:11px;"

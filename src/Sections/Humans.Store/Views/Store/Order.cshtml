@@ -14,7 +14,7 @@
     var canDeletePayment = (await AuthService.AuthorizeAsync(User, order, OrderOperationRequirement.DeletePayment)).Succeeded;
 }
 
-<nav aria-label="breadcrumb" class="mb-3">
+<nav aria-label="@Localizer["Store_BreadcrumbNavigation"]" class="mb-3">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Store_Title"]</a></li>
         <li class="breadcrumb-item">@Model.CounterpartyDisplayName</li>
@@ -139,7 +139,7 @@
                     {
                         <td class="text-end">
                             @line.EffectiveUnitPriceInclVat.ToEuro()
-                            <div class="text-muted small">@Localizer["Store_UnitPriceBreakdown", line.EffectiveUnitPrice.ToEuro(), line.EffectiveVatRate.ToString("0.##")]</div>
+                            <div class="text-muted small">@Localizer["Store_UnitPriceBreakdown", line.EffectiveUnitPrice.ToEuro(), line.EffectiveVatRate.ToString("0.##", System.Globalization.CultureInfo.CurrentUICulture)]</div>
                         </td>
                         <td class="text-end">@(line.EffectiveDeposit.HasValue ? line.DepositEur.ToEuro() : "—")</td>
                         <td class="text-end">@line.TotalEur.ToEuro()</td>
@@ -171,6 +171,7 @@ else
               entity-ids="@order.Lines.Select(l => l.ProductId).Distinct().ToList()"
               actions="StoreProductPriceChanged" since="@order.CreatedAt" limit="50"
               layout="table" columns="when,action,description"
+              column-labels="@($"when:{Localizer["Store_ColDate"].Value},action:{Localizer["Store_ColAction"].Value},description:{Localizer["Store_ColDescription"].Value}")"
               title="@Localizer["Store_PriceChangesTitle"].Value"
               empty-text="@Localizer["Store_NoPriceChanges"].Value" />
 

@@ -47,7 +47,7 @@ public sealed record BurnSettingsInfo(
     /// Step-function lookup: returns the cumulative EE capacity for the
     /// largest key in <see cref="EarlyEntryCapacity"/> that is ≤
     /// <paramref name="dayOffset"/>, or 0 if none qualifies. Mirrors
-    /// <c>EventSettings.GetEarlyEntryCapacityForDay</c> so cross-section
+    /// <see cref="EventSettingsInfo.GetEarlyEntryCapacityForDay"/> so cross-section
     /// callers (camps, art) don't reimplement the lookup.
     /// </summary>
     public int GetEarlyEntryCapacityForDay(int dayOffset)

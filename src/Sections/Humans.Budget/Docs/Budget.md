@@ -193,11 +193,19 @@ Stored as string via `HasConversion<string>()`.
 
 ## Invariants
 
-- A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).
+- The member overview’s income and expense percentage labels use the selected UI culture. Their one-decimal precision, percentage calculations and invariant chart JSON values are unchanged. Member and finance chart money tooltips follow the document’s selected UI language rather than the browser’s default locale.
+
+- Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant. Coordinator category utilization percentages use the same UI culture; the capped progress-bar width retains machine formatting.
+
+- Public summary and finance overview render the same service slice DTOs directly; they do not copy name, amount and percentage into duplicate view rows.
+
+- A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft or reactivating a non-archived Closed year auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).
 - A Closed year is read-only: every repository mutation — the ticketing sync pair and the year-metadata rename included — refuses with `InvalidOperationException`. Only `UpdateYearStatusAsync` (Reactivate) and `DeleteYearAsync` (archive) act on a Closed year.
+- Archived years cannot change status. A stale activation request fails before changing the current Active year or writing status audit entries; archived audit history remains available.
 - A coordinator can only create, edit, or delete line items in categories linked to a department they coordinate.
 - Restricted groups are editable only by FinanceAdmin and Admin. Coordinators see the group header and category names in `/Budget` (with a "Restricted" badge in place of the drill-in link) and the group's totals roll up into `/Budget/Summary` aggregates, but `/Budget/Category/{id}` returns `Forbid` for non-finance users.
 - Ticketing groups are hidden from the `/Budget` index for non-finance users (`Index.cshtml` filters `IsTicketingGroup` unless `IsFinanceAdmin`); their aggregates still appear in `/Budget/Summary`, and `/Budget/Category/{id}` returns `Forbid` for non-finance users on any ticketing category.
+- Ticketing projection previews and persisted projected line items use `TicketingProjection.CalculateWeeks`: the same ISO-week bounds, initial burst, ticket minimum, revenue and fee calculations. Materialization runs after actuals update the projection parameters. Persisted generated week descriptions remain canonical English regardless of the operator’s UI language; preview date labels follow the UI language.
 - Every create, update, or delete on a group, category, or line item generates a `BudgetAuditLog` entry recording old value, new value, actor, and timestamp; the ticketing sync paths write one summary entry per run that changed anything, with a null actor for the nightly job.
 - "Sync Departments" creates a category for each department that does not already have one in the selected year.
 - `/Finance` index shows a consolidated accordion view: groups, categories with budget vs actual comparison, and inline line items. FinanceAdmin sees all summary data inline.

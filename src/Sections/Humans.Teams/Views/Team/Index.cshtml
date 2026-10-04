@@ -104,8 +104,10 @@ else
                             </h5>
                             @if (!string.IsNullOrEmpty(team.Description))
                             {
+                                var previewLength = team.Description.Length > 200
+                                    && char.IsHighSurrogate(team.Description[199]) && char.IsLowSurrogate(team.Description[200]) ? 199 : 200;
                                 <div class="card-text text-muted small mb-0">
-                                    @Html.SanitizedMarkdown(team.Description.Length > 200 ? team.Description.Substring(0, 200) + "..." : team.Description)
+                                    @Html.SanitizedMarkdown(team.Description.Length > 200 ? team.Description[..previewLength] + "..." : team.Description)
                                 </div>
                             }
                         </div>

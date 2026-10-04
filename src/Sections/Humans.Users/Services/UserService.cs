@@ -428,6 +428,7 @@ internal sealed class UserService(
     public async Task<UserProfileSaveResult> SaveProfileAsync(
         Guid userId,
         UserProfileSaveCommand command,
+        byte[]? profilePictureData = null,
         CancellationToken ct = default)
     {
         using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
@@ -495,7 +496,26 @@ internal sealed class UserService(
             profile.DateOfBirth = null;
         }
 
-        profile.ProfilePictureContentType = command.PictureMutation switch
+        var pictureMutation = command.PictureMutation;
+        if (pictureMutation == UserProfilePictureMutation.Set
+            && profilePictureData is not null && command.ProfilePictureContentType is not null)
+        {
+            try
+            {
+                await fileStorage.SaveAsync(
+                    ProfilePictureStorageKeys.ProfilePictureKey(profile.Id, command.ProfilePictureContentType),
+                    profilePictureData, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex,
+                    "Failed to write profile picture for {ProfileId}; preserving the previous picture metadata",
+                    profile.Id);
+                pictureMutation = UserProfilePictureMutation.None;
+            }
+        }
+
+        profile.ProfilePictureContentType = pictureMutation switch
         {
             UserProfilePictureMutation.Remove => null,
             UserProfilePictureMutation.Set => command.ProfilePictureContentType,
@@ -544,27 +564,6 @@ internal sealed class UserService(
         profile.UpdatedAt = now;
 
         await repo.UpdateAsync(profile, ct);
-    }
-
-    public async Task<UserProfilePictureContentTypeResult> SetProfilePictureContentTypeAsync(
-        Guid userId,
-        string contentType,
-        CancellationToken ct = default)
-    {
-        var profile = await repo.GetByUserIdAsync(userId, ct);
-        if (profile is null)
-            return new UserProfilePictureContentTypeResult(false, null, null, null);
-
-        var previousContentType = profile.ProfilePictureContentType;
-        profile.ProfilePictureContentType = contentType;
-        profile.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateAsync(profile, ct);
-
-        return new UserProfilePictureContentTypeResult(
-            true,
-            profile.Id,
-            previousContentType,
-            contentType);
     }
 
     public async Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
@@ -1035,6 +1034,11 @@ internal sealed class UserService(
             // JSON keys pinned per memory/code/no-rename-serialized-fields.md (GDPR export stability).
             IsOAuth = e.Provider != null,
             IsNotificationTarget = e.IsPrimary,
+            e.IsGoogle,
+            GoogleEmailStatus = e.GoogleEmailStatus.ToString(),
+            VerificationSentAt = e.VerificationSentAt.ToIso8601(),
+            CreatedAt = e.CreatedAt.ToIso8601(),
+            UpdatedAt = e.UpdatedAt.ToIso8601(),
             e.Visibility
         }).ToList());
 
@@ -1057,6 +1061,7 @@ internal sealed class UserService(
             cp.Category,
             cp.OptedOut,
             cp.InboxEnabled,
+            SubscribedAt = cp.SubscribedAt.ToIso8601(),
             UpdatedAt = cp.UpdatedAt.ToIso8601(),
             cp.UpdateSource
         }).ToList());

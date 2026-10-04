@@ -689,10 +689,11 @@ internal sealed class CachingUserService(
     public async Task<UserProfileSaveResult> SaveProfileAsync(
         Guid userId,
         UserProfileSaveCommand command,
+        byte[]? profilePictureData = null,
         CancellationToken ct = default)
     {
         var result = await WithInnerAsync(inner =>
-            inner.SaveProfileAsync(userId, command, ct));
+            inner.SaveProfileAsync(userId, command, profilePictureData, ct));
         await RefreshEntryAsync(userId);
         return result;
     }
@@ -708,17 +709,6 @@ internal sealed class CachingUserService(
             return true;
         });
         await RefreshEntryAsync(userId);
-    }
-
-    public async Task<UserProfilePictureContentTypeResult> SetProfilePictureContentTypeAsync(
-        Guid userId,
-        string contentType,
-        CancellationToken ct = default)
-    {
-        var result = await WithInnerAsync(inner =>
-            inner.SetProfilePictureContentTypeAsync(userId, contentType, ct));
-        if (result.Saved) await RefreshEntryAsync(userId);
-        return result;
     }
 
     public async Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(

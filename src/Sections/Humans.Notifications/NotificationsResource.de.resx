@@ -76,6 +76,15 @@
   <data name="Notification_Section_WorkQueues" xml:space="preserve">
     <value>Arbeitswarteschlangen</value>
   </data>
+  <data name="Notifications_Meter_ConsentReviewsPending" xml:space="preserve"><value>Ausstehende Einwilligungsprüfungen</value></data>
+  <data name="Notifications_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Anträge warten auf deine Stimme</value></data>
+  <data name="Notifications_Meter_PendingAccountDeletions" xml:space="preserve"><value>Ausstehende Kontolöschungen</value></data>
+  <data name="Notifications_Meter_FailedGoogleSyncEvents" xml:space="preserve"><value>Fehlgeschlagene Google-Synchronisierungen</value></data>
+  <data name="Notifications_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Ausstehende Anmeldeprofile</value></data>
+  <data name="Notifications_Meter_TeamJoinRequestsPending" xml:space="preserve"><value>Ausstehende Teamanfragen</value></data>
+  <data name="Notifications_Meter_TicketSyncError" xml:space="preserve"><value>Fehler bei der Ticket-Synchronisierung</value></data>
+  <data name="Notifications_Meter_CampJoinRequest" xml:space="preserve"><value>1 Person möchte deinem Camp beitreten</value></data>
+  <data name="Notifications_Meter_CampJoinRequests" xml:space="preserve"><value>{0} Personen möchten deinem Camp beitreten</value></data>
   <data name="Notification_MarkAllRead" xml:space="preserve">
     <value>Alle als gelesen markieren</value>
   </data>
@@ -136,10 +145,12 @@
   <data name="Notification_Bulk_Selected" xml:space="preserve">
     <value>{0} ausgewählt</value>
   </data>
+  <data name="Notifications_SelectNotification" xml:space="preserve"><value>Benachrichtigung auswählen</value></data>
   <data name="Notification_Bulk_Resolve" xml:space="preserve">
     <value>Ausgewählte erledigen</value>
   </data>
   <data name="Notification_Bulk_Dismiss" xml:space="preserve">
     <value>Ausgewählte verwerfen</value>
   </data>
+  <data name="Notification_Popup_LoadError" xml:space="preserve"><value>Benachrichtigungen konnten nicht geladen werden. Bitte versuche es erneut.</value></data>
 </root>

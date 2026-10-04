@@ -41,13 +41,20 @@ internal sealed class VolunteerTrackingService(
         Guid userId, Guid eventSettingsId, int dayOffset, bool available,
         CancellationToken ct = default)
     {
+        if (available)
+        {
+            var calendar = await calendarResolver.GetAsync(eventSettingsId, ct).ConfigureAwait(false);
+            if (calendar is null || dayOffset < calendar.BuildStartOffset || dayOffset >= 0)
+                return false;
+        }
+
         var current = (await trackingRepo.GetAvailabilityForUserAsync(userId, eventSettingsId, ct).ConfigureAwait(false))
             .FirstOrDefault();
         var offsets = current?.AvailableDayOffsets.ToList() ?? [];
 
         if (available)
         {
-            if (dayOffset >= 0 || offsets.Contains(dayOffset)) return false;
+            if (offsets.Contains(dayOffset)) return false;
             offsets.Add(dayOffset);
         }
         else if (!offsets.Remove(dayOffset))
@@ -374,7 +381,8 @@ internal sealed class VolunteerTrackingService(
         var trimmed = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
         if (trimmed is { Length: > 200 })
         {
-            trimmed = trimmed[..200];
+            var length = char.IsHighSurrogate(trimmed[199]) && char.IsLowSurrogate(trimmed[200]) ? 199 : 200;
+            trimmed = trimmed[..length];
         }
 
         var entry = new DayOffEntry(

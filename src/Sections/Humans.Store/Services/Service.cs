@@ -67,11 +67,33 @@ internal sealed class Service(
             }
         }
 
+        // Team counterparties — top-level departments only. The viewer's own
+        // coordinated departments, or every department when a privileged reader.
+        // Order is the controller / view's concern (memory/architecture/display-sort-in-controllers.md).
+        var teams = (await teamService.GetTeamsAsync(ct)).Values
+            .Where(t => t.ParentTeamId is null
+                        && (allCounterparties
+                            || (t.ManagementRoleHolderUserIds is not null
+                                && t.ManagementRoleHolderUserIds.Contains(userId))))
+            .ToList();
+        var campOrders = await repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+            campSeasons.Select(s => s.Id).ToList(), ct);
+        var teamOrders = await repo.GetOrdersForTeamsWithLinesAsync(
+            teams.Select(t => t.Id).ToList(), year, ct);
+        var productIds = campOrders.Concat(teamOrders)
+            .SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
+        var productNames = await LoadProductNamesAsync(productIds, ct);
+        var currentPrices = await LoadCurrentPricesAsync(ct);
+        var campOrdersBySeason = campOrders.ToLookup(o => o.CampSeasonId);
+        var teamOrdersByTeam = teamOrders.ToLookup(o => o.TeamId);
+
         foreach (var season in campSeasons)
         {
             // One order per camp-season; if legacy data has multiple, surface
             // only the highest-balance one and let the admin delete the rest.
-            var allOrders = await GetOrdersForCampSeasonAsync(season.Id, ct);
+            var allOrders = new List<OrderDto>();
+            foreach (var order in campOrdersBySeason[season.Id])
+                allOrders.Add(await MapOrderAsync(order, productNames, currentPrices, ct, season.Name));
             var primary = allOrders
                 .OrderByDescending(o => o.BalanceEur)
                 .FirstOrDefault();
@@ -84,29 +106,12 @@ internal sealed class Service(
                 orders));
         }
 
-        // Team counterparties — top-level departments only. The viewer's own
-        // coordinated departments, or every department when a privileged reader.
-        // Order is the controller / view's concern (memory/architecture/display-sort-in-controllers.md).
-        var teams = await teamService.GetTeamsAsync(ct);
-        var teamOrderPrices = await LoadCurrentPricesAsync(ct);
-        foreach (var team in teams.Values
-            .Where(t => t.ParentTeamId is null
-                        && (allCounterparties
-                            || (t.ManagementRoleHolderUserIds is not null
-                                && t.ManagementRoleHolderUserIds.Contains(userId)))))
+        foreach (var team in teams)
         {
-            var existing = await repo.GetOrderForTeamAsync(team.Id, year, ct);
-            IReadOnlyList<OrderDto> orders;
-            if (existing is null)
-            {
-                orders = [];
-            }
-            else
-            {
-                var productIds = existing.Lines.Select(l => l.ProductId).Distinct().ToList();
-                var productNames = await LoadProductNamesAsync(productIds, ct);
-                orders = [await MapOrderAsync(existing, productNames, teamOrderPrices, ct)];
-            }
+            var existing = teamOrdersByTeam[team.Id].FirstOrDefault();
+            IReadOnlyList<OrderDto> orders = existing is null
+                ? []
+                : [await MapOrderAsync(existing, productNames, currentPrices, ct, team.Name)];
             counterparties.Add(new CounterpartyOrders(
                 OrderCounterpartyType.Team,
                 team.Id,
@@ -746,9 +751,12 @@ internal sealed class Service(
             RecordedByUserId = null,
         };
         await repo.AddPaymentAsync(payment, ct);
-        var settlement = status == PaymentStatus.Pending
-            ? "Pending Stripe payment (mandate captured, not yet cleared)"
-            : "Recorded Stripe payment";
+        var settlement = status switch
+        {
+            PaymentStatus.Pending => "Pending Stripe payment (mandate captured, not yet cleared)",
+            PaymentStatus.Failed => "Failed Stripe payment (settlement rejected)",
+            _ => "Recorded Stripe payment",
+        };
         await audit.LogAsync(
             AuditAction.StorePaymentRecorded, AuditEntityTypes.Payment, payment.Id,
             $"{settlement} of EUR {amountEur:0.00} on order {orderId} (PI {paymentIntentId})",
@@ -1034,9 +1042,9 @@ internal sealed class Service(
     /// event to its settled state — <see cref="PaymentStatus.Paid"/> on
     /// <c>async_payment_succeeded</c>, <see cref="PaymentStatus.Failed"/> on
     /// <c>async_payment_failed</c>. Idempotent: a re-delivered event that finds the row already in
-    /// the target state is a no-op. Out-of-order tolerance: if the success event arrives before
-    /// <c>completed</c> (no row yet), the payment is recorded directly as Paid so settled money is
-    /// never lost; a failure with no row is a no-op (no money was ever pending here).
+    /// the target state is a no-op. Out-of-order tolerance: if a terminal event arrives before
+    /// <c>completed</c> (no row yet), the payment is recorded directly in its terminal state so
+    /// a later completed event cannot lose settlement or recreate a failed payment as Pending.
     /// </summary>
     private async Task TransitionAsyncPaymentAsync(StoreCheckoutWebhookEvent evt, PaymentStatus target, CancellationToken ct)
     {
@@ -1055,17 +1063,15 @@ internal sealed class Service(
         var existing = await repo.GetPaymentByStripePaymentIntentIdAsync(paymentIntentId, ct);
         if (existing is null)
         {
-            // Out-of-order: the settlement event beat checkout.session.completed. Record the money
-            // now (Paid) so it isn't lost; the later completed event no-ops on the unique PI. A
-            // failure with no pending row means nothing was ever owed here — ignore it.
-            if (target == PaymentStatus.Paid
-                && session.OrderId is { } orderId
+            // Preserve either terminal outcome before completed; its later delivery no-ops on
+            // the unique PI instead of recreating a failed payment as Pending.
+            if (session.OrderId is { } orderId
                 && session.AmountEur is { } amountEur && amountEur > 0)
             {
-                await RecordStripePaymentAsync(orderId, paymentIntentId, amountEur, PaymentStatus.Paid, ct);
+                await RecordStripePaymentAsync(orderId, paymentIntentId, amountEur, target, ct);
                 logger.LogInformation(
-                    "Async {Kind} arrived before completed for order {OrderId} (PI {PaymentIntentId}); recorded settled payment directly.",
-                    evt.Kind, orderId, paymentIntentId);
+                    "Async {Kind} arrived before completed for order {OrderId} (PI {PaymentIntentId}); recorded {Status} payment directly.",
+                    evt.Kind, orderId, paymentIntentId, target);
             }
             else
             {
@@ -1783,7 +1789,8 @@ internal sealed class Service(
         Order o,
         IReadOnlyDictionary<Guid, string> productNames,
         IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice> currentPrices,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? displayName = null)
     {
         var balance = BalanceCalculator.Compute(o, currentPrices);
         var totalsByLine = balance.Lines.ToDictionary(t => t.LineId);
@@ -1806,7 +1813,7 @@ internal sealed class Service(
             ? OrderCounterpartyType.Team
             : OrderCounterpartyType.Camp;
 
-        var displayName = await ResolveCounterpartyDisplayNameAsync(o, ct);
+        displayName ??= await ResolveCounterpartyDisplayNameAsync(o, ct);
 
         return new OrderDto(
             o.Id,

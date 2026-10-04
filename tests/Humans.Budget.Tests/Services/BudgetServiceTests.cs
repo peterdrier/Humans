@@ -413,8 +413,10 @@ public sealed class BudgetServiceTests
 
     // ─── UpdateYearStatusAsync auto-closes previously active years ──────────
 
-    [HumansFact]
-    public async Task UpdateYearStatusAsync_activating_closes_other_active_years()
+    [HumansTheory]
+    [InlineData(BudgetYearStatus.Draft)]
+    [InlineData(BudgetYearStatus.Closed)]
+    public async Task UpdateYearStatusAsync_activating_closes_other_active_years(BudgetYearStatus initialStatus)
     {
         await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
@@ -430,7 +432,7 @@ public sealed class BudgetServiceTests
                 Id = _yearId,
                 Year = "2026",
                 Name = "Budget 2026",
-                Status = BudgetYearStatus.Draft
+                Status = initialStatus
             });
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
@@ -449,6 +451,47 @@ public sealed class BudgetServiceTests
             .Where(a => a.FieldName == nameof(BudgetYear.Status))
             .ToListAsync(TestContext.Current.CancellationToken);
         auditEntries.Should().HaveCount(2);
+    }
+
+    [HumansFact]
+    public async Task UpdateYearStatusAsync_archived_year_cannot_replace_the_active_year()
+    {
+        var activeYearId = Guid.NewGuid();
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        {
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = activeYearId,
+                Year = "2026",
+                Name = "Current budget",
+                Status = BudgetYearStatus.Active
+            });
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = _yearId,
+                Year = "2025",
+                Name = "Old budget",
+                Status = BudgetYearStatus.Closed
+            });
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+        await _service.DeleteYearAsync(_yearId, Guid.NewGuid());
+        var existingAudit = await _repository.GetAuditLogAsync(_yearId);
+
+        // A Reactivate form opened while Closed may be submitted after archiving.
+        var reactivate = () => _service.UpdateYearStatusAsync(_yearId, BudgetYearStatus.Active, Guid.NewGuid());
+        await reactivate.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+
+        var active = await _service.GetActiveYearAsync();
+        active.Should().NotBeNull();
+        active!.Id.Should().Be(activeYearId);
+        await using var verify = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var archived = await verify.BudgetYears.SingleAsync(y => y.Id == _yearId, TestContext.Current.CancellationToken);
+        archived.IsDeleted.Should().BeTrue();
+        archived.Status.Should().Be(BudgetYearStatus.Closed);
+        (await _repository.GetAuditLogAsync(_yearId)).Should().BeEquivalentTo(existingAudit);
+        (await verify.BudgetAuditLogs.CountAsync(a => a.BudgetYearId == activeYearId, TestContext.Current.CancellationToken))
+            .Should().Be(0);
     }
 
     [HumansFact]
@@ -661,9 +704,17 @@ public sealed class BudgetServiceTests
         result.Should().Be(0);
     }
 
-    [HumansFact]
-    public async Task RefreshTicketingProjectionsAsync_materializes_projected_weeks_when_projection_is_valid()
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task RefreshTicketingProjectionsAsync_materializes_projected_weeks_when_projection_is_valid(string culture)
     {
+        using var scope = new Humans.Base.Extensions.CultureScope(culture);
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en");
         var (groupId, _, revenueCatId, _) = await SeedTicketingYearAsync();
         await ConfigureProjectionAsync(groupId,
             startDate: new LocalDate(2026, 3, 15),
@@ -681,6 +732,57 @@ public sealed class BudgetServiceTests
                 && li.Description.StartsWith("Projected:"))
             .ToListAsync(TestContext.Current.CancellationToken);
         projectedRevenueItems.Should().NotBeEmpty();
+        projectedRevenueItems.Should().AllSatisfy(item => item.Description.Should().MatchRegex(
+            "^Projected: Week of (Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Mar|Apr) [0-9]+–(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Mar|Apr) [0-9]+$"));
+        System.Globalization.CultureInfo.CurrentCulture.Name.Should().Be("en");
+        System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be(culture);
+    }
+
+    [HumansTheory]
+    [InlineData(22, 5, 47)]
+    [InlineData(1, 5, 35)]
+    [InlineData(22, 0, 12)]
+    public async Task Ticketing_projection_preview_matches_materialized_weeks(
+        int startDay, int dailyRate, int firstWeekTickets)
+    {
+        Clock.Reset(Instant.FromUtc(2026, 3, 17, 12, 0));
+        var (groupId, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
+        await ConfigureProjectionAsync(groupId, new LocalDate(2026, 3, startDay),
+            new LocalDate(2026, 4, 15), 19.99m, dailyRate);
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        {
+            var projection = await ctx.TicketingProjections.SingleAsync(
+                p => p.BudgetGroupId == groupId, TestContext.Current.CancellationToken);
+            projection.InitialSalesCount = 12;
+            projection.StripeFeePercent = 1.5m;
+            projection.StripeFeeFixed = 0.25m;
+            projection.TicketTailorFeePercent = 3m;
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var preview = await _service.GetTicketingProjectionEntriesAsync(
+            groupId, TestContext.Current.CancellationToken);
+        preview.Should().HaveCount(5);
+        preview[0].WeekStart.Should().Be(new LocalDate(2026, 3, 16));
+        preview[0].ProjectedTickets.Should().Be(firstWeekTickets);
+        preview[^1].WeekEnd.Should().Be(new LocalDate(2026, 4, 15));
+        preview[^1].ProjectedTickets.Should().Be(dailyRate == 0 ? 1 : 15);
+
+        await _service.RefreshTicketingProjectionsAsync(_yearId, null, TestContext.Current.CancellationToken);
+
+        await using var stored = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var lines = await stored.BudgetLineItems.Where(li => li.IsAutoGenerated)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        foreach (var week in preview)
+        {
+            var revenue = lines.Single(li => li.BudgetCategoryId == revenueCatId && li.ExpectedDate == week.WeekStart);
+            revenue.Amount.Should().Be(week.ProjectedRevenue);
+            revenue.Notes.Should().Be($"~{week.ProjectedTickets} tickets");
+            lines.Single(li => li.BudgetCategoryId == feesCatId && li.ExpectedDate == week.WeekStart
+                && li.Description.Contains("Stripe fees:", StringComparison.Ordinal)).Amount.Should().Be(-week.ProjectedStripeFees);
+            lines.Single(li => li.BudgetCategoryId == feesCatId && li.ExpectedDate == week.WeekStart
+                && li.Description.Contains("TT fees:", StringComparison.Ordinal)).Amount.Should().Be(-week.ProjectedTtFees);
+        }
     }
 
     // Guards the ordering invariant: materialization runs in the repo AFTER

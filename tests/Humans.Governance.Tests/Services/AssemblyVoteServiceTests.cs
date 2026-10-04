@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
@@ -995,11 +996,18 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         stored.Status.Should().Be(AssemblyVoteStatus.Open);
     }
 
-    [HumansFact]
-    public async Task CancelAsync_WithANearMaximumReason_StillAuditsWithinTheColumn()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task CancelAsync_WithANearMaximumReason_StillAuditsWithinTheColumn(bool splitPair)
     {
         var vote = await _fx.AddVoteAsync();
-        var reason = new string('x', 4000);
+        var prefix = $"Cancelled assembly vote {vote.Id}: ";
+        var reason = splitPair
+            ? new string('x', 3998 - prefix.Length) + "😀" + new string('y', prefix.Length)
+            : new string('x', 4000);
+        var expectedDescription = prefix
+            + new string('x', (splitPair ? 3998 : 3999) - prefix.Length) + "…";
 
         await _fx.Service.CancelAsync(
             vote.Id, reason, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
@@ -1008,7 +1016,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // audit_log.description — and AuditLogService swallows that, losing the entry.
         await _fx.Audit.Received(1).LogAsync(
             AuditAction.AssemblyVoteCancelled, Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Is<string>(d => d.Length <= 4000), Arg.Any<Guid>(),
+            Arg.Is<string>(d => d.Length <= 4000 && d == expectedDescription), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -1731,6 +1739,53 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             slices.Single(x => string.Equals(
                 x.SectionName, AssemblyVoteService.AssemblyVoteActions, StringComparison.Ordinal)).Data);
         json.Should().Contain("Opened").And.Contain("Closed");
+    }
+
+    [HumansTheory]
+    [InlineData("opened", "es", "es")]
+    [InlineData("opened", "", "en")]
+    [InlineData("opened", " ", "en")]
+    [InlineData("opened", "not a culture!", "en")]
+    [InlineData("opened", "fr-FR", "en")]
+    [InlineData("reminder", "es", "es")]
+    [InlineData("reminder", "fr-FR", "en")]
+    [InlineData("cancelled", "es", "es")]
+    [InlineData("cancelled", "fr-FR", "en")]
+    public async Task AssemblyEmails_UseSupportedRecipientLanguage(
+        string phase, string language, string expectedCulture)
+    {
+        using var actorCulture = new CultureScope("fr");
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var member = Guid.NewGuid();
+        _fx.StubActiveUsers(member);
+        var info = (await _fx.Users.GetUserInfosAsync([member], ct))[member]
+            with
+        { PreferredLanguage = language };
+        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [member] = info }));
+        var reminder = string.Equals(phase, "reminder", StringComparison.Ordinal);
+        var cancelled = string.Equals(phase, "cancelled", StringComparison.Ordinal);
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(reminder ? 12 : 120));
+        var row = await _fx.AddRosterRowAsync(vote.Id, member, isOfficial: true,
+            notified: !string.Equals(phase, "opened", StringComparison.Ordinal));
+
+        if (cancelled)
+            (await _fx.Service.CancelAsync(vote.Id, "Cancelled by admin", Guid.NewGuid(), ct))
+                .Should().Be(AssemblyVoteActionResult.Ok);
+        else
+            await _fx.Service.RunLapseAndReminderSweepAsync(ct);
+
+        await _fx.Email.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.TemplateName == "assembly_vote_" + phase
+                && m.RecipientEmail == member + "@example.org"
+                && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+        var stored = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .SingleAsync(r => r.Id == row.Id, ct);
+        if (reminder) stored.ReminderSentAt.Should().NotBeNull();
+        else if (!cancelled) stored.NotifiedAt.Should().NotBeNull();
     }
 
     [HumansFact]
