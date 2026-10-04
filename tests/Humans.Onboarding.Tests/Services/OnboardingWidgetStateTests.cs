@@ -62,6 +62,23 @@ public class OnboardingWidgetStateTests
         communicationPreferences: []);
 
     [HumansFact]
+    public async Task GetCurrentStep_CancelsTheActiveEventReadWhenTheRequestIsAbandoned()
+    {
+        using var request = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
+        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await request.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (EventSettingsInfo?)null;
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => BuildSut().GetCurrentStepAsync(userId, request.Token));
+        await _burnSettings.Received(1).GetActiveEventSettingsAsync(request.Token);
+    }
+
+    [HumansFact]
     public async Task ConsentsComplete_ShortCircuitsToComplete_EvenWithoutSignup()
     {
         var userId = Guid.NewGuid();
@@ -110,7 +127,7 @@ public class OnboardingWidgetStateTests
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
-        _burnSettings.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(id: eventId));
+        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(id: eventId));
 
         var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 
@@ -125,7 +142,7 @@ public class OnboardingWidgetStateTests
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
-        _burnSettings.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(id: eventId));
+        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(id: eventId));
         _session.ShiftSkipActive.Returns(true);
 
         var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
@@ -142,7 +159,7 @@ public class OnboardingWidgetStateTests
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
-        _burnSettings.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(id: eventId));
+        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(id: eventId));
         _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftUserSummary>(ShiftFixtures.UserSummary(
                 userId,
@@ -172,7 +189,7 @@ public class OnboardingWidgetStateTests
                 new RequiredConsentRow(signedDocId, "Code of Conduct", Signed: true),
                 new RequiredConsentRow(unsignedDocId, "Privacy Policy", Signed: false)
             ]);
-        _burnSettings.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(id: eventId));
+        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(id: eventId));
 
         var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 
@@ -186,7 +203,7 @@ public class OnboardingWidgetStateTests
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
-        _burnSettings.GetActiveEventSettingsAsync().Returns((EventSettingsInfo?)null);
+        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
 
         var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 

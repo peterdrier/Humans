@@ -66,6 +66,26 @@ public class GuestControllerTests
     }
 
     [HumansFact]
+    public async Task Index_CancelsAbandonedViewerReadBeforeResolvingTheWidget()
+    {
+        using var request = new CancellationTokenSource();
+        var user = new User { Id = Guid.NewGuid(), DisplayName = "Test" };
+        var ctrl = BuildSut(user);
+        ctrl.HttpContext.RequestAborted = request.Token;
+        _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(user, [], [], [], null, []));
+        });
+        _widgetState.GetCurrentStepAsync(user.Id, Arg.Any<CancellationToken>()).Returns(OnboardingWidgetStep.Complete);
+
+        Assert.IsType<ViewResult>(await ctrl.Index(request.Token));
+        await request.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ctrl.Index(request.Token));
+        await _widgetState.Received(1).GetCurrentStepAsync(user.Id, request.Token);
+    }
+
+    [HumansFact]
     public async Task Index_RendersGuestDashboard_WhenStepComplete()
     {
         var user = new User { Id = Guid.NewGuid(), DisplayName = "Test" };
