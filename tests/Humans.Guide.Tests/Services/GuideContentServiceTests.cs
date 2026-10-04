@@ -1,3 +1,4 @@
+using NSubstitute;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Microsoft.Extensions.Caching.Memory;
@@ -45,11 +46,11 @@ public class GuideContentServiceTests
         public string Render(string markdown, string fileStem) => throw toThrow;
     }
 
-    private static GuideContentService CreateService(FakeSource source, out IMemoryCache cache) =>
+    private static GuideContentService CreateService(IGuideContentSource source, out IMemoryCache cache) =>
         CreateService(source, new StubRenderer(), out cache);
 
     private static GuideContentService CreateService(
-        FakeSource source,
+        IGuideContentSource source,
         IGuideRenderer renderer,
         out IMemoryCache cache)
     {
@@ -109,6 +110,41 @@ public class GuideContentServiceTests
         await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
         source.Calls.Should().Be(callsAfterFirst);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task QueuedColdPageRead_ReusesThePageLoadedByTheFirstRequest(bool otherFilesFail)
+    {
+        var token = Xunit.TestContext.Current.CancellationToken;
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var source = Substitute.For<IGuideContentSource>();
+        var calls = 0;
+        source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (++calls == 1)
+            {
+                started.SetResult();
+                await release.Task.WaitAsync(token);
+            }
+            var stem = call.ArgAt<string>(0);
+            if (otherFilesFail && !string.Equals(stem, "Profiles", StringComparison.Ordinal))
+                throw new IOException("another guide is unavailable");
+            return $"# {stem}\n\nContent.";
+        });
+        var service = CreateService(source, out var cache);
+        using var cacheLifetime = cache;
+
+        var firstRead = service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, token);
+        await started.Task.WaitAsync(token);
+        var queuedRead = service.GetPageAsync("profiles", GuideRoleContext.Anonymous, token);
+        release.SetResult();
+
+        (await firstRead.WaitAsync(token)).Should().Be("[rendered:Profiles]");
+        (await queuedRead.WaitAsync(token)).Should().Be("[rendered:Profiles]");
+        calls.Should().Be(GuideFiles.All.Count, "the queued page read must not refetch the entire corpus after its page was loaded");
     }
 
     [HumansFact]

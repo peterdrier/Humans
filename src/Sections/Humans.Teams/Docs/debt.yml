@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Teams. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 8
+next_id: 9
 inbox:
   - added: 2026-09-05
     id: TEAMS-1
@@ -23,3 +23,7 @@ inbox:
     id: TEAMS-7
     what: "Controllers/TeamController.cs MyTeams always supplies PendingRequests = [], hiding the existing member request table and Withdraw forms. The join/withdraw workflow remains live. Repository GetAllJoinRequestsForUserAsync already owns the data but no existing service method returns the member list; adding an internal interface method needs Peter approval under interface-method-additions-are-debt. Found during the daily debt sweep."
     review: light
+  - added: 2026-10-04
+    id: TEAMS-8
+    what: "TeamController.EditTeam catches every DbUpdateException and classifies it by whether InnerException.Message contains CustomSlug; all other database failures become a duplicate Google Group prefix form error. Structured constraint/rule translation belongs at the data/service boundary, but carrying the outcome to the controller needs an agreed existing/new result shape, rather than new provider-schema knowledge in the controller. Found during the daily debt sweep."
+    review: panel

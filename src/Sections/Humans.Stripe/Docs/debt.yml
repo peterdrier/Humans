@@ -1,0 +1,8 @@
+# Section debt ledger for Humans.Stripe. Shape: memory/process/debt-ledger-additions.md.
+version: 1
+next_id: 2
+inbox:
+  - added: 2026-10-04
+    id: STRIPE-1
+    what: "StoreWebhookRegistrationService bounds registration with a 15-second linked token, but DeleteObsoleteEndpointsAsync first awaits TryListOpenPullRequestsAsync/ListOpenPullRequestsAsync without that token. A stalled GitHub read can exceed the registration timeout before any Stripe call starts. Preserve remote-write completion rules when fixing the read boundary; the current private GitHub client construction also lacks a deterministic pending-response test seam. Found during the daily debt sweep."
+    review: panel

@@ -1,0 +1,8 @@
+# Section debt ledger for Humans.Auth. Shape: memory/process/debt-ledger-additions.md.
+version: 1
+next_id: 2
+inbox:
+  - added: 2026-10-04
+    id: AUTH-1
+    what: "MagicLinkService.SendLoginLinkAsync checks User.MagicLinkSentAt before awaiting profile lookup and email delivery, then stamps it afterward. Overlapping live AccountController send requests can both deliver within the documented 60-second per-user cooldown. Existing IMagicLinkRateLimiter reservations cover signup addresses or token redemption only; a per-user send reservation needs an interface decision/approval, rather than disguising a user id as a signup email. Found during the daily debt sweep."
+    review: panel
