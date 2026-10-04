@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Teams. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 7
+next_id: 8
 inbox:
   - added: 2026-09-05
     id: TEAMS-1
@@ -19,3 +19,7 @@ inbox:
     id: TEAMS-5
     what: "TeamService.DeleteTeamAsync deactivates a team by closing every live membership through TeamRepository.DeactivateTeamAsync, which stamps LeftAt and saves with no audit entry — only an ILogger line. An admin action ending members' memberships is invisible to the Board, against AGENTS.md's audit rule. Auditing it needs a call: a new AuditAction on the AuditLog leaf (public surface, Peter's approval) or one TeamMemberRemoved row per closed membership. Found by Codex reviewing peterdrier/Humans#1594."
     review: panel
+  - added: 2026-10-04
+    id: TEAMS-7
+    what: "Controllers/TeamController.cs MyTeams always supplies PendingRequests = [], hiding the existing member request table and Withdraw forms. The join/withdraw workflow remains live. Repository GetAllJoinRequestsForUserAsync already owns the data but no existing service method returns the member list; adding an internal interface method needs Peter approval under interface-method-additions-are-debt. Found during the daily debt sweep."
+    review: light
