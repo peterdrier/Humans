@@ -177,6 +177,8 @@ Three controllers serve this section.
 
 ## Architecture
 
+A lazy per-key cache miss cannot republish its old result after an intervening cache eviction or refresh.
+
 **Owning services:** `LegalDocumentService` (Statutes page), `LegalDocumentSyncService` (document-side — sole writer for `legal_documents`/`document_versions`, owning both the admin write surface `IAdminLegalDocumentService` and the GitHub-sync write surface `ILegalDocumentSyncService`; nobodies-collective/Humans#751), `ConsentService` (consent-side), `LegalDocumentSyncRunner` (the GitHub sync + re-consent fan-out body) — all in `Humans.Consent.Services`, `internal sealed`. `SyncLegalDocumentsJob` itself is `Humans.Consent/Jobs/SyncLegalDocumentsJob.cs` — `public` because Shell names the concrete type when it registers and schedules it.
 **Owned tables:** `legal_documents`, `document_versions`, `consent_records`
 **Status:** (G5) Own project — `src/Sections/Humans.Consent` + `src/Sections/Humans.Consent.Contracts` (nobodies-collective/Humans#866). Owns `LegalDbContext` and its migrations; entities, repositories, services, controllers, views and `ConsentResource` are all internal to the assembly. All cross-domain navs (`LegalDocument.Team`, `Team.LegalDocuments`) have been stripped. The context keeps the name `LegalDbContext` and the `legal_*` table names — a G5 move changes files, never the schema (nobodies-collective/Humans#1012).

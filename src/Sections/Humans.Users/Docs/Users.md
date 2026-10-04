@@ -284,6 +284,8 @@ Inbound (other sections → Users) — the typical direction:
 
 ## Architecture
 
+A lazy per-key cache miss cannot republish its old result after an intervening cache eviction or refresh.
+
 **Owning services:** `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `AccountDeletionService`, `AccountMergeService` + `DuplicateAccountService` (the one ordered merge engine and the stateless duplicate detector; `AccountMergeService` is backed by `IAccountMergeRepository` for `account_merge_requests` and contributes the `AccountMergeRequests` GDPR slice), `ExternalLoginService` (the OAuth-callback decision ladder, kept out of `AccountController` per HUM0031; sole caller of `IUserEmailService.ReconcileOAuthIdentityAsync`) — all in `Humans.Users/Services/`.
 **Owned tables:** `users`, `user_claims`, `user_logins`, `user_tokens`, `roles` (legacy), `user_roles` (legacy), `role_claims` (legacy), `event_participations`, `account_merge_requests`.
 

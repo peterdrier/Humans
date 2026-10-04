@@ -180,6 +180,8 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 ## Architecture
 
+A lazy per-key cache miss cannot republish its old result after an intervening cache eviction or refresh.
+
 **Owning services:** `CalendarService` (keyed inner: mutations plus the row loads the cache warms and refreshes from), `CachingCalendarService` (decorator exposing `ICalendarService` and `ICalendarServiceRead`), `CalendarFeedTokenService` (internal: the feed credential's lifecycle, plus the section's `IUserDataContributor` and `IUserMerge`), `ICalFeedService` (personal iCal feed orchestrator — owns no tables, injects no repository)
 **Owned tables:** `calendar_events`, `calendar_event_exceptions`, `calendar_feed_tokens`
 **Status:** (A) Migrated — own project, own `CalendarDbContext`, §15 caching decorator. `ICalendarFeedContributor`, `CalendarFeedItem`, `IICalFeedService` and `UserCalendarViewComponent` are public under `Contracts/` (a folder, not a `.Contracts` leaf — no consumer lives in Base and the fan-out inverts the arrow); the service and `ICalFeedApiController` are `internal`. Nothing outside the section reads a calendar *event*.
