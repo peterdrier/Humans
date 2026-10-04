@@ -89,12 +89,14 @@ internal sealed class HoldedClient : IHoldedClient
 
         using var resp = await SendAsync(req, ct);
         var body = await resp.Content.ReadAsStringAsync(ct);
+        // A successful create may already be persisted remotely; a missing ID cannot be retried safely.
         try
         {
             var node = JsonNode.Parse(body)
-                ?? throw new HoldedTransientException("Holded returned empty body");
-            var id = node["id"]?.GetValue<string>()
-                ?? throw new HoldedTransientException("Holded response missing id");
+                ?? throw new HoldedPermanentException("Holded returned no purchase identity after accepting creation.");
+            var id = node["id"]?.GetValue<string>();
+            if (string.IsNullOrWhiteSpace(id))
+                throw new HoldedPermanentException("Holded returned no purchase identity after accepting creation.");
             return id;
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
@@ -382,10 +384,11 @@ internal sealed class HoldedClient : IHoldedClient
         try
         {
             var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
-                ?? throw new HoldedTransientException("Holded returned empty body");
-            return node["id"]?.GetValue<string>()
-                ?? input.ExistingContactId
-                ?? throw new HoldedTransientException("Holded contact upsert response missing id");
+                ?? throw new HoldedPermanentException("Holded returned no contact identity after accepting the upsert.");
+            var id = node["id"]?.GetValue<string>();
+            if (!string.IsNullOrWhiteSpace(id)) return id;
+            if (!string.IsNullOrWhiteSpace(input.ExistingContactId)) return input.ExistingContactId;
+            throw new HoldedPermanentException("Holded returned no contact identity after accepting the upsert.");
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
@@ -416,9 +419,11 @@ internal sealed class HoldedClient : IHoldedClient
         try
         {
             var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
-                ?? throw new HoldedTransientException("Holded returned empty body");
-            return Prop(node, "id")?.GetValue<string>()
-                ?? throw new HoldedTransientException("Holded sales-document response missing id");
+                ?? throw new HoldedPermanentException("Holded returned no sales-document identity after accepting creation.");
+            var id = Prop(node, "id")?.GetValue<string>();
+            if (string.IsNullOrWhiteSpace(id))
+                throw new HoldedPermanentException("Holded returned no sales-document identity after accepting creation.");
+            return id;
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)

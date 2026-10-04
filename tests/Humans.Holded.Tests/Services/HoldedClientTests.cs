@@ -29,7 +29,27 @@ public class HoldedClientTests
     [Xunit.InlineData("invoice", "{\"id\":42}")]
     [Xunit.InlineData("receipt", "{malformed")]
     [Xunit.InlineData("receipt", "{\"id\":42}")]
-    public async Task CreationResponses_normalize_unreadable_success_without_retrying(string operation, string json)
+    [Xunit.InlineData("purchase", "null", false)]
+    [Xunit.InlineData("purchase", "{}", false)]
+    [Xunit.InlineData("purchase", "{\"id\":null}", false)]
+    [Xunit.InlineData("purchase", "{\"id\":\"\"}", false)]
+    [Xunit.InlineData("purchase", "{\"id\":\"  \"}", false)]
+    [Xunit.InlineData("contact", "null", false)]
+    [Xunit.InlineData("contact", "{}", false)]
+    [Xunit.InlineData("contact", "{\"id\":null}", false)]
+    [Xunit.InlineData("contact", "{\"id\":\"\"}", false)]
+    [Xunit.InlineData("contact", "{\"id\":\"  \"}", false)]
+    [Xunit.InlineData("invoice", "null", false)]
+    [Xunit.InlineData("invoice", "{}", false)]
+    [Xunit.InlineData("invoice", "{\"id\":null}", false)]
+    [Xunit.InlineData("invoice", "{\"id\":\"\"}", false)]
+    [Xunit.InlineData("invoice", "{\"id\":\"  \"}", false)]
+    [Xunit.InlineData("receipt", "null", false)]
+    [Xunit.InlineData("receipt", "{}", false)]
+    [Xunit.InlineData("receipt", "{\"id\":null}", false)]
+    [Xunit.InlineData("receipt", "{\"id\":\"\"}", false)]
+    [Xunit.InlineData("receipt", "{\"id\":\"  \"}", false)]
+    public async Task CreationResponses_normalize_unreadable_success_without_retrying(string operation, string json, bool parseError = true)
     {
         var calls = 0;
         var client = Make(new StubHandler(_ =>
@@ -53,7 +73,7 @@ public class HoldedClientTests
         };
 
         var failure = await act.Should().ThrowAsync<HoldedPermanentException>();
-        failure.Which.InnerException.Should().NotBeNull();
+        if (parseError) failure.Which.InnerException.Should().NotBeNull();
         calls.Should().Be(1);
     }
 
