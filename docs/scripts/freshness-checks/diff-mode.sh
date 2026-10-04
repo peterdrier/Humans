@@ -322,7 +322,7 @@ from pathlib import Path
 import tempfile, shutil, subprocess, os
 import sys
 script=Path(sys.argv[1]).resolve()
-def case(mode, failure=None):
+def case(mode, failure=None, wildcard=False):
     with tempfile.TemporaryDirectory() as tmp:
         p=Path(tmp)
         (p/'docs/architecture').mkdir(parents=True)
@@ -331,6 +331,8 @@ def case(mode, failure=None):
         (p/'src/new/Other.cs').write_text('target')
         (p/'docs/architecture/freshness-catalog.yml').write_text('editorial_trees:\n  - docs/one.md\n  - docs/two.md\nignore:\n  - ignored/**\n')
         original='<!-- freshness:triggers\n  src/old/Thing.cs\n-->\n'
+        if wildcard:
+            original = original.replace('Thing.cs', 'new/**/Thing.cs')
         (p/'docs/one.md').write_text(original)
         (p/'docs/two.md').write_text(original.replace('Thing','Other'))
         (p/'docs/empty.md').write_text('No trigger marker.\n')
@@ -338,8 +340,11 @@ def case(mode, failure=None):
             (p/'docs/architecture/freshness-catalog.yml').write_text('editorial_trees:\n  - docs/\nignore:\n')
         if failure == 'walk-find':
             (p/'docs/architecture/freshness-catalog.yml').write_text('editorial_trees:\n  - docs/\nignore:\n  - ignored/**\n')
+        if failure == 'dead-suffix':
+            original = original.replace('Thing.cs', 'new/**/Missing.cs')
+            (p/'docs/one.md').write_text(original)
         env=os.environ.copy()
-        if failure and failure != 'empty-ignore':
+        if failure and failure not in ('empty-ignore', 'dead-suffix'):
             (p/'bin').mkdir()
             command={'walk-find':'find', 'ignore-awk':'awk', 'read-awk':'awk'}.get(failure, failure)
             real=shutil.which(command)
@@ -376,9 +381,11 @@ def case(mode, failure=None):
             assert not list((p/'docs').glob('*.tmp'))
         else:
             assert 'repaired=2 unresolved=0 docs_forced_dirty=0' in result.stdout,result.stdout
-            assert (p/'docs/one.md').read_text()==(original if mode=='check' else original.replace('old','new'))
-        print('PASS',mode,failure or 'normal')
-for args in [('repair',None),('check',None),('repair','mv'),('repair','awk'),('repair','find'),('repair','walk-find'),('repair','ignore-awk'),('repair','read-awk'),('repair','empty-ignore')]:case(*args)
+            assert (p/'docs/one.md').read_text()==(original if mode=='check' else original.replace('old/new' if wildcard else 'old', 'new'))
+        print('PASS',mode,failure or ('wildcard' if wildcard else 'normal'))
+for args in [('repair',None),('check',None),('repair','mv'),('repair','awk'),('repair','find'),('repair','walk-find'),('repair','ignore-awk'),('repair','read-awk'),('repair','empty-ignore'),('repair','dead-suffix'),('check','dead-suffix')]:case(*args)
+case('repair', wildcard=True)
+case('check', wildcard=True)
 PYTEST
 then
   echo "PASS [test 9]: repair/preview and empty markers/lists work; producer failures cannot pass clean"

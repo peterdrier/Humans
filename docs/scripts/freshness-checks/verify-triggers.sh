@@ -37,7 +37,8 @@
 # anything in the diff window matches — an unresolved dead trigger means the
 # doc needs a human-legible review this run, not silent skipping.
 # Failed target searches or file replacements remain UNRESOLVED; only
-# successful writes (or proposed --check repairs) count as REPAIRED.
+# replacements that resolve to live targets count as REPAIRED, after a
+# successful write or a proposed --check repair.
 
 set -uo pipefail  # deliberately no -e: one bad doc must not silence the rest
                    # (docs/freshness/last-report.md, 2026-08-18 sweep — "the
@@ -148,6 +149,7 @@ for f in $docs; do
     [ -z "$glob" ] && continue
     if trigger_is_dead "$glob"; then
       if target=$(resolve_target "$glob") && [ -n "$target" ] &&
+          ! trigger_is_dead "$target" &&
           { [ "$MODE" = "check" ] || repair_line "$f" "$glob" "$target"; }; then
         echo "REPAIRED $f | $glob -> $target"
         repaired=$((repaired + 1))
