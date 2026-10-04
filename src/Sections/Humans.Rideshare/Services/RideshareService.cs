@@ -34,7 +34,6 @@ internal sealed class RideshareService(
     internal const string RideshareInterests = "RideshareInterests";
 
     private const string MineUrl = "/Rideshare/Mine";
-    private const string FallbackName = "A human";
     private static readonly ResourceManager NoticeResources = new(typeof(RideshareResource));
 
     // camelCase + case-insensitive: WaypointsJson is {label, latitude, longitude}.
@@ -651,10 +650,10 @@ internal sealed class RideshareService(
 
     // ── Side effects ──────────────────────────────────────────────────────
 
-    private async Task<string> DisplayNameAsync(Guid userId, CancellationToken ct)
+    private async Task<string?> DisplayNameAsync(Guid userId, CancellationToken ct)
     {
         var info = await users.GetUserInfoAsync(userId, ct);
-        return string.IsNullOrWhiteSpace(info?.BurnerName) ? FallbackName : info.BurnerName;
+        return info?.BurnerName;
     }
 
     // Notifications are best-effort: a failed send never rolls back the interest write.
@@ -674,6 +673,8 @@ internal sealed class RideshareService(
             using (new CultureScope(language, logger))
             {
                 var culture = CultureInfo.CurrentUICulture;
+                if (string.IsNullOrWhiteSpace(name))
+                    name = Notice(culture, "Rideshare_NoticeHuman");
                 (title, body) = content(culture, name);
                 actionLabel = Notice(culture, "Rideshare_NoticeOpen");
             }

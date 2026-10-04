@@ -677,6 +677,33 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansTheory]
+    [InlineData("en", "A human is interested in your ride")]
+    [InlineData("es", "Un human está interesado en tu viaje")]
+    [InlineData("de", "Ein human interessiert sich für deine Fahrt")]
+    [InlineData("it", "Un human è interessato al tuo viaggio")]
+    [InlineData("fr", "Un human est intéressé par votre trajet")]
+    [InlineData("ca", "Un human està interessat en el teu viatge")]
+    public async Task InterestNotification_MissingActorName_UsesRecipientLanguage(string language, string title)
+    {
+        var driver = SeedUser("Ada");
+        var rider = SeedUser(" ");
+        var trip = await SeedTripAsync(driver);
+        var recipient = await Users.GetUserInfoAsync(driver, Ct);
+        Users.GetUserInfoAsync(driver, Arg.Any<CancellationToken>())
+            .Returns(recipient! with { PreferredLanguage = language });
+        using var actorCulture = new CultureScope("en");
+
+        await NewService().ExpressInterestAsync(rider, trip.Id, null, 1, null, Ct);
+
+        await Notifications.Received(1).SendAsync(
+            NotificationSource.RideshareInterestReceived, NotificationClass.Actionable, Arg.Any<NotificationPriority>(),
+            title, Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == driver),
+            Arg.Any<string?>(), "/Rideshare/Mine", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be("en");
+    }
+
+    [HumansTheory]
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("invalid/culture")]
