@@ -14,7 +14,7 @@
       contracts leaves Shell had been reaching through it are declared below.
     -->
     <ProjectReference Include="..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\Sections\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
@@ -32,7 +32,6 @@
     <ProjectReference Include="..\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Sections\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\Sections\Humans.Backdoor\Humans.Backdoor.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\Sections\Humans.Calendar\Humans.Calendar.csproj" />
     <ProjectReference Include="..\Sections\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
     <ProjectReference Include="..\Sections\Humans.Camps\Humans.Camps.csproj" />

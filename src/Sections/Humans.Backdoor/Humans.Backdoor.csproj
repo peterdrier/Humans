@@ -53,7 +53,7 @@
          Humans.Finance itself (memory/architecture/section-project-cycle-fix.md). -->
     <ProjectReference Include="..\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
     <!-- The budget year label (e.g. "2026") a report is booked to, for the year filter/field. -->
-    <ProjectReference Include="..\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Budget\Humans.Budget.csproj" />
   </ItemGroup>
 
   <ItemGroup>

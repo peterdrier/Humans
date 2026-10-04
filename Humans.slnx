@@ -13,7 +13,6 @@
     <Project Path="src/Sections/Humans.Auth.Contracts/Humans.Auth.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Backdoor/Humans.Backdoor.csproj" />
     <Project Path="src/Sections/Humans.Budget/Humans.Budget.csproj" />
-    <Project Path="src/Sections/Humans.Budget.Contracts/Humans.Budget.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Calendar/Humans.Calendar.csproj" />
     <Project Path="src/Sections/Humans.EarlyEntry/Humans.EarlyEntry.csproj" />
     <Project Path="src/Sections/Humans.Camps/Humans.Camps.csproj" />

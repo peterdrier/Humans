@@ -26,7 +26,7 @@
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!--
       <vc:audit-log> on the report detail page. The view component lives in the section project,
@@ -40,7 +40,6 @@
       leaf. Acyclic: Humans.Budget references Humans.Finance.Contracts and this project's
       leaf is never on its graph (memory/architecture/section-project-cycle-fix.md).
     -->
-    <ProjectReference Include="..\Humans.Budget\Humans.Budget.csproj" />
     <!--
       Creditor bindings and the payment round-trip come from Finance's contracts leaf, never
       from Humans.Finance itself (memory/architecture/section-project-cycle-fix.md).
