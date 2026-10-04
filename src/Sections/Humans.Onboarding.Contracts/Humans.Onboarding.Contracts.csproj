@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Stays a leaf: folding into Humans.Onboarding would close a project cycle: Humans.Onboarding -> Humans.Users.Contracts -> Humans.Onboarding (also via Humans.Consent). -->
+
   <!--
     Onboarding's cross-section surface. This leaf is a *project* rather than a Contracts/
     folder for a reason no earlier section had: the pair Onboarding/Consent points both

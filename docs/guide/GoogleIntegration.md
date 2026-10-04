@@ -3,10 +3,10 @@
   src/Sections/Humans.Teams/Views/TeamAdmin/Resources.cshtml
   src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
   src/Sections/Humans.GoogleIntegration/Services/**
-  src/Sections/Humans.GoogleIntegration.Contracts/GoogleResource.cs
-  src/Sections/Humans.GoogleIntegration.Contracts/GoogleSyncOutboxEvent.cs
-  src/Sections/Humans.GoogleIntegration.Contracts/SyncServiceSettings.cs
-  src/Sections/Humans.GoogleIntegration.Contracts/GoogleSyncOutboxEventTypes.cs
+  src/Sections/Humans.GoogleIntegration/Contracts/GoogleResource.cs
+  src/Sections/Humans.GoogleIntegration/Contracts/GoogleSyncOutboxEvent.cs
+  src/Sections/Humans.GoogleIntegration/Contracts/SyncServiceSettings.cs
+  src/Sections/Humans.GoogleIntegration/Contracts/GoogleSyncOutboxEventTypes.cs
   src/Sections/Humans.GoogleIntegration/Data/Configurations/GoogleResourceConfiguration.cs
   src/Sections/Humans.GoogleIntegration/Data/Configurations/GoogleSyncOutboxEventConfiguration.cs
   src/Sections/Humans.GoogleIntegration/Data/Configurations/SyncServiceSettingsConfiguration.cs

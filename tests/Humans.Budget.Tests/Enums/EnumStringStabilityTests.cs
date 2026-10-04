@@ -8,7 +8,7 @@ namespace Humans.Budget.Tests.Enums;
 /// Budget's half of the string-stored-enum guard. The rest live in the test project of the
 /// section that owns each enum; these two moved out with the
 /// section because <see cref="BudgetYearStatus"/> and <see cref="ExpenditureType"/> now sit
-/// on Budget's contracts leaf, where <c>Humans.Domain.Tests</c> cannot name them
+/// in Budget's Contracts/ folder, where <c>Humans.Domain.Tests</c> cannot name them
 /// (nobodies-collective/Humans#866).
 /// </summary>
 /// <remarks>

@@ -17,7 +17,7 @@ inbox:
     review: panel
   - added: 2026-09-14
     id: TEAMS-5
-    what: "TeamService.DeleteTeamAsync deactivates a team by closing every live membership through TeamRepository.DeactivateTeamAsync, which stamps LeftAt and saves with no audit entry — only an ILogger line. An admin action ending members' memberships is invisible to the Board, against AGENTS.md's audit rule. Auditing it needs a call: a new AuditAction on the AuditLog leaf (public surface, Peter's approval) or one TeamMemberRemoved row per closed membership. Found by Codex reviewing peterdrier/Humans#1594."
+    what: "TeamService.DeleteTeamAsync deactivates a team by closing every live membership through TeamRepository.DeactivateTeamAsync, which stamps LeftAt and saves with no audit entry — only an ILogger line. An admin action ending members' memberships is invisible to the Board, against AGENTS.md's audit rule. Auditing it needs a call: a new AuditAction in AuditLog's Contracts/ folder (public surface, Peter's approval) or one TeamMemberRemoved row per closed membership. Found by Codex reviewing peterdrier/Humans#1594."
     review: panel
   - added: 2026-10-04
     id: TEAMS-7

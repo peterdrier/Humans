@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Campaigns/**
-  src/Sections/Humans.Campaigns.Contracts/**
+  src/Sections/Humans.Campaigns/Contracts/**
   src/Sections/Humans.Email/Services/OutboxEmailService.cs
   src/Sections/Humans.Tickets/Services/TicketSyncService.cs
   src/Sections/Humans.Users/Services/UnsubscribeService.cs
@@ -138,7 +138,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 **Owning services:** `CampaignService`
 **Owned tables:** `campaigns`, `campaign_codes`, `campaign_grants`
-**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#546, 2026-04-22); own project since G5 (nobodies-collective/Humans#866). Everything but `Section` is `internal` (HUM0034); the cross-section surface is the leaf project `Humans.Campaigns.Contracts` — `ICampaignService`, `ICampaignServiceRead` and the code-tracking DTOs `TicketQueryService` reads.
+**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#546, 2026-04-22); own project since G5 (nobodies-collective/Humans#866). Everything but `Section` is `internal` (HUM0034); the cross-section surface is the `Contracts/` folder (namespace `Humans.Campaigns.Contracts`) — `ICampaignService`, `ICampaignServiceRead` and the code-tracking DTOs `TicketQueryService` reads.
 
 - `CampaignService` lives in `Humans.Campaigns.Services` and depends only on Application-layer abstractions.
 - `ICampaignRepository` (interface `src/Sections/Humans.Campaigns/Data/ICampaignRepository.cs`, impl `src/Sections/Humans.Campaigns/Data/CampaignRepository.cs`) is the only file that touches this section's tables via `DbContext`.

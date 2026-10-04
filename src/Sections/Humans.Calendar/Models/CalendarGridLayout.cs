@@ -12,10 +12,8 @@ internal static class CalendarGridLayout
     /// The inclusive first and last day the Monday-first month grid renders, including the
     /// adjacent-month cells padding the first and last weeks.
     ///
-    /// One definition on purpose. The controller queries this range and <c>Index.cshtml</c>
-    /// lays it out; while the two computed it separately the query covered only the month's
-    /// own days, so the grid drew leading and trailing cells that were structurally always
-    /// empty and an event on the 31st of the previous month was invisible.
+    /// One definition on purpose: the controller queries this range and <c>Index.cshtml</c>
+    /// lays it out, so the adjacent-month cells get their events too.
     /// </summary>
     public static (LocalDate GridStart, LocalDate GridEnd) MonthGridBounds(YearMonth month)
     {

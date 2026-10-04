@@ -238,6 +238,11 @@ if (!builder.Environment.IsEnvironment("Testing"))
     {
         config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
+            // Scoped Google syncs enqueued or retry-scheduled before nobodies-collective/Humans#1066
+            // name IGoogleGroupSync / IGoogleDriveSync / SyncAction in the removed
+            // Humans.GoogleIntegration.Contracts assembly. Remove once none remain in storage (CENTRAL-70).
+            .UseTypeResolver(typeName => Hangfire.Common.TypeHelper.DefaultTypeResolver(typeName.Replace(
+                ", Humans.GoogleIntegration.Contracts", ", Humans.GoogleIntegration", StringComparison.Ordinal)))
             .UseRecommendedSerializerSettings();
 
         config.UsePostgreSqlStorage(options =>

@@ -1,9 +1,9 @@
 <!-- freshness:triggers
   src/Sections/Humans.Gdpr/**
-  src/Sections/Humans.Gdpr.Contracts/**
+  src/Sections/Humans.Gdpr/Contracts/**
 -->
 <!-- freshness:flag-on-change
-  The fan-out contract (IUserDataContributor / UserDataSlice) and the failure rules the orchestrator enforces — never swallow a contributor exception, never accept a duplicate export section name, log an error for an exported section with no erasure declaration, never leave an erasure section behind silently — review whenever the leaf or GdprService changes.
+  The fan-out contract (IUserDataContributor / UserDataSlice) and the failure rules the orchestrator enforces — never swallow a contributor exception, never accept a duplicate export section name, log an error for an exported section with no erasure declaration, never leave an erasure section behind silently — review whenever the Contracts/ folder or GdprService changes.
 -->
 
 # Gdpr — Section Invariants
@@ -54,7 +54,7 @@ returns `File()` or a redirect.
 | `GET /Profile/Me/DownloadData` | `ProfileController` (Humans.Users) | For a human who has completed onboarding |
 | `GET /Guest/DownloadData` | `GuestDataController` (Humans.Gdpr) | For an authenticated account with no profile yet |
 
-Both resolve `IGdprService` from the contracts leaf and serialize the export
+Both resolve `IGdprService` from the `Contracts/` folder and serialize the export
 result to a file download. `/Profile/Me/DownloadData` stays on Users: moving it
 would change a URL. Erasure has no route of its own — `AccountDeletionService`
 calls `EraseForUserAsync` per merge-chain id from the deletion paths.
@@ -142,28 +142,25 @@ stamp the envelope with the surviving account id and the merged-away ids;
 `GuestDataController`'s base class `HumansControllerBase` also takes
 `IUserServiceRead`.
 
-**Inbound:** wide, and all of it through the leaf, which
-references `Humans.Base` alone so none of it cycles. Every section owning
-user-scoped tables references `Humans.Gdpr.Contracts` to implement
+**Inbound:** wide, and all of it through the public `Contracts/` folder. Every section owning
+user-scoped tables references `Humans.Gdpr` to implement
 `IUserDataContributor`; Users also references it for `ProfileController` (the
 other download route) and `AccountDeletionService` (the erasure caller).
-`Humans.Web` references both Gdpr projects only to compose sections.
+`Humans.Web` references Gdpr only to compose sections.
 
 ## Architecture
 
 **Owning services:** `GdprService` (`Humans.Gdpr.Services`, `internal
-sealed`) behind the public `IGdprService` on the leaf, exposing both
+sealed`) behind the public `IGdprService` in `Contracts/`, exposing both
 `ExportForUserAsync` and `EraseForUserAsync`.
 **Owned tables:** none.
 - `src/Sections/Humans.Gdpr` — one internal service, one `Section.cs`, this
   doc. No `Data/`, no migrations, no `Humans.Infrastructure` reference and no
   `Humans.UI` reference: nothing to persist and nothing to render.
-- `src/Sections/Humans.Gdpr.Contracts` — the whole outward surface. It is a
-  *project* rather than a folder because this contract is implemented from
-  outside: every section owning user-scoped tables implements
-  `IUserDataContributor`, and a folder would make all of them reference
-  `Humans.Gdpr` itself — the internal orchestrator and the controller included —
-  to reach an interface.
+- `src/Sections/Humans.Gdpr/Contracts` — the whole outward surface (namespace
+  `Humans.Gdpr.Contracts`). Every section owning user-scoped tables implements
+  `IUserDataContributor` from it, so each references `Humans.Gdpr`; the
+  orchestrator and controller stay `internal`.
 - No `Resources/` folder and no `GdprResource`: the section has no page copy at
   all, so no type here takes `IStringLocalizer<T>` for any `T` — documentation,
   not a pinned assertion ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).

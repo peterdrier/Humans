@@ -5,7 +5,7 @@ next_id: 9
 inbox:
   - added: 2026-08-24
     id: EVENTS-1
-    what: "GetOccurrenceInstants is hand-mirrored across Domain/Event.cs, Services/Dtos/EventInfo.cs and Humans.Events.Contracts/ApprovedEventView.cs — each copy labelled 'Mirrors …' in its own doc comment. The null-guard around them (gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gate, tz) : [e.StartAt]) is then written out at every call site (EventsApiController, EventsExportController, EventsDashboardController, EventsController, EventOccurrenceExpander, the Services/Service.cs calendar feed) and cannot be deduped mechanically because those types share no shape. Collapsing needs a shared interface or a common base on public DTOs, so it is Peter's call, not a run's. Found by /section-doctor on Events 2026-08-24; call-site list refreshed 2026-09-09."
+    what: "GetOccurrenceInstants is hand-mirrored across Domain/Event.cs, Services/Dtos/EventInfo.cs and Contracts/ApprovedEventView.cs — each copy labelled 'Mirrors …' in its own doc comment. The null-guard around them (gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gate, tz) : [e.StartAt]) is then written out at every call site (EventsApiController, EventsExportController, EventsDashboardController, EventsController, EventOccurrenceExpander, the Services/Service.cs calendar feed) and cannot be deduped mechanically because those types share no shape. Collapsing needs a shared interface or a common base on public DTOs, so it is Peter's call, not a run's. Found by /section-doctor on Events 2026-08-24; call-site list refreshed 2026-09-09."
     review: panel
   - added: 2026-08-24
     id: EVENTS-2

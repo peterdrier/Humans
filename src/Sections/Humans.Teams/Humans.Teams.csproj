@@ -26,22 +26,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!-- IIssueQueueOwner: this section declares the issue queue it owns. -->
-    <ProjectReference Include="..\Humans.Issues.Contracts\Humans.Issues.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Issues\Humans.Issues.csproj" />
+    <ProjectReference Include="..\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!-- TeamAdmin/Members.cshtml renders <vc:audit-log>, which moved out of Humans.UI into the
          AuditLog section in G5 lane 4b-2h (nobodies-collective/Humans#866). AuditLog reaches
          back only to Humans.Teams.Contracts, never to this project — no cycle. -->
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
     <!--
       SystemTeamSyncJob's eligibility inputs (G5 lane 4b-2e). Camps supplies active camp

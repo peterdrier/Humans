@@ -95,9 +95,9 @@ All routes are `AdminOnly`.
 
 ## Cross-Section Dependencies
 
-The section references these contracts leaves — `Humans.Users.Contracts`,
-`Humans.Tickets.Contracts`, `Humans.Shifts.Contracts`, `Humans.Gdpr.Contracts`,
-`Humans.AuditLog.Contracts` — plus `Humans.Base`. There is no Profiles reference: the email
+The section references the contracts leaves `Humans.Users.Contracts`,
+`Humans.Tickets.Contracts` and `Humans.Shifts.Contracts`, the section projects `Humans.Gdpr` and
+`Humans.AuditLog` (contracts in their `Contracts/` folders), plus `Humans.Base`. There is no Profiles reference: the email
 and communication-preference interfaces all live in `Humans.Users.Contracts`.
 
 - **Users — people**: `IUserServiceRead.GetAllUserInfosAsync` and `GetUserInfoAsync` over the

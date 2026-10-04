@@ -296,7 +296,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     // GetAllAsync
     // ==========================================================================
 
-    // GetAllAsync is the section's only bulk read since the SQL window query was retired:
+    // GetAllAsync is the section's only bulk read:
     // the Singleton cache warms from it and every window read is answered off that snapshot.
 
     [HumansFact]

@@ -8,7 +8,10 @@ internal sealed class OccurrenceOverrideFormViewModel
 {
     public Guid EventId { get; set; }
 
-    /// <summary>ISO-8601 UTC string used as the URL segment.</summary>
+    /// <summary>
+    /// The occurrence's identity as the URL segment: an ISO date for an all-day series, an ISO
+    /// instant for a timed one.
+    /// </summary>
     public string OriginalOccurrenceStartUtc { get; set; } = string.Empty;
 
     public bool IsAllDay { get; set; }

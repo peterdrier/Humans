@@ -27,7 +27,7 @@ This section owns no entities and no tables. Everything it creates belongs to an
 | `/dev/login/users` | GET | Anonymous | User chooser - first 100 humans by burner name, ephemeral guests filtered out |
 | `/dev/login/users/{id}` | GET | Anonymous | Sign in as an existing user by id; 404s outside a dev host or a preview when that human holds an active Admin assignment |
 | `/dev/seed` | GET | `AdminOnly` | The admin nav's "Development" page: POST buttons for the budget and camp-role seeds |
-| `/dev/seed/budget` | POST | `FinanceAdminOrAdmin` | Budget demo data, via `IBudgetDemoSeeder` on Budget's contracts leaf |
+| `/dev/seed/budget` | POST | `FinanceAdminOrAdmin` | Budget demo data, via `IBudgetDemoSeeder` in Budget's `Contracts/` folder |
 | `/dev/seed/camp-roles` | POST | `CampAdminOrAdmin` | Five system camp-role definitions |
 | `/dev/seed/dashboard` | POST | `ShiftDashboardAccess` | Coordinator-dashboard demo: one event, 8 departments, 5 subteams, ~120 humans, rotas/shifts/signups |
 | `/dev/seed/dashboard/reset` | POST | `AdminOnly` | Delete everything the dashboard seed created |
@@ -84,12 +84,12 @@ Development is a pure consumer and depends on more sections than any other:
 | Teams | `ITeamService`, `ITeamSeeding`, `ISystemTeamSync` |
 | Camps | `ICampServiceRead`, `ICampSeeding`, `ICampRoleSeeding` |
 | Shifts | `IShiftSeeding`, `IShiftSignupSeeding` |
-| Settings | `ISettingsService`, `IEventSettingsSeeding` (contracts leaf) - the seeded event's active state |
+| Settings | `ISettingsService`, `IEventSettingsSeeding` (`Contracts/` folder) - the seeded event's active state |
 | Audit Log | `IAuditLogService` |
-| Consent | `IConsentSubmission` (contracts leaf) |
+| Consent | `IConsentSubmission` (`Contracts/` folder) |
 | Governance | `IMembershipCalculatorRead` (contracts leaf) |
 | City Planning | `CityPlanningOptions` (contracts leaf) - the dev city-planning team slug |
-| Budget | `IBudgetDemoSeeder` (contracts leaf) |
+| Budget | `IBudgetDemoSeeder` (`Contracts/` folder) |
 
 Nothing depends on Development in the other direction. Shell reaches it twice and neither is a type reference: `/Account/Login` renders `_DevLoginPanel` by partial name, and `DevLoginControllerExclusionProvider` resolves the controller by name through `SectionDiscoveryExtensions`.
 

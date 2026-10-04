@@ -2,7 +2,7 @@
   src/Sections/Humans.Teams/**
   src/Sections/Humans.Teams.Contracts/**
   src/Humans.Base/Constants/SystemTeamIds.cs
-  src/Sections/Humans.GoogleIntegration.Contracts/GoogleResource.cs
+  src/Sections/Humans.GoogleIntegration/Contracts/GoogleResource.cs
   src/Sections/Humans.GoogleIntegration/Data/Configurations/GoogleResourceConfiguration.cs
 -->
 <!-- freshness:flag-on-change
@@ -268,13 +268,13 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 **Outbound** — every `ProjectReference` of `Humans.Teams.csproj` beyond Base and its own leaf, and what it is for:
 
 - **Users.Contracts** (also the leaf's one reference, for `GoogleEmailStatus`): `IUserServiceRead.GetUserInfosAsync` batch-resolves `UserInfo` for nav-stripped reads, projected straight into DTOs; `IUserService` feeds the reconciler.
-- **Auth.Contracts:** `IRoleAssignmentService` for role-holder reads and `IAdminAuthorizationService` for the actor checks; `IRoleAssignmentClaimsCacheInvalidator` after Coordinators reconciliation.
-- **GoogleIntegration.Contracts:** each team can have linked Google resources (Drive folders, Groups). Membership changes call `IGoogleSyncService.AddUserToTeamResourcesAsync` / `RemoveUserFromTeamResourcesAsync` inline (per-user removals are no-ops, handled by the daily reconciliation job); failed Google API calls land in the sync outbox via `IGoogleSyncOutboxService`; `ITeamResourceService` for the Resources page and the Google-group reconciliation.
+- **Auth:** `IRoleAssignmentService` for role-holder reads and `IAdminAuthorizationService` for the actor checks; `IRoleAssignmentClaimsCacheInvalidator` after Coordinators reconciliation.
+- **GoogleIntegration:** each team can have linked Google resources (Drive folders, Groups). Membership changes call `IGoogleSyncService.AddUserToTeamResourcesAsync` / `RemoveUserFromTeamResourcesAsync` inline (per-user removals are no-ops, handled by the daily reconciliation job); failed Google API calls land in the sync outbox via `IGoogleSyncOutboxService`; `ITeamResourceService` for the Resources page and the Google-group reconciliation.
 - **Shifts.Contracts:** `IShiftManagementServiceRead` for the team page's shifts card; `IShiftAuthorizationInvalidator` after coordinator changes. Rotas belong to a department or sub-team, and coordinator/manager status is what scopes their shift management.
 - **Notifications.Contracts:** `INotificationEmitter` on join-request events; `INotificationMeterCacheInvalidator`.
-- **AuditLog.Contracts + AuditLog:** `IAuditLogService` for every membership and EE mutation; the full section for `<vc:audit-log>` in `TeamAdmin/Members`.
+- **AuditLog:** `IAuditLogService` for every membership and EE mutation, and `<vc:audit-log>` in `TeamAdmin/Members`.
 - **Email.Contracts:** transport only (`IEmailService.SendAsync`) for the reconciler's "added to team" mail. Teams owns the template: `TeamsEmails` (internal) builds the `EmailMessage` from Teams' own `Teams_Email_*` keys in `TeamsResource`, renders linked resources alphabetically in the recipient's supported culture via `CultureScope` (English fallback for missing or unsupported saved preferences), and `TeamsEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
-- **Gdpr.Contracts:** `IUserDataContributor` (export + erasure).
+- **Gdpr:** `IUserDataContributor` (export + erasure).
 - **EarlyEntry** (full section): `IEarlyEntryProvider` — `GetEarlyEntriesAsync` projects grants from `EarlyEntryEnabled` teams to the cross-section `EarlyEntryGrant` view (`"{TeamName}: {ProjectName}"`) via `TeamEarlyEntryProjection`; `IEarlyEntryInvalidator` on grant writes.
 - **Camps.Contracts:** active camp lead assignments feed the Barrio Leads system team via `ICampLeadDirectory`.
 - **Governance.Contracts:** `IMembershipCalculatorRead` decides Asociados / Colaboradors eligibility.
@@ -326,8 +326,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Issue queue
 
-Teams owns the `Teams` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
-leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+Teams owns the `Teams` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
+folder) on its `Section` entry point, declaring the queue key and the roles that handle
 issues filed against it — `TeamsAdmin`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.

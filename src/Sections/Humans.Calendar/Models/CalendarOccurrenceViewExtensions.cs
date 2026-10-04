@@ -31,8 +31,7 @@ internal static class CalendarOccurrenceViewExtensions
     /// Which badge a day-per-row view shows for this occurrence on <paramref name="day"/>.
     /// <see cref="ShouldHideTimeLabel"/> answers a different question — whether a time label
     /// would be misleading — and reading it as "is all day" labels a 22:00–02:00 event "all
-    /// day" on its first day and drops the only time it has. The two views that render this
-    /// badge asked it that way, in duplicate, which is how the defect went unseen.
+    /// day" on its first day and drops the only time it has.
     /// </summary>
     public static OccurrenceTimeLabel TimeLabelFor(
         this CalendarOccurrence occ, LocalDate day, DateTimeZone zone) =>

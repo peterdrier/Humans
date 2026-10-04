@@ -23,17 +23,16 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!-- Holded invoice/sales-receipt issuance (IHoldedClient). The connector is its own
          section per memory/architecture/vendor-connectors-own-sections.md; Store consumes it
-         through the Contracts leaf, never its internals. -->
-    <ProjectReference Include="..\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />
+         through its Contracts/ folder, never its internals. -->
+    <ProjectReference Include="..\Humans.Holded\Humans.Holded.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!-- StoreAdmin/CatalogEdit.cshtml renders <vc:audit-log>, owned by the AuditLog section. -->
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!--
       Checkout Session creation, webhook signature verification and payment
       reconciliation, through Humans.Stripe.Contracts. A direct section reference rather

@@ -20,17 +20,16 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Campaigns.Contracts\Humans.Campaigns.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <!--
       Tickets' contracts leaf: CampaignService asks Tickets for discount codes
       (ITicketDiscountCodes) rather than reaching past it into the Base vendor port.
-      Acyclic — the pair goes through leaves in both directions and
-      Humans.Campaigns.Contracts names no Tickets type.
+      Acyclic — Tickets references Humans.Campaigns directly, so Campaigns reaches Tickets
+      only through its leaf and names no Tickets type.
     -->
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
   </ItemGroup>

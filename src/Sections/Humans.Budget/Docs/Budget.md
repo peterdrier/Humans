@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Budget/**
-  src/Sections/Humans.Budget.Contracts/**
+  src/Sections/Humans.Budget/Contracts/**
 -->
 <!-- freshness:flag-on-change
   Budget lifecycle, restricted/ticketing-group rules, append-only audit log, and resource-based authorization — review when Budget services/entities/controllers/auth handlers change.
@@ -241,7 +241,7 @@ Stored as string via `HasConversion<string>()`.
 **Owned tables:** `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections`
 **Status:** (A) Migrated.
 
-- Everything but `Section`, `BudgetResource`, `TicketingBudgetSyncJob` (public with an internal constructor — the Shell names the type for Hangfire registration) and the migrations is `internal` — HUM0034 enforces it. The cross-section surface is the leaf project `Humans.Budget.Contracts`: `IBudgetServiceRead` (incl. `GetYearByIdAsync` so Expenses can offer the categories of the year a pending report is already booked to), `IBudgetDemoSeeder`, the DTOs those name, and the `BudgetYearStatus` / `ExpenditureType` enums. `ITicketingBudgetService` is internal (ruling 43). The leaf is a project rather than a `Contracts/` folder because one consumer is still in Base — `TicketQueryService`.
+- Everything but `Section`, `BudgetResource`, `TicketingBudgetSyncJob` (public with an internal constructor — the Shell names the type for Hangfire registration) and the migrations is `internal` — HUM0034 enforces it. The cross-section surface is the `Contracts/` folder (namespace `Humans.Budget.Contracts`): `IBudgetServiceRead` (incl. `GetYearByIdAsync` so Expenses can offer the categories of the year a pending report is already booked to), `IBudgetDemoSeeder`, the DTOs those name, and the `BudgetYearStatus` / `ExpenditureType` enums. `ITicketingBudgetService` is internal (ruling 43).
 - `BudgetService` lives in `Humans.Budget.Services` and depends only on Application-layer abstractions. `IBudgetService` (internal) is the full surface on top of the read interface; it stays an interface because the ticketing bridge's unit tests substitute it.
 - `BudgetRepository` (impl `src/Sections/Humans.Budget/Data/BudgetRepository.cs`, §15b Singleton + `IDbContextFactory<BudgetDbContext>`) is the only file that touches budget tables via `DbContext`. `IBudgetRepository` exposes atomic per-method operations — multi-entity mutations (e.g. creating a year with its default groups / categories / projection row, or syncing ticketing actuals + re-materializing projected line items) are single repository methods that do all their work inside one short-lived `DbContext`.
 - **Decorator decision — no caching decorator.** Budget is admin-only, low-traffic. Same rationale as Governance / User / Feedback.
@@ -258,8 +258,8 @@ Stored as string via `HasConversion<string>()`.
 
 ## Issue queue
 
-Budget owns the `Budget` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
-leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+Budget owns the `Budget` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
+folder) on its `Section` entry point, declaring the queue key and the roles that handle
 issues filed against it — `FinanceAdmin`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.

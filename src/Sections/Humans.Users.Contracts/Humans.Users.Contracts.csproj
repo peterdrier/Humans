@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Stays a leaf: folding into Humans.Users would close a project cycle: Humans.Users -> Humans.Auth -> Humans.Users, and Humans.Base references Humans.Users.Contracts. -->
+
   <!--
     Users + Profiles' cross-section surface. Carved ahead of the section move; a later change
     added the three entities and the write interface Base still names.
@@ -75,7 +77,7 @@
     IUserService.ApplyProfileOnboardingMutationAsync. Pulling it here would force
     Humans.Onboarding.Contracts to reference this project to keep its own signature — trading
     one acyclic edge for a worse one and taking the zero-reference property off the leaf that
-    is load-bearing for it. Duplicating it (Humans.Auth.Contracts.RoleAssignmentResult's
+    is load-bearing for it. Duplicating it (Humans.Auth.RoleAssignmentResult's
     shape) would put a third copy of a two-property record in the graph and grow this
     project's public surface, which needs Peter. Neither is worth it: the edge is provably
     harmless and the flat "zero references" phrasing of the G5 end-state design is the thing

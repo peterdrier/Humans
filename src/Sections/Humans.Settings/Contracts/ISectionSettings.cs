@@ -10,10 +10,7 @@ namespace Humans.Settings.Contracts;
 /// <paramref name="Label"/> is a SharedResource key (<c>Humans.Base.SharedResource</c>) —
 /// carve by renderer, not by owner (docs/sections/G5-SECTION-TEMPLATE.md's third direction):
 /// <c>SettingsTabsViewComponent</c> renders every contributed label and cannot see any
-/// contributor's private resource set, including this leaf's own — no <c>.Contracts</c> leaf
-/// carries localized strings today, and the parity-test discovery that guards every culture
-/// (<c>SectionResourceTypes</c>) only walks assemblies with a <c>Section : ISection</c> entry
-/// point, which a Contracts leaf never has. A key with no entry renders as itself.
+/// contributor's private resource set. A key with no entry renders as itself.
 /// <paramref name="Component"/> is a view component type the owning section ships; it
 /// renders the tab's panel body. <paramref name="Policy"/> null means every authenticated
 /// user sees the tab — the tab decides for itself whether that user gets a read-only or

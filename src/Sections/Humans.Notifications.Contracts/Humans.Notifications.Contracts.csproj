@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Stays a leaf: folding into Humans.Notifications would close a project cycle: Humans.Notifications -> Humans.Auth -> Humans.Notifications (also via Humans.GoogleIntegration). -->
+
   <!--
     Notifications' cross-section surface, carved into its own leaf project because sections
     from all over the app reach into it — Auth, Campaigns, Camps, Consent, Feedback,

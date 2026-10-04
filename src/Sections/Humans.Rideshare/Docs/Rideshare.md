@@ -4,7 +4,7 @@
   src/Humans.Base/Constants/RoleNames.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Notifications.Contracts/NotificationSource.cs
-  src/Sections/Humans.AuditLog.Contracts/AuditAction.cs
+  src/Sections/Humans.AuditLog/Contracts/AuditAction.cs
 -->
 <!-- freshness:flag-on-change
   The interest-always-anchors-to-a-trip rule, seats/matched derivation, the route-frozen-at-save

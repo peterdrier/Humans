@@ -38,7 +38,7 @@ public sealed record SectionInfo(string Name, bool IsActive)
     /// <summary>The section's <c>IRepository</c> interfaces.</summary>
     public IReadOnlyList<string> Repositories { get; init; } = [];
 
-    /// <summary>Whether a <c>Humans.&lt;Name&gt;.Contracts</c> assembly ships beside the section.</summary>
+    /// <summary>Whether the section publishes a <c>Humans.&lt;Name&gt;.Contracts</c> surface — a leaf assembly beside it, or public types in its own <c>Contracts/</c> folder.</summary>
     public bool HasContracts { get; init; }
 
     /// <summary>Whether the section carries its own <c>.resx</c> set (a public <c>&lt;Section&gt;Resource</c> marker).</summary>

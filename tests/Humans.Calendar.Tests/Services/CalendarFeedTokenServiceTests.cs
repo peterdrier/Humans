@@ -8,7 +8,7 @@ using NodaTime;
 namespace Humans.Calendar.Tests.Services;
 
 /// <summary>
-/// The feed credential's whole lifecycle, now that Calendar owns the table: mint on first
+/// The feed credential's whole lifecycle: mint on first
 /// ask, reuse after, rotate on demand, and the two user-lifecycle fan-outs the table obliges
 /// the section to join.
 /// </summary>

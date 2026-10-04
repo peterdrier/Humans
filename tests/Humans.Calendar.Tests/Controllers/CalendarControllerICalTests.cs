@@ -23,9 +23,9 @@ using NSubstitute;
 namespace Humans.Calendar.Tests.Controllers;
 
 /// <summary>
-/// The personal iCal feed card lives below the month grid on <c>/Calendar</c> (it used to be
-/// on <c>/Shifts/Mine</c>). Covers what the controller decides: asking for the token on first
-/// view, rotating it, and that both act on the viewer's own id and nobody else's. The token's
+/// The personal iCal feed card lives below the month grid on <c>/Calendar</c>. Covers what the
+/// controller decides: asking for the token on first view, rotating it, and that both act on the
+/// viewer's own id and nobody else's. The token's
 /// own lifecycle is <see cref="CalendarFeedTokenService"/>'s and is tested there.
 /// </summary>
 public class CalendarControllerICalTests

@@ -5,7 +5,6 @@ namespace Humans.Calendar.Contracts;
 /// <summary>
 /// Orchestrator for the personal iCal feed — fans out over every
 /// <see cref="ICalendarFeedContributor"/> and serializes the merged result.
-/// Calls services only (never repositories).
 /// </summary>
 public interface IICalFeedService : IOrchestrator
 {

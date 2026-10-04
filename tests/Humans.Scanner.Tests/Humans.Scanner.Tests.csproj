@@ -2,8 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.Scanner\Humans.Scanner.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Events\Humans.Events.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />

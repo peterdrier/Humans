@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Consent/**
-  src/Sections/Humans.Consent.Contracts/**
+  src/Sections/Humans.Consent/Contracts/**
   src/Humans.Base/Constants/SystemTeamIds.cs
   src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
 -->

@@ -92,7 +92,7 @@ public class ServiceBoundaryArchitectureTests
     }
 
     /// <summary>
-    /// EF entity types that sit on a contracts leaf rather than under a <c>*.Domain</c>
+    /// EF entity types that sit in a section's contracts rather than under a <c>*.Domain</c>
     /// namespace, so neither half of the sweep above finds them.
     /// </summary>
     /// <remarks>
@@ -112,12 +112,10 @@ public class ServiceBoundaryArchitectureTests
         typeof(Users.Contracts.User),
         typeof(Users.Contracts.UserEmail),
         typeof(Users.Contracts.EventParticipation),
-        // GoogleIntegration's three entities, same shape and same reason
-        // (nobodies-collective/Humans#866, G5 lane 4b-2j): GoogleResource and
-        // GoogleSyncOutboxEvent are public members of IGoogleSyncService /
-        // IGoogleSyncOutboxService on Humans.GoogleIntegration.Contracts, and a leaf
-        // cannot reference its own section project, so they live on the leaf rather
-        // than under Humans.GoogleIntegration.Domain.
+        // GoogleIntegration's three entities: GoogleResource and GoogleSyncOutboxEvent are
+        // public members of IGoogleSyncService / IGoogleSyncOutboxService in the section's
+        // Contracts/ folder, so they are public there rather than internal under
+        // Humans.GoogleIntegration.Domain.
         typeof(GoogleIntegration.Contracts.GoogleResource),
         typeof(GoogleIntegration.Contracts.GoogleSyncOutboxEvent),
         typeof(GoogleIntegration.Contracts.SyncServiceSettings),

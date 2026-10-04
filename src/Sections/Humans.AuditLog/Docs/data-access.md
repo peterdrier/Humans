@@ -3,10 +3,9 @@
 ## AuditLog
 
 Project: `src/Sections/Humans.AuditLog` — services under `Services/`,
-repository under `Data/`, plus a `src/Sections/Humans.AuditLog.Contracts`
-leaf carrying `IAuditLogService` and `AuditLogEntrySnapshot` (~130 consumer
-files, mostly in Base, hence a leaf project rather than a `Contracts/`
-folder). `AuditLog` is a **horizontal section**.
+repository under `Data/`, plus a `src/Sections/Humans.AuditLog/Contracts`
+folder carrying `IAuditLogService` and `AuditLogEntrySnapshot` (~130 consumer
+files). `AuditLog` is a **horizontal section**.
 **DbContext:** `AuditLogDbContext`.
 `AuditLogRepository` injects
 `IDbContextFactory<AuditLogDbContext>` directly. Owns

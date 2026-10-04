@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Stays a leaf: folding into Humans.Teams would close a project cycle: Humans.Teams -> Humans.Auth -> Humans.Teams (also via Humans.GoogleIntegration). -->
+
   <!--
     Teams' cross-section surface, in its own leaf so that Base and other sections can
     reference it without referencing the section (a Contracts/ folder inside Humans.Teams
@@ -14,7 +16,7 @@
 
     Humans.Users.Contracts is referenced for GoogleEmailStatus alone. Base references
     Humans.Users.Contracts, so nothing in that project may ever reference this one. Do not
-    add Humans.Auth.Contracts: nothing here names an Auth type, and the edge would pull
+    add Humans.Auth: nothing here names an Auth type, and the edge would pull
     Users and Onboarding into this leaf's chain.
   -->
 

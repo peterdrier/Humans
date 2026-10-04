@@ -23,7 +23,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!--
       Gdpr: AuditLogService is an Article 15 contributor because audit rows carry an actor id.
 
@@ -33,7 +32,7 @@
       IEntityNameContributor fan-out in Base (nobodies-collective/Humans#1059), and the
       Google-sync wing that pulled in Teams and GoogleIntegration left with #1083.
     -->
-    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 

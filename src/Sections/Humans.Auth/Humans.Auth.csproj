@@ -29,9 +29,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <!--
-      Three horizontal leaves:
+      Three horizontal sections (AuditLog and Gdpr by section project, Notifications by its leaf):
       AuditLog  — RoleAssignmentService writes an audit row per assign/end.
       Gdpr      — role assignments are an Article 15 export slice.
       Notifications — best-effort in-app notice to the human whose role changed.
@@ -58,9 +57,9 @@
       Board system team. A leaf, not the section — the horizontal/vertical rule still holds.
       There is still deliberately no Humans.Onboarding.Contracts reference.
     -->
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />

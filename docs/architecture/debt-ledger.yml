@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 75
+next_id: 76
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -335,6 +335,12 @@ inbox:
     what: "TrackedCache.EnsureWarmedAsync awaits owner WarmAllAsync and then marks the cache warm without checking intervening eviction. Owner warmup loaders publish fetched rows through Set, so a load begun before Clear or a post-write refresh can republish old rows and overwrite fresher entries. GetAsync miss publication is now guarded separately. A complete warmup correction needs consistent snapshot publication across inherited/composed caches; the current Set seam does not distinguish bulk warmup from post-write replacement. Agree that design before wider cache changes; new public surface requires approval. Found during the daily sweep."
     review: panel
   - added: 2026-10-04
+    id: CENTRAL-70
+    what: "Program.cs AddHangfire carries a UseTypeResolver remap from the removed Humans.GoogleIntegration.Contracts assembly to Humans.GoogleIntegration, so scoped Google sync jobs persisted before nobodies-collective/Humans#1066 still load. Transitional: delete it once production has run that build and no Enqueued/Scheduled/Failed Hangfire job names the old assembly. Found in review of peterdrier/Humans#1902."
+    review: light
+    status: needs-detail
+    blocked_on: "nobodies-collective/Humans#1066's fold deployed to production and Hangfire storage holding no job that names Humans.GoogleIntegration.Contracts as an assembly."
+  - added: 2026-10-04
     id: CENTRAL-69
     what: "Humans.Base HumanViewComponent substitutes the literal Unknown for unresolved or nameless humans on member-visible layouts. Common_Unknown already exists in all six SharedResource cultures, but the component constructor has no localizer and its public model does not distinguish a fallback from a person named Unknown. Localize at the resolution boundary without string-based name detection; constructor/model public-surface changes need approval. Found during the daily production sweep."
     review: panel
@@ -482,7 +488,7 @@ inbox:
     root: CENTRAL-57
   - added: 2026-09-10
     id: CENTRAL-39
-    what: "docs/architecture/dependency-graph.md classes Backdoor as a crosscut and omits its edges to the sections it serves (Agent, Feedback, Issues.Contracts, Surveys). It is a leaf, not a crosscut: nothing references it back (finding 16, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
+    what: "docs/architecture/dependency-graph.md classes Backdoor as a crosscut and omits its edges to the sections it serves (Agent, Feedback, Issues, Surveys). It is a leaf, not a crosscut: nothing references it back (finding 16, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
     review: light
     root: CENTRAL-57
   - added: 2026-09-11
@@ -531,6 +537,6 @@ inbox:
     what: "The erasure-coverage and DI-coverage tests find contributors by reflecting over IUserDataContributor implementers, so a new user-scoped section whose service never implements the contract leaves nothing to enumerate and both suites pass. The only guardrail is prose in docs/architecture/design-rules.md. nobodies-collective/Humans#1116 described exactly this and asked for an independent inventory (reflection over entities carrying a user foreign key), but it was closed when the section-name registry was removed, which fixed a different problem, and the gap is now tracked nowhere open. The fix is a cross-section test beside the existing coverage tests in tests/Humans.Web.Tests/Services/Gdpr/, plus a per-section export/erasure decision for whatever it surfaces (Calendar's CreatedByUserId is nobodies-collective/Humans#1199). Found by /section-doctor on Gdpr 2026-09-23."
     review: panel
   - added: 2026-10-04
-    id: CENTRAL-70
+    id: CENTRAL-75
     what: "Containers Service validators throw localized InvalidOperationException messages for names, images and placement geometry. CityPlanningApiController.SaveContainerPlacement identifies validation failure by comparing ex.Message to a localized ContainersResource value. This violates no-localized-exception-messages and couples failure classification to translated wording. A structured owner validation result should preserve existing localized form/API feedback while leaving exception messages developer-facing; public result/contract changes need approval. Found during the daily production sweep."
     review: panel

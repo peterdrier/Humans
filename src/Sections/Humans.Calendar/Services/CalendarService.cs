@@ -178,9 +178,8 @@ internal sealed class CalendarService(
     private static string CalendarValidationMemberName(ValidationException ex) =>
         ex.ValidationResult.MemberNames.FirstOrDefault() ?? nameof(CreateCalendarEventDto.RecurrenceRule);
 
-    // Denormalised RRULE end (UNTIL or COUNT-bounded last-occurrence). The SQL window query it
-    // was written for is gone; the value now feeds CalendarOccurrenceExpander.FilterForWindow,
-    // which prefilters the cache snapshot in memory. Null only for truly open-ended rules.
+    // Denormalised RRULE end (UNTIL or COUNT-bounded last occurrence), read by
+    // CalendarOccurrenceExpander.FilterForWindow's in-memory prefilter. Null only for open-ended rules.
     private static Instant? ComputeRecurrenceUntilUtc(string? rrule, string? tz, Instant? dtStart, Instant? dtEnd)
     {
         if (dtStart is null || string.IsNullOrWhiteSpace(rrule) || string.IsNullOrWhiteSpace(tz)) return null;
