@@ -138,7 +138,7 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
-- Review queues retain reports whose submitter is missing or has no usable name. Their name cells use the view’s shared localized Unknown label; server name projections contain only actual nonblank burner names. The member-accessible queue also uses the section's six-culture breadcrumb navigation label.
+- Review queues retain reports whose submitter is missing or has no usable name. Their name cells use the view’s shared localized Unknown label; server name projections contain only actual nonblank burner names. The member-accessible queue uses the section's six-culture breadcrumb navigation label and the shared table's localized department-filter label and all-options caption.
 - Report detail/edit, new-line, line/proof, IBAN, and review GETs propagate request cancellation through existing token-capable report, profile, timeline, creditor, name, and failed-push reads. Shared report/IBAN helpers keep non-cancellable defaults for mutation callers; tokenless Budget and authorization interfaces are unchanged.
 - New-report form user resolution and attachment download/inline reads honor request cancellation. Abandoned reads do not become error flashes or 404s; ordinary failures and attachment denial responses retain their existing behavior.
 

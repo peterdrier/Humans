@@ -129,8 +129,8 @@
                                 else if (cols[i].FilterKind == ColumnFilterKind.Select)
                                 {
                                     <select class="form-select form-select-sm fw-normal" data-filter-col="@i"
-                                            aria-label="Filter @cols[i].Header">
-                                        <option value="">All</option>
+                                            aria-label="@Localizer["Common_FilterColumn", cols[i].Header]">
+                                        <option value="">@Localizer["Shifts_All"]</option>
                                         @foreach (var opt in cols[i].FilterOptions)
                                         {
                                             <option value="@opt">@opt</option>
