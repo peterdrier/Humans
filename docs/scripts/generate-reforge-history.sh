@@ -111,13 +111,13 @@ COMMITS=$(git log --reverse --format="%ad %H" --date=format:"%Y-%m-%d" "$RANGE" 
       END { for (i=1; i<=n; i++) print last[order[i]] }
     ')
 
-# In incremental mode, drop the first commit if it falls on LAST_DATE (we
-# already have a row for that day).
+# In incremental mode, retain only days strictly after LAST_DATE. Newly merged
+# commits can have older author dates even though they follow LAST_FULL in Git.
 if [ "$FULL" != "true" ] && [ -n "${LAST_DATE:-}" ]; then
   FILTERED=""
   for COMMIT in $COMMITS; do
     DAY=$(git log -1 --format="%ad" --date=format:"%Y-%m-%d" "$COMMIT")
-    if [ "$DAY" != "$LAST_DATE" ]; then
+    if [[ "$DAY" > "$LAST_DATE" ]]; then
       FILTERED="${FILTERED}${COMMIT}
 "
     fi

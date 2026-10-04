@@ -693,10 +693,12 @@ fi
 # A changed Reforge snapshot schema must never be appended below an old CSV
 # header, or mixed with earlier snapshots in a full rebuild. Git/Reforge are
 # stubbed: the fixture creates ordinary temporary folders, never worktrees.
+# Incremental snapshots must also exclude older author dates from later merges.
 if python3 - <<'PYTEST'
 import os, pathlib, subprocess, tempfile
 script = pathlib.Path('docs/scripts/generate-reforge-history.sh').resolve()
-for full, mode in ((False, 'same'), (False, 'changed'), (True, 'changed'), (True, 'mixed')):
+for full, mode in ((False, 'same'), (False, 'changed'), (True, 'changed'), (True, 'mixed'),
+                   (False, 'backdated'), (False, 'backdated-only')):
     with tempfile.TemporaryDirectory() as directory:
         root = pathlib.Path(directory)
         (root / 'docs').mkdir()
@@ -709,7 +711,17 @@ for full, mode in ((False, 'same'), (False, 'changed'), (True, 'changed'), (True
         git.write_text("""#!/bin/bash
 case "$1" in
 rev-parse) echo old;;
-log) printf '2026-01-02 first\n2026-01-03 second\n';;
+log)
+  first_day=2026-01-02; second_day=2026-01-03
+  case "$SCHEMA_MODE" in
+    backdated) first_day=2025-12-31;;
+    backdated-only) first_day=2025-12-30; second_day=2025-12-31;;
+  esac
+  if [ "$2" = -1 ]; then
+    if [ "${@: -1}" = first ]; then echo "$first_day"; else echo "$second_day"; fi
+  else
+    printf '%s first\n%s second\n' "$first_day" "$second_day"
+  fi;;
 worktree)
   if [ "$2" = add ]; then mkdir -p "$5"; fi;;
 -C)
@@ -724,7 +736,11 @@ esac
 commit=$(cat selected)
 header=metric
 if [ "$SCHEMA_MODE" = changed ] || { [ "$SCHEMA_MODE" = mixed ] && [ "$commit" = second ]; }; then header=other_metric; fi
-if [ "$commit" = first ]; then day=2026-01-02; else day=2026-01-03; fi
+if [ "$commit" = first ]; then
+  day=2026-01-02
+  if [ "$SCHEMA_MODE" = backdated ]; then day=2025-12-31; fi
+else day=2026-01-03; fi
+if [ "$SCHEMA_MODE" = backdated-only ]; then day=2025-12-31; fi
 printf 'commit_date,commit,%s\n%s,%s,2\n' "$header" "$day" "$commit" > "$5"
 """)
         git.chmod(0o755)
@@ -741,13 +757,18 @@ printf 'commit_date,commit,%s\n%s,%s,2\n' "$header" "$day" "$commit" > "$5"
             rows = output.read_text().splitlines()
             expected = 'other_metric' if mode == 'changed' else 'metric'
             assert rows[0] == f'commit_date,commit,{expected}', rows
-            assert len(rows) == (3 if full else 4), rows
+            expected_rows = 2 if mode == 'backdated-only' else 3 if full or mode == 'backdated' else 4
+            assert len(rows) == expected_rows, rows
+            if mode == 'backdated-only':
+                assert output.read_text() == original, rows
+            elif mode == 'backdated':
+                assert rows[-1] == '2026-01-03,second,2', rows
 PYTEST
 then
-  echo "PASS [test 17]: history generator preserves CSV on snapshot schema mismatch"
+  echo "PASS [test 17]: history generator preserves schema and incremental date boundaries"
   PASS=$((PASS+1))
 else
-  echo "FAIL [test 17]: history generator snapshot schema validation"
+  echo "FAIL [test 17]: history generator schema/date validation"
   FAIL=$((FAIL+1))
 fi
 
