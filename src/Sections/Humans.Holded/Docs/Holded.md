@@ -20,6 +20,7 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
   bug (deleted/reclassified lines lingering forever).
 - **Account identities are required**: expense-account numbers must be present so provisioning can avoid remote collisions; chart account IDs must be nonblank so invoicing never sends an empty account reference. Incomplete pages fail at the connector.
 - **Integer identities stay exact**: fractional chart/account numbers and ledger entry/line numbers fail the connector read rather than being truncated onto a different cached identity.
+- **Rate-limit retries are read-only**: the connector retries a content-free GET once after 429; writes, including bodyless sales-approval POSTs, surface the transient failure without an automatic retry.
 - **Write responses stay typed**: unreadable purchase-create, contact-upsert and sales-create success bodies fail as permanent connector errors, so callers can record failure rather than losing queue bookkeeping to a raw JSON exception.
 - **Purchase document identity is required**: purchase documents need a nonblank ID; a missing or blank ID rejects the page. An absent `payments_pending` reads as 0 (nothing owed), which refuses a booking rather than over-paying.
 - **Chart totals are required**: missing or null debit, credit or balance fails the account page as a permanent connector error before replacing cached totals. Explicit zero totals remain valid.

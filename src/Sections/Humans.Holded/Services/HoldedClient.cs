@@ -967,15 +967,16 @@ internal sealed class HoldedClient : IHoldedClient
         using var _ = _logger.TimeOperation(operation: caller);
         var resp = await SendOnceAsync(req, caller, ct);
 
-        // 429 is retried once, only for content-free (GET) requests — a content-bearing request
-        // (POST/PUT) is not safely repeatable without knowing whether Holded already applied it.
-        if (resp.StatusCode == HttpStatusCode.TooManyRequests && req.Content is null)
+        // Only content-free GETs are safe to retry here. A bodyless approval POST still
+        // mutates Holded, so the absence of content cannot establish repeatability.
+        if (resp.StatusCode == HttpStatusCode.TooManyRequests && req.Method == HttpMethod.Get && req.Content is null)
         {
             var retryAfterSeconds = Math.Min(
                 ReadRetryAfterSeconds(resp) ?? DefaultRetryAfterSeconds, MaxRetryAfterSeconds);
             resp.Dispose();
             await Task.Delay(TimeSpan.FromSeconds(retryAfterSeconds), ct);
-            resp = await SendOnceAsync(CloneForRetry(req), caller, ct);
+            using var retry = CloneForRetry(req);
+            resp = await SendOnceAsync(retry, caller, ct);
         }
 
         if (resp.StatusCode == HttpStatusCode.TooManyRequests)

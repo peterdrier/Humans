@@ -39,7 +39,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 - All HTTP calls go through one typed `HttpClient` (`HoldedClient`); Bearer auth via
   `Authorization` header.
 - 429 with `Retry-After` is honored (wait capped at 60 s) and retried once for content-free
-  requests; content-bearing requests surface it as transient immediately.
+  GETs. Every write, including a bodyless sales-approval POST, surfaces it as transient immediately.
 - Cursor pagination (`{items, cursor, has_more}`, `limit` ≤ 200) runs to completion or
   **throws** — a truncated list is never returned, because list results feed replace-semantics
   reconciliation where a short fetch would delete live rows.
