@@ -341,17 +341,8 @@ internal sealed partial class LegalDocumentSyncService(
         var requiredDocuments = await repository.GetActiveRequiredDocumentsAsync(cancellationToken);
 
         return requiredDocuments
-            .Select(d =>
-            {
-                var latest = d.Versions
-                    .Where(v => v.EffectiveFrom <= now)
-                    .MaxBy(v => v.EffectiveFrom);
-                if (latest is null) return null;
-
-                return ToRequiredVersionSnapshot(latest, d);
-            })
-            .Where(v => v is not null)
-            .Cast<RequiredDocumentVersionSnapshot>()
+            .Select(d => ToLatestRequiredVersionSnapshot(d, now))
+            .OfType<RequiredDocumentVersionSnapshot>()
             .ToList();
     }
 
@@ -369,21 +360,17 @@ internal sealed partial class LegalDocumentSyncService(
         var requiredDocuments = await repository.GetActiveRequiredDocumentsForTeamAsync(teamId, cancellationToken);
 
         return requiredDocuments
-            .Select(d =>
-            {
-                var latest = d.Versions
-                    .Where(v => v.EffectiveFrom <= now)
-                    .MaxBy(v => v.EffectiveFrom);
-                if (latest is null) return null;
-                return ToRequiredVersionSnapshot(latest, d);
-            })
-            .Where(v => v is not null)
-            .Cast<RequiredDocumentVersionSnapshot>()
+            .Select(d => ToLatestRequiredVersionSnapshot(d, now))
+            .OfType<RequiredDocumentVersionSnapshot>()
             .ToList();
     }
 
-    private static RequiredDocumentVersionSnapshot ToRequiredVersionSnapshot(DocumentVersion version, LegalDocument document) =>
-        new(
+    private static RequiredDocumentVersionSnapshot? ToLatestRequiredVersionSnapshot(LegalDocument document, Instant now)
+    {
+        var version = document.Versions
+            .Where(v => v.EffectiveFrom <= now)
+            .MaxBy(v => v.EffectiveFrom);
+        return version is null ? null : new(
             version.Id,
             version.LegalDocumentId,
             document.Name,
@@ -392,6 +379,7 @@ internal sealed partial class LegalDocumentSyncService(
             version.EffectiveFrom,
             version.RequiresReConsent,
             version.ChangesSummary);
+    }
 
     private static LegalDocumentVersionSnapshot ToVersionSnapshot(DocumentVersion version) =>
         new(

@@ -72,6 +72,44 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             NullLogger<LegalDocumentSyncService>.Instance);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RequiredVersionReads_SelectLatestEffectiveVersion_AndOmitFutureOnlyDocuments(bool forTeam)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var document = await SeedDocumentAsync("Privacy");
+        var futureOnly = await SeedDocumentAsync("Future agreement");
+        var now = Clock.GetCurrentInstant();
+        var currentId = Guid.NewGuid();
+        foreach (var (documentId, id, effectiveFrom) in new[]
+        {
+            (document.Id, Guid.NewGuid(), now.Minus(Duration.FromDays(1))),
+            (document.Id, currentId, now),
+            (document.Id, Guid.NewGuid(), now.Plus(Duration.FromDays(1))),
+            (futureOnly.Id, Guid.NewGuid(), now.Plus(Duration.FromDays(1)))
+        })
+        {
+            LegalDb.DocumentVersions.Add(new DocumentVersion
+            {
+                Id = id,
+                LegalDocumentId = documentId,
+                VersionNumber = id.ToString(),
+                CommitSha = id.ToString(),
+                EffectiveFrom = effectiveFrom,
+                CreatedAt = now,
+                Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "Agreement" }
+            });
+        }
+        await SaveAllAsync(ct);
+
+        var versions = forTeam
+            ? await _service.GetRequiredDocumentVersionsForTeamAsync(_team.Id, ct)
+            : await _service.GetRequiredVersionsAsync(ct);
+
+        versions.Should().ContainSingle().Which.Id.Should().Be(currentId);
+    }
+
     // ── NormalizeGitHubFolderPath ────────────────────────────────────────────
 
     [HumansFact]
