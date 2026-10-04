@@ -152,4 +152,5 @@
   <data name="Notification_Bulk_Dismiss" xml:space="preserve">
     <value>Ausgewählte verwerfen</value>
   </data>
+  <data name="Notification_Popup_LoadError" xml:space="preserve"><value>Benachrichtigungen konnten nicht geladen werden. Bitte versuche es erneut.</value></data>
 </root>

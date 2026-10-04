@@ -259,7 +259,10 @@ document.addEventListener('click', function (e) {
             })
             .catch(function () {
                 if (!isOpen || requestVersion !== popupRequestVersion) return;
-                if (content) content.innerHTML = '<div class="text-center py-3 text-muted"><i class="fa-solid fa-bell text-muted mb-2" style="font-size:1.5rem"></i><p class="mb-0 small">Could not load notifications.</p></div>';
+                if (content) {
+                    content.innerHTML = '<div class="text-center py-3 text-muted"><i class="fa-solid fa-bell text-muted mb-2" style="font-size:1.5rem"></i><p class="mb-0 small"></p></div>';
+                    content.querySelector('p').textContent = btn.getAttribute('data-load-error') || '';
+                }
             });
     }
 

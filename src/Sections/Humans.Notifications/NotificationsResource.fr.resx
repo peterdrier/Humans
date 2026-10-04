@@ -152,4 +152,5 @@
   <data name="Notification_Bulk_Dismiss" xml:space="preserve">
     <value>Ignorer la sélection</value>
   </data>
+  <data name="Notification_Popup_LoadError" xml:space="preserve"><value>Impossible de charger les notifications. Réessaie.</value></data>
 </root>

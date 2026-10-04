@@ -152,4 +152,5 @@
   <data name="Notification_Bulk_Dismiss" xml:space="preserve">
     <value>Descartar seleccionados</value>
   </data>
+  <data name="Notification_Popup_LoadError" xml:space="preserve"><value>No se pudieron cargar las notificaciones. Inténtalo de nuevo.</value></data>
 </root>

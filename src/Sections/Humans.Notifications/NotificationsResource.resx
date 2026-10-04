@@ -79,4 +79,5 @@
   <data name="Notifications_SelectNotification" xml:space="preserve"><value>Select notification</value></data>
   <data name="Notification_Bulk_Resolve" xml:space="preserve"><value>Resolve selected</value></data>
   <data name="Notification_Bulk_Dismiss" xml:space="preserve"><value>Dismiss selected</value></data>
+  <data name="Notification_Popup_LoadError" xml:space="preserve"><value>Could not load notifications. Please try again.</value></data>
 </root>
