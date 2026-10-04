@@ -1920,6 +1920,29 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
+    public async Task UploadImageAsync_AfterDeletingMiddleImage_AppendsAfterSurvivors()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        var first = await _service.UploadImageAsync(camp.Id, Stream.Null, "first.jpg", "image/jpeg", 1, ct);
+        var middle = await _service.UploadImageAsync(camp.Id, Stream.Null, "middle.jpg", "image/jpeg", 1, ct);
+        var last = await _service.UploadImageAsync(camp.Id, Stream.Null, "last.jpg", "image/jpeg", 1, ct);
+        await _service.DeleteImageAsync(camp.Id, middle.Image!.Id, ct);
+
+        var appended = await _service.UploadImageAsync(camp.Id, Stream.Null, "appended.jpg", "image/jpeg", 1, ct);
+
+        appended.Succeeded.Should().BeTrue();
+        appended.Image!.SortOrder.Should().Be(3);
+        var images = await CampsDb.CampImages.AsNoTracking()
+            .Where(i => i.CampId == camp.Id).ToListAsync(ct);
+        images.Single(i => i.Id == first.Image!.Id).SortOrder.Should().Be(0);
+        images.Single(i => i.Id == last.Image!.Id).SortOrder.Should().Be(2);
+        images.Single(i => i.Id == appended.Image.Id).SortOrder.Should().Be(3);
+        _fileStorage.Files.Should().HaveCount(3);
+    }
+
+    [HumansFact]
     public async Task UploadImageAsync_FullGalleryReturnsCountResourceKey()
     {
         await SeedSettingsAsync();

@@ -364,6 +364,11 @@ internal sealed partial class CampRepository : ICampRepository
     public async Task AddImageAsync(CampImage image, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var sortOrders = await ctx.CampImages
+            .Where(i => i.CampId == image.CampId)
+            .Select(i => i.SortOrder)
+            .ToListAsync(ct);
+        image.SortOrder = sortOrders.DefaultIfEmpty(-1).Max() + 1;
         ctx.CampImages.Add(image);
         await ctx.SaveChangesAsync(ct);
     }

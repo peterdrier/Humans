@@ -999,7 +999,6 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             FileName = fileName,
             StoragePath = storageKey,
             ContentType = contentType,
-            SortOrder = imageCount,
             UploadedAt = _clock.GetCurrentInstant()
         };
 

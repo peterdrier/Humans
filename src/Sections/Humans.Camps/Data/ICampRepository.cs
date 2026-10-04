@@ -215,7 +215,7 @@ internal partial interface ICampRepository : IRepository
     Task<int> CountImagesAsync(Guid campId, CancellationToken ct = default);
 
     /// <summary>
-    /// Persist a new image record.
+    /// Persist a new image record after the camp's highest remaining display position.
     /// </summary>
     Task AddImageAsync(CampImage image, CancellationToken ct = default);
 
