@@ -23,7 +23,11 @@ internal sealed class CampAdminController(
     {
         try
         {
-            return View(await campAdminPageBuilder.BuildAsync());
+            return View(await campAdminPageBuilder.BuildAsync(HttpContext.RequestAborted));
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -200,8 +204,12 @@ internal sealed class CampAdminController(
     {
         try
         {
-            var export = await campCsvExportBuilder.BuildAsync();
+            var export = await campCsvExportBuilder.BuildAsync(HttpContext.RequestAborted);
             return File(export.Content, export.ContentType, export.FileName);
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

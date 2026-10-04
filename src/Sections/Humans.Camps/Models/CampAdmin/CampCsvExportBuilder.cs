@@ -8,17 +8,17 @@ internal sealed record CampCsvExport(byte[] Content, string ContentType, string 
 internal sealed class CampCsvExportBuilder(
     ICampServiceRead campService, IUserServiceRead userService)
 {
-    public async Task<CampCsvExport> BuildAsync()
+    public async Task<CampCsvExport> BuildAsync(CancellationToken ct = default)
     {
-        var settings = await campService.GetSettingsAsync();
+        var settings = await campService.GetSettingsAsync(ct);
         var year = settings.PublicYear;
-        var camps = await campService.GetCampsForYearAsync(year);
+        var camps = await campService.GetCampsForYearAsync(year, ct);
 
         var leadUserIds = camps
             .SelectMany(camp => camp.Seasons.FirstOrDefault()?.LeadUserIds ?? Array.Empty<Guid>())
             .Distinct()
             .ToList();
-        var leadUsers = await userService.GetUserInfosAsync(leadUserIds);
+        var leadUsers = await userService.GetUserInfosAsync(leadUserIds, ct);
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {

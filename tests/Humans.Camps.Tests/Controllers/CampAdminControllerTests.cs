@@ -18,6 +18,54 @@ namespace Humans.Camps.Tests.Controllers;
 
 public class CampAdminControllerTests
 {
+    [HumansTheory]
+    [InlineData(false, "settings")]
+    [InlineData(false, "camps")]
+    [InlineData(false, "users")]
+    [InlineData(true, "settings")]
+    [InlineData(true, "camps")]
+    [InlineData(true, "roles")]
+    public async Task AdminRead_PropagatesRequestCancellationAtEveryRead(bool dashboard, string boundary)
+    {
+        var camps = Substitute.For<ICampService>();
+        var roles = Substitute.For<ICampRoleService>();
+        var users = Substitute.For<IUserServiceRead>();
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(boundary, "settings", StringComparison.Ordinal))
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new CampSettingsInfo(2026, []);
+        });
+        camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(boundary, "camps", StringComparison.Ordinal))
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (IReadOnlyList<CampInfo>)[];
+        });
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(boundary, "users", StringComparison.Ordinal))
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (IReadOnlyDictionary<Guid, UserInfo>)new Dictionary<Guid, UserInfo>();
+        });
+        roles.GetMissingSpecialRolesAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(boundary, "roles", StringComparison.Ordinal))
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (IReadOnlyList<CampSpecialRole>)[];
+        });
+        var logger = Substitute.For<ILogger<CampAdminController>>();
+        var controller = CreateController(camps, roles, users, Guid.NewGuid(), logger);
+        controller.HttpContext.RequestAborted = cancellation.Token;
+        Func<Task<IActionResult>> read = dashboard ? controller.Index : controller.ExportCamps;
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        controller.TempData.Should().BeEmpty();
+        logger.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task DeactivateRole_PropagatesRequestCancellation()
     {
