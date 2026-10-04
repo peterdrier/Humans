@@ -97,7 +97,7 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
   snapshot/event shapes do not. Do not "clean them up" — the drop is sequenced behind a prod
   verification (seam 5).
 - **One `Contracts/` folder** (namespace `Humans.AuditLog.Contracts`) carries both the write path
-  and the read/render surface; the former leaf project was folded in (nobodies-collective/Humans#1066).
+  and the read/render surface.
 - **`AuditLogRepository` is Singleton** while its context is Scoped — it owns context lifetime via
   `IDbContextFactory`, which is why it can be a singleton at all.
 - **The `AnomalousPermissionDetected` anomaly count and the Drive-activity trigger button** live
