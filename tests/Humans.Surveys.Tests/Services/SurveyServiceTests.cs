@@ -2776,6 +2776,41 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task AdvanceWizardAsync_rejects_duplicate_question_entries_before_advancing()
+    {
+        var survey = SurveyForWizard(out var questionId, out _);
+        var state = WizardState(survey.Id, Guid.NewGuid());
+        state.Answers[questionId.ToString()] = new SurveyWizardAnswer { SelectedOptionValues = ["yes"] };
+
+        var result = await CreateService().AdvanceWizardAsync(state, 1, back: false,
+            [Ans(questionId, "yes"), Ans(questionId, "no")], ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+        result.InvalidAnswers.Should().ContainSingle().Which.Should().Be(questionId);
+        state.Answers.Should().NotContainKey(questionId.ToString());
+        state.CurrentPage.Should().Be(1);
+        state.Started.Should().BeFalse();
+        await _repo.DidNotReceive().MarkInvitationStartedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AdvanceWizardAsync_ignores_duplicate_entries_outside_the_visible_page()
+    {
+        var survey = SurveyForWizard(out var questionId, out var laterQuestionId);
+        var unknownId = Guid.NewGuid();
+        var state = WizardState(survey.Id);
+
+        var result = await CreateService().AdvanceWizardAsync(state, 1, back: false,
+            [Ans(questionId, "yes"), TextAns(laterQuestionId, "first"), TextAns(laterQuestionId, "second"),
+             TextAns(unknownId, "first"), TextAns(unknownId, "second")], ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Navigated);
+        state.CurrentPage.Should().Be(2);
+        state.Answers.Should().ContainSingle().Which.Key.Should().Be(questionId.ToString());
+    }
+
+    [HumansFact]
     public async Task AdvanceWizardAsync_keeps_valid_choices_and_discards_other_answer_fields()
     {
         var survey = SurveyForWizard(out var id, out _);

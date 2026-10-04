@@ -1302,14 +1302,23 @@ internal sealed class SurveyService(
         // Only accept answers for questions actually visible on the posted page (re-evaluated server-side).
         var visibleBefore = SurveyWizardFlow.VisibleQuestionsOnPage(
             editable.Questions, page, SurveyWizardFlow.ToAnswerStates(state.Answers));
-        var posted = postedAnswers.ToDictionary(a => a.QuestionId);
+        var posted = postedAnswers.ToLookup(a => a.QuestionId);
         var invalidAnswers = new List<Guid>();
 
         foreach (var question in visibleBefore)
         {
             if (question.Type == SurveyQuestionType.Information) continue;
             var id = question.Id!.Value;
-            if (!posted.TryGetValue(id, out var answer))
+            var questionAnswers = posted[id];
+            if (questionAnswers.Count() > 1)
+            {
+                logger.LogWarning("Rejected duplicate wizard answers for survey {SurveyId} question {QuestionId}", state.SurveyId, id);
+                invalidAnswers.Add(id);
+                state.Answers.Remove(id.ToString());
+                continue;
+            }
+            var answer = questionAnswers.FirstOrDefault();
+            if (answer is null)
             {
                 state.Answers.Remove(id.ToString());
                 continue;
