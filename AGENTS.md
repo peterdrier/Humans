@@ -133,7 +133,7 @@ Controllers parse the request, call services, and format the response — no log
 - `memory/` — the atomic project rules (see "When you need a rule" above).
 - `tests/` — one test project per section, plus `Humans.Testing` helpers.
 
-Recurring maintenance (doc-freshness sweeps, tech-debt burndown) is skill-driven; its ledgers live at [`docs/architecture/freshness-catalog.yml`](docs/architecture/freshness-catalog.yml), [`docs/architecture/debt-ledger.yml`](docs/architecture/debt-ledger.yml), and [`docs/architecture/maintenance-log.md`](docs/architecture/maintenance-log.md) — record newly-found debt in the ledger ([`debt-ledger-additions`](memory/process/debt-ledger-additions.md)).
+Recurring maintenance (doc-freshness sweeps, tech-debt burndown) is skill-driven; its ledgers live at [`docs/architecture/freshness-catalog.yml`](docs/architecture/freshness-catalog.yml), [`docs/architecture/debt-ledger.yml`](docs/architecture/debt-ledger.yml), and [`docs/architecture/maintenance-log.md`](docs/architecture/maintenance-log.md) — record newly-found debt in the ledger ([`debt-ledger-additions`](memory/process/debt-ledger-additions.md)); burndown works existing rows before hunting new debt, and the ledger must shrink over time ([`debt-ledger-must-shrink`](memory/process/debt-ledger-must-shrink.md)).
 
 ## Taste
 
