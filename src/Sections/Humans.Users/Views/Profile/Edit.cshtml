@@ -122,7 +122,7 @@
                                 <option value="">—</option>
                                 @for (var m = 1; m <= 12; m++)
                                 {
-                                    <option value="@m">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m)</option>
+                                    <option value="@m">@System.Globalization.CultureInfo.CurrentUICulture.DateTimeFormat.GetMonthName(m)</option>
                                 }
                             </select>
                         </div>
