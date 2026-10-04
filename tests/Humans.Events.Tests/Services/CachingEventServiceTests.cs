@@ -270,6 +270,35 @@ public sealed class CachingEventServiceTests
     }
 
     [HumansFact]
+    public async Task EventSettingsChanged_OverlappingRefreshesCannotRetainTheOlderProjection()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var old = GuideSettings("Europe/Madrid");
+        var fresh = GuideSettings("Atlantic/Canary");
+        _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<EventGuideSettingsView?>(old));
+        await _service.GetGuideSettingsAsync(token);
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            started.SetResult();
+            await release.Task.WaitAsync(token);
+            return (EventGuideSettingsView?)old;
+        });
+        _service.EventSettingsChanged(Guid.NewGuid());
+        var oldRead = _service.GetGuideSettingsAsync(token);
+        await started.Task.WaitAsync(token);
+
+        _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<EventGuideSettingsView?>(fresh));
+        _service.EventSettingsChanged(Guid.NewGuid());
+        var freshRead = _service.GetGuideSettingsAsync(token);
+        release.SetResult();
+        await Task.WhenAll(oldRead, freshRead).WaitAsync(token);
+
+        (await _service.GetGuideSettingsAsync(token))!.TimeZoneId.Should().Be("Atlantic/Canary");
+    }
+
+    [HumansFact]
     public async Task EventSettingsChanged_FailedRefreshKeepsTheProjectionStale()
     {
         // If the first read after a change fails (cancelled request, database error) the
