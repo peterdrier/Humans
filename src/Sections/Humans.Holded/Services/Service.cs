@@ -348,8 +348,14 @@ internal sealed class Service(
 
     /// <summary>LastError is varchar(2000); an unbounded mismatch list or exception message
     /// would fail the save and report a completed refresh as an error.</summary>
-    private static string TruncateForState(string message) =>
-        message.Length <= 2000 ? message : message[..1997] + "…";
+    private static string TruncateForState(string message)
+    {
+        if (message.Length <= 2000) return message;
+        var length = 1997;
+        if (char.IsHighSurrogate(message[length - 1]) && char.IsLowSurrogate(message[length]))
+            length--;
+        return message[..length] + "…";
+    }
 
     /// <summary>
     /// The Spanish PGC group an account belongs to, in English. Read from the account number's

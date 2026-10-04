@@ -28,6 +28,8 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
   per run, logged when capped). Residual mismatches are **reportable state** on the sync row,
   never a failure — Holded's own chart totals can exclude unconfirmed entries.
 
+- Saved ledger error text stays within 2000 UTF-16 code units without splitting a Unicode surrogate pair. The original exception still propagates in full, and the sync gate is released.
+
 - **Interrupted manual syncs** remain recorded as `Error` and propagate caller cancellation. Caller-aborted document/ledger syncs and their controller log stack-free warnings; dependency failures remain errors with exceptions.
 
 ## Data Model (`HoldedDbContext`, history `__EFMigrationsHistory_Holded`)

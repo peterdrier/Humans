@@ -995,11 +995,18 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         stored.Status.Should().Be(AssemblyVoteStatus.Open);
     }
 
-    [HumansFact]
-    public async Task CancelAsync_WithANearMaximumReason_StillAuditsWithinTheColumn()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task CancelAsync_WithANearMaximumReason_StillAuditsWithinTheColumn(bool splitPair)
     {
         var vote = await _fx.AddVoteAsync();
-        var reason = new string('x', 4000);
+        var prefix = $"Cancelled assembly vote {vote.Id}: ";
+        var reason = splitPair
+            ? new string('x', 3998 - prefix.Length) + "😀" + new string('y', prefix.Length)
+            : new string('x', 4000);
+        var expectedDescription = prefix
+            + new string('x', (splitPair ? 3998 : 3999) - prefix.Length) + "…";
 
         await _fx.Service.CancelAsync(
             vote.Id, reason, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
@@ -1008,7 +1015,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // audit_log.description — and AuditLogService swallows that, losing the entry.
         await _fx.Audit.Received(1).LogAsync(
             AuditAction.AssemblyVoteCancelled, Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Is<string>(d => d.Length <= 4000), Arg.Any<Guid>(),
+            Arg.Is<string>(d => d.Length <= 4000 && d == expectedDescription), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 

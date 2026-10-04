@@ -266,19 +266,26 @@ public sealed class HoldedLedgerSyncTests
         entry.Exception.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task Failed_sweep_records_error_state_and_rethrows()
+    [HumansTheory]
+    [Xunit.InlineData(0, "down", "down")]
+    [Xunit.InlineData(1997, "tail", "…")]
+    [Xunit.InlineData(1996, "😀tail", "…")]
+    [Xunit.InlineData(1995, "😀tail", "😀…")]
+    public async Task Failed_sweep_records_error_state_and_rethrows(int prefixLength, string tail, string expectedTail)
     {
+        var prefix = new string('x', prefixLength);
+        var message = prefix + tail;
         var ct = Xunit.TestContext.Current.CancellationToken;
         _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), null, Arg.Any<CancellationToken>())
-            .Returns<IReadOnlyList<HoldedLedgerLineDto>>(_ => throw new HoldedTransientException("down"));
+            .Returns<IReadOnlyList<HoldedLedgerLineDto>>(_ => throw new HoldedTransientException(message));
 
         var act = () => _service.SyncLedgerAsync(full: false, ct);
-        await act.Should().ThrowAsync<HoldedTransientException>();
+        var failure = await act.Should().ThrowAsync<HoldedTransientException>();
+        failure.Which.Message.Should().Be(message);
 
         var states = await _repo.GetSyncStatesAsync(ct);
         states.Single().SyncStatus.Should().Be(HoldedSyncStatus.Error);
-        states.Single().LastError.Should().Contain("down");
+        states.Single().LastError.Should().Be(prefix + expectedTail);
 
         // And the gate was released — the next sweep is not locked out forever.
         StubWindowFetch();

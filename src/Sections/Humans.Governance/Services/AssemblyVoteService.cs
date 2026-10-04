@@ -1517,8 +1517,14 @@ internal sealed class AssemblyVoteService(
         Truncate(vote.Title.Resolve(language, vote.OfficialCulture), MaxTitleLength);
 
     /// <summary>Trims to <paramref name="max"/> characters, ellipsis included in the count.</summary>
-    private static string Truncate(string text, int max) =>
-        text.Length <= max ? text : string.Concat(text.AsSpan(0, max - 1), "\u2026");
+    private static string Truncate(string text, int max)
+    {
+        if (text.Length <= max) return text;
+        var length = max - 1;
+        if (char.IsHighSurrogate(text[length - 1]) && char.IsLowSurrogate(text[length]))
+            length--;
+        return string.Concat(text.AsSpan(0, length), "\u2026");
+    }
 
     private async Task NotifyRosterCancelledAsync(AssemblyVote vote, CancellationToken ct)
     {
