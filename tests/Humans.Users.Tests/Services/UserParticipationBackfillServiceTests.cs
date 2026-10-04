@@ -28,6 +28,19 @@ public sealed class UserParticipationBackfillServiceTests
     }
 
     [HumansFact]
+    public async Task DefaultYear_RequestAborted_CancelsActiveEventRead()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _shifts.GetActiveEventSettingsAsync(aborted.Token)
+            .Returns(Task.FromException<EventSettingsInfo?>(new OperationCanceledException(aborted.Token)));
+
+        var act = () => CreateService().GetDefaultYearAsync(aborted.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task SkipsHeaderAndUnparseableRows_PassesValidEntries()
     {
         var a = Guid.NewGuid();

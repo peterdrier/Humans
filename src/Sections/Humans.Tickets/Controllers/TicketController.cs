@@ -190,7 +190,7 @@ internal sealed class TicketController(
     {
         var model = new ParticipationBackfillViewModel
         {
-            Year = await participationBackfillService.GetDefaultYearAsync(),
+            Year = await participationBackfillService.GetDefaultYearAsync(HttpContext.RequestAborted),
         };
         return View(model);
     }

@@ -82,6 +82,8 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 
 ## Invariants
 
+- The admin participation-backfill form GET retains browser cancellation through its default-year lookup; CSV submission and writes retain their existing boundaries.
+
 - The onsite roster GET retains request cancellation for its active-year settings lookup before reading the roster; scanner access, filters and newest-check-in ordering remain unchanged.
 
 - The self/admin profile ticket-holdings card passes browser cancellation to its holdings and early-entry reads. Public profile viewers remain excluded before any ticket lookup; self/admin empty-card behavior is unchanged.
