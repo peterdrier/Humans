@@ -252,7 +252,7 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 - Application-admin paging computes offsets without integer overflow; extreme pages cannot wrap into earlier applications.
 
-- Application list, create-form, detail, admin list/detail and term-expiry review GETs propagate request cancellation through viewer and application reads. Submission, withdrawal and expiry correction keep their mutation boundaries.
+- Application list, create-form, detail, admin list/detail and term-expiry review GETs propagate request cancellation through viewer and application reads. Submission, withdrawal and expiry correction keep their mutation boundaries. The admin list bounds motivation previews to 100 UTF-16 units plus an ellipsis without splitting surrogate pairs; stored motivations remain complete.
 - Governance overview GETs propagate request cancellation to user and index-data reads; Board-voting detail GETs retain it when resolving the viewer after loading the application.
 
 - Application status follows: Submitted then Approved, Rejected, or Withdrawn. Member-visible history uses the same six-culture status captions as application details.

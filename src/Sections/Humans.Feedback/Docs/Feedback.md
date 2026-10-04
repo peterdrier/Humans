@@ -25,6 +25,7 @@ Historical in-app feedback reports (bugs, feature requests, questions) with scre
 
 - A **Feedback Report** is a historical in-app submission from a human — a bug report, feature request, or question. It captures the page URL, optional screenshot, and conversation thread between the reporter and admins. No new reports can be created.
 - **Feedback status** tracks the lifecycle: Open, Acknowledged, Resolved, or WontFix.
+- The admin list bounds description previews to 100 UTF-16 units plus an ellipsis without splitting surrogate pairs; historical descriptions remain complete.
 
 ## Data Model
 

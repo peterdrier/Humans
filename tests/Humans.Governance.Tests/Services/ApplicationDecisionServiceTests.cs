@@ -1040,6 +1040,32 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.History[0].Status.Should().Be(ApplicationStatus.Withdrawn);
     }
 
+    [HumansTheory]
+    [InlineData(5, "", 5, "")]
+    [InlineData(110, "", 100, "...")]
+    [InlineData(99, "😀 tail", 99, "...")]
+    [InlineData(98, "😀 tail", 98, "😀...")]
+    public async Task Admin_preview_preserves_unicode_and_original_motivation(
+        int prefixLength, string suffix, int expectedPrefixLength, string expectedSuffix)
+    {
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        var motivation = new string('x', prefixLength) + suffix;
+        app.Motivation = motivation;
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var controller = new GovernanceApplicationsController(_service, _userService,
+            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var result = (await controller.Admin(null, null)).Should().BeOfType<ViewResult>().Subject;
+        var model = result.Model.Should().BeOfType<Humans.Governance.Models.AdminApplicationListViewModel>().Subject;
+        model.Applications.Should().ContainSingle().Which.MotivationPreview.Should()
+            .Be(new string('x', expectedPrefixLength) + expectedSuffix);
+        (await GovernanceDb.Applications.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
+            .Motivation.Should().Be(motivation);
+    }
+
     // --- GetFilteredApplicationsAsync ---
 
     // These two are the service's own behaviour, not the repository's: the admin form posts

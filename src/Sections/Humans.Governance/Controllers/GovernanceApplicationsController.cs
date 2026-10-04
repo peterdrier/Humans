@@ -225,7 +225,9 @@ internal sealed class GovernanceApplicationsController(
             Status = a.Status,
             StatusBadgeClass = EnumBadgeMap.For(a.Status),
             SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
-            MotivationPreview = a.Motivation.Length > 100 ? a.Motivation[..100] + "..." : a.Motivation,
+            MotivationPreview = a.Motivation.Length > 100
+                ? a.Motivation[..(char.IsHighSurrogate(a.Motivation[99]) && char.IsLowSurrogate(a.Motivation[100]) ? 99 : 100)] + "..."
+                : a.Motivation,
             MembershipTier = a.MembershipTier
         }).ToList();
 

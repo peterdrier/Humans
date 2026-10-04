@@ -642,6 +642,43 @@ public sealed class FeedbackServiceTests
         cancelledAtViewer.Should().BeTrue();
     }
 
+    [HumansTheory]
+    [InlineData(5, "", 5, "")]
+    [InlineData(110, "", 100, "...")]
+    [InlineData(99, "😀 tail", 99, "...")]
+    [InlineData(98, "😀 tail", 98, "😀...")]
+    public async Task Index_preview_preserves_unicode_and_original_description(
+        int prefixLength, string suffix, int expectedPrefixLength, string expectedSuffix)
+    {
+        var id = Guid.NewGuid();
+        SeedUser(id, "Viewer", "viewer@example.com");
+        var description = new string('x', prefixLength) + suffix;
+        await SeedReportAsync(id, description, "/test");
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(_people[id]));
+        users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(_people.Values.ToList());
+        var teams = Substitute.For<ITeamServiceRead>();
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var controller = new FeedbackController(_service, teams, users, NullLogger<FeedbackController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, id.ToString())], "Test"))
+                }
+            }
+        };
+
+        var result = (await controller.Index(null, null, null, null, null, false, null,
+            Xunit.TestContext.Current.CancellationToken)).Should().BeOfType<ViewResult>().Subject;
+        var model = result.Model.Should().BeOfType<FeedbackPageViewModel>().Subject;
+        model.Reports.Should().ContainSingle().Which.Description.Should()
+            .Be(new string('x', expectedPrefixLength) + expectedSuffix);
+        (await FeedbackDb.FeedbackReports.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
+            .Description.Should().Be(description);
+    }
+
     private async Task<FeedbackReport> CreateTestReport(FeedbackStatus status = FeedbackStatus.Open)
     {
         var userId = Guid.NewGuid();
