@@ -27,8 +27,8 @@ internal sealed class AgentDocsHealthCheck(
     private const string FeaturesFolder = "docs/features/global";
 
     // The section-guide canary: this section's own invariants doc, at the per-section folder
-    // convention fetch_section_guide reads. It moves only if the section does, and this check
-    // moves with it.
+    // convention fetch_section_guide reads. The key is pinned: if the section or its doc is
+    // renamed, AgentDocsHealthCheckTests.Healthy_when_both_canaries_exist_in_this_repo fails.
     private const string ProbeSectionDoc = "Agent";
     private static readonly string SectionsFolder = AgentSectionDocReader.SectionProjectFolder(ProbeSectionDoc);
 
