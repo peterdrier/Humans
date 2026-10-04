@@ -70,6 +70,62 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     }
 
     [HumansFact]
+    public async Task SaveRotaAsync_UpdatesRotaWithoutRewritingLoadedShifts()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, rota) = await SeedRotaAsync(RotaPeriod.Build);
+        var shift = NewShift(rota, dayOffset: -3);
+        _shiftsDbContext.Shifts.Add(shift);
+        await _shiftsDbContext.SaveChangesAsync(ct);
+
+        var edit = await _repo.GetRotaAsync(rota.Id, RotaReadShape.Shifts, ct);
+        edit.Should().NotBeNull();
+        edit!.Name = "Updated rota";
+        edit.IsVisibleToVolunteers = false;
+
+        shift.Description = "Updated shift";
+        shift.MinVolunteers = 2;
+        await _shiftsDbContext.SaveChangesAsync(ct);
+
+        await _repo.SaveRotaAsync(edit, EntityMutationMode.Update, ct);
+
+        _shiftsDbContext.ChangeTracker.Clear();
+        var saved = await _shiftsDbContext.Rotas.Include(r => r.Shifts).SingleAsync(ct);
+        saved.Name.Should().Be("Updated rota");
+        saved.IsVisibleToVolunteers.Should().BeFalse();
+        saved.Shifts.Should().ContainSingle().Which.Description.Should().Be("Updated shift");
+        saved.Shifts.Single().MinVolunteers.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task SaveShiftAsync_UpdatesShiftWithoutRewritingLoadedRota()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, rota) = await SeedRotaAsync(RotaPeriod.Build);
+        var shift = NewShift(rota, dayOffset: -3);
+        _shiftsDbContext.Shifts.Add(shift);
+        await _shiftsDbContext.SaveChangesAsync(ct);
+
+        var edit = await _repo.GetShiftAsync(shift.Id, ShiftReadShape.Rota, ct);
+        edit.Should().NotBeNull();
+        edit!.Description = "Updated shift";
+        edit.MinVolunteers = 2;
+
+        rota.Name = "Updated rota";
+        rota.IsVisibleToVolunteers = false;
+        await _shiftsDbContext.SaveChangesAsync(ct);
+
+        await _repo.SaveShiftAsync(edit, EntityMutationMode.Update, ct);
+
+        _shiftsDbContext.ChangeTracker.Clear();
+        var saved = await _shiftsDbContext.Shifts.Include(s => s.Rota).SingleAsync(ct);
+        saved.Description.Should().Be("Updated shift");
+        saved.MinVolunteers.Should().Be(2);
+        saved.Rota.Name.Should().Be("Updated rota");
+        saved.Rota.IsVisibleToVolunteers.Should().BeFalse();
+    }
+
+    [HumansFact]
     public async Task GetConfirmedSignupCountsByShiftAsync_EmptyInput_ReturnsEmpty()
     {
         var result = await _repo.GetConfirmedSignupCountsByShiftAsync([], Xunit.TestContext.Current.CancellationToken);

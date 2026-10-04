@@ -99,7 +99,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         if (mode == EntityMutationMode.Add)
             ctx.Rotas.Add(rota);
         else
-            ctx.Rotas.Update(rota);
+            ctx.Entry(rota).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -222,7 +222,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         if (mode == EntityMutationMode.Add)
             ctx.Shifts.Add(shift);
         else
-            ctx.Shifts.Update(shift);
+            ctx.Entry(shift).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
     }
 
