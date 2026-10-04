@@ -204,6 +204,8 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 ## Invariants
 
+- Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
+
 - Member-facing order pages localize their breadcrumb navigation label in all six supported cultures.
 - Member checkout refusals use six-culture Store messages for configuration, pending payments, positive amounts and outstanding balance. Balance amounts follow the UI culture; rejection guards and the Stripe write boundary are unchanged.
 - Member line-add/remove validation errors use Store resources in all six cultures. Quantity results show the translated rule without an exception parameter-name suffix; rejection conditions and authorization remain unchanged.

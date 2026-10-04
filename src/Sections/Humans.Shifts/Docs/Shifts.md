@@ -231,6 +231,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+- Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
+
 - The member shift-profile wizard localizes breadcrumb navigation labels in all six supported cultures.
 
 - The `ShiftSignups` GDPR export includes each signup’s UTC last-update timestamp, including system cancellations without a reviewer date.

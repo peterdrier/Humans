@@ -193,6 +193,8 @@ Stored as string via `HasConversion<string>()`.
 
 ## Invariants
 
+- Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
+
 - Public summary and finance overview render the same service slice DTOs directly; they do not copy name, amount and percentage into duplicate view rows.
 
 - A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft or reactivating a non-archived Closed year auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).

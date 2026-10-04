@@ -54,6 +54,8 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 
 ## Invariants
 
+- Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
+
 - Every page requires `PolicyNames.AdminOnly` (class-level `[Authorize]` on every controller in the section) except the deliberate anonymous surfaces: `/Debug/DbVersion`, which returns only migration names and counts, and `/ColorPalette`, which renders static markup. Pinned by `DebugArchitectureTests`, which discovers the controllers from the assembly rather than listing them.
 - Sensitive configuration values never render in full on `/Debug/Configuration`: at most the first four characters, and values of four characters or fewer are fully masked. Pinned by `DebugControllerTests`.
 - Debug owns no domain data; its in-memory telemetry is process-local and resets on restart/redeploy.

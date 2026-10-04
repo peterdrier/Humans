@@ -45,10 +45,33 @@ public class TableColumnTests
         var col = Col(CellFormat.Currency, r => r.Amount);
         var row = new Row { Amount = 1234.5m };
 
-        Render(col.Cell(row)).Should().Be(1234.5m.ToString("N2", CultureInfo.CurrentCulture));
+        Render(col.Cell(row)).Should().Be(HtmlEncoder.Default.Encode(1234.5m.ToString("N2", CultureInfo.CurrentUICulture)));
         Render(col.Cell(row)).Should().NotContain("€").And.NotContain("$");
         col.SortValue(row).Should().Be("1234.5");
         col.SortType.Should().Be("number");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("en", "1,234.50", "1,234.5")]
+    [Xunit.InlineData("es", "1.234,50", "1.234,5")]
+    [Xunit.InlineData("de", "1.234,50", "1.234,5")]
+    [Xunit.InlineData("it", "1.234,50", "1.234,5")]
+    [Xunit.InlineData("fr", "1\u202f234,50", "1\u202f234,5")]
+    [Xunit.InlineData("ca", "1.234,50", "1.234,5")]
+    public void Numeric_cells_use_ui_culture_and_keep_invariant_sort_values(
+        string culture, string expectedCurrency, string expectedNumber)
+    {
+        using var scope = new CultureScope(culture);
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en");
+        var row = new Row { Amount = 1234.5m };
+        var currency = Col(CellFormat.Currency, r => r.Amount);
+        var number = Col(CellFormat.Number, r => r.Amount);
+
+        Render(currency.Cell(row)).Should().Be(HtmlEncoder.Default.Encode(expectedCurrency));
+        Render(number.Cell(row)).Should().Be(HtmlEncoder.Default.Encode(expectedNumber));
+        currency.SortValue(row).Should().Be("1234.5");
+        number.SortValue(row).Should().Be("1234.5");
+        CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
 
     [HumansFact]
