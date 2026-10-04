@@ -195,6 +195,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- Own and visible member profile onsite chips retain GET request cancellation when reading the active event year; onsite visibility and cached participation selection remain unchanged.
+
 - Profile-card volunteer-history descriptions retain their 80-character excerpt limit without splitting UTF-16 surrogate pairs; the complete history description remains stored and exported.
 
 - Member, guest and read-only admin communication-preference checkboxes expose localized channel/category names to assistive technology, including locked and unchecked controls.

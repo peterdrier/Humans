@@ -52,6 +52,7 @@ public class ProfileViewControllerPopoverTests
     private readonly IShiftManagementServiceRead _shiftManagement = Substitute.For<IShiftManagementServiceRead>();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
+    private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
     private readonly ProfileViewController _controller;
     private readonly Guid _viewerId = Guid.NewGuid();
 
@@ -85,7 +86,7 @@ public class ProfileViewControllerPopoverTests
             _commPrefService,
             _auditLogService,
             Substitute.For<IShiftSignups>(),
-            Substitute.For<ISettingsService>(),
+            _settings,
             _shiftManagement,
             localizer,
             sharedLocalizer,
@@ -107,6 +108,23 @@ public class ProfileViewControllerPopoverTests
         _authorizationService.AuthorizeAsync(
                 Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Failed());
+    }
+
+    [HumansFact]
+    public async Task ViewProfile_AbandonedRequest_CancelsOnsiteYearRead()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>())
+            .Returns(BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com"));
+        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns((EventSettingsInfo?)null);
+        _settings.GetActiveEventSettingsAsync(aborted.Token)
+            .Returns(Task.FromCanceled<EventSettingsInfo?>(aborted.Token));
+
+        var act = () => _controller.ViewProfile(_viewerId, aborted.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]

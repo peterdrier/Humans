@@ -59,6 +59,8 @@ public class ProfileControllerEditTests
     private readonly IShiftVolunteerProfiles _shiftMgmt = Substitute.For<IShiftVolunteerProfiles>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IEmailOutboxServiceRead _emailOutbox = Substitute.For<IEmailOutboxServiceRead>();
+    private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
+    private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _profileId = Guid.NewGuid();
@@ -91,7 +93,7 @@ public class ProfileControllerEditTests
             Substitute.For<ICommunicationPreferenceService>(),
             _onboardingService,
             Substitute.For<IShiftSignups>(),
-            Substitute.For<ISettingsService>(),
+            _settings,
             _shiftMgmt,
             _shiftView,
             _gdprService,
@@ -105,7 +107,7 @@ public class ProfileControllerEditTests
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             _applicationDecisionService,
             _accountDeletionService,
-            Substitute.For<IMembershipCalculatorRead>());
+            _membershipCalculator);
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString())
@@ -158,6 +160,23 @@ public class ProfileControllerEditTests
         // The happy path now also writes meal-pref + allergies onto the shift
         // profile. Return a fresh profile by default so existing tests don't NRE
         // when the controller sets fields on it.
+    }
+
+    [HumansFact]
+    public async Task Me_AbandonedRequest_CancelsOnsiteYearRead()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _membershipCalculator.GetMembershipSnapshotAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(new MembershipSnapshot(MembershipStatus.Active, true, 0, 0, []));
+        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns((EventSettingsInfo?)null);
+        _settings.GetActiveEventSettingsAsync(aborted.Token)
+            .Returns(Task.FromCanceled<EventSettingsInfo?>(aborted.Token));
+
+        var act = () => _controller.Me(aborted.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansTheory]

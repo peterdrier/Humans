@@ -129,7 +129,7 @@ internal sealed class ProfileViewController(
             NoShowHistory = noShowContext.History,
             CanViewShiftSignups = noShowContext.CanView,
             OnsiteSince = canViewOnsiteChip
-                ? await ResolveOnsiteSinceAsync(profileInfo)
+                ? await ResolveOnsiteSinceAsync(profileInfo, ct)
                 : null,
             CanViewOnsiteChip = canViewOnsiteChip,
             CanViewSentMessages = canViewSentMessages,
@@ -449,9 +449,9 @@ internal sealed class ProfileViewController(
     /// <c>ProfileController.Me</c> uses for the own-profile chip. Issue
     /// nobodies-collective/Humans#736.
     /// </summary>
-    private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info)
+    private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info, CancellationToken ct)
     {
-        var active = await settingsService.GetActiveEventSettingsAsync();
+        var active = await settingsService.GetActiveEventSettingsAsync(ct);
         if (active is null || active.Year == 0) return null;
         return info.OnsiteSinceForYear(active.Year);
     }

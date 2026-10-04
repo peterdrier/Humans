@@ -130,7 +130,7 @@ internal sealed class ProfileController(
             CampaignGrants = campaignGrants,
             // Onsite chip — own profile, always visible. Issue
             // nobodies-collective/Humans#736.
-            OnsiteSince = await ResolveOnsiteSinceAsync(info),
+            OnsiteSince = await ResolveOnsiteSinceAsync(info, ct),
             CanViewOnsiteChip = true,
         };
 
@@ -151,9 +151,9 @@ internal sealed class ProfileController(
     /// from the cached <see cref="UserInfo"/> snapshot — no extra DB hit. Issue
     /// nobodies-collective/Humans#736.
     /// </summary>
-    private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info)
+    private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info, CancellationToken ct)
     {
-        var active = await settingsService.GetActiveEventSettingsAsync();
+        var active = await settingsService.GetActiveEventSettingsAsync(ct);
         if (active is null || active.Year == 0) return null;
         return info.OnsiteSinceForYear(active.Year);
     }
