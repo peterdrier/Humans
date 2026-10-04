@@ -291,7 +291,7 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 Invalid rota and shift edits redisplay the team shift page without saving. Only the submitted editor opens with its attempted values and validation errors; other editors retain their persisted values.
 
-- **Member dashboard shift card:** while shift browsing is open, a pending signup or a confirmed signup ending after now in the active event selects the signup card. The host computes only that presence flag from `IShiftView`; `ShiftSignupsViewComponent` renders signup details. Past-signup status badges on My Shifts and the signup card use the site UI language in all six cultures.
+- **Member dashboard shift card:** while shift browsing is open, a pending signup or a confirmed signup ending after now in the active event selects the signup card. The host computes only that presence flag from `IShiftView`; `ShiftSignupsViewComponent` renders signup details. Past-signup status badges on My Shifts and the signup card use the site UI language in all six cultures. The volunteer signup card also localizes its title, bucket headings, counts, all-day labels and remaining-history count.
 
 ## Negative Access Rules
 

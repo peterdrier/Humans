@@ -467,4 +467,7 @@
   <data name="Enum_SignupStatus_Bailed" xml:space="preserve"><value>Withdrawn</value></data>
   <data name="Enum_SignupStatus_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
   <data name="Enum_SignupStatus_NoShow" xml:space="preserve"><value>No show</value></data>
+  <data name="ShiftSignups_Title" xml:space="preserve"><value>Shift Signups</value></data>
+  <data name="ShiftSignups_ConfirmedCount" xml:space="preserve"><value>{0} confirmed</value></data>
+  <data name="ShiftSignups_MoreCount" xml:space="preserve"><value>+ {0} more</value></data>
 </root>

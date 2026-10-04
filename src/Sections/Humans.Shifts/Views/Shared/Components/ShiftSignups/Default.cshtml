@@ -7,7 +7,7 @@
     var isAdmin = Model.ViewMode == ShiftSignupsViewMode.Admin;
     var label = isAdmin && !string.IsNullOrEmpty(Model.DisplayName)
         ? $"{Model.DisplayName}'s Shifts"
-        : "Shift Signups";
+        : Localizer["ShiftSignups_Title"].Value;
 }
 
 @functions {
@@ -29,11 +29,11 @@
             <span>
                 @if (Model.Upcoming.Count > 0)
                 {
-                    <span class="badge bg-success">@Model.Upcoming.Count confirmed</span>
+                    <span class="badge bg-success">@Localizer["ShiftSignups_ConfirmedCount", Model.Upcoming.Count]</span>
                 }
                 @if (Model.Pending.Count > 0)
                 {
-                    <span class="badge bg-warning ms-1">@Model.Pending.Count pending</span>
+                    <span class="badge bg-warning ms-1">@SharedLocalizer["ShiftsSummary_PendingCount", Model.Pending.Count]</span>
                 }
             </span>
         }
@@ -61,7 +61,7 @@
             @if (Model.Upcoming.Count > 0)
             {
                 <div class="px-3 pt-3 pb-1">
-                    <h6 class="text-success mb-2"><i class="fa-solid fa-check-circle me-1"></i>Upcoming (@Model.Upcoming.Count)</h6>
+                    <h6 class="text-success mb-2"><i class="fa-solid fa-check-circle me-1"></i>@Localizer["Shifts_UpcomingShifts"] (@Model.Upcoming.Count)</h6>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm mb-0">
@@ -73,7 +73,7 @@
                                     <td class="ps-3">@item.DepartmentName</td>
                                     <td><strong>@signup.RotaName</strong></td>
                                     <td>@signup.Date.ToWeekdayDayMonth()</td>
-                                    <td>@(signup.IsAllDay ? "All day" : $"{signup.AbsoluteStart.ToTime(tz)}–{signup.AbsoluteEnd.ToTime(tz)}")</td>
+                                    <td>@(signup.IsAllDay ? Localizer["Shifts_AllDay"].Value : $"{signup.AbsoluteStart.ToTime(tz)}–{signup.AbsoluteEnd.ToTime(tz)}")</td>
                                 </tr>
                             }
                         </tbody>
@@ -83,7 +83,7 @@
             @if (Model.Pending.Count > 0)
             {
                 <div class="px-3 pt-3 pb-1">
-                    <h6 class="text-warning mb-2"><i class="fa-solid fa-clock me-1"></i>Pending (@Model.Pending.Count)</h6>
+                    <h6 class="text-warning mb-2"><i class="fa-solid fa-clock me-1"></i>@Localizer.EnumDisplay(SignupStatus.Pending) (@Model.Pending.Count)</h6>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm mb-0">
@@ -95,7 +95,7 @@
                                     <td class="ps-3">@item.DepartmentName</td>
                                     <td><strong>@signup.RotaName</strong></td>
                                     <td>@signup.Date.ToWeekdayDayMonth()</td>
-                                    <td>@(signup.IsAllDay ? "All day" : $"{signup.AbsoluteStart.ToTime(tz)}–{signup.AbsoluteEnd.ToTime(tz)}")</td>
+                                    <td>@(signup.IsAllDay ? Localizer["Shifts_AllDay"].Value : $"{signup.AbsoluteStart.ToTime(tz)}–{signup.AbsoluteEnd.ToTime(tz)}")</td>
                                 </tr>
                             }
                         </tbody>
@@ -106,7 +106,7 @@
             {
                 var pastToShow = Model.Past.Take(5).ToList();
                 <div class="px-3 pt-3 pb-1">
-                    <h6 class="text-muted mb-2"><i class="fa-solid fa-history me-1"></i>Past (@Model.Past.Count)</h6>
+                    <h6 class="text-muted mb-2"><i class="fa-solid fa-history me-1"></i>@Localizer["Shifts_Past"] (@Model.Past.Count)</h6>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm mb-0">
@@ -127,7 +127,7 @@
                 @if (Model.Past.Count > 5)
                 {
                     <div class="px-3 py-2 text-muted small">
-                        + @(Model.Past.Count - 5) more
+                        @Localizer["ShiftSignups_MoreCount", Model.Past.Count - 5]
                     </div>
                 }
             }
