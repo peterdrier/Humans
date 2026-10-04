@@ -149,7 +149,8 @@ internal sealed partial class CampRepository
             await ctx.SaveChangesAsync(ct);
             return true;
         }
-        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+            { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_camp_role_assignments_unique" })
         {
             // Unique-index race on (CampSeasonId, CampRoleDefinitionId, CampMemberId) —
             // caller treats false as "already holds role".

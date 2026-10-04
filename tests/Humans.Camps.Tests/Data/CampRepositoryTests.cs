@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using AwesomeAssertions;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,34 @@ namespace Humans.Camps.Tests.Data;
 
 public sealed class CampRepositoryTests : IDisposable
 {
+    [HumansTheory]
+    [Xunit.InlineData("23505", "IX_camp_role_assignments_unique", true)]
+    [Xunit.InlineData("23505", "PK_camp_role_assignments", false)]
+    [Xunit.InlineData("23503", "IX_camp_role_assignments_unique", false)]
+    public async Task Insert_OnlyTreatsExpectedConstraintAsDuplicate(string sqlState, string constraint, bool duplicate)
+    {
+        var failure = new DbUpdateException("Save failed", new Npgsql.PostgresException(
+            "Constraint violation", "ERROR", "ERROR", sqlState, constraintName: constraint));
+        var options = new DbContextOptionsBuilder<CampsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(new FailedInsert(failure)).Options;
+        var repo = new CampRepository(new TestDbContextFactory<CampsDbContext>(options));
+        var row = new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = Guid.NewGuid(), CampMemberId = Guid.NewGuid(), CampRoleDefinitionId = Guid.NewGuid() };
+        var insert = () => repo.AddAssignmentAsync(row, Xunit.TestContext.Current.CancellationToken);
+
+        if (duplicate)
+            (await insert()).Should().BeFalse();
+        else
+            (await insert.Should().ThrowAsync<DbUpdateException>()).Which.Should().BeSameAs(failure);
+    }
+
+    private sealed class FailedInsert(DbUpdateException failure) : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default) => throw failure;
+    }
+
     private readonly CampsDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly CampRepository _repo;

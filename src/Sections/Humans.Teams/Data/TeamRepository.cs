@@ -608,7 +608,8 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             await db.SaveChangesAsync(ct);
             return true;
         }
-        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+            { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_team_members_active_unique" })
         {
             return false;
         }
@@ -629,7 +630,8 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             await db.SaveChangesAsync(ct);
             return true;
         }
-        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+            { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_team_members_active_unique" })
         {
             return false;
         }
