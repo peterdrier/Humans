@@ -384,4 +384,13 @@
   <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>La pregunta de voto clasificado {0} debe tener al menos dos opciones.</value></data>
   <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Una opción</value></data>
   <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Varias opciones</value></data>
+  <data name="Surveys_GridRowValuesBlank" xml:space="preserve"><value>Los valores de las filas de la pregunta de cuadrícula {0} no pueden estar vacíos.</value></data>
+  <data name="Surveys_GridRowValuesUnique" xml:space="preserve"><value>Los valores de las filas de la pregunta de cuadrícula {0} deben ser únicos.</value></data>
+  <data name="Surveys_GridColumnValuesBlank" xml:space="preserve"><value>Los valores de las columnas de la pregunta de cuadrícula {0} no pueden estar vacíos.</value></data>
+  <data name="Surveys_GridColumnValuesUnique" xml:space="preserve"><value>Los valores de las columnas de la pregunta de cuadrícula {0} deben ser únicos.</value></data>
+  <data name="Surveys_RankedValuesBlank" xml:space="preserve"><value>Los valores de las opciones de la pregunta de voto clasificado {0} no pueden estar vacíos.</value></data>
+  <data name="Surveys_RankedValuesUnique" xml:space="preserve"><value>Los valores de las opciones de la pregunta de voto clasificado {0} deben ser únicos.</value></data>
+  <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>Una condición de ramificación hace referencia a una pregunta que no es estrictamente anterior. Identificadores de las preguntas afectadas: {0}.</value></data>
+  <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>Una cláusula Is/IsNot de ramificación no tiene valores de opción (la condición sería vacía). Identificadores de las preguntas afectadas: {0}.</value></data>
+  <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Las preguntas de cuadrícula, voto clasificado e información no pueden ser fuentes de ramificación. Identificadores de las preguntas afectadas: {0}.</value></data>
 </root>

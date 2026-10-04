@@ -370,4 +370,13 @@
   <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>La question à choix classé {0} doit avoir au moins deux options.</value></data>
   <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Un seul choix</value></data>
   <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Choix multiples</value></data>
+  <data name="Surveys_GridRowValuesBlank" xml:space="preserve"><value>Les valeurs des lignes de la question en grille {0} ne doivent pas être vides.</value></data>
+  <data name="Surveys_GridRowValuesUnique" xml:space="preserve"><value>Les valeurs des lignes de la question en grille {0} doivent être uniques.</value></data>
+  <data name="Surveys_GridColumnValuesBlank" xml:space="preserve"><value>Les valeurs des colonnes de la question en grille {0} ne doivent pas être vides.</value></data>
+  <data name="Surveys_GridColumnValuesUnique" xml:space="preserve"><value>Les valeurs des colonnes de la question en grille {0} doivent être uniques.</value></data>
+  <data name="Surveys_RankedValuesBlank" xml:space="preserve"><value>Les valeurs des options de la question à choix classé {0} ne doivent pas être vides.</value></data>
+  <data name="Surveys_RankedValuesUnique" xml:space="preserve"><value>Les valeurs des options de la question à choix classé {0} doivent être uniques.</value></data>
+  <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>Une condition de branchement fait référence à une question qui ne la précède pas strictement. Identifiants des questions concernées : {0}.</value></data>
+  <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>Une clause Is/IsNot de branchement n’a pas de valeurs d’option (la condition serait vide). Identifiants des questions concernées : {0}.</value></data>
+  <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Les questions en grille, à choix classé et informatives ne peuvent pas être des sources de branchement. Identifiants des questions concernées : {0}.</value></data>
 </root>

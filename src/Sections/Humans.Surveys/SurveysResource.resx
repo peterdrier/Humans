@@ -365,4 +365,13 @@
   <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>Ranked-choice question {0} must have at least two options.</value></data>
   <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>One choice</value></data>
   <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Multiple choices</value></data>
+  <data name="Surveys_GridRowValuesBlank" xml:space="preserve"><value>Grid question {0} row values must not be blank.</value></data>
+  <data name="Surveys_GridRowValuesUnique" xml:space="preserve"><value>Grid question {0} row values must be unique.</value></data>
+  <data name="Surveys_GridColumnValuesBlank" xml:space="preserve"><value>Grid question {0} column values must not be blank.</value></data>
+  <data name="Surveys_GridColumnValuesUnique" xml:space="preserve"><value>Grid question {0} column values must be unique.</value></data>
+  <data name="Surveys_RankedValuesBlank" xml:space="preserve"><value>Ranked-choice question {0} option values must not be blank.</value></data>
+  <data name="Surveys_RankedValuesUnique" xml:space="preserve"><value>Ranked-choice question {0} option values must be unique.</value></data>
+  <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>A branching condition references a question that is not strictly earlier. Offending question ids: {0}.</value></data>
+  <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>A branching Is/IsNot clause has no option values (the condition would be vacuous). Offending question ids: {0}.</value></data>
+  <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Grid, RankedChoice, and Information questions cannot be branching sources. Offending question ids: {0}.</value></data>
 </root>

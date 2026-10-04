@@ -370,4 +370,13 @@
   <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>La pregunta de vot classificat {0} ha de tenir com a mínim dues opcions.</value></data>
   <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Una opció</value></data>
   <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Diverses opcions</value></data>
+  <data name="Surveys_GridRowValuesBlank" xml:space="preserve"><value>Els valors de les files de la pregunta de graella {0} no poden estar buits.</value></data>
+  <data name="Surveys_GridRowValuesUnique" xml:space="preserve"><value>Els valors de les files de la pregunta de graella {0} han de ser únics.</value></data>
+  <data name="Surveys_GridColumnValuesBlank" xml:space="preserve"><value>Els valors de les columnes de la pregunta de graella {0} no poden estar buits.</value></data>
+  <data name="Surveys_GridColumnValuesUnique" xml:space="preserve"><value>Els valors de les columnes de la pregunta de graella {0} han de ser únics.</value></data>
+  <data name="Surveys_RankedValuesBlank" xml:space="preserve"><value>Els valors de les opcions de la pregunta de vot classificat {0} no poden estar buits.</value></data>
+  <data name="Surveys_RankedValuesUnique" xml:space="preserve"><value>Els valors de les opcions de la pregunta de vot classificat {0} han de ser únics.</value></data>
+  <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>Una condició de ramificació fa referència a una pregunta que no és estrictament anterior. Identificadors de les preguntes afectades: {0}.</value></data>
+  <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>Una clàusula Is/IsNot de ramificació no té valors d’opció (la condició seria buida). Identificadors de les preguntes afectades: {0}.</value></data>
+  <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Les preguntes de graella, vot classificat i informació no poden ser fonts de ramificació. Identificadors de les preguntes afectades: {0}.</value></data>
 </root>

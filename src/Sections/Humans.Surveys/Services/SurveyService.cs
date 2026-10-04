@@ -2754,8 +2754,12 @@ internal sealed class SurveyService(
                     ErrorMessage("Surveys_GridColumnCount", question.Id));
             }
 
-            ValidateStableValues(rows.Select(row => row.Value), $"Grid question {question.Id} row");
-            ValidateStableValues(question.Options.Select(option => option.Value), $"Grid question {question.Id} column");
+            ValidateStableValues(rows.Select(row => row.Value),
+                ErrorMessage("Surveys_GridRowValuesBlank", question.Id),
+                ErrorMessage("Surveys_GridRowValuesUnique", question.Id));
+            ValidateStableValues(question.Options.Select(option => option.Value),
+                ErrorMessage("Surveys_GridColumnValuesBlank", question.Id),
+                ErrorMessage("Surveys_GridColumnValuesUnique", question.Id));
         }
 
         static void ValidateRankedQuestion(SurveyQuestion question)
@@ -2764,7 +2768,8 @@ internal sealed class SurveyService(
                 throw new InvalidOperationException(ErrorMessage("Surveys_RankedOptionsRequired", question.Id));
             ValidateStableValues(
                 question.Options.OrderBy(option => option.Order).Select(option => option.Value),
-                $"Ranked-choice question {question.Id} option");
+                ErrorMessage("Surveys_RankedValuesBlank", question.Id),
+                ErrorMessage("Surveys_RankedValuesUnique", question.Id));
             if (question.RankedSettings is null
                 || !Enum.IsDefined(question.RankedSettings.OfficialMethod))
             {
@@ -2773,17 +2778,17 @@ internal sealed class SurveyService(
             }
         }
 
-        static void ValidateStableValues(IEnumerable<string> values, string description)
+        static void ValidateStableValues(IEnumerable<string> values, string blankMessage, string duplicateMessage)
         {
             var materialized = values.ToList();
             if (materialized.Any(string.IsNullOrWhiteSpace))
             {
-                throw new InvalidOperationException($"{description} values must not be blank.");
+                throw new InvalidOperationException(blankMessage);
             }
 
             if (materialized.Distinct(StringComparer.Ordinal).Count() != materialized.Count)
             {
-                throw new InvalidOperationException($"{description} values must be unique.");
+                throw new InvalidOperationException(duplicateMessage);
             }
         }
     }
@@ -2794,14 +2799,14 @@ internal sealed class SurveyService(
         if (offenders.Count > 0)
         {
             throw new InvalidOperationException(
-                $"A branching condition references a question that is not strictly earlier. Offending question ids: {string.Join(", ", offenders)}.");
+                ErrorMessage("Surveys_BranchForwardReference", string.Join(", ", offenders)));
         }
 
         var emptyClauses = SurveyBranchingEvaluator.ValidateClauseOptionValues(questions);
         if (emptyClauses.Count > 0)
         {
             throw new InvalidOperationException(
-                $"A branching Is/IsNot clause has no option values (the condition would be vacuous). Offending question ids: {string.Join(", ", emptyClauses)}.");
+                ErrorMessage("Surveys_BranchValuesRequired", string.Join(", ", emptyClauses)));
         }
 
         var types = questions.ToDictionary(question => question.Id, question => question.Type);
@@ -2814,7 +2819,7 @@ internal sealed class SurveyService(
         if (nonAnswerSources.Count > 0)
         {
             throw new InvalidOperationException(
-                $"Grid, RankedChoice, and Information questions cannot be branching sources. Offending question ids: {string.Join(", ", nonAnswerSources)}.");
+                ErrorMessage("Surveys_BranchSourceInvalid", string.Join(", ", nonAnswerSources)));
         }
     }
 

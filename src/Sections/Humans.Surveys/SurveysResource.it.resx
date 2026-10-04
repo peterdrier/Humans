@@ -370,4 +370,13 @@
   <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>La domanda a scelta classificata {0} deve avere almeno due opzioni.</value></data>
   <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Una scelta</value></data>
   <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Scelte multiple</value></data>
+  <data name="Surveys_GridRowValuesBlank" xml:space="preserve"><value>I valori delle righe della domanda a griglia {0} non possono essere vuoti.</value></data>
+  <data name="Surveys_GridRowValuesUnique" xml:space="preserve"><value>I valori delle righe della domanda a griglia {0} devono essere univoci.</value></data>
+  <data name="Surveys_GridColumnValuesBlank" xml:space="preserve"><value>I valori delle colonne della domanda a griglia {0} non possono essere vuoti.</value></data>
+  <data name="Surveys_GridColumnValuesUnique" xml:space="preserve"><value>I valori delle colonne della domanda a griglia {0} devono essere univoci.</value></data>
+  <data name="Surveys_RankedValuesBlank" xml:space="preserve"><value>I valori delle opzioni della domanda a scelta classificata {0} non possono essere vuoti.</value></data>
+  <data name="Surveys_RankedValuesUnique" xml:space="preserve"><value>I valori delle opzioni della domanda a scelta classificata {0} devono essere univoci.</value></data>
+  <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>Una condizione di ramificazione fa riferimento a una domanda che non è strettamente precedente. ID delle domande interessate: {0}.</value></data>
+  <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>Una clausola Is/IsNot di ramificazione non ha valori di opzione (la condizione sarebbe vuota). ID delle domande interessate: {0}.</value></data>
+  <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Le domande a griglia, a scelta classificata e informative non possono essere fonti di ramificazione. ID delle domande interessate: {0}.</value></data>
 </root>

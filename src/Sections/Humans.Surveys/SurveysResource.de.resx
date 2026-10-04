@@ -370,4 +370,13 @@
   <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>Die Rangfolgenfrage {0} muss mindestens zwei Optionen haben.</value></data>
   <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Eine Auswahl</value></data>
   <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Mehrere Auswahlmöglichkeiten</value></data>
+  <data name="Surveys_GridRowValuesBlank" xml:space="preserve"><value>Die Zeilenwerte der Gitterfrage {0} dürfen nicht leer sein.</value></data>
+  <data name="Surveys_GridRowValuesUnique" xml:space="preserve"><value>Die Zeilenwerte der Gitterfrage {0} müssen eindeutig sein.</value></data>
+  <data name="Surveys_GridColumnValuesBlank" xml:space="preserve"><value>Die Spaltenwerte der Gitterfrage {0} dürfen nicht leer sein.</value></data>
+  <data name="Surveys_GridColumnValuesUnique" xml:space="preserve"><value>Die Spaltenwerte der Gitterfrage {0} müssen eindeutig sein.</value></data>
+  <data name="Surveys_RankedValuesBlank" xml:space="preserve"><value>Die Optionswerte der Rangfolgenfrage {0} dürfen nicht leer sein.</value></data>
+  <data name="Surveys_RankedValuesUnique" xml:space="preserve"><value>Die Optionswerte der Rangfolgenfrage {0} müssen eindeutig sein.</value></data>
+  <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>Eine Verzweigungsbedingung verweist auf eine Frage, die nicht davor liegt. Betroffene Frage-IDs: {0}.</value></data>
+  <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>Eine Is/IsNot-Verzweigungsklausel hat keine Optionswerte (die Bedingung wäre leer). Betroffene Frage-IDs: {0}.</value></data>
+  <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Gitter-, Rangfolgen- und Informationsfragen können keine Verzweigungsquellen sein. Betroffene Frage-IDs: {0}.</value></data>
 </root>
