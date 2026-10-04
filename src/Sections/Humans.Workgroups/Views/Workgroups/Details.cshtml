@@ -94,7 +94,7 @@
         <div class="card-body d-flex flex-wrap gap-4 align-items-baseline">
             <div>
                 <div class="text-uppercase text-muted small">@Localizer["Workgroups_Budget"]</div>
-                <div class="fs-5 fw-semibold">@w.BudgetAmount!.Value.ToString("N2") €</div>
+                <div class="fs-5 fw-semibold">@w.BudgetAmount!.Value.ToEuro()</div>
             </div>
             @if (w.HoldedAccountNumber is { } acct)
             {

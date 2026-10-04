@@ -82,6 +82,8 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 
 ## Invariants
 
+- Guest order totals format amounts in the selected UI culture and retain each order’s currency code.
+
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
 - Order, attendee and who-has-not-bought paging computes offsets without integer overflow; extreme pages cannot wrap into earlier rows. Filters, ordering and total counts are unchanged.

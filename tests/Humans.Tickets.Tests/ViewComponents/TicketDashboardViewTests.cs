@@ -3,6 +3,7 @@ using Humans.Base.ViewComponents;
 using Humans.Base.Extensions;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services.Dtos;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Authorization;
@@ -17,6 +18,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
+using NodaTime;
 using Xunit;
 
 namespace Humans.Tickets.Tests.ViewComponents;
@@ -80,9 +82,30 @@ public class TicketDashboardViewTests
         }
     }
 
-    private static async Task<string> RenderAsync(string page, object model)
+    [HumansTheory]
+    [InlineData("en", "1,234.50 USD")]
+    [InlineData("es", "1.234,50 USD")]
+    [InlineData("de", "1.234,50 USD")]
+    [InlineData("it", "1.234,50 USD")]
+    [InlineData("fr", "1\u202f234,50 USD")]
+    [InlineData("ca", "1.234,50 USD")]
+    public async Task GuestOrders_RenderAmountInUiCultureAndKeepCurrencyCode(string culture, string expected)
     {
-        using var culture = new CultureScope("en");
+        var orders = new List<UserTicketOrderSummary>
+        {
+            new("Buyer", Instant.FromUtc(2026, 7, 1, 12, 0), 2, 1234.5m, "USD"),
+        };
+        var html = await RenderAsync("GuestTicketOrders", orders, culture,
+            "/Views/Shared/Components/GuestTicketOrders/Default.cshtml");
+
+        Assert.Contains(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(expected), html);
+        Assert.DoesNotContain("€", html);
+    }
+
+    private static async Task<string> RenderAsync(string page, object model, string cultureName = "en", string? viewPath = null)
+    {
+        using var culture = new CultureScope(cultureName);
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en");
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             ApplicationName = typeof(TicketDashboardViewTests).Assembly.GetName().Name,
@@ -107,7 +130,7 @@ public class TicketDashboardViewTests
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
         var engine = services.GetRequiredService<IRazorViewEngine>();
-        var result = engine.GetView(null, $"/Views/Ticket/{page}.cshtml", isMainPage: false);
+        var result = engine.GetView(null, viewPath ?? $"/Views/Ticket/{page}.cshtml", isMainPage: false);
         Assert.True(result.Success, string.Join(", ", result.SearchedLocations ?? []));
         var http = new DefaultHttpContext { RequestServices = services };
         http.Request.Path = $"/Tickets/{page}";
