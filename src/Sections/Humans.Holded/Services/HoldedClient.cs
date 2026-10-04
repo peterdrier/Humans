@@ -884,7 +884,12 @@ internal sealed class HoldedClient : IHoldedClient
                         $"(body starts: {preview[..Math.Min(preview.Length, 120)]}).");
                 }
                 foreach (var n in itemsArr)
-                    if (n is not null) items.Add(n);
+                {
+                    if (n is null)
+                        throw new HoldedPermanentException(
+                            $"Holded page for {pathAndQuery.Split('?', 2)[0]} contains a null item.");
+                    items.Add(n);
+                }
 
                 // Absent has_more is a legitimate final page — the live accounting-accounts
                 // response carries items only, no pagination metadata. But has_more:true without
