@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Stays a leaf: folding into Humans.Email would close a project cycle: Humans.Email -> Humans.Campaigns -> Humans.Email. -->
+
   <!--
     Email's cross-section surface, carved into its own leaf project because most sections
     that do anything for a human tell them about it by mail: they build an EmailMessage in

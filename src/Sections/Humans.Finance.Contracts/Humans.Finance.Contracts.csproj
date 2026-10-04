@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Stays a leaf: folding into Humans.Finance would close a project cycle: Humans.Finance -> Humans.Budget -> Humans.Finance (also via Humans.Holded). -->
+
   <!--
     Finance's cross-section surface as its own leaf, because Humans.Holded, Humans.Expenses and
     Humans.Budget consume it: a Contracts/ folder inside Humans.Finance would make each of them

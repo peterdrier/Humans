@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Stays a leaf: folding into Humans.Tickets would close a project cycle: Humans.Tickets -> Humans.Campaigns -> Humans.Tickets (also via Humans.Budget). -->
+
   <!--
     Tickets' cross-section surface, carved into its own leaf project because other
     sections (Users, Shifts, Budget, Gate, Scanner, MailerLite, Teams, Surveys, Agent) read

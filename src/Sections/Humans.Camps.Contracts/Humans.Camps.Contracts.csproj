@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Stays a leaf: folding into Humans.Camps would close a project cycle: Humans.Camps -> Humans.CityPlanning -> Humans.Camps. -->
+
   <!--
     Camps' cross-section surface, carved into its own leaf project rather than a Contracts/
     folder for two independent reasons. Base consumes it: ShiftManagementService reads

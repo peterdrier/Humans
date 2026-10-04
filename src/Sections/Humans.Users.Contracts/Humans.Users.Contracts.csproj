@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Stays a leaf: folding into Humans.Users would close a project cycle: Humans.Users -> Humans.Auth -> Humans.Users, and Humans.Base references Humans.Users.Contracts. -->
+
   <!--
     Users + Profiles' cross-section surface. Carved ahead of the section move; a later change
     added the three entities and the write interface Base still names.

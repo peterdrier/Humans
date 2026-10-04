@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Stays a leaf: folding into Humans.Teams would close a project cycle: Humans.Teams -> Humans.Auth -> Humans.Teams (also via Humans.GoogleIntegration). -->
+
   <!--
     Teams' cross-section surface, in its own leaf so that Base and other sections can
     reference it without referencing the section (a Contracts/ folder inside Humans.Teams

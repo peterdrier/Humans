@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Stays a leaf: folding into Humans.Governance would close a project cycle: Humans.Governance -> Humans.Onboarding -> Humans.Governance (also via Humans.Consent, Humans.GoogleIntegration). -->
+
   <!--
     Governance's cross-section surface. A Contracts/ *folder* inside Humans.Governance would
     make Base reference a section and cycle, so it is a leaf project: Base-resident consumers
