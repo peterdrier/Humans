@@ -1,9 +1,17 @@
 @model Humans.Feedback.Models.FeedbackDetailViewModel
+@{
+    var pagePreview = Model.PageUrl;
+    if (pagePreview.Length > 40)
+    {
+        var length = char.IsHighSurrogate(pagePreview[39]) && char.IsLowSurrogate(pagePreview[40]) ? 39 : 40;
+        pagePreview = pagePreview[..length] + "...";
+    }
+}
 
 <div class="border-bottom pb-3 mb-3">
     <div class="d-flex justify-content-between align-items-start">
         <div>
-            <h5 class="mb-1">@Localizer["Feedback_CategoryOnPage", Localizer.EnumDisplay(Model.Category), (Model.PageUrl.Length > 40 ? Model.PageUrl[..40] + "..." : Model.PageUrl)]</h5>
+            <h5 class="mb-1">@Localizer["Feedback_CategoryOnPage", Localizer.EnumDisplay(Model.Category), pagePreview]</h5>
             <div class="text-muted small">
                 <vc:human user-id="@Model.ReporterUserId" link="Admin" />
                 · @Model.CreatedAt.ToMonthDayTime() ·

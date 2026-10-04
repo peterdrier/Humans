@@ -120,11 +120,17 @@
             {
                 var isSelected = report.Id == Model.SelectedReportId;
                 var isUnassigned = report.AssignedToUserId == null && report.AssignedToTeamId == null;
+                var pagePreview = report.PageUrl;
+                if (pagePreview.Length > 30)
+                {
+                    var length = char.IsHighSurrogate(pagePreview[29]) && char.IsLowSurrogate(pagePreview[30]) ? 29 : 30;
+                    pagePreview = pagePreview[..length] + "...";
+                }
                 <div class="feedback-list-item p-3 border-bottom @(isSelected ? "bg-body-tertiary border-start border-3 border-primary" : "")"
                      data-report-id="@report.Id"
                      style="cursor: pointer;">
                     <div class="d-flex justify-content-between align-items-start mb-1">
-                        <span class="fw-semibold small">@Localizer["Feedback_CategoryOnPage", Localizer.EnumDisplay(report.Category), (report.PageUrl.Length > 30 ? report.PageUrl[..30] + "..." : report.PageUrl)]</span>
+                        <span class="fw-semibold small">@Localizer["Feedback_CategoryOnPage", Localizer.EnumDisplay(report.Category), pagePreview]</span>
                         @{
                             var badgeClass = report.Status switch
                             {

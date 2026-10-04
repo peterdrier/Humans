@@ -42,6 +42,25 @@ public class FeedbackListViewTests
         html.Should().Contain(HtmlEncoder.Default.Encode(name), "the tooltip keeps the full name");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task UrlPreviews_PreserveWholeSurrogatePairs(bool detail, bool fits)
+    {
+        var limit = detail ? 40 : 30;
+        var prefix = "/" + new string('a', limit - (fits ? 3 : 2));
+        var url = prefix + "😀tail";
+        object model = detail
+            ? new FeedbackDetailViewModel { PageUrl = url, CreatedAt = new DateTime(2026, 7, 1) }
+            : new FeedbackPageViewModel { Reports = [new FeedbackListItemViewModel { PageUrl = url, CreatedAt = new DateTime(2026, 7, 1) }] };
+        var html = await RenderAsync(detail ? "_Detail" : "Index", model);
+
+        html.Should().Contain(HtmlEncoder.Default.Encode(prefix + (fits ? "😀" : "") + "..."));
+        html.Should().NotContain("&#xFFFD;");
+    }
+
     private static async Task<string> RenderAsync(string page, object model)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
