@@ -314,27 +314,6 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveEventSettingsAsync_AuditFailureStillNotifiesCommittedChange()
-    {
-        var id = Guid.NewGuid();
-        var failure = new InvalidOperationException("Audit storage unavailable.");
-        _auditLog.LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
-            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(Task.FromException(failure));
-        var sut = BuildSut();
-
-        var act = () => sut.SaveEventSettingsAsync(
-            MakeDto(id, EventSettingsStatus.Inactive), Actor, TestContext.Current.CancellationToken);
-        var thrown = await act.Should().ThrowAsync<InvalidOperationException>();
-
-        thrown.Which.Should().BeSameAs(failure);
-        await _repository.Received(1).UpsertEventSettingsAsync(
-            Arg.Is<EventSettings>(e => e.Id == id), Now, TestContext.Current.CancellationToken);
-        _listenerOne.Received(1).EventSettingsChanged(id);
-        _listenerTwo.Received(1).EventSettingsChanged(id);
-    }
-
-    [HumansFact]
     public async Task CreateActiveEventAsync_TellsEveryChangeListener()
     {
         // The seeder swaps the active cycle out from under EarlyEntry and Shifts. Their

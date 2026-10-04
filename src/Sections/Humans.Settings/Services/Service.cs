@@ -62,17 +62,15 @@ internal sealed class Service(
             + $"gate opening {LocalDatePattern.Iso.Format(settings.GateOpeningDate)}, "
             + $"build starts day {settings.BuildStartOffset}, event ends day {settings.EventEndOffset}, "
             + $"strike ends day {settings.StrikeEndOffset}, status {settings.Status}.";
-        try
-        {
-            await auditLog.LogAsync(
-                AuditAction.EventSettingsUpdated, AuditEntityTypes.EventSettings, settings.Id, description, actorUserId);
-        }
-        finally
-        {
-            // The row is committed even if auditing fails. Every consuming cache
-            // must still hear about changed dates, offsets and active-event state.
-            NotifyChangeListeners(settings.Id);
-        }
+        await auditLog.LogAsync(
+            AuditAction.EventSettingsUpdated, AuditEntityTypes.EventSettings, settings.Id, description, actorUserId);
+
+        // The gate date, the offsets and the active-event flip all move derived dates for
+        // every member at once. These writes used to live in the consuming sections, which
+        // flushed their own caches inline; the write moved lanes, so the notification moves
+        // with it — fanned out over the listener seam rather than one project reference per
+        // consumer (nobodies-collective/Humans#805, peterdrier/Humans#1627).
+        NotifyChangeListeners(settings.Id);
     }
 
     /// <inheritdoc />

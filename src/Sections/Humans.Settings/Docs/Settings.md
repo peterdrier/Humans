@@ -117,8 +117,7 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
   never checked for on the way in here.
 - **Every successful `SaveEventSettingsAsync` call is audited.** Writes
   `AuditAction.EventSettingsUpdated` naming the actor and the saved values
-  (peterdrier/Humans#1628). Once the settings row is saved, cache listeners are notified
-  even if the audit write fails; that audit failure still propagates to the caller.
+  (peterdrier/Humans#1628).
 - **Every section reads the calendar from `settings_event`.** Repointed off the
   Shifts-owned row in nobodies-collective/Humans#1629/#1630; `/Settings#event` is the
   only editor, `/Shifts/Settings` is knobs-only.
