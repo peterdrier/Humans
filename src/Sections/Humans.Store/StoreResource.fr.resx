@@ -114,4 +114,5 @@
   <data name="Store_Error_TeamNotFound" xml:space="preserve"><value>L'équipe {0} est introuvable.</value></data>
   <data name="Store_Error_TeamDepartmentRequired" xml:space="preserve"><value>Les commandes d’équipe sont réservées aux départements (équipes de premier niveau).</value></data>
   <data name="Store_Error_TeamOrderExists" xml:space="preserve"><value>L'équipe {0} a déjà une commande de la boutique pour {1}.</value></data>
+  <data name="Store_ColAction" xml:space="preserve"><value>Action</value></data>
 </root>

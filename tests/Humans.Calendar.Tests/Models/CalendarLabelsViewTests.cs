@@ -1,3 +1,6 @@
+using Humans.AuditLog.Contracts;
+using Humans.AuditLog.ViewComponents;
+using Humans.Calendar.Services.Dtos;
 using System.Text.Encodings.Web;
 using AwesomeAssertions;
 using Humans.Base.ViewComponents;
@@ -65,6 +68,26 @@ public class CalendarLabelsViewTests
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("en", "No audit history.")]
+    [Xunit.InlineData("es", "No hay historial de auditoría.")]
+    [Xunit.InlineData("de", "Kein Prüfverlauf vorhanden.")]
+    [Xunit.InlineData("it", "Nessuna cronologia di audit.")]
+    [Xunit.InlineData("fr", "Aucun historique d’audit.")]
+    [Xunit.InlineData("ca", "No hi ha historial d’auditoria.")]
+    public async Task Event_EmptyHistory_UsesHostLanguage(string language, string message)
+    {
+        using var culture = new CultureScope(language);
+        var now = Instant.FromUtc(2026, 7, 1, 0, 0);
+        var detail = new CalendarEventDetail(Guid.NewGuid(), "Fixture", null, null, null,
+            Guid.NewGuid(), now, now + Duration.FromHours(1), false, null, null, now, now);
+        var model = new CalendarEventViewModel(detail, "Team", [], false, "Europe/Madrid");
+
+        var html = await RenderAsync("Event", model);
+
+        html.Should().Contain(HtmlEncoder.Default.Encode(message));
+    }
+
     private static async Task<string> RenderAsync(string page, object model)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -73,10 +96,12 @@ public class CalendarLabelsViewTests
             EnvironmentName = "Testing",
         });
         builder.Services.AddLocalization();
+        builder.Services.AddSingleton(Substitute.For<IAuditViewerService>());
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(CalendarResource).Assembly)
-            .AddApplicationPart(typeof(HumanViewComponent).Assembly);
+            .AddApplicationPart(typeof(HumanViewComponent).Assembly)
+            .AddApplicationPart(typeof(AuditLogViewComponent).Assembly);
         var url = Substitute.For<IUrlHelper>();
         url.Action(Arg.Any<UrlActionContext>()).Returns("/");
         var urls = Substitute.For<IUrlHelperFactory>();

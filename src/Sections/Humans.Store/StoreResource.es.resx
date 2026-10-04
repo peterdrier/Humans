@@ -122,4 +122,5 @@
   <data name="Store_Error_TeamNotFound" xml:space="preserve"><value>No se ha encontrado el equipo {0}.</value></data>
   <data name="Store_Error_TeamDepartmentRequired" xml:space="preserve"><value>Los pedidos de equipos están restringidos a departamentos (equipos de primer nivel).</value></data>
   <data name="Store_Error_TeamOrderExists" xml:space="preserve"><value>El equipo {0} ya tiene un pedido de la tienda para {1}.</value></data>
+  <data name="Store_ColAction" xml:space="preserve"><value>Acción</value></data>
 </root>

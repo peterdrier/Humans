@@ -171,6 +171,7 @@ else
               entity-ids="@order.Lines.Select(l => l.ProductId).Distinct().ToList()"
               actions="StoreProductPriceChanged" since="@order.CreatedAt" limit="50"
               layout="table" columns="when,action,description"
+              column-labels="@($"when:{Localizer["Store_ColDate"].Value},action:{Localizer["Store_ColAction"].Value},description:{Localizer["Store_ColDescription"].Value}")"
               title="@Localizer["Store_PriceChangesTitle"].Value"
               empty-text="@Localizer["Store_NoPriceChanges"].Value" />
 

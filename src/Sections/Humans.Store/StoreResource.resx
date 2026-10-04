@@ -159,4 +159,5 @@
   <data name="Store_Error_TeamNotFound" xml:space="preserve"><value>Team {0} not found.</value></data>
   <data name="Store_Error_TeamDepartmentRequired" xml:space="preserve"><value>Team orders are restricted to departments (top-level teams).</value></data>
   <data name="Store_Error_TeamOrderExists" xml:space="preserve"><value>Team {0} already has a Store order for {1}.</value></data>
+  <data name="Store_ColAction" xml:space="preserve"><value>Action</value></data>
 </root>

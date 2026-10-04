@@ -114,4 +114,5 @@
   <data name="Store_Error_TeamNotFound" xml:space="preserve"><value>No s'ha trobat l'equip {0}.</value></data>
   <data name="Store_Error_TeamDepartmentRequired" xml:space="preserve"><value>Les comandes d’equips estan restringides als departaments (equips de primer nivell).</value></data>
   <data name="Store_Error_TeamOrderExists" xml:space="preserve"><value>L'equip {0} ja té una comanda de la botiga per a {1}.</value></data>
+  <data name="Store_ColAction" xml:space="preserve"><value>Acció</value></data>
 </root>

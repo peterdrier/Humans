@@ -114,4 +114,5 @@
   <data name="Store_Error_TeamNotFound" xml:space="preserve"><value>Team {0} wurde nicht gefunden.</value></data>
   <data name="Store_Error_TeamDepartmentRequired" xml:space="preserve"><value>Team-Bestellungen sind auf Abteilungen (Teams der obersten Ebene) beschränkt.</value></data>
   <data name="Store_Error_TeamOrderExists" xml:space="preserve"><value>Team {0} hat bereits eine Shop-Bestellung für {1}.</value></data>
+  <data name="Store_ColAction" xml:space="preserve"><value>Aktion</value></data>
 </root>

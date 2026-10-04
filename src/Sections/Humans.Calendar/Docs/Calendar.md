@@ -122,6 +122,8 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 ## Invariants
 
+- Member event history supplies localized empty text to the shared audit component in all six cultures; its event predicate and history entries are unchanged.
+
 - Month headings, grid weekday headings and recurrence weekday labels follow the selected UI culture in all six languages. Input culture stays English; Monday-first ordering, recurrence codes and timezone handling are unchanged.
 
 - Every `CalendarEvent` has a non-null `OwningTeamId` — a bare Guid naming a team, with no database FK constraint and no navigation property.
