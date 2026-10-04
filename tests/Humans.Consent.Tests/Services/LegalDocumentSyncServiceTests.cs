@@ -421,6 +421,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         StubActiveUser();
         var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "old-sha");
         StubGitHubFolder("privacy/", "es-content", "sha-1", "Initial commit");
+        _gitHub.GetFileContentAsync("privacy/doc.md", Arg.Any<CancellationToken>())
+            .Returns(new GitHubFileContent("es-content", "sha-1"), new GitHubFileContent("later-content", "sha-2"));
 
         var result = await _service.SyncDocumentAsync(document.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -433,6 +435,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         version.RequiresReConsent.Should().BeFalse(
             because: "the first synced version never invalidates prior consent — there is none");
         version.CommitSha.Should().Be("sha-1");
+        version.Content["es"].Should().Be("es-content");
+        await _gitHub.Received(1).GetFileContentAsync("privacy/doc.md", Arg.Any<CancellationToken>());
 
         await AssertFanout(NotificationSource.LegalDocumentPublished, received: true);
         await AssertFanout(NotificationSource.ReConsentRequired, received: false);

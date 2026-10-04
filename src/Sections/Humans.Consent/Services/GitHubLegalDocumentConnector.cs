@@ -117,14 +117,13 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
             if (file is null) return null;
 
             ct.ThrowIfCancellationRequested();
-            // Fetch raw content directly — bypasses Base64 encoding issues with non-ASCII content
-            var rawBytes = await _client.Repository.Content.GetRawContentByRef(
+            // Read the immutable blob: the branch may advance after the metadata fetch.
+            var blob = await _client.Git.Blob.Get(
                 _settings.Owner,
                 _settings.Repository,
-                path,
-                _settings.Branch).WaitAsync(ct);
+                file.Sha).WaitAsync(ct);
 
-            var content = System.Text.Encoding.UTF8.GetString(rawBytes);
+            var content = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(blob.Content));
             return new GitHubFileContent(content, file.Sha);
         }
         catch (NotFoundException)

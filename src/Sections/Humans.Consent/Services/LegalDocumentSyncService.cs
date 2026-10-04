@@ -495,9 +495,15 @@ internal sealed partial class LegalDocumentSyncService(
             return null;
         }
 
-        var content = new Dictionary<string, string>(StringComparer.Ordinal);
+        var content = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["es"] = canonicalResult.Content
+        };
         foreach (var (lang, path) in languageFiles)
         {
+            if (string.Equals(lang, "es", StringComparison.Ordinal))
+                continue;
+
             var file = await gitHub.GetFileContentAsync(path, cancellationToken);
             if (file is null)
             {
