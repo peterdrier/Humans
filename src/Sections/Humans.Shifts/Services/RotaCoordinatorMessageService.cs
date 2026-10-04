@@ -1,4 +1,5 @@
 using Humans.Base.Extensions;
+using Humans.Base.Configuration;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Shifts.Contracts;
@@ -58,7 +59,7 @@ internal sealed class RotaCoordinatorMessageService(
 
         var summary = await DispatchToRecipientsAsync(
             groups,
-            buildRequest: (recipient, shiftGroups) => new CoordinatorRotaMessageRequest(
+            buildRequest: (recipient, shiftGroups, language) => new CoordinatorRotaMessageRequest(
                 RecipientEmail: recipient.Email!,
                 RecipientName: recipient.BurnerName,
                 SenderName: sender.BurnerName,
@@ -70,7 +71,7 @@ internal sealed class RotaCoordinatorMessageService(
                 // all when the coordinator left the shift list out.
                 ShiftLines: shiftGroups.Count == 0 ? [] : shiftGroups[0].ShiftLines,
                 IncludeShifts: includeShifts,
-                Culture: recipient.PreferredLanguage),
+                Culture: language),
             enqueue: (req, token) => emailService.SendAsync(emailMessages.CoordinatorRotaMessage(req), token),
             logScope: ("rota", rota.Id.ToString()),
             includeShifts,
@@ -124,7 +125,7 @@ internal sealed class RotaCoordinatorMessageService(
 
         var summary = await DispatchToRecipientsAsync(
             groups,
-            buildRequest: (recipient, shiftGroups) => new CoordinatorTeamRotasMessageRequest(
+            buildRequest: (recipient, shiftGroups, language) => new CoordinatorTeamRotasMessageRequest(
                 RecipientEmail: recipient.Email!,
                 RecipientName: recipient.BurnerName,
                 SenderName: sender.BurnerName,
@@ -133,7 +134,7 @@ internal sealed class RotaCoordinatorMessageService(
                 MessageText: messageText,
                 ShiftGroups: shiftGroups,
                 IncludeShifts: includeShifts,
-                Culture: recipient.PreferredLanguage),
+                Culture: language),
             enqueue: (req, token) => emailService.SendAsync(emailMessages.CoordinatorTeamRotasMessage(req), token),
             logScope: ("team", teamId.ToString()),
             includeShifts,
@@ -256,7 +257,7 @@ internal sealed class RotaCoordinatorMessageService(
     /// </summary>
     private async Task<DispatchSummary> DispatchToRecipientsAsync<TRequest>(
         IReadOnlyList<RotaSignupGroup> rotaGroups,
-        Func<UserInfo, IReadOnlyList<CoordinatorRotaShiftGroup>, TRequest> buildRequest,
+        Func<UserInfo, IReadOnlyList<CoordinatorRotaShiftGroup>, string, TRequest> buildRequest,
         Func<TRequest, CancellationToken, Task> enqueue,
         (string Type, string Id) logScope,
         bool includeShifts,
@@ -326,7 +327,10 @@ internal sealed class RotaCoordinatorMessageService(
                     .ToList()
                 : [];
 
-            var request = buildRequest(recipient, shiftGroups);
+            var language = recipient.PreferredLanguage.IsSupportedCultureCode()
+                ? recipient.PreferredLanguage
+                : CultureCatalog.DefaultCultureCode;
+            var request = buildRequest(recipient, shiftGroups, language);
 
             // Per-recipient enqueue is isolated: a transient outbox-write
             // failure on one recipient must not unwind the loop and leave
