@@ -22,7 +22,7 @@
     <!-- No Humans.Infrastructure reference: Scanner owns no tables, so no DbContext and no repository. -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!-- IIssueQueueOwner: this section declares the issue queue it owns. -->
-    <ProjectReference Include="..\Humans.Issues.Contracts\Humans.Issues.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Issues\Humans.Issues.csproj" />
     <ProjectReference Include="..\Humans.Events\Humans.Events.csproj" />
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />

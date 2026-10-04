@@ -42,7 +42,6 @@
     <Project Path="src/Sections/Humans.Guide/Humans.Guide.csproj" />
     <Project Path="src/Sections/Humans.Holded/Humans.Holded.csproj" />
     <Project Path="src/Sections/Humans.Issues/Humans.Issues.csproj" />
-    <Project Path="src/Sections/Humans.Issues.Contracts/Humans.Issues.Contracts.csproj" />
     <Project Path="src/Sections/Humans.MailerLite/Humans.MailerLite.csproj" />
     <Project Path="src/Sections/Humans.Monitor/Humans.Monitor.csproj" />
     <Project Path="src/Sections/Humans.Notifications/Humans.Notifications.csproj" />
