@@ -265,7 +265,7 @@ internal sealed class ProfileViewController(
                 && t.ShowCoordinatorsOnPublicPage
                 && t.Members.Any(m => m.UserId == id && m.Role == TeamMemberRole.Coordinator))
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(t => $"Coordinator · {t.Name}")
+            .Select(t => $"{sharedLocalizer["Profile_Coordinator"].Value} · {t.Name}")
             .ToList();
 
         if (roleLabels.Count == 0) return NotFound();

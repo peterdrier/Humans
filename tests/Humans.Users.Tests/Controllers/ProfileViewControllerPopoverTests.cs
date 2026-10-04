@@ -53,6 +53,7 @@ public class ProfileViewControllerPopoverTests
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
+    private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly ProfileViewController _controller;
     private readonly Guid _viewerId = Guid.NewGuid();
 
@@ -75,8 +76,7 @@ public class ProfileViewControllerPopoverTests
         var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
-        var sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
-        sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
+        _sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _controller = new ProfileViewController(
             _userService,
@@ -89,7 +89,7 @@ public class ProfileViewControllerPopoverTests
             _settings,
             _shiftManagement,
             localizer,
-            sharedLocalizer,
+            _sharedLocalizer,
             _teamService,
             _teamMessageOptions,
             _campService,
@@ -125,6 +125,28 @@ public class ProfileViewControllerPopoverTests
         var act = () => _controller.ViewProfile(_viewerId, aborted.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
+    public async Task PublicPopover_UsesSharedCoordinatorLabel()
+    {
+        var id = Guid.NewGuid();
+        _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+            .Returns(BuildActiveUserInfo(id, "Coordinator", "coordinator@example.com"));
+        _sharedLocalizer["Profile_Coordinator"].Returns(new LocalizedString("Profile_Coordinator", "Coordinador"));
+        var team = new TeamInfo(
+            Guid.NewGuid(), "Infrastructure", null, "infrastructure", true, false,
+            SystemTeamType.None, false, true, false, false, Instant.FromUnixTimeSeconds(0),
+            [new TeamMemberInfo(Guid.NewGuid(), id, "Coordinator", null, null,
+                TeamMemberRole.Coordinator, Instant.FromUnixTimeSeconds(0))]);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+
+        var result = await _controller.PublicPopover(id, TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<PartialViewResult>().Subject.Model
+            .Should().BeOfType<PublicPopoverViewModel>().Subject;
+        model.RoleLabels.Should().Equal("Coordinador · Infrastructure");
     }
 
     [HumansFact]

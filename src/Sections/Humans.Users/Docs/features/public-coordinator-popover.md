@@ -31,7 +31,7 @@ Fixes [nobodies-collective/Humans#771](https://github.com/nobodies-collective/Hu
 **Acceptance Criteria:**
 - Anonymous `GET /Profile/{id}/PublicPopover` returns 200 with the reduced partial when the target user is an active coordinator on a team with `IsPublicPage && ShowCoordinatorsOnPublicPage`.
 - Returns 404 in every other case so anonymous probes cannot enumerate users.
-- Reduced partial surfaces only: avatar (72px), BurnerName, role labels formatted as `"Coordinator · {TeamName}"`.
+- Reduced partial surfaces only: avatar (72px), BurnerName, role labels formatted as a localized coordinator label followed by `" · {TeamName}"`.
 - Partial NEVER renders city/country, the full team list, languages, tier badge, or suspended badge.
 - On `/Team/{slug}` while logged out, hovering the coordinator card fires the popover.
 - 404 from the endpoint disposes the popover silently (no error tooltip).
@@ -64,7 +64,7 @@ No schema changes. The public-coordinator gate filters the existing `ITeamServic
 |---|---|---|
 | `UserId` | `Guid` | Target user |
 | `DisplayName` | `string` | BurnerName |
-| `RoleLabels` | `IReadOnlyList<string>` | One entry per active public coordinator role, format `"Coordinator · {TeamName}"` |
+| `RoleLabels` | `IReadOnlyList<string>` | One entry per active public coordinator role, localized coordinator label + `" · {TeamName}"` |
 
 ## View Component Wiring
 
