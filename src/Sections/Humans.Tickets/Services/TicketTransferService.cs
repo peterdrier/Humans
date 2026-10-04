@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Threading;
 using Humans.Email.Contracts;
@@ -642,7 +643,8 @@ internal sealed class TicketTransferService(
     {
         try
         {
-            return (await userService.GetUserInfoAsync(request.ReceiverUserId, ct))?.PreferredLanguage ?? "en";
+            var language = (await userService.GetUserInfoAsync(request.ReceiverUserId, ct))?.PreferredLanguage;
+            return language.IsSupportedCultureCode() ? language! : CultureCatalog.DefaultCultureCode;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -679,7 +681,9 @@ internal sealed class TicketTransferService(
         var info = await userService.GetUserInfoAsync(senderUserId, ct);
         var email = await userEmailService.GetPrimaryEmailAsync(senderUserId, ct);
         var name = info?.BurnerName;
-        return (email, string.IsNullOrWhiteSpace(name) ? "there" : name, info?.PreferredLanguage ?? "en");
+        var language = info?.PreferredLanguage;
+        return (email, string.IsNullOrWhiteSpace(name) ? "there" : name,
+            language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode);
     }
 
     // VendorMessage is capped at 2000 chars and the vendor client embeds the raw TicketTailor

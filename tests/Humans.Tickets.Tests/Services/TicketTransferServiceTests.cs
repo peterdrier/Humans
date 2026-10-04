@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
@@ -124,9 +125,19 @@ public sealed class TicketTransferServiceTests
 
     // ── CreateRequestAsync ──────────────────────────────────────────────────────
 
-    [HumansFact]
-    public async Task CreateRequest_Persists_Audits_AndEmailsSenderAndTeam()
+    [HumansTheory]
+    [Xunit.InlineData("es", "Solicitud de transferencia de entrada")]
+    [Xunit.InlineData("", "Ticket transfer requested")]
+    [Xunit.InlineData(" ", "Ticket transfer requested")]
+    [Xunit.InlineData("not a culture!", "Ticket transfer requested")]
+    [Xunit.InlineData("fr-FR", "Ticket transfer requested")]
+    public async Task CreateRequest_Persists_Audits_AndEmailsSenderAndTeam(string language, string expectedSubject)
     {
+        using var actorCulture = new CultureScope("fr");
+        var sender = MakeUser(_senderId, "Bob");
+        sender.PreferredLanguage = language;
+        _userService.GetUserInfoAsync(_senderId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(sender, UserFixtures.Profile(burnerName: "Bob", firstName: "Bob", lastName: "Jones")));
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
 
         await _service.CreateRequestAsync(
@@ -145,6 +156,7 @@ public sealed class TicketTransferServiceTests
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_requested"
                 && m.RecipientEmail == "bob@example.com"
+                && m.Subject == expectedSubject
                 && m.HtmlBody.Contains("Alice Smith", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
         await _emailService.Received(1).SendAsync(
@@ -332,15 +344,24 @@ public sealed class TicketTransferServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task Approve_EmailsEachPartyInTheirOwnLanguage()
+    [HumansTheory]
+    [Xunit.InlineData("es", "de", "Transferencia de entrada completada", "Ticketübertragung abgeschlossen")]
+    [Xunit.InlineData("", "es", "Ticket transfer complete", "Transferencia de entrada completada")]
+    [Xunit.InlineData(" ", "de", "Ticket transfer complete", "Ticketübertragung abgeschlossen")]
+    [Xunit.InlineData("not a culture!", "fr-FR", "Ticket transfer complete", "Ticket transfer complete")]
+    [Xunit.InlineData("fr-FR", "", "Ticket transfer complete", "Ticket transfer complete")]
+    [Xunit.InlineData("es", " ", "Transferencia de entrada completada", "Ticket transfer complete")]
+    [Xunit.InlineData("es", "not a culture!", "Transferencia de entrada completada", "Ticket transfer complete")]
+    public async Task Approve_EmailsEachPartyInTheirOwnLanguage(
+        string senderLanguage, string receiverLanguage, string expectedSenderSubject, string expectedReceiverSubject)
     {
+        using var actorCulture = new CultureScope("fr");
         var sender = MakeUser(_senderId, "Bob");
-        sender.PreferredLanguage = "es";
+        sender.PreferredLanguage = senderLanguage;
         _userService.GetUserInfoAsync(_senderId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(sender, UserFixtures.Profile(burnerName: "Bob", firstName: "Bob", lastName: "Jones")));
         var receiver = MakeUser(_receiverId, "Alice");
-        receiver.PreferredLanguage = "de";
+        receiver.PreferredLanguage = receiverLanguage;
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(receiver, UserFixtures.Profile(burnerName: "Alice", firstName: "Alice", lastName: "Smith")));
         var req = MakePending(Guid.NewGuid());
@@ -351,11 +372,11 @@ public sealed class TicketTransferServiceTests
 
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == "bob@example.com"
-                && m.Subject == "Transferencia de entrada completada"),
+                && m.Subject == expectedSenderSubject),
             Arg.Any<CancellationToken>());
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == req.ReceiverEmail
-                && m.Subject == "Ticketübertragung abgeschlossen"),
+                && m.Subject == expectedReceiverSubject),
             Arg.Any<CancellationToken>());
     }
 
