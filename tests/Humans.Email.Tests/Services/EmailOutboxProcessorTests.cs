@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -306,6 +307,52 @@ public class EmailOutboxProcessorTests : IDisposable
         var row = await FreshCountsQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         row.SentCount.Should().Be(0);
         row.FailedCount.Should().Be(1);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProcessQueuedAsync_SentSaveAcknowledgementFailure_PreservesCommittedOutcome(bool testAddress)
+    {
+        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
+        if (testAddress)
+        {
+            message.RecipientEmail = "member@localhost";
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+        var acknowledgement = new FailedSentSaveAcknowledgement();
+        var options = new DbContextOptionsBuilder<EmailDbContext>(_options)
+            .AddInterceptors(acknowledgement).Options;
+        var repository = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(options));
+        var processor = WithoutThrottle(new EmailOutboxProcessor(
+            repository, _outboxService, _campaignService, _transport, _metrics, _meters, _clock, _settings,
+            NullLogger<EmailOutboxProcessor>.Instance));
+
+        var failure = await Record.ExceptionAsync(() => processor.ProcessQueuedAsync(TestContext.Current.CancellationToken));
+
+        var stored = await FreshQuery().SingleAsync(TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(EmailOutboxStatus.Sent);
+        stored.RetryCount.Should().Be(0);
+        stored.LastError.Should().BeNull();
+        stored.NextRetryAt.Should().BeNull();
+        stored.SentAt.Should().NotBeNull();
+        failure.Should().BeSameAs(acknowledgement.Failure);
+        (await FreshCountsQuery().ToListAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
+        _metrics.DidNotReceive().RecordEmailFailed(Arg.Any<string>());
+    }
+
+    private sealed class FailedSentSaveAcknowledgement : SaveChangesInterceptor
+    {
+        public DbUpdateException Failure { get; } = new("Sent save acknowledgement lost");
+
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData,
+            int result, CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<EmailOutboxMessage>()
+                .Any(e => e.Entity.Status == EmailOutboxStatus.Sent))
+                throw Failure;
+            return ValueTask.FromResult(result);
+        }
     }
 
     [HumansFact]

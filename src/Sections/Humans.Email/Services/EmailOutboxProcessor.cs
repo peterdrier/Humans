@@ -72,18 +72,18 @@ internal sealed class EmailOutboxProcessor(
 
         foreach (var message in messages)
         {
+            // Skip invalid test addresses — sending to these bounces and damages sender reputation
+            if (EmailTestAddress.IsTestAddress(message.RecipientEmail))
+            {
+                await outboxRepo.MarkSentAsync(message.Id, now, cancellationToken);
+                logger.LogInformation(
+                    "Skipped email {MessageId} to test address {Email}",
+                    message.Id, message.RecipientEmail);
+                continue;
+            }
+
             try
             {
-                // Skip invalid test addresses — sending to these bounces and damages sender reputation
-                if (EmailTestAddress.IsTestAddress(message.RecipientEmail))
-                {
-                    await outboxRepo.MarkSentAsync(message.Id, now, cancellationToken);
-                    logger.LogInformation(
-                        "Skipped email {MessageId} to test address {Email}",
-                        message.Id, message.RecipientEmail);
-                    continue;
-                }
-
                 Dictionary<string, string>? extraHeaders = null;
                 if (!string.IsNullOrEmpty(message.ExtraHeaders))
                 {
@@ -99,25 +99,6 @@ internal sealed class EmailOutboxProcessor(
                     message.ReplyTo,
                     extraHeaders,
                     cancellationToken);
-
-                // Success — mark as sent BEFORE throttle delay to avoid re-send on cancellation
-                var sentAt = clock.GetCurrentInstant();
-                await outboxRepo.MarkSentAsync(message.Id, sentAt, cancellationToken);
-                metrics.RecordEmailSent(message.TemplateName);
-                await TryIncrementDailySendCountAsync(message, sentAt, succeeded: true, cancellationToken);
-
-                // Update campaign grant status if applicable — routed via
-                // ICampaignService so the Campaigns section owns campaign_grants.
-                // Bookkeeping only: a failure here must never fall into the catch
-                // below and re-tally an already-sent message as failed.
-                if (message.CampaignGrantId.HasValue)
-                {
-                    await TryUpdateGrantEmailStatusAsync(
-                        message.CampaignGrantId.Value, EmailOutboxStatus.Sent, sentAt, message.Id, cancellationToken);
-                }
-
-                // Throttle: 1 second delay between sends to avoid SMTP rate limits
-                await ThrottleDelayAsync(TimeSpan.FromSeconds(1), cancellationToken);
             }
             catch (Exception ex)
             {
@@ -141,7 +122,27 @@ internal sealed class EmailOutboxProcessor(
                     message.Id,
                     message.TemplateName,
                     message.RetryCount + 1);
+                continue;
             }
+
+            // Transport succeeded. A persistence or throttle failure must not
+            // reclassify accepted mail as a failed delivery attempt.
+            var sentAt = clock.GetCurrentInstant();
+            await outboxRepo.MarkSentAsync(message.Id, sentAt, cancellationToken);
+            metrics.RecordEmailSent(message.TemplateName);
+            await TryIncrementDailySendCountAsync(message, sentAt, succeeded: true, cancellationToken);
+
+            // Update campaign grant status if applicable — routed via
+            // ICampaignService so the Campaigns section owns campaign_grants.
+            // Bookkeeping failure is logged without interrupting the batch.
+            if (message.CampaignGrantId.HasValue)
+            {
+                await TryUpdateGrantEmailStatusAsync(
+                    message.CampaignGrantId.Value, EmailOutboxStatus.Sent, sentAt, message.Id, cancellationToken);
+            }
+
+            // Throttle: 1 second delay between sends to avoid SMTP rate limits
+            await ThrottleDelayAsync(TimeSpan.FromSeconds(1), cancellationToken);
         }
 
         var pendingCount = await outboxRepo.GetPendingCountAsync(_settings.OutboxMaxRetries, cancellationToken);
@@ -149,14 +150,9 @@ internal sealed class EmailOutboxProcessor(
     }
 
     /// <summary>
-    /// The campaign grant mirror is bookkeeping, not delivery state: a write
-    /// failure here must never surface as a delivery failure. Left uncaught on the
-    /// success path it would fall into the per-message catch above, flip an
-    /// already-<c>Sent</c> message to <c>Failed</c> and double-tally both the metric
-    /// and the daily send count for the one delivery attempt. Left uncaught on the
-    /// failure path it is already inside that catch, so it escapes the loop instead:
-    /// the message never gets its log line and the rest of the batch stays picked up
-    /// until the stale window releases it.
+    /// Grant mirroring is bookkeeping, not delivery state. Log its failure and
+    /// continue the batch after either delivery outcome; otherwise remaining
+    /// picked-up messages would wait for the stale window to release them.
     /// </summary>
     private async Task TryUpdateGrantEmailStatusAsync(
         Guid campaignGrantId, EmailOutboxStatus status, Instant now, Guid messageId, CancellationToken cancellationToken)
@@ -175,11 +171,8 @@ internal sealed class EmailOutboxProcessor(
     }
 
     /// <summary>
-    /// The daily tally is analytics, not delivery state: a write failure here must
-    /// never surface as a delivery failure. Left uncaught, it would fall into the
-    /// per-message catch above, flip an already-<c>Sent</c> message to <c>Failed</c>
-    /// and queue it for retry — resending mail solely because the count row failed
-    /// to save.
+    /// The daily tally is analytics, not delivery state. Log its write failure
+    /// without interrupting the batch or changing the recorded delivery outcome.
     /// </summary>
     private async Task TryIncrementDailySendCountAsync(
         EmailOutboxMessage message, Instant now, bool succeeded, CancellationToken cancellationToken)
