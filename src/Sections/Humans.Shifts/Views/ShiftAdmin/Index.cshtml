@@ -1213,37 +1213,45 @@
     // Range voluntell: search + select volunteer for batch assignment
     (function() {
         var rangeSearchUrl = '@Html.Raw(searchUrl)';
-        var rangeDebounceTimer;
+        var rangeSearches = new WeakMap();
 
         document.addEventListener('input', function(e) {
             var input = e.target;
             if (!input.classList.contains('voluntell-range-search')) return;
 
             // Reset selection when input changes to prevent stale userId submission
-            var rotaIdForReset = input.dataset.rotaId;
-            var hiddenInput = document.querySelector('.voluntell-range-userId[data-rota-id="' + rotaIdForReset + '"]');
+            var form = input.closest('form');
+            var hiddenInput = form?.querySelector('.voluntell-range-userId');
             if (hiddenInput) hiddenInput.value = '';
-            var submitBtn = input.closest('form')?.querySelector('button[type="submit"]');
+            var submitBtn = form?.querySelector('button[type="submit"]');
             if (submitBtn) submitBtn.disabled = true;
 
-            clearTimeout(rangeDebounceTimer);
-            rangeDebounceTimer = setTimeout(function() {
-                var shiftId = input.dataset.shiftId;
-                var rotaId = input.dataset.rotaId;
-                var query = input.value.trim();
-                var resultsDiv = document.querySelector('.voluntell-range-results[data-rota-id="' + rotaId + '"]');
-                if (!resultsDiv) return;
+            var rotaId = input.dataset.rotaId;
+            var shiftId = input.dataset.shiftId;
+            var query = input.value.trim();
+            var resultsDiv = form?.querySelector('.voluntell-range-results');
+            if (!resultsDiv) return;
 
-                if (query.length < 2) {
-                    resultsDiv.innerHTML = '';
-                    return;
-                }
+            var state = rangeSearches.get(input);
+            if (!state) {
+                state = { version: 0, timer: null };
+                rangeSearches.set(input, state);
+            }
+            clearTimeout(state.timer);
+            var version = ++state.version;
+            resultsDiv.innerHTML = '';
+            if (query.length < 2) return;
 
+            state.timer = setTimeout(function() {
                 var url = rangeSearchUrl + '?shiftId=' + encodeURIComponent(shiftId) + '&query=' + encodeURIComponent(query);
                 fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                     .then(function(resp) { return resp.json(); })
-                    .then(function(data) { renderRangeResults(data, rotaId, resultsDiv); })
+                    .then(function(data) {
+                        if (version !== state.version) return;
+                        renderRangeResults(data, rotaId, resultsDiv);
+                    })
                     .catch(function() {
+                        if (version !== state.version) return;
                         resultsDiv.innerHTML = '<p class="text-danger small mb-0">Search failed.</p>';
                     });
             }, 300);
