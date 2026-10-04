@@ -1,0 +1,10 @@
+# Section debt ledger for Humans.AuditLog. Shape: memory/process/debt-ledger-additions.md.
+version: 1
+next_id: 2
+inbox:
+- added: '2026-10-04'
+  id: AUDIT-1
+  what: Member-visible AuditLog line/table entry renderers expose English System/in labels, action badge labels and structured verbs from AuditEventTextualizer. Expenses report detail and Calendar event pages expose these entries to ordinary members; host-localized title/empty-text/column-labels cannot localize entry text. The section has no resource set; introducing its first resource marker or changing the render contract needs approval. Found during the daily production sweep.
+  review: panel
+  status: needs-detail
+  blocked_on: Approve an owner resource/render design that preserves stored audit descriptions and keeps machine/plain-text output separate from localized UI.
