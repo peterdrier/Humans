@@ -560,15 +560,7 @@ main() {
     } >>"$last_message_file"
     run_report="$(cat "$last_message_file")"
   fi
-  # The ledger is a holding bucket that should shrink over time. Counted here,
-  # not taken from the agent's report, and saved with the report so a retried
-  # PR carries the same numbers.
-  local ledger_before ledger_after
-  ledger_before="$(ledger_open_rows "$head_before")"
-  ledger_after="$(ledger_open_rows "$head_after")"
-  printf '\n\n## Ledger\n\nOpen rows: %s → %s (net %+d).\n' \
-    "$ledger_before" "$ledger_after" "$(( ledger_after - ledger_before ))" >>"$last_message_file"
-  log "ledger open rows: $ledger_before → $ledger_after"
+  append_ledger_count "$head_before" "$last_message_file"
   # Wrapper timestamps, not the agent's estimate. Save this with the report
   # so a retry of PR creation preserves the original run's timing.
   local timing="Goal time: $TIME_BUDGET; actual worker time: $(format_duration "$work_elapsed"); total run through validation: $(format_duration "$(( $(date -u +%s) - run_started ))")."
@@ -633,6 +625,7 @@ $(tail -n 80 "$log_file")
 
 Goal time: $TIME_BUDGET; actual worker time: $(format_duration "$work_elapsed")."
   printf '\n\n%s\n' "$warning" >>"$last_message_file"
+  append_ledger_count "$head_before" "$last_message_file"
   report="$(cat "$last_message_file")"
 
   if ! push_with_retry "$branch" "$log_file" "$PUSH_RETRIES"; then
@@ -750,6 +743,18 @@ parse_seconds() {
 
 format_duration() {
   printf '%dm %ds' "$(( $1 / 60 ))" "$(( $1 % 60 ))"
+}
+
+# The ledger is a holding bucket that should shrink over time. Counted by the
+# wrapper, not taken from the agent's report, and saved with the report so a
+# retried PR carries the same numbers. Gate-failed drafts get it too.
+append_ledger_count() {
+  local before after
+  before="$(ledger_open_rows "$1")"
+  after="$(ledger_open_rows HEAD)"
+  printf '\n\n## Ledger\n\nOpen rows: %s → %s (net %+d).\n' \
+    "$before" "$after" "$(( after - before ))" >>"$2"
+  log "ledger open rows: $before → $after"
 }
 
 # Open debt-ledger rows at a revision: inbox entries carry `<PREFIX>-<n>` ids

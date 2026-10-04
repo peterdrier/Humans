@@ -343,6 +343,7 @@ for line in sys.stdin:
                     self.assertEqual(len(published), 1)
                     self.assertIn("--draft", published[0])
                     self.assertNotIn("passed", (self.root / "pr-body").read_text())
+                    self.assertIn("Open rows: 2 → 1 (net -1).", (self.root / "pr-body").read_text())
                     self.assertIn("Agent cost for fixture-thread", (self.root / "pr-comment").read_text())
                 else:
                     self.assertEqual(published, [])
