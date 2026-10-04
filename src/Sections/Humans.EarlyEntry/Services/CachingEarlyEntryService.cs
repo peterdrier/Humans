@@ -16,17 +16,30 @@ internal sealed class CachingEarlyEntryService(
     : TrackedCache<Guid, UserEarlyEntry?>("EarlyEntry.UserEarlyEntry", warmOnStartup: false, logger),
         IEarlyEntryService, IEarlyEntryInvalidator, IEventSettingsChangeListener
 {
+    private readonly Lock _cacheGate = new();
+    private long _cacheGeneration;
+
     /// <summary>Key for the undecorated inner service. Unkeyed, this Singleton would resolve itself.</summary>
     public const string InnerServiceKey = "early-entry-inner";
 
     public async Task<UserEarlyEntry?> GetForUserAsync(Guid userId, CancellationToken ct)
     {
-        if (TryGet(userId, out var cached)) return cached; // cached may be null (negative)
+        long generation;
+        lock (_cacheGate)
+        {
+            if (TryGet(userId, out var cached)) return cached; // cached may be null (negative)
+            generation = _cacheGeneration;
+        }
 
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IEarlyEntryService>(InnerServiceKey);
         var result = await inner.GetForUserAsync(userId, ct);
-        Set(userId, result);
+        lock (_cacheGate)
+        {
+            // An eviction may have run while the provider fan-out was loading.
+            if (generation == _cacheGeneration)
+                Set(userId, result);
+        }
         return result;
     }
 
@@ -37,9 +50,23 @@ internal sealed class CachingEarlyEntryService(
         return await inner.GetRosterAsync(ct);
     }
 
-    public void InvalidateUser(Guid userId) => Invalidate(userId);
+    public void InvalidateUser(Guid userId)
+    {
+        lock (_cacheGate)
+        {
+            _cacheGeneration++;
+            Invalidate(userId);
+        }
+    }
 
-    public void InvalidateAll() => Clear();
+    public void InvalidateAll()
+    {
+        lock (_cacheGate)
+        {
+            _cacheGeneration++;
+            Clear();
+        }
+    }
 
     /// <summary>
     /// The gate date and <c>EarlyEntryStartOffset</c> move every holder's entry date at

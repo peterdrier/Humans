@@ -66,7 +66,8 @@ verbatim; the nav entry sits in the "Tickets" admin group. Neither is an ownersh
 - The fan-out is sequential — a simplicity choice, not a thread-safety requirement
   (design-rules §8b); each provider reads through its own section.
 - `GetRosterAsync` is **never cached**. `GetForUserAsync` is cached per human, negative results
-  included; only eviction refreshes it (no warmup, no expiry).
+  included; only eviction refreshes it (no warmup, no expiry). A load begun before eviction
+  cannot repopulate the cache with its old grant or no-grant answer.
 - The Singleton decorator resolves the Scoped inner service per call through the keyed
   registration `CachingEarlyEntryService.InnerServiceKey`, never a repository.
 - Per human: earliest date wins, sources are distinct and ordinal-compared in provider order,
