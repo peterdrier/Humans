@@ -16,6 +16,7 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Base.Enums;
 using Humans.Base.Constants;
+using Humans.Base.Extensions;
 using ShiftSignupService = Humans.Shifts.Services.ShiftSignupService;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
@@ -1570,6 +1571,25 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         await AuditLog.Received(1).LogAsync(
             AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
             Arg.Is<string>(s => s.Contains("(pending)")),
+            userId,
+            userId, nameof(User));
+    }
+
+    [HumansFact]
+    public async Task SignUp_WritesEnglishAuditDate_RegardlessOfUiCulture()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        SignupResult result;
+        using (new CultureScope("es"))
+            result = await _service.SignUpAsync(userId, shift.Id);
+
+        result.Success.Should().BeTrue();
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
+            Arg.Is<string>(s => s.Contains("on Thu Jul 2 (confirmed)")),
             userId,
             userId, nameof(User));
     }

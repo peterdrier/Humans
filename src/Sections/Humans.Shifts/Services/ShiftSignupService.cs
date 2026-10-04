@@ -785,10 +785,14 @@ internal sealed class ShiftSignupService(
         => warning is null ? nextWarning : $"{warning} {nextWarning}";
 
     private static string FormatRangeDayList(EventSettingsInfo eventSettings, IEnumerable<int> dayOffsets)
-        => string.Join(", ", dayOffsets.Select(offset => FormatAuditDay(eventSettings, offset)));
+        => string.Join(", ", dayOffsets.Select(offset => eventSettings.GateOpeningDate.PlusDays(offset).ToWeekdayDayMonth()));
 
-    private static string FormatAuditDay(EventSettingsInfo eventSettings, int dayOffset) =>
-        eventSettings.GateOpeningDate.PlusDays(dayOffset).ToWeekdayDayMonth();
+    // Audit and coordinator-notice text is persisted English; keep its dates out of the actor's UI culture.
+    private static string FormatAuditDay(EventSettingsInfo eventSettings, int dayOffset)
+    {
+        using var culture = new CultureScope("en");
+        return eventSettings.GateOpeningDate.PlusDays(dayOffset).ToWeekdayDayMonth();
+    }
 
     private Task<bool> IsPrivilegedAsync(Guid userId, Guid teamId, bool alreadyPrivileged = false) =>
         alreadyPrivileged
