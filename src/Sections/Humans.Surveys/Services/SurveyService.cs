@@ -2454,25 +2454,25 @@ internal sealed class SurveyService(
         if (!string.IsNullOrEmpty(multilineSubject.Key))
         {
             throw new InvalidOperationException(
-                $"Survey invitation email subjects must be a single line ({multilineSubject.Key}).");
+                ErrorMessage("Surveys_InvitationSubjectSingleLine", multilineSubject.Key));
         }
 
         ValidateLocalizedLength(
             subject,
             InvitationEmailSubjectMaxLength,
-            "Survey invitation email subjects");
+            "Surveys_InvitationSubjectMax");
         ValidateLocalizedLength(
             message,
             InvitationEmailMessageMaxLength,
-            "Survey invitation email messages");
+            "Surveys_InvitationMessageMax");
 
-        static void ValidateLocalizedLength(LocalizedText text, int maxLength, string description)
+        static void ValidateLocalizedLength(LocalizedText text, int maxLength, string resourceKey)
         {
             var offender = text.Values.FirstOrDefault(pair => pair.Value.Length > maxLength);
             if (!string.IsNullOrEmpty(offender.Key))
             {
                 throw new InvalidOperationException(
-                    $"{description} must be {maxLength} characters or fewer ({offender.Key}).");
+                    ErrorMessage(resourceKey, maxLength, offender.Key));
             }
         }
     }
@@ -2718,21 +2718,21 @@ internal sealed class SurveyService(
                 && images.Count == 0)
             {
                 throw new InvalidOperationException(
-                    $"Information item {question.Id} must contain Markdown or at least one image.");
+                    ErrorMessage("Surveys_InformationContentRequired", question.Id));
             }
 
             if (images.Any(image =>
                 !image.Label.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))))
             {
                 throw new InvalidOperationException(
-                    $"Every image in Information item {question.Id} must have a label.");
+                    ErrorMessage("Surveys_InformationImageLabelRequired", question.Id));
             }
 
             if (images.Any(image =>
                 !image.AltText.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))))
             {
                 throw new InvalidOperationException(
-                    $"Every image in Information item {question.Id} must have alt text.");
+                    ErrorMessage("Surveys_InformationImageAltRequired", question.Id));
             }
         }
 

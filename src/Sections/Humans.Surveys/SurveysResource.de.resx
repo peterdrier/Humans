@@ -352,4 +352,10 @@
   <data name="Surveys_InformationImageTooLarge" xml:space="preserve"><value>Jedes Bild eines Informationsblocks muss kleiner als 10 MB sein.</value></data>
   <data name="Surveys_InformationImageExtensionInvalid" xml:space="preserve"><value>Bilddateinamen müssen auf .jpg, .jpeg, .png oder .webp enden.</value></data>
   <data name="Surveys_InformationImageNameTooLong" xml:space="preserve"><value>Der Bilddateiname darf höchstens {0} Zeichen lang sein.</value></data>
+  <data name="Surveys_InvitationSubjectSingleLine" xml:space="preserve"><value>Die Betreffzeilen von Umfrageeinladungen müssen einzeilig sein ({0}).</value></data>
+  <data name="Surveys_InvitationSubjectMax" xml:space="preserve"><value>Die Betreffzeilen von Umfrageeinladungen dürfen höchstens {0} Zeichen lang sein ({1}).</value></data>
+  <data name="Surveys_InvitationMessageMax" xml:space="preserve"><value>Die Nachrichten von Umfrageeinladungen dürfen höchstens {0} Zeichen lang sein ({1}).</value></data>
+  <data name="Surveys_InformationContentRequired" xml:space="preserve"><value>Der Informationsblock {0} muss Markdown oder mindestens ein Bild enthalten.</value></data>
+  <data name="Surveys_InformationImageLabelRequired" xml:space="preserve"><value>Jedes Bild im Informationsblock {0} muss eine Beschriftung haben.</value></data>
+  <data name="Surveys_InformationImageAltRequired" xml:space="preserve"><value>Jedes Bild im Informationsblock {0} muss einen Alternativtext haben.</value></data>
 </root>

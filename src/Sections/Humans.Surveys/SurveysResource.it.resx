@@ -352,4 +352,10 @@
   <data name="Surveys_InformationImageTooLarge" xml:space="preserve"><value>Ogni immagine di un blocco informativo deve essere inferiore a 10 MB.</value></data>
   <data name="Surveys_InformationImageExtensionInvalid" xml:space="preserve"><value>I nomi dei file immagine devono terminare con .jpg, .jpeg, .png o .webp.</value></data>
   <data name="Surveys_InformationImageNameTooLong" xml:space="preserve"><value>Il nome del file immagine deve contenere al massimo {0} caratteri.</value></data>
+  <data name="Surveys_InvitationSubjectSingleLine" xml:space="preserve"><value>Gli oggetti delle email di invito ai sondaggi devono occupare una sola riga ({0}).</value></data>
+  <data name="Surveys_InvitationSubjectMax" xml:space="preserve"><value>Gli oggetti delle email di invito ai sondaggi devono contenere al massimo {0} caratteri ({1}).</value></data>
+  <data name="Surveys_InvitationMessageMax" xml:space="preserve"><value>I messaggi delle email di invito ai sondaggi devono contenere al massimo {0} caratteri ({1}).</value></data>
+  <data name="Surveys_InformationContentRequired" xml:space="preserve"><value>Il blocco informativo {0} deve contenere Markdown o almeno un’immagine.</value></data>
+  <data name="Surveys_InformationImageLabelRequired" xml:space="preserve"><value>Ogni immagine del blocco informativo {0} deve avere un’etichetta.</value></data>
+  <data name="Surveys_InformationImageAltRequired" xml:space="preserve"><value>Ogni immagine del blocco informativo {0} deve avere un testo alternativo.</value></data>
 </root>

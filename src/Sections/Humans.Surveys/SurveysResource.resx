@@ -347,4 +347,10 @@
   <data name="Surveys_InformationImageTooLarge" xml:space="preserve"><value>Each Information image must be under 10 MB.</value></data>
   <data name="Surveys_InformationImageExtensionInvalid" xml:space="preserve"><value>Image filenames must end in .jpg, .jpeg, .png, or .webp.</value></data>
   <data name="Surveys_InformationImageNameTooLong" xml:space="preserve"><value>Image filename must be {0} characters or fewer.</value></data>
+  <data name="Surveys_InvitationSubjectSingleLine" xml:space="preserve"><value>Survey invitation email subjects must be a single line ({0}).</value></data>
+  <data name="Surveys_InvitationSubjectMax" xml:space="preserve"><value>Survey invitation email subjects must be {0} characters or fewer ({1}).</value></data>
+  <data name="Surveys_InvitationMessageMax" xml:space="preserve"><value>Survey invitation email messages must be {0} characters or fewer ({1}).</value></data>
+  <data name="Surveys_InformationContentRequired" xml:space="preserve"><value>Information item {0} must contain Markdown or at least one image.</value></data>
+  <data name="Surveys_InformationImageLabelRequired" xml:space="preserve"><value>Every image in Information item {0} must have a label.</value></data>
+  <data name="Surveys_InformationImageAltRequired" xml:space="preserve"><value>Every image in Information item {0} must have alt text.</value></data>
 </root>

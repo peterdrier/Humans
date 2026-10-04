@@ -352,4 +352,10 @@
   <data name="Surveys_InformationImageTooLarge" xml:space="preserve"><value>Cada imatge d’un bloc informatiu ha d’ocupar menys de 10 MB.</value></data>
   <data name="Surveys_InformationImageExtensionInvalid" xml:space="preserve"><value>Els noms dels fitxers d’imatge han d’acabar en .jpg, .jpeg, .png o .webp.</value></data>
   <data name="Surveys_InformationImageNameTooLong" xml:space="preserve"><value>El nom del fitxer d’imatge ha de tenir {0} caràcters o menys.</value></data>
+  <data name="Surveys_InvitationSubjectSingleLine" xml:space="preserve"><value>Els assumptes dels correus d’invitació a enquestes han de tenir una sola línia ({0}).</value></data>
+  <data name="Surveys_InvitationSubjectMax" xml:space="preserve"><value>Els assumptes dels correus d’invitació a enquestes han de tenir {0} caràcters o menys ({1}).</value></data>
+  <data name="Surveys_InvitationMessageMax" xml:space="preserve"><value>Els missatges dels correus d’invitació a enquestes han de tenir {0} caràcters o menys ({1}).</value></data>
+  <data name="Surveys_InformationContentRequired" xml:space="preserve"><value>El bloc informatiu {0} ha de contenir Markdown o com a mínim una imatge.</value></data>
+  <data name="Surveys_InformationImageLabelRequired" xml:space="preserve"><value>Cada imatge del bloc informatiu {0} ha de tenir una etiqueta.</value></data>
+  <data name="Surveys_InformationImageAltRequired" xml:space="preserve"><value>Cada imatge del bloc informatiu {0} ha de tenir text alternatiu.</value></data>
 </root>
