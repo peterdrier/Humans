@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 68
+next_id: 69
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -318,6 +318,12 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
+  - added: 2026-10-04
+    id: CENTRAL-68
+    what: "MailerLiteSubscriberConverter.ParseDate hardcodes yyyy-MM-dd HH:mm:ss in DateTime.ParseExact outside DateFormattingExtensions, violating datetime-format-single-home (the analyzer does not cover ParseExact). Its UTC/null/exact parsing has coverage. Reuse audit found only a timestamp formatter, no matching parse pattern; moving this pattern into Base adds public surface and requires approval. Found during the daily production sweep."
+    review: light
+    status: needs-detail
+    blocked_on: "Approve a matching parse pattern in DateFormattingExtensions; preserve exact UTC parsing and invalid-input failure semantics."
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-09-10
     id: CENTRAL-35
