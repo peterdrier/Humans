@@ -7,11 +7,30 @@ namespace Humans.Events.Services;
 /// Converts between the stored recurrence representation — comma-separated
 /// day-offsets from the burn gate date (e.g. <c>"0,2,4"</c>) — and the
 /// human-friendly day-name form (<c>"Mon Wed Fri"</c>) used in the barrio
-/// bulk-upload CSV.
+/// bulk-upload CSV, and concrete occurrence instants.
 /// </summary>
 internal static class EventRecurrenceDays
 {
     private static readonly string[] DayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+    internal static IReadOnlyList<Instant> GetOccurrenceInstants(
+        Instant startAt, bool isRecurring, string? recurrenceDays,
+        LocalDate gateOpeningDate, DateTimeZone timeZone, int? dayOffset = null)
+    {
+        if (!isRecurring || string.IsNullOrWhiteSpace(recurrenceDays))
+            return [startAt];
+
+        var startLocal = startAt.InZone(timeZone);
+        return recurrenceDays
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(token => int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var d) ? (int?)d : null)
+            .Where(d => d.HasValue && (dayOffset == null || d == dayOffset))
+            .Select(d => gateOpeningDate.PlusDays(d!.Value)
+                .At(startLocal.TimeOfDay)
+                .InZoneLeniently(timeZone)
+                .ToInstant())
+            .ToList();
+    }
 
     /// <summary>Offsets → space-separated day names, in offset order.</summary>
     public static string OffsetsToDisplayDays(string offsets, LocalDate gateOpeningDate)
