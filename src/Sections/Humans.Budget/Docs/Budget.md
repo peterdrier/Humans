@@ -193,7 +193,7 @@ Stored as string via `HasConversion<string>()`.
 
 ## Invariants
 
-- The member overview’s income and expense percentage labels use the selected UI culture. Their one-decimal precision, percentage calculations and invariant chart JSON values are unchanged.
+- The member overview’s income and expense percentage labels use the selected UI culture. Their one-decimal precision, percentage calculations and invariant chart JSON values are unchanged. Member and finance chart money tooltips follow the document’s selected UI language rather than the browser’s default locale.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 

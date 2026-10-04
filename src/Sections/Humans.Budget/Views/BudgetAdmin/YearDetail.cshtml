@@ -571,7 +571,7 @@
         var expenseColors = window.HumansBudgetCharts.expenseColors();
         var tooltipCallback = {
             label: function(ctx) {
-                return ctx.label + ': \u20ac' + ctx.raw.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                return ctx.label + ': \u20ac' + ctx.raw.toLocaleString(document.documentElement.lang || 'en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             }
         };
         var legendOpts = {
