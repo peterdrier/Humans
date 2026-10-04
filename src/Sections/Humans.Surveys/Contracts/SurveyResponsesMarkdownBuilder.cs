@@ -44,7 +44,7 @@ public static class SurveyResponsesMarkdownBuilder
             };
 
             cells.AddRange(questions.Select(q =>
-                byQuestion.TryGetValue(q.QuestionId, out var answer) ? CellValue(q, answer) : string.Empty));
+                byQuestion.TryGetValue(q.QuestionId, out var answer) ? Escape(CellValue(q, answer)) : string.Empty));
 
             sb.Append("| ").Append(string.Join(" | ", cells)).Append(" |\n");
         }
@@ -53,22 +53,22 @@ public static class SurveyResponsesMarkdownBuilder
     }
 
     /// <summary>The cell content for one answer: choice values flattened <c>a|b</c>, free text verbatim, the rating integer, or JSON for Grid selections and ranked ballots.</summary>
-    private static string CellValue(SurveyExportQuestion question, SurveyExportAnswer answer) => question.Type switch
+    internal static string CellValue(SurveyExportQuestion question, SurveyExportAnswer answer) => question.Type switch
     {
         SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice =>
-            Escape(string.Join("|", answer.SelectedValues)),
+            string.Join("|", answer.SelectedValues),
         SurveyQuestionType.Grid =>
-            Escape(JsonSerializer.Serialize(
+            JsonSerializer.Serialize(
                 (answer.GridSelections ?? new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal))
                 .ToDictionary(
                     selection => selection.Key,
                     selection => selection.Value,
-                    StringComparer.Ordinal))),
+                    StringComparer.Ordinal)),
         SurveyQuestionType.RankedChoice =>
-            answer.RankedBallot is null ? string.Empty : Escape(JsonSerializer.Serialize(answer.RankedBallot)),
+            answer.RankedBallot is null ? string.Empty : JsonSerializer.Serialize(answer.RankedBallot),
         SurveyQuestionType.Rating =>
             answer.RatingValue?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-        _ => Escape(answer.TextValue ?? string.Empty),
+        _ => answer.TextValue ?? string.Empty,
     };
 
     /// <summary>Markdown-table-safe cell: collapse newlines to a space, escape the column separator.</summary>
