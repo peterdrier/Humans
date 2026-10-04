@@ -2557,6 +2557,9 @@ internal sealed class TeamService(
 
         if (priorities.Count != slotCount)
             throw new InvalidOperationException($"Priorities count ({priorities.Count}) must match slot count ({slotCount})");
+
+        if (priorities.Any(priority => !Enum.IsDefined(priority)))
+            throw new InvalidOperationException("Each slot priority must be a defined priority value");
     }
 
     public async Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(

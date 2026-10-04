@@ -1644,6 +1644,39 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .WithMessage("*permission*");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, -1)]
+    [Xunit.InlineData(false, 99)]
+    [Xunit.InlineData(true, -1)]
+    [Xunit.InlineData(true, 99)]
+    public async Task RoleDefinitionWrites_UndefinedPriority_RejectWithoutChangingDefinition(bool update, int priority)
+    {
+        var actor = SeedUser(displayName: "Actor");
+        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+            Clock.GetCurrentInstant() - Duration.FromDays(1));
+        var team = SeedTeam("Alpha");
+        var definition = SeedTeamRoleDefinition(team.Id, isManagement: false);
+        definition.Name = "Original";
+        definition.Priorities = [SlotPriority.None];
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        Func<Task> act = update
+            ? () => _service.UpdateRoleDefinitionAsync(
+                definition.Id, "Changed", null, 1, [(SlotPriority)priority], 0, false,
+                RolePeriod.Event, actor.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken)
+            : () => _service.CreateRoleDefinitionAsync(
+                team.Id, "Changed", null, 1, [(SlotPriority)priority], 0,
+                RolePeriod.Event, actor.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*priority*");
+        ClearAllTrackers();
+        var stored = await TeamsDb.TeamRoleDefinitions.AsNoTracking()
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        stored.Name.Should().Be("Original");
+        stored.Priorities.Should().Equal(SlotPriority.None);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task CreateRoleDefinitionAsync_HappyPath_PersistsDefinition()
     {
