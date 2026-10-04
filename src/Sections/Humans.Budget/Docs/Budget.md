@@ -193,6 +193,8 @@ Stored as string via `HasConversion<string>()`.
 
 ## Invariants
 
+- The member overview’s income and expense percentage labels use the selected UI culture. Their one-decimal precision, percentage calculations and invariant chart JSON values are unchanged.
+
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
 - Public summary and finance overview render the same service slice DTOs directly; they do not copy name, amount and percentage into duplicate view rows.
