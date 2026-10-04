@@ -48,7 +48,6 @@
       (nobodies-collective/Humans#866, G5 lane 4b-2c).
     -->
     <ProjectReference Include="..\Humans.Calendar\Humans.Calendar.csproj" />
-    <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
   </ItemGroup>
 

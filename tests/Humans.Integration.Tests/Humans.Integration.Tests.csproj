@@ -13,7 +13,7 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Stripe\Humans.Stripe.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Events\Humans.Events.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Consent\Humans.Consent.csproj" />
