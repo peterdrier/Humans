@@ -107,4 +107,6 @@
   <data name="Store_Error_LineNotFound" xml:space="preserve"><value>Position {0} nicht gefunden</value></data>
   <data name="Store_Error_LineWrongOrder" xml:space="preserve"><value>Position {0} gehört nicht zu Bestellung {1}</value></data>
   <data name="Store_Error_RemoveLineIssued" xml:space="preserve"><value>Aus einer fakturierten Bestellung können keine Positionen entfernt werden</value></data>
+  <data name="Store_Error_CampSeasonNotFound" xml:space="preserve"><value>Camp-Saison {0} nicht gefunden.</value></data>
+  <data name="Store_Error_CampOrderExists" xml:space="preserve"><value>Camp-Saison {0} hat bereits eine Store-Bestellung.</value></data>
 </root>

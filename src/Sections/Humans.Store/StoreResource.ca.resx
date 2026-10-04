@@ -107,4 +107,6 @@
   <data name="Store_Error_LineNotFound" xml:space="preserve"><value>Línia {0} no trobada</value></data>
   <data name="Store_Error_LineWrongOrder" xml:space="preserve"><value>La línia {0} no pertany a la comanda {1}</value></data>
   <data name="Store_Error_RemoveLineIssued" xml:space="preserve"><value>No es poden eliminar línies d’una comanda facturada</value></data>
+  <data name="Store_Error_CampSeasonNotFound" xml:space="preserve"><value>Temporada del barri {0} no trobada.</value></data>
+  <data name="Store_Error_CampOrderExists" xml:space="preserve"><value>La temporada del barri {0} ja té una comanda a Store.</value></data>
 </root>

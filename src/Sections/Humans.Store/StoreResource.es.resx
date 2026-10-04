@@ -115,4 +115,6 @@
   <data name="Store_Error_LineNotFound" xml:space="preserve"><value>Línea {0} no encontrada</value></data>
   <data name="Store_Error_LineWrongOrder" xml:space="preserve"><value>La línea {0} no pertenece al pedido {1}</value></data>
   <data name="Store_Error_RemoveLineIssued" xml:space="preserve"><value>No se pueden eliminar líneas de un pedido facturado</value></data>
+  <data name="Store_Error_CampSeasonNotFound" xml:space="preserve"><value>Temporada del barrio {0} no encontrada.</value></data>
+  <data name="Store_Error_CampOrderExists" xml:space="preserve"><value>La temporada del barrio {0} ya tiene un pedido en Store.</value></data>
 </root>

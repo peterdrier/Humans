@@ -278,7 +278,18 @@ internal sealed class StoreController(
             OrderOperationRequirement.Create);
         if (!auth.Succeeded) return Forbid();
 
-        var newId = await storeService.CreateOrderAsync(campSeasonId, user.Id, ct);
+        Guid newId;
+        try
+        {
+            newId = await storeService.CreateOrderAsync(campSeasonId, user.Id, ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning("Camp order creation rejected for season {CampSeasonId} by {UserId}: {Reason}",
+                campSeasonId, user.Id, ex.Message);
+            SetError(ex.Message);
+            return RedirectToAction(nameof(Index));
+        }
         SetSuccess(localizer["Store_OrderCreated"].Value);
         return RedirectToAction(nameof(Order), new { id = newId });
     }

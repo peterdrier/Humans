@@ -107,4 +107,6 @@
   <data name="Store_Error_LineNotFound" xml:space="preserve"><value>Riga {0} non trovata</value></data>
   <data name="Store_Error_LineWrongOrder" xml:space="preserve"><value>La riga {0} non appartiene all'ordine {1}</value></data>
   <data name="Store_Error_RemoveLineIssued" xml:space="preserve"><value>Non è possibile rimuovere righe da un ordine fatturato</value></data>
+  <data name="Store_Error_CampSeasonNotFound" xml:space="preserve"><value>Stagione del barrio {0} non trovata.</value></data>
+  <data name="Store_Error_CampOrderExists" xml:space="preserve"><value>La stagione del barrio {0} ha già un ordine in Store.</value></data>
 </root>

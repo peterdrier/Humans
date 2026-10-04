@@ -431,14 +431,14 @@ internal sealed class Service(
     public async Task<Guid> CreateOrderAsync(Guid campSeasonId, Guid actorUserId, CancellationToken ct = default)
     {
         var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct)
-            ?? throw new InvalidOperationException($"Camp season {campSeasonId} not found.");
+            ?? throw new InvalidOperationException(ErrorMessage("Store_Error_CampSeasonNotFound", campSeasonId));
 
         // No year filter: a CampSeason *is* a (camp, year) pair, so every order returned here
         // already belongs to season.Year — except a legacy row still at Year = 0, which an
         // `o.Year == season.Year` guard would wave through and hand the season a second order.
         var existing = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
         if (existing.Count > 0)
-            throw new InvalidOperationException($"Camp season {campSeasonId} already has a Store order.");
+            throw new InvalidOperationException(ErrorMessage("Store_Error_CampOrderExists", campSeasonId));
 
         var now = clock.GetCurrentInstant();
         var order = new Order
