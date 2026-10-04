@@ -32,7 +32,7 @@ public sealed class UserParticipationBackfillServiceTests
     {
         var a = Guid.NewGuid();
         var b = Guid.NewGuid();
-        var csv = $"UserId,Status\n{a},Ticketed\nnot-a-guid,Ticketed\n{b},notastatus\n{b},NotAttending\n";
+        var csv = $"UserId,Status\n{a},Ticketed\nnot-a-guid,Ticketed\n{b},notastatus\n{a},99\n{b},-1\n{b},NotAttending\n";
 
         var result = await CreateService().BackfillFromCsvAsync(2026, csv, Xunit.TestContext.Current.CancellationToken);
 
@@ -50,6 +50,18 @@ public sealed class UserParticipationBackfillServiceTests
 
         result.Succeeded.Should().BeTrue();
         _captured.Should().Equal((a, ParticipationStatus.Ticketed));
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(-1)]
+    [Xunit.InlineData(99)]
+    public async Task UndefinedNumericStatus_FailsWithoutCallingUserService(int status)
+    {
+        var result = await CreateService().BackfillFromCsvAsync(
+            2026, $"{Guid.NewGuid()},{status}\n", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        await _users.DidNotReceiveWithAnyArgs().BackfillParticipationsAsync(0, null!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
