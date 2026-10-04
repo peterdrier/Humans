@@ -212,7 +212,7 @@ internal static class CalendarOccurrenceExpander
         string.Join(';', rule.Split(';').Select(part =>
         {
             if (!part.StartsWith("UNTIL=", StringComparison.OrdinalIgnoreCase) || part.Length <= 14) return part;
-            var value = part[6..];
+            var value = part[6..].ToUpperInvariant();
             var local = DateFormattingExtensions.IcalBasicDateTimePattern.Parse(value.TrimEnd('Z')).Value;
             var date = value.EndsWith('Z') ? local.InUtc().ToInstant().InZone(zone).Date : local.Date;
             return "UNTIL=" + DateFormattingExtensions.IcalBasicDatePattern.Format(date);

@@ -189,6 +189,35 @@ public sealed class CalendarOccurrenceExpanderTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("FREQ=DAILY;UNTIL=20260602T230000Z")]
+    [Xunit.InlineData("freq=daily;until=20260602t230000z")]
+    [Xunit.InlineData("FREQ=DAILY;UNTIL=20260603t000000")]
+    public void Expand_LegacyAllDayUntil_AcceptsValidatedRuleCasing(string rule)
+    {
+        CalendarService.ValidateRecurrenceRule(rule);
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var day = new LocalDate(2026, 6, 1);
+        var info = CalendarOccurrenceExpander.ToInfo(new Humans.Calendar.Domain.CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            Title = "All day",
+            IsAllDay = true,
+            StartUtc = day.AtStartOfDayInZone(zone).ToInstant(),
+            EndUtc = day.PlusDays(1).AtStartOfDayInZone(zone).ToInstant(),
+            RecurrenceRule = rule,
+            RecurrenceTimezone = zone.Id,
+        });
+
+        info.RecurrenceRule.Should().EndWith("UNTIL=20260603");
+        var results = CalendarOccurrenceExpander.Expand([info],
+            day.AtStartOfDayInZone(zone).ToInstant(),
+            day.PlusDays(5).AtStartOfDayInZone(zone).ToInstant(),
+            new Dictionary<Guid, string>(), NullLogger.Instance);
+
+        results.Should().HaveCount(3);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(3, 28)]
     [Xunit.InlineData(10, 24)]
     public void Expand_DateRecurrences_PreserveCalendarDurationAndIgnoreViewerZone(int month, int day)
