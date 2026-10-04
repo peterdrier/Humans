@@ -142,7 +142,9 @@ internal sealed class CalendarService(
         }
         catch (Exception ex)
         {
-            throw new ValidationException($"Recurrence rule is malformed: {ex.Message}");
+            throw new ValidationException(
+                new ValidationResult($"Recurrence rule is malformed: {ex.Message}",
+                    [nameof(CreateCalendarEventDto.RecurrenceRule)]), null, rrule);
         }
     }
 
@@ -151,7 +153,9 @@ internal sealed class CalendarService(
     {
         if (string.IsNullOrWhiteSpace(tz)) return;
         if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz) is null)
-            throw new ValidationException($"Recurrence timezone is unknown: '{tz}'.");
+            throw new ValidationException(
+                new ValidationResult($"Recurrence timezone is unknown: '{tz}'.",
+                    [nameof(CreateCalendarEventDto.RecurrenceTimezone)]), null, tz);
     }
 
     private static string CalendarValidationErrorKey(ValidationException ex, bool isAllDay) =>
@@ -162,9 +166,7 @@ internal sealed class CalendarService(
         };
 
     private static string CalendarValidationMemberName(ValidationException ex) =>
-        ex.Message.Contains("timezone", StringComparison.OrdinalIgnoreCase)
-            ? nameof(CreateCalendarEventDto.RecurrenceTimezone)
-            : nameof(CreateCalendarEventDto.RecurrenceRule);
+        ex.ValidationResult.MemberNames.FirstOrDefault() ?? nameof(CreateCalendarEventDto.RecurrenceRule);
 
     // Denormalised RRULE end (UNTIL or COUNT-bounded last-occurrence). The SQL window query it
     // was written for is gone; the value now feeds CalendarOccurrenceExpander.FilterForWindow,
@@ -252,7 +254,9 @@ internal sealed class CalendarService(
                 part.Equals("FREQ=MINUTELY", StringComparison.OrdinalIgnoreCase) ||
                 part.Equals("FREQ=SECONDLY", StringComparison.OrdinalIgnoreCase) ||
                 (part.StartsWith("UNTIL=", StringComparison.OrdinalIgnoreCase) && part.Length != 14))
-                throw new ValidationException("All-day recurrence rules must use dates without times.");
+                throw new ValidationException(
+                    new ValidationResult("All-day recurrence rules must use dates without times.",
+                        [nameof(CreateCalendarEventDto.RecurrenceRule)]), null, rule);
         }
         var pattern = new RecurrencePattern(rule);
         var days = NodaTime.Period.Between(start.Value, end.Value, PeriodUnits.Days).Days;

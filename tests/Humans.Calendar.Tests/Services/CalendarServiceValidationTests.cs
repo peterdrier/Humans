@@ -140,8 +140,12 @@ public class CalendarServiceValidationTests
         act.Should().Throw<DateTimeZoneNotFoundException>();
     }
 
-    [HumansFact]
-    public async Task CreateEventWithResultAsync_returns_validation_member_for_malformed_recurrence()
+    [HumansTheory]
+    [InlineData("FREQ=NOT_A_REAL_FREQ", false)]
+    [InlineData("FREQ=TIMEZONE", false)]
+    [InlineData("FREQ=NOT_A_REAL_FREQ", true)]
+    [InlineData("FREQ=TIMEZONE", true)]
+    public async Task EventWithResultAsync_returns_validation_member_for_malformed_recurrence(string rule, bool update)
     {
         var repo = Substitute.For<ICalendarRepository>();
         var logger = Substitute.For<ILogger<CalendarService>>();
@@ -157,10 +161,12 @@ public class CalendarServiceValidationTests
             StartUtc: Instant.FromUtc(2026, 5, 15, 17, 0),
             EndUtc: Instant.FromUtc(2026, 5, 15, 18, 0),
             IsAllDay: false,
-            RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
+            RecurrenceRule: rule,
             RecurrenceTimezone: "Europe/Madrid");
 
-        var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = update
+            ? await service.UpdateEventWithResultAsync(Guid.NewGuid(), dto, Guid.NewGuid(), TestContext.Current.CancellationToken)
+            : await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         var log = logger.ReceivedCalls().Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).GetArguments();

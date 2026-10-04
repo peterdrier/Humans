@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Tickets. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 10
+next_id: 11
 inbox:
   - added: 2026-09-30
     id: TICKETS-9
@@ -11,3 +11,7 @@ inbox:
     id: TICKETS-1
     what: "Test gaps from the invariant matrix (finding 15, /section-doctor on Tickets 2026-09-05): (a) TicketQueryService.EraseForUserAsync has no behavior test (only the DI sweep); (b) GetUserTicketExportDataAsync is untested; (c) TicketQueryService.GetMatchedTicketUserIdsAsync and GetMatchedUserIdsForEmailsAsync have no test anywhere; (d) 'sync removes Ticketed when no valid ticket remains' is unpinned — the participation tests cover add/flip only."
     review: light
+  - added: 2026-10-04
+    id: TICKETS-10
+    what: "TicketTransferController.Submit/Cancel localize InvalidOperationException.Message as a resource key thrown by TicketTransferService. This violates no-localized-exception-messages and couples member feedback to diagnostic wording. No existing structured transfer failure contract was found; agree the owner result/error shape before changing public surface. Found during the daily sweep."
+    review: panel
