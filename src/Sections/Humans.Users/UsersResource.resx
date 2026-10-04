@@ -592,4 +592,9 @@
   <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Locked — you have a ticket for this year</value></data>
   <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Event Operations</value></data>
   <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Community Updates</value></data>
+  <data name="Users_EmailError_InvalidAddress" xml:space="preserve"><value>Please enter a valid email address.</value></data>
+  <data name="Users_EmailError_AlreadyAdded" xml:space="preserve"><value>This email address is already in your account.</value></data>
+  <data name="Users_EmailError_MergePending" xml:space="preserve"><value>A merge request is already pending for this email address.</value></data>
+  <data name="Users_EmailError_NotPendingVerification" xml:space="preserve"><value>No email pending verification.</value></data>
+  <data name="Users_EmailError_VerificationExpired" xml:space="preserve"><value>The verification link has expired or is invalid.</value></data>
 </root>

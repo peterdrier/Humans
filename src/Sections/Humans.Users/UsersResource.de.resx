@@ -1197,4 +1197,9 @@
   <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Gesperrt — du hast ein Ticket für dieses Jahr</value></data>
   <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Veranstaltungsorganisation</value></data>
   <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Neuigkeiten der Gemeinschaft</value></data>
+  <data name="Users_EmailError_InvalidAddress" xml:space="preserve"><value>Bitte gib eine gültige E-Mail-Adresse ein.</value></data>
+  <data name="Users_EmailError_AlreadyAdded" xml:space="preserve"><value>Diese E-Mail-Adresse ist bereits in deinem Konto.</value></data>
+  <data name="Users_EmailError_MergePending" xml:space="preserve"><value>Für diese E-Mail-Adresse ist bereits eine Zusammenführungsanfrage ausstehend.</value></data>
+  <data name="Users_EmailError_NotPendingVerification" xml:space="preserve"><value>Keine E-Mail-Adresse wartet auf eine Bestätigung.</value></data>
+  <data name="Users_EmailError_VerificationExpired" xml:space="preserve"><value>Der Bestätigungslink ist abgelaufen oder ungültig.</value></data>
 </root>

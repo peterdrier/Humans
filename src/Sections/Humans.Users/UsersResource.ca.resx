@@ -1197,4 +1197,9 @@
   <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Bloquejat — tens una entrada per a aquest any</value></data>
   <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Operacions de l’esdeveniment</value></data>
   <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Novetats de la comunitat</value></data>
+  <data name="Users_EmailError_InvalidAddress" xml:space="preserve"><value>Introdueix una adreça de correu electrònic vàlida.</value></data>
+  <data name="Users_EmailError_AlreadyAdded" xml:space="preserve"><value>Aquesta adreça de correu electrònic ja és al teu compte.</value></data>
+  <data name="Users_EmailError_MergePending" xml:space="preserve"><value>Ja hi ha una sol·licitud de fusió pendent per a aquesta adreça de correu electrònic.</value></data>
+  <data name="Users_EmailError_NotPendingVerification" xml:space="preserve"><value>No hi ha cap correu electrònic pendent de verificació.</value></data>
+  <data name="Users_EmailError_VerificationExpired" xml:space="preserve"><value>L’enllaç de verificació ha caducat o no és vàlid.</value></data>
 </root>

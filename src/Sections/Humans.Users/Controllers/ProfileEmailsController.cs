@@ -101,7 +101,7 @@ internal sealed class ProfileEmailsController(
             logger.LogWarning(
                 "Rejected email add for user {UserId} ({Email}): {Reason}",
                 user.Id, model.NewEmail, ex.Message);
-            ModelState.AddModelError(nameof(model.NewEmail), ex.Message);
+            ModelState.AddModelError(nameof(model.NewEmail), FormatEmailValidationError(ex.Message));
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
         }
 
@@ -167,7 +167,7 @@ internal sealed class ProfileEmailsController(
         catch (ValidationException ex)
         {
             logger.LogInformation("Email verification validation failed for user {UserId}: {Message}", userId, ex.Message);
-            return VerifyEmailError(ex.Message);
+            return VerifyEmailError(FormatEmailValidationError(ex.Message));
         }
     }
 
@@ -195,6 +195,16 @@ internal sealed class ProfileEmailsController(
         ViewData["Message"] = string.Format(localizer["Profile_EmailVerified"].Value, result.Email);
         return View("VerifyEmailResult");
     }
+    private string FormatEmailValidationError(string message) => message switch
+    {
+        "Please enter a valid email address." => localizer["Users_EmailError_InvalidAddress"].Value,
+        "This email address is already in your account." => localizer["Users_EmailError_AlreadyAdded"].Value,
+        "A merge request is already pending for this email address." => localizer["Users_EmailError_MergePending"].Value,
+        "No email pending verification." => localizer["Users_EmailError_NotPendingVerification"].Value,
+        "The verification link has expired or is invalid." => localizer["Users_EmailError_VerificationExpired"].Value,
+        _ => message,
+    };
+
     private IActionResult VerifyEmailError(string message)
     {
         ViewData["Success"] = false;

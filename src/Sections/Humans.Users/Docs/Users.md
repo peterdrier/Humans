@@ -195,6 +195,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- Member email-add refusals (invalid address, already added or merge pending) and verification refusals (no pending email or expired/invalid token) render localized Users messages in all six cultures; service guards and logged reasons are unchanged.
+
 - Own and visible member profile onsite chips retain GET request cancellation when reading the active event year; onsite visibility and cached participation selection remain unchanged.
 
 - Profile-card volunteer-history descriptions retain their 80-character excerpt limit without splitting UTF-16 surrogate pairs; the complete history description remains stored and exported.
