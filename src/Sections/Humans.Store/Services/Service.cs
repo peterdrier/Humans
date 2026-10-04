@@ -210,7 +210,7 @@ internal sealed class Service(
         ValidateProductDraft(draft);
 
         var product = await repo.GetProductByIdAsync(draft.Id, ct)
-            ?? throw new InvalidOperationException($"Product {draft.Id} not found");
+            ?? throw new StoreRuleException($"Product {draft.Id} not found");
 
         var oldPrice = product.UnitPriceEur;
 
@@ -271,15 +271,20 @@ internal sealed class Service(
             await UpdateProductAsync(dto, actorUserId, ct);
             return CatalogSaveResult.Success(created: false);
         }
-        catch (ArgumentException ex)
+        catch (StoreValidationException ex)
         {
             logger.LogWarning("Store catalog Save validation failed: {Reason}", ex.Message);
             return CatalogSaveResult.Failure(null, ex.Message);
         }
-        catch (InvalidOperationException ex)
+        catch (StoreRuleException ex)
         {
             logger.LogWarning("Store catalog Save rejected: {Reason}", ex.Message);
             return CatalogSaveResult.Failure(null, ex.Message);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to save Store product {ProductId}", request.Id);
+            return new CatalogSaveResult(false, false, null, null);
         }
     }
 
@@ -301,15 +306,15 @@ internal sealed class Service(
     private static void ValidateProductDraft(ProductDto draft)
     {
         if (string.IsNullOrWhiteSpace(draft.Name))
-            throw new ArgumentException("Product name is required", nameof(draft));
+            throw new StoreValidationException("Product name is required", nameof(draft));
         if (draft.UnitPriceEur < 0m)
-            throw new ArgumentException("Unit price cannot be negative", nameof(draft));
+            throw new StoreValidationException("Unit price cannot be negative", nameof(draft));
         if (draft.VatRatePercent < 0m)
-            throw new ArgumentException("VAT rate cannot be negative", nameof(draft));
+            throw new StoreValidationException("VAT rate cannot be negative", nameof(draft));
         if (draft.DepositAmountEur is < 0m)
-            throw new ArgumentException("Deposit cannot be negative", nameof(draft));
+            throw new StoreValidationException("Deposit cannot be negative", nameof(draft));
         if (draft.HoldedRevenueAccountNum is { } account and (< 10_000_000 or > 99_999_999))
-            throw new ArgumentException("Holded revenue account must be an 8-digit chart number", nameof(draft));
+            throw new StoreValidationException("Holded revenue account must be an 8-digit chart number", nameof(draft));
     }
 
     public async Task<IReadOnlyList<OrderDto>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default)
@@ -521,19 +526,19 @@ internal sealed class Service(
     public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
     {
         if (qty <= 0)
-            throw new ArgumentException("Qty must be positive", nameof(qty));
+            throw new StoreValidationException("Qty must be positive", nameof(qty));
 
         var order = await repo.GetOrderByIdAsync(orderId, ct)
-            ?? throw new InvalidOperationException($"Order {orderId} not found");
+            ?? throw new StoreRuleException($"Order {orderId} not found");
 
         if (order.State != OrderState.Open)
-            throw new InvalidOperationException("Cannot add lines to an issued order");
+            throw new StoreRuleException("Cannot add lines to an issued order");
 
         var product = await repo.GetProductByIdAsync(productId, ct)
-            ?? throw new InvalidOperationException($"Product {productId} not found");
+            ?? throw new StoreRuleException($"Product {productId} not found");
 
         if (!product.IsActive)
-            throw new InvalidOperationException(
+            throw new StoreRuleException(
                 $"Product '{product.Name}' has been deactivated and is no longer orderable");
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
@@ -576,28 +581,33 @@ internal sealed class Service(
             await AddLineAsync(orderId, productId, qty, actorUserId, ct);
             return MutationResult.Success;
         }
-        catch (ArgumentException ex)
+        catch (StoreValidationException ex)
         {
             logger.LogWarning("AddLine validation failed for order {OrderId}: {Reason}", orderId, ex.Message);
             return MutationResult.Failure(ex.Message);
         }
-        catch (InvalidOperationException ex)
+        catch (StoreRuleException ex)
         {
             logger.LogWarning("AddLine rejected for order {OrderId}: {Reason}", orderId, ex.Message);
             return MutationResult.Failure(ex.Message);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to add line to Store order {OrderId}", orderId);
+            return new MutationResult(false, null);
         }
     }
 
     public async Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
     {
         var ctx = await repo.GetLineWithOrderAndProductAsync(lineId, ct)
-            ?? throw new InvalidOperationException($"Line {lineId} not found");
+            ?? throw new StoreRuleException($"Line {lineId} not found");
 
         if (ctx.OrderId != orderId)
-            throw new InvalidOperationException($"Line {lineId} does not belong to order {orderId}");
+            throw new StoreRuleException($"Line {lineId} does not belong to order {orderId}");
 
         if (ctx.OrderState != OrderState.Open)
-            throw new InvalidOperationException("Cannot remove lines from an issued order");
+            throw new StoreRuleException("Cannot remove lines from an issued order");
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
@@ -623,17 +633,22 @@ internal sealed class Service(
             await RemoveLineAsync(orderId, lineId, actorUserId, ct);
             return MutationResult.Success;
         }
-        catch (InvalidOperationException ex)
+        catch (StoreRuleException ex)
         {
             logger.LogWarning("RemoveLine rejected for line {LineId}: {Reason}", lineId, ex.Message);
             return MutationResult.Failure(ex.Message);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to remove Store line {LineId}", lineId);
+            return new MutationResult(false, null);
         }
     }
 
     public async Task UpdateCounterpartyAsync(Guid orderId, OrderCounterpartyInput input, Guid actorUserId, CancellationToken ct = default)
     {
         var order = await repo.GetOrderByIdAsync(orderId, ct)
-            ?? throw new InvalidOperationException($"Order {orderId} not found");
+            ?? throw new StoreRuleException($"Order {orderId} not found");
 
         EnsureBillable(order);
 
@@ -662,10 +677,15 @@ internal sealed class Service(
             await UpdateCounterpartyAsync(orderId, input, actorUserId, ct);
             return MutationResult.Success;
         }
-        catch (InvalidOperationException ex)
+        catch (StoreRuleException ex)
         {
             logger.LogWarning("UpdateCounterparty rejected for order {OrderId}: {Reason}", orderId, ex.Message);
             return MutationResult.Failure(ex.Message);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to update counterparty on Store order {OrderId}", orderId);
+            return new MutationResult(false, null);
         }
     }
 
@@ -1853,6 +1873,23 @@ internal sealed class Service(
     private static void EnsureBillable(Order order)
     {
         if (order.TeamId is not null)
-            throw new InvalidOperationException("Team orders are non-billable.");
+            throw new StoreRuleException("Team orders are non-billable.");
+    }
+
+    private sealed class StoreRuleException : InvalidOperationException
+    {
+        public StoreRuleException() { }
+        public StoreRuleException(string message) : base(message) { }
+        public StoreRuleException(string message, Exception innerException) : base(message, innerException) { }
+    }
+
+    private sealed class StoreValidationException : ArgumentException
+    {
+        public StoreValidationException() { }
+        public StoreValidationException(string message) : base(message) { }
+        public StoreValidationException(string message, Exception innerException) : base(message, innerException) { }
+        public StoreValidationException(string message, string paramName) : base(message, paramName) { }
+        public StoreValidationException(string message, string paramName, Exception innerException)
+            : base(message, paramName, innerException) { }
     }
 }

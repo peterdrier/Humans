@@ -123,11 +123,12 @@ public class ServiceTeamOrdersTests
         var teamOrder = new Order { Id = orderId, TeamId = Guid.NewGuid(), CampSeasonId = null, Year = 2026 };
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(teamOrder);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var rejection = await Assert.ThrowsAnyAsync<InvalidOperationException>(() =>
             _service.UpdateCounterpartyAsync(
                 orderId,
                 new OrderCounterpartyInput("N", null, null, null, null),
                 Guid.NewGuid(), TestContext.Current.CancellationToken));
+        rejection.Message.Should().Be("Team orders are non-billable.");
     }
 
     [HumansFact]

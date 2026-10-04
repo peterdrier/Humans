@@ -204,6 +204,8 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 ## Invariants
 
+- Catalog and order-line/counterparty result wrappers surface only known Store validation/rule feedback. Unexpected dependency failures log Error with the exception and return no diagnostic text, selecting the controller's existing localized fallback (operator-only catalog uses its existing generic error). Cancellation still propagates.
+
 - Admin summary camp totals use the selected UI culture, matching the table’s row amounts. Camp-only totals, payment calculations and invariant sort keys remain unchanged.
 
 - Member order price-history tables supply localized date/action/description headers through the shared audit component’s keyed labels, preserving product predicates, column order and audit entries.
