@@ -63,13 +63,16 @@
       No AspNetCore package: those ship with no PackageVersion on purpose and would fail the
       build with NU1010 under Central Package Management. The controller and view component
       get theirs from the framework reference Sdk.Razor already adds.
+
+      PrivateAssets="compile": sections referencing this one for its Contracts/ surface must
+      not compile against Google.Apis (runtime assets still flow to Web).
     -->
-    <PackageReference Include="Google.Apis.Admin.Directory.directory_v1" />
-    <PackageReference Include="Google.Apis.Auth" />
-    <PackageReference Include="Google.Apis.CloudIdentity.v1" />
-    <PackageReference Include="Google.Apis.Drive.v3" />
-    <PackageReference Include="Google.Apis.DriveActivity.v2" />
-    <PackageReference Include="Google.Apis.Groupssettings.v1" />
+    <PackageReference Include="Google.Apis.Admin.Directory.directory_v1" PrivateAssets="compile" />
+    <PackageReference Include="Google.Apis.Auth" PrivateAssets="compile" />
+    <PackageReference Include="Google.Apis.CloudIdentity.v1" PrivateAssets="compile" />
+    <PackageReference Include="Google.Apis.Drive.v3" PrivateAssets="compile" />
+    <PackageReference Include="Google.Apis.DriveActivity.v2" PrivateAssets="compile" />
+    <PackageReference Include="Google.Apis.Groupssettings.v1" PrivateAssets="compile" />
     <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
