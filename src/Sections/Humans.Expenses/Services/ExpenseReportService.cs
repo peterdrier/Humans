@@ -99,12 +99,9 @@ internal sealed class ExpenseReportService(
                 report.HoldedSupplierAccountNum, ct);
 
             var memberReports = await repo.GetForSubmitterAsync(report.SubmitterUserId, ct);
-            // A report with Holded docs is booked as payables in Holded (the purchase docs are created
-            // at outbox-drain time), so it contributes to the creditor balance from Approved onward.
-            // Approved is the report's terminal state — paid/unpaid is read from the account ledger, never the report.
-            memberRegisteredTotal = memberReports
-                .Where(r => r.Status is ExpenseReportStatus.Approved)
-                .Sum(RegisteredAmount);
+            // Withdrawal does not undo a Holded booking. Count the actual documents regardless of
+            // report status; RegisteredAmount excludes lines that have not been pushed yet.
+            memberRegisteredTotal = memberReports.Sum(RegisteredAmount);
 
             owed = status?.OwedToMember ?? 0m;
             totalPaid = status?.TotalPaid ?? 0m;
