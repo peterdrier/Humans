@@ -174,6 +174,8 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 ## Invariants
 
+- Events API GETs retain browser cancellation across guide/burn settings, approved events, categories, preferences, favourites and camp/submitter lookups. Cancellation propagates without a fallback response; authenticated mutation endpoints retain their existing token boundaries.
+
 - Global-search result rows pass browser cancellation to the approved-event lookup; approved-only visibility and missing-result behavior are unchanged.
 
 - Individual and camp submitter edits check `CanBeEditedBySubmitter` before changing fields. Every permitted status is accepted by `UpdateAndResubmitAsync`; the controllers call it directly without exception-message classification.
