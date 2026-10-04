@@ -434,11 +434,39 @@ public class TicketTailorServiceTests
     [Xunit.InlineData("orders", "missing-data")]
     [Xunit.InlineData("tickets", "missing-data")]
     [Xunit.InlineData("check-ins", "missing-data")]
+    [Xunit.InlineData("orders", "null-item")]
+    [Xunit.InlineData("tickets", "null-item")]
+    [Xunit.InlineData("check-ins", "null-item")]
+    [Xunit.InlineData("orders", "missing-identity")]
+    [Xunit.InlineData("tickets", "missing-identity")]
+    [Xunit.InlineData("check-ins", "missing-identity")]
+    [Xunit.InlineData("orders", "blank-identity")]
+    [Xunit.InlineData("tickets", "blank-identity")]
+    [Xunit.InlineData("check-ins", "blank-identity")]
+    [Xunit.InlineData("orders", "whitespace-identity")]
+    [Xunit.InlineData("tickets", "whitespace-identity")]
+    [Xunit.InlineData("check-ins", "whitespace-identity")]
     public async Task Paging_RejectsInvalidContinuationWithoutReturningPartialData(string endpoint, string shape)
     {
         var handler = new RecordingHttpHandler();
         var expectedRequests = 1;
-        if (string.Equals(shape, "missing-data", StringComparison.Ordinal))
+        if (shape is "null-item" or "missing-identity" or "blank-identity" or "whitespace-identity")
+        {
+            object? invalidItem = shape switch
+            {
+                "null-item" => null,
+                "missing-identity" => new { created_at = 1716811200L },
+                "blank-identity" => new { id = "", created_at = 1716811200L },
+                _ => new { id = "  ", created_at = 1716811200L },
+            };
+            // The invalid item is not the continuation row: every item needs an identity.
+            handler.EnqueueResponse(HttpStatusCode.OK, new
+            {
+                data = new[] { invalidItem, new { id = "valid", created_at = 1716811200L } },
+                links = new { next = (string?)null },
+            });
+        }
+        else if (string.Equals(shape, "missing-data", StringComparison.Ordinal))
             handler.EnqueueResponse(HttpStatusCode.OK, new { links = new { next = "more" } });
         else if (string.Equals(shape, "empty-continuation", StringComparison.Ordinal))
             handler.EnqueueResponse(HttpStatusCode.OK, new { data = Array.Empty<object>(), links = new { next = "more" } });

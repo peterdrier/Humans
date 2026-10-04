@@ -139,6 +139,8 @@ internal sealed class TicketTailorService : ITicketVendorService
 
             if (body?.Data is null)
                 throw new HttpRequestException("TicketTailor pagination response is missing data.");
+            if (body.Data.Any(item => item is null || string.IsNullOrWhiteSpace(getId(item))))
+                throw new HttpRequestException("TicketTailor pagination response contains an item without an identity.");
             if (body.Data.Count == 0)
             {
                 if (body.Links?.Next is not null)
