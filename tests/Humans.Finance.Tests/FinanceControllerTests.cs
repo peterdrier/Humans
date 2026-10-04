@@ -351,6 +351,26 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
+    public async Task Sepa_CanceledRead_StopsMemberNameLookup()
+    {
+        using var cancellation = new CancellationTokenSource();
+        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>()).Returns((
+            new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
+            null, [], null));
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return new Dictionary<Guid, UserInfo>();
+            });
+        await cancellation.CancelAsync();
+
+        var read = () => MakeController().Sepa(cancellation.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task Sepa_UnavailableReason_ReachesThePageUnchanged()
     {
         _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>())

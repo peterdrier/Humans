@@ -154,7 +154,7 @@ internal sealed class FinanceController(
             .Concat(rows.Where(r => r.BookedByUserId is not null).Select(r => r.BookedByUserId!.Value))
             .Distinct().ToList();
         if (ids.Count > 0)
-            foreach (var kv in await UserService.GetUserInfosAsync(ids))
+            foreach (var kv in await UserService.GetUserInfosAsync(ids, ct))
                 names[kv.Key] = kv.Value.BurnerName;
 
         string Name(Guid? id) =>
