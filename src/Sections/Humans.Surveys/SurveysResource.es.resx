@@ -372,4 +372,16 @@
   <data name="Surveys_InformationContentRequired" xml:space="preserve"><value>El bloque informativo {0} debe contener Markdown o al menos una imagen.</value></data>
   <data name="Surveys_InformationImageLabelRequired" xml:space="preserve"><value>Cada imagen del bloque informativo {0} debe tener una etiqueta.</value></data>
   <data name="Surveys_InformationImageAltRequired" xml:space="preserve"><value>Cada imagen del bloque informativo {0} debe tener texto alternativo.</value></data>
+  <data name="Enum_SurveyQuestionType_ShortText" xml:space="preserve"><value>Texto corto</value></data>
+  <data name="Enum_SurveyQuestionType_LongText" xml:space="preserve"><value>Texto largo</value></data>
+  <data name="Enum_SurveyQuestionType_Rating" xml:space="preserve"><value>Valoración</value></data>
+  <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Cuadrícula</value></data>
+  <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Información</value></data>
+  <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Voto clasificado</value></data>
+  <data name="Surveys_GridModeRequired" xml:space="preserve"><value>La pregunta de cuadrícula {0} debe tener un modo de selección.</value></data>
+  <data name="Surveys_GridRowRequired" xml:space="preserve"><value>La pregunta de cuadrícula {0} debe tener al menos una fila.</value></data>
+  <data name="Surveys_GridColumnCount" xml:space="preserve"><value>La pregunta de cuadrícula {0} debe tener entre una y cinco columnas.</value></data>
+  <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>La pregunta de voto clasificado {0} debe tener al menos dos opciones.</value></data>
+  <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Una opción</value></data>
+  <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Varias opciones</value></data>
 </root>

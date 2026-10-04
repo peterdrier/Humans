@@ -353,4 +353,16 @@
   <data name="Surveys_InformationContentRequired" xml:space="preserve"><value>Information item {0} must contain Markdown or at least one image.</value></data>
   <data name="Surveys_InformationImageLabelRequired" xml:space="preserve"><value>Every image in Information item {0} must have a label.</value></data>
   <data name="Surveys_InformationImageAltRequired" xml:space="preserve"><value>Every image in Information item {0} must have alt text.</value></data>
+  <data name="Enum_SurveyQuestionType_ShortText" xml:space="preserve"><value>Short text</value></data>
+  <data name="Enum_SurveyQuestionType_LongText" xml:space="preserve"><value>Long text</value></data>
+  <data name="Enum_SurveyQuestionType_Rating" xml:space="preserve"><value>Rating</value></data>
+  <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Grid</value></data>
+  <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Information</value></data>
+  <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Ranked choice</value></data>
+  <data name="Surveys_GridModeRequired" xml:space="preserve"><value>Grid question {0} must choose a selection mode.</value></data>
+  <data name="Surveys_GridRowRequired" xml:space="preserve"><value>Grid question {0} must have at least one row.</value></data>
+  <data name="Surveys_GridColumnCount" xml:space="preserve"><value>Grid question {0} must have between one and five columns.</value></data>
+  <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>Ranked-choice question {0} must have at least two options.</value></data>
+  <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>One choice</value></data>
+  <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Multiple choices</value></data>
 </root>

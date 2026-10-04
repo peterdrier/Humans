@@ -358,4 +358,16 @@
   <data name="Surveys_InformationContentRequired" xml:space="preserve"><value>Le bloc d’information {0} doit contenir du Markdown ou au moins une image.</value></data>
   <data name="Surveys_InformationImageLabelRequired" xml:space="preserve"><value>Chaque image du bloc d’information {0} doit avoir un libellé.</value></data>
   <data name="Surveys_InformationImageAltRequired" xml:space="preserve"><value>Chaque image du bloc d’information {0} doit avoir un texte alternatif.</value></data>
+  <data name="Enum_SurveyQuestionType_ShortText" xml:space="preserve"><value>Texte court</value></data>
+  <data name="Enum_SurveyQuestionType_LongText" xml:space="preserve"><value>Texte long</value></data>
+  <data name="Enum_SurveyQuestionType_Rating" xml:space="preserve"><value>Note</value></data>
+  <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Grille</value></data>
+  <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Information</value></data>
+  <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Choix classé</value></data>
+  <data name="Surveys_GridModeRequired" xml:space="preserve"><value>La question en grille {0} doit avoir un mode de sélection.</value></data>
+  <data name="Surveys_GridRowRequired" xml:space="preserve"><value>La question en grille {0} doit avoir au moins une ligne.</value></data>
+  <data name="Surveys_GridColumnCount" xml:space="preserve"><value>La question en grille {0} doit avoir entre une et cinq colonnes.</value></data>
+  <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>La question à choix classé {0} doit avoir au moins deux options.</value></data>
+  <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Un seul choix</value></data>
+  <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Choix multiples</value></data>
 </root>

@@ -358,4 +358,16 @@
   <data name="Surveys_InformationContentRequired" xml:space="preserve"><value>El bloc informatiu {0} ha de contenir Markdown o com a mínim una imatge.</value></data>
   <data name="Surveys_InformationImageLabelRequired" xml:space="preserve"><value>Cada imatge del bloc informatiu {0} ha de tenir una etiqueta.</value></data>
   <data name="Surveys_InformationImageAltRequired" xml:space="preserve"><value>Cada imatge del bloc informatiu {0} ha de tenir text alternatiu.</value></data>
+  <data name="Enum_SurveyQuestionType_ShortText" xml:space="preserve"><value>Text curt</value></data>
+  <data name="Enum_SurveyQuestionType_LongText" xml:space="preserve"><value>Text llarg</value></data>
+  <data name="Enum_SurveyQuestionType_Rating" xml:space="preserve"><value>Valoració</value></data>
+  <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Graella</value></data>
+  <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Informació</value></data>
+  <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Vot classificat</value></data>
+  <data name="Surveys_GridModeRequired" xml:space="preserve"><value>La pregunta de graella {0} ha de tenir un mode de selecció.</value></data>
+  <data name="Surveys_GridRowRequired" xml:space="preserve"><value>La pregunta de graella {0} ha de tenir com a mínim una fila.</value></data>
+  <data name="Surveys_GridColumnCount" xml:space="preserve"><value>La pregunta de graella {0} ha de tenir entre una i cinc columnes.</value></data>
+  <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>La pregunta de vot classificat {0} ha de tenir com a mínim dues opcions.</value></data>
+  <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Una opció</value></data>
+  <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Diverses opcions</value></data>
 </root>

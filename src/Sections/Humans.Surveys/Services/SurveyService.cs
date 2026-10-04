@@ -2741,17 +2741,17 @@ internal sealed class SurveyService(
             if (question.GridSelectionMode is null
                 || !Enum.IsDefined(question.GridSelectionMode.Value))
             {
-                throw new InvalidOperationException($"Grid question {question.Id} must choose a selection mode.");
+                throw new InvalidOperationException(ErrorMessage("Surveys_GridModeRequired", question.Id));
             }
 
             var rows = question.GridRows ?? [];
             if (rows.Count == 0)
-                throw new InvalidOperationException($"Grid question {question.Id} must have at least one row.");
+                throw new InvalidOperationException(ErrorMessage("Surveys_GridRowRequired", question.Id));
 
             if (question.Options.Count == 0 || question.Options.Count > 5)
             {
                 throw new InvalidOperationException(
-                    $"Grid question {question.Id} must have between one and five columns.");
+                    ErrorMessage("Surveys_GridColumnCount", question.Id));
             }
 
             ValidateStableValues(rows.Select(row => row.Value), $"Grid question {question.Id} row");
@@ -2761,7 +2761,7 @@ internal sealed class SurveyService(
         static void ValidateRankedQuestion(SurveyQuestion question)
         {
             if (question.Options.Count < 2)
-                throw new InvalidOperationException($"Ranked-choice question {question.Id} must have at least two options.");
+                throw new InvalidOperationException(ErrorMessage("Surveys_RankedOptionsRequired", question.Id));
             ValidateStableValues(
                 question.Options.OrderBy(option => option.Order).Select(option => option.Value),
                 $"Ranked-choice question {question.Id} option");

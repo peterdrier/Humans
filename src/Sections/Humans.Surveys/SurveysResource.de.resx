@@ -358,4 +358,16 @@
   <data name="Surveys_InformationContentRequired" xml:space="preserve"><value>Der Informationsblock {0} muss Markdown oder mindestens ein Bild enthalten.</value></data>
   <data name="Surveys_InformationImageLabelRequired" xml:space="preserve"><value>Jedes Bild im Informationsblock {0} muss eine Beschriftung haben.</value></data>
   <data name="Surveys_InformationImageAltRequired" xml:space="preserve"><value>Jedes Bild im Informationsblock {0} muss einen Alternativtext haben.</value></data>
+  <data name="Enum_SurveyQuestionType_ShortText" xml:space="preserve"><value>Kurzer Text</value></data>
+  <data name="Enum_SurveyQuestionType_LongText" xml:space="preserve"><value>Langer Text</value></data>
+  <data name="Enum_SurveyQuestionType_Rating" xml:space="preserve"><value>Bewertung</value></data>
+  <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Gitter</value></data>
+  <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Information</value></data>
+  <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Rangfolgenwahl</value></data>
+  <data name="Surveys_GridModeRequired" xml:space="preserve"><value>Für die Gitterfrage {0} muss ein Auswahlmodus gewählt werden.</value></data>
+  <data name="Surveys_GridRowRequired" xml:space="preserve"><value>Die Gitterfrage {0} muss mindestens eine Zeile haben.</value></data>
+  <data name="Surveys_GridColumnCount" xml:space="preserve"><value>Die Gitterfrage {0} muss zwischen einer und fünf Spalten haben.</value></data>
+  <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>Die Rangfolgenfrage {0} muss mindestens zwei Optionen haben.</value></data>
+  <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Eine Auswahl</value></data>
+  <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Mehrere Auswahlmöglichkeiten</value></data>
 </root>
