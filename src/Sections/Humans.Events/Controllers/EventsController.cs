@@ -281,17 +281,7 @@ internal sealed class EventsController(
             ToInstant(model.StartDate.Add(startTime), tz), durationMinutes,
             model.LocationNote, model.Host, model.IsRecurring, model.RecurrenceDays);
 
-        try
-        {
-            await guide.UpdateAndResubmitAsync(guideEvent);
-        }
-        catch (InvalidOperationException ex) when (IsSubmitStateException(ex))
-        {
-            ModelState.AddModelError(string.Empty, ex.Message);
-            model.Id = eventId;
-            await PopulateDropdownsAsync(model, eventSettings);
-            return View("IndividualEventForm", model);
-        }
+        await guide.UpdateAndResubmitAsync(guideEvent);
 
         logger.LogInformation("User {UserId} updated event '{Title}' ({EventId})", user.Id, model.Title, eventId);
 
@@ -674,20 +664,7 @@ internal sealed class EventsController(
             ToInstant(model.StartDate.Add(model.StartTime), tz), model.DurationMinutes,
             model.LocationNote, model.Host, model.IsRecurring, model.RecurrenceDays, model.PriorityRank);
 
-        try
-        {
-            await guide.UpdateAndResubmitAsync(guideEvent);
-        }
-        catch (InvalidOperationException ex) when (IsSubmitStateException(ex))
-        {
-            ModelState.AddModelError(string.Empty, ex.Message);
-            model.Id = eventId;
-            model.CampId = camp.Id;
-            model.CampName = ResolveCampDisplayName(camp);
-            model.CampSlug = slug;
-            await PopulateBarrioDropdownsAsync(model, eventSettings);
-            return View("BarrioEventForm", model);
-        }
+        await guide.UpdateAndResubmitAsync(guideEvent);
 
         logger.LogInformation("User {UserId} updated barrio event '{Title}' ({EventId})", user.Id, model.Title, eventId);
 
@@ -842,8 +819,5 @@ internal sealed class EventsController(
         model.EventDays = BuildEventDayOptions(burn);
     }
 
-    internal static bool IsSubmitStateException(InvalidOperationException ex) =>
-        ex.Message.StartsWith("Cannot submit event in ", StringComparison.Ordinal)
-        && ex.Message.EndsWith(" state", StringComparison.Ordinal);
 
 }
