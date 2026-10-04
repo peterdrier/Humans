@@ -85,6 +85,14 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             yield break;
         }
 
+        // Ownership first (Agent.md invariant 7): a foreign id is refused before any refusal or
+        // turn is written, and before the controller commits the stream.
+        var existing = request.ConversationId == Guid.Empty
+            ? null
+            : await _repo.GetConversationByIdAsync(request.ConversationId, cancellationToken);
+        if (existing is not null && existing.UserId != request.UserId)
+            throw new UnauthorizedAccessException("Conversation does not belong to this user.");
+
         var now = _clock.GetCurrentInstant();
         var nowZoned = now.InUtc();
         var today = nowZoned.Date;
@@ -95,34 +103,22 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             usage.MessagesThisHour >= settings.HourlyMessageCap)
         {
             // Invariant 6 (Agent.md): every refused turn writes an AgentMessage with RefusalReason.
-            await PersistRefusal(request, "rate_limited", cancellationToken);
+            await PersistRefusal(request, existing, "rate_limited", cancellationToken);
             yield return Finalizer(stopReason: "rate_limited");
             yield break;
         }
 
         if (_abuse.IsFlagged(request.Message, out var abuseReason))
         {
-            await PersistRefusal(request, abuseReason!, cancellationToken);
+            await PersistRefusal(request, existing, abuseReason!, cancellationToken);
             yield return new AgentTurnToken(LocalizedReply("Agent_AbuseRefusal", request.Locale), null, null);
             yield return Finalizer(stopReason: "abuse_flag");
             yield break;
         }
 
-        AgentConversation conversation;
-        if (request.ConversationId == Guid.Empty)
-        {
-            conversation = await _repo.CreateConversationAsync(request.UserId, request.Locale, cancellationToken);
-        }
-        else
-        {
-            var existing = await _repo.GetConversationByIdAsync(request.ConversationId, cancellationToken);
-            // Conversation may have been retention-purged; fall back to a fresh one (finalizer stamps the new id).
-            conversation = existing
-                ?? await _repo.CreateConversationAsync(request.UserId, request.Locale, cancellationToken);
-        }
-
-        if (conversation.UserId != request.UserId)
-            throw new UnauthorizedAccessException("Conversation does not belong to this user.");
+        // No id, or one retention purged: start a fresh conversation (the finalizer stamps the new id).
+        var conversation = existing
+            ?? await _repo.CreateConversationAsync(request.UserId, request.Locale, cancellationToken);
 
         // Replay user/assistant text turns only — tool-call internals are dropped (model re-derives via fetch_section_guide).
         var priorTurns = conversation.Messages
@@ -773,24 +769,13 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         }
     }
 
-    private async Task PersistRefusal(AgentTurnRequest req, string reason, CancellationToken ct)
+    /// <param name="existing">The caller's own conversation, already ownership-checked by
+    /// <see cref="AskAsync"/>; null starts a fresh one.</param>
+    private async Task PersistRefusal(
+        AgentTurnRequest req, AgentConversation? existing, string reason, CancellationToken ct)
     {
-        AgentConversation conv;
-        if (req.ConversationId == Guid.Empty)
-        {
-            conv = await _repo.CreateConversationAsync(req.UserId, req.Locale, ct);
-        }
-        else
-        {
-            var existing = await _repo.GetConversationByIdAsync(req.ConversationId, ct);
-            // Refusal must be persisted (Agent.md invariant 6), but never into
-            // someone else's transcript. The rate-limit/abuse paths in AskAsync
-            // run BEFORE the ownership check, so a client supplying another
-            // user's conversation GUID would otherwise pollute their thread.
-            conv = (existing is not null && existing.UserId == req.UserId)
-                ? existing
-                : await _repo.CreateConversationAsync(req.UserId, req.Locale, ct);
-        }
+        // Refusal must be persisted (Agent.md invariant 6).
+        var conv = existing ?? await _repo.CreateConversationAsync(req.UserId, req.Locale, ct);
 
         // usage: null — a refused turn is rejected before any provider call, so it cost nothing.
         await AppendFailureMessage(conv.Id, reason, _settings.Current.Model, usage: null, ct);

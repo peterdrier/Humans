@@ -90,7 +90,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
    `Help_Agent_IssueProposed` key so the live reply and transcript cannot drift.
    The widget’s browser error/status messages and Close label are localized too; its
    rendered data attributes supply all browser messages, including the handoff fallback.
-7. **Append-only conversations per user.** A user can only post to conversations they own. `AgentController` rejects cross-user access with 404.
+7. **Append-only conversations per user.** A user can only post to conversations they own. `AgentService.AskAsync` checks ownership before anything else, and `AgentController.Ask` answers a foreign conversation id with 403 before the stream opens. Reading someone else's transcript at `/Agent/Conversation/{id}` stays 404, so a read never confirms the id exists.
 8. **Issue handoff is propose-only.** `route_to_issue` carries `{title, category, description}`. The dispatcher never writes a row server-side; the SSE stream emits an `issueProposal` token and the client opens the Issues submission modal pre-filled. The user reviews and submits via `/Issues/Submit`. Historical legacy auto-created `FeedbackReport.AgentConversationId` links are immutable.
 <!-- route_to_issue is propose-only; do not revert to server-side auto-creation of FeedbackReport rows. -->
 9. **Retention.** Conversations older than `AgentSettings.RetentionDays` are hard-deleted daily.

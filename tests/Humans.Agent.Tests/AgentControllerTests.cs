@@ -59,6 +59,31 @@ public class AgentControllerTests
         controller.Response.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
     }
 
+    [HumansFact]
+    public async Task Ask_answers_403_before_streaming_when_the_conversation_is_someone_elses()
+    {
+        var agent = Substitute.For<IAgentService>();
+        agent.AskAsync(Arg.Any<AgentTurnRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Foreign());
+        var controller = MakeController(agent, enabled: true);
+
+        await controller.Ask(
+            new AgentAskRequest { Message = "hi", ConversationId = Guid.NewGuid() },
+            Xunit.TestContext.Current.CancellationToken);
+
+        controller.Response.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        controller.Response.ContentType.Should().BeNull("no event stream was opened");
+
+        static async IAsyncEnumerable<AgentTurnToken> Foreign()
+        {
+            await Task.Yield();
+            throw new UnauthorizedAccessException();
+#pragma warning disable CS0162 // an iterator needs a yield to compile
+            yield break;
+#pragma warning restore CS0162
+        }
+    }
+
     private static AgentController MakeController(IAgentService agent, bool enabled)
     {
         var userId = Guid.NewGuid();
@@ -75,6 +100,8 @@ public class AgentControllerTests
             RetentionDays: 30, UpdatedAt: Instant.MinValue));
 
         var auth = Substitute.For<IAuthorizationService>();
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
 
         var controller = new AgentController(agent, auth, settings, users, users)
         {

@@ -156,6 +156,40 @@ public class AgentServiceTests
     }
 
     [HumansFact]
+    public async Task Ask_refuses_another_users_conversation_before_writing_anything()
+    {
+        var victimId = Guid.NewGuid();
+        var attackerId = Guid.NewGuid();
+        var (svc, client) = await BuildService(s => s.Enabled = true);
+        client.EnqueueTurn(
+            new AgentTurnToken("Hi.", null, null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+        Guid victimConversation = Guid.Empty;
+        await foreach (var t in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: Guid.Empty, UserId: victimId, Message: "Hello", Locale: "es"),
+            Xunit.TestContext.Current.CancellationToken))
+        {
+            if (t.Finalizer is { } f) victimConversation = f.ConversationId;
+        }
+
+        // "hurt myself" trips the abuse refusal, which would otherwise be persisted first.
+        var ask = async () =>
+        {
+            await foreach (var _ in svc.AskAsync(
+                new AgentTurnRequest(ConversationId: victimConversation, UserId: attackerId, Message: "hurt myself", Locale: "es"),
+                Xunit.TestContext.Current.CancellationToken))
+            {
+            }
+        };
+
+        await ask.Should().ThrowAsync<UnauthorizedAccessException>();
+        (await svc.GetHistoryAsync(attackerId, take: 10, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeEmpty("a refused foreign id must not start a conversation for the caller");
+        (await svc.GetConversationForUserAsync(victimId, victimConversation, Xunit.TestContext.Current.CancellationToken))!
+            .Messages.Should().HaveCount(2, "the victim's thread keeps only its own turn");
+    }
+
+    [HumansFact]
     public async Task Rate_limited_refusal_is_not_written_into_another_users_conversation()
     {
         var attackerId = Guid.NewGuid();

@@ -16,7 +16,7 @@ export and are erased with their account.
 
 | Shape | Members | Notes |
 |---|---|---|
-| Ask a question, stream an answer | `POST /Agent/Ask` (SSE) | One question-shape: gate → rate-limit → converse with provider in a bounded tool loop → persist both sides |
+| Ask a question, stream an answer | `POST /Agent/Ask` (SSE) | One question-shape: gate → ownership → rate-limit → converse with provider in a bounded tool loop → persist both sides |
 | Read my own history | `/Agent/Conversations`, `/Agent/Conversation/{id}` | Own rows only; cross-user is 404 |
 | Admin transcript review | `/Agent/Conversations` (admin mode), `/Agent/Conversations/{id}`, `/Agent/Admin/Conversations/{id}/Prompt` | Same list route, admin flag widens it |
 | Admin operations | `/Agent/Admin/Status`, the `/Settings#agent` tab (posts to `/Agent/Admin/Settings`), `POST …/ReloadKnowledgeBase` | One status report, one settings form, one all-or-nothing cache reload |
@@ -49,20 +49,23 @@ that enforces each:
 - Widget hidden when disabled (`src/Sections/Humans.Agent/Views/Shared/Components/HelpWidget/Default.cshtml:35`);
   `/Agent/Ask` answers 503 when disabled (`src/Sections/Humans.Agent/Controllers/AgentController.cs:51`).
 - Over any cap is 429 before the provider (`src/Sections/Humans.Agent/Controllers/AgentController.cs:60`),
-  and the service persists the refusal (`src/Sections/Humans.Agent/Services/AgentService.cs:93`).
+  and the service persists the refusal (`src/Sections/Humans.Agent/Services/AgentService.cs:101`).
 - Every refused turn persists a message with `RefusalReason`
-  (`src/Sections/Humans.Agent/Services/AgentService.cs:796`, `src/Sections/Humans.Agent/Services/AgentService.cs:824`); a failed or disconnected turn
+  (`src/Sections/Humans.Agent/Services/AgentService.cs:781`, `src/Sections/Humans.Agent/Services/AgentService.cs:809`); a failed or disconnected turn
   persists an error trace and is billed for what it consumed
-  (`src/Sections/Humans.Agent/Services/AgentService.cs:231`, `src/Sections/Humans.Agent/Services/AgentService.cs:236`).
+  (`src/Sections/Humans.Agent/Services/AgentService.cs:227`, `src/Sections/Humans.Agent/Services/AgentService.cs:232`).
 - A member reads only their own conversations; mismatch is 404
-  (`src/Sections/Humans.Agent/Services/AgentService.cs:517`, `src/Sections/Humans.Agent/Controllers/AgentController.cs:111`).
+  (`src/Sections/Humans.Agent/Services/AgentService.cs:513`, `src/Sections/Humans.Agent/Controllers/AgentController.cs:123`).
+- A member posts only to their own conversations; a foreign id is 403 before the stream opens
+  and before anything is written (`src/Sections/Humans.Agent/Services/AgentService.cs:94`,
+  `src/Sections/Humans.Agent/Controllers/AgentController.cs:83`).
 - The tool whitelist is closed (`src/Sections/Humans.Agent/Services/AgentToolDispatcher.cs:29`);
   doc reads cannot reach arbitrary paths (`src/Sections/Humans.Agent/Services/Preload/AgentFeatureSpecReader.cs:116`,
   `src/Sections/Humans.Agent/Services/Preload/AgentSectionDocReader.cs:37`).
-- The tool loop is bounded (`src/Sections/Humans.Agent/Services/AgentService.cs:361`); cap-hit
-  forces synthesis (`src/Sections/Humans.Agent/Services/AgentService.cs:407`).
+- The tool loop is bounded (`src/Sections/Humans.Agent/Services/AgentService.cs:357`); cap-hit
+  forces synthesis (`src/Sections/Humans.Agent/Services/AgentService.cs:403`).
 - A turn never ends with an empty assistant bubble, streamed or stored
-  (`src/Sections/Humans.Agent/Services/AgentService.cs:417`).
+  (`src/Sections/Humans.Agent/Services/AgentService.cs:413`).
 - `route_to_issue` never writes server-side (`src/Sections/Humans.Agent/Services/AgentToolDispatcher.cs:84`).
 - An incomplete preload corpus or community index is served but never cached, and a reload
   publishes nothing unless every fetch succeeded

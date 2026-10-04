@@ -64,22 +64,34 @@ internal sealed class AgentController(
             return;
         }
 
-        Response.StatusCode = StatusCodes.Status200OK;
-        Response.ContentType = "text/event-stream";
-        Response.Headers.CacheControl = "no-cache";
-        Response.Headers.Connection = "keep-alive";
-        await Response.Body.FlushAsync(cancellationToken);
-
         var req = new AgentTurnRequest(
             ConversationId: body.ConversationId ?? Guid.Empty,
             UserId: user.Id,
             Message: body.Message,
             Locale: user.PreferredLanguage);
 
-        await foreach (var token in agent.AskAsync(req, cancellationToken))
+        // Pull the first token before committing the 200: the service checks conversation
+        // ownership on that first step, and once the stream is flushed the status is fixed.
+        await using var tokens = agent.AskAsync(req, cancellationToken).GetAsyncEnumerator(cancellationToken);
+        bool more;
+        try
         {
-            await WriteSse(token, cancellationToken);
+            more = await tokens.MoveNextAsync();
         }
+        catch (UnauthorizedAccessException)
+        {
+            Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+
+        Response.StatusCode = StatusCodes.Status200OK;
+        Response.ContentType = "text/event-stream";
+        Response.Headers.CacheControl = "no-cache";
+        Response.Headers.Connection = "keep-alive";
+        await Response.Body.FlushAsync(cancellationToken);
+
+        for (; more; more = await tokens.MoveNextAsync())
+            await WriteSse(tokens.Current, cancellationToken);
     }
 
     [HttpGet("Conversations")]
