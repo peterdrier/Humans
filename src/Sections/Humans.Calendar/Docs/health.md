@@ -232,4 +232,4 @@ Settled decisions. Later runs should stop re-litigating these.
 |---|---|---|---|
 | 1 | 2026-09-01 | List view rendered all-day and multi-day events wrong; documented-but-unpinned invariants given tests; false crefs and a phantom `OwningTeam` nav cut | peterdrier/Humans#1578 |
 | 2 | 2026-09-19 | Workgroups' contributor named everywhere the set was enumerated as Shifts + Events only; comments describing code that is not there corrected; resolved debt rows and dead prose cut | peterdrier/Humans#1744 |
-| 3 | 2026-10-04 | Guide said editing a series changes only future occurrences and never mentioned the personal feed; target gained the feed-token half; the audit-failure LogCritical pinned | pending |
+| 3 | 2026-10-04 | Guide said editing a series changes only future occurrences and never mentioned the personal feed; target gained the feed-token half; the audit-failure LogCritical pinned | peterdrier/Humans#1898 |
