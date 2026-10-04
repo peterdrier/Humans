@@ -344,47 +344,4 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Brotkrümelnavigation</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Vorschau starten</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Dankesseite ansehen</value></data>
-  <data name="Surveys_PublicSlugTooLong" xml:space="preserve"><value>Die Kennung des öffentlichen Links darf höchstens {0} Zeichen lang sein.</value></data>
-  <data name="Surveys_InformationImagesMax" xml:space="preserve"><value>Ein Informationsblock darf höchstens {0} Bilder enthalten.</value></data>
-  <data name="Surveys_InformationImageFileRequired" xml:space="preserve"><value>Wähle für jede Bildzeile eine Bilddatei aus. Wenn das vorherige Speichern fehlgeschlagen ist, wähle die Datei erneut aus.</value></data>
-  <data name="Surveys_InformationImageEmpty" xml:space="preserve"><value>Das ausgewählte Bild ist leer.</value></data>
-  <data name="Surveys_InformationImageTypeInvalid" xml:space="preserve"><value>Es sind nur JPEG-, PNG- und WebP-Bilder erlaubt.</value></data>
-  <data name="Surveys_InformationImageTooLarge" xml:space="preserve"><value>Jedes Bild eines Informationsblocks muss kleiner als 10 MB sein.</value></data>
-  <data name="Surveys_InformationImageExtensionInvalid" xml:space="preserve"><value>Bilddateinamen müssen auf .jpg, .jpeg, .png oder .webp enden.</value></data>
-  <data name="Surveys_InformationImageNameTooLong" xml:space="preserve"><value>Der Bilddateiname darf höchstens {0} Zeichen lang sein.</value></data>
-  <data name="Surveys_InvitationSubjectSingleLine" xml:space="preserve"><value>Die Betreffzeilen von Umfrageeinladungen müssen einzeilig sein ({0}).</value></data>
-  <data name="Surveys_InvitationSubjectMax" xml:space="preserve"><value>Die Betreffzeilen von Umfrageeinladungen dürfen höchstens {0} Zeichen lang sein ({1}).</value></data>
-  <data name="Surveys_InvitationMessageMax" xml:space="preserve"><value>Die Nachrichten von Umfrageeinladungen dürfen höchstens {0} Zeichen lang sein ({1}).</value></data>
-  <data name="Surveys_InformationContentRequired" xml:space="preserve"><value>Der Informationsblock {0} muss Markdown oder mindestens ein Bild enthalten.</value></data>
-  <data name="Surveys_InformationImageLabelRequired" xml:space="preserve"><value>Jedes Bild im Informationsblock {0} muss eine Beschriftung haben.</value></data>
-  <data name="Surveys_InformationImageAltRequired" xml:space="preserve"><value>Jedes Bild im Informationsblock {0} muss einen Alternativtext haben.</value></data>
-  <data name="Enum_SurveyQuestionType_ShortText" xml:space="preserve"><value>Kurzer Text</value></data>
-  <data name="Enum_SurveyQuestionType_LongText" xml:space="preserve"><value>Langer Text</value></data>
-  <data name="Enum_SurveyQuestionType_Rating" xml:space="preserve"><value>Bewertung</value></data>
-  <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Gitter</value></data>
-  <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Information</value></data>
-  <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Rangfolgenwahl</value></data>
-  <data name="Surveys_GridModeRequired" xml:space="preserve"><value>Für die Gitterfrage {0} muss ein Auswahlmodus gewählt werden.</value></data>
-  <data name="Surveys_GridRowRequired" xml:space="preserve"><value>Die Gitterfrage {0} muss mindestens eine Zeile haben.</value></data>
-  <data name="Surveys_GridColumnCount" xml:space="preserve"><value>Die Gitterfrage {0} muss zwischen einer und fünf Spalten haben.</value></data>
-  <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>Die Rangfolgenfrage {0} muss mindestens zwei Optionen haben.</value></data>
-  <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Eine Auswahl</value></data>
-  <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Mehrere Auswahlmöglichkeiten</value></data>
-  <data name="Surveys_GridRowValuesBlank" xml:space="preserve"><value>Die Zeilenwerte der Gitterfrage {0} dürfen nicht leer sein.</value></data>
-  <data name="Surveys_GridRowValuesUnique" xml:space="preserve"><value>Die Zeilenwerte der Gitterfrage {0} müssen eindeutig sein.</value></data>
-  <data name="Surveys_GridColumnValuesBlank" xml:space="preserve"><value>Die Spaltenwerte der Gitterfrage {0} dürfen nicht leer sein.</value></data>
-  <data name="Surveys_GridColumnValuesUnique" xml:space="preserve"><value>Die Spaltenwerte der Gitterfrage {0} müssen eindeutig sein.</value></data>
-  <data name="Surveys_RankedValuesBlank" xml:space="preserve"><value>Die Optionswerte der Rangfolgenfrage {0} dürfen nicht leer sein.</value></data>
-  <data name="Surveys_RankedValuesUnique" xml:space="preserve"><value>Die Optionswerte der Rangfolgenfrage {0} müssen eindeutig sein.</value></data>
-  <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>Eine Verzweigungsbedingung verweist auf eine Frage, die nicht davor liegt. Betroffene Frage-IDs: {0}.</value></data>
-  <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>Eine Is/IsNot-Verzweigungsklausel hat keine Optionswerte (die Bedingung wäre leer). Betroffene Frage-IDs: {0}.</value></data>
-  <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Gitter-, Rangfolgen- und Informationsfragen können keine Verzweigungsquellen sein. Betroffene Frage-IDs: {0}.</value></data>
-  <data name="Surveys_EditAuthorOnly" xml:space="preserve"><value>Nur die Person, die die Umfrage erstellt hat, darf sie bearbeiten.</value></data>
-  <data name="Surveys_VoteEditLocked" xml:space="preserve"><value>Eine Asociado-Abstimmung kann nach ihrer Öffnung nicht mehr bearbeitet werden.</value></data>
-  <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>Der Asociado-Abstimmungsmodus kann nach Öffnung der Umfrage nicht mehr geändert werden.</value></data>
-  <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Nur die Person, die die Umfrage erstellt hat, darf sie zur Genehmigung einreichen.</value></data>
-  <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Nur eine Umfrage im Entwurfsstatus kann zur Genehmigung eingereicht werden.</value></data>
-  <data name="Surveys_PublicSlugReserved" xml:space="preserve"><value>Der Slug '{0}' ist reserviert.</value></data>
-  <data name="Surveys_AudienceTeamRequired" xml:space="preserve"><value>Für die Zielgruppe Team muss ein Team ausgewählt werden.</value></data>
-  <data name="Surveys_AudienceCutoffRequired" xml:space="preserve"><value>Für die Zielgruppe der seit einem Datum angemeldeten Humans muss ein Stichtag angegeben werden.</value></data>
 </root>

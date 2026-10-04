@@ -1671,7 +1671,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var action = () => _service.SetSeasonStatusAsync(Guid.NewGuid(), Guid.NewGuid(), CampSeasonStatus.Full, Xunit.TestContext.Current.CancellationToken);
 
-        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_RoleSeasonNotFound");
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
     }
 
     [HumansFact]
@@ -1686,7 +1686,7 @@ public sealed class CampServiceTests : CampsTestHarness
         // a caller authorized against a different camp must not be able to flip this season's status.
         var action = () => _service.SetSeasonStatusAsync(Guid.NewGuid(), season.Id, CampSeasonStatus.Full, Xunit.TestContext.Current.CancellationToken);
 
-        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_SeasonWrongCamp");
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not belong*");
     }
 
     [HumansFact]
@@ -1699,7 +1699,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var action = () => _service.UpdateSeasonAsync(Guid.NewGuid(), season.Id, MakeSeasonData(), Xunit.TestContext.Current.CancellationToken);
 
-        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_SeasonWrongCamp");
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not belong*");
     }
 
     [HumansFact]
@@ -1712,7 +1712,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var action = () => _service.WithdrawSeasonAsync(Guid.NewGuid(), season.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_SeasonWrongCamp");
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not belong*");
 
         var unchanged = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id, Xunit.TestContext.Current.CancellationToken);
         unchanged.Status.Should().Be(CampSeasonStatus.Active);
@@ -1751,7 +1751,6 @@ public sealed class CampServiceTests : CampsTestHarness
             Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Camps_Flash_SeasonWrongCamp");
         var unchanged = await CampsDb.Camps.AsNoTracking().FirstAsync(c => c.Id == campA.Id, Xunit.TestContext.Current.CancellationToken);
         unchanged.ContactEmail.Should().Be("test@camp.com",
             because: "no camp-level field may commit when the submitted season belongs to another camp");

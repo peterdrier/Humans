@@ -355,11 +355,6 @@ public class CampControllerTests
             ("RemoveHistoricalName", "Camps_Flash_HistoricalNameWrongCamp"),
             ("DeleteImage", "Camps_Flash_ImageNotFound"),
             ("DeleteImage", "Camps_Flash_ImageWrongCamp"),
-            ("WithdrawSeason", "Camps_Flash_RoleSeasonNotFound"),
-            ("WithdrawSeason", "Camps_Flash_SeasonWrongCamp"),
-            ("WithdrawSeason", "Camps_Flash_SeasonWithdrawRequiresOpen"),
-            ("MarkFull", "Camps_Flash_RoleSeasonNotFound"),
-            ("MarkFull", "Camps_Flash_SeasonWrongCamp"),
         })
         {
             logger.ClearReceivedCalls();
@@ -382,20 +377,9 @@ public class CampControllerTests
                 case "DeleteImage":
                     _camps.DeleteImageAsync(camp.Id, targetId).ThrowsAsync(failure);
                     result = controller.DeleteImage(camp.Slug, targetId); break;
-                case "WithdrawSeason":
-                    _camps.WithdrawSeasonAsync(camp.Id, targetId).ThrowsAsync(failure);
-                    result = controller.Withdraw(camp.Slug, targetId); break;
-                case "MarkFull":
-                    _camps.SetSeasonStatusAsync(camp.Id, targetId, CampSeasonStatus.Full).ThrowsAsync(failure);
-                    result = controller.MarkFull(camp.Slug, targetId); break;
                 default: throw new InvalidOperationException("Unknown test action");
             }
-            (await result).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(action switch
-            {
-                "RemoveHistoricalName" or "DeleteImage" => "Edit",
-                "WithdrawSeason" or "MarkFull" => "Details",
-                _ => "Members"
-            });
+            (await result).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(action is "RemoveHistoricalName" or "DeleteImage" ? "Edit" : "Members");
             var expected = localizer[key];
             expected.ResourceNotFound.Should().BeFalse();
             controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
@@ -576,41 +560,6 @@ public class CampControllerTests
         redirect.ActionName.Should().Be(nameof(CampController.Details));
         redirect.RouteValues!["slug"].Should().Be(camp.Slug);
         controller.TempData[tempDataKey].Should().Be(translated);
-    }
-
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    public async Task Edit_LocalizesScopedUpdateRefusals(string culture)
-    {
-        using var cultureScope = new CultureScope(culture);
-        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
-        var localizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
-        var actorId = Guid.NewGuid();
-        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: actorId);
-        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
-        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUserInfo(actorId)));
-        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
-            .Returns(AuthorizationResult.Success());
-
-        foreach (var key in new[] { "Camps_Flash_RoleSeasonNotFound", "Camps_Flash_SeasonWrongCamp", "Camps_Flash_CampNotFound" })
-        {
-            _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), Arg.Any<CancellationToken>())
-                .Returns(CampUpdateResult.Failure(key));
-            var controller = BuildController(actorId, localizer);
-            var model = new CampEditViewModel { CampId = camp.Id, SeasonId = camp.Seasons[0].Id, Year = 2026 };
-
-            var result = await controller.Edit(camp.Slug, model);
-
-            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
-            var expected = localizer[key];
-            expected.ResourceNotFound.Should().BeFalse();
-            controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
-        }
     }
 
     [HumansFact]

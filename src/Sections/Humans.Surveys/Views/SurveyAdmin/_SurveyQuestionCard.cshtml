@@ -41,7 +41,7 @@
                 <select name="@(prefix).Type" class="form-select form-select-sm question-type">
                     @foreach (var t in Enum.GetValues<SurveyQuestionType>())
                     {
-                        <option value="@t" selected="@(q.Type == t ? "selected" : null)">@Localizer.EnumDisplay(t)</option>
+                        <option value="@t" selected="@(q.Type == t ? "selected" : null)">@t</option>
                     }
                 </select>
             </div>

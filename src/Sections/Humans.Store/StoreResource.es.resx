@@ -107,20 +107,5 @@
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Fianzas devueltas</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Importe a reembolsar</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>Solo se puede emitir la factura cuando el saldo del pedido es cero.</value></data>
-  <data name="Store_Error_QuantityPositive" xml:space="preserve"><value>La cantidad debe ser positiva</value></data>
-  <data name="Store_Error_OrderNotFound" xml:space="preserve"><value>Pedido {0} no encontrado</value></data>
-  <data name="Store_Error_AddLineIssued" xml:space="preserve"><value>No se pueden añadir líneas a un pedido facturado</value></data>
-  <data name="Store_Error_ProductNotFound" xml:space="preserve"><value>Producto {0} no encontrado</value></data>
-  <data name="Store_Error_ProductDeactivated" xml:space="preserve"><value>El producto '{0}' se ha desactivado y ya no se puede pedir</value></data>
-  <data name="Store_Error_LineNotFound" xml:space="preserve"><value>Línea {0} no encontrada</value></data>
-  <data name="Store_Error_LineWrongOrder" xml:space="preserve"><value>La línea {0} no pertenece al pedido {1}</value></data>
-  <data name="Store_Error_RemoveLineIssued" xml:space="preserve"><value>No se pueden eliminar líneas de un pedido facturado</value></data>
-  <data name="Store_Error_CampSeasonNotFound" xml:space="preserve"><value>Temporada del barrio {0} no encontrada.</value></data>
-  <data name="Store_Error_CampOrderExists" xml:space="preserve"><value>La temporada del barrio {0} ya tiene un pedido en Store.</value></data>
-  <data name="Store_Error_PaymentPositive" xml:space="preserve"><value>El importe del pago debe ser mayor que cero.</value></data>
-  <data name="Store_Error_PaymentExceedsBalance" xml:space="preserve"><value>El importe del pago no puede superar el saldo pendiente (EUR {0:0.00}).</value></data>
-  <data name="Store_Error_TeamNotFound" xml:space="preserve"><value>No se ha encontrado el equipo {0}.</value></data>
-  <data name="Store_Error_TeamDepartmentRequired" xml:space="preserve"><value>Los pedidos de equipos están restringidos a departamentos (equipos de primer nivel).</value></data>
-  <data name="Store_Error_TeamOrderExists" xml:space="preserve"><value>El equipo {0} ya tiene un pedido de la tienda para {1}.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Acción</value></data>
 </root>

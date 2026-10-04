@@ -344,47 +344,4 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Navigazione breadcrumb</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Avvia anteprima</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Anteprima dei ringraziamenti</value></data>
-  <data name="Surveys_PublicSlugTooLong" xml:space="preserve"><value>L’identificatore del link pubblico non può superare i {0} caratteri.</value></data>
-  <data name="Surveys_InformationImagesMax" xml:space="preserve"><value>Un blocco informativo può contenere al massimo {0} immagini.</value></data>
-  <data name="Surveys_InformationImageFileRequired" xml:space="preserve"><value>Seleziona un file immagine per ogni riga di immagini. Se un salvataggio precedente non è riuscito, seleziona di nuovo il file.</value></data>
-  <data name="Surveys_InformationImageEmpty" xml:space="preserve"><value>L’immagine selezionata è vuota.</value></data>
-  <data name="Surveys_InformationImageTypeInvalid" xml:space="preserve"><value>Sono consentite solo immagini JPEG, PNG e WebP.</value></data>
-  <data name="Surveys_InformationImageTooLarge" xml:space="preserve"><value>Ogni immagine di un blocco informativo deve essere inferiore a 10 MB.</value></data>
-  <data name="Surveys_InformationImageExtensionInvalid" xml:space="preserve"><value>I nomi dei file immagine devono terminare con .jpg, .jpeg, .png o .webp.</value></data>
-  <data name="Surveys_InformationImageNameTooLong" xml:space="preserve"><value>Il nome del file immagine deve contenere al massimo {0} caratteri.</value></data>
-  <data name="Surveys_InvitationSubjectSingleLine" xml:space="preserve"><value>Gli oggetti delle email di invito ai sondaggi devono occupare una sola riga ({0}).</value></data>
-  <data name="Surveys_InvitationSubjectMax" xml:space="preserve"><value>Gli oggetti delle email di invito ai sondaggi devono contenere al massimo {0} caratteri ({1}).</value></data>
-  <data name="Surveys_InvitationMessageMax" xml:space="preserve"><value>I messaggi delle email di invito ai sondaggi devono contenere al massimo {0} caratteri ({1}).</value></data>
-  <data name="Surveys_InformationContentRequired" xml:space="preserve"><value>Il blocco informativo {0} deve contenere Markdown o almeno un’immagine.</value></data>
-  <data name="Surveys_InformationImageLabelRequired" xml:space="preserve"><value>Ogni immagine del blocco informativo {0} deve avere un’etichetta.</value></data>
-  <data name="Surveys_InformationImageAltRequired" xml:space="preserve"><value>Ogni immagine del blocco informativo {0} deve avere un testo alternativo.</value></data>
-  <data name="Enum_SurveyQuestionType_ShortText" xml:space="preserve"><value>Testo breve</value></data>
-  <data name="Enum_SurveyQuestionType_LongText" xml:space="preserve"><value>Testo lungo</value></data>
-  <data name="Enum_SurveyQuestionType_Rating" xml:space="preserve"><value>Valutazione</value></data>
-  <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Griglia</value></data>
-  <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Informazioni</value></data>
-  <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Scelta classificata</value></data>
-  <data name="Surveys_GridModeRequired" xml:space="preserve"><value>La domanda a griglia {0} deve avere una modalità di selezione.</value></data>
-  <data name="Surveys_GridRowRequired" xml:space="preserve"><value>La domanda a griglia {0} deve avere almeno una riga.</value></data>
-  <data name="Surveys_GridColumnCount" xml:space="preserve"><value>La domanda a griglia {0} deve avere da una a cinque colonne.</value></data>
-  <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>La domanda a scelta classificata {0} deve avere almeno due opzioni.</value></data>
-  <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Una scelta</value></data>
-  <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Scelte multiple</value></data>
-  <data name="Surveys_GridRowValuesBlank" xml:space="preserve"><value>I valori delle righe della domanda a griglia {0} non possono essere vuoti.</value></data>
-  <data name="Surveys_GridRowValuesUnique" xml:space="preserve"><value>I valori delle righe della domanda a griglia {0} devono essere univoci.</value></data>
-  <data name="Surveys_GridColumnValuesBlank" xml:space="preserve"><value>I valori delle colonne della domanda a griglia {0} non possono essere vuoti.</value></data>
-  <data name="Surveys_GridColumnValuesUnique" xml:space="preserve"><value>I valori delle colonne della domanda a griglia {0} devono essere univoci.</value></data>
-  <data name="Surveys_RankedValuesBlank" xml:space="preserve"><value>I valori delle opzioni della domanda a scelta classificata {0} non possono essere vuoti.</value></data>
-  <data name="Surveys_RankedValuesUnique" xml:space="preserve"><value>I valori delle opzioni della domanda a scelta classificata {0} devono essere univoci.</value></data>
-  <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>Una condizione di ramificazione fa riferimento a una domanda che non è strettamente precedente. ID delle domande interessate: {0}.</value></data>
-  <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>Una clausola Is/IsNot di ramificazione non ha valori di opzione (la condizione sarebbe vuota). ID delle domande interessate: {0}.</value></data>
-  <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Le domande a griglia, a scelta classificata e informative non possono essere fonti di ramificazione. ID delle domande interessate: {0}.</value></data>
-  <data name="Surveys_EditAuthorOnly" xml:space="preserve"><value>Solo chi ha creato il sondaggio può modificarlo.</value></data>
-  <data name="Surveys_VoteEditLocked" xml:space="preserve"><value>Un voto degli Asociados non può essere modificato dopo la sua apertura.</value></data>
-  <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>La modalità di voto degli Asociados non può cambiare dopo l’apertura del sondaggio.</value></data>
-  <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Solo chi ha creato il sondaggio può inviarlo per l'approvazione.</value></data>
-  <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Solo un sondaggio in bozza può essere inviato per l’approvazione.</value></data>
-  <data name="Surveys_PublicSlugReserved" xml:space="preserve"><value>Lo slug '{0}' è riservato.</value></data>
-  <data name="Surveys_AudienceTeamRequired" xml:space="preserve"><value>È necessario selezionare un team per il pubblico Team.</value></data>
-  <data name="Surveys_AudienceCutoffRequired" xml:space="preserve"><value>È necessaria una data iniziale per il pubblico di chi ha effettuato l’accesso a partire da una data.</value></data>
 </root>

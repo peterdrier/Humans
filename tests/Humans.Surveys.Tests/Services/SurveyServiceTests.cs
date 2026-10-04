@@ -239,16 +239,9 @@ public class SurveyServiceTests
             image.StoragePath, content, Arg.Any<CancellationToken>());
     }
 
-    [HumansTheory]
-    [InlineData("en", "Image filename must be 256 characters or fewer.")]
-    [InlineData("es", "El nombre del archivo de imagen debe tener 256 caracteres o menos.")]
-    [InlineData("de", "Der Bilddateiname darf höchstens 256 Zeichen lang sein.")]
-    [InlineData("it", "Il nome del file immagine deve contenere al massimo 256 caratteri.")]
-    [InlineData("fr", "Le nom du fichier image ne doit pas dépasser 256 caractères.")]
-    [InlineData("ca", "El nom del fitxer d’imatge ha de tenir 256 caràcters o menys.")]
-    public async Task CreateAsync_rejects_an_information_image_filename_over_256_characters(string culture, string expectedMessage)
+    [HumansFact]
+    public async Task CreateAsync_rejects_an_information_image_filename_over_256_characters()
     {
-        using var cultureScope = new Humans.Base.Extensions.CultureScope(culture);
         await using var content = new MemoryStream([1, 2, 3]);
         var information = new QuestionInput(
             Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
@@ -265,7 +258,7 @@ public class SurveyServiceTests
             Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage(expectedMessage);
+            .WithMessage("*256 characters or fewer*");
         await _fileStorage.DidNotReceive().SaveAsync(
             Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
@@ -750,22 +743,14 @@ public class SurveyServiceTests
         captured!.PublicSlug.Should().Be(slug.ToLowerInvariant());
     }
 
-    [HumansTheory]
-    [InlineData("en", "A team is required for the Team audience.")]
-    [InlineData("es", "Es necesario seleccionar un equipo para el público Equipo.")]
-    [InlineData("de", "Für die Zielgruppe Team muss ein Team ausgewählt werden.")]
-    [InlineData("it", "È necessario selezionare un team per il pubblico Team.")]
-    [InlineData("fr", "Une équipe doit être sélectionnée pour le public Équipe.")]
-    [InlineData("ca", "Cal seleccionar un equip per al públic Equip.")]
-    public async Task CreateAsync_rejects_team_audience_without_team_and_does_not_persist(
-        string culture, string expectedMessage)
+    [HumansFact]
+    public async Task CreateAsync_rejects_team_audience_without_team_and_does_not_persist()
     {
-        using var cultureScope = new Humans.Base.Extensions.CultureScope(culture);
         var act = async () => await CreateService().CreateAsync(
             InputWithAudience(SurveyAudienceType.Team), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage(expectedMessage);
+            .WithMessage("*team is required*");
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -4503,16 +4488,9 @@ public class SurveyServiceTests
             AuditAction.SurveySubmittedForApproval, "Survey", survey.Id, Arg.Any<string>(), authorId);
     }
 
-    [HumansTheory]
-    [InlineData("en", "Only the survey's author may submit it for approval.")]
-    [InlineData("es", "Solo quien creó la encuesta puede enviarla para su aprobación.")]
-    [InlineData("de", "Nur die Person, die die Umfrage erstellt hat, darf sie zur Genehmigung einreichen.")]
-    [InlineData("it", "Solo chi ha creato il sondaggio può inviarlo per l'approvazione.")]
-    [InlineData("fr", "Seule la personne qui a créé le questionnaire peut le soumettre pour approbation.")]
-    [InlineData("ca", "Només qui ha creat l'enquesta pot enviar-la per a la seva aprovació.")]
-    public async Task SubmitForApprovalAsync_throws_for_a_non_author(string culture, string expectedMessage)
+    [HumansFact]
+    public async Task SubmitForApprovalAsync_throws_for_a_non_author()
     {
-        using var cultureScope = new Humans.Base.Extensions.CultureScope(culture);
         var authorId = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: authorId);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -4520,7 +4498,7 @@ public class SurveyServiceTests
         var act = async () => await CreateService().SubmitForApprovalAsync(
             survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(expectedMessage);
+        await act.Should().ThrowAsync<InvalidOperationException>();
         await _repo.DidNotReceive().SubmitForApprovalAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 

@@ -99,20 +99,5 @@
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Depositi restituiti</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Importo da rimborsare</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>La fattura può essere emessa solo quando il saldo dell'ordine è zero.</value></data>
-  <data name="Store_Error_QuantityPositive" xml:space="preserve"><value>La quantità deve essere positiva</value></data>
-  <data name="Store_Error_OrderNotFound" xml:space="preserve"><value>Ordine {0} non trovato</value></data>
-  <data name="Store_Error_AddLineIssued" xml:space="preserve"><value>Non è possibile aggiungere righe a un ordine fatturato</value></data>
-  <data name="Store_Error_ProductNotFound" xml:space="preserve"><value>Prodotto {0} non trovato</value></data>
-  <data name="Store_Error_ProductDeactivated" xml:space="preserve"><value>Il prodotto '{0}' è stato disattivato e non può più essere ordinato</value></data>
-  <data name="Store_Error_LineNotFound" xml:space="preserve"><value>Riga {0} non trovata</value></data>
-  <data name="Store_Error_LineWrongOrder" xml:space="preserve"><value>La riga {0} non appartiene all'ordine {1}</value></data>
-  <data name="Store_Error_RemoveLineIssued" xml:space="preserve"><value>Non è possibile rimuovere righe da un ordine fatturato</value></data>
-  <data name="Store_Error_CampSeasonNotFound" xml:space="preserve"><value>Stagione del barrio {0} non trovata.</value></data>
-  <data name="Store_Error_CampOrderExists" xml:space="preserve"><value>La stagione del barrio {0} ha già un ordine in Store.</value></data>
-  <data name="Store_Error_PaymentPositive" xml:space="preserve"><value>L’importo del pagamento deve essere maggiore di zero.</value></data>
-  <data name="Store_Error_PaymentExceedsBalance" xml:space="preserve"><value>L’importo del pagamento non può superare il saldo residuo (EUR {0:0.00}).</value></data>
-  <data name="Store_Error_TeamNotFound" xml:space="preserve"><value>Team {0} non trovato.</value></data>
-  <data name="Store_Error_TeamDepartmentRequired" xml:space="preserve"><value>Gli ordini dei team sono riservati ai dipartimenti (team di primo livello).</value></data>
-  <data name="Store_Error_TeamOrderExists" xml:space="preserve"><value>Il team {0} ha già un ordine del negozio per il {1}.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Azione</value></data>
 </root>

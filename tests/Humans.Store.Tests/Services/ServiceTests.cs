@@ -10,7 +10,6 @@ using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
 using Humans.Base.Enums;
-using Humans.Base.Extensions;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -586,21 +585,14 @@ public class ServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    [HumansTheory]
-    [InlineData("en", "Qty must be positive")]
-    [InlineData("es", "La cantidad debe ser positiva")]
-    [InlineData("de", "Die Menge muss positiv sein")]
-    [InlineData("it", "La quantità deve essere positiva")]
-    [InlineData("fr", "La quantité doit être positive")]
-    [InlineData("ca", "La quantitat ha de ser positiva")]
-    public async Task AddLineWithResultAsync_returns_localized_quantity_validation(string culture, string message)
+    [HumansFact]
+    public async Task AddLineWithResultAsync_returns_failure_for_expected_validation()
     {
-        using var scope = new CultureScope(culture);
         var result = await _service.AddLineWithResultAsync(
             Guid.NewGuid(), Guid.NewGuid(), 0, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Be(message);
+        result.ErrorMessage.Should().Contain("Qty must be positive");
     }
 
     [HumansFact]
@@ -1143,7 +1135,7 @@ public class ServiceTests
         var act = () => _service.CreateStripeCheckoutSessionAsync(order, 20m, "https://humans.test/order", TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Payment is disabled while a payment is pending settlement.");
+            .WithMessage("A payment on this order is pending settlement*");
         await _stripeService.DidNotReceive().CreateCheckoutSessionAsync(
             Arg.Any<Guid>(),
             Arg.Any<decimal>(),
@@ -1154,23 +1146,16 @@ public class ServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [HumansTheory]
-    [InlineData("en", "Payment amount cannot exceed the outstanding balance (EUR 10.00).")]
-    [InlineData("es", "El importe del pago no puede superar el saldo pendiente (EUR 10,00).")]
-    [InlineData("de", "Der Zahlungsbetrag darf den offenen Saldo nicht überschreiten (EUR 10,00).")]
-    [InlineData("it", "L’importo del pagamento non può superare il saldo residuo (EUR 10,00).")]
-    [InlineData("fr", "Le montant du paiement ne peut pas dépasser le solde dû (EUR 10,00).")]
-    [InlineData("ca", "L’import del pagament no pot superar el saldo pendent (EUR 10,00).")]
-    public async Task CreateStripeCheckoutSessionAsync_rejects_amount_above_balance_in_each_culture(string culture, string message)
+    [HumansFact]
+    public async Task CreateStripeCheckoutSessionAsync_rejects_amount_above_balance()
     {
-        using var scope = new CultureScope(culture);
         var order = MakeOrderDto(balanceEur: 10m);
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
 
         var act = () => _service.CreateStripeCheckoutSessionAsync(order, 10.01m, "https://humans.test/order", TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage(message);
+            .WithMessage("Payment amount cannot exceed the outstanding balance*");
         await _stripeService.DidNotReceive().CreateCheckoutSessionAsync(
             Arg.Any<Guid>(),
             Arg.Any<decimal>(),
@@ -1190,7 +1175,7 @@ public class ServiceTests
         var act = () => _service.CreateStripeCheckoutSessionAsync(order, 5m, "https://humans.test/order", TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Stripe checkout is not configured for this environment.");
+            .WithMessage("Stripe is not configured*");
     }
 
     [HumansFact]

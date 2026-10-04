@@ -344,47 +344,4 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Commencer l’aperçu</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Aperçu du remerciement</value></data>
-  <data name="Surveys_PublicSlugTooLong" xml:space="preserve"><value>L’identifiant du lien public ne peut pas dépasser {0} caractères.</value></data>
-  <data name="Surveys_InformationImagesMax" xml:space="preserve"><value>Un bloc d’information peut contenir au maximum {0} images.</value></data>
-  <data name="Surveys_InformationImageFileRequired" xml:space="preserve"><value>Sélectionnez un fichier image pour chaque ligne d’images. Si un enregistrement précédent a échoué, sélectionnez à nouveau le fichier.</value></data>
-  <data name="Surveys_InformationImageEmpty" xml:space="preserve"><value>L’image sélectionnée est vide.</value></data>
-  <data name="Surveys_InformationImageTypeInvalid" xml:space="preserve"><value>Seules les images JPEG, PNG et WebP sont autorisées.</value></data>
-  <data name="Surveys_InformationImageTooLarge" xml:space="preserve"><value>Chaque image d’un bloc d’information doit faire moins de 10 Mo.</value></data>
-  <data name="Surveys_InformationImageExtensionInvalid" xml:space="preserve"><value>Les noms des fichiers image doivent se terminer par .jpg, .jpeg, .png ou .webp.</value></data>
-  <data name="Surveys_InformationImageNameTooLong" xml:space="preserve"><value>Le nom du fichier image ne doit pas dépasser {0} caractères.</value></data>
-  <data name="Surveys_InvitationSubjectSingleLine" xml:space="preserve"><value>Les objets des emails d’invitation aux questionnaires doivent tenir sur une seule ligne ({0}).</value></data>
-  <data name="Surveys_InvitationSubjectMax" xml:space="preserve"><value>Les objets des emails d’invitation aux questionnaires ne doivent pas dépasser {0} caractères ({1}).</value></data>
-  <data name="Surveys_InvitationMessageMax" xml:space="preserve"><value>Les messages des emails d’invitation aux questionnaires ne doivent pas dépasser {0} caractères ({1}).</value></data>
-  <data name="Surveys_InformationContentRequired" xml:space="preserve"><value>Le bloc d’information {0} doit contenir du Markdown ou au moins une image.</value></data>
-  <data name="Surveys_InformationImageLabelRequired" xml:space="preserve"><value>Chaque image du bloc d’information {0} doit avoir un libellé.</value></data>
-  <data name="Surveys_InformationImageAltRequired" xml:space="preserve"><value>Chaque image du bloc d’information {0} doit avoir un texte alternatif.</value></data>
-  <data name="Enum_SurveyQuestionType_ShortText" xml:space="preserve"><value>Texte court</value></data>
-  <data name="Enum_SurveyQuestionType_LongText" xml:space="preserve"><value>Texte long</value></data>
-  <data name="Enum_SurveyQuestionType_Rating" xml:space="preserve"><value>Note</value></data>
-  <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Grille</value></data>
-  <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Information</value></data>
-  <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Choix classé</value></data>
-  <data name="Surveys_GridModeRequired" xml:space="preserve"><value>La question en grille {0} doit avoir un mode de sélection.</value></data>
-  <data name="Surveys_GridRowRequired" xml:space="preserve"><value>La question en grille {0} doit avoir au moins une ligne.</value></data>
-  <data name="Surveys_GridColumnCount" xml:space="preserve"><value>La question en grille {0} doit avoir entre une et cinq colonnes.</value></data>
-  <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>La question à choix classé {0} doit avoir au moins deux options.</value></data>
-  <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Un seul choix</value></data>
-  <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Choix multiples</value></data>
-  <data name="Surveys_GridRowValuesBlank" xml:space="preserve"><value>Les valeurs des lignes de la question en grille {0} ne doivent pas être vides.</value></data>
-  <data name="Surveys_GridRowValuesUnique" xml:space="preserve"><value>Les valeurs des lignes de la question en grille {0} doivent être uniques.</value></data>
-  <data name="Surveys_GridColumnValuesBlank" xml:space="preserve"><value>Les valeurs des colonnes de la question en grille {0} ne doivent pas être vides.</value></data>
-  <data name="Surveys_GridColumnValuesUnique" xml:space="preserve"><value>Les valeurs des colonnes de la question en grille {0} doivent être uniques.</value></data>
-  <data name="Surveys_RankedValuesBlank" xml:space="preserve"><value>Les valeurs des options de la question à choix classé {0} ne doivent pas être vides.</value></data>
-  <data name="Surveys_RankedValuesUnique" xml:space="preserve"><value>Les valeurs des options de la question à choix classé {0} doivent être uniques.</value></data>
-  <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>Une condition de branchement fait référence à une question qui ne la précède pas strictement. Identifiants des questions concernées : {0}.</value></data>
-  <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>Une clause Is/IsNot de branchement n’a pas de valeurs d’option (la condition serait vide). Identifiants des questions concernées : {0}.</value></data>
-  <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Les questions en grille, à choix classé et informatives ne peuvent pas être des sources de branchement. Identifiants des questions concernées : {0}.</value></data>
-  <data name="Surveys_EditAuthorOnly" xml:space="preserve"><value>Seule la personne qui a créé le questionnaire peut le modifier.</value></data>
-  <data name="Surveys_VoteEditLocked" xml:space="preserve"><value>Un vote des Asociados ne peut plus être modifié après son ouverture.</value></data>
-  <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>Le mode de vote des Asociados ne peut plus changer après l’ouverture du questionnaire.</value></data>
-  <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Seule la personne qui a créé le questionnaire peut le soumettre pour approbation.</value></data>
-  <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Seul un questionnaire à l’état de brouillon peut être soumis pour approbation.</value></data>
-  <data name="Surveys_PublicSlugReserved" xml:space="preserve"><value>Le slug '{0}' est réservé.</value></data>
-  <data name="Surveys_AudienceTeamRequired" xml:space="preserve"><value>Une équipe doit être sélectionnée pour le public Équipe.</value></data>
-  <data name="Surveys_AudienceCutoffRequired" xml:space="preserve"><value>Une date de début est requise pour le public des personnes connectées depuis une date.</value></data>
 </root>

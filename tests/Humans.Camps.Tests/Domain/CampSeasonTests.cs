@@ -154,7 +154,7 @@ public class CampSeasonTests
         var action = () => season.Withdraw(Now);
 
         action.Should().Throw<InvalidOperationException>()
-            .WithMessage("Camps_Flash_SeasonWithdrawRequiresOpen");
+            .WithMessage($"Cannot withdraw a season with status {source}.");
     }
 
     [HumansTheory]

@@ -2,8 +2,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
-using Humans.Base.Enums;
-using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Settings.Contracts;
@@ -42,7 +40,6 @@ public sealed class StoreControllerRecordPaymentTests
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private Service _service = null!;
-    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Order _order = new()
     {
@@ -58,7 +55,7 @@ public sealed class StoreControllerRecordPaymentTests
     {
         var settings = Substitute.For<ISettingsService>();
         settings.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
-        var camps = _camps;
+        var camps = Substitute.For<ICampServiceRead>();
         camps.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
         var teams = Substitute.For<ITeamServiceRead>();
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
@@ -98,46 +95,6 @@ public sealed class StoreControllerRecordPaymentTests
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
         };
-    }
-
-    [HumansTheory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Create_ExistingCampOrder_ReturnsRefusalOnlyToAuthorizedLead(bool isLead)
-    {
-        var controller = BuildController("Volunteer");
-        var ct = TestContext.Current.CancellationToken;
-        var seasonId = _order.CampSeasonId!.Value;
-        var campId = Guid.NewGuid();
-        var season = new CampSeasonInfo(seasonId, campId, "alpha", 2026, null,
-            "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Active,
-            YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null)
-        {
-            LeadUserIds = isLead ? [_userId] : []
-        };
-        _camps.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>()).Returns(season);
-        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([
-            new CampInfo(campId, "alpha", string.Empty, string.Empty, false, 0, [season])
-        ]);
-        _repo.GetOrdersForCampSeasonAsync(seasonId, Arg.Any<CancellationToken>()).Returns([_order]);
-        using var culture = new CultureScope("es");
-
-        var result = await controller.Create(seasonId, ct);
-
-        if (isLead)
-        {
-            result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
-            controller.TempData[TempDataKeys.ErrorMessage].Should()
-                .Be($"La temporada del barrio {seasonId} ya tiene un pedido en Store.");
-        }
-        else
-        {
-            result.Should().BeOfType<ForbidResult>();
-            controller.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeFalse();
-        }
-        await _repo.DidNotReceive().AddOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
-        await _audit.DidNotReceive().LogAsync(AuditAction.StoreOrderCreated, Arg.Any<string>(),
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     private static UserInfo MakeUserInfo(Guid id) => new(

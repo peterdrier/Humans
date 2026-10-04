@@ -99,20 +99,5 @@
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Cautions restituées</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Montant à rembourser</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>La facture ne peut être émise que lorsque le solde de la commande est nul.</value></data>
-  <data name="Store_Error_QuantityPositive" xml:space="preserve"><value>La quantité doit être positive</value></data>
-  <data name="Store_Error_OrderNotFound" xml:space="preserve"><value>Commande {0} introuvable</value></data>
-  <data name="Store_Error_AddLineIssued" xml:space="preserve"><value>Impossible d’ajouter des lignes à une commande facturée</value></data>
-  <data name="Store_Error_ProductNotFound" xml:space="preserve"><value>Produit {0} introuvable</value></data>
-  <data name="Store_Error_ProductDeactivated" xml:space="preserve"><value>Le produit '{0}' a été désactivé et ne peut plus être commandé</value></data>
-  <data name="Store_Error_LineNotFound" xml:space="preserve"><value>Ligne {0} introuvable</value></data>
-  <data name="Store_Error_LineWrongOrder" xml:space="preserve"><value>La ligne {0} n’appartient pas à la commande {1}</value></data>
-  <data name="Store_Error_RemoveLineIssued" xml:space="preserve"><value>Impossible de supprimer des lignes d’une commande facturée</value></data>
-  <data name="Store_Error_CampSeasonNotFound" xml:space="preserve"><value>Saison du camp {0} introuvable.</value></data>
-  <data name="Store_Error_CampOrderExists" xml:space="preserve"><value>La saison du camp {0} a déjà une commande dans Store.</value></data>
-  <data name="Store_Error_PaymentPositive" xml:space="preserve"><value>Le montant du paiement doit être supérieur à zéro.</value></data>
-  <data name="Store_Error_PaymentExceedsBalance" xml:space="preserve"><value>Le montant du paiement ne peut pas dépasser le solde dû (EUR {0:0.00}).</value></data>
-  <data name="Store_Error_TeamNotFound" xml:space="preserve"><value>L'équipe {0} est introuvable.</value></data>
-  <data name="Store_Error_TeamDepartmentRequired" xml:space="preserve"><value>Les commandes d’équipe sont réservées aux départements (équipes de premier niveau).</value></data>
-  <data name="Store_Error_TeamOrderExists" xml:space="preserve"><value>L'équipe {0} a déjà une commande de la boutique pour {1}.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Action</value></data>
 </root>

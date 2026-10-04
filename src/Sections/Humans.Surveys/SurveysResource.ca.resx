@@ -344,47 +344,4 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Navegació de ruta</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Inicia la previsualització</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Previsualitza l’agraïment</value></data>
-  <data name="Surveys_PublicSlugTooLong" xml:space="preserve"><value>L’identificador de l’enllaç públic no pot superar els {0} caràcters.</value></data>
-  <data name="Surveys_InformationImagesMax" xml:space="preserve"><value>Un bloc informatiu pot contenir com a màxim {0} imatges.</value></data>
-  <data name="Surveys_InformationImageFileRequired" xml:space="preserve"><value>Selecciona un fitxer d’imatge per a cada fila d’imatges. Si un desament anterior ha fallat, torna a seleccionar el fitxer.</value></data>
-  <data name="Surveys_InformationImageEmpty" xml:space="preserve"><value>La imatge seleccionada és buida.</value></data>
-  <data name="Surveys_InformationImageTypeInvalid" xml:space="preserve"><value>Només es permeten imatges JPEG, PNG i WebP.</value></data>
-  <data name="Surveys_InformationImageTooLarge" xml:space="preserve"><value>Cada imatge d’un bloc informatiu ha d’ocupar menys de 10 MB.</value></data>
-  <data name="Surveys_InformationImageExtensionInvalid" xml:space="preserve"><value>Els noms dels fitxers d’imatge han d’acabar en .jpg, .jpeg, .png o .webp.</value></data>
-  <data name="Surveys_InformationImageNameTooLong" xml:space="preserve"><value>El nom del fitxer d’imatge ha de tenir {0} caràcters o menys.</value></data>
-  <data name="Surveys_InvitationSubjectSingleLine" xml:space="preserve"><value>Els assumptes dels correus d’invitació a enquestes han de tenir una sola línia ({0}).</value></data>
-  <data name="Surveys_InvitationSubjectMax" xml:space="preserve"><value>Els assumptes dels correus d’invitació a enquestes han de tenir {0} caràcters o menys ({1}).</value></data>
-  <data name="Surveys_InvitationMessageMax" xml:space="preserve"><value>Els missatges dels correus d’invitació a enquestes han de tenir {0} caràcters o menys ({1}).</value></data>
-  <data name="Surveys_InformationContentRequired" xml:space="preserve"><value>El bloc informatiu {0} ha de contenir Markdown o com a mínim una imatge.</value></data>
-  <data name="Surveys_InformationImageLabelRequired" xml:space="preserve"><value>Cada imatge del bloc informatiu {0} ha de tenir una etiqueta.</value></data>
-  <data name="Surveys_InformationImageAltRequired" xml:space="preserve"><value>Cada imatge del bloc informatiu {0} ha de tenir text alternatiu.</value></data>
-  <data name="Enum_SurveyQuestionType_ShortText" xml:space="preserve"><value>Text curt</value></data>
-  <data name="Enum_SurveyQuestionType_LongText" xml:space="preserve"><value>Text llarg</value></data>
-  <data name="Enum_SurveyQuestionType_Rating" xml:space="preserve"><value>Valoració</value></data>
-  <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Graella</value></data>
-  <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Informació</value></data>
-  <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Vot classificat</value></data>
-  <data name="Surveys_GridModeRequired" xml:space="preserve"><value>La pregunta de graella {0} ha de tenir un mode de selecció.</value></data>
-  <data name="Surveys_GridRowRequired" xml:space="preserve"><value>La pregunta de graella {0} ha de tenir com a mínim una fila.</value></data>
-  <data name="Surveys_GridColumnCount" xml:space="preserve"><value>La pregunta de graella {0} ha de tenir entre una i cinc columnes.</value></data>
-  <data name="Surveys_RankedOptionsRequired" xml:space="preserve"><value>La pregunta de vot classificat {0} ha de tenir com a mínim dues opcions.</value></data>
-  <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Una opció</value></data>
-  <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Diverses opcions</value></data>
-  <data name="Surveys_GridRowValuesBlank" xml:space="preserve"><value>Els valors de les files de la pregunta de graella {0} no poden estar buits.</value></data>
-  <data name="Surveys_GridRowValuesUnique" xml:space="preserve"><value>Els valors de les files de la pregunta de graella {0} han de ser únics.</value></data>
-  <data name="Surveys_GridColumnValuesBlank" xml:space="preserve"><value>Els valors de les columnes de la pregunta de graella {0} no poden estar buits.</value></data>
-  <data name="Surveys_GridColumnValuesUnique" xml:space="preserve"><value>Els valors de les columnes de la pregunta de graella {0} han de ser únics.</value></data>
-  <data name="Surveys_RankedValuesBlank" xml:space="preserve"><value>Els valors de les opcions de la pregunta de vot classificat {0} no poden estar buits.</value></data>
-  <data name="Surveys_RankedValuesUnique" xml:space="preserve"><value>Els valors de les opcions de la pregunta de vot classificat {0} han de ser únics.</value></data>
-  <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>Una condició de ramificació fa referència a una pregunta que no és estrictament anterior. Identificadors de les preguntes afectades: {0}.</value></data>
-  <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>Una clàusula Is/IsNot de ramificació no té valors d’opció (la condició seria buida). Identificadors de les preguntes afectades: {0}.</value></data>
-  <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Les preguntes de graella, vot classificat i informació no poden ser fonts de ramificació. Identificadors de les preguntes afectades: {0}.</value></data>
-  <data name="Surveys_EditAuthorOnly" xml:space="preserve"><value>Només qui ha creat l'enquesta pot editar-la.</value></data>
-  <data name="Surveys_VoteEditLocked" xml:space="preserve"><value>Una votació dels Asociados no es pot editar un cop oberta.</value></data>
-  <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>El mode de votació dels Asociados no es pot canviar un cop oberta l'enquesta.</value></data>
-  <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Només qui ha creat l'enquesta pot enviar-la per a la seva aprovació.</value></data>
-  <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Només una enquesta en esborrany pot enviar-se per a la seva aprovació.</value></data>
-  <data name="Surveys_PublicSlugReserved" xml:space="preserve"><value>El slug '{0}' està reservat.</value></data>
-  <data name="Surveys_AudienceTeamRequired" xml:space="preserve"><value>Cal seleccionar un equip per al públic Equip.</value></data>
-  <data name="Surveys_AudienceCutoffRequired" xml:space="preserve"><value>Cal una data d'inici per al públic de qui s'ha connectat des d'una data.</value></data>
 </root>

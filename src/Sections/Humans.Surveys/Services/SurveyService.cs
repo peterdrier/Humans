@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Resources;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
@@ -43,7 +41,6 @@ internal sealed class SurveyService(
     internal const string AuthoredSurveys = "AuthoredSurveys";
     internal const string SurveyInvitations = "SurveyInvitations";
 
-    private static readonly ResourceManager ErrorResources = new(typeof(SurveysResource));
     private const int PublicSlugMaxLength = 80;
     private const int InvitationEmailSubjectMaxLength = 200;
     private const int InvitationEmailMessageMaxLength = 4000;
@@ -261,19 +258,19 @@ internal sealed class SurveyService(
         // The controller's resource handler says the same thing before rendering a button; this is
         // the enforcing copy, so an edit refused there is refused here too whoever the caller is.
         if (!viewer.IsBoardOrAdmin && existing.CreatedByUserId != actorUserId)
-            throw new InvalidOperationException(ErrorMessage("Surveys_EditAuthorOnly"));
+            throw new InvalidOperationException("Only the survey's author may edit it.");
         if (existing.IsAsociadoVote == true
             && existing.Status != SurveyStatus.Draft
             && !allowRankedAvailabilityChanges)
         {
             throw new InvalidOperationException(
-                ErrorMessage("Surveys_VoteEditLocked"));
+                "An Asociado vote cannot be edited after it has opened.");
         }
         if (existing.Status != SurveyStatus.Draft
             && (existing.IsAsociadoVote == true) != input.IsAsociadoVote)
         {
             throw new InvalidOperationException(
-                ErrorMessage("Surveys_VoteModeLocked"));
+                "Asociado vote mode cannot change after the survey has opened.");
         }
         var publicSlug = PreparePublicSlugForWrite(input.PublicSlug);
         var prepared = await PrepareInformationImagesAsync(surveyId, input, existing, ct);
@@ -437,7 +434,7 @@ internal sealed class SurveyService(
         if (detail.Editable.IsAsociadoVote && detail.Status != SurveyStatus.Draft)
         {
             throw new InvalidOperationException(
-                ErrorMessage("Surveys_VoteEditLocked"));
+                "An Asociado vote cannot be edited after it has opened.");
         }
         var e = detail.Editable;
         var source = e.DefaultCulture;
@@ -618,9 +615,9 @@ internal sealed class SurveyService(
         var survey = await repo.GetByIdAsync(surveyId, ct)
             ?? throw new InvalidOperationException("Survey not found.");
         if (survey.CreatedByUserId != actorUserId)
-            throw new InvalidOperationException(ErrorMessage("Surveys_SubmitAuthorOnly"));
+            throw new InvalidOperationException("Only the survey's author may submit it for approval.");
         if (survey.Status != SurveyStatus.Draft)
-            throw new InvalidOperationException(ErrorMessage("Surveys_SubmitDraftOnly"));
+            throw new InvalidOperationException("Only a Draft survey can be submitted for approval.");
 
         var now = clock.GetCurrentInstant();
         await repo.SubmitForApprovalAsync(surveyId, now, ct);
@@ -2434,9 +2431,9 @@ internal sealed class SurveyService(
         if (!Enum.IsDefined(type.Value))
             return "The selected survey audience is not supported.";
         if (type == SurveyAudienceType.Team && teamId is null)
-            return ErrorMessage("Surveys_AudienceTeamRequired");
+            return "A team is required for the Team audience.";
         if (type == SurveyAudienceType.LoggedInSince && loggedInSince is null)
-            return ErrorMessage("Surveys_AudienceCutoffRequired");
+            return "A cutoff date is required for the Logged in since audience.";
         return null;
     }
 
@@ -2456,25 +2453,25 @@ internal sealed class SurveyService(
         if (!string.IsNullOrEmpty(multilineSubject.Key))
         {
             throw new InvalidOperationException(
-                ErrorMessage("Surveys_InvitationSubjectSingleLine", multilineSubject.Key));
+                $"Survey invitation email subjects must be a single line ({multilineSubject.Key}).");
         }
 
         ValidateLocalizedLength(
             subject,
             InvitationEmailSubjectMaxLength,
-            "Surveys_InvitationSubjectMax");
+            "Survey invitation email subjects");
         ValidateLocalizedLength(
             message,
             InvitationEmailMessageMaxLength,
-            "Surveys_InvitationMessageMax");
+            "Survey invitation email messages");
 
-        static void ValidateLocalizedLength(LocalizedText text, int maxLength, string resourceKey)
+        static void ValidateLocalizedLength(LocalizedText text, int maxLength, string description)
         {
             var offender = text.Values.FirstOrDefault(pair => pair.Value.Length > maxLength);
             if (!string.IsNullOrEmpty(offender.Key))
             {
                 throw new InvalidOperationException(
-                    ErrorMessage(resourceKey, maxLength, offender.Key));
+                    $"{description} must be {maxLength} characters or fewer ({offender.Key}).");
             }
         }
     }
@@ -2511,7 +2508,7 @@ internal sealed class SurveyService(
                 if (requestedImages.Count > MaxInformationImages)
                 {
                     throw new InvalidOperationException(
-                        ErrorMessage("Surveys_InformationImagesMax", MaxInformationImages));
+                        $"An Information item can have at most {MaxInformationImages} images.");
                 }
 
                 var preparedImages = new List<InformationImageInput>(requestedImages.Count);
@@ -2552,7 +2549,8 @@ internal sealed class SurveyService(
                     }
 
                     throw new InvalidOperationException(
-                        ErrorMessage("Surveys_InformationImageFileRequired"));
+                        "Select an image file for every image row. " +
+                        "If a previous save failed, select the file again.");
                 }
 
                 preparedQuestions.Add(question with
@@ -2586,25 +2584,25 @@ internal sealed class SurveyService(
         var fileName = DisplayFileName(upload.FileName);
         if (upload.Length <= 0)
         {
-            throw new InvalidOperationException(ErrorMessage("Surveys_InformationImageEmpty"));
+            throw new InvalidOperationException("The selected image is empty.");
         }
         if (!AllowedInformationImageContentTypes.Contains(upload.ContentType))
         {
-            throw new InvalidOperationException(ErrorMessage("Surveys_InformationImageTypeInvalid"));
+            throw new InvalidOperationException("Only JPEG, PNG, and WebP images are allowed.");
         }
         if (upload.Length > MaxInformationImageBytes)
         {
-            throw new InvalidOperationException(ErrorMessage("Surveys_InformationImageTooLarge"));
+            throw new InvalidOperationException("Each Information image must be under 10 MB.");
         }
         if (!AllowedInformationImageExtensions.Contains(Path.GetExtension(fileName)))
         {
             throw new InvalidOperationException(
-                ErrorMessage("Surveys_InformationImageExtensionInvalid"));
+                "Image filenames must end in .jpg, .jpeg, .png, or .webp.");
         }
         if (fileName.Length > MaxInformationImageFileNameLength)
         {
             throw new InvalidOperationException(
-                ErrorMessage("Surveys_InformationImageNameTooLong", MaxInformationImageFileNameLength));
+                $"Image filename must be {MaxInformationImageFileNameLength} characters or fewer.");
         }
 
         return fileName;
@@ -2720,21 +2718,21 @@ internal sealed class SurveyService(
                 && images.Count == 0)
             {
                 throw new InvalidOperationException(
-                    ErrorMessage("Surveys_InformationContentRequired", question.Id));
+                    $"Information item {question.Id} must contain Markdown or at least one image.");
             }
 
             if (images.Any(image =>
                 !image.Label.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))))
             {
                 throw new InvalidOperationException(
-                    ErrorMessage("Surveys_InformationImageLabelRequired", question.Id));
+                    $"Every image in Information item {question.Id} must have a label.");
             }
 
             if (images.Any(image =>
                 !image.AltText.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))))
             {
                 throw new InvalidOperationException(
-                    ErrorMessage("Surveys_InformationImageAltRequired", question.Id));
+                    $"Every image in Information item {question.Id} must have alt text.");
             }
         }
 
@@ -2743,35 +2741,30 @@ internal sealed class SurveyService(
             if (question.GridSelectionMode is null
                 || !Enum.IsDefined(question.GridSelectionMode.Value))
             {
-                throw new InvalidOperationException(ErrorMessage("Surveys_GridModeRequired", question.Id));
+                throw new InvalidOperationException($"Grid question {question.Id} must choose a selection mode.");
             }
 
             var rows = question.GridRows ?? [];
             if (rows.Count == 0)
-                throw new InvalidOperationException(ErrorMessage("Surveys_GridRowRequired", question.Id));
+                throw new InvalidOperationException($"Grid question {question.Id} must have at least one row.");
 
             if (question.Options.Count == 0 || question.Options.Count > 5)
             {
                 throw new InvalidOperationException(
-                    ErrorMessage("Surveys_GridColumnCount", question.Id));
+                    $"Grid question {question.Id} must have between one and five columns.");
             }
 
-            ValidateStableValues(rows.Select(row => row.Value),
-                ErrorMessage("Surveys_GridRowValuesBlank", question.Id),
-                ErrorMessage("Surveys_GridRowValuesUnique", question.Id));
-            ValidateStableValues(question.Options.Select(option => option.Value),
-                ErrorMessage("Surveys_GridColumnValuesBlank", question.Id),
-                ErrorMessage("Surveys_GridColumnValuesUnique", question.Id));
+            ValidateStableValues(rows.Select(row => row.Value), $"Grid question {question.Id} row");
+            ValidateStableValues(question.Options.Select(option => option.Value), $"Grid question {question.Id} column");
         }
 
         static void ValidateRankedQuestion(SurveyQuestion question)
         {
             if (question.Options.Count < 2)
-                throw new InvalidOperationException(ErrorMessage("Surveys_RankedOptionsRequired", question.Id));
+                throw new InvalidOperationException($"Ranked-choice question {question.Id} must have at least two options.");
             ValidateStableValues(
                 question.Options.OrderBy(option => option.Order).Select(option => option.Value),
-                ErrorMessage("Surveys_RankedValuesBlank", question.Id),
-                ErrorMessage("Surveys_RankedValuesUnique", question.Id));
+                $"Ranked-choice question {question.Id} option");
             if (question.RankedSettings is null
                 || !Enum.IsDefined(question.RankedSettings.OfficialMethod))
             {
@@ -2780,17 +2773,17 @@ internal sealed class SurveyService(
             }
         }
 
-        static void ValidateStableValues(IEnumerable<string> values, string blankMessage, string duplicateMessage)
+        static void ValidateStableValues(IEnumerable<string> values, string description)
         {
             var materialized = values.ToList();
             if (materialized.Any(string.IsNullOrWhiteSpace))
             {
-                throw new InvalidOperationException(blankMessage);
+                throw new InvalidOperationException($"{description} values must not be blank.");
             }
 
             if (materialized.Distinct(StringComparer.Ordinal).Count() != materialized.Count)
             {
-                throw new InvalidOperationException(duplicateMessage);
+                throw new InvalidOperationException($"{description} values must be unique.");
             }
         }
     }
@@ -2801,14 +2794,14 @@ internal sealed class SurveyService(
         if (offenders.Count > 0)
         {
             throw new InvalidOperationException(
-                ErrorMessage("Surveys_BranchForwardReference", string.Join(", ", offenders)));
+                $"A branching condition references a question that is not strictly earlier. Offending question ids: {string.Join(", ", offenders)}.");
         }
 
         var emptyClauses = SurveyBranchingEvaluator.ValidateClauseOptionValues(questions);
         if (emptyClauses.Count > 0)
         {
             throw new InvalidOperationException(
-                ErrorMessage("Surveys_BranchValuesRequired", string.Join(", ", emptyClauses)));
+                $"A branching Is/IsNot clause has no option values (the condition would be vacuous). Offending question ids: {string.Join(", ", emptyClauses)}.");
         }
 
         var types = questions.ToDictionary(question => question.Id, question => question.Type);
@@ -2821,7 +2814,7 @@ internal sealed class SurveyService(
         if (nonAnswerSources.Count > 0)
         {
             throw new InvalidOperationException(
-                ErrorMessage("Surveys_BranchSourceInvalid", string.Join(", ", nonAnswerSources)));
+                $"Grid, RankedChoice, and Information questions cannot be branching sources. Offending question ids: {string.Join(", ", nonAnswerSources)}.");
         }
     }
 
@@ -2956,10 +2949,6 @@ internal sealed class SurveyService(
     private static readonly IReadOnlySet<string> ReservedSlugs =
         new HashSet<string>(StringComparer.Ordinal) { "admin", "answer" };
 
-    private static string ErrorMessage(string resourceKey, params object[] arguments) =>
-        string.Format(CultureInfo.CurrentUICulture,
-            ErrorResources.GetString(resourceKey, CultureInfo.CurrentUICulture)!, arguments);
-
     /// <summary>Normalizes authoring input (null when blank) and rejects overlong/reserved slugs.</summary>
     private static string? PreparePublicSlugForWrite(string? slug)
     {
@@ -2968,11 +2957,12 @@ internal sealed class SurveyService(
         // PostgreSQL's varchar limit counts characters, not UTF-16 code units.
         if (normalized.EnumerateRunes().Count() > PublicSlugMaxLength)
         {
-            throw new InvalidOperationException(ErrorMessage("Surveys_PublicSlugTooLong", PublicSlugMaxLength));
+            throw new InvalidOperationException(
+                $"The public link slug must be no longer than {PublicSlugMaxLength} characters.");
         }
         if (ReservedSlugs.Contains(normalized))
         {
-            throw new InvalidOperationException(ErrorMessage("Surveys_PublicSlugReserved", normalized));
+            throw new InvalidOperationException($"Slug '{normalized}' is reserved.");
         }
 
         return normalized;

@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Resources;
 using System.Text.Json;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
@@ -31,8 +30,6 @@ internal sealed class Service(
     IOptions<StoreSectionOptions> options,
     ILogger<Service> logger) : IStoreAccountingRead
 {
-    private static readonly ResourceManager ErrorResources = new(typeof(StoreResource));
-
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
         BuildIndexDataAsync(userId, allCounterparties: false, ct);
 
@@ -431,14 +428,14 @@ internal sealed class Service(
     public async Task<Guid> CreateOrderAsync(Guid campSeasonId, Guid actorUserId, CancellationToken ct = default)
     {
         var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct)
-            ?? throw new InvalidOperationException(ErrorMessage("Store_Error_CampSeasonNotFound", campSeasonId));
+            ?? throw new InvalidOperationException($"Camp season {campSeasonId} not found.");
 
         // No year filter: a CampSeason *is* a (camp, year) pair, so every order returned here
         // already belongs to season.Year — except a legacy row still at Year = 0, which an
         // `o.Year == season.Year` guard would wave through and hand the season a second order.
         var existing = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
         if (existing.Count > 0)
-            throw new InvalidOperationException(ErrorMessage("Store_Error_CampOrderExists", campSeasonId));
+            throw new InvalidOperationException($"Camp season {campSeasonId} already has a Store order.");
 
         var now = clock.GetCurrentInstant();
         var order = new Order
@@ -492,15 +489,15 @@ internal sealed class Service(
     public async Task<Guid> CreateTeamOrderAsync(Guid teamId, Guid actorUserId, CancellationToken ct = default)
     {
         var team = await teamService.GetTeamAsync(teamId, ct)
-            ?? throw new InvalidOperationException(ErrorMessage("Store_Error_TeamNotFound", teamId));
+            ?? throw new InvalidOperationException($"Team {teamId} not found.");
         if (team.ParentTeamId is not null)
-            throw new InvalidOperationException(ErrorMessage("Store_Error_TeamDepartmentRequired"));
+            throw new InvalidOperationException("Team orders are restricted to departments (top-level teams).");
 
         var year = await GetCurrentEventYearAsync();
 
         var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (existing is not null)
-            throw new InvalidOperationException(ErrorMessage("Store_Error_TeamOrderExists", teamId, year));
+            throw new InvalidOperationException($"Team {teamId} already has a Store order for {year}.");
 
         var now = clock.GetCurrentInstant();
         var order = new Order
@@ -524,20 +521,20 @@ internal sealed class Service(
     public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
     {
         if (qty <= 0)
-            throw new ArgumentException(ErrorMessage("Store_Error_QuantityPositive"), nameof(qty));
+            throw new ArgumentException("Qty must be positive", nameof(qty));
 
         var order = await repo.GetOrderByIdAsync(orderId, ct)
-            ?? throw new InvalidOperationException(ErrorMessage("Store_Error_OrderNotFound", orderId));
+            ?? throw new InvalidOperationException($"Order {orderId} not found");
 
         if (order.State != OrderState.Open)
-            throw new InvalidOperationException(ErrorMessage("Store_Error_AddLineIssued"));
+            throw new InvalidOperationException("Cannot add lines to an issued order");
 
         var product = await repo.GetProductByIdAsync(productId, ct)
-            ?? throw new InvalidOperationException(ErrorMessage("Store_Error_ProductNotFound", productId));
+            ?? throw new InvalidOperationException($"Product {productId} not found");
 
         if (!product.IsActive)
             throw new InvalidOperationException(
-                ErrorMessage("Store_Error_ProductDeactivated", product.Name));
+                $"Product '{product.Name}' has been deactivated and is no longer orderable");
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
@@ -582,9 +579,7 @@ internal sealed class Service(
         catch (ArgumentException ex)
         {
             logger.LogWarning("AddLine validation failed for order {OrderId}: {Reason}", orderId, ex.Message);
-            return MutationResult.Failure(string.Equals(ex.ParamName, nameof(qty), StringComparison.Ordinal)
-                ? ErrorMessage("Store_Error_QuantityPositive")
-                : ex.Message);
+            return MutationResult.Failure(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
@@ -596,13 +591,13 @@ internal sealed class Service(
     public async Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
     {
         var ctx = await repo.GetLineWithOrderAndProductAsync(lineId, ct)
-            ?? throw new InvalidOperationException(ErrorMessage("Store_Error_LineNotFound", lineId));
+            ?? throw new InvalidOperationException($"Line {lineId} not found");
 
         if (ctx.OrderId != orderId)
-            throw new InvalidOperationException(ErrorMessage("Store_Error_LineWrongOrder", lineId, orderId));
+            throw new InvalidOperationException($"Line {lineId} does not belong to order {orderId}");
 
         if (ctx.OrderState != OrderState.Open)
-            throw new InvalidOperationException(ErrorMessage("Store_Error_RemoveLineIssued"));
+            throw new InvalidOperationException("Cannot remove lines from an issued order");
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
@@ -700,16 +695,16 @@ internal sealed class Service(
             throw new InvalidOperationException("Team orders are non-billable.");
 
         if (!stripeService.IsStoreCheckoutConfigured)
-            throw new InvalidOperationException(ErrorMessage("Store_StripeNotConfigured"));
+            throw new InvalidOperationException("Stripe is not configured for this environment. Contact an admin.");
 
         if (amountEur <= 0)
-            throw new InvalidOperationException(ErrorMessage("Store_Error_PaymentPositive"));
+            throw new InvalidOperationException("Payment amount must be greater than zero.");
 
         if (amountEur > order.BalanceEur)
-            throw new InvalidOperationException(ErrorMessage("Store_Error_PaymentExceedsBalance", order.BalanceEur));
+            throw new InvalidOperationException($"Payment amount cannot exceed the outstanding balance (EUR {order.BalanceEur:0.00}).");
 
         if (order.Payments.Any(p => p.Status == PaymentStatus.Pending))
-            throw new InvalidOperationException(ErrorMessage("Store_PaymentDisabledPending"));
+            throw new InvalidOperationException("A payment on this order is pending settlement. Wait for it to clear or fail before paying again.");
 
         var description = $"Nobodies Collective - {order.CounterpartyName ?? "Camp order"}";
 
@@ -1851,10 +1846,6 @@ internal sealed class Service(
         }
         return "(unknown)";
     }
-
-    private static string ErrorMessage(string resourceKey, params object[] arguments) =>
-        string.Format(CultureInfo.CurrentUICulture,
-            ErrorResources.GetString(resourceKey, CultureInfo.CurrentUICulture)!, arguments);
 
     private static void EnsureBillable(Order order)
     {

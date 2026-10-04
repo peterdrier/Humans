@@ -134,7 +134,7 @@ internal sealed class CampSeason
     {
         if (Status != CampSeasonStatus.Pending && Status != CampSeasonStatus.Active)
         {
-            throw new InvalidOperationException("Camps_Flash_SeasonWithdrawRequiresOpen");
+            throw InvalidTransition("withdraw");
         }
 
         Status = CampSeasonStatus.Withdrawn;
