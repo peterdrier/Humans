@@ -38,6 +38,9 @@ internal sealed class CachingWorkgroupService(
     private readonly TrackedCache<byte, IReadOnlyList<WorkgroupInfo>> _cache = new(
         "Workgroups.Register", warmOnStartup: false, logger);
 
+    private readonly Lock _cacheGate = new();
+    private long _cacheGeneration;
+
     /// <summary>Diagnostics surface for <c>/Debug/CacheStats</c>.</summary>
     public ICacheStats RegisterCacheStats => _cache;
 
@@ -45,11 +48,21 @@ internal sealed class CachingWorkgroupService(
 
     public async Task<IReadOnlyList<WorkgroupInfo>> GetRegisterAsync(CancellationToken ct = default)
     {
-        if (_cache.TryGet(RegisterKey, out var cached))
-            return cached;
+        long generation;
+        lock (_cacheGate)
+        {
+            if (_cache.TryGet(RegisterKey, out var cached))
+                return cached;
+            generation = _cacheGeneration;
+        }
 
         var register = await WithInner(inner => inner.GetRegisterAsync(ct));
-        _cache.Set(RegisterKey, register);
+        lock (_cacheGate)
+        {
+            // A write may have cleared the cache while this register was loading.
+            if (generation == _cacheGeneration)
+                _cache.Set(RegisterKey, register);
+        }
         return register;
     }
 
@@ -301,7 +314,7 @@ internal sealed class CachingWorkgroupService(
         }
         finally
         {
-            _cache.Clear();
+            ClearRegisterCache();
         }
     }
 
@@ -313,6 +326,15 @@ internal sealed class CachingWorkgroupService(
         }
         finally
         {
+            ClearRegisterCache();
+        }
+    }
+
+    private void ClearRegisterCache()
+    {
+        lock (_cacheGate)
+        {
+            _cacheGeneration++;
             _cache.Clear();
         }
     }

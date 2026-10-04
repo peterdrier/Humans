@@ -436,7 +436,8 @@ display-name reads.
   (`WorkgroupsGraph`) and the service works over it in memory — a few dozen rows.
 - **Decorator decision** — caching decorator (`CachingWorkgroupService`, Singleton). One
   `TrackedCache<byte, IReadOnlyList<WorkgroupInfo>>` (`Workgroups.Register`), single
-  entry for the whole register, cleared on every write. Nothing time-derived is cached —
+  entry for the whole register, cleared on every write. Loads begun before a clear cannot
+  repopulate it with the old register. Nothing time-derived is cached —
   `WorkgroupRhythm` computes rhythm badges from the snapshot against the caller's clock.
 - **Display stitching** — `IUserServiceRead.GetUserInfosAsync` for burner names and tiers.
 - **Cross-section calls** — `IUserServiceRead`, `IUserEmailService`,
