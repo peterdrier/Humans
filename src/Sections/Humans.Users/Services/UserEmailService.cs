@@ -161,30 +161,8 @@ internal sealed class UserEmailService(
         if (!isValid)
             throw new ValidationException("The verification link has expired or is invalid.");
 
-        var conflictingEmail = await FindVerifiedRowHeldElsewhereAsync(pendingEmail, cancellationToken);
-
-        if (conflictingEmail is not null)
-        {
-            // avoid duplicates from link prefetch/double-click
-            if (!await MergeService.HasPendingForEmailIdAsync(pendingEmail.Id, cancellationToken))
-            {
-                var now = clock.GetCurrentInstant();
-                var mergeRequest = new AccountMergeRequest
-                {
-                    Id = Guid.NewGuid(),
-                    TargetUserId = userId,
-                    SourceUserId = conflictingEmail.UserId,
-                    Email = pendingEmail.Email,
-                    PendingEmailId = pendingEmail.Id,
-                    Status = AccountMergeRequestStatus.Pending,
-                    CreatedAt = now
-                };
-
-                await MergeService.CreateAsync(mergeRequest, cancellationToken);
-            }
-
+        if (await RequestMergeForVerificationConflictAsync(userId, pendingEmail, cancellationToken))
             return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: true);
-        }
 
         // see nobodies-collective/Humans#687 — flipping unverified→verified may newly satisfy the Google invariant.
         await userService.UpdateUserEmailAsync(
@@ -207,29 +185,8 @@ internal sealed class UserEmailService(
         }
 
         // Mirror VerifyEmailAsync duplicate-handling: create merge request when address verified on another account.
-        var conflictingEmail = await FindVerifiedRowHeldElsewhereAsync(pendingEmail, cancellationToken);
-
-        if (conflictingEmail is not null)
-        {
-            if (!await MergeService.HasPendingForEmailIdAsync(pendingEmail.Id, cancellationToken))
-            {
-                var now = clock.GetCurrentInstant();
-                var mergeRequest = new AccountMergeRequest
-                {
-                    Id = Guid.NewGuid(),
-                    TargetUserId = userId,
-                    SourceUserId = conflictingEmail.UserId,
-                    Email = pendingEmail.Email,
-                    PendingEmailId = pendingEmail.Id,
-                    Status = AccountMergeRequestStatus.Pending,
-                    CreatedAt = now
-                };
-
-                await MergeService.CreateAsync(mergeRequest, cancellationToken);
-            }
-
+        if (await RequestMergeForVerificationConflictAsync(userId, pendingEmail, cancellationToken))
             return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: true);
-        }
 
         // see nobodies-collective/Humans#687
         await userService.UpdateUserEmailAsync(
@@ -576,13 +533,35 @@ internal sealed class UserEmailService(
     // Write paths read the table, not the cache: the merge-request decision must see the
     // row state as of this call. Any verified row for the same address on another row id
     // — the same user's or another user's — is the conflict.
-    private async Task<UserEmail?> FindVerifiedRowHeldElsewhereAsync(
-        UserEmail pendingEmail, CancellationToken cancellationToken)
+    private async Task<bool> RequestMergeForVerificationConflictAsync(
+        Guid userId, UserEmail pendingEmail, CancellationToken cancellationToken)
     {
         var normalized = EmailNormalization.NormalizeForComparison(pendingEmail.Email);
         var rows = await repository.GetUserEmailsByAddressAsync(
             normalized, GetAlternateComparableEmail(normalized), cancellationToken);
-        return rows.FirstOrDefault(e => e.IsVerified && e.Id != pendingEmail.Id);
+        var conflictingEmail = rows.FirstOrDefault(e => e.IsVerified && e.Id != pendingEmail.Id);
+        if (conflictingEmail is null)
+            return false;
+
+        // Avoid duplicates from link prefetch, double-clicks, or repeat admin verification.
+        if (!await MergeService.HasPendingForEmailIdAsync(pendingEmail.Id, cancellationToken))
+        {
+            var now = clock.GetCurrentInstant();
+            var mergeRequest = new AccountMergeRequest
+            {
+                Id = Guid.NewGuid(),
+                TargetUserId = userId,
+                SourceUserId = conflictingEmail.UserId,
+                Email = pendingEmail.Email,
+                PendingEmailId = pendingEmail.Id,
+                Status = AccountMergeRequestStatus.Pending,
+                CreatedAt = now
+            };
+
+            await MergeService.CreateAsync(mergeRequest, cancellationToken);
+        }
+
+        return true;
     }
 
     /// <inheritdoc />
