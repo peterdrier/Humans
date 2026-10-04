@@ -30,6 +30,9 @@ internal sealed class CachingRideshareService(
     private readonly TrackedCache<int, RideshareSnapshot> _cache = new(
         "Rideshare.Snapshot", warmOnStartup: false, logger);
 
+    private readonly Lock _cacheGate = new();
+    private long _cacheGeneration;
+
     /// <summary>Diagnostics surface for <c>/Debug/CacheStats</c>.</summary>
     public ICacheStats SnapshotCacheStats => _cache;
 
@@ -40,11 +43,21 @@ internal sealed class CachingRideshareService(
 
     public async Task<RideshareSnapshot> GetSnapshotAsync(int year, CancellationToken ct = default)
     {
-        if (_cache.TryGet(year, out var cached))
-            return cached;
+        long generation;
+        lock (_cacheGate)
+        {
+            if (_cache.TryGet(year, out var cached))
+                return cached;
+            generation = _cacheGeneration;
+        }
 
         var snapshot = await WithInner(inner => inner.GetSnapshotAsync(year, ct));
-        _cache.Set(year, snapshot);
+        lock (_cacheGate)
+        {
+            // A write may have cleared the cache while this snapshot was loading.
+            if (generation == _cacheGeneration)
+                _cache.Set(year, snapshot);
+        }
         return snapshot;
     }
 
@@ -127,7 +140,7 @@ internal sealed class CachingRideshareService(
         }
         finally
         {
-            _cache.Clear();
+            ClearSnapshotCache();
         }
     }
 
@@ -139,6 +152,15 @@ internal sealed class CachingRideshareService(
         }
         finally
         {
+            ClearSnapshotCache();
+        }
+    }
+
+    private void ClearSnapshotCache()
+    {
+        lock (_cacheGate)
+        {
+            _cacheGeneration++;
             _cache.Clear();
         }
     }

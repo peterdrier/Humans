@@ -275,7 +275,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - When settings are saved: `IAuditLogService.LogAsync(AuditAction.RideshareSettingsUpdated, ...)`
   records the change.
 - After every write, `CachingRideshareService` clears its snapshot cache so the next read
-  rebuilds it.
+  rebuilds it. A read begun before that clear cannot repopulate the cache with its old snapshot.
 
 ## Cross-Section Dependencies
 
