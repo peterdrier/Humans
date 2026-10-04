@@ -28,9 +28,8 @@ suite once at the end. Test-only changes do not qualify a run for publication.
 sets a native goal; the agent completes independently validated fixes and
 stops only after the deadline **and** finishing its current task. Time is
 the only stopping rule; there is no fix-count target. The target is the debt
-ledger: the agent works existing rows first, and the wrapper counts open rows
-before and after — a run that did not shrink the ledger publishes as a draft
-marked failed. Fixing a row's code counts as a fix; stale-row deletion and
+ledger: the agent works existing rows first, before searching for new debt,
+and the wrapper reports open rows before and after in the PR body. Fixing a row's code counts as a fix; stale-row deletion and
 documentation do not. Report the actual work after completion. One branch and
 one PR contain the whole run.
 

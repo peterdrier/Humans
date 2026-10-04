@@ -367,7 +367,7 @@ main() {
     if [[ -f "$last_message_file" ]]; then
       run_report="$(cat "$last_message_file")"
       log "recovered run report from $last_message_file for the retried PR"
-      if grep -q -e '^## Automated gate warning$' -e '^\*\*Failed: the debt ledger did not shrink\.\*\*' "$last_message_file"; then
+      if grep -q '^## Automated gate warning$' "$last_message_file"; then
         retry_draft=true
         log "recovered report contains a gate warning — reopening as draft"
       fi
@@ -560,23 +560,15 @@ main() {
     } >>"$last_message_file"
     run_report="$(cat "$last_message_file")"
   fi
-  # The ledger is a holding bucket: a run must leave fewer open rows than it
-  # found. Counted here, not taken from the agent's report, and saved with the
-  # report so a retried PR carries the same verdict.
-  local ledger_before ledger_after ledger_draft=false
+  # The ledger is a holding bucket that should shrink over time. Counted here,
+  # not taken from the agent's report, and saved with the report so a retried
+  # PR carries the same numbers.
+  local ledger_before ledger_after
   ledger_before="$(ledger_open_rows "$head_before")"
   ledger_after="$(ledger_open_rows "$head_after")"
-  {
-    printf '\n\n## Ledger\n\nOpen rows: %s → %s (net %+d).\n' \
-      "$ledger_before" "$ledger_after" "$(( ledger_after - ledger_before ))"
-    if (( ledger_after >= ledger_before )); then
-      printf '\n**Failed: the debt ledger did not shrink.** Published as a draft.\n'
-    fi
-  } >>"$last_message_file"
-  if (( ledger_after >= ledger_before )); then
-    ledger_draft=true
-    log "ledger did not shrink ($ledger_before → $ledger_after) — publishing as a draft"
-  fi
+  printf '\n\n## Ledger\n\nOpen rows: %s → %s (net %+d).\n' \
+    "$ledger_before" "$ledger_after" "$(( ledger_after - ledger_before ))" >>"$last_message_file"
+  log "ledger open rows: $ledger_before → $ledger_after"
   # Wrapper timestamps, not the agent's estimate. Save this with the report
   # so a retry of PR creation preserves the original run's timing.
   local timing="Goal time: $TIME_BUDGET; actual worker time: $(format_duration "$work_elapsed"); total run through validation: $(format_duration "$(( $(date -u +%s) - run_started ))")."
@@ -606,7 +598,7 @@ main() {
   log "pushed $branch to origin"
 
   # ---- open the PR, ready for review --------------------------------------
-  if pr_url="$(open_pr_for_branch "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo" "$ledger_draft")"; then
+  if pr_url="$(open_pr_for_branch "$branch" "$GH_BASE_BRANCH" "$run_date" "$log_file" "$run_report" "$gh_repo")"; then
     exit_reason="pushed"
     log "opened PR: $pr_url"
     post_spend_comment "$pr_url" "$gh_repo" "$run_date" "$log_file"

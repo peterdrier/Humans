@@ -242,7 +242,6 @@ for line in sys.stdin:
         self.assertIn("Cumulative fixes: 2", body)
         self.assertIn("Runner validation:", body)
         self.assertIn("Open rows: 2 → 1 (net -1).", body)
-        self.assertNotIn("did not shrink", body)
         self.assertNotIn("--draft", published[0])
         self.assertIn("Goal time: 90s; actual worker time: 1m 31s; total run through validation: 1m 31s.", body)
         self.assertNotIn("UNFILLED TEMPLATE", body)
@@ -317,14 +316,13 @@ for line in sys.stdin:
                 self.assertIn("Cumulative fixes: 3", (self.root / "pr-body").read_text())
                 self.assertEqual(len(self.git(self.clone, "log", "--oneline", "origin/main..HEAD").splitlines()), 3)
 
-    def test_ledger_that_did_not_shrink_publishes_failed_draft(self):
+    def test_ledger_that_did_not_shrink_still_publishes(self):
         result, _, published = self.run_scenario("ledger-grows")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(len(published), 1)
-        self.assertIn("--draft", published[0])
+        self.assertNotIn("--draft", published[0])
         body = (self.root / "pr-body").read_text()
         self.assertIn("Open rows: 2 → 2 (net +0).", body)
-        self.assertIn("**Failed: the debt ledger did not shrink.**", body)
 
     def test_ledger_only_does_not_publish_or_run_dotnet(self):
         result, calls, published = self.run_scenario("ledger")

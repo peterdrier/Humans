@@ -34,12 +34,12 @@ the wrapper's final build/test and publication happen afterward.
 
 **The ledger is the target; time is the only stopping rule.** The debt
 ledgers — `inbox:` in `docs/architecture/debt-ledger.yml` plus `inbox:` in every
-`src/Sections/*/Docs/debt.yml` — are a holding bucket, not an archive. **Every
-run must end with fewer open rows than it started with; a run whose ledger did
-not shrink has failed**, however much else it fixed. Count open rows at the
-start (`git grep -hE '^\s+(- )?id: [A-Z][A-Z0-9]*-[0-9]+\s*$' HEAD -- docs/architecture/debt-ledger.yml 'src/Sections/*/Docs/debt.yml' | wc -l`);
-the wrapper counts again at the end and publishes a run that did not shrink
-the ledger as a draft marked failed.
+`src/Sections/*/Docs/debt.yml` — are a holding bucket, not an archive: debt we
+have already found and still need to fix. Work those rows before searching
+for new, easier things to fix. If the ledger does not shrink over time, the
+sweep has failed. Count open rows at the start
+(`git grep -hE '^\s+(- )?id: [A-Z][A-Z0-9]*-[0-9]+\s*$' HEAD -- docs/architecture/debt-ledger.yml 'src/Sections/*/Docs/debt.yml' | wc -l`);
+the wrapper counts again at the end and reports both in the PR body.
 
 Fixing the code a ledger row describes and deleting that row is a
 substantive fix — the most valuable kind. Deleting a row whose defect the code
@@ -149,11 +149,10 @@ nothing, or moving it to another ledger. Beyond the ledger: fix production
 defects, simplify existing production code, remove duplication or dead
 production paths, and repair executable tooling.
 
-**Adding a row is a cost against the run's goal.** Fix what you find when it is
-safe to. Add a row only for a real defect you cannot fix unattended, and only
-when the run's closures already outnumber its additions — the net must stay
-negative. Do not record approval-blocked ideas, design preferences or "looked
-at it" notes as rows; put them under **Needs Peter** in the report instead.
+**Adding a row is a cost against the ledger.** Fix what you find when it is safe
+to. Record a real defect you cannot fix tonight as a row, so the finding is
+not lost, and say in the report why it was not fixed. Do not record design
+preferences or "looked at it" notes as rows.
 
 Tests support a production-code fix; they are never the objective of this
 sweep. Do not select missing coverage, controller-policy pins, test scaffolding,

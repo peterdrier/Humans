@@ -62,10 +62,10 @@ Gemini; both repos) at round 1. A finding on a commit you are reverting is resol
 `REVERTED — <sha> reverted in <new sha>`, no other triage. A finding that points at the
 same defect as a REPAIR verdict is fixed by that repair. Print the /fix triage table.
 
-**The ledger must shrink.** The runner prints `Open rows: <before> → <after>` under
-`## Ledger` and drafts the PR when the count did not fall. Rows the PR adds count against
-it: each added row needs a reason it could not be fixed tonight, or its commit is a REPAIR
-(fix it) or the row is removed. A ledger row that only reworded or moved debt is not a close.
+**Ledger first.** The runner prints `Open rows: <before> → <after>` under `## Ledger`.
+Check that the run worked already-found rows before new finds, and that each row it added
+says why it could not be fixed tonight — if you can fix one here, do. A row that was only
+reworded or moved is not a close.
 
 **Re-check Needs-Peter rows, then elevate.** Codex's **Needs Peter** list is a claim, not
 a verdict — something Codex couldn't fix may be fixable here. Take the list in order and
