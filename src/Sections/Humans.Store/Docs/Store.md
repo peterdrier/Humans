@@ -206,6 +206,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 - Member-facing order pages localize their breadcrumb navigation label in all six supported cultures.
 
+- The Store index loads selected camp and department orders in batches through existing repository reads, then shares one product-name and live-price snapshot across the cards. Camp cards retain the highest-balance legacy order, and team cards retain the first matching order; viewer scoping is unchanged.
 - Store index and order GETs retain request cancellation during viewer resolution as well as their existing token-capable reads. Payment, invoice and order mutations retain their existing token boundaries.
 
 - An order has **exactly one counterparty** — `CampSeasonId` xor `TeamId` is non-null. The invariant is service-enforced (in `Service.CreateOrderAsync` / `CreateTeamOrderAsync`), not DB-enforced.

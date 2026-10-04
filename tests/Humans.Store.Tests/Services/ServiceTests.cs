@@ -64,7 +64,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetIndexDataAsync_lists_led_camp_from_camp_info()
+    public async Task GetIndexDataAsync_selects_highest_balance_camp_order_with_live_prices()
     {
         var userId = Guid.NewGuid();
         var campId = Guid.NewGuid();
@@ -74,17 +74,43 @@ public class ServiceTests
             {
                 MakeCampInfo(campId, seasonId, "Camp Alpha", userId)
             });
-        _repo.GetOrdersForCampSeasonAsync(seasonId, Arg.Any<CancellationToken>())
-            .Returns(new List<Order>());
-        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new List<Product>());
+        var product = MakeProduct(name: "Tent", price: 50m, vat: 0m);
+        product.IsActive = false;
+        var lowerBalanceId = Guid.NewGuid();
+        var higherBalanceId = Guid.NewGuid();
+        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { seasonId })),
+                Arg.Any<CancellationToken>())
+            .Returns([
+                new Order
+                {
+                    Id = lowerBalanceId, CampSeasonId = seasonId, Year = 2026,
+                    Lines = { new() { Id = Guid.NewGuid(), ProductId = product.Id, Qty = 1, UnitPriceSnapshot = 1m } },
+                    Payments = { new() { AmountEur = 45m, Status = PaymentStatus.Paid } }
+                },
+                new Order
+                {
+                    Id = higherBalanceId, CampSeasonId = seasonId, Year = 2026,
+                    Lines = { new() { Id = Guid.NewGuid(), ProductId = product.Id, Qty = 2, UnitPriceSnapshot = 1m } },
+                    Payments = { new() { AmountEur = 20m, Status = PaymentStatus.Paid } }
+                }
+            ]);
+        _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([product]);
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([product]);
 
         var result = await _service.GetIndexDataAsync(userId, ct: TestContext.Current.CancellationToken);
 
-        result.Counterparties.Should().ContainSingle().Which.Should().Match<CounterpartyOrders>(counterparty =>
-            counterparty.CounterpartyType == OrderCounterpartyType.Camp &&
-            counterparty.CounterpartyId == seasonId &&
-            counterparty.DisplayName == "Camp Alpha");
+        var counterparty = result.Counterparties.Should().ContainSingle().Subject;
+        counterparty.CounterpartyType.Should().Be(OrderCounterpartyType.Camp);
+        counterparty.CounterpartyId.Should().Be(seasonId);
+        counterparty.DisplayName.Should().Be("Camp Alpha");
+        var order = counterparty.Orders.Should().ContainSingle().Subject;
+        order.Id.Should().Be(higherBalanceId);
+        order.CounterpartyDisplayName.Should().Be("Camp Alpha");
+        order.BalanceEur.Should().Be(80m);
+        order.Lines.Should().ContainSingle().Subject.ProductName.Should().Be("Tent");
+        await _repo.Received(1).GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
