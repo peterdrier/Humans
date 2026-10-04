@@ -12,8 +12,8 @@ internal enum AttendeeImportOutcome
     /// <summary>Exactly one verified UserEmail matches — set MatchedUserId, no creation.</summary>
     AttachVerified = 0,
 
-    /// <summary>&gt;1 verified users own this email — skip with LogError (data-integrity).</summary>
-    AmbiguousMultipleVerified = 1,
+    /// <summary>Multiple verified owners or multiple unverified rows match — skip for operator review.</summary>
+    AmbiguousEmailMatches = 1,
 
     /// <summary>Only an unverified UserEmail row matches — delete it, then create new user with verified row.</summary>
     DeleteUnverifiedThenCreate = 2,

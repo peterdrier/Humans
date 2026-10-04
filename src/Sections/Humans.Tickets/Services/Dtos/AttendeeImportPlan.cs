@@ -10,7 +10,7 @@ internal sealed record AttendeeImportPlan(
 {
     public AttendeeImportPlanCounts Counts => new(
         AttachVerified: Decisions.Count(d => d.Outcome == AttendeeImportOutcome.AttachVerified),
-        AmbiguousMultipleVerified: Decisions.Count(d => d.Outcome == AttendeeImportOutcome.AmbiguousMultipleVerified),
+        AmbiguousEmailMatches: Decisions.Count(d => d.Outcome == AttendeeImportOutcome.AmbiguousEmailMatches),
         DeleteUnverifiedThenCreate: Decisions.Count(d => d.Outcome == AttendeeImportOutcome.DeleteUnverifiedThenCreate),
         CreateNewUser: Decisions.Count(d => d.Outcome == AttendeeImportOutcome.CreateNewUser),
         SkipNoEmail: Decisions.Count(d => d.Outcome == AttendeeImportOutcome.SkipNoEmail),
@@ -19,7 +19,7 @@ internal sealed record AttendeeImportPlan(
 
 internal sealed record AttendeeImportPlanCounts(
     int AttachVerified,
-    int AmbiguousMultipleVerified,
+    int AmbiguousEmailMatches,
     int DeleteUnverifiedThenCreate,
     int CreateNewUser,
     int SkipNoEmail,

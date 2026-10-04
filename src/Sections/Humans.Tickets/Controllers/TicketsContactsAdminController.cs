@@ -22,7 +22,7 @@ internal sealed class TicketsContactsAdminController(
         var rows = plan.Decisions
             .OrderBy(d => d.Outcome switch
             {
-                AttendeeImportOutcome.AmbiguousMultipleVerified => 0,
+                AttendeeImportOutcome.AmbiguousEmailMatches => 0,
                 AttendeeImportOutcome.DeleteUnverifiedThenCreate => 1,
                 AttendeeImportOutcome.CreateNewUser => 2,
                 AttendeeImportOutcome.AttachVerified => 3,

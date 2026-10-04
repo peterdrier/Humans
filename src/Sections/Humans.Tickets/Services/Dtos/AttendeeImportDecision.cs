@@ -33,7 +33,7 @@ namespace Humans.Tickets.Services.Dtos;
 /// Null otherwise.
 /// </param>
 /// <param name="AmbiguousUserIds">
-/// For <see cref="AttendeeImportOutcome.AmbiguousMultipleVerified"/>: the
+/// For <see cref="AttendeeImportOutcome.AmbiguousEmailMatches"/>: the
 /// conflicting user ids, for admin visibility. Null otherwise.
 /// </param>
 /// <param name="AdditionalAttendeeIds">
