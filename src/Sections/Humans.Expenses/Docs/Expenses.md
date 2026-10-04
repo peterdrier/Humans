@@ -132,6 +132,8 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Invariants
 
+- Member report-list status badges reuse the section’s existing labels in all six cultures and the shared badge-color registry; stored status values and workflow rules are unchanged.
+
 - Report-subject previews retain their 60-character member-list and 80-character review-queue limits without splitting UTF-16 surrogate pairs; full notes remain unchanged.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.

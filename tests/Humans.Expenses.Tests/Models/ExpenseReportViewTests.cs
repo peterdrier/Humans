@@ -1,6 +1,7 @@
 using System.Text.Encodings.Web;
 using AwesomeAssertions;
 using Humans.Base.ViewComponents;
+using Humans.Base.Extensions;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Models;
 using Microsoft.AspNetCore.Builder;
@@ -28,14 +29,7 @@ public class ExpenseReportViewTests
     public async Task SubjectPreview_PreservesWholeSurrogatePairs(bool review, int limit, bool fits)
     {
         var prefix = new string('a', limit - (fits ? 2 : 1));
-        var report = new ExpenseReportDto
-        {
-            Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(), BudgetCategoryId = Guid.NewGuid(),
-            BudgetYearId = Guid.NewGuid(), Status = ExpenseReportStatus.Draft,
-            PayeeName = "", PayeeIban = "", Total = 0, Lines = [],
-            CreatedAt = Instant.FromUtc(2026, 7, 1, 0, 0), UpdatedAt = Instant.FromUtc(2026, 7, 1, 0, 0),
-            Note = prefix + "😀tail",
-        };
+        var report = Report(ExpenseReportStatus.Draft, prefix + "😀tail");
         object model = review ? new ExpenseReviewViewModel
         {
             Reports = [report], SubmitterNames = new Dictionary<Guid, string>(),
@@ -46,6 +40,35 @@ public class ExpenseReportViewTests
 
         html.Should().Contain(HtmlEncoder.Default.Encode(prefix + (fits ? "😀" : "") + "…"));
     }
+
+    [HumansTheory]
+    [Xunit.InlineData("en", ExpenseReportStatus.Draft, "Draft")]
+    [Xunit.InlineData("es", ExpenseReportStatus.Draft, "Borrador")]
+    [Xunit.InlineData("de", ExpenseReportStatus.Draft, "Entwurf")]
+    [Xunit.InlineData("it", ExpenseReportStatus.Draft, "Bozza")]
+    [Xunit.InlineData("fr", ExpenseReportStatus.Draft, "Brouillon")]
+    [Xunit.InlineData("ca", ExpenseReportStatus.Draft, "Esborrany")]
+    [Xunit.InlineData("en", ExpenseReportStatus.CoordinatorEndorsed, "Coordinator endorsed")]
+    [Xunit.InlineData("es", ExpenseReportStatus.Approved, "Aprobado")]
+    [Xunit.InlineData("fr", ExpenseReportStatus.Withdrawn, "Retirée")]
+    [Xunit.InlineData("ca", ExpenseReportStatus.Submitted, "Presentat")]
+    public async Task MemberList_StatusBadgeUsesExistingLocalizedLabel(
+        string culture, ExpenseReportStatus status, string expected)
+    {
+        using var language = new CultureScope(culture);
+        var html = await RenderAsync("Index", new ExpensesIndexViewModel { Reports = [Report(status)] });
+
+        html.Should().Contain($">{HtmlEncoder.Default.Encode(expected)}</span>");
+    }
+
+    private static ExpenseReportDto Report(ExpenseReportStatus status, string? note = null) => new()
+    {
+        Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(), BudgetCategoryId = Guid.NewGuid(),
+        BudgetYearId = Guid.NewGuid(), Status = status,
+        PayeeName = "", PayeeIban = "", Total = 0, Lines = [],
+        CreatedAt = Instant.FromUtc(2026, 7, 1, 0, 0), UpdatedAt = Instant.FromUtc(2026, 7, 1, 0, 0),
+        Note = note,
+    };
 
     private static async Task<string> RenderAsync(string page, object model)
     {
