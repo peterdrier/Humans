@@ -184,11 +184,11 @@ document.addEventListener('click', function (e) {
             var exact = input.tagName === 'SELECT';
 
             if (exact && input.options.length <= 1) {
-                var seen = {};
+                var seen = new Set();
                 Array.from(table.tBodies[0].rows).forEach(function (row) {
                     var text = (row.cells[col] ? row.cells[col].textContent : '').trim();
-                    if (text && text !== '—' && !seen[text]) {
-                        seen[text] = true;
+                    if (text && text !== '—' && !seen.has(text)) {
+                        seen.add(text);
                         var option = document.createElement('option');
                         option.value = text;
                         option.textContent = text;
