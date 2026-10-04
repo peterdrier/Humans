@@ -27,12 +27,20 @@ internal sealed class CommunityFaqReader(
     private static readonly MemoryCacheEntryOptions HoldForever =
         new() { Priority = CacheItemPriority.NeverRemove };
 
+    private readonly Lock _cacheGate = new();
+    private long _cacheGeneration;
+
     internal sealed record IndexEntry(string Topic, string Title, string? LastUpdated, string Summary, string Keywords);
 
     public async Task<(IReadOnlyList<IndexEntry> Entries, bool IsComplete)> ListTopicsAsync(CancellationToken cancellationToken)
     {
-        if (cache.TryGetValue<IReadOnlyList<IndexEntry>>(IndexCacheKey, out var cached) && cached is not null)
-            return (cached, true);
+        long generation;
+        lock (_cacheGate)
+        {
+            if (cache.TryGetValue<IReadOnlyList<IndexEntry>>(IndexCacheKey, out var cached) && cached is not null)
+                return (cached, true);
+            generation = _cacheGeneration;
+        }
 
         IReadOnlyList<string> stems;
         try
@@ -59,7 +67,11 @@ internal sealed class CommunityFaqReader(
         }
 
         IReadOnlyList<IndexEntry> result = entries;
-        if (isComplete) cache.Set(IndexCacheKey, result, HoldForever);
+        lock (_cacheGate)
+        {
+            if (isComplete && generation == _cacheGeneration)
+                cache.Set(IndexCacheKey, result, HoldForever);
+        }
         return (result, isComplete);
     }
 
@@ -117,22 +129,35 @@ internal sealed class CommunityFaqReader(
         }
 
         // Stage every document before changing any cached body or index.
-        foreach (var (stem, body) in documents)
-            cache.Set(DocCacheKeyPrefix + stem, body, HoldForever);
-        cache.Set(IndexCacheKey, (IReadOnlyList<IndexEntry>)entries, HoldForever);
+        lock (_cacheGate)
+        {
+            _cacheGeneration++;
+            foreach (var (stem, body) in documents)
+                cache.Set(DocCacheKeyPrefix + stem, body, HoldForever);
+            cache.Set(IndexCacheKey, (IReadOnlyList<IndexEntry>)entries, HoldForever);
+        }
         return true;
     }
 
     private async Task<string?> ReadRawAsync(string stem, CancellationToken cancellationToken)
     {
         var cacheKey = DocCacheKeyPrefix + stem;
-        if (cache.TryGetValue<string>(cacheKey, out var cached) && cached is not null)
-            return cached;
+        long generation;
+        lock (_cacheGate)
+        {
+            if (cache.TryGetValue<string>(cacheKey, out var cached) && cached is not null)
+                return cached;
+            generation = _cacheGeneration;
+        }
 
         try
         {
             var body = await source.GetMarkdownAsync(FolderPath, stem, cancellationToken);
-            cache.Set(cacheKey, body, HoldForever);
+            lock (_cacheGate)
+            {
+                if (generation == _cacheGeneration)
+                    cache.Set(cacheKey, body, HoldForever);
+            }
             return body;
         }
         catch (NotFoundException)
