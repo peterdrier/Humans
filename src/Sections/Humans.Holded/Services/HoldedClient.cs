@@ -854,6 +854,7 @@ internal sealed class HoldedClient : IHoldedClient
         [CallerMemberName] string caller = "")
     {
         var items = new List<JsonNode>();
+        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
         string? cursor = null;
         try
         {
@@ -895,6 +896,9 @@ internal sealed class HoldedClient : IHoldedClient
                 if (string.IsNullOrEmpty(cursor))
                     throw new HoldedTransientException(
                         $"Holded page for {pathAndQuery.Split('?', 2)[0]} claims has_more but carries no cursor.");
+                if (!seenCursors.Add(cursor))
+                    throw new HoldedTransientException(
+                        $"Holded page for {pathAndQuery.Split('?', 2)[0]} carries a repeated cursor.");
             }
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
