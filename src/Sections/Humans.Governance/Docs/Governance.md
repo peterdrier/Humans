@@ -255,7 +255,7 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 - Application list, create-form, detail, admin list/detail and term-expiry review GETs propagate request cancellation through viewer and application reads. Submission, withdrawal and expiry correction keep their mutation boundaries.
 - Governance overview GETs propagate request cancellation to user and index-data reads; Board-voting detail GETs retain it when resolving the viewer after loading the application.
 
-- Application status follows: Submitted then Approved, Rejected, or Withdrawn.
+- Application status follows: Submitted then Approved, Rejected, or Withdrawn. Member-visible history uses the same six-culture status captions as application details.
 - Each Board member gets exactly one vote per application (DB-enforced via unique index on `(ApplicationId, BoardMemberUserId)`).
 - Board-voting rows carry voter IDs; the pages render voter identities through the Human component. Detail reads do not perform an unused bulk voter-name lookup.
 - On approval, the term expiry is set to December 31 of the current cycle's odd year (the approval year if odd, otherwise the following year); from 1 October of an odd year it is the next cycle's, so a renewal approved in the reminder window is not born expired.
