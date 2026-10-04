@@ -236,7 +236,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                 // DailyTokenCap; and a turn that fails deterministically must still cost a
                 // message, or a repeatable backend error becomes an unmetered send loop.
                 _rateLimit.Record(request.UserId, today, hour,
-                    messagesDelta: 1, tokensDelta: turnUsage.PromptTokens + turnUsage.OutputTokens);
+                    messagesDelta: 1, tokensDelta: turnUsage.InputTokensIncludingCacheWrites + turnUsage.OutputTokens);
             }
         }
     }
@@ -250,6 +250,9 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         public int OutputTokens;
         public int CacheReadTokens;
         public int CacheCreationTokens;
+
+        // Cache writes are input too; stream finalizers retain the separate provider counters.
+        public int InputTokensIncludingCacheWrites => PromptTokens + CacheCreationTokens;
     }
 
     /// <summary>The tool-call loop and finalizer for one turn, run after the user message is
@@ -463,7 +466,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             Role = AgentRole.Assistant,
             Content = assistantText,
             CreatedAt = turnEnd,
-            PromptTokens = usage.PromptTokens,
+            PromptTokens = usage.InputTokensIncludingCacheWrites,
             OutputTokens = usage.OutputTokens,
             CachedTokens = usage.CacheReadTokens,
             Model = settings.Model,
@@ -841,7 +844,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             Role = AgentRole.Assistant,
             Content = "",
             CreatedAt = _clock.GetCurrentInstant(),
-            PromptTokens = usage?.PromptTokens ?? 0,
+            PromptTokens = usage?.InputTokensIncludingCacheWrites ?? 0,
             OutputTokens = usage?.OutputTokens ?? 0,
             CachedTokens = usage?.CacheReadTokens ?? 0,
             Model = model,
