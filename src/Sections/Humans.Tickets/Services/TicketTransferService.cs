@@ -698,7 +698,11 @@ internal sealed class TicketTransferService(
         var detail = ex is TicketVendorWriteException w
             ? $"{w.Kind}: {w.Message}"
             : $"{ex.GetType().Name}: {ex.Message}";
-        return detail.Length <= MaxVendorDetailLength ? detail : detail[..MaxVendorDetailLength] + "…";
+        if (detail.Length <= MaxVendorDetailLength) return detail;
+        var length = MaxVendorDetailLength;
+        if (char.IsHighSurrogate(detail[length - 1]) && char.IsLowSurrogate(detail[length]))
+            length--;
+        return detail[..length] + "…";
     }
 
     // The new local attendee row for a reissued ticket: re-attached to the ORIGINAL order and

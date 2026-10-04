@@ -683,11 +683,17 @@ public sealed class TicketTransferServiceTests
         req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed); // not overwritten
     }
 
-    [HumansFact]
-    public async Task Process_BoundsVendorMessage_WhenVendorErrorBodyIsHuge()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Process_BoundsVendorMessage_WhenVendorErrorBodyIsHuge(bool splitPair)
     {
         // VendorMessage is capped at 2000 chars; a huge TT error body must not blow the column
         // (which would make the diagnostic UpdateAsync throw and lose the partial record).
+        const string detailPrefix = "Validation: ";
+        var padding = new string('x', 1499 - detailPrefix.Length);
+        var vendorError = padding + (splitPair ? "😀" : "x") + new string('y', 4000);
+        var expectedDetail = detailPrefix + padding + (splitPair ? "" : "x") + "…";
         var svc = CreateService();
         var req = MakePending(Guid.NewGuid());
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
@@ -696,13 +702,14 @@ public sealed class TicketTransferServiceTests
         _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
             .Returns(new VoidIssuedTicketResult("tkt_original", "hold_123"));
         _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new TicketVendorWriteException(new string('x', 5000), TicketVendorFailureKind.Validation));
+            .ThrowsAsync(new TicketVendorWriteException(vendorError, TicketVendorFailureKind.Validation));
 
         var act = () => svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
 
         req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
         req.VendorMessage!.Length.Should().BeLessThanOrEqualTo(2000);
+        req.VendorMessage.Should().Contain(expectedDetail);
     }
 
     // ── RejectAsync (cancel with reason) ────────────────────────────────────────

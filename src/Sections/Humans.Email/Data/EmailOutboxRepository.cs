@@ -172,7 +172,14 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
 
         message.Status = EmailOutboxStatus.Failed;
         message.RetryCount += 1;
-        message.LastError = lastError.Length > 4000 ? lastError[..4000] : lastError;
+        if (lastError.Length > 4000)
+        {
+            var length = 4000;
+            if (char.IsHighSurrogate(lastError[length - 1]) && char.IsLowSurrogate(lastError[length]))
+                length--;
+            lastError = lastError[..length];
+        }
+        message.LastError = lastError;
         message.NextRetryAt = nextRetryAt;
         message.PickedUpAt = null;
         await ctx.SaveChangesAsync(ct);
