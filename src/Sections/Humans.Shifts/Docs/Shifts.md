@@ -83,7 +83,7 @@ Per-user per-event day availability. `AvailableDayOffsets` stored as jsonb. Uniq
 `UserId` is a bare Guid column with no navigation property and no FK constraint.
 
 <!-- wheat: docs/superpowers/plans/2026-05-27-coordinator-availability-on-profile.md §Deviations from spec -->
-**Write-path asymmetry:** `VolunteerTrackingService.SetDayAvailabilityAsync` (the coordinator per-day availability toggle on a volunteer's profile) only guards `dayOffset >= 0` — unlike `SetDayOffAsync`, which validates the full window (`dayOffset < es.BuildStartOffset || dayOffset >= 0`). An offset earlier than `BuildStartOffset` can therefore be stored, but is inert: every heatmap/build-strip render loop is bounded to `[BuildStartOffset, 0)`, so an out-of-window offset never surfaces.
+**Coordinator per-day writes:** `VolunteerTrackingService.SetDayAvailabilityAsync` accepts additions only for a known event calendar and an offset in `[BuildStartOffset, 0)`, matching the heatmap/build strip and day-off window. Invalid additions create no row, write no audit and invalidate no cache. Removing an existing offset remains allowed, including old entries outside that window; other availability offsets are preserved.
 
 ### VolunteerBuildStatus
 

@@ -41,13 +41,20 @@ internal sealed class VolunteerTrackingService(
         Guid userId, Guid eventSettingsId, int dayOffset, bool available,
         CancellationToken ct = default)
     {
+        if (available)
+        {
+            var calendar = await calendarResolver.GetAsync(eventSettingsId, ct).ConfigureAwait(false);
+            if (calendar is null || dayOffset < calendar.BuildStartOffset || dayOffset >= 0)
+                return false;
+        }
+
         var current = (await trackingRepo.GetAvailabilityForUserAsync(userId, eventSettingsId, ct).ConfigureAwait(false))
             .FirstOrDefault();
         var offsets = current?.AvailableDayOffsets.ToList() ?? [];
 
         if (available)
         {
-            if (dayOffset >= 0 || offsets.Contains(dayOffset)) return false;
+            if (offsets.Contains(dayOffset)) return false;
             offsets.Add(dayOffset);
         }
         else if (!offsets.Remove(dayOffset))
