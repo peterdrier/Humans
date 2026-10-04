@@ -170,18 +170,19 @@ internal sealed class TicketTailorService : ITicketVendorService
             response.EnsureSuccessStatusCode();
         }
 
-        var evt = await response.Content.ReadFromJsonAsync<TtEvent>(JsonOptions, ct);
+        var evt = await response.Content.ReadFromJsonAsync<TtEvent>(JsonOptions, ct)
+            ?? throw new HttpRequestException("TicketTailor event response is missing data.");
 
         // Capacity comes from ticket_groups (waves share the same pool).
         // Summing ticket_types.quantity_total is wrong — waves are subdivisions, not additive.
-        var totalCapacity = evt?.TicketGroups?.Sum(g => g.MaxQuantity ?? 0) ?? 0;
+        var totalCapacity = evt.TicketGroups?.Sum(g => g.MaxQuantity ?? 0) ?? 0;
         if (totalCapacity == 0)
-            totalCapacity = evt?.TicketTypes?.Sum(tt => tt.QuantityTotal ?? 0) ?? 0;
-        var ticketsSold = evt?.TotalIssuedTickets ?? 0;
+            totalCapacity = evt.TicketTypes?.Sum(tt => tt.QuantityTotal ?? 0) ?? 0;
+        var ticketsSold = evt.TotalIssuedTickets ?? 0;
 
         var summary = new VendorEventSummaryDto(
             EventId: eventId,
-            EventName: evt?.Name ?? "Unknown",
+            EventName: evt.Name ?? "Unknown",
             TotalCapacity: totalCapacity,
             TicketsSold: ticketsSold,
             TicketsRemaining: totalCapacity - ticketsSold);

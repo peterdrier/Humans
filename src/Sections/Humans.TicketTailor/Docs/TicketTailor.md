@@ -46,7 +46,7 @@ None — the section owns no tables. Tickets owns every local row mirrored from 
 - A check-in is reported only when a ticket's net quantity across records is positive; its time is the earliest positive record's `check_in_at`, falling back to `created_at`.
 - Attendee email is the answer to the custom question whose text is exactly `Email`, else the ticket's top-level email.
 - Money crosses the boundary in euros: vendor cents divided by 100 on the way in, monetary discount values multiplied by 100 on the way out.
-- Event capacity is `ticket_groups.max_quantity` summed, falling back to `ticket_types.quantity_total`. `TicketTailorService` itself is cache-free; Tickets' `CachingTicketVendorService` holds the summary for 15 minutes, and a failed read is never cached.
+- Event capacity is `ticket_groups.max_quantity` summed, falling back to `ticket_types.quantity_total`. A missing event response throws `HttpRequestException` rather than producing a successful zero-capacity summary. `TicketTailorService` itself is cache-free; Tickets' `CachingTicketVendorService` holds the summary for 15 minutes, and a failed read is never cached.
 - Void and issue throw `TicketVendorWriteException` with a `TicketVendorFailureKind`: 400/422 Validation, 401/403 AuthFailed, 404 NotFound, 429 RateLimited, anything else and transport failure Transient. Every other method — reads, discount codes, check-in — throws `HttpRequestException`.
 - Issue requires either `HoldId` or both `EventId` and `TicketTypeId`; anything else is an `ArgumentException` before any call.
 - Check-in posts form-encoded `issued_ticket_id`, `quantity=1` and `check_in_at`; the vendor call is not idempotent, so callers never retry it. The key needs Event-manager scope.

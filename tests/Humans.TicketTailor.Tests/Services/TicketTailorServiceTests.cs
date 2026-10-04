@@ -318,6 +318,19 @@ public class TicketTailorServiceTests
     }
 
     [HumansFact]
+    public async Task GetEventSummaryAsync_RejectsMissingEventInsteadOfInventingAnEmptySummary()
+    {
+        var handler = new RecordingHttpHandler();
+        var content = handler.EnqueueResponse(HttpStatusCode.OK, null);
+        var service = TicketTailorTestHost.CreateService(handler);
+
+        var load = () => service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        await load.Should().ThrowAsync<HttpRequestException>();
+        content.WasDisposed.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task GetEventSummaryAsync_FallsBackToTicketTypeTotalsWhenNoGroups()
     {
         var handler = new RecordingHttpHandler();
