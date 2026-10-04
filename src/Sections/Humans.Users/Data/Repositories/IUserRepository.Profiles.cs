@@ -187,11 +187,9 @@ internal partial interface IUserRepository
     /// separately by the merge orchestrator's
     /// <c>ContactFieldService.ReassignAsync</c> call — this method does not
     /// touch <c>ContactField</c> rows.
-    /// Returns the post-move count of (VolunteerHistory + Languages) rows
-    /// attributed to the target profile, for caller diagnostics.
-    /// No-op (returns 0) if the source has no profile.
+    /// No-op if either user has no profile.
     /// </remarks>
-    Task<int> ReassignSubAggregatesToUserAsync(
+    Task ReassignSubAggregatesToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default);
 

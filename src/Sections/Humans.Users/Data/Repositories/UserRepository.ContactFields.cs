@@ -55,7 +55,7 @@ internal sealed partial class UserRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<int> ReassignToUserAsync(
+    public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -68,14 +68,14 @@ internal sealed partial class UserRepository
             .Select(p => (Guid?)p.Id)
             .FirstOrDefaultAsync(ct);
         if (sourceProfileId is null)
-            return 0;
+            return;
 
         var targetProfileId = await ctx.Profiles
             .Where(p => p.UserId == targetUserId)
             .Select(p => (Guid?)p.Id)
             .FirstOrDefaultAsync(ct);
         if (targetProfileId is null)
-            return 0;
+            return;
 
         var sourceRows = await ctx.ContactFields
             .Where(cf => cf.ProfileId == sourceProfileId.Value)
@@ -110,8 +110,5 @@ internal sealed partial class UserRepository
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        return await ctx.ContactFields
-            .CountAsync(cf => cf.ProfileId == targetProfileId.Value, ct);
     }
 }

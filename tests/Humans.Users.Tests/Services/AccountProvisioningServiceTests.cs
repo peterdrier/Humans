@@ -155,7 +155,7 @@ public class AccountProvisioningServiceTests
             IReadOnlyList<ContactField> toRemove,
             CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<int> ReassignToUserAsync(
+        public Task ReassignToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
@@ -198,7 +198,7 @@ public class AccountProvisioningServiceTests
             Instant now,
             CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<int> ReassignSubAggregatesToUserAsync(
+        public Task ReassignSubAggregatesToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task ReconcileCVEntriesAsync(
