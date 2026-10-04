@@ -75,9 +75,17 @@ public class ServiceTeamOrdersTests
         captured.State.Should().Be(OrderState.Open);
     }
 
-    [HumansFact]
-    public async Task CreateTeamOrderAsync_throws_when_team_already_has_order_this_year()
+    [HumansTheory]
+    [InlineData("en", "Team {0} already has a Store order for {1}.")]
+    [InlineData("es", "El equipo {0} ya tiene un pedido de la tienda para {1}.")]
+    [InlineData("de", "Team {0} hat bereits eine Shop-Bestellung für {1}.")]
+    [InlineData("it", "Il team {0} ha già un ordine del negozio per il {1}.")]
+    [InlineData("fr", "L'équipe {0} a déjà une commande de la boutique pour {1}.")]
+    [InlineData("ca", "L'equip {0} ja té una comanda de la botiga per a {1}.")]
+    public async Task CreateTeamOrderAsync_throws_when_team_already_has_order_this_year(
+        string culture, string expectedMessage)
     {
+        using var cultureScope = new Humans.Base.Extensions.CultureScope(culture);
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
@@ -85,8 +93,11 @@ public class ServiceTeamOrdersTests
         _repo.GetOrderForTeamAsync(teamId, 2026, Arg.Any<CancellationToken>())
             .Returns(new Order { Id = Guid.NewGuid(), TeamId = teamId, Year = 2026 });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _service.CreateTeamOrderAsync(teamId, userId, TestContext.Current.CancellationToken));
+        exception.Message.Should().Be(string.Format(
+            System.Globalization.CultureInfo.CurrentUICulture, expectedMessage, teamId, 2026));
+        await _repo.DidNotReceive().AddOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

@@ -156,4 +156,7 @@
   <data name="Store_Error_CampOrderExists" xml:space="preserve"><value>Camp season {0} already has a Store order.</value></data>
   <data name="Store_Error_PaymentPositive" xml:space="preserve"><value>Payment amount must be greater than zero.</value></data>
   <data name="Store_Error_PaymentExceedsBalance" xml:space="preserve"><value>Payment amount cannot exceed the outstanding balance (EUR {0:0.00}).</value></data>
+  <data name="Store_Error_TeamNotFound" xml:space="preserve"><value>Team {0} not found.</value></data>
+  <data name="Store_Error_TeamDepartmentRequired" xml:space="preserve"><value>Team orders are restricted to departments (top-level teams).</value></data>
+  <data name="Store_Error_TeamOrderExists" xml:space="preserve"><value>Team {0} already has a Store order for {1}.</value></data>
 </root>

@@ -111,4 +111,7 @@
   <data name="Store_Error_CampOrderExists" xml:space="preserve"><value>La saison du camp {0} a déjà une commande dans Store.</value></data>
   <data name="Store_Error_PaymentPositive" xml:space="preserve"><value>Le montant du paiement doit être supérieur à zéro.</value></data>
   <data name="Store_Error_PaymentExceedsBalance" xml:space="preserve"><value>Le montant du paiement ne peut pas dépasser le solde dû (EUR {0:0.00}).</value></data>
+  <data name="Store_Error_TeamNotFound" xml:space="preserve"><value>L'équipe {0} est introuvable.</value></data>
+  <data name="Store_Error_TeamDepartmentRequired" xml:space="preserve"><value>Les commandes d’équipe sont réservées aux départements (équipes de premier niveau).</value></data>
+  <data name="Store_Error_TeamOrderExists" xml:space="preserve"><value>L'équipe {0} a déjà une commande de la boutique pour {1}.</value></data>
 </root>

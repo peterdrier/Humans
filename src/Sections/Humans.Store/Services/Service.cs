@@ -492,15 +492,15 @@ internal sealed class Service(
     public async Task<Guid> CreateTeamOrderAsync(Guid teamId, Guid actorUserId, CancellationToken ct = default)
     {
         var team = await teamService.GetTeamAsync(teamId, ct)
-            ?? throw new InvalidOperationException($"Team {teamId} not found.");
+            ?? throw new InvalidOperationException(ErrorMessage("Store_Error_TeamNotFound", teamId));
         if (team.ParentTeamId is not null)
-            throw new InvalidOperationException("Team orders are restricted to departments (top-level teams).");
+            throw new InvalidOperationException(ErrorMessage("Store_Error_TeamDepartmentRequired"));
 
         var year = await GetCurrentEventYearAsync();
 
         var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (existing is not null)
-            throw new InvalidOperationException($"Team {teamId} already has a Store order for {year}.");
+            throw new InvalidOperationException(ErrorMessage("Store_Error_TeamOrderExists", teamId, year));
 
         var now = clock.GetCurrentInstant();
         var order = new Order

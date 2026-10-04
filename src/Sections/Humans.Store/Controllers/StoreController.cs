@@ -315,6 +315,8 @@ internal sealed class StoreController(
         }
         catch (InvalidOperationException ex)
         {
+            logger.LogWarning("Team order creation rejected for team {TeamId} by {UserId}: {Reason}",
+                teamId, user.Id, ex.Message);
             SetError(ex.Message);
             return RedirectToAction(nameof(Index));
         }
