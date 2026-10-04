@@ -1,4 +1,9 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
+using Humans.Calendar.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using NodaTime.Testing;
 using Humans.Calendar.Contracts;
 using Humans.Calendar.Models;
 using Humans.Calendar.Services.Dtos;
@@ -17,6 +22,72 @@ namespace Humans.Calendar.Tests.Services;
 
 public sealed class CachingCalendarServiceTests
 {
+    [HumansTheory]
+    [InlineData("create")]
+    [InlineData("update")]
+    [InlineData("delete")]
+    [InlineData("cancel")]
+    [InlineData("override")]
+    public async Task Mutation_SaveAcknowledgementFails_ReloadsCommittedCalendar(string operation)
+    {
+        var acknowledgement = new FailedSaveAcknowledgement();
+        var options = new DbContextOptionsBuilder<CalendarDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(acknowledgement).Options;
+        var repo = new CalendarRepository(new TestDbContextFactory<CalendarDbContext>(options));
+        var before = BuildInfo(title: "Before");
+        var ev = new CalendarEvent
+        {
+            Id = before.Id, Title = before.Title, OwningTeamId = before.OwningTeamId,
+            StartUtc = before.StartUtc, EndUtc = before.EndUtc, CreatedAt = before.CreatedAt,
+            UpdatedAt = before.UpdatedAt, CreatedByUserId = before.CreatedByUserId,
+            RecurrenceRule = "FREQ=DAILY;COUNT=3", RecurrenceTimezone = "UTC",
+        };
+        var ct = TestContext.Current.CancellationToken;
+        await repo.AddAsync(ev, ct);
+        var inner = new CalendarService(repo, new FakeClock(before.UpdatedAt),
+            Substitute.For<IAuditLogService>(), NullLogger<CalendarService>.Instance);
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<ICalendarService>(CachingCalendarService.InnerServiceKey, (_, _) => inner);
+        await using var provider = services.BuildServiceProvider();
+        var sut = new CachingCalendarService(provider.GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<CachingCalendarService>.Instance);
+        await WarmAsync(sut);
+        acknowledgement.Fail = true;
+        var dto = new CreateCalendarEventDto("After", null, null, null, before.OwningTeamId,
+            before.StartUtc, before.EndUtc, false, ev.RecurrenceRule, ev.RecurrenceTimezone);
+
+        if (string.Equals(operation, "create", StringComparison.Ordinal))
+            (await sut.CreateEventWithResultAsync(dto, Guid.NewGuid(), ct)).Succeeded.Should().BeFalse();
+        else if (string.Equals(operation, "update", StringComparison.Ordinal))
+            (await sut.UpdateEventWithResultAsync(ev.Id, dto, Guid.NewGuid(), ct)).Succeeded.Should().BeFalse();
+        else
+        {
+            Func<Task> mutate = operation switch
+            {
+                "delete" => () => sut.DeleteEventAsync(ev.Id, Guid.NewGuid(), ct),
+                "cancel" => () => sut.CancelOccurrenceAsync(ev.Id, before.StartUtc, Guid.NewGuid(), ct),
+                _ => () => sut.OverrideOccurrenceAsync(ev.Id, before.StartUtc,
+                    new OverrideOccurrenceDto(before.StartUtc, before.EndUtc, "Override", null, null, null),
+                    Guid.NewGuid(), ct),
+            };
+            (await mutate.Should().ThrowAsync<DbUpdateException>()).Which.Should().BeSameAs(acknowledgement.Failure);
+        }
+
+        var stored = await inner.GetAllEventInfosAsync(ct);
+        (await sut.GetAllEventInfosAsync(ct)).Should().BeEquivalentTo(stored,
+            "a save can commit before its acknowledgement fails");
+    }
+
+    private sealed class FailedSaveAcknowledgement : SaveChangesInterceptor
+    {
+        public bool Fail { get; set; }
+        public DbUpdateException Failure { get; } = new("Save acknowledgement lost");
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData,
+            int result, CancellationToken cancellationToken = default) =>
+            Fail ? throw Failure : ValueTask.FromResult(result);
+    }
+
     private readonly ICalendarService _inner = Substitute.For<ICalendarService>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly ILogger<CachingCalendarService> _logger = Substitute.For<ILogger<CachingCalendarService>>();

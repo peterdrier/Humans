@@ -134,7 +134,7 @@ internal sealed class CachingCalendarService(
     public async Task<CalendarEventMutationResult> CreateEventWithResultAsync(
         CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
     {
-        var result = await WithInner(inner => inner.CreateEventWithResultAsync(dto, createdByUserId, ct));
+        var result = await MutateWithResultAsync(inner => inner.CreateEventWithResultAsync(dto, createdByUserId, ct));
         if (result.Succeeded && result.Event is not null)
             await ReplaceAsync(result.Event.Id, CancellationToken.None);
         return result;
@@ -143,7 +143,7 @@ internal sealed class CachingCalendarService(
     public async Task<CalendarEventMutationResult> UpdateEventWithResultAsync(
         Guid id, CreateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
     {
-        var result = await WithInner(inner => inner.UpdateEventWithResultAsync(id, dto, updatedByUserId, ct));
+        var result = await MutateWithResultAsync(inner => inner.UpdateEventWithResultAsync(id, dto, updatedByUserId, ct));
         if (result.Succeeded)
             await ReplaceAsync(id, CancellationToken.None);
         return result;
@@ -198,6 +198,24 @@ internal sealed class CachingCalendarService(
             .ToDictionary(id => id, id => teamsById[id].Name);
     }
 
+    // A failed save may already have committed; its result cannot prove the old
+    // snapshot remains valid. The next read must reload all rows, including creates.
+    private async Task<CalendarEventMutationResult> MutateWithResultAsync(
+        Func<ICalendarService, Task<CalendarEventMutationResult>> action)
+    {
+        try
+        {
+            var result = await WithInner(action);
+            if (!result.Succeeded) Clear();
+            return result;
+        }
+        catch
+        {
+            Clear();
+            throw;
+        }
+    }
+
     private async Task<TResult> WithInner<TResult>(Func<ICalendarService, Task<TResult>> action)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
@@ -205,10 +223,19 @@ internal sealed class CachingCalendarService(
         return await action(inner);
     }
 
+    // This overload is used only by delete/cancel/override mutation paths.
     private async Task WithInner(Func<ICalendarService, Task> action)
     {
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<ICalendarService>(InnerServiceKey);
-        await action(inner);
+        try
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var inner = scope.ServiceProvider.GetRequiredKeyedService<ICalendarService>(InnerServiceKey);
+            await action(inner);
+        }
+        catch
+        {
+            Clear();
+            throw;
+        }
     }
 }

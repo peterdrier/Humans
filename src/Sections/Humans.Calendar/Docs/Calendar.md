@@ -157,6 +157,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Timed recurrence expansion uses a conservative local upper bound, then checks instant overlap. The earlier occurrence in a repeated clock hour remains visible when the window ends during its later repetition.
 - A member has at most one `CalendarFeedToken`, keyed by their user id, and none until they first open `/Calendar`. Minting is lazy and idempotent, and never replaces a token already there: two first views racing each other both try to insert the same primary key, and the loser adopts the winner's token rather than failing or revoking a live subscription. Rotation is the one path that replaces the row, and is last-write-wins by design. GDPR erasure deletes it, and an account merge deletes the eliminated account's row rather than moving it — the survivor keeps their own feed and the dead account's URL stops working.
 
+- A failed mutation result or exception clears the calendar snapshot because a save may have committed before acknowledgement failed. The next read reloads all events and exceptions; the original failure result or exception is preserved.
 - A failed or cancelled post-write cache reload evicts the affected event and marks the event cache cold; the next window read reloads from source, including newly created events. The reload failure still propagates.
 
 ## Negative Access Rules
