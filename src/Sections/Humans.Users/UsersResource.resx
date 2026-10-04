@@ -592,13 +592,4 @@
   <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Locked — you have a ticket for this year</value></data>
   <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Event Operations</value></data>
   <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Community Updates</value></data>
-  <data name="Users_EmailError_InvalidAddress" xml:space="preserve"><value>Please enter a valid email address.</value></data>
-  <data name="Users_EmailError_AlreadyAdded" xml:space="preserve"><value>This email address is already in your account.</value></data>
-  <data name="Users_EmailError_MergePending" xml:space="preserve"><value>A merge request is already pending for this email address.</value></data>
-  <data name="Users_EmailError_NotPendingVerification" xml:space="preserve"><value>No email pending verification.</value></data>
-  <data name="Users_EmailError_VerificationExpired" xml:space="preserve"><value>The verification link has expired or is invalid.</value></data>
-  <data name="Users_EmailError_NotFound" xml:space="preserve"><value>Email not found.</value></data>
-  <data name="Users_EmailError_VerifiedTargetOnly" xml:space="preserve"><value>Only verified emails can be the notification target.</value></data>
-  <data name="Users_EmailError_RemoveLastVerified" xml:space="preserve"><value>Cannot remove your last verified email. Add another verified email first so you can still receive system notifications.</value></data>
-  <data name="Users_EmailError_RemoveTicketLinked" xml:space="preserve"><value>Cannot remove this email — it is linked to your event ticket. Removing it could disconnect your ticket. Contact an admin if you need to change it.</value></data>
 </root>

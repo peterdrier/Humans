@@ -1197,13 +1197,4 @@
   <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Bloqueado — tienes una entrada para este año</value></data>
   <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Operaciones del evento</value></data>
   <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Novedades de la comunidad</value></data>
-  <data name="Users_EmailError_InvalidAddress" xml:space="preserve"><value>Introduce una dirección de correo electrónico válida.</value></data>
-  <data name="Users_EmailError_AlreadyAdded" xml:space="preserve"><value>Esta dirección de correo electrónico ya está en tu cuenta.</value></data>
-  <data name="Users_EmailError_MergePending" xml:space="preserve"><value>Ya hay una solicitud de fusión pendiente para esta dirección de correo electrónico.</value></data>
-  <data name="Users_EmailError_NotPendingVerification" xml:space="preserve"><value>No hay ningún correo electrónico pendiente de verificación.</value></data>
-  <data name="Users_EmailError_VerificationExpired" xml:space="preserve"><value>El enlace de verificación ha caducado o no es válido.</value></data>
-  <data name="Users_EmailError_NotFound" xml:space="preserve"><value>No se ha encontrado el correo electrónico.</value></data>
-  <data name="Users_EmailError_VerifiedTargetOnly" xml:space="preserve"><value>Solo las direcciones de correo verificadas pueden recibir las notificaciones.</value></data>
-  <data name="Users_EmailError_RemoveLastVerified" xml:space="preserve"><value>No puedes eliminar tu último correo electrónico verificado. Añade primero otro correo verificado para seguir recibiendo notificaciones del sistema.</value></data>
-  <data name="Users_EmailError_RemoveTicketLinked" xml:space="preserve"><value>No puedes eliminar este correo electrónico: está vinculado a tu entrada del evento. Eliminarlo podría desconectar tu entrada. Contacta con una persona administradora si necesitas cambiarlo.</value></data>
 </root>

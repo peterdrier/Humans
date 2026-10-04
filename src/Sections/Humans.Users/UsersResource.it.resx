@@ -1197,13 +1197,4 @@
   <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Bloccato — hai un biglietto per quest’anno</value></data>
   <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Operazioni dell’evento</value></data>
   <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Novità della comunità</value></data>
-  <data name="Users_EmailError_InvalidAddress" xml:space="preserve"><value>Inserisci un indirizzo email valido.</value></data>
-  <data name="Users_EmailError_AlreadyAdded" xml:space="preserve"><value>Questo indirizzo email è già nel tuo account.</value></data>
-  <data name="Users_EmailError_MergePending" xml:space="preserve"><value>È già in attesa una richiesta di unione per questo indirizzo email.</value></data>
-  <data name="Users_EmailError_NotPendingVerification" xml:space="preserve"><value>Nessun indirizzo email è in attesa di verifica.</value></data>
-  <data name="Users_EmailError_VerificationExpired" xml:space="preserve"><value>Il link di verifica è scaduto o non è valido.</value></data>
-  <data name="Users_EmailError_NotFound" xml:space="preserve"><value>Indirizzo email non trovato.</value></data>
-  <data name="Users_EmailError_VerifiedTargetOnly" xml:space="preserve"><value>Solo gli indirizzi email verificati possono ricevere le notifiche.</value></data>
-  <data name="Users_EmailError_RemoveLastVerified" xml:space="preserve"><value>Non puoi rimuovere il tuo ultimo indirizzo email verificato. Aggiungi prima un altro indirizzo verificato per continuare a ricevere le notifiche del sistema.</value></data>
-  <data name="Users_EmailError_RemoveTicketLinked" xml:space="preserve"><value>Non puoi rimuovere questo indirizzo email: è collegato al tuo biglietto per l’evento. Rimuovendolo potresti scollegare il biglietto. Contatta una persona amministratrice se devi cambiarlo.</value></data>
 </root>

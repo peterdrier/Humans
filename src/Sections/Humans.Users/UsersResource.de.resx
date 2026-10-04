@@ -1197,13 +1197,4 @@
   <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Gesperrt — du hast ein Ticket für dieses Jahr</value></data>
   <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Veranstaltungsorganisation</value></data>
   <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Neuigkeiten der Gemeinschaft</value></data>
-  <data name="Users_EmailError_InvalidAddress" xml:space="preserve"><value>Bitte gib eine gültige E-Mail-Adresse ein.</value></data>
-  <data name="Users_EmailError_AlreadyAdded" xml:space="preserve"><value>Diese E-Mail-Adresse ist bereits in deinem Konto.</value></data>
-  <data name="Users_EmailError_MergePending" xml:space="preserve"><value>Für diese E-Mail-Adresse ist bereits eine Zusammenführungsanfrage ausstehend.</value></data>
-  <data name="Users_EmailError_NotPendingVerification" xml:space="preserve"><value>Keine E-Mail-Adresse wartet auf eine Bestätigung.</value></data>
-  <data name="Users_EmailError_VerificationExpired" xml:space="preserve"><value>Der Bestätigungslink ist abgelaufen oder ungültig.</value></data>
-  <data name="Users_EmailError_NotFound" xml:space="preserve"><value>E-Mail-Adresse nicht gefunden.</value></data>
-  <data name="Users_EmailError_VerifiedTargetOnly" xml:space="preserve"><value>Nur bestätigte E-Mail-Adressen können als Ziel für Benachrichtigungen dienen.</value></data>
-  <data name="Users_EmailError_RemoveLastVerified" xml:space="preserve"><value>Du kannst deine letzte bestätigte E-Mail-Adresse nicht entfernen. Füge zuerst eine weitere bestätigte Adresse hinzu, damit du weiterhin Systembenachrichtigungen erhältst.</value></data>
-  <data name="Users_EmailError_RemoveTicketLinked" xml:space="preserve"><value>Du kannst diese E-Mail-Adresse nicht entfernen: Sie ist mit deinem Veranstaltungsticket verknüpft. Durch das Entfernen könnte die Verknüpfung verloren gehen. Wende dich an die Administration, wenn du sie ändern musst.</value></data>
 </root>

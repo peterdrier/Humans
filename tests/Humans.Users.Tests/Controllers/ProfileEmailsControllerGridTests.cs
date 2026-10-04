@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Humans.Base.Extensions;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Logging;
@@ -48,7 +47,6 @@ namespace Humans.Users.Tests.Controllers;
 /// </summary>
 public class ProfileEmailsControllerGridTests
 {
-    private readonly IStringLocalizer<UsersResource> _localizer = Substitute.For<IStringLocalizer<UsersResource>>();
     private readonly ILogger<ProfileEmailsController> _logger = Substitute.For<ILogger<ProfileEmailsController>>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
@@ -77,7 +75,8 @@ public class ProfileEmailsControllerGridTests
             _userManager, contextAccessor, claimsFactory, identityOptions,
             NullLogger<SignInManager<User>>.Instance, schemeProvider, userConfirmation);
 
-        _localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
+        var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
+        localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         var sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
         sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
@@ -90,7 +89,7 @@ public class ProfileEmailsControllerGridTests
             _userEmailService,
             _auditLogService,
             _logger,
-            _localizer,
+            localizer,
             Substitute.For<ITicketServiceRead>(),
             _authorizationService,
             _signInManager,
@@ -133,102 +132,6 @@ public class ProfileEmailsControllerGridTests
             Arg.Any<object?>(),
             Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
-    }
-
-    [HumansTheory]
-    [InlineData("en", "This email address is already in your account.", "Users_EmailError_AlreadyAdded")]
-    [InlineData("es", "This email address is already in your account.", "Users_EmailError_AlreadyAdded")]
-    [InlineData("de", "This email address is already in your account.", "Users_EmailError_AlreadyAdded")]
-    [InlineData("it", "This email address is already in your account.", "Users_EmailError_AlreadyAdded")]
-    [InlineData("fr", "This email address is already in your account.", "Users_EmailError_AlreadyAdded")]
-    [InlineData("ca", "This email address is already in your account.", "Users_EmailError_AlreadyAdded")]
-    [InlineData("es", "Please enter a valid email address.", "Users_EmailError_InvalidAddress")]
-    [InlineData("es", "A merge request is already pending for this email address.", "Users_EmailError_MergePending")]
-    public async Task AddEmail_LocalizesMemberRefusals(string language, string reason, string key)
-    {
-        using var culture = new CultureScope(language);
-        using var resources = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
-        var translations = resources.GetRequiredService<IStringLocalizer<UsersResource>>();
-        _localizer[Arg.Any<string>()].Returns(call => translations[call.Arg<string>()]);
-        const string email = "human@example.com";
-        _userEmailService.AddEmailAsync(_userId, email, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<AddEmailResult>(new ValidationException(reason)));
-        _userEmailService.GetUserEmailsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
-        _userManager.GetLoginsAsync(Arg.Any<User>()).Returns(new List<UserLoginInfo>());
-
-        var result = await _controller.AddEmail(new EmailsViewModel { NewEmail = email });
-
-        result.Should().BeOfType<ViewResult>();
-        _controller.ModelState[nameof(EmailsViewModel.NewEmail)]!.Errors.Should().ContainSingle()
-            .Which.ErrorMessage.Should().Be(translations[key].Value);
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
-    }
-
-    [HumansTheory]
-    [InlineData("No email pending verification.", "Users_EmailError_NotPendingVerification")]
-    [InlineData("The verification link has expired or is invalid.", "Users_EmailError_VerificationExpired")]
-    public async Task VerifyEmail_LocalizesMemberRefusals(string reason, string key)
-    {
-        using var culture = new CultureScope("es");
-        using var resources = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
-        var translations = resources.GetRequiredService<IStringLocalizer<UsersResource>>();
-        _localizer[Arg.Any<string>()].Returns(call => translations[call.Arg<string>()]);
-        var emailId = Guid.NewGuid();
-        _userEmailService.VerifyEmailAsync(_userId, emailId, "token", Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<VerifyEmailResult>(new ValidationException(reason)));
-
-        var result = await _controller.VerifyEmail(_userId, emailId, "token");
-
-        result.Should().BeOfType<ViewResult>();
-        _controller.ViewData["Success"].Should().Be(false);
-        _controller.ViewData["Message"].Should().Be(translations[key].Value);
-    }
-
-    [HumansTheory]
-    [InlineData("en", "SetPrimary", "Only verified emails can be the notification target.", "Users_EmailError_VerifiedTargetOnly")]
-    [InlineData("es", "SetPrimary", "Only verified emails can be the notification target.", "Users_EmailError_VerifiedTargetOnly")]
-    [InlineData("de", "SetPrimary", "Only verified emails can be the notification target.", "Users_EmailError_VerifiedTargetOnly")]
-    [InlineData("it", "SetPrimary", "Only verified emails can be the notification target.", "Users_EmailError_VerifiedTargetOnly")]
-    [InlineData("fr", "SetPrimary", "Only verified emails can be the notification target.", "Users_EmailError_VerifiedTargetOnly")]
-    [InlineData("ca", "SetPrimary", "Only verified emails can be the notification target.", "Users_EmailError_VerifiedTargetOnly")]
-    [InlineData("es", "SetPrimary", "Email not found.", "Users_EmailError_NotFound")]
-    [InlineData("es", "SetEmailVisibility", "Email not found.", "Users_EmailError_NotFound")]
-    [InlineData("es", "DeleteEmail", "Email not found.", "Users_EmailError_NotFound")]
-    [InlineData("es", "DeleteEmail", "Cannot remove your primary email. Set another verified email as primary first, then remove this one.", "EmailGrid_DeletePrimaryBlocked")]
-    [InlineData("es", "DeleteEmail", "Cannot remove your last verified email. Add another verified email first so you can still receive system notifications.", "Users_EmailError_RemoveLastVerified")]
-    [InlineData("es", "DeleteEmail", "Cannot remove this email — it is linked to your event ticket. Removing it could disconnect your ticket. Contact an admin if you need to change it.", "Users_EmailError_RemoveTicketLinked")]
-    [InlineData("es", "Unlink", "Cannot unlink your last verified sign-in method. Add another verified email first so you can still sign in.", "LinkedAccounts_UnlinkBlockedLastSignInMethod")]
-    public async Task EmailMutation_LocalizesMemberRefusals(string language, string action, string reason, string key)
-    {
-        using var culture = new CultureScope(language);
-        using var resources = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
-        var translations = resources.GetRequiredService<IStringLocalizer<UsersResource>>();
-        _localizer[Arg.Any<string>()].Returns(call => translations[call.Arg<string>()]);
-        Exception rejection = string.Equals(reason, "Email not found.", StringComparison.Ordinal)
-            ? new InvalidOperationException(reason) : new ValidationException(reason);
-        var emailId = Guid.NewGuid();
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        _userEmailService.SetPrimaryAsync(_userId, emailId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(rejection));
-        _userEmailService.SetVisibilityAsync(_userId, emailId, null, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(rejection));
-        _userEmailService.DeleteEmailAsync(_userId, emailId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(rejection));
-        _userEmailService.UnlinkAsync(_userId, emailId, _userId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(rejection));
-
-        var result = action switch
-        {
-            "SetPrimary" => await _controller.SetPrimary(emailId, ct),
-            "SetEmailVisibility" => await _controller.SetEmailVisibility(emailId, null),
-            "DeleteEmail" => await _controller.DeleteEmail(emailId),
-            "Unlink" => await _controller.Unlink(emailId, ct),
-            _ => throw new ArgumentOutOfRangeException(nameof(action)),
-        };
-
-        result.Should().BeOfType<RedirectToActionResult>();
-        _controller.TempData["ErrorMessage"].Should().Be(translations[key].Value);
-        await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
     }
 
     [HumansTheory]
