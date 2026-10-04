@@ -1147,9 +1147,11 @@ internal sealed class ExpenseReportService(
             return;
         }
 
+        var language = submitter.PreferredLanguage;
         await emailService.SendAsync(emails.ReportApproved(
             recipient, submitter.BurnerName, reportId, approved.Payable,
-            IbanFormatter.Mask(approved.PayeeIban), submitter.PreferredLanguage), ct);
+            IbanFormatter.Mask(approved.PayeeIban),
+            language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);
     }
 
     public Task<ExpenseMutationResult> ApproveWithResultAsync(

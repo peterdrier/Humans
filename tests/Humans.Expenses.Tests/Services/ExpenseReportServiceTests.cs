@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using AwesomeAssertions;
 using System.Security.Claims;
 using Humans.Expenses.Controllers;
@@ -2357,16 +2358,22 @@ public sealed class ExpenseReportServiceTests
             actor);
     }
 
-    [HumansFact]
-    public async Task ApproveAsync_EmailsTheSubmitter_WithTheCappedAmountAndAMaskedIban()
+    [HumansTheory]
+    [Xunit.InlineData("es", "es", "25,00 €")]
+    [Xunit.InlineData("", "en", "25.00 €")]
+    [Xunit.InlineData(" ", "en", "25.00 €")]
+    [Xunit.InlineData("not-a-culture", "en", "25.00 €")]
+    [Xunit.InlineData("pt", "en", "25.00 €")]
+    public async Task ApproveAsync_EmailsTheSubmitter_WithTheCappedAmountAndAMaskedIban(string language, string expectedCulture, string amount)
     {
+        using var actorCulture = new CultureScope("fr");
         // peterdrier/Humans#1820: the one moment a member hears that money is coming.
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var reportId = Guid.NewGuid();
         await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted, payeeIban: "ES9121000418450200051332", total: 40m);
-        StubSubmitter(submitter, "Ana", "ana@example.com", "es");
+        StubSubmitter(submitter, "Ana", "ana@example.com", language);
 
         var ok = await _sut.ApproveAsync(reportId, Guid.NewGuid(), null, 25m, Xunit.TestContext.Current.CancellationToken);
         ok.Should().BeTrue();
@@ -2375,8 +2382,8 @@ public sealed class ExpenseReportServiceTests
             Arg.Is<EmailMessage>(m => m.TemplateName == "expense_approved"
                 && m.RecipientEmail == "ana@example.com"
                 && m.RecipientName == "Ana"
-                && m.Subject.EndsWith("#es")
-                && m.HtmlBody.Contains("25,00 €")
+                && m.Subject.EndsWith("#" + expectedCulture, StringComparison.Ordinal)
+                && m.HtmlBody.Contains(amount, StringComparison.Ordinal)
                 && m.HtmlBody.Contains("ES91****332")
                 && !m.HtmlBody.Contains("ES9121000418450200051332")
                 && m.HtmlBody.Contains($"{TestExpensesEmails.BaseUrl}/Expenses/{reportId}")),

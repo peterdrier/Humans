@@ -214,6 +214,7 @@ internal sealed class EventService(
             }
 
             var submitterEmail = submitter.Email;
+            var language = submitter.PreferredLanguage;
 
             await emailService.SendAsync(emailMessages.EventLifecycle(
                 new EventLifecycleNotification(
@@ -222,7 +223,7 @@ internal sealed class EventService(
                     EventTitle: guideEvent.Title,
                     Reason: reason,
                     ActionUrl: actionUrl,
-                    Culture: submitter.PreferredLanguage),
+                    Culture: language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode),
                 submitterEmail));
         }
         catch (Exception ex)

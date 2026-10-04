@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Camps.Contracts;
 using Humans.Events.Controllers;
@@ -342,10 +343,16 @@ public sealed class EventServiceTests
         _repo.SaveChangesCount.Should().Be(1);
     }
 
-    [HumansFact]
-    public async Task SubmitEventAsync_WithActionUrl_EmailsSubmitterConfirmation()
+    [HumansTheory]
+    [InlineData("es", "Hemos recibido el envío de tu evento")]
+    [InlineData("", "Your event submission has been received")]
+    [InlineData(" ", "Your event submission has been received")]
+    [InlineData("not a culture!", "Your event submission has been received")]
+    [InlineData("fr-FR", "Your event submission has been received")]
+    public async Task SubmitEventAsync_WithActionUrl_EmailsSubmitterConfirmation(string language, string subject)
     {
-        var submitterId = StubSubmitterWithEmail("sub@example.com", "Burner");
+        using var actorCulture = new CultureScope("fr");
+        var submitterId = StubSubmitterWithEmail("sub@example.com", "Burner", language);
         var guideEvent = new Event
         {
             Id = Guid.NewGuid(),
@@ -361,6 +368,7 @@ public sealed class EventServiceTests
             Arg.Is<EmailMessage>(m => m.TemplateName == "event_submitted"
                 && m.RecipientEmail == "sub@example.com"
                 && m.RecipientName == "Burner"
+                && m.Subject == subject
                 && m.HtmlBody.Contains("Fire show")
                 && m.HtmlBody.Contains("https://x/Events/MySubmissions")));
     }
@@ -473,12 +481,12 @@ public sealed class EventServiceTests
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
-    private Guid StubSubmitterWithEmail(string email, string burnerName)
+    private Guid StubSubmitterWithEmail(string email, string burnerName, string language = "en")
     {
         var userId = Guid.NewGuid();
         // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
         // UserInfo.BurnerName reads User.BurnerName only (#1098).
-        var user = new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = "en" };
+        var user = new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = language };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             // UserInfoStubHelpers.ToUserInfo lives in Humans.Application.Tests and is not
             // visible across the section boundary; UserInfo.Create is the public builder.

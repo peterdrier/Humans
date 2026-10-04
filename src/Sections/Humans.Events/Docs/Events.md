@@ -206,7 +206,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 ## Triggers
 
-- When a moderation action is applied: an email notification is sent to the submitter (`IEmailService.SendAsync` with the `EventsEmails.EventLifecycle` message — Events owns the four lifecycle templates, internal `EventsEmails` plus the `EventsEmailPreviews` gallery contributor registered in `Section.Register`; the copy lives in `EventsResource` in all six cultures and renders in the submitter's preferred language (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651)), coordinated by `EventService.ApplyModerationAsync` (the controller passes the submitter-edit URL; the service owns the send).
+- When a moderation action is applied: an email notification is sent to the submitter (`IEmailService.SendAsync` with the `EventsEmails.EventLifecycle` message — Events owns the four lifecycle templates, internal `EventsEmails` plus the `EventsEmailPreviews` gallery contributor registered in `Section.Register`; the copy lives in `EventsResource` in all six cultures and renders in the submitter's supported preferred language, with English fallback for blank, malformed or unsupported preferences (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651)), coordinated by `EventService.ApplyModerationAsync` (the controller passes the submitter-edit URL; the service owns the send).
 - When a moderator approves an event: `Event.Status` transitions to `Approved` and an `EventModerationAction` record is appended.
 
 ## Cross-Section Dependencies
