@@ -333,6 +333,11 @@ internal sealed class TicketTailorService : ITicketVendorService
                     "TicketTailor issue returned 2xx with empty body",
                     TicketVendorFailureKind.Transient);
 
+            if (string.IsNullOrWhiteSpace(body.Id))
+                throw new TicketVendorWriteException(
+                    "TicketTailor issue returned 2xx without a ticket id",
+                    TicketVendorFailureKind.Transient);
+
             return ToVendorTicket(body);
         }
     }

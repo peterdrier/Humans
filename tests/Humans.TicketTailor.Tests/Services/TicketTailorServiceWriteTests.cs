@@ -331,6 +331,41 @@ public class TicketTailorServiceWriteTests
         ex.Which.Kind.Should().Be(TicketVendorFailureKind.Transient);
     }
 
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task IssueTicketAsync_UnusableId_ThrowsVendorFailure(string? id)
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new { id });
+        var service = TicketTailorTestHost.CreateService(handler);
+
+        var act = () => service.IssueTicketAsync(new IssueTicketRequest(
+            EventId: null, TicketTypeId: null, HoldId: "hold_1",
+            FullName: "Test User", Email: null, SendEmail: false, ExternalReference: null));
+
+        var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
+        ex.Which.Kind.Should().Be(TicketVendorFailureKind.Transient);
+        handler.Requests.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task IssueTicketAsync_MissingId_ThrowsVendorFailure()
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new { });
+        var service = TicketTailorTestHost.CreateService(handler);
+
+        var act = () => service.IssueTicketAsync(new IssueTicketRequest(
+            EventId: null, TicketTypeId: null, HoldId: "hold_1",
+            FullName: "Test User", Email: null, SendEmail: false, ExternalReference: null));
+
+        var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
+        ex.Which.Kind.Should().Be(TicketVendorFailureKind.Transient);
+        handler.Requests.Should().ContainSingle();
+    }
+
     [HumansFact]
     public async Task CreateCheckInAsync_PostsFormEncodedRequiredFields()
     {
