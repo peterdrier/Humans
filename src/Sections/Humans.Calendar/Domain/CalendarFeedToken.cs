@@ -6,9 +6,7 @@ namespace Humans.Calendar.Domain;
 /// time they open the feed card on <c>/Calendar</c> and absent until then.
 /// </summary>
 /// <remarks>
-/// Calendar's data, not Users'. The token authenticates this section's feed and
-/// nothing else; it lived on <c>User.ICalToken</c> only because the card originally
-/// shipped inside Shifts' page, which already had a <c>User</c> to hand.
+/// Calendar's data, not Users'. The token authenticates this section's feed and nothing else.
 /// </remarks>
 internal sealed class CalendarFeedToken
 {

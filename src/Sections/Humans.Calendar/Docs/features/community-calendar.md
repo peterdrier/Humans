@@ -189,5 +189,5 @@ All-day events carry only `LocalDate` ranges, including their recurrence bounds 
 
 ## Related Features
 
-- [Calendar section invariants](../Calendar.md) — current data model, routing, and architecture status (own project since G5, nobodies-collective/Humans#866; `CalendarDbContext` owns the `calendar_*` tables, and `CachingCalendarService` decorates the read path)
+- [Calendar section invariants](../Calendar.md) — current data model, routing, and architecture status (`CalendarDbContext` owns the `calendar_*` tables, and `CachingCalendarService` decorates the read path)
 - [Teams & Working Groups](../../../Humans.Teams/Docs/features/Teams-feature.md) — Calendar events are owned by teams; the team reference is recorded on every audit entry for team-scoped audit filtering

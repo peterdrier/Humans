@@ -65,8 +65,7 @@ internal sealed class CalendarFeedTokenService(ICalendarRepository repo)
     /// <summary>
     /// Merge deletes the eliminated account's token rather than re-FKing it: the
     /// survivor has their own, one member cannot hold two, and moving the row would
-    /// silently swap the survivor's live URL for the tombstone's. This is what Users
-    /// did inline before the table moved here.
+    /// silently swap the survivor's live URL for the tombstone's.
     /// </summary>
     public Task ReassignAsync(
         Guid mergedFromUserId,

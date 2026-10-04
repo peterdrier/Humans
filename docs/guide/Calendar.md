@@ -34,7 +34,9 @@ Anyone signed in can do everything on the calendar — view, add, edit, cancel, 
 
 ### Browse what's on
 
-Use the month grid at `/Calendar`, the list at `/Calendar/List`, or the upcoming agenda at `/Calendar/Agenda`. You can filter any of them by team, or look at one team's calendar at `/Calendar/Team/{teamId}`. Open any event for the full details.
+Use the month grid at `/Calendar`, the list at `/Calendar/List`, or the upcoming agenda at `/Calendar/Agenda`. You can filter any of them by team, or look at one team's calendar at `/Calendar/Team/{teamId}`. Open any event for the full details. Times are shown in the timezone picked at the top of the page; change it there and the page reloads in the new zone.
+
+The unfiltered calendar also shows public items from other parts of the system, labelled with where they came from; their links take you back there rather than to a calendar event.
 
 ![TODO: screenshot — month grid with a team filter and a mix of one-off and repeating events]
 
@@ -44,9 +46,13 @@ Go to `/Calendar/Event/Create`. Every event needs a title and a team it belongs 
 
 ### Edit or cancel
 
-Open an event and use edit or delete. Editing a repeating event changes every future occurrence. If you only want to change **one** occurrence of a repeating event — a different time or place that week — use **Edit this occurrence** next to it in the upcoming list. To drop a single occurrence without affecting the rest, use **Cancel this occurrence**. Deleted events disappear from the calendar but stay in the audit record.
+Open an event and use edit or delete. Editing a repeating event changes the whole series. If you only want to change **one** occurrence of a repeating event — a different time or place that week — use **Edit this occurrence** next to it in the upcoming list. To drop a single occurrence without affecting the rest, use **Cancel this occurrence**. Deleted events disappear from the calendar but stay in the audit record.
 
 Every event page ends with a change-history panel listing who created, edited, or cancelled what, so you can see the record without leaving the event.
+
+### Subscribe in your own calendar app
+
+Below the month grid at `/Calendar` is your personal feed URL. Copy it into any calendar app that subscribes to iCal feeds and it shows your shift signups, the guide events you saved and your working groups' meetings — not the community calendar's events. The URL is private: anyone who has it can read the feed. **Regenerate URL** replaces it, and every copy you handed out before stops working.
 
 ## Related sections
 

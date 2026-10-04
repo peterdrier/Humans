@@ -7,9 +7,7 @@ using Xunit;
 namespace Humans.Calendar.Tests.Models;
 
 /// <summary>
-/// A hand-typed or truncated <c>{originalStartUtc}</c> route segment used to throw out of
-/// <c>InstantPattern.ExtendedIso.Parse</c>, turning a missing occurrence into a 500 instead
-/// of a 404. <c>TryParseOriginal</c> replaced the throwing parse with null.
+/// A hand-typed or truncated <c>{originalStartUtc}</c> route segment must yield a 404, not a 500: <c>TryParseOriginal</c> returns null instead of throwing.
 /// </summary>
 public sealed class OccurrenceOverrideFormViewModelTests
 {
