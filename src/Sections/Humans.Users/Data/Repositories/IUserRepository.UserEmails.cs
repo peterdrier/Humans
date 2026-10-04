@@ -54,10 +54,9 @@ internal partial interface IUserRepository
     /// with <c>IsPrimary</c> and <c>IsGoogle</c> cleared so the target's
     /// existing primary / Google selections remain authoritative.
     /// <c>UpdatedAt</c> is stamped to <paramref name="updatedAt"/> on every
-    /// row touched. Returns the count of <c>user_emails</c> rows ultimately
-    /// attributed to <paramref name="targetUserId"/>.
+    /// row touched.
     /// </summary>
-    Task<int> ReassignUserEmailsToUserAsync(
+    Task ReassignUserEmailsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default);
 

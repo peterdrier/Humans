@@ -112,7 +112,7 @@ internal sealed partial class UserRepository
             .ExecuteDeleteAsync(ct);
     }
 
-    public async Task<int> ReassignUserEmailsToUserAsync(
+    public async Task ReassignUserEmailsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -157,9 +157,6 @@ internal sealed partial class UserRepository
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        return await ctx.UserEmails
-            .CountAsync(e => e.UserId == targetUserId, ct);
     }
 
     public async Task<bool> MarkUserEmailVerifiedAsync(

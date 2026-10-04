@@ -259,10 +259,9 @@ internal partial interface IShiftManagementRepository : IRepository
     /// Target wins on collision: if target already has a
     /// <c>VolunteerEventProfile</c>, source's profile row is removed;
     /// for tag preferences, any source row matching an existing target
-    /// <c>(UserId, ShiftTagId)</c> is removed. Returns the total count of
-    /// rows attributed to target across both tables after the move.
+    /// <c>(UserId, ShiftTagId)</c> is removed.
     /// </summary>
-    Task<int> ReassignProfilesAndTagPrefsToUserAsync(
+    Task ReassignProfilesAndTagPrefsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,

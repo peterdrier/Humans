@@ -973,7 +973,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         return await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<int> ReassignToUserAsync(
+    public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -1003,9 +1003,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        return await ctx.TicketAttendees
-            .CountAsync(a => a.MatchedUserId == targetUserId, ct);
     }
 
     private static IQueryable<TicketOrder> ApplyOrderSorting(

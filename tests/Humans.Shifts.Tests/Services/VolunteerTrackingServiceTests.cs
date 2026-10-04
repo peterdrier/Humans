@@ -883,9 +883,9 @@ public class VolunteerTrackingServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<int> ReassignAvailabilityToUserAsync(
+        public Task ReassignAvailabilityToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default)
-            => Task.FromResult(0);
+            => Task.CompletedTask;
 
         public Task<IReadOnlyList<int>> UpsertCampSetupAsync(
             Guid userId, Guid eventSettingsId, LocalDate? barrioSetupStartDate,
