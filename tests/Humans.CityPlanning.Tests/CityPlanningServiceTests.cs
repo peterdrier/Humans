@@ -750,13 +750,14 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         result[0].CampSeasonId.Should().Be(seasonWithoutId);
     }
 
-    [HumansFact]
-    public async Task ExportAsGeoJsonAsync_ReturnsFeatureCollection()
+    [HumansTheory]
+    [InlineData("""{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]},"properties":{}}""")]
+    [InlineData("""{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}""")]
+    public async Task ExportAsGeoJsonAsync_ReturnsFeatureCollection(string geoJson)
     {
         var campId = Guid.NewGuid();
         var campSeasonId = Guid.NewGuid();
         var userId = NewUserId();
-        const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]},"properties":{}}""";
 
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
@@ -772,6 +773,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         doc.RootElement.GetProperty("type").GetString().Should().Be("FeatureCollection");
         var features = doc.RootElement.GetProperty("features");
         features.GetArrayLength().Should().Be(1);
+        features[0].GetProperty("geometry").GetProperty("type").GetString().Should().Be("Polygon");
         features[0].GetProperty("properties").GetProperty("areaSqm").GetDouble().Should().Be(100.0);
     }
 

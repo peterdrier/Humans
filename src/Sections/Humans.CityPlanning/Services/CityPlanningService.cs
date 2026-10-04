@@ -529,36 +529,27 @@ internal sealed class CityPlanningService(
 
         var polygons = await repo.GetPolygonsByCampSeasonIdsAsync(seasonIds, cancellationToken);
 
-        var docs = new List<JsonDocument>();
-        try
+        var features = polygons.Select(p =>
         {
-            var features = polygons.Select(p =>
+            var data = displayData[p.CampSeasonId];
+            using var doc = JsonDocument.Parse(p.GeoJson);
+            var geom = doc.RootElement.TryGetProperty("geometry", out var g) ? g : doc.RootElement;
+            return new
             {
-                var data = displayData[p.CampSeasonId];
-                var doc = JsonDocument.Parse(p.GeoJson);
-                docs.Add(doc);
-                var geom = doc.RootElement.TryGetProperty("geometry", out var g) ? g : doc.RootElement;
-                return new
+                type = "Feature",
+                geometry = geom.Clone(),
+                properties = new
                 {
-                    type = "Feature",
-                    geometry = geom,
-                    properties = new
-                    {
-                        campName = data.Name,
-                        campSlug = data.CampSlug,
-                        year,
-                        areaSqm = p.AreaSqm
-                    }
-                };
-            }).ToList();
+                    campName = data.Name,
+                    campSlug = data.CampSlug,
+                    year,
+                    areaSqm = p.AreaSqm
+                }
+            };
+        }).ToList();
 
-            return JsonSerializer.Serialize(
-                new { type = "FeatureCollection", features },
-                new JsonSerializerOptions { WriteIndented = true });
-        }
-        finally
-        {
-            foreach (var d in docs) d.Dispose();
-        }
+        return JsonSerializer.Serialize(
+            new { type = "FeatureCollection", features },
+            new JsonSerializerOptions { WriteIndented = true });
     }
 }
