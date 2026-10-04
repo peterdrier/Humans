@@ -1276,6 +1276,66 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     // ============================================================
 
     [HumansTheory]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public async Task RangeEarlyEntryEviction_ClearsValuesReadDuringSave(bool approve, bool failureAfterSave)
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        shift.DayOffset = -1;
+        var userId = Guid.NewGuid();
+        var signup = SeedSignup(userId, shift.Id, approve ? SignupStatus.Pending : SignupStatus.Confirmed);
+        signup.SignupBlockId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.GetBlockForMutationAsync(Arg.Any<Guid>(), Arg.Any<ShiftSignupBlockMutationScope>(), Arg.Any<CancellationToken>())
+            .Returns(call => _repo.GetBlockForMutationAsync(
+                call.Arg<Guid>(), call.Arg<ShiftSignupBlockMutationScope>(), call.Arg<CancellationToken>()));
+        repo.GetUserIdsForDayAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<ShiftDayUserStatusScope>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        repo.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            started.SetResult();
+            await resume.Task.WaitAsync(TestContext.Current.CancellationToken);
+            await _repo.SaveChangesAsync(call.Arg<CancellationToken>());
+            if (failureAfterSave) throw new IOException("Save acknowledgement failed");
+        });
+        int? cachedConfirmed = null;
+        var earlyEntry = Substitute.For<IEarlyEntryInvalidator>();
+        earlyEntry.When(x => x.InvalidateUser(userId)).Do(_ => cachedConfirmed = null);
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With(_teamService).With<ITeamServiceRead>(_teamService)
+            .With(_roleAssignmentService).With(_users).Build();
+        var service = new ShiftSignupService(
+            repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, NewCalendarResolver(),
+            AuditLog, Notifier, AdminAuthorization, _viewInvalidator, earlyEntry, serviceProvider,
+            Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+        Func<Task> mutate = async () =>
+        {
+            if (approve) await service.ApproveRangeAsync(signup.SignupBlockId.Value, Guid.NewGuid());
+            else await service.BailRangeAsync(signup.SignupBlockId.Value, userId);
+        };
+
+        var mutation = mutate();
+        await started.Task.WaitAsync(TestContext.Current.CancellationToken);
+        cachedConfirmed = (await _repo.GetConfirmedSignupCountsByShiftAsync(
+            [shift.Id], TestContext.Current.CancellationToken)).GetValueOrDefault(shift.Id);
+        cachedConfirmed.Should().Be(approve ? 0 : 1);
+        resume.SetResult();
+        if (failureAfterSave)
+            await ((Func<Task>)(() => mutation.WaitAsync(TestContext.Current.CancellationToken)))
+                .Should().ThrowAsync<IOException>();
+        else
+            await mutation;
+        cachedConfirmed ??= (await _repo.GetConfirmedSignupCountsByShiftAsync(
+            [shift.Id], TestContext.Current.CancellationToken)).GetValueOrDefault(shift.Id);
+        cachedConfirmed.Should().Be(approve ? 1 : 0);
+    }
+
+    [HumansTheory]
     [InlineData(false, false, "Shifts_Bail_NotAuthorized")]
     [InlineData(true, false, "Shifts_BailRange_NotAuthorized")]
     [InlineData(false, true, "Shifts_Bail_EarlyEntryClosed")]

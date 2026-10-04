@@ -894,8 +894,6 @@ internal sealed class ShiftSignupService(
             }
 
             signup.Confirm(reviewerUserId, clock);
-            if (signup.Shift.IsEarlyEntry)
-                earlyEntryInvalidator.InvalidateUser(signup.UserId);
             approved.Add(signup);
         }
 
@@ -931,7 +929,15 @@ internal sealed class ShiftSignupService(
             return SignupResult.Fail("Cannot approve: all shifts in this range are at capacity.");
         }
 
-        await repo.SaveChangesAsync();
+        try
+        {
+            await repo.SaveChangesAsync();
+        }
+        finally
+        {
+            foreach (var userId in approved.Where(s => s.Shift.IsEarlyEntry).Select(s => s.UserId).Distinct())
+                earlyEntryInvalidator.InvalidateUser(userId);
+        }
         shiftMgmt.InvalidateDashboardCaches(calendar.Id);
         viewInvalidator.InvalidateUser(approved[0].UserId);
         viewInvalidator.InvalidateRota(approved[0].Shift.RotaId);
@@ -1019,11 +1025,17 @@ internal sealed class ShiftSignupService(
         foreach (var signup in signups)
         {
             signup.Bail(actorUserId, clock, reason);
-            if (signup.Shift.IsEarlyEntry)
-                earlyEntryInvalidator.InvalidateUser(signup.UserId);
         }
 
-        await repo.SaveChangesAsync();
+        try
+        {
+            await repo.SaveChangesAsync();
+        }
+        finally
+        {
+            foreach (var userId in signups.Where(s => s.Shift.IsEarlyEntry).Select(s => s.UserId).Distinct())
+                earlyEntryInvalidator.InvalidateUser(userId);
+        }
         shiftMgmt.InvalidateDashboardCaches(firstSignup.Shift.Rota.EventSettingsId);
         viewInvalidator.InvalidateUser(firstSignup.UserId);
         viewInvalidator.InvalidateRota(firstSignup.Shift.RotaId);
