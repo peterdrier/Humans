@@ -149,8 +149,8 @@
       FrameworkReference flows transitively through ProjectReference, so all 26 .Contracts
       leaves that reference this project resolve Microsoft.AspNetCore.App with
       IsTransitiveFrameworkReference=true. Those leaves are NOT framework-free and cannot be
-      used as a "cannot name an ASP.NET type" oracle. Only the three leaves with no path here
-      — Humans.Events.Contracts, Humans.Onboarding.Contracts (both zero-ProjectReference) and
+      used as a "cannot name an ASP.NET type" oracle. Only the two leaves with no path here
+      — Humans.Onboarding.Contracts (zero-ProjectReference) and
       Humans.Users.Contracts (one edge, to Onboarding) — resolve Microsoft.NETCore.App alone.
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

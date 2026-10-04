@@ -77,7 +77,7 @@
     IUserService.ApplyProfileOnboardingMutationAsync. Pulling it here would force
     Humans.Onboarding.Contracts to reference this project to keep its own signature — trading
     one acyclic edge for a worse one and taking the zero-reference property off the leaf that
-    is load-bearing for it. Duplicating it (Humans.Auth.Contracts.RoleAssignmentResult's
+    is load-bearing for it. Duplicating it (Humans.Auth.RoleAssignmentResult's
     shape) would put a third copy of a two-property record in the graph and grow this
     project's public surface, which needs Peter. Neither is worth it: the edge is provably
     harmless and the flat "zero references" phrasing of the G5 end-state design is the thing

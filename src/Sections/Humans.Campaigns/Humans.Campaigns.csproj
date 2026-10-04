@@ -28,8 +28,8 @@
     <!--
       Tickets' contracts leaf: CampaignService asks Tickets for discount codes
       (ITicketDiscountCodes) rather than reaching past it into the Base vendor port.
-      Acyclic — the pair goes through leaves in both directions and
-      Humans.Campaigns.Contracts names no Tickets type.
+      Acyclic — Tickets references Humans.Campaigns directly, so Campaigns reaches Tickets
+      only through its leaf and names no Tickets type.
     -->
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
   </ItemGroup>

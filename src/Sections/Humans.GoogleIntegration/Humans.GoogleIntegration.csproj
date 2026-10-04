@@ -31,8 +31,8 @@
 
   <ItemGroup>
     <!--
-      The section consumes six other sections' leaves and publishes its own. The outward
-      direction always goes through Humans.GoogleIntegration.Contracts, never this project,
+      The section consumes other sections' leaves. Teams references this project directly, so the
+      Teams <-> GoogleIntegration edge stays acyclic only while this project reaches Teams through its leaf,
       which is what keeps the mutual Teams <-> GoogleIntegration and Auth <-> GoogleIntegration
       edges acyclic at the assembly level (that leaf's csproj comment has the full argument).
 

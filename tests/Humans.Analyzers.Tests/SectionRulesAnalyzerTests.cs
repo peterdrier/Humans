@@ -140,8 +140,7 @@ public class SectionRulesAnalyzerTests
     [HumansFact]
     public async Task Fires_on_public_type_whose_name_merely_contains_Resource()
     {
-        // Only a name ENDING in "Resource" is the carve-out — same filter
-        // SectionResourceTypes() applies at runtime.
+        // Only a name ENDING in "Resource" is the carve-out (the runtime SectionResourceTypes() matcher is stricter: exactly <Section>Resource).
         var source = SectionEntryPoint + """
 
             namespace Humans.Test

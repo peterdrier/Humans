@@ -32,8 +32,8 @@
     <!--
       The year overview shows Holded actual spend per budget category. That comes from
       Finance's contracts leaf, never from Humans.Finance itself — Humans.Finance
-      references Humans.Budget.Contracts for the active year, so the pair stays acyclic
-      only while both directions go through a leaf
+      references Humans.Budget for the active year, so the pair stays acyclic
+      only while Budget reaches Finance through its leaf
       (memory/architecture/section-project-cycle-fix.md).
     -->
     <ProjectReference Include="..\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />

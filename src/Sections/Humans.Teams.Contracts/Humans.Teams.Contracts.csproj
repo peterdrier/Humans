@@ -16,7 +16,7 @@
 
     Humans.Users.Contracts is referenced for GoogleEmailStatus alone. Base references
     Humans.Users.Contracts, so nothing in that project may ever reference this one. Do not
-    add Humans.Auth.Contracts: nothing here names an Auth type, and the edge would pull
+    add Humans.Auth: nothing here names an Auth type, and the edge would pull
     Users and Onboarding into this leaf's chain.
   -->
 
