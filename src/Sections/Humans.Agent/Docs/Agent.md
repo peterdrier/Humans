@@ -79,6 +79,8 @@ The member history page uses localized labels, including the link to each transc
 
 ## Invariants
 
+- FAQ overview routing summaries keep their 200-character prefix and word-boundary trimming without splitting UTF-16 surrogate pairs; complete source bodies are unchanged.
+
 Admin conversation-list paging clamps negative page numbers to zero and calculates offsets without integer overflow. A page beyond the available history stays empty rather than wrapping into earlier conversations; the Older link also stays within the integer page range.
 
 Conversation list and transcript GETs propagate request cancellation through viewer resolution before their conversation reads; ownership denials remain 404.

@@ -34,6 +34,39 @@ public class TeamDetailViewTests
         string culture, SystemTeamType type, string expected)
     {
         using var language = new CultureScope(culture);
+        var model = new TeamDetailViewModel
+        {
+            Name = "Example", Slug = "example", IsAuthenticated = true,
+            IsSystemTeam = true, SystemTeamType = type,
+        };
+        var html = await RenderAsync("/Views/Team/Details.cshtml", model);
+
+        html.Split(HtmlEncoder.Default.Encode(expected), StringSplitOptions.None)
+            .Should().HaveCount(3, "the badge and membership criteria both use the translated team type");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, 150, false)]
+    [Xunit.InlineData(false, 150, true)]
+    [Xunit.InlineData(true, 200, false)]
+    [Xunit.InlineData(true, 200, true)]
+    public async Task DescriptionPreview_PreservesWholeSurrogatePairs(bool directory, int limit, bool fits)
+    {
+        var prefix = new string('a', limit - (fits ? 2 : 1));
+        var team = new TeamSummaryViewModel
+        {
+            Name = "Example", Slug = "example", Description = prefix + "😀tail",
+        };
+        var model = directory ? (object)new TeamIndexViewModel { Departments = [team] } : team;
+        var path = directory ? "/Views/Team/Index.cshtml" : "/Views/Team/_TeamCard.cshtml";
+
+        var html = await RenderAsync(path, model);
+
+        html.Should().Contain(SanitizedMarkdownRenderer.Render(prefix + (fits ? "😀" : "") + "..."));
+    }
+
+    private static async Task<string> RenderAsync(string path, object model)
+    {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             ApplicationName = typeof(TeamDetailViewTests).Assembly.GetName().Name,
@@ -56,7 +89,7 @@ public class TeamDetailViewTests
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
         var result = services.GetRequiredService<IRazorViewEngine>()
-            .GetView(null, "/Views/Team/Details.cshtml", isMainPage: false);
+            .GetView(null, path, isMainPage: false);
         result.Success.Should().BeTrue();
         var http = new DefaultHttpContext { RequestServices = services };
         var route = new RouteData();
@@ -65,11 +98,7 @@ public class TeamDetailViewTests
         var action = new ActionContext(http, route, new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
         var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary())
         {
-            Model = new TeamDetailViewModel
-            {
-                Name = "Example", Slug = "example", IsAuthenticated = true,
-                IsSystemTeam = true, SystemTeamType = type,
-            },
+            Model = model,
         };
         using var writer = new StringWriter();
         var context = new ViewContext(action, result.View!, data,
@@ -77,7 +106,6 @@ public class TeamDetailViewTests
 
         await result.View!.RenderAsync(context);
 
-        writer.ToString().Split(HtmlEncoder.Default.Encode(expected), StringSplitOptions.None)
-            .Should().HaveCount(3, "the badge and membership criteria both use the translated team type");
+        return writer.ToString();
     }
 }

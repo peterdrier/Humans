@@ -183,6 +183,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Invariants
 
+- Team description previews keep their 150-character card and 200-character public-directory limits without splitting UTF-16 surrogate pairs; Markdown sanitization and full stored descriptions are preserved.
+
 - Authenticated system-team detail badges and membership-criteria text use shared system-team labels in all six cultures; stored enum values and team names are unchanged.
 
 - Expected create, edit, deactivate, join-request rejection and member add/remove rejections log at Warning with their reason and applicable team id, without exception stacks. Form feedback and redirects are unchanged.

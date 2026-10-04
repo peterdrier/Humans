@@ -81,6 +81,21 @@ public class CommunityFaqReaderTests
         e.Summary.Should().Be("What the NCA is and how to join.");
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Long_unbroken_overview_preserves_whole_surrogate_pairs(bool fits)
+    {
+        var prefix = new string('a', fits ? 198 : 199);
+        var overview = prefix + "😀tail";
+        var source = new FakeSource { Files = { ["topic"] = "# Topic\n\n## Overview\n" + overview } };
+        var reader = MakeReader(source);
+
+        var (entries, _) = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+
+        entries.Should().ContainSingle().Which.Summary.Should().Be(prefix + (fits ? "😀" : "") + "…");
+    }
+
     [HumansFact]
     public async Task ListTopicsAsync_falls_back_to_title_when_no_overview()
     {
