@@ -444,7 +444,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<int> ReassignActiveJoinRequestsAsync(
+    public async Task ReassignActiveJoinRequestsAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -479,9 +479,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         }
 
         await db.SaveChangesAsync(ct);
-
-        return await db.TeamJoinRequests
-            .CountAsync(r => r.UserId == targetUserId, ct);
     }
 
     // ==========================================================================

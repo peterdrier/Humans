@@ -150,12 +150,10 @@ internal partial interface ICampRepository
     /// Idempotent: re-running after a partial merge finds no source members and
     /// is a no-op. <c>CampMember</c>/<c>CampRoleAssignment</c> carry no
     /// <c>UpdatedAt</c>, so <paramref name="updatedAt"/> is unused for these
-    /// tables and accepted for caller-side symmetry. Returns the count of
-    /// <c>CampMember</c> rows belonging to <paramref name="targetUserId"/> after
-    /// the fold.
+    /// tables and accepted for caller-side symmetry.
     /// </para>
     /// </summary>
-    Task<int> ReassignMembershipsToUserAsync(
+    Task ReassignMembershipsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,

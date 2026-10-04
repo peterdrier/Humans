@@ -344,11 +344,9 @@ internal interface ITeamRepository : IRepository
     /// source row is dropped (target's pending request stands). All other
     /// source rows (historical statuses, or pending-without-target-conflict)
     /// are re-FK'd so request history is preserved on the surviving account.
-    /// Returns the count of <see cref="TeamJoinRequest"/> rows attributed to
-    /// <paramref name="targetUserId"/> after the move. Called only by
-    /// <c>TeamService.ReassignToUserAsync</c>.
+    /// Called only by <c>TeamService.ReassignAsync</c>.
     /// </summary>
-    Task<int> ReassignActiveJoinRequestsAsync(
+    Task ReassignActiveJoinRequestsAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
     // ==========================================================================
