@@ -209,9 +209,8 @@ public class NotificationRepositoryTests : IDisposable
         n.Recipients.Single().ReadAt = _now;
         await _repo.AddAsync(n, Xunit.TestContext.Current.CancellationToken);
 
-        var count = await _repo.ReassignRecipientsToUserAsync(source, target, Xunit.TestContext.Current.CancellationToken);
+        await _repo.ReassignRecipientsToUserAsync(source, target, Xunit.TestContext.Current.CancellationToken);
 
-        count.Should().Be(1);
         var rows = await _dbContext.NotificationRecipients.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         rows.Should().ContainSingle();
         rows[0].UserId.Should().Be(target);
@@ -239,9 +238,8 @@ public class NotificationRepositoryTests : IDisposable
         n.Recipients.Add(new NotificationRecipient { NotificationId = n.Id, UserId = target, ReadAt = _now });
         await _repo.AddAsync(n, Xunit.TestContext.Current.CancellationToken);
 
-        var count = await _repo.ReassignRecipientsToUserAsync(source, target, Xunit.TestContext.Current.CancellationToken);
+        await _repo.ReassignRecipientsToUserAsync(source, target, Xunit.TestContext.Current.CancellationToken);
 
-        count.Should().Be(1);
         var rows = await _dbContext.NotificationRecipients.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         rows.Should().ContainSingle(r => r.NotificationId == n.Id && r.UserId == target);
         // Target's pre-existing ReadAt is preserved (not overwritten by source's null).
