@@ -652,8 +652,8 @@ internal sealed class EventService(
             var description = string.Join("\n\n", new[]
             {
                 e.Description,
-                string.IsNullOrWhiteSpace(e.Host) ? null : $"Host: {e.Host}",
-                string.IsNullOrWhiteSpace(e.Category?.Name) ? null : $"Category: {e.Category.Name}",
+                string.IsNullOrWhiteSpace(e.Host) ? null : $"{localizer["Events_Submission_FieldHost"]}: {e.Host}",
+                string.IsNullOrWhiteSpace(e.Category?.Name) ? null : $"{localizer["Events_Submission_FieldCategory"]}: {e.Category.Name}",
             }.Where(s => !string.IsNullOrWhiteSpace(s)));
 
             foreach (var start in occurrences)

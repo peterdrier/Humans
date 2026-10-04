@@ -189,6 +189,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 - My Submissions, individual submit/edit forms, Schedule and Browse GETs preserve request cancellation through viewer, guide/burn settings, dropdown, submission, camp, favourite and submitter reads. Shared form helpers keep their default token for POST redisplays; event mutations and permission gates are unchanged.
 
 - Submissions are only accepted when `now >= EventGuideSettings.SubmissionOpenAt && now <= EventGuideSettings.SubmissionCloseAt`; the controller enforces this with `IClock` before creating or resubmitting.
+- Personal calendar-feed descriptions reuse the Events host/category labels in the request UI culture, in all six languages; authored text, event data and iCal identifiers remain unchanged.
 - The individual and barrio submission forms render their field labels through `EventsResource` in every supported culture. Their required-field, length, and range validation messages use shared resources in all six cultures; validation limits are unchanged.
 - The My Submissions controller orders both personal and barrio event lists newest-submitted first; the service returns camp submission counts and event data without a display sort.
 - Submission and moderation lifecycle emails are best-effort after the event write commits. Submitter lookup, message preparation, and delivery failures are logged without turning the committed operation into a reported failure.
