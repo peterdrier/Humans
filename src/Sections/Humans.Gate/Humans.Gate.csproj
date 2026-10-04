@@ -25,7 +25,7 @@
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!--
       Tickets' contracts leaf: GateVendorCheckInJob mirrors a gate admit back to the vendor
       through ITicketVendorMirror rather than naming the vendor port. The leaf references

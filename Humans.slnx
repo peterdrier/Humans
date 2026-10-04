@@ -8,7 +8,6 @@
   <Folder Name="/src/Sections/">
     <Project Path="src/Sections/Humans.Agent/Humans.Agent.csproj" />
     <Project Path="src/Sections/Humans.AuditLog/Humans.AuditLog.csproj" />
-    <Project Path="src/Sections/Humans.AuditLog.Contracts/Humans.AuditLog.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Auth/Humans.Auth.csproj" />
     <Project Path="src/Sections/Humans.Auth.Contracts/Humans.Auth.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Backdoor/Humans.Backdoor.csproj" />

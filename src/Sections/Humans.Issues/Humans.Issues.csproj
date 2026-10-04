@@ -29,7 +29,7 @@
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
   </ItemGroup>
 
   <ItemGroup>

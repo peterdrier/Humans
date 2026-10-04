@@ -61,7 +61,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
   </ItemGroup>
 
 </Project>

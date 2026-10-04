@@ -28,7 +28,7 @@
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
     <!-- SaveEventSettingsAsync writes an audit entry (peterdrier/Humans#1628). -->
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -73,7 +73,7 @@
                         names no Humans.Shifts type at all.
         Tickets       — early entry gates on the volunteer holding a ticket.
     -->
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <!--

@@ -31,9 +31,8 @@
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
-    <!-- TicketTransferAdmin/Detail.cshtml renders <vc:audit-log>, the AuditLog section's component. -->
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <!-- TicketTransferAdmin/Detail.cshtml renders <vc:audit-log>, the AuditLog section's component. -->
     <!--
       Outbound section references, all through leaves and all acyclic — none of these
       leaves names a Tickets type.

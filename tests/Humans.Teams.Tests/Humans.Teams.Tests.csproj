@@ -16,7 +16,7 @@
       reaching into another section's tables.
     -->
     <ProjectReference Include="..\..\src\Sections\Humans.Shifts\Humans.Shifts.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!--
       Temporary, and the condition that removes it: this project's harness seeds Users rows
       through an in-memory UsersDbContext, which lives in Humans.Users.

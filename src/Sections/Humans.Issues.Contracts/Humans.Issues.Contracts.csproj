@@ -17,7 +17,7 @@
       Backdoor machine API reads it (nobodies-collective/Humans#1128). AuditLog.Contracts
       references Humans.Base only, so the chain still terminates.
     -->
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
   </ItemGroup>
 
   <ItemGroup>

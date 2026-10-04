@@ -25,7 +25,7 @@
     <ProjectReference Include="..\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\Humans.Holded\Humans.Holded.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
   </ItemGroup>
 

@@ -26,7 +26,7 @@
     <!-- IIssueQueueOwner: this section declares the issue queue it owns. -->
     <ProjectReference Include="..\Humans.Issues.Contracts\Humans.Issues.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />

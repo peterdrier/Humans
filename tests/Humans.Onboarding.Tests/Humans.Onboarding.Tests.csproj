@@ -2,7 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.Onboarding\Humans.Onboarding.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
