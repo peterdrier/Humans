@@ -761,26 +761,43 @@ public sealed class EventServiceTests
         _repo.SaveChangesCount.Should().Be(0);
     }
 
-    [HumansFact]
-    public async Task BulkImportAsync_NewRow_CreatesPendingEvent()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BulkImportAsync_CreatesOrEditsColumnsWithoutReplacingExistingIdentity(bool update)
     {
         var campId = Guid.NewGuid();
         var submitter = Guid.NewGuid();
         var cat = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
         _repo.Categories.Add(cat);
+        var existing = ExistingEvent(campId, Guid.NewGuid(), EventStatus.Approved);
+        var existingSubmitter = existing.SubmitterUserId;
+        if (update) _repo.Events.Add(existing);
 
         var result = await _service.BulkImportAsync(
-            campId, submitter, [Row()],
+            campId, submitter, [Row(id: update ? existing.Id : null, title: "Fire workshop",
+                description: "Bring gloves", startTime: "14:00", duration: 90, location: "North tent",
+                host: "Spark", isRecurring: true, recurrenceDays: "Wed Fri", priority: 2)],
             new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
 
         result.HasErrors.Should().BeFalse();
-        result.CreatedCount.Should().Be(1);
-        result.UpdatedCount.Should().Be(0);
-        var created = _repo.Events.Should().ContainSingle().Subject;
-        created.Status.Should().Be(EventStatus.Pending);
-        created.CampId.Should().Be(campId);
-        created.SubmitterUserId.Should().Be(submitter);
-        created.CategoryId.Should().Be(cat.Id);
+        result.CreatedCount.Should().Be(update ? 0 : 1);
+        result.UpdatedCount.Should().Be(update ? 1 : 0);
+        var persisted = _repo.Events.Should().ContainSingle().Subject;
+        persisted.Status.Should().Be(EventStatus.Pending);
+        persisted.CampId.Should().Be(campId);
+        persisted.SubmitterUserId.Should().Be(update ? existingSubmitter : submitter);
+        if (update) persisted.Id.Should().Be(existing.Id);
+        persisted.CategoryId.Should().Be(cat.Id);
+        persisted.Title.Should().Be("Fire workshop");
+        persisted.Description.Should().Be("Bring gloves");
+        persisted.StartAt.Should().Be(Instant.FromUtc(2026, 7, 8, 14, 0));
+        persisted.DurationMinutes.Should().Be(90);
+        persisted.LocationNote.Should().Be("North tent");
+        persisted.Host.Should().Be("Spark");
+        persisted.IsRecurring.Should().BeTrue();
+        persisted.RecurrenceDays.Should().Be("0,2");
+        persisted.PriorityRank.Should().Be(2);
     }
 
     [HumansFact]
