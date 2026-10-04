@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Text.Json;
 using System.Security.Claims;
 using Humans.Governance.Controllers;
@@ -554,9 +555,17 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await _userService.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ApproveAsync_EmailsApplicantViaUserServiceLookup()
+    [HumansTheory]
+    [InlineData(true, "en", "en")]
+    [InlineData(true, "es", "es")]
+    [InlineData(true, "", "en")]
+    [InlineData(true, " ", "en")]
+    [InlineData(true, "not a culture!", "en")]
+    [InlineData(true, "fr-FR", "en")]
+    [InlineData(false, "fr-FR", "en")]
+    public async Task Decision_EmailsApplicantViaUserServiceLookup(bool approve, string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId);
         await SeedBoardVoteAsync(app.Id);
@@ -569,7 +578,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             BurnerName = "Alice",
             UserName = "alice@test.com",
             Email = "alice@test.com",
-            PreferredLanguage = "en"
+            PreferredLanguage = language
         };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user.ToUserInfo());
         _userEmailService.GetNotificationTargetEmailsAsync(
@@ -578,13 +587,18 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(
                 new Dictionary<Guid, string> { [userId] = "alice@test.com" }));
 
-        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
+        var result = approve
+            ? await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken)
+            : await _service.RejectAsync(app.Id, Guid.NewGuid(), "Reason", null, Xunit.TestContext.Current.CancellationToken);
+        result.Success.Should().BeTrue();
+        var templateName = approve ? "application_approved" : "application_rejected";
+        var subjectKey = approve ? "Governance_Email_ApplicationApproved_Subject" : "Governance_Email_ApplicationRejected_Subject";
 
         await _emailService.Received().SendAsync(
-            Arg.Is<EmailMessage>(m => m.TemplateName == "application_approved"
+            Arg.Is<EmailMessage>(m => m.TemplateName == templateName
                 && m.RecipientEmail == "alice@test.com"
                 && m.RecipientName == "Alice"
-                && m.Subject == "Governance_Email_ApplicationApproved_Subject#en"),
+                && m.Subject == subjectKey + "#" + expectedCulture),
             Arg.Any<CancellationToken>());
     }
 

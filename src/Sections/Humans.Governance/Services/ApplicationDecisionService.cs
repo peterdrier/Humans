@@ -114,11 +114,11 @@ internal sealed class ApplicationDecisionService(
         var culture = await SendDecisionEmailAsync(
             application,
             "approval",
-            (recipientEmail, user) => emailMessages.ApplicationApproved(
+            (recipientEmail, user, language) => emailMessages.ApplicationApproved(
                 recipientEmail,
                 user.BurnerName,
                 application.MembershipTier,
-                user.PreferredLanguage),
+                language),
             cancellationToken);
 
         await SendDecisionNotificationAsync(
@@ -181,12 +181,12 @@ internal sealed class ApplicationDecisionService(
         var culture = await SendDecisionEmailAsync(
             application,
             "rejection",
-            (recipientEmail, user) => emailMessages.ApplicationRejected(
+            (recipientEmail, user, language) => emailMessages.ApplicationRejected(
                 recipientEmail,
                 user.BurnerName,
                 application.MembershipTier,
                 reason,
-                user.PreferredLanguage),
+                language),
             cancellationToken);
 
         await SendDecisionNotificationAsync(
@@ -739,7 +739,7 @@ internal sealed class ApplicationDecisionService(
     private async Task<CultureInfo> SendDecisionEmailAsync(
         MemberApplication application,
         string decisionName,
-        Func<string, UserInfo, EmailMessage> buildMessage,
+        Func<string, UserInfo, string, EmailMessage> buildMessage,
         CancellationToken cancellationToken)
     {
         var culture = CultureInfo.GetCultureInfo("en");
@@ -756,7 +756,7 @@ internal sealed class ApplicationDecisionService(
             if (notificationEmails.TryGetValue(application.UserId, out var recipientEmail)
                 && !string.IsNullOrWhiteSpace(recipientEmail))
             {
-                await emailService.SendAsync(buildMessage(recipientEmail, user));
+                await emailService.SendAsync(buildMessage(recipientEmail, user, culture.Name));
             }
             else
             {
