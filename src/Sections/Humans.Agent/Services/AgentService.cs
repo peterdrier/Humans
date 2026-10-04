@@ -759,6 +759,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             var description = root.TryGetProperty("description", out var d) ? d.GetString() ?? "" : "";
             var categoryRaw = root.TryGetProperty("category", out var c) ? c.GetString() : null;
             var category = Enum.TryParse<IssueCategory>(categoryRaw, ignoreCase: true, out var parsed)
+                && Enum.IsDefined(parsed)
                 ? parsed
                 : IssueCategory.Question;
 

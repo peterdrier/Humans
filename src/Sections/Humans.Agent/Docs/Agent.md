@@ -103,6 +103,7 @@ Conversation list and transcript GETs propagate request cancellation through vie
    completed reply from subsequent transport failures.
 7. **Append-only conversations per user.** A user can only post to conversations they own. `AgentController` rejects cross-user access with 404.
 8. **Issue handoff is propose-only.** `route_to_issue` carries `{title, category, description}`. The dispatcher never writes a row server-side; the SSE stream emits an `issueProposal` token and the client opens the Issues submission modal pre-filled. The user reviews and submits via `/Issues/Submit`. Historical legacy auto-created `FeedbackReport.AgentConversationId` links are immutable.
+   Unrecognized categories, including undefined numeric enum values, fall back to Question.
 <!-- route_to_issue is propose-only; do not revert to server-side auto-creation of FeedbackReport rows. -->
 9. **Retention.** Conversations older than `AgentSettings.RetentionDays` are hard-deleted daily.
 10. **Single provider.** One `AnthropicClient` instance, one configured model at a time. No multi-provider fallback in Phase 1.
