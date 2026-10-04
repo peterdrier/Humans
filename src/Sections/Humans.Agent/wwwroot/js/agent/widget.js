@@ -91,6 +91,7 @@
         // re-parse + sanitize on each delta. innerHTML write below is safe
         // ONLY because DOMPurify gates it.
         bubble.dataset.rawMarkdown = '';
+        let finalized = false;
 
         try {
             const resp = await fetch('/Agent/Ask', {
@@ -117,11 +118,12 @@
                 while ((idx = buf.indexOf('\n\n')) >= 0) {
                     const frame = buf.slice(0, idx);
                     buf = buf.slice(idx + 2);
-                    handleFrame(frame, bubble);
+                    if (handleFrame(frame, bubble)) finalized = true;
                 }
             }
+            if (!finalized) showError(bubble, panel.dataset.networkErrorText);
         } catch (err) {
-            bubble.textContent = panel.dataset.networkErrorText;
+            if (!finalized) showError(bubble, panel.dataset.networkErrorText);
         } finally {
             sendBtn.disabled = false;
         }
@@ -171,16 +173,7 @@
             // finish. The bubble starts as appendMessage('assistant', ''), so
             // textContent is only non-empty once one of those branches filled it.
             if (reason === 'error') {
-                const errorText = panel.dataset.turnErrorText;
-                if (!bubble.dataset.rawMarkdown.trim() && !bubble.textContent.trim()) {
-                    bubble.textContent = errorText;
-                } else {
-                    const note = document.createElement('div');
-                    note.className = 'agent-error-note';
-                    note.textContent = errorText;
-                    bubble.appendChild(note);
-                }
-                messagesEl.scrollTop = messagesEl.scrollHeight;
+                showError(bubble, panel.dataset.turnErrorText);
             }
             // Capture the conversation id from the first successful turn so the
             // next send continues the same conversation server-side. Bail-out
@@ -190,7 +183,20 @@
             if (newId && newId !== '00000000-0000-0000-0000-000000000000') {
                 currentConversationId = newId;
             }
+            return true;
         }
+    }
+
+    function showError(bubble, errorText) {
+        if (!bubble.dataset.rawMarkdown.trim() && !bubble.textContent.trim()) {
+            bubble.textContent = errorText;
+        } else {
+            const note = document.createElement('div');
+            note.className = 'agent-error-note';
+            note.textContent = errorText;
+            bubble.appendChild(note);
+        }
+        messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
     function openIssueModalPrefilled(proposal) {
