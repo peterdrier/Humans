@@ -11,16 +11,20 @@ namespace Humans.Calendar.Services;
 /// <summary>Pure date or instant recurrence expansion over the cached event projection.</summary>
 internal static class CalendarOccurrenceExpander
 {
-    private static readonly DateTimeZone ViewerZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    /// <summary>
+    /// The organisation's zone. All-day window dates and display order are derived in it,
+    /// not in the viewer's zone the routes resolve; views clip to their own days.
+    /// </summary>
+    private static readonly DateTimeZone OrganisationZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     public static IReadOnlyList<CalendarOccurrence> Expand(
         IReadOnlyList<CalendarEventInfo> events, Instant from, Instant to,
         IReadOnlyDictionary<Guid, string> teamNamesById, ILogger logger)
     {
         var results = new List<CalendarOccurrence>();
-        // Calendar currently uses the organisation's viewer zone. Dates themselves never convert.
-        var fromDate = from.InZone(ViewerZone).Date;
-        var toLocal = to.InZone(ViewerZone).LocalDateTime;
+        // Dates themselves never convert; only the window's bounds do.
+        var fromDate = from.InZone(OrganisationZone).Date;
+        var toLocal = to.InZone(OrganisationZone).LocalDateTime;
         var toDate = toLocal.TimeOfDay == LocalTime.Midnight ? toLocal.Date : toLocal.Date.PlusDays(1);
         foreach (var ev in events)
         {
@@ -68,7 +72,7 @@ internal static class CalendarOccurrenceExpander
     /// </summary>
     internal static IReadOnlyList<CalendarOccurrence> OrderForDisplay(
         IEnumerable<CalendarOccurrence> occurrences) => occurrences
-        .OrderBy(o => o.StartDate ?? o.OccurrenceStartUtc!.Value.InZone(ViewerZone).Date)
+        .OrderBy(o => o.StartDate ?? o.OccurrenceStartUtc!.Value.InZone(OrganisationZone).Date)
         .ThenBy(o => o.OccurrenceStartUtc)
         .ToList();
 
@@ -190,14 +194,13 @@ internal static class CalendarOccurrenceExpander
     public static List<CalendarEventInfo> FilterForWindow(IEnumerable<CalendarEventInfo> snapshot,
         Instant from, Instant to, Guid? teamId)
     {
-        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         return snapshot.Where(e =>
         {
             if (teamId is not null && e.OwningTeamId != teamId) return false;
             if (e.Exceptions.Count > 0) return true;
             if (e.IsAllDay)
-                return e.StartDate <= to.InZone(zone).Date &&
-                    (e.RecurrenceUntilDate is null || e.RecurrenceUntilDate >= from.InZone(zone).Date);
+                return e.StartDate <= to.InZone(OrganisationZone).Date &&
+                    (e.RecurrenceUntilDate is null || e.RecurrenceUntilDate >= from.InZone(OrganisationZone).Date);
 
             // UNTIL bounds occurrence starts, while COUNT stores the final end.
             // Allow duration conservatively; expansion applies the exact overlap check.
@@ -223,8 +226,8 @@ internal static class CalendarOccurrenceExpander
     {
         // Legacy all-day instants are read as dates once, at the service boundary.
         // New writes use only the date columns; the old columns remain for existing rows.
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(ev.RecurrenceTimezone ?? "Europe/Madrid")
-            ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(ev.RecurrenceTimezone ?? OrganisationZone.Id)
+            ?? OrganisationZone;
         var startDate = ev.IsAllDay ? ev.StartDate ?? ev.StartUtc!.Value.InZone(zone).Date : (LocalDate?)null;
         var endDate = ev.IsAllDay ? ev.EndDateExclusive ??
             (ev.EndUtc is { } end ? end.Minus(NodaTime.Duration.FromNanoseconds(1)).InZone(zone).Date.PlusDays(1)
