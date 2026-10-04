@@ -215,8 +215,7 @@ public class CalendarServiceValidationTests
                 "FREQ=DAILY;COUNT=3", "UTC"),
             Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        // Assert success explicitly: the result form swallows the exception the throwing
-        // form used to surface, so a rejected create would otherwise reach the AddAsync
+        // Assert success explicitly: the result form swallows exceptions, so a rejected create would otherwise reach the AddAsync
         // assertion below as a silent zero-call.
         result.Succeeded.Should().BeTrue(result.ErrorMessage);
 
@@ -332,7 +331,8 @@ public class CalendarServiceValidationTests
                 Arg.Any<Guid?>(), Arg.Any<string?>())
             .Returns(Task.FromException(new InvalidOperationException("audit log connection lost")));
 
-        var service = BuildService(repo, audit);
+        var logger = Substitute.For<ILogger<CalendarService>>();
+        var service = BuildService(repo, audit, logger);
         var dto = new CreateCalendarEventDto(
             "Audit-fails-after-create", null, null, null,
             OwningTeamId: Guid.NewGuid(),
@@ -349,6 +349,7 @@ public class CalendarServiceValidationTests
         result.Event.Should().NotBeNull();
         result.Event!.Title.Should().Be("Audit-fails-after-create");
         await repo.Received(1).AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>());
+        AssertLoggedCritical(logger);
     }
 
     [HumansFact]
@@ -474,11 +475,13 @@ public class CalendarServiceValidationTests
                 Arg.Any<Guid?>(), Arg.Any<string?>())
             .Returns(Task.FromException(new InvalidOperationException("audit log connection lost")));
 
-        var service = BuildService(repo, audit);
+        var logger = Substitute.For<ILogger<CalendarService>>();
+        var service = BuildService(repo, audit, logger);
 
         var act = async () => await service.CancelOccurrenceAsync(
             Guid.NewGuid(), Instant.FromUtc(2026, 6, 1, 10, 0), Guid.NewGuid(), TestContext.Current.CancellationToken);
         await act.Should().NotThrowAsync();
+        AssertLoggedCritical(logger);
     }
 
     [HumansTheory]
@@ -538,12 +541,24 @@ public class CalendarServiceValidationTests
         return BuildService(repo, Substitute.For<IAuditLogService>());
     }
 
-    private static CalendarService BuildService(ICalendarRepository repo, IAuditLogService audit)
+    private static CalendarService BuildService(
+        ICalendarRepository repo, IAuditLogService audit, ILogger<CalendarService>? logger = null)
     {
         return new CalendarService(
             repo,
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
             audit,
-            NullLogger<CalendarService>.Instance);
+            logger ?? NullLogger<CalendarService>.Instance);
+    }
+
+    // The failure is swallowed, so the Critical log carrying the audit exception is the only
+    // trace it leaves (health.md invariant 5: never passes silently).
+    private static void AssertLoggedCritical(ILogger<CalendarService> logger)
+    {
+        var log = logger.ReceivedCalls()
+            .Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal))
+            .GetArguments();
+        log[0].Should().Be(LogLevel.Critical);
+        log[3].Should().BeOfType<InvalidOperationException>();
     }
 }
