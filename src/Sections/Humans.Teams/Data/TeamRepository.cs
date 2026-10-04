@@ -218,9 +218,11 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         {
             await db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+            { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+                ConstraintName: "IX_teams_Slug" or "IX_teams_CustomSlug" })
         {
-            // Unique-constraint collision — typically a slug race against a
+            // Slug-constraint collision — a slug race against a
             // concurrent create of the same name. Return false so the service
             // can retry with the next suffix. Detach the tracked entity so the
             // caller can reuse the context-free Team instance if needed.

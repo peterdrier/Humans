@@ -476,6 +476,8 @@ Self and admin email-grid mutation rejections remain Warning logs with the membe
 | VerificationSentAt | Instant? | Last time a verification email was sent (rate limiting) |
 | CreatedAt / UpdatedAt | Instant | Maintained by `UserEmailService` |
 
+OAuth reconciliation translates only a collision on `IX_user_emails_Email` into the existing verified-email race exception; unrelated persistence failures retain their original exception and follow the callers’ normal failure handling.
+
 **Indexes:** `UserId`; **unique partial index** on `Email` filtered to `IsVerified = true` (Postgres `"IsVerified" = true`). The cross-account check is service-enforced (`VerifyEmailAsync`, `AdminMarkVerifiedAsync`, the OAuth reconcile); the index is a unique index on an editable string, forbidden by `memory/architecture/unique-constraints-ids-only.md`, and its drop is recorded in `Docs/debt.yml`.
 
 No shadow columns (`IsOAuth` and `DisplayOrder` are gone from the table; `HUM0001` rejects references to either). Display sorting is alphabetical on `Email`.

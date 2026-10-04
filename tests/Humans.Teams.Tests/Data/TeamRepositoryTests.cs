@@ -52,6 +52,30 @@ public sealed class TeamRepositoryTests : IDisposable
             (await insert.Should().ThrowAsync<DbUpdateException>()).Which.Should().BeSameAs(failure);
     }
 
+    [HumansTheory]
+    [InlineData("23505", "IX_teams_Slug", true)]
+    [InlineData("23505", "IX_teams_CustomSlug", true)]
+    [InlineData("23505", "IX_teams_GoogleGroupPrefix", false)]
+    [InlineData("23505", "PK_teams", false)]
+    [InlineData("23503", "IX_teams_Slug", false)]
+    public async Task AddTeam_OnlyRetriesSlugConstraintCollisions(string sqlState, string constraint, bool retry)
+    {
+        var failure = new DbUpdateException("Save failed", new Npgsql.PostgresException(
+            "Constraint violation", "ERROR", "ERROR", sqlState, constraintName: constraint));
+        var options = new DbContextOptionsBuilder<TeamsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(new FailedInsert(failure)).Options;
+        var repo = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));
+        var team = new Team { Id = Guid.NewGuid(), Name = "Design", Slug = "design" };
+        Func<Task<bool>> insert = () => repo.AddTeamWithRequiresApprovalOverrideAsync(
+            team, requiresApproval: true, Xunit.TestContext.Current.CancellationToken);
+
+        if (retry)
+            (await insert()).Should().BeFalse();
+        else
+            (await insert.Should().ThrowAsync<DbUpdateException>()).Which.Should().BeSameAs(failure);
+    }
+
     private sealed class FailedInsert(DbUpdateException failure) : SaveChangesInterceptor
     {
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(

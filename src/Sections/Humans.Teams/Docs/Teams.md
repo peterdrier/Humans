@@ -225,7 +225,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - All member additions and removals are audit-logged via `AuditLogEntry`.
 - Google resource access changes triggered by membership changes (Drive folder permissions, Group memberships) are logged in the audit trail.
 - Removing a member from a team also removes all their role assignments on that team.
-- Each team has a unique slug used for URL routing. A custom slug can override the auto-generated one.
+- Each team has a unique slug used for URL routing. A custom slug can override the auto-generated one. Team creation retries only slug/custom-slug constraint collisions; unrelated failures, including a duplicate Google group prefix, propagate.
 - A Google Group prefix, if set, provisions a `@nobodies.team` group for the team.
 - Only departments (not sub-teams or system teams) can have public team pages. Team page Markdown uses the shared sanitized renderer: inline styles and non-HTTPS image sources are removed; supported task-list markup is retained.
 - A **hidden team** (`IsHidden = true`) is invisible to non-admin users: it does not appear on profile cards, team listings, public pages, birthday team names, or the "My Teams" page. Only Admin, Board, and TeamsAdmin can see and manage hidden teams. Campaigns can still target hidden teams for code distribution. The system-team sync skips the "added to team" email for hidden teams.

@@ -372,7 +372,8 @@ internal sealed partial class UserRepository
             await tx.CommitAsync(ct);
         }
         catch (DbUpdateException dbex)
-            when (dbex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+            when (dbex.InnerException is Npgsql.PostgresException
+                { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_user_emails_Email" })
         {
             // The verified-email partial unique index caught a concurrent
             // cross-user insert that beat the in-service pre-check. Translate
