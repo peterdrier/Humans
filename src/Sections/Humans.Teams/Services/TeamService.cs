@@ -2379,7 +2379,7 @@ internal sealed class TeamService(
                 await EmailService.SendAsync(EmailMessages.AddedToTeam(
                     email, user.BurnerName, team.Name, team.Slug,
                     resources.Select(r => (r.Name, r.Url)),
-                    user.PreferredLanguage),
+                    culture.Name),
                     cancellationToken);
             }
         }

@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Users.Services;
 using Humans.Base.Attributes;
 using Humans.Auth.Contracts;
@@ -81,7 +82,8 @@ internal sealed class AccountDeletionService(
                 notificationEmail,
                 user.BurnerName,
                 deletionDate,
-                user.PreferredLanguage),
+                user.PreferredLanguage.IsSupportedCultureCode()
+                    ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode),
                 ct);
         }
 

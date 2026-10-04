@@ -48,6 +48,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 {
     private readonly TeamService _service;
     private readonly IUserService _userService;
+    private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly RoleAssignmentService _roleAssignmentService;
     private readonly ITeamResourceService _teamResourceService;
     private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
@@ -80,7 +81,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>()
             .With<IRoleAssignmentService>(_roleAssignmentService)
-            .With<IEmailService>()
+            .With(_emailService)
+            .With(TestTeamsEmails.Create())
             .With(_systemTeamSync)
             .With(_googleSyncService)
             .With<IGoogleSyncOutboxService>(googleOutboxService)
@@ -1401,15 +1403,21 @@ public sealed class TeamServiceTests : TeamsTestHarness
     // ==========================================================================
 
     [HumansTheory]
-    [Xunit.InlineData("normal")]
-    [Xunit.InlineData("email-prep-failure")]
-    [Xunit.InlineData("profile-lookup-failure")]
-    public async Task AddedMemberNotice_ReusesEmailRecipientLanguageAndSurvivesPreparationFailure(string mode)
+    [Xunit.InlineData("normal", "es", "es")]
+    [Xunit.InlineData("email-prep-failure", "es", "es")]
+    [Xunit.InlineData("profile-lookup-failure", "es", "en")]
+    [Xunit.InlineData("normal", "", "en")]
+    [Xunit.InlineData("normal", " ", "en")]
+    [Xunit.InlineData("normal", "not a culture!", "en")]
+    [Xunit.InlineData("normal", "fr-FR", "en")]
+    public async Task AddedMemberNotice_ReusesEmailRecipientLanguageAndSurvivesPreparationFailure(
+        string mode, string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var ct = Xunit.TestContext.Current.CancellationToken;
         var coordinator = SeedUser(displayName: "Coordinator");
         var requester = SeedUser(displayName: "Requester");
-        requester.PreferredLanguage = "es";
+        requester.PreferredLanguage = language;
         var team = SeedTeam("Alpha", requiresApproval: true);
         SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
         var request = SeedJoinRequest(team.Id, requester.Id);
@@ -1427,11 +1435,16 @@ public sealed class TeamServiceTests : TeamsTestHarness
                 && source == NotificationSource.TeamMemberAdded
                 && ((IReadOnlyList<Guid>)call.GetArguments()[4]!).Contains(requester.Id))
             .Single().GetArguments();
-        if (string.Equals(mode, "profile-lookup-failure", StringComparison.Ordinal))
+        if (string.Equals(expectedCulture, "en", StringComparison.Ordinal))
             ((string)args[3]!).Should().EndWith("added to Alpha");
         else
             args[3].Should().Be("Se le ha añadido al equipo Alpha");
         args[6].Should().Be($"/Teams/{team.Slug}");
+        if (string.Equals(mode, "normal", StringComparison.Ordinal))
+            await _emailService.Received(1).SendAsync(
+                Arg.Is<EmailMessage>(m => m.RecipientEmail == requester.Email
+                    && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
+                Arg.Any<CancellationToken>());
         await _userService.Received(1).GetUserInfosAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>());
     }

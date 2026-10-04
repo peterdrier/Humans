@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Auth.Contracts;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
@@ -101,11 +102,18 @@ public class AccountDeletionServiceTests
             .RevokeAllMembershipsAsync(Guid.Empty, Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task RequestDeletionAsync_Valid_SetsDeletionPendingAndCascades()
+    [HumansTheory]
+    [Xunit.InlineData("en", "en")]
+    [Xunit.InlineData("es", "es")]
+    [Xunit.InlineData("", "en")]
+    [Xunit.InlineData(" ", "en")]
+    [Xunit.InlineData("not a culture!", "en")]
+    [Xunit.InlineData("fr-FR", "en")]
+    public async Task RequestDeletionAsync_Valid_SetsDeletionPendingAndCascades(string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var userId = Guid.NewGuid();
-        var user = MakeUser(userId);
+        var user = MakeUser(userId, preferredLanguage: language);
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _teamService.RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(3);
         _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>()).Returns(1);
@@ -135,7 +143,8 @@ public class AccountDeletionServiceTests
         // The builder is sealed with no interface, so the sent message is the assertion surface.
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "deletion_requested"
-                && m.RecipientEmail == user.Email! && m.RecipientName == user.BurnerName),
+                && m.RecipientEmail == user.Email! && m.RecipientName == user.BurnerName
+                && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
 
         // Shift-authorization cache must drop in-orchestrator (parity with
