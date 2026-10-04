@@ -632,6 +632,58 @@ else
   FAIL=$((FAIL+1))
 fi
 
+# Empty inventories are valid; failed producers must still report failure.
+if python3 - "$SCRIPT_DIR/authorization-inventory.sh" "$SCRIPT_DIR/guid-reservations.sh" <<'PYTEST'
+import os, pathlib, shutil, subprocess, sys, tempfile
+for script_path in sys.argv[1:]:
+    script = pathlib.Path(script_path).resolve()
+    name = script.stem
+    for failure in (None, 'grep', 'awk'):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            (root / 'docs').mkdir()
+            if name == 'authorization-inventory':
+                for owner in ('src/Humans.Web', 'src/Sections/Humans.Example'):
+                    (root / owner / 'Controllers').mkdir(parents=True)
+                    (root / owner / 'Controllers/ExampleController.cs').write_text('class ExampleController {}')
+                (root / 'src/Sections/Humans.Example/Docs').mkdir()
+                (root / 'docs/authorization-inventory.md').write_text('ExampleController')
+                (root / 'src/Sections/Humans.Example/Docs/authorization.md').write_text('ExampleController')
+                # This verifier uses awk only to total the document row count.
+                if failure == 'awk':
+                    tool_pattern = ''
+                else:
+                    tool_pattern = '*"-hE"*'
+            else:
+                (root / 'src/Humans.Base/Constants').mkdir(parents=True)
+                (root / 'src/Sections/Humans.Example/Data').mkdir(parents=True)
+                (root / 'docs/guid-reservations.md').write_text('## Current Reservations\n| `0000` | Sentinel |\n')
+                tool_pattern = '*"-rEho"*' if failure == 'grep' else ''
+            env = os.environ.copy()
+            if failure:
+                (root / 'bin').mkdir()
+                real = shutil.which(failure)
+                condition = f'[[ "$*" == {tool_pattern} ]]' if tool_pattern else 'true'
+                tool = root / 'bin' / failure
+                tool.write_text(f'#!/bin/bash\nif {condition}; then printf partial; exit 42; fi\nexec {real} "$@"\n')
+                tool.chmod(0o755)
+                env['PATH'] = str(root / 'bin') + ':' + env['PATH']
+            result = subprocess.run(['bash', str(script)], cwd=root, env=env, text=True, capture_output=True)
+            if failure:
+                assert result.returncode != 0 and f'FAIL [{name}]' in result.stdout, result
+                assert f'PASS [{name}]' not in result.stdout, result.stdout
+            else:
+                assert result.returncode == 0 and f'PASS [{name}]' in result.stdout, result
+PYTEST
+then
+  echo "PASS [test 16]: empty authorization/GUID inventories pass and failed producers report failure"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 16]: authorization/GUID inventory input handling"
+  FAIL=$((FAIL+1))
+fi
+
+echo ""
 echo "═══ Summary ═══"
 echo "Passed: $PASS"
 echo "Failed: $FAIL"
