@@ -185,7 +185,7 @@ internal sealed class SurveyService(
         ValidateInvitationEmailCopy(invitationEmailSubject, invitationEmailMessage);
         var now = clock.GetCurrentInstant();
         var surveyId = Guid.NewGuid();
-        var publicSlug = NormalizeSlug(input.PublicSlug);
+        var publicSlug = PreparePublicSlugForWrite(input.PublicSlug);
         var prepared = await PrepareInformationImagesAsync(surveyId, input, existing: null, ct);
         List<SurveyQuestion> questions;
         try
@@ -276,7 +276,7 @@ internal sealed class SurveyService(
             throw new InvalidOperationException(
                 ErrorMessage("Surveys_VoteModeLocked"));
         }
-        var publicSlug = NormalizeSlug(input.PublicSlug);
+        var publicSlug = PreparePublicSlugForWrite(input.PublicSlug);
         var prepared = await PrepareInformationImagesAsync(surveyId, input, existing, ct);
         List<SurveyQuestion> questions;
         try
@@ -1068,8 +1068,11 @@ internal sealed class SurveyService(
         Guid? userId,
         CancellationToken ct = default)
     {
-        var normalized = NormalizeSlug(slug);
-        if (normalized is null) return null;
+        // Invalid public URLs are lookup misses; authoring rejects invalid slugs instead.
+        if (string.IsNullOrWhiteSpace(slug)) return null;
+        var normalized = slug.Trim().ToLowerInvariant();
+        if (normalized.EnumerateRunes().Count() > PublicSlugMaxLength || ReservedSlugs.Contains(normalized))
+            return null;
 
         var surveyId = await repo.GetIdByPublicSlugAsync(normalized, ct);
         if (surveyId is null) return null;
@@ -2958,8 +2961,8 @@ internal sealed class SurveyService(
         string.Format(CultureInfo.CurrentUICulture,
             ErrorResources.GetString(resourceKey, CultureInfo.CurrentUICulture)!, arguments);
 
-    /// <summary>Trims/lower-cases the slug (null when blank) and rejects reserved words.</summary>
-    private static string? NormalizeSlug(string? slug)
+    /// <summary>Normalizes authoring input (null when blank) and rejects overlong/reserved slugs.</summary>
+    private static string? PreparePublicSlugForWrite(string? slug)
     {
         if (string.IsNullOrWhiteSpace(slug)) return null;
         var normalized = slug.Trim().ToLowerInvariant();

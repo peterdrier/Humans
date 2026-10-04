@@ -1994,25 +1994,36 @@ public class SurveyServiceTests
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ResolvePublicContextAsync_returns_null_for_unknown_slug()
+    [HumansTheory]
+    [InlineData("MISSING", 0)]
+    [InlineData("a", 80)]
+    [InlineData("😀", 80)]
+    public async Task ResolvePublicContextAsync_returns_null_for_unknown_slug(string text, int repeat)
     {
-        _repo.GetIdByPublicSlugAsync("missing", Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        var slug = repeat == 0 ? text : string.Concat(Enumerable.Repeat(text, repeat));
+        var normalized = slug.ToLowerInvariant();
+        _repo.GetIdByPublicSlugAsync(normalized, Arg.Any<CancellationToken>()).Returns((Guid?)null);
 
         var ctx = await CreateService().ResolvePublicContextAsync(
-            "MISSING", null, TestContext.Current.CancellationToken);
+            slug, null, TestContext.Current.CancellationToken);
 
         ctx.Should().BeNull();
         // Lookup uses the normalised (lower-cased/trimmed) slug.
-        await _repo.Received(1).GetIdByPublicSlugAsync("missing", Arg.Any<CancellationToken>());
+        await _repo.Received(1).GetIdByPublicSlugAsync(normalized, Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ResolvePublicContextAsync_returns_null_for_blank_slug()
+    [HumansTheory]
+    [InlineData("   ", 0)]
+    [InlineData(" Admin ", 0)]
+    [InlineData(" ANSWER ", 0)]
+    [InlineData("a", 81)]
+    [InlineData("😀", 81)]
+    public async Task ResolvePublicContextAsync_returns_null_for_invalid_slug(string text, int repeat)
     {
+        var slug = repeat == 0 ? text : string.Concat(Enumerable.Repeat(text, repeat));
         var ctx = await CreateService().ResolvePublicContextAsync(
-            "   ", null, TestContext.Current.CancellationToken);
+            slug, null, TestContext.Current.CancellationToken);
 
         ctx.Should().BeNull();
         await _repo.DidNotReceive().GetIdByPublicSlugAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
