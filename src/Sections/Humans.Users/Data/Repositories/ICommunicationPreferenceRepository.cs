@@ -68,6 +68,9 @@ internal interface ICommunicationPreferenceRepository : IRepository
     Task<bool> DeleteByUserAndCategoryAsync(
         Guid userId, MessageCategory category, CancellationToken ct = default);
 
+    /// <summary>GDPR Art. 17: removes every communication preference row for the user.</summary>
+    Task<int> DeleteAllForUserAsync(Guid userId, CancellationToken ct = default);
+
     /// <summary>
     /// Bulk-moves <c>communication_preferences</c> rows from
     /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/> for the
@@ -79,14 +82,9 @@ internal interface ICommunicationPreferenceRepository : IRepository
     /// row is then deleted. If the target row is at least as recent, the source
     /// row is simply deleted. Surviving source rows (no target row for the
     /// category) are re-FK'd to target. <c>UpdatedAt</c> is stamped to
-    /// <paramref name="updatedAt"/> on every row touched. Returns the count of
-    /// <c>communication_preferences</c> rows ultimately attributed to
-    /// <paramref name="targetUserId"/>.
+    /// <paramref name="updatedAt"/> on every row touched.
     /// </summary>
-    /// <summary>GDPR Art. 17: removes every communication preference row for the user.</summary>
-    Task<int> DeleteAllForUserAsync(Guid userId, CancellationToken ct = default);
-
-    Task<int> ReassignToUserAsync(
+    Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default);
 }

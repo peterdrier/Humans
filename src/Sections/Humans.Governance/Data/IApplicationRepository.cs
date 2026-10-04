@@ -155,10 +155,9 @@ internal interface IApplicationRepository : IRepository
 
     /// <summary>
     /// Plain re-FK: no conflict rule, no dedup — every row is preserved,
-    /// because a person may hold applications on both sides. Returns the count
-    /// attributed to <paramref name="targetUserId"/> after the move.
+    /// because a person may hold applications on both sides.
     /// </summary>
-    Task<int> ReassignApplicationsToUserAsync(
+    Task ReassignApplicationsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,

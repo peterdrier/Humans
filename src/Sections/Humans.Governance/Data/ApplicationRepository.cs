@@ -351,7 +351,7 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
         return await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<int> ReassignApplicationsToUserAsync(
+    public async Task ReassignApplicationsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -371,9 +371,6 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        return await ctx.Applications
-            .CountAsync(a => a.UserId == targetUserId, ct);
     }
 
     private async Task<T> WithContextAsync<T>(

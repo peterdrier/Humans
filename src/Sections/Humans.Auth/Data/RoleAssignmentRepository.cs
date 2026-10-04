@@ -227,7 +227,7 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<int> ReassignToUserAsync(
+    public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -269,8 +269,5 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        return await ctx.RoleAssignments
-            .CountAsync(ra => ra.UserId == targetUserId, ct);
     }
 }

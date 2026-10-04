@@ -124,7 +124,7 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<UsersD
         return true;
     }
 
-    public async Task<int> ReassignToUserAsync(
+    public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -164,8 +164,5 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<UsersD
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        return await ctx.CommunicationPreferences
-            .CountAsync(cp => cp.UserId == targetUserId, ct);
     }
 }
