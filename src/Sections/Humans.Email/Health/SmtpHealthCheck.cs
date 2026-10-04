@@ -26,6 +26,7 @@ internal sealed class SmtpHealthCheck(IOptions<EmailSettings> settings, ILogger<
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             using var client = new SmtpClient();
 
             // Connect to SMTP server
@@ -55,6 +56,10 @@ internal sealed class SmtpHealthCheck(IOptions<EmailSettings> settings, ILogger<
             return HealthCheckResult.Unhealthy(
                 "SMTP authentication failed - check credentials",
                 ex);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

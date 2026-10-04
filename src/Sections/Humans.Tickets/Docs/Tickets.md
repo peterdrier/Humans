@@ -82,6 +82,8 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 
 ## Invariants
 
+- Ticket vendor health probes propagate requested timeout/abort cancellation without logging a vendor timeout. A vendor timeout while the caller token remains active still returns Degraded.
+
 - The admin participation-backfill form GET retains browser cancellation through its default-year lookup; CSV submission and writes retain their existing boundaries.
 
 - The onsite roster GET retains request cancellation for its active-year settings lookup before reading the roster; scanner access, filters and newest-check-in ordering remain unchanged.
