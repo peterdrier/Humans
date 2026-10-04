@@ -195,6 +195,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- Profile-card volunteer-history descriptions retain their 80-character excerpt limit without splitting UTF-16 surrogate pairs; the complete history description remains stored and exported.
+
 - Member, guest and read-only admin communication-preference checkboxes expose localized channel/category names to assistive technology, including locked and unchecked controls.
 
 - Guest preference saves disable both editable channels and the matching one-click unsubscribe action until completion. Writes to one category cannot overlap in the page; other categories remain available, and failures restore the edited value before unlocking.

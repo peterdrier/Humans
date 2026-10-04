@@ -132,6 +132,8 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Invariants
 
+- Report-subject previews retain their 60-character member-list and 80-character review-queue limits without splitting UTF-16 surrogate pairs; full notes remain unchanged.
+
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
 - Review queues retain reports whose submitter is missing or has no usable name. Their name cells use the view’s shared localized Unknown label; server name projections contain only actual nonblank burner names.
