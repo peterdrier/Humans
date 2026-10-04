@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 72
+next_id: 73
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -318,6 +318,10 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
+  - added: 2026-10-04
+    id: CENTRAL-72
+    what: "MailerLiteImportService.ApplyAsync (ReplaceUnverifiedEmail) and AttendeeContactImportService.ApplyDecisionAsync (DeleteUnverifiedThenCreate) delete the sole unverified UserEmail before account provisioning. If provisioning fails, the address stays removed while the batch reports an error. Reordering alone reuses the unverified owner; compensation can overwrite concurrent user changes. Needs a Users-owned coordinated replacement operation and agreed failure semantics through public contracts; deferred in the daily sweep."
+    review: panel
   - added: 2026-10-04
     id: CENTRAL-71
     what: "TrackedCache.EnsureWarmedAsync awaits owner WarmAllAsync and then marks the cache warm without checking intervening eviction. Owner warmup loaders publish fetched rows through Set, so a load begun before Clear or a post-write refresh can republish old rows and overwrite fresher entries. GetAsync miss publication is now guarded separately. A complete warmup correction needs consistent snapshot publication across inherited/composed caches; the current Set seam does not distinguish bulk warmup from post-write replacement. Agree that design before wider cache changes; new public surface requires approval. Found during the daily sweep."

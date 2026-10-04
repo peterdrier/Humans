@@ -97,8 +97,8 @@ public class MailerLiteImportServiceThrottleTests
             {
                 new SubscriberDecision("new1@x.com",        "active",       SubscriberOutcome.CreateNewHuman,            null,   null, null),
                 new SubscriberDecision("new2@x.com",        "active",       SubscriberOutcome.CreateNewHuman,            null,   null, null),
-                new SubscriberDecision("ambiguous1@x.com",  "active",       SubscriberOutcome.AmbiguousMultipleVerified, null,   null, null),
-                new SubscriberDecision("ambiguous2@x.com",  "active",       SubscriberOutcome.AmbiguousMultipleVerified, null,   null, null),
+                new SubscriberDecision("ambiguous1@x.com",  "active",       SubscriberOutcome.AmbiguousEmailMatches, null,   null, null),
+                new SubscriberDecision("ambiguous2@x.com",  "active",       SubscriberOutcome.AmbiguousEmailMatches, null,   null, null),
                 new SubscriberDecision("unconfirmed1@x.com","unconfirmed",  SubscriberOutcome.UnconfirmedSkipped,        null,   null, null),
                 new SubscriberDecision("unconfirmed2@x.com","unconfirmed",  SubscriberOutcome.UnconfirmedSkipped,        null,   null, null),
                 new SubscriberDecision("match1@x.com",      "active",       SubscriberOutcome.VerifiedPrefsAlreadyMatch, match1, null, null),

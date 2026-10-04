@@ -12,7 +12,7 @@ internal sealed record ImportPlan(
         VerifiedFlipToOptOut: Decisions.Count(d => d.Outcome == SubscriberOutcome.VerifiedFlipToOptOut),
         VerifiedKeepHumansPref: Decisions.Count(d => d.Outcome == SubscriberOutcome.VerifiedKeepHumansPref),
         ResetMarketingFlag: Decisions.Count(d => d.Outcome == SubscriberOutcome.ResetMarketingFlag),
-        AmbiguousMultipleVerified: Decisions.Count(d => d.Outcome == SubscriberOutcome.AmbiguousMultipleVerified),
+        AmbiguousMultipleVerified: Decisions.Count(d => d.Outcome == SubscriberOutcome.AmbiguousEmailMatches),
         UnconfirmedSkipped: Decisions.Count(d => d.Outcome == SubscriberOutcome.UnconfirmedSkipped));
 }
 
@@ -24,6 +24,7 @@ internal sealed record ImportPlanCounts(
     int VerifiedFlipToOptOut,
     int VerifiedKeepHumansPref,
     int ResetMarketingFlag,
+    // Retain the historical name in serialized preview-count snapshots.
     int AmbiguousMultipleVerified,
     int UnconfirmedSkipped)
 {

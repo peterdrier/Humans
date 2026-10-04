@@ -50,7 +50,7 @@
                     <td class="text-end">@Model.Counts.ResetMarketingFlag.ToString("N0")</td>
                 </tr>
                 <tr class="text-muted">
-                    <td>Skipped — same email on multiple humans</td>
+                    <td>Skipped — ambiguous matching email rows</td>
                     <td class="text-end">@Model.Counts.AmbiguousMultipleVerified.ToString("N0")</td>
                 </tr>
                 <tr class="text-muted">
@@ -76,7 +76,7 @@
         (Outcome: SubscriberOutcome.VerifiedFlipToOptOut,      Label: "Human Exists — Flip Marketing to Opt-Out"),
         (Outcome: SubscriberOutcome.VerifiedKeepHumansPref,    Label: "Human Exists — Keep Humans' Pref"),
         (Outcome: SubscriberOutcome.ResetMarketingFlag,        Label: "Human Exists — Reset Marketing Flag"),
-        (Outcome: SubscriberOutcome.AmbiguousMultipleVerified, Label: "Skipped — Same Email on Multiple Humans"),
+        (Outcome: SubscriberOutcome.AmbiguousEmailMatches, Label: "Skipped — Ambiguous Matching Email Rows"),
         (Outcome: SubscriberOutcome.UnconfirmedSkipped,        Label: "Skipped — Unconfirmed in ML"),
     };
 }
@@ -106,7 +106,7 @@
                             <tr>
                                 <th>Email</th>
                                 <th>ML Status</th>
-                                @if (cat.Outcome == SubscriberOutcome.AmbiguousMultipleVerified)
+                                @if (cat.Outcome == SubscriberOutcome.AmbiguousEmailMatches)
                                 {
                                     <th>Ambiguous User Ids</th>
                                 }
@@ -123,7 +123,7 @@
                                 <tr>
                                     <td class="font-monospace">@row.Email</td>
                                     <td>@row.Status</td>
-                                    @if (cat.Outcome == SubscriberOutcome.AmbiguousMultipleVerified)
+                                    @if (cat.Outcome == SubscriberOutcome.AmbiguousEmailMatches)
                                     {
                                         var ambiguous = row.AmbiguousUserIds ?? [];
                                         <td>
