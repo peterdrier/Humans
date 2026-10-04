@@ -42,12 +42,9 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 
 ## 3. Structure
 
-- **Contracts, two homes on purpose.** Leaf project `Humans.AuditLog.Contracts` = the write path
-  (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditAction`, `ILegacyGoogleSyncAuditReader`) —
-  a standalone leaf so the many sections that only *write* can depend on the contract alone,
-  without a `ProjectReference` to the whole AuditLog section (its EF, its views). The section
-  project's `Contracts/` folder = the read+render types (`IAuditViewerService`, `AuditEvent`,
-  `AuditEventPage`), whose consumers already `ProjectReference` the section to render its component.
+- **Contracts, one folder.** `Contracts/` (namespace `Humans.AuditLog.Contracts`) holds the write path
+  (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditAction`, `ILegacyGoogleSyncAuditReader`) and the
+  read+render types (`IAuditViewerService`, `AuditEvent`, `AuditEventPage`).
 - **Write:** `AuditLogService` (internal, implements `IAuditLogService` + `IAuditLogReader` +
   `IUserDataContributor` + `ILegacyGoogleSyncAuditReader`) → `IAuditLogRepository` (the only file
   that touches `DbContext.AuditLogEntries`) → `AuditLogDbContext` via `IDbContextFactory`.
@@ -99,9 +96,8 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
   only so historical rows stay readable until the column-drop PR; the entity keeps them, the
   snapshot/event shapes do not. Do not "clean them up" — the drop is sequenced behind a prod
   verification (seam 5).
-- **Two `Contracts` homes sharing one namespace** (`Humans.AuditLog.Contracts`) is intended, not
-  an accident — a leaf project for Base-reachable write consumers, a folder for section-reachable
-  read consumers.
+- **One `Contracts/` folder** (namespace `Humans.AuditLog.Contracts`) carries both the write path
+  and the read/render surface; the former leaf project was folded in (nobodies-collective/Humans#1066).
 - **`AuditLogRepository` is Singleton** while its context is Scoped — it owns context lifetime via
   `IDbContextFactory`, which is why it can be a singleton at all.
 - **The `AnomalousPermissionDetected` anomaly count and the Drive-activity trigger button** live

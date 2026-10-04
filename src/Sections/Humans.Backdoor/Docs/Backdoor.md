@@ -4,7 +4,7 @@
   src/Humans.Web/Authorization/NameRequiredFilter.cs
   src/Sections/Humans.Agent/Contracts/IAgentTranscriptRead.cs
   src/Sections/Humans.Feedback/Contracts/IFeedbackTriage.cs
-  src/Sections/Humans.Issues.Contracts/IIssueTriage.cs
+  src/Sections/Humans.Issues/Contracts/IIssueTriage.cs
   src/Sections/Humans.Notifications/Contracts/INotificationInboxRead.cs
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
   src/Sections/Humans.Store/Contracts/IStoreAccountingRead.cs

@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Campaigns/**
-  src/Sections/Humans.Campaigns.Contracts/**
+  src/Sections/Humans.Campaigns/Contracts/**
   src/Sections/Humans.Users/Services/UnsubscribeService.cs
   src/Sections/Humans.Users/Controllers/UnsubscribeController.cs
   src/Sections/Humans.Tickets/Services/TicketSyncService.cs

@@ -1,8 +1,8 @@
 <!-- freshness:triggers
   src/Sections/Humans.GoogleIntegration/**
-  src/Sections/Humans.GoogleIntegration.Contracts/**
+  src/Sections/Humans.GoogleIntegration/Contracts/**
   src/Sections/Humans.Teams.Contracts/ISystemTeamSync.cs
-  src/Sections/Humans.AuditLog.Contracts/ILegacyGoogleSyncAuditReader.cs
+  src/Sections/Humans.AuditLog/Contracts/ILegacyGoogleSyncAuditReader.cs
   src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs
   src/Sections/Humans.Users/Views/UsersAdmin/AdminDetail.cshtml
   src/Sections/Humans.Users/Services/UserEmailService.cs
@@ -207,7 +207,7 @@ The GDPR sync-log export preserves the viewer fields and resolves resource names
 
 ### Connector clients
 
-Section services depend only on shape-neutral connector interfaces in `Humans.GoogleIntegration.Services.Workspace` (`IGoogleDriveActivityClient` is on the `Humans.GoogleIntegration.Contracts` leaf, because Monitor consumes it across an assembly boundary) — `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`, `ITeamResourceGoogleClient`, `IGoogleDriveActivityClient`, `IWorkspaceUserDirectoryClient`, `IGoogleTranslationClient` — so they never import `Google.Apis.*` (design-rules §13). Real Google-backed implementations and dev-mode stubs live beside them in `src/Sections/Humans.GoogleIntegration/Services/Workspace/`. `IGoogleDrivePermissionsClient.CreateFolderAsync` is the one folder-creation capability on that connector — used by `IGoogleSyncService.CreateSubfolderAsync`, not by any reconciliation path.
+Section services depend only on shape-neutral connector interfaces in `Humans.GoogleIntegration.Services.Workspace` (`IGoogleDriveActivityClient` is in the section's `Contracts/` folder, because Monitor consumes it across an assembly boundary) — `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`, `ITeamResourceGoogleClient`, `IGoogleDriveActivityClient`, `IWorkspaceUserDirectoryClient`, `IGoogleTranslationClient` — so they never import `Google.Apis.*` (design-rules §13). Real Google-backed implementations and dev-mode stubs live beside them in `src/Sections/Humans.GoogleIntegration/Services/Workspace/`. `IGoogleDrivePermissionsClient.CreateFolderAsync` is the one folder-creation capability on that connector — used by `IGoogleSyncService.CreateSubfolderAsync`, not by any reconciliation path.
 
 ### Touch-and-clean guidance
 

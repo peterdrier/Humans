@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Issues/**
-  src/Sections/Humans.Issues.Contracts/**
+  src/Sections/Humans.Issues/Contracts/**
 -->
 <!-- freshness:flag-on-change
   Issues entities, controller routes, API surface, status transitions, section routing, or handler-vs-reporter auth rules may have changed; verify the auth matrix and routes table.

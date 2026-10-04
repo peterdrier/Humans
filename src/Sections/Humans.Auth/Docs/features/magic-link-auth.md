@@ -2,7 +2,7 @@
   src/Sections/Humans.Auth/Services/MagicLinkService.cs
   src/Sections/Humans.Auth/Services/MagicLinkUrlBuilder.cs
   src/Sections/Humans.Auth/Services/MagicLinkRateLimiter.cs
-  src/Sections/Humans.Auth.Contracts/IMagicLinkService.cs
+  src/Sections/Humans.Auth/Contracts/IMagicLinkService.cs
   src/Sections/Humans.Auth/AuthResource*.resx
   src/Humans.Web/Controllers/AccountController.cs
   src/Humans.Web/Views/Account/**

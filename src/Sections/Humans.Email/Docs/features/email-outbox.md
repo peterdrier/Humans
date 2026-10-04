@@ -4,7 +4,7 @@
   src/Sections/Humans.Email/Jobs/ProcessEmailOutboxJob.cs
   src/Sections/Humans.Email/Jobs/CleanupEmailOutboxJob.cs
   src/Sections/Humans.Settings/Domain/Setting.cs
-  src/Sections/Humans.Settings.Contracts/SettingKeys.cs
+  src/Sections/Humans.Settings/Contracts/SettingKeys.cs
 -->
 <!-- freshness:flag-on-change
   Outbox queue/process/cleanup behavior, retry/backoff config keys, global pause toggle, and admin dashboard route — review when OutboxEmailService, outbox jobs, or EmailController change.

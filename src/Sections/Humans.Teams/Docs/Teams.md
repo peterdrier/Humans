@@ -2,7 +2,7 @@
   src/Sections/Humans.Teams/**
   src/Sections/Humans.Teams.Contracts/**
   src/Humans.Base/Constants/SystemTeamIds.cs
-  src/Sections/Humans.GoogleIntegration.Contracts/GoogleResource.cs
+  src/Sections/Humans.GoogleIntegration/Contracts/GoogleResource.cs
   src/Sections/Humans.GoogleIntegration/Data/Configurations/GoogleResourceConfiguration.cs
 -->
 <!-- freshness:flag-on-change

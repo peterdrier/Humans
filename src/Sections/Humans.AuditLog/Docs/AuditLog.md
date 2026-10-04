@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.AuditLog/**
-  src/Sections/Humans.AuditLog.Contracts/**
-  src/Sections/Humans.AuditLog.Contracts/AuditAction.cs
+  src/Sections/Humans.AuditLog/Contracts/**
+  src/Sections/Humans.AuditLog/Contracts/AuditAction.cs
 -->
 <!-- freshness:flag-on-change
   Audit log append-only invariant, AuditAction enum surface, and self-persisting semantics — review when AuditLog service/repo/entity changes.
@@ -46,7 +46,7 @@ Append-only per design-rules §12. Enforced by the Postgres triggers `prevent_au
 
 `AuditAction` (`Humans.AuditLog.Contracts.AuditAction`) is the shared contract across all writers. Stored as string via `HasConversion<string>()`. Full surface as of this sweep:
 
-<!-- freshness:auto id="auditaction-catalog" prompt="Regenerate this catalog from src/Sections/Humans.AuditLog.Contracts/AuditAction.cs: every enum value must appear exactly once, grouped by section, one line each; preserve prose outside this block." -->
+<!-- freshness:auto id="auditaction-catalog" prompt="Regenerate this catalog from src/Sections/Humans.AuditLog/Contracts/AuditAction.cs: every enum value must appear exactly once, grouped by section, one line each; preserve prose outside this block." -->
 - **Email:** `EmailDailySendCountsBackfilled` — the admin-triggered daily send-count backfill, written by `EmailController`. `EmailComposerSelfTestSent` — a human queued the shared composer's "Send to me" test to their own address, written by `ComposerSelfSendService`.
 - **Onboarding / Profile / Users:** `ConsentCheckCleared`, `ConsentCheckFlagged`, `SignupRejected`, `VolunteerApproved`, `MemberSuspended`, `MemberUnsuspended`, `AccountAnonymized`, `MembershipsRevokedOnDeletionRequest`, `AccountMergeRequested`, `AccountMergeAccepted`, `AccountMergeRejected`, `AccountPurged`, `CommunicationPreferenceChanged`, `ContactCreated`, `DuplicateAccountFlagged` (the duplicate-account scan surfaced a pair of live accounts sharing an address — written once per pair, the first time the scan sees it, by `DuplicateAccountService`; entity is the pair's lower id, related entity the higher one).
 - **User emails:** `UserEmailProviderBackfilled`, `UserEmailGoogleSet`, `UserEmailGoogleCleared`, `UserEmailLinked`, `UserEmailUnlinked`, `UserEmailPrimarySet`, `UserEmailPrimaryCleared`, `UserEmailDeleted`, `UserEmailVisibilityChanged`, `UserEmailAdded`, `UserEmailManuallyVerified`, `OrphanUserEmailDeleted`, `GhostExternalLoginsDeleted`, `LegacyIdentityEmailBackfilled`, `OAuthRenameCollision`, `OAuthRenameCollisionBlocked`, `UserEmailDisplacedByOAuthRename` (the last three are the OAuth-callback reconcile audits from nobodies-collective/Humans#697, written by `UserEmailService`).
@@ -168,13 +168,13 @@ No other cross-section writes from this section outward. Audit is a sink.
 
 **Owning services:** `AuditLogService` (write + raw queries) and `AuditViewerService` (read+render), both `Humans.AuditLog.Services`. `AuditEventTextualizer` is the stateless verb-table helper backing both `RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (view-component HTML composition).
 **Owned tables:** `audit_log`
-**Status:** G5 — own project `src/Sections/Humans.AuditLog` + contracts leaf `src/Sections/Humans.AuditLog.Contracts` (nobodies-collective/Humans#866). Original migration: nobodies-collective/Humans#552.
+**Status:** G5 — own project `src/Sections/Humans.AuditLog`, cross-section surface in its `Contracts/` folder (nobodies-collective/Humans#866). Original migration: nobodies-collective/Humans#552.
 
 ### Read+render path and the two Contracts homes
 
 `AuditViewerService` wraps the section's own `IAuditLogReader` raw queries with actor, subject and team name resolution, taken from `IEnumerable<IEntityNameContributor>` (`Humans.Base`). It lived in `Humans.Application` for one batch on the reading that a horizontal section may not reference a vertical. **Peter reversed that in the Base-floor decision of 2026-08-14**: a former Base resident that names another section's read interface moves to its section. G5 lane 4b-2h moved `IAuditViewerService`, `AuditEvent`, `AuditEventPage`, `AuditEventTextualizer` and `AuditLogViewComponent` into this project, and retired the assembly-level `SectionReferencesNoVerticalSection` test whose premise the decision inverted. nobodies-collective/Humans#1059 then removed the reason the section needed the names at all: the `Humans.Teams.Contracts` and `Humans.GoogleIntegration.Contracts` references are gone, and only `Humans.Users.Contracts` (merge-tombstone chain-following, `[DontFix]`) and `Humans.Gdpr.Contracts` remain.
 
-**Two Contracts homes, on purpose.** The leaf *project* `Humans.AuditLog.Contracts` carries `IAuditLogService` — the append path, called from ~130 files including Base ones, which cannot reference a section. This project's `Contracts/` *folder* carries `IAuditViewerService` / `AuditEvent` / `AuditEventPage`, whose consumers are all Shell or other sections and can `ProjectReference` `Humans.AuditLog` directly. Both use the namespace `Humans.AuditLog.Contracts`, as Shifts and Tickets already do.
+**One Contracts home.** The section's `Contracts/` folder (namespace `Humans.AuditLog.Contracts`) carries `IAuditLogService` — the append path, called from ~130 files — plus `IAuditViewerService` / `AuditEvent` / `AuditEventPage`. It was a separate leaf project until nobodies-collective/Humans#1066.
 
 **Section-internal reads: `IAuditLogReader`.** `internal interface IAuditLogReader` (`Services/IAuditLogReader.cs`) holds the raw-snapshot reads whose only caller is `AuditViewerService` — `GetFilteredAsync`, `GetByUserAsync`, plus `GetFilteredEntriesAsync` so the viewer takes one injection rather than two. `AuditLogService` implements it alongside `IAuditLogService`; `Section.Register` maps both to the same scoped instance. Nothing outside this assembly can name it, which is the point: those reads used to sit on the public leaf.
 

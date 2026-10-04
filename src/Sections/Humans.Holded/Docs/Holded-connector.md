@@ -1,6 +1,6 @@
 <!-- freshness:triggers
-  src/Sections/Humans.Holded.Contracts/IHoldedClient.cs
-  src/Sections/Humans.Holded.Contracts/Holded*.cs
+  src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
+  src/Sections/Humans.Holded/Contracts/Holded*.cs
   src/Sections/Humans.Holded/Services/HoldedClient.cs
   src/Sections/Humans.Holded/Services/HoldedCallLog.cs
 -->
@@ -70,14 +70,13 @@ Inbound: Expenses (doc push via outbox), Finance (provisioning, contacts, doc sy
 ## Architecture
 
 **Owning surface:** `IHoldedClient`, its DTOs, its typed exceptions and `HoldedClientOptions`
-are public on `Humans.Holded.Contracts`; the impl `HoldedClient` and the `IHoldedCallLog`
+are public in `Humans.Holded/Contracts/` (namespace `Humans.Holded.Contracts`); the impl `HoldedClient` and the `IHoldedCallLog`
 singleton are `internal` in `Humans.Holded/Services/`. All of it is registered by this
 section's `Section.cs`.
 
-**Why the leaf and not a `Contracts/` folder:** two consumers are outside the section —
-Expenses (`ExpenseReportService`, via `IHoldedClient.IsConfigured`) and Finance (`Service`).
-A folder inside `Humans.Holded` would make those sections reach into a section-internal
-folder and cycle.
+**Consumers outside the section:** Expenses (`ExpenseReportService`, via
+`IHoldedClient.IsConfigured`) and Finance (`Service`) reach it through the public `Contracts/`
+folder.
 
 **The jobs live with their sections.** `HoldedSyncJob` is in `Humans.Holded/Jobs/`, a shim over
 this section's own `IHoldedNightlySync`; `HoldedExpenseOutboxJob` is in `Humans.Expenses/Jobs/`,

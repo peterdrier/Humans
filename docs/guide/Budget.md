@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Budget/**
-  src/Sections/Humans.Budget.Contracts/**
+  src/Sections/Humans.Budget/Contracts/**
 -->
 <!-- freshness:flag-on-change
   Year/group/category/line-item structure, FinanceAdmin permissions, ticketing projection, cash flow, and audit log behavior. Review when budget views, services, entities, or EF configurations change.

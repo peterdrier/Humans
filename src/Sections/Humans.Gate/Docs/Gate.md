@@ -4,9 +4,9 @@
   src/Sections/Humans.Tickets.Contracts/**
   src/Sections/Humans.EarlyEntry/**
   src/Sections/Humans.Shifts.Contracts/**
-  src/Sections/Humans.Settings.Contracts/**
+  src/Sections/Humans.Settings/Contracts/**
   src/Sections/Humans.Users.Contracts/**
-  src/Sections/Humans.Auth.Contracts/**
+  src/Sections/Humans.Auth/Contracts/**
   tests/Humans.Integration.Tests/Controllers/GatePageRenderTests.cs
 -->
 <!-- freshness:flag-on-change

@@ -3,7 +3,7 @@
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
   src/Humans.Web/Program.cs
-  src/Sections/Humans.Issues.Contracts/IIssueQueueOwner.cs
+  src/Sections/Humans.Issues/Contracts/IIssueQueueOwner.cs
   tests/Humans.Web.Tests/Authorization/EndpointAuthorizationTests.cs
 -->
 <!-- freshness:flag-on-change

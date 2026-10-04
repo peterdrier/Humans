@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Governance/**
   src/Sections/Humans.Gdpr/**
-  src/Sections/Humans.Gdpr.Contracts/**
+  src/Sections/Humans.Gdpr/Contracts/**
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Users/Services/AccountDeletionService.cs
   src/Sections/Humans.Users/Services/ProfileService.cs
