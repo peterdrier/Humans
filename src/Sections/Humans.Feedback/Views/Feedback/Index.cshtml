@@ -144,14 +144,14 @@
                             {
                                 <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle" style="font-size: 0.65rem;"
                                       title="@Localizer["Feedback_AssignedToName", report.AssignedToName]">
-                                    <i class="fa-solid fa-user fa-xs"></i> @(report.AssignedToName.Length > 12 ? report.AssignedToName[..12] + "..." : report.AssignedToName)
+                                    <i class="fa-solid fa-user fa-xs"></i> @(report.AssignedToName.Length > 12 ? report.AssignedToName[..(char.IsHighSurrogate(report.AssignedToName[11]) && char.IsLowSurrogate(report.AssignedToName[12]) ? 11 : 12)] + "..." : report.AssignedToName)
                                 </span>
                             }
                             @if (!string.IsNullOrEmpty(report.AssignedToTeamName))
                             {
                                 <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning-subtle" style="font-size: 0.65rem;"
                                       title="@Localizer["Feedback_TeamName", report.AssignedToTeamName]">
-                                    <i class="fa-solid fa-users fa-xs"></i> @(report.AssignedToTeamName.Length > 12 ? report.AssignedToTeamName[..12] + "..." : report.AssignedToTeamName)
+                                    <i class="fa-solid fa-users fa-xs"></i> @(report.AssignedToTeamName.Length > 12 ? report.AssignedToTeamName[..(char.IsHighSurrogate(report.AssignedToTeamName[11]) && char.IsLowSurrogate(report.AssignedToTeamName[12]) ? 11 : 12)] + "..." : report.AssignedToTeamName)
                                 </span>
                             }
                             @if (isUnassigned)

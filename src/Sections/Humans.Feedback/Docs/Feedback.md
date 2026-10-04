@@ -122,7 +122,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - Only Admin can see feedback reports — including a report's own reporter, who has no route into the section any more.
 - Every message posted through `FeedbackService.PostMessageAsync` is an admin reply: it stamps `LastAdminMessageAt`, emails the reporter, and dispatches an in-app notification. Reporter messages exist only on historical rows.
 - "Needs reply" is derived: true when the reporter has posted a message more recent than any admin reply (`LastReporterMessageAt > LastAdminMessageAt`) or when the report is still Open and no admin has ever replied. The nav-badge count uses the same rule and excludes Resolved/WontFix.
-- A report can optionally be assigned to a human and/or a team. Both assignments are independent and nullable.
+- A report can optionally be assigned to a human and/or a team. Both assignments are independent and nullable. The list’s 12-unit assignee-name previews preserve whole UTF-16 surrogate pairs; tooltips retain the complete names.
 - Status changes, assignment changes and GitHub links are audit-logged via `AuditAction.FeedbackStatusChanged`, `AuditAction.FeedbackAssignmentChanged` and `AuditAction.FeedbackGitHubLinked`. Every mutation takes the acting user; the `"API"` actor string remains only as the fallback for a caller that resolved to nobody.
 - Admin replies send the response email **before** persisting the new message — if SMTP throws, the message and `LastAdminMessageAt` are never committed, so the request can be retried without duplicating the admin reply. The in-app notification is best-effort post-save.
 
