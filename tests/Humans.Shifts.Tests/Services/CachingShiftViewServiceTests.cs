@@ -34,6 +34,79 @@ public class CachingShiftViewServiceTests
             NullLogger<CachingShiftViewService>.Instance);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, 0)]
+    [Xunit.InlineData(false, 1)]
+    [Xunit.InlineData(false, 2)]
+    [Xunit.InlineData(false, 3)]
+    [Xunit.InlineData(true, 0)]
+    [Xunit.InlineData(true, 1)]
+    [Xunit.InlineData(true, 2)]
+    [Xunit.InlineData(true, 3)]
+    public async Task UserLoadStartedBeforeInvalidation_DoesNotRepopulateCache(bool batch, int invalidation)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var rotaId = Guid.NewGuid();
+        var shift = new Shift { Id = Guid.NewGuid(), RotaId = rotaId };
+        var old = new ShiftUserView(userId, null, null, null, [],
+            [new ShiftSignup { ShiftId = shift.Id, Shift = shift }]);
+        var current = old with { Signups = [] };
+        var pending = new TaskCompletionSource<ShiftUserView>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pendingBatch = new TaskCompletionSource<IReadOnlyDictionary<Guid, ShiftUserView>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        _inner.GetUserAsync(userId, ct).Returns(_ => new ValueTask<ShiftUserView>(batch ? Task.FromResult(current) : pending.Task));
+        _inner.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), ct).Returns(_ =>
+            new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(pendingBatch.Task));
+        var sut = CreateSut();
+        var read = batch ? sut.GetUsersAsync([userId], ct).AsTask() : null;
+        var single = batch ? null : sut.GetUserAsync(userId, ct).AsTask();
+
+        switch (invalidation)
+        {
+            case 0: sut.InvalidateUser(userId); break;
+            case 1: sut.InvalidateRota(rotaId); break;
+            case 2: sut.InvalidateShift(shift.Id); break;
+            default: sut.InvalidateAll(); break;
+        }
+        pending.SetResult(old);
+        pendingBatch.SetResult(new Dictionary<Guid, ShiftUserView> { [userId] = old });
+        if (batch) (await read!)[userId].Should().BeSameAs(old);
+        else (await single!).Should().BeSameAs(old);
+        _inner.GetUserAsync(userId, ct).Returns(new ValueTask<ShiftUserView>(current));
+
+        (await sut.GetUserAsync(userId, ct)).Should().BeSameAs(current);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(1)]
+    [Xunit.InlineData(2)]
+    public async Task RotaLoadStartedBeforeInvalidation_DoesNotRepopulateCache(int invalidation)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var rotaId = Guid.NewGuid();
+        var shift = new Shift { Id = Guid.NewGuid(), RotaId = rotaId };
+        var old = new ShiftRotaView(rotaId, null, [shift], [], []);
+        var current = old with { Shifts = [] };
+        var pending = new TaskCompletionSource<ShiftRotaView>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _inner.GetRotaAsync(rotaId, ct).Returns(_ => new ValueTask<ShiftRotaView>(pending.Task));
+        var sut = CreateSut();
+        var read = sut.GetRotaAsync(rotaId, ct).AsTask();
+
+        switch (invalidation)
+        {
+            case 0: sut.InvalidateRota(rotaId); break;
+            case 1: sut.InvalidateShift(shift.Id); break;
+            default: sut.InvalidateAll(); break;
+        }
+        pending.SetResult(old);
+        (await read).Should().BeSameAs(old);
+        _inner.GetRotaAsync(rotaId, ct).Returns(new ValueTask<ShiftRotaView>(current));
+
+        (await sut.GetRotaAsync(rotaId, ct)).Should().BeSameAs(current);
+    }
+
     // ── GetUserAsync ────────────────────────────────────────────────────────
 
     [HumansFact]
