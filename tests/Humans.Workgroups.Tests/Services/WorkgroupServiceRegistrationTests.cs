@@ -61,8 +61,9 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
 
         var act = () => NewService().RegisterAsync(workgroup.Id, SeedUser(), Ct);
 
-        (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which.Key
-            .Should().Be(WorkgroupErrorKeys.DriveFolderCreationFailed);
+        var error = (await act.Should().ThrowAsync<WorkgroupRuleException>()).Which;
+        error.Key.Should().Be(WorkgroupErrorKeys.DriveFolderCreationFailed);
+        error.Message.Should().Be("Workgroup rule 'Workgroups_Error_DriveFolderCreationFailed' rejected the operation.");
 
         await using var ctx = OpenContext();
         var reloaded = await ctx.Workgroups.SingleAsync(w => w.Id == workgroup.Id, Ct);

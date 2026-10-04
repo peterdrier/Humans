@@ -182,7 +182,9 @@ public sealed class RideshareServiceTests : RideshareTestHarness
 
         var act = () => NewService().UpdateOfferAsync(trip.Id, driver, NewTripSave(seats: 4), Ct);
 
-        (await act.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_CancelledRideEdit");
+        var error = (await act.Should().ThrowAsync<RideshareRuleException>()).Which;
+        error.Key.Should().Be("Rideshare_Error_CancelledRideEdit");
+        error.Message.Should().Be("Rideshare rule 'Rideshare_Error_CancelledRideEdit' rejected the operation.");
     }
 
     [HumansFact]
@@ -198,6 +200,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var thrown = (await tooFew.Should().ThrowAsync<RideshareRuleException>()).Which;
         thrown.Key.Should().Be("Rideshare_Error_SeatsBelowAccepted");
         thrown.Args.Should().Equal(2);
+        thrown.Message.Should().Be("Rideshare rule 'Rideshare_Error_SeatsBelowAccepted' rejected the operation.");
 
         await service.UpdateOfferAsync(trip.Id, driver, NewTripSave(seats: 2), Ct);
         await using var ctx = OpenContext();
