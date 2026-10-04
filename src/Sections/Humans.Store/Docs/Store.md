@@ -204,6 +204,8 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 ## Invariants
 
+- Member catalog and camp-order VAT percentage labels use the selected UI culture’s decimal separator. VAT calculation, rounding, price snapshots and invariant payment-input values are unchanged.
+
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
 - Member-facing order pages localize their breadcrumb navigation label in all six supported cultures.

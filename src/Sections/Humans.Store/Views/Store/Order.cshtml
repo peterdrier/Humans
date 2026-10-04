@@ -139,7 +139,7 @@
                     {
                         <td class="text-end">
                             @line.EffectiveUnitPriceInclVat.ToEuro()
-                            <div class="text-muted small">@Localizer["Store_UnitPriceBreakdown", line.EffectiveUnitPrice.ToEuro(), line.EffectiveVatRate.ToString("0.##")]</div>
+                            <div class="text-muted small">@Localizer["Store_UnitPriceBreakdown", line.EffectiveUnitPrice.ToEuro(), line.EffectiveVatRate.ToString("0.##", System.Globalization.CultureInfo.CurrentUICulture)]</div>
                         </td>
                         <td class="text-end">@(line.EffectiveDeposit.HasValue ? line.DepositEur.ToEuro() : "—")</td>
                         <td class="text-end">@line.TotalEur.ToEuro()</td>
