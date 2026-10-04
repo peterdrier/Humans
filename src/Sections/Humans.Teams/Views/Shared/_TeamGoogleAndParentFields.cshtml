@@ -49,13 +49,14 @@
 
             if (!select || !warningDiv || !resourceList) return;
 
+            var resourceRequestVersion = 0;
+
             function updateWarning() {
+                var requestVersion = ++resourceRequestVersion;
+                warningDiv.classList.add('d-none');
+                resourceList.innerHTML = '';
                 var teamId = select.value;
-                if (!teamId) {
-                    warningDiv.classList.add('d-none');
-                    resourceList.innerHTML = '';
-                    return;
-                }
+                if (!teamId) return;
 
                 fetch('/Teams/' + teamId + '/GoogleResources', {
                     headers: { 'Accept': 'application/json' }
@@ -65,6 +66,7 @@
                     return response.json();
                 })
                 .then(function (resources) {
+                    if (requestVersion !== resourceRequestVersion) return;
                     if (resources.length === 0) {
                         warningDiv.classList.add('d-none');
                         resourceList.innerHTML = '';
@@ -81,6 +83,7 @@
                     warningDiv.classList.remove('d-none');
                 })
                 .catch(function () {
+                    if (requestVersion !== resourceRequestVersion) return;
                     warningDiv.classList.add('d-none');
                     resourceList.innerHTML = '';
                 });
