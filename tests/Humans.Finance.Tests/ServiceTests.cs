@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Finance.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -2308,14 +2309,20 @@ public class HoldedFinanceServiceTests
             actor, userId, Arg.Any<string>());
     }
 
-    [HumansFact]
-    public async Task GenerateSepaPayout_EmailsThePaidMember_InTheirLanguage_WithAMaskedIban()
+    [HumansTheory]
+    [InlineData("es", "es", "12,34 €")]
+    [InlineData("", "en", "12.34 €")]
+    [InlineData(" ", "en", "12.34 €")]
+    [InlineData("not-a-culture", "en", "12.34 €")]
+    [InlineData("pt", "en", "12.34 €")]
+    public async Task GenerateSepaPayout_EmailsThePaidMember_InTheirLanguage_WithAMaskedIban(string language, string expectedCulture, string amount)
     {
+        using var actorCulture = new CultureScope("fr");
         // peterdrier/Humans#1820: generation is when the treasurer hands the file to the bank,
         // so it is when the member is told the money is on its way.
         ConfigureSepa();
         var userId = SeedPayableCreditor();
-        StubMember(userId, "Ana", "ana@example.com", "es");
+        StubMember(userId, "Ana", "ana@example.com", language);
 
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 12.34m)], 50m, Guid.NewGuid(),
@@ -2326,8 +2333,8 @@ public class HoldedFinanceServiceTests
             Arg.Is<EmailMessage>(m => m.TemplateName == "sepa_payout_generated"
                 && m.RecipientEmail == "ana@example.com"
                 && m.RecipientName == "Ana"
-                && m.Subject.EndsWith("#es")
-                && m.HtmlBody.Contains("12,34 €")
+                && m.Subject.EndsWith("#" + expectedCulture, StringComparison.Ordinal)
+                && m.HtmlBody.Contains(amount, StringComparison.Ordinal)
                 && m.HtmlBody.Contains("ES79****789")
                 && !m.HtmlBody.Contains(AnaIban)),
             Arg.Any<CancellationToken>());

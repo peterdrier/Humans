@@ -1241,8 +1241,10 @@ internal sealed class Service(
 
             try
             {
+                var language = member.PreferredLanguage;
                 await emailService.SendAsync(emails.SepaPayoutGenerated(
-                    recipient, member.BurnerName, t.Amount, t.IbanMasked, member.PreferredLanguage), ct);
+                    recipient, member.BurnerName, t.Amount, t.IbanMasked,
+                    language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);
             }
             catch (Exception ex)
             {
