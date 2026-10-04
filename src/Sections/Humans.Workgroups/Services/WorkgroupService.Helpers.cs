@@ -384,8 +384,10 @@ internal sealed partial class WorkgroupService
             }
 
             infos.TryGetValue(id, out var info);
+            var language = info?.PreferredLanguage;
             await SendNoticeAsync(new WorkgroupNoticeRequest(
-                address, info?.BurnerName, kind, w.Name, w.Slug, detail, info?.PreferredLanguage), ct);
+                address, info?.BurnerName, kind, w.Name, w.Slug, detail,
+                language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);
         }
     }
 

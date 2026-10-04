@@ -936,13 +936,14 @@ internal sealed class IssuesService(
             emails.TryGetValue(issue.ReporterUserId, out var to) &&
             !string.IsNullOrWhiteSpace(to))
         {
+            var language = reporter.PreferredLanguage;
             await email.SendAsync(emailMessages.IssueComment(
                 to,
                 reporter.BurnerName,
                 issue.Title,
                 comment.Content,
                 $"/Issues/{issue.Id}",
-                reporter.PreferredLanguage),
+                language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode),
                 ct);
         }
         else

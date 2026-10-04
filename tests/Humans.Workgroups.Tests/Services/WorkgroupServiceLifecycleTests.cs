@@ -211,13 +211,21 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     // ── Refuse: Applied/Referred, reasons required ──────────────────────────
 
     [HumansTheory]
-    [InlineData(nameof(WorkgroupStatus.Applied))]
-    [InlineData(nameof(WorkgroupStatus.Referred))]
-    public async Task Refuse_FromAppliedOrReferred_WithReasons_Succeeds(string fromName)
+    [InlineData(nameof(WorkgroupStatus.Applied), "en", "en")]
+    [InlineData(nameof(WorkgroupStatus.Referred), "en", "en")]
+    [InlineData(nameof(WorkgroupStatus.Applied), "es", "es")]
+    [InlineData(nameof(WorkgroupStatus.Applied), null, "en")]
+    [InlineData(nameof(WorkgroupStatus.Applied), "", "en")]
+    [InlineData(nameof(WorkgroupStatus.Applied), "pt", "en")]
+    [InlineData(nameof(WorkgroupStatus.Applied), "fr-FR", "en")]
+    [InlineData(nameof(WorkgroupStatus.Applied), "not a culture!", "en")]
+    public async Task Refuse_FromAppliedOrReferred_WithReasons_Succeeds(
+        string fromName, string? language, string expectedLanguage)
     {
+        using var culture = new Humans.Base.Extensions.CultureScope("fr");
         var from = Enum.Parse<WorkgroupStatus>(fromName);
-
-        var workgroup = await SeedWorkgroupAsync(status: from);
+        var coordinator = SeedUser("Coordinator", language: language!);
+        var workgroup = await SeedWorkgroupAsync(status: from, coordinatorUserId: coordinator);
 
         await NewService().RefuseAsync(workgroup.Id, SeedUser(), "Duplicates an existing group", Ct);
 
@@ -225,6 +233,11 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         var reloaded = await ctx.Workgroups.SingleAsync(w => w.Id == workgroup.Id, Ct);
         reloaded.Status.Should().Be(WorkgroupStatus.Refused);
         reloaded.Reasons.Should().Be("Duplicates an existing group");
+        var message = Email.ReceivedCalls().Should().ContainSingle().Which.GetArguments()[0]
+            .Should().BeOfType<Humans.Email.Contracts.EmailMessage>().Subject;
+        message.Subject.Should().EndWith($"#{expectedLanguage}");
+        message.RecipientName.Should().Be("Coordinator");
+        System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be("fr");
     }
 
     [HumansTheory]
