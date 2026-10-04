@@ -586,7 +586,7 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.UpdateTeamPageContentAsync(
             teamId, pageContent, callsToAction, isPublicPage,
-            showCoordinatorsOnPublicPage, updatedByUserId, cancellationToken), static result => result.Succeeded);
+            showCoordinatorsOnPublicPage, updatedByUserId, cancellationToken));
 
     public Task<TeamRoleDefinition> CreateRoleDefinitionAsync(
         Guid teamId,

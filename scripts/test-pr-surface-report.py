@@ -111,6 +111,15 @@ class InterfaceSurfaceTests(unittest.TestCase):
         self.assertEqual(self.delta(before, after)["added_interface_methods"],
                          {"IStripeService": ["bool IsConfigured()", 'string Read(string key = "a=>b{")']})
 
+    def test_bodied_default_properties_report_their_declaration(self):
+        before = "public interface IStripeService\n{\n}"
+        after = ("public interface IStripeService\n{\n    int Count => 0;\n"
+                 "    bool IsConfigured { get => true; }\n}")
+        self.assertEqual(self.delta(before, after)["added_interface_properties"],
+                         {"IStripeService": ["bool IsConfigured", "int Count"]})
+        self.assertEqual(self.delta(after, after.replace("=> 0", "=> 1"))[
+            "added_interface_properties"], {})
+
     def test_removed_property_and_other_type_do_not_add_surface(self):
         before = "public interface IStripeService\n{\n    bool IsConfigured { get; }\n}"
         after = "public interface IStripeService\n{\n}\npublic class Detail\n{\n    string Name { get; set; }\n}"

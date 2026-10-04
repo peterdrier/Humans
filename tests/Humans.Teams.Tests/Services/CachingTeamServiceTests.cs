@@ -431,6 +431,25 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         _service.BulkInvalidations.Should().BeGreaterThan(before);
     }
 
+    [HumansFact]
+    public async Task UpdateTeamPageContentAsync_FailedResult_InvalidatesCache()
+    {
+        // The inner service reports a post-commit dependency failure as a failed
+        // result, so a failure cannot prove the cached team is unchanged.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var team = SeedTeam("Alpha");
+        await SaveAllAsync(ct);
+        await _service.GetTeamAsync(team.Id, ct);
+        var before = _service.BulkInvalidations;
+        _innerTeamService.UpdateTeamPageContentAsync(
+                team.Id, null, Arg.Any<IReadOnlyList<TeamPageCallToActionInput>>(), false, false, Arg.Any<Guid>(), ct)
+            .Returns(new TeamPageUpdateResult(false, null));
+
+        await _service.UpdateTeamPageContentAsync(team.Id, null, [], false, false, Guid.NewGuid(), ct);
+
+        _service.BulkInvalidations.Should().BeGreaterThan(before);
+    }
+
     [HumansTheory]
     [InlineData(true, false)]
     [InlineData(true, true)]

@@ -203,16 +203,16 @@ internal sealed class CachingCalendarService(
     private async Task<CalendarEventMutationResult> MutateWithResultAsync(
         Func<ICalendarService, Task<CalendarEventMutationResult>> action)
     {
+        var clear = true;
         try
         {
             var result = await WithInner(action);
-            if (!result.Succeeded) Clear();
+            clear = !result.Succeeded;
             return result;
         }
-        catch
+        finally
         {
-            Clear();
-            throw;
+            if (clear) Clear();
         }
     }
 
@@ -226,16 +226,17 @@ internal sealed class CachingCalendarService(
     // This overload is used only by delete/cancel/override mutation paths.
     private async Task WithInner(Func<ICalendarService, Task> action)
     {
+        var clear = true;
         try
         {
             await using var scope = scopeFactory.CreateAsyncScope();
             var inner = scope.ServiceProvider.GetRequiredKeyedService<ICalendarService>(InnerServiceKey);
             await action(inner);
+            clear = false;
         }
-        catch
+        finally
         {
-            Clear();
-            throw;
+            if (clear) Clear();
         }
     }
 }

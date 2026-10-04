@@ -359,6 +359,10 @@ def extract_interface_symbols(ref: str) -> dict[str, dict[str, object]]:
                         signature = re.sub(r"\s*([{};])\s*", r"\1 ", signature).strip()
                         signature = signature.replace("{", " { ").replace(";", "; ")
                         interfaces[current]["properties"].add(normalize_signature(signature))
+                    elif body:
+                        # Expression-bodied or get-bodied default property: its body is
+                        # behavior, so the type and name are the surface.
+                        interfaces[current]["properties"].add(normalize_signature(declaration))
 
             if depth <= 0:
                 current = None
