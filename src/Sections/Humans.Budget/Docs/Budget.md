@@ -257,8 +257,8 @@ Stored as string via `HasConversion<string>()`.
 
 ## Issue queue
 
-Budget owns the `Budget` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
-leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+Budget owns the `Budget` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
+folder) on its `Section` entry point, declaring the queue key and the roles that handle
 issues filed against it — `FinanceAdmin`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.

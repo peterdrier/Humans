@@ -8,8 +8,7 @@ namespace Humans.GoogleIntegration.Contracts;
 /// Read side of the section's Google sync trail, for the pages that render it.
 /// </summary>
 /// <remarks>
-/// This project's <c>Contracts/</c> folder, not the <c>Humans.GoogleIntegration.Contracts</c>
-/// leaf. Public because <c>GoogleSyncLogViewComponent</c> is — the write path
+/// Public because <c>GoogleSyncLogViewComponent</c> is — the write path
 /// (<c>IGoogleSyncLogService</c>) stays internal. Same arrangement AuditLog uses for
 /// <c>IAuditViewerService</c>.
 /// </remarks>

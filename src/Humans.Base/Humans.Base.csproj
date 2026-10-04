@@ -115,7 +115,7 @@
     <!--
       Followed the G5 lane 3a-2 arrivals: DatabaseMigrationHostedService,
       SectionDbContextRegistration, SectionMigrationRunner and PreMigrationSnapshot are internal
-      and stay that way — 26 .Contracts leaves inherit this assembly's public surface, and the
+      and stay that way — every project referencing Base inherits its public surface, and the
       migration plumbing is not part of it. Humans.Web names two of them (AddHumansPersistence
       registers the hosted service, AdminDatabaseDiagnosticsRepository injects the
       registrations) and Humans.Integration.Tests drives SectionMigrationRunner directly; both
@@ -146,20 +146,20 @@
 
       Consequence worth knowing, measured 2026-08-15 with
       `dotnet msbuild <leaf>.csproj -t:ResolvePackageAssets -getItem:FrameworkReference`:
-      FrameworkReference flows transitively through ProjectReference, so all 26 .Contracts
-      leaves that reference this project resolve Microsoft.AspNetCore.App with
+      FrameworkReference flows transitively through ProjectReference, so every .Contracts
+      leaf with a reference path to this project resolves Microsoft.AspNetCore.App with
       IsTransitiveFrameworkReference=true. Those leaves are NOT framework-free and cannot be
-      used as a "cannot name an ASP.NET type" oracle. Only the two leaves with no path here
+      used as a "cannot name an ASP.NET type" oracle. Only a leaf with no path here
       — Humans.Onboarding.Contracts (zero-ProjectReference) and
-      Humans.Users.Contracts (one edge, to Onboarding) — resolve Microsoft.NETCore.App alone.
+      Humans.Users.Contracts (one edge, to Onboarding) — resolves Microsoft.NETCore.App alone.
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
 
     <!--
       Added by G5 lane 3a-1 (nobodies-collective/Humans#866), each forced by exactly one
       arrival. The real invariant is the ProjectReference rule at the top of this file, not a
-      package count: 26 .Contracts leaves reference this project, so an external package landing
-      here reaches all of them, but per Peter's ruling of 2026-08-15 that is allowed and only a
+      package count: an external package landing here reaches every project with a reference
+      path to Base, but per Peter's ruling of 2026-08-15 that is allowed and only a
       Humans.* ProjectReference is not. Add a package because an arrival names it, and say which.
         CsvHelper — Csv/HumansCsv.cs, the single CSV seam (memory/code/csv-use-csvhelper.md).
         Serilog   — Logging/{CurrentUserEnricher,PiiRedactionEnricher,InMemoryLogSink}.cs,

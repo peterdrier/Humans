@@ -32,7 +32,7 @@ The four role names below still describe what code *does*, and a section assembl
 
 | Role | Contains | Forbidden |
 |---|---|---|
-| **Domain** | Entities, enums, value objects — a section's `Domain/` folder, or its `.Contracts` leaf when other sections need the shape. | Services, framework references, EF types, DTOs |
+| **Domain** | Entities, enums, value objects — a section's `Domain/` folder, or its contracts (`Contracts/` folder or `.Contracts` leaf) when other sections need the shape. | Services, framework references, EF types, DTOs |
 | **Application** | Service **interfaces** and **implementations** (business logic), repository **interfaces**, DTOs, use cases, authorization handlers — a section's `Services/`, `Authorization/` and `Contracts/` folders | `DbContext`, `Microsoft.EntityFrameworkCore.*`, HTTP types, external SDKs, direct I/O |
 | **Infrastructure** | Repository implementations, caching decorators, the section's `<Section>DbContext` and its migrations, external API clients — a section's `Data/` folder | Controller logic, Razor, HTTP request/response, business rules |
 | **Web** | Controllers, views, view models, API endpoints, DI wiring — a section's `Controllers/`, `Views/`, `Models/` and its `Section.cs` | `DbContext`, direct EF queries, direct cache access for domain data, raw SQL |
@@ -568,7 +568,7 @@ All Google Drive resources are on **Shared Drives** (never My Drive). Google int
 
 ## 14. DTO and ViewModel Boundary
 
-- **Domain entities** live in their section's `Domain/` folder, or in its `.Contracts` leaf when another section needs the shape (`Humans.Users.Contracts.User`; `Profile` is section-internal, in `Humans.Users.Domain`). They are mutable, have identity, and carry invariants. Entities never reference EF types.
+- **Domain entities** live in their section's `Domain/` folder, or in its contracts (`Contracts/` folder or `.Contracts` leaf) when another section needs the shape (`Humans.Users.Contracts.User`; `Profile` is section-internal, in `Humans.Users.Domain`). They are mutable, have identity, and carry invariants. Entities never reference EF types.
 - **DTOs** live in their section's `Services/Dtos/` or `Contracts/` folder. They are read-optimized shapes for specific use cases (admin tables, API responses, view data). Services return DTOs when the shape is call-specific and the entity does not match; they return entities when the caller needs the full aggregate.
 - **ViewModels** live in their section's `Models/` folder (or are inlined in controllers). Controllers map DTOs or entities to view models for Razor. The section-agnostic ones — the generic table models and `PagerViewModel` — are now under `Humans.Base.Models`, in the base assembly (§1).
 - **Domain entities should not leak into Razor views** when a DTO would provide better separation. Simple 1:1 cases are acceptable; anything that would have required `.Include` for navigation in the old model is not.

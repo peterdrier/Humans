@@ -62,8 +62,8 @@
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Campaigns\Humans.Campaigns.csproj" />
     <!--
-      Outbound section references, all through leaves and all acyclic — none of these
-      leaves names a Humans.Users type. Note the reverse direction is sanctioned and
+      Outbound section references, all acyclic — none of these names a Humans.Users
+      type. Note the reverse direction is sanctioned and
       deliberate: consumers reference *this* project for IUserService's write surface
       (Peter, 2026-08-14). IUserService itself sits on Humans.Users.Contracts, not here —
       seven Base files inject it and Humans.Users references Base, so a section-resident
@@ -101,7 +101,7 @@
       Both added at G5 lane 4b-2d with the body of SuspendNonCompliantMembersJob:
       Governance for IMembershipCalculatorRead (who is now non-compliant) and
       GoogleIntegration for IGoogleSyncService (drop the suspended human from their
-      teams' Drive/Groups). Both edges are acyclic: neither leaf names a Humans.Users type.
+      teams' Drive/Groups). Both edges are acyclic: neither names a Humans.Users type.
       Note that Humans.Governance.Contracts gained a reference to Humans.Users.Contracts at
       G5 lane 3b (MembershipTier followed the deleted Humans.Domain to its owner) — still
       acyclic, since the *leaf* is not this section project.

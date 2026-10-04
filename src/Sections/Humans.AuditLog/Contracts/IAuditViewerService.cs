@@ -18,22 +18,10 @@ namespace Humans.AuditLog.Contracts;
 /// </remarks>
 /// <remarks>
 /// <para>
-/// <b>Placement (nobodies-collective/Humans#866, G5 lane 4b-2h).</b> This lives in
-/// <c>Humans.AuditLog</c>, not in the <c>Humans.AuditLog.Contracts</c> leaf and no longer in
-/// <c>Humans.Application</c>. Peter's 2026-08-14 Base-floor decision: a former Base resident
+/// <b>Placement.</b> This lives in <c>Humans.AuditLog</c>'s <c>Contracts/</c> folder. Peter's 2026-08-14 Base-floor decision: a former Base resident
 /// that names another section's read interface moves to its own section. Since
 /// nobodies-collective/Humans#1059 it names none: display names arrive through Base's
 /// <c>IEntityNameContributor</c> fan-out.
-/// </para>
-/// <para>
-/// This section project's <c>Contracts/</c> folder, not the <c>Humans.AuditLog.Contracts</c>
-/// leaf project: every consumer (Shell's <c>AdminController</c>, the section's own
-/// <c>AuditLogController</c> and <c>AuditLogViewComponent</c>, and the <c>Humans.Agent</c>,
-/// <c>Humans.Monitor</c> and <c>Humans.Users</c> sections) can take a
-/// <c>ProjectReference</c> on <c>Humans.AuditLog</c> directly. A leaf member needs an
-/// out-of-section consumer that cannot — no Base project names this — and the leaf must stay
-/// reachable from Base without a cycle. Both projects share the
-/// <c>Humans.AuditLog.Contracts</c> namespace, as Shifts and Tickets already do.
 /// </para>
 /// </remarks>
 public interface IAuditViewerService : IApplicationService

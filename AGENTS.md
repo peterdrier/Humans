@@ -20,7 +20,7 @@ A few thousand real people trust this system with their personal data, and a vol
 
 ### 1. Sections own their data, end to end
 
-The app is ~40 vertical sections (`src/Sections/Humans.<Section>`), each owning its services and views, and — where it has data — its own `DbContext`, migrations, and tables (orchestrator sections like Onboarding and Gdpr own none). There is no shared DbContext — every table belongs to exactly one section. Sections interact only through public interfaces and `.Contracts` leaves. Reaching into another section's tables or internals is the cardinal sin here, and existing violations are tech debt, never precedent.
+The app is ~40 vertical sections (`src/Sections/Humans.<Section>`), each owning its services and views, and — where it has data — its own `DbContext`, migrations, and tables (orchestrator sections like Onboarding and Gdpr own none). There is no shared DbContext — every table belongs to exactly one section. Sections interact only through the public interfaces each publishes in its contracts — a `Contracts/` folder, or a `.Contracts` leaf project where a folder would close a project cycle. Reaching into another section's tables or internals is the cardinal sin here, and existing violations are tech debt, never precedent.
 
 ### 2. GDPR is a feature, not a checkbox
 

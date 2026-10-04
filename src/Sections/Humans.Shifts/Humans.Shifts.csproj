@@ -47,8 +47,8 @@
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
-      Outbound section references, all through leaves and all acyclic — none of these
-      leaves names a Humans.Shifts type (they may name Humans.Shifts.Contracts, which is
+      Outbound section references, all acyclic — none of these names a Humans.Shifts
+      type (they may name Humans.Shifts.Contracts, which is
       below this project).
         Camps         — ICampServiceRead: camp labels and rosters for the summary-by-camp.
         Users         — UserInfo snapshots, IUserMerge, and the profile-side reads.

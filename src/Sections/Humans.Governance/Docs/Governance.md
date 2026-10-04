@@ -359,8 +359,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Issue queue
 
-Governance owns the `Governance` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
-leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+Governance owns the `Governance` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
+folder) on its `Section` entry point, declaring the queue key and the roles that handle
 issues filed against it — `Board`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.

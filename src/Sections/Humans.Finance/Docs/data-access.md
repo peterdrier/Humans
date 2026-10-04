@@ -39,7 +39,7 @@ Repository: `IHoldedRepository`.
 Cross-section calls via `IBudgetServiceRead` (`budget` in the ctor), `IHoldedService` (the Holded section's
 ledger-mirror read surface — `holded` in the ctor; ledger-line /
 account-balance reads for creditor status, ledger, and account listing),
-`IHoldedClient` (Holded section leaf — purchase-document / contact / expense-account
+`IHoldedClient` (Holded's `Contracts/` folder — purchase-document / contact / expense-account
 API calls, plus `PayPurchaseDocumentAsync` for SEPA booking) and `IAuditLogService`
 (one entry per SEPA credit transfer generated, and one per transfer booked).
 Implements `IHoldedFinanceService`, `IHoldedFinanceAdminService`

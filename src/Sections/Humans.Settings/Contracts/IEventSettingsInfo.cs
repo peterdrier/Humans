@@ -12,8 +12,7 @@ namespace Humans.Settings.Contracts;
 /// boundary.
 /// </summary>
 /// <remarks>
-/// Lives on the Contracts leaf — the bottom of the section's graph — so any
-/// section can name it. Members are restricted to BCL and NodaTime types.
+/// Lives in the section's <c>Contracts/</c> folder so any section can name it. Members are restricted to BCL and NodaTime types.
 /// </remarks>
 public interface IEventSettingsInfo
 {

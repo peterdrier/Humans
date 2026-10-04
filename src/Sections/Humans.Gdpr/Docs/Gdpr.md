@@ -3,7 +3,7 @@
   src/Sections/Humans.Gdpr/Contracts/**
 -->
 <!-- freshness:flag-on-change
-  The fan-out contract (IUserDataContributor / UserDataSlice) and the failure rules the orchestrator enforces — never swallow a contributor exception, never accept a duplicate export section name, log an error for an exported section with no erasure declaration, never leave an erasure section behind silently — review whenever the leaf or GdprService changes.
+  The fan-out contract (IUserDataContributor / UserDataSlice) and the failure rules the orchestrator enforces — never swallow a contributor exception, never accept a duplicate export section name, log an error for an exported section with no erasure declaration, never leave an erasure section behind silently — review whenever the Contracts/ folder or GdprService changes.
 -->
 
 # Gdpr — Section Invariants
@@ -54,7 +54,7 @@ returns `File()` or a redirect.
 | `GET /Profile/Me/DownloadData` | `ProfileController` (Humans.Users) | For a human who has completed onboarding |
 | `GET /Guest/DownloadData` | `GuestDataController` (Humans.Gdpr) | For an authenticated account with no profile yet |
 
-Both resolve `IGdprService` from the contracts leaf and serialize the export
+Both resolve `IGdprService` from the `Contracts/` folder and serialize the export
 result to a file download. `/Profile/Me/DownloadData` stays on Users: moving it
 would change a URL. Erasure has no route of its own — `AccountDeletionService`
 calls `EraseForUserAsync` per merge-chain id from the deletion paths.
@@ -143,7 +143,7 @@ stamp the envelope with the surviving account id and the merged-away ids;
 `IUserServiceRead`.
 
 **Inbound:** wide, and all of it through the public `Contracts/` folder. Every section owning
-user-scoped tables references `Humans.Gdpr.Contracts` to implement
+user-scoped tables references `Humans.Gdpr` to implement
 `IUserDataContributor`; Users also references it for `ProfileController` (the
 other download route) and `AccountDeletionService` (the erasure caller).
 `Humans.Web` references Gdpr only to compose sections.

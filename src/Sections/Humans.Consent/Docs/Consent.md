@@ -203,8 +203,8 @@ Three controllers serve this section.
 
 ## Issue queue
 
-Consent owns the `Legal` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
-leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+Consent owns the `Legal` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
+folder) on its `Section` entry point, declaring the queue key and the roles that handle
 issues filed against it — `ConsentCoordinator`, plus `Admin`, which handles every queue.
 Issues discovers the declaration through DI and holds no list of sections; dropping the
 seam sends this section's stored issues to the Admin-only queue. The key is `Legal`, not

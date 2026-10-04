@@ -182,12 +182,13 @@ jobs:
               # Store's Data/Migrations/** had been unwatched since the pilot.
               - 'src/Sections/*/Data/**'
               - 'src/Sections/*/Domain/**'
-              # Contracts leaves hold EF-mapped types too: Users' entities sit
-              # public on its leaf (#866, G5 lane 2 — User : IdentityUser<Guid>
-              # is named by Base), and any leaf enum consumed by its section's
-              # entities with HasConversion<string> + HasData is model-relevant.
-              # Each leaf maps to its owning section's pair below.
+              # Contracts leaves and Contracts/ folders hold EF-mapped types too:
+              # Users' entities sit public on its leaf (#866, G5 lane 2 — User :
+              # IdentityUser<Guid> is named by Base), and any contracts enum
+              # consumed by its section's entities with HasConversion<string> +
+              # HasData is model-relevant. Each maps to its owning section's pair below.
               - 'src/Sections/*.Contracts/**'
+              - 'src/Sections/*/Contracts/**'
               # Central package manifest: an EF Core / Npgsql / Identity /
               # DataProtection bump can change model-building conventions or
               # framework-owned schema, which is snapshot drift no source path

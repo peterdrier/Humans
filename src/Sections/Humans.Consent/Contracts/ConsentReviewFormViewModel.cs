@@ -8,7 +8,7 @@ namespace Humans.Consent.Contracts;
 /// regardless of where the user encounters it.
 /// </summary>
 /// <remarks>
-/// On the contracts leaf rather than in the section's <c>Models/</c> because the widget
+/// In <c>Contracts/</c> rather than in the section's <c>Models/</c> because the widget
 /// step is Onboarding's view over Consent's form: Shell constructs this model and renders
 /// the section's <c>_ConsentReviewBody</c> partial, which resolves by name across
 /// application parts. Moving the markup instead (design §15 step 3b's fourth direction)

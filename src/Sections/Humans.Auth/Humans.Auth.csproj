@@ -30,7 +30,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!--
-      Three horizontal leaves:
+      Three horizontal sections (AuditLog and Gdpr by section project, Notifications by its leaf):
       AuditLog  — RoleAssignmentService writes an audit row per assign/end.
       Gdpr      — role assignments are an Article 15 export slice.
       Notifications — best-effort in-app notice to the human whose role changed.

@@ -3,10 +3,11 @@ name: A fanout hub never enumerates its spokes
 description: When adding/changing a fanout interface (contributor pattern, hub iterates IEnumerable<IContract>), never add a central constant, enum, or type list naming which sections implement it — spokes declare their own facts, tests derive the roster by reflection.
 ---
 
-A **fanout** is one interface in a `.Contracts` leaf that many sections implement and one
+A **fanout** is one interface in a section's contracts (`Contracts/` folder or `.Contracts` leaf)
+that many sections implement and one
 orchestrator/hub aggregates via `IEnumerable<IContract>` (see [`orchestrator-marker`](orchestrator-marker.md)
 and [[crosscut-purity]]'s "fan-out contributions" mechanism). The hub must never hold — in Base,
-the `.Contracts` leaf, the Shell, or an architecture test — a central constant table, enum, or
+the contracts, the Shell, or an architecture test — a central constant table, enum, or
 hard-coded `Type[]` naming which sections participate. That list is itself a hub-names-spokes
 coupling: every new spoke requires editing code it doesn't own, and a spoke that moves or renames
 silently drops out unless someone remembers to update the list.

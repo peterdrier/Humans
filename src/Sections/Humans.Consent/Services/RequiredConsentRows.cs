@@ -14,7 +14,7 @@ namespace Humans.Consent.Services;
 /// the <see cref="CachingConsentService"/> decorator, which compose the two inputs
 /// differently (repo vs cache) but must produce the identical row shape and ordering.
 /// Internal, and not a static on <see cref="RequiredConsentRow"/> itself, because it names
-/// <see cref="ActiveRequiredLegalDocumentSnapshot"/> — a section type the contracts leaf
+/// <see cref="ActiveRequiredLegalDocumentSnapshot"/> — a section type <c>Contracts/</c>
 /// must not publish to carry a helper.
 /// </remarks>
 internal static class RequiredConsentRows

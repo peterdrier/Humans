@@ -29,7 +29,7 @@
       arrives through the ASP.NET Core shared framework, and its two helpers are
       Base's (the Humans.Base.Extensions / .Threading namespaces). Every Humans-side
       read and write of another section's data routes through that section's service
-      interface, all of them contracts-leaf types registered by their owners.
+      interface, all of them public contracts types registered by their owners.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
