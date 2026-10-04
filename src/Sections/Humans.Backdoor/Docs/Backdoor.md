@@ -53,7 +53,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | Route | Access | Serves |
 |-------|--------|--------|
 | `/api/backdoor/logs` | read | The in-memory log ring (`InMemoryLogSink`, Base) |
-| `/api/backdoor/agent/conversations` | read | Agent conversation transcripts — list, one conversation, its messages — via `IAgentTranscriptRead` |
+| `/api/backdoor/agent/conversations` | read | Agent conversation transcripts — list, one conversation, its messages; list previews retain a 200 UTF-16 code-unit cap without splitting Unicode surrogate pairs — via `IAgentTranscriptRead` |
 | `/api/backdoor/issues` | read + write | The issue queue, via `IIssueTriage` |
 | `/api/backdoor/feedback` | read + write | The feedback queue, via `IFeedbackTriage` |
 | `/api/backdoor/surveys` | read | Survey definitions, responses and aggregates, via `ISurveyAnalysisRead` |

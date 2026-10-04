@@ -83,7 +83,13 @@ internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserS
             .OrderByDescending(m => m.CreatedAt)
             .FirstOrDefault();
         var preview = lastUserMessage?.Content;
-        if (preview is { Length: > 200 }) preview = preview[..200];
+        if (preview is { Length: > 200 })
+        {
+            var length = 200;
+            if (char.IsHighSurrogate(preview[length - 1]) && char.IsLowSurrogate(preview[length]))
+                length--;
+            preview = preview[..length];
+        }
 
         return new
         {
