@@ -4,23 +4,20 @@
     var voluntellUrl = (string?)ViewData["VoluntellUrl"] ?? string.Empty;
     var assignButtonClass = (string?)ViewData["AssignButtonClass"] ?? "btn-success";
     var dietaryPreferenceStyle = (string?)ViewData["DietaryPreferenceStyle"] ?? "muted";
-    var noResultsText = ((string?)ViewData["NoResultsText"] ?? "No humans found.")
-        .Replace("'", "\\'", StringComparison.Ordinal);
-    var errorText = ((string?)ViewData["ErrorText"] ?? "Search failed.")
-        .Replace("'", "\\'", StringComparison.Ordinal);
-    var overlapLabel = ((string?)ViewData["OverlapLabel"] ?? "Schedule conflict")
-        .Replace("'", "\\'", StringComparison.Ordinal);
+    var noResultsText = (string?)ViewData["NoResultsText"] ?? "No humans found.";
+    var errorText = (string?)ViewData["ErrorText"] ?? "Search failed.";
+    var overlapLabel = (string?)ViewData["OverlapLabel"] ?? "Schedule conflict";
     var showPoolBadge = (bool?)ViewData["ShowPoolBadge"] ?? false;
 }
 (function () {
-    var searchUrl = '@Html.Raw(searchUrl)';
-    var voluntellUrl = '@Html.Raw(voluntellUrl)';
+    var searchUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(searchUrl));
+    var voluntellUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(voluntellUrl));
     var tokenHtml = '@Html.Raw(Html.AntiForgeryTokenHtmlForJavaScript())';
-    var assignButtonClass = '@assignButtonClass';
-    var dietaryPreferenceStyle = '@dietaryPreferenceStyle';
-    var noResultsText = '@noResultsText';
-    var errorText = '@errorText';
-    var overlapLabel = '@overlapLabel';
+    var assignButtonClass = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(assignButtonClass));
+    var dietaryPreferenceStyle = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dietaryPreferenceStyle));
+    var noResultsText = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(noResultsText));
+    var errorText = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(errorText));
+    var overlapLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(overlapLabel));
     var showPoolBadge = @showPoolBadge.ToString().ToLowerInvariant();
 
     function renderBadges(items, cssClass) {
