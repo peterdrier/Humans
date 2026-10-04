@@ -127,9 +127,8 @@ internal interface ITeamRepository : IRepository
     Task UpdateTeamAsync(Team team, CancellationToken ct = default);
 
     /// <summary>
-    /// Creates a team and, in the same transaction, forces its
-    /// <c>RequiresApproval</c> column to <paramref name="requiresApproval"/>
-    /// after insert (works around the EF store-default sentinel).
+    /// Creates a team with <paramref name="requiresApproval"/> in one save.
+    /// The configured true sentinel preserves an explicit false on insert.
     /// Returns <c>true</c> on success, or <c>false</c> when persistence
     /// aborted because of a unique-constraint collision (typically a slug
     /// race against a concurrent create). The service layer uses the

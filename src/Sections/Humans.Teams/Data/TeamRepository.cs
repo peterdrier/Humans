@@ -212,7 +212,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         Team team, bool requiresApproval, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        team.RequiresApproval = requiresApproval;
         db.Teams.Add(team);
         try
         {
@@ -228,17 +228,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             return false;
         }
 
-        if (!requiresApproval)
-        {
-            // RequiresApproval has a store default of true, so persist explicit false
-            // after insert instead of relying on EF's insert sentinel handling.
-            var entry = db.Entry(team).Property(t => t.RequiresApproval);
-            entry.CurrentValue = false;
-            entry.IsModified = true;
-            await db.SaveChangesAsync(ct);
-        }
-
-        await tx.CommitAsync(ct);
         return true;
     }
 

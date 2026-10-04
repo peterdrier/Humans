@@ -8,6 +8,7 @@ using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
 using NodaTime.Testing;
 using Xunit;
@@ -45,6 +46,32 @@ public sealed class TeamRepositoryTests : IDisposable
     // ==========================================================================
     // Team reads
     // ==========================================================================
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AddTeam_PersistsApprovalModeInOneSave(bool requiresApproval)
+    {
+        var counter = new SaveCounter();
+        var options = new DbContextOptionsBuilder<TeamsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(counter)
+            .Options;
+        var repo = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));
+        var team = new Team
+        {
+            Id = Guid.NewGuid(), Name = "Design", Slug = "design",
+            RequiresApproval = requiresApproval,
+            CreatedAt = _clock.GetCurrentInstant(), UpdatedAt = _clock.GetCurrentInstant()
+        };
+
+        (await repo.AddTeamWithRequiresApprovalOverrideAsync(
+            team, requiresApproval, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+
+        var stored = await repo.GetByIdAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+        stored!.RequiresApproval.Should().Be(requiresApproval);
+        counter.Saves.Should().Be(1);
+    }
 
     [HumansTheory]
     [InlineData(nameof(CallToAction.Text))]
@@ -436,6 +463,18 @@ public sealed class TeamRepositoryTests : IDisposable
         _dbContext.Set<TeamRoleDefinition>().Add(def);
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return def;
+    }
+
+    private sealed class SaveCounter : SaveChangesInterceptor
+    {
+        public int Saves { get; private set; }
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            Saves++;
+            return ValueTask.FromResult(result);
+        }
     }
 
     private async Task SeedRoleAssignmentAsync(TeamRoleDefinition def, TeamMember member)

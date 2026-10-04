@@ -183,6 +183,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Invariants
 
+- Team creation persists the requested approval mode on the initial insert. The EF true sentinel preserves open teams without a second update.
+
 - The parent-team resource inheritance warning reflects only the current selection. Changing or clearing the parent hides the prior list immediately and invalidates earlier lookup responses or errors.
 
 - Global-search result rows pass browser cancellation to the team lookup; display fields and missing-result behavior are unchanged.
