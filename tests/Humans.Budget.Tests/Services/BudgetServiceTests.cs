@@ -640,6 +640,31 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
+    public async Task SyncTicketingActualsAsync_clears_existing_fees_when_actuals_become_zero()
+    {
+        var (_, _, _, feesCatId) = await SeedTicketingYearAsync();
+        var ct = TestContext.Current.CancellationToken;
+        var week = new TicketingWeeklyActuals(
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 10, 500m, 15m, 5m);
+        await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
+
+        var corrected = week with { StripeFees = 0m, TicketTailorFees = 0m };
+        var nextWeek = corrected with
+        {
+            Monday = new LocalDate(2026, 3, 9), Sunday = new LocalDate(2026, 3, 15), WeekLabel = "Mar 9–Mar 15"
+        };
+        await _service.SyncTicketingActualsAsync(_yearId, [corrected, nextWeek], actorUserId: null, ct);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(ct);
+        var actualFees = await ctx.BudgetLineItems.Where(li => li.BudgetCategoryId == feesCatId
+            && !li.Description.StartsWith("Projected: ")).ToListAsync(ct);
+        actualFees.Should().HaveCount(2);
+        actualFees.Should().OnlyContain(li => li.Amount == 0m);
+        (await ctx.BudgetAuditLogs.CountAsync(a => a.BudgetYearId == _yearId
+            && a.Description.StartsWith("Ticketing sync:"), ct)).Should().Be(2);
+    }
+
+    [HumansFact]
     public async Task SyncTicketingActualsAsync_writes_audit_entry_with_null_actor_for_automation()
     {
         await SeedTicketingYearAsync();
