@@ -35,7 +35,7 @@
       Humans.Email.Contracts names no Campaigns or Settings type.
     -->
     <ProjectReference Include="..\Humans.Campaigns\Humans.Campaigns.csproj" />
-    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
   </ItemGroup>
 
   <ItemGroup>

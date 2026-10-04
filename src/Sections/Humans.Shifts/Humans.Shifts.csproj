@@ -74,7 +74,7 @@
         Tickets       — early entry gates on the volunteer holding a ticket.
     -->
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
-    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <!--
       Calendar owns the personal iCal feed; ShiftSignupService implements its

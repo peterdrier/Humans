@@ -3,7 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.Monitor\Humans.Monitor.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />

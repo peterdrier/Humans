@@ -22,7 +22,7 @@
     <!-- ShiftUserSummary / UrgentShiftInfo fixtures. -->
     <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <!-- EventSettingsInfo (BurnFixtures) fixture. -->
-    <ProjectReference Include="..\..\src\Sections\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Settings\Humans.Settings.csproj" />
     <!-- ProfileInfo / UserInfo fixtures (nobodies-collective/Humans#1051). -->
     <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
