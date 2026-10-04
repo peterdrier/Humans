@@ -539,7 +539,7 @@ internal sealed class CachingCampService(
     /// </summary>
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var settings = await WithInner(inner => inner.GetSettingsAsync(ct));
+        var settings = await GetSettingsAsync(ct);
         var years = new HashSet<int>();
         years.Add(settings.PublicYear);
         foreach (var y in settings.OpenSeasons) years.Add(y);
@@ -564,16 +564,6 @@ internal sealed class CachingCampService(
         }
 
         _warmYears = years;
-
-        await _settingsLock.WaitAsync(ct);
-        try
-        {
-            _settings = settings;
-        }
-        finally
-        {
-            _settingsLock.Release();
-        }
     }
 
     private int SystemClockYear() => clock.GetCurrentInstant().InUtc().Year;
