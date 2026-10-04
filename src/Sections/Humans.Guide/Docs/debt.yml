@@ -9,7 +9,3 @@ inbox:
     review: panel
     status: needs-detail
     blocked_on: "One real markdown input that reproduces the mis-segmentation; Peter ruled the behaviour kept, so latent-by-inspection is not checkable."
-  - added: 2026-10-04
-    id: GUIDE-2
-    what: "GitHubHealthCheck.CheckHealthAsync ignores the health-check cancellation token when awaiting Repository.Get and converts any later cancellation into Unhealthy through its generic catch. Its read should honour the framework timeout/abort token instead of continuing the probe; private in-method client creation currently lacks a deterministic pending-response test seam. Found during the daily debt sweep."
-    review: panel

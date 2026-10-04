@@ -26,6 +26,7 @@ internal sealed class GitHubHealthCheck(IOptions<GitHubSettings> settings, ILogg
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var client = new GitHubClient(new ProductHeaderValue("Humans-HealthCheck"));
 
             if (!string.IsNullOrEmpty(_settings.AccessToken))
@@ -34,7 +35,7 @@ internal sealed class GitHubHealthCheck(IOptions<GitHubSettings> settings, ILogg
             }
 
             // Verify we can access the repository
-            await client.Repository.Get(_settings.Owner, _settings.Repository);
+            await client.Repository.Get(_settings.Owner, _settings.Repository).WaitAsync(cancellationToken);
 
             // Check rate limit status
             var rateLimit = client.GetLastApiInfo()?.RateLimit;
@@ -83,6 +84,10 @@ internal sealed class GitHubHealthCheck(IOptions<GitHubSettings> settings, ILogg
             return HealthCheckResult.Unhealthy(
                 $"GitHub rate limit exceeded. Resets at {ex.Reset.ToTimeWithSeconds()}",
                 ex);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
