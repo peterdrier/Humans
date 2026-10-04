@@ -157,27 +157,86 @@ public sealed class LegalDocumentServiceTests : IDisposable
         new UTF8Encoding(false, true).GetBytes(summary!).Should().NotBeEmpty();
     }
 
-    private sealed class LegalContentHandler(string? commitMessage = null) : HttpMessageHandler
+    [HumansTheory]
+    [InlineData("discovery", 1)]
+    [InlineData("file", 1)]
+    [InlineData("file", 2)]
+    [InlineData("commit", 1)]
+    [InlineData("prefix", 1)]
+    [InlineData("prefix", 2)]
+    public async Task GitHubRead_PropagatesCancellationAtEachFetch(string operation, int pauseRequest)
+    {
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        using var handler = new LegalContentHandler(string.Equals(operation, "commit", StringComparison.Ordinal) ? "summary" : null, pauseRequest);
+        var connector = new GitHubLegalDocumentConnector(
+            Options.Create(new GitHubSettings { Owner = "nobodies", Repository = "legal" }),
+            NullLogger<GitHubLegalDocumentConnector>.Instance);
+        var client = new GitHubClient(new Connection(
+            new ProductHeaderValue("test"), new HttpClientAdapter(() => handler)));
+        typeof(GitHubLegalDocumentConnector)
+            .GetField("_client", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(connector, client);
+
+        var read = ReadAsync();
+        await handler.Started.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await cancelled.CancelAsync();
+        handler.Release.SetResult();
+
+        var act = () => read.WaitAsync(TestContext.Current.CancellationToken);
+        var thrown = await act.Should().ThrowAsync<OperationCanceledException>();
+        thrown.Which.CancellationToken.Should().Be(cancelled.Token);
+        handler.Requests.Should().HaveCount(pauseRequest);
+
+        async Task ReadAsync()
+        {
+            switch (operation)
+            {
+                case "discovery":
+                    await connector.DiscoverLanguageFilesAsync("Estatutos", cancelled.Token);
+                    break;
+                case "file":
+                    await connector.GetFileContentAsync("Estatutos/ESTATUTOS.md", cancelled.Token);
+                    break;
+                case "commit":
+                    await connector.GetCommitMessageAsync("abc", cancelled.Token);
+                    break;
+                case "prefix":
+                    await connector.GetFolderContentByPrefixAsync("Estatutos", "ESTATUTOS", cancelled.Token);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(operation));
+            }
+        }
+    }
+
+    private sealed class LegalContentHandler(string? commitMessage = null, int? pauseRequest = null) : HttpMessageHandler
     {
         public List<Uri> Requests { get; } = [];
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        protected override Task<HttpResponseMessage> SendAsync(
+        protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(request.RequestUri!);
+            if (Requests.Count == pauseRequest)
+            {
+                Started.SetResult();
+                await Release.Task.WaitAsync(cancellationToken);
+            }
             const string directory = """
                 [{"type":"file","name":"ESTATUTOS.md","path":"Estatutos/ESTATUTOS.md","sha":"abc"}]
                 """;
             const string file = """
                 {"type":"file","name":"ESTATUTOS.md","path":"Estatutos/ESTATUTOS.md","sha":"abc","content":"aG9sYQ==","encoding":"base64"}
                 """;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(commitMessage is not null
                     ? JsonSerializer.Serialize(new { commit = new { message = commitMessage } })
                     : Requests.Count == 1 ? directory : file,
                     Encoding.UTF8, "application/json")
-            });
+            };
         }
     }
 

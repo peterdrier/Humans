@@ -151,6 +151,8 @@ Three controllers serve this section.
 - ConsentCoordinator **cannot** manage legal documents or versions — they can only review and clear/flag consent checks.
 - No one **can** update or delete consent records. They are permanently immutable.
 
+GitHub document discovery, metadata/raw content, commit-summary and prefix-content reads honour their existing caller token before fetching and while waiting. Cancellation propagates rather than becoming a missing summary or continuing to the next fetch; already-started Octokit requests may finish in the background.
+
 ## Triggers
 
 - When a human signs all required global documents: their consent check status transitions to Pending. `ConsentService.SubmitConsentAsync` no longer fires a per-user team sync (name-only access switch) — Volunteers admission is reconciled by the scheduled `SystemTeamSyncJob.SyncVolunteersTeamAsync` pass on name + consents (eventually consistent). App access never depended on Volunteers membership.
