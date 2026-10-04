@@ -911,9 +911,12 @@ internal sealed class Service(
         if (s.PaymentIntentId is { } pi && recordedByPi.TryGetValue(pi, out var paymentStatus))
             // Stripe says paid but the local row hasn't settled — the amount is not in the
             // balance yet, so it must not present as plain "Recorded".
-            return paymentStatus == PaymentStatus.Pending
-                ? StripeReconciliationStatus.RecordedPending
-                : StripeReconciliationStatus.Recorded;
+            return paymentStatus switch
+            {
+                PaymentStatus.Paid => StripeReconciliationStatus.Recorded,
+                PaymentStatus.Pending => StripeReconciliationStatus.RecordedPending,
+                _ => StripeReconciliationStatus.RecordedFailed,
+            };
         if (order is null || s.PaymentIntentId is null || order.CounterpartyType == OrderCounterpartyType.Team)
             return StripeReconciliationStatus.Unmatched;
         return StripeReconciliationStatus.Missing;

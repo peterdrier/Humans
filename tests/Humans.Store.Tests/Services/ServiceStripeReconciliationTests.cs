@@ -128,6 +128,28 @@ public class ServiceStripeReconciliationTests
     }
 
     [HumansFact]
+    public async Task GetStripeReconciliationAsync_does_not_mark_failed_local_payment_as_reconciled()
+    {
+        var order = Guid.NewGuid();
+        _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreCheckoutSessionData>
+        {
+            Session("cs_failed", order, "pi_failed", 100m, "paid"),
+        });
+        _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<RecordedStripePayment>
+        {
+            new("pi_failed", order, 100m, Instant.FromUtc(2026, 5, 1, 0, 0), PaymentStatus.Failed),
+        });
+        _repo.GetOrderWithLinesAndPaymentsAsync(order, Arg.Any<CancellationToken>()).Returns(CampOrder(order));
+
+        var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
+
+        report.Rows.Should().ContainSingle().Which.Status.Should().Be(StripeReconciliationStatus.RecordedFailed,
+            "a failed payment contributes nothing to the balance even when Stripe reports it as paid");
+        report.RecordedCount.Should().Be(0);
+        report.MissingCount.Should().Be(0, "a conflicting existing payment must not be automatically recorded again");
+    }
+
+    [HumansFact]
     public async Task GetStripeReconciliationAsync_flags_orphan_recorded_payment_absent_from_stripe()
     {
         var order = Guid.NewGuid();

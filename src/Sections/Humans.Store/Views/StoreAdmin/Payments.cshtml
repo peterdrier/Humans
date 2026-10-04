@@ -3,12 +3,14 @@
 @{
     ViewData["Title"] = "Store Stripe Payments";
     var report = Model.Report;
+    var failedCount = report.Rows.Count(r => r.Status == StripeReconciliationStatus.RecordedFailed);
 }
 
 @functions {
     private static (string Css, string Label) StatusBadge(StripeReconciliationStatus status) => status switch
     {
         StripeReconciliationStatus.Recorded => ("bg-success", "Recorded"),
+        StripeReconciliationStatus.RecordedFailed => ("bg-danger", "Recorded as failed — review required"),
         StripeReconciliationStatus.RecordedPending => ("bg-warning text-dark", "Recorded (pending settlement)"),
         StripeReconciliationStatus.Missing => ("bg-danger", "Missing"),
         StripeReconciliationStatus.Unmatched => ("bg-warning text-dark", "Unmatched"),
@@ -60,6 +62,10 @@ else if (!report.StripeQueried)
             {
                 <span class="badge bg-warning text-dark">@report.RecordedPendingCount pending settlement</span>
             }
+            @if (failedCount > 0)
+            {
+                <span class="badge bg-danger">@failedCount recorded as failed but paid in Stripe</span>
+            }
             <span class="badge bg-danger">@report.MissingCount missing</span>
             <span class="badge bg-warning text-dark">@report.UnmatchedCount unmatched</span>
         </div>
@@ -74,9 +80,14 @@ else if (!report.StripeQueried)
                     </button>
                 </form>
             }
-            else if (report.StripeQueried)
+            else if (report.StripeQueried && report.Orphans.Count == 0 &&
+                report.Rows.All(r => r.Status is StripeReconciliationStatus.Recorded or StripeReconciliationStatus.Unpaid))
             {
                 <span class="text-success"><i class="fa-solid fa-check me-1"></i>Stripe and the ledger are reconciled.</span>
+            }
+            else if (report.StripeQueried)
+            {
+                <span class="text-warning">Review the unresolved payment discrepancies.</span>
             }
         </div>
     </div>

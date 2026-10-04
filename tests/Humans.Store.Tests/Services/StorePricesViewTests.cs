@@ -136,6 +136,26 @@ public class StorePricesViewTests
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData((int)StripeReconciliationStatus.RecordedFailed, false, false)]
+    [Xunit.InlineData((int)StripeReconciliationStatus.RecordedPending, false, false)]
+    [Xunit.InlineData((int)StripeReconciliationStatus.Unmatched, false, false)]
+    [Xunit.InlineData((int)StripeReconciliationStatus.Recorded, true, false)]
+    [Xunit.InlineData((int)StripeReconciliationStatus.Recorded, false, true)]
+    public async Task Reconciliation_DoesNotClaimSuccessWhileDiscrepanciesRemain(
+        int status, bool orphan, bool expectedSuccess)
+    {
+        var now = Instant.FromUtc(2026, 6, 4, 12, 0);
+        var row = new StripeReconciliationRow("cs", "pi", 100m, "paid", now, Guid.NewGuid(), "Camp", (StripeReconciliationStatus)status);
+        var report = new StripeReconciliationReport(true, true, true, [row],
+            orphan ? [new StripeOrphanPayment("pi_orphan", Guid.NewGuid(), "Camp", 100m, now)] : []);
+        var model = new PaymentsReconciliationViewModel { Report = report, Rows = [] };
+
+        var html = await RenderAsync("Payments", model, viewPath: "/Views/StoreAdmin/Payments.cshtml");
+
+        html.Contains("Stripe and the ledger are reconciled.", StringComparison.Ordinal).Should().Be(expectedSuccess);
+    }
+
     private static async Task<string> RenderAsync(string page, object model, IReadOnlyList<AuditEvent>? history = null, string? viewPath = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions

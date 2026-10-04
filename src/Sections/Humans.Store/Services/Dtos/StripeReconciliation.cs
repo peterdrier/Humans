@@ -8,7 +8,7 @@ namespace Humans.Store.Services.Dtos;
 /// </summary>
 internal enum StripeReconciliationStatus
 {
-    /// <summary>Paid session whose PaymentIntent is already a recorded payment.</summary>
+    /// <summary>Paid session whose PaymentIntent is already recorded as Paid locally.</summary>
     Recorded,
     /// <summary>
     /// Paid session whose PaymentIntent is recorded but still <c>Pending</c> locally — Stripe has
@@ -22,6 +22,8 @@ internal enum StripeReconciliationStatus
     Unmatched,
     /// <summary>Session not in a paid state (open / expired / async-pending) — informational.</summary>
     Unpaid,
+    /// <summary>Paid session whose local payment is Failed — a conflicting terminal outcome requiring review.</summary>
+    RecordedFailed,
 }
 
 /// <summary>One Stripe Checkout Session row in the reconciliation view.</summary>
