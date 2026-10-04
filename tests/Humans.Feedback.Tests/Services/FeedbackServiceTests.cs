@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
@@ -216,11 +217,18 @@ public sealed class FeedbackServiceTests
         results[0].ReporterName.Should().Be("Sparkle");
     }
 
-    [HumansFact]
-    public async Task PostMessageAsync_AdminMessage_SetsLastAdminMessageAt_And_SendsEmail()
+    [HumansTheory]
+    [InlineData("en", "en")]
+    [InlineData("es", "es")]
+    [InlineData("", "en")]
+    [InlineData(" ", "en")]
+    [InlineData("not a culture!", "en")]
+    [InlineData("fr-FR", "en")]
+    public async Task PostMessageAsync_AdminMessage_SetsLastAdminMessageAt_And_SendsEmail(string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var userId = Guid.NewGuid();
-        SeedUser(userId, "Reporter", "reporter@test.com");
+        SeedUser(userId, "Reporter", "reporter@test.com", language: language);
 
         var report = new FeedbackReport
         {
@@ -251,15 +259,16 @@ public sealed class FeedbackServiceTests
             Arg.Is<EmailMessage>(m => m.TemplateName == "feedback_response"
                 && m.RecipientEmail == "reporter@test.com"
                 && m.RecipientName == "Reporter"
-                && m.HtmlBody.Contains("Looking into it")),
+                && m.HtmlBody.Contains("Looking into it")
+                && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
         await _notificationService.Received(1).SendAsync(
             NotificationSource.FeedbackResponse,
             NotificationClass.Informational,
             NotificationPriority.Normal,
-            "Feedback_Notification_ResponseReceived_Title#en",
+            $"Feedback_Notification_ResponseReceived_Title#{expectedCulture}",
             Arg.Is<IReadOnlyList<Guid>>(r => r.Count == 1 && r[0] == userId),
-            body: "Feedback_Notification_ResponseReceived_Body#en",
+            body: $"Feedback_Notification_ResponseReceived_Body#{expectedCulture}",
             actionUrl: Arg.Any<string?>(),
             actionLabel: Arg.Any<string?>(),
             targetGroupName: Arg.Any<string?>(),
@@ -677,7 +686,7 @@ public sealed class FeedbackServiceTests
     // read them back through DB-backed IUserService stubs. A section test project cannot
     // see those tables, so the registry holds the projection the service consumes: UserInfo.
 
-    private UserInfo SeedUser(Guid id, string displayName, string? email = null, string? burnerName = null)
+    private UserInfo SeedUser(Guid id, string displayName, string? email = null, string? burnerName = null, string language = "en")
     {
         var user = new User
         {
@@ -689,7 +698,7 @@ public sealed class FeedbackServiceTests
             // reads User.BurnerName only (#1098). Callers that need to distinguish burner name from
             // legal/display name pass burnerName explicitly; the rest get the realistic default.
             BurnerName = burnerName ?? displayName,
-            PreferredLanguage = "en",
+            PreferredLanguage = language,
             CreatedAt = Clock.GetCurrentInstant()
         };
         var info = UserInfo.Create(

@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -405,9 +406,16 @@ public class ProfileEmailsControllerGridTests
             .Which.ActionName.Should().Be("AdminEmails");
     }
 
-    [HumansFact]
-    public async Task AdminAddEmail_SendsVerificationEmail_ToTargetUser_WithReturnedToken()
+    [HumansTheory]
+    [InlineData("en", "en")]
+    [InlineData("es", "es")]
+    [InlineData("", "en")]
+    [InlineData(" ", "en")]
+    [InlineData("not a culture!", "en")]
+    [InlineData("fr-FR", "en")]
+    public async Task AdminAddEmail_SendsVerificationEmail_ToTargetUser_WithReturnedToken(string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var targetUserId = Guid.NewGuid();
         const string newEmail = "added@example.com";
         const string token = "verification-token-abc";
@@ -422,7 +430,7 @@ public class ProfileEmailsControllerGridTests
                 return $"/Profile/Me/Emails/Verify?userId={routeValues["userId"]}&token={routeValues["token"]}";
             });
 
-        var targetUser = new User { Id = targetUserId, BurnerName = "Target User", DisplayName = "Target User", PreferredLanguage = "es" };
+        var targetUser = new User { Id = targetUserId, BurnerName = "Target User", DisplayName = "Target User", PreferredLanguage = language };
         _userManager.FindByIdAsync(targetUserId.ToString())
             .Returns(targetUser);
         _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>())
@@ -440,15 +448,24 @@ public class ProfileEmailsControllerGridTests
             Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.EmailVerification
                 && m.RecipientEmail == newEmail && m.RecipientName == "Target User"
                 && m.HtmlBody.Contains(token, StringComparison.Ordinal)
-                && m.Subject.EndsWith("#es", StringComparison.Ordinal)),
+                && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be("AdminEmails");
     }
 
-    [HumansFact]
-    public async Task AddEmail_SendsVerificationLink_RoutedToThisController()
+    [HumansTheory]
+    [InlineData("en", "en")]
+    [InlineData("es", "es")]
+    [InlineData("", "en")]
+    [InlineData(" ", "en")]
+    [InlineData("not a culture!", "en")]
+    [InlineData("fr-FR", "en")]
+    public async Task AddEmail_SendsVerificationLink_RoutedToThisController(string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
+        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>())
+            .Returns(new User { Id = _userId, PreferredLanguage = language });
         const string newEmail = "mine@example.com";
         const string token = "verification-token-self";
 
@@ -468,7 +485,8 @@ public class ProfileEmailsControllerGridTests
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.EmailVerification
                 && m.RecipientEmail == newEmail
-                && m.HtmlBody.Contains(token, StringComparison.Ordinal)),
+                && m.HtmlBody.Contains(token, StringComparison.Ordinal)
+                && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be("Emails");

@@ -186,7 +186,8 @@ internal sealed class FeedbackService(
             await emailService.SendAsync(emailMessages.FeedbackResponse(
                 recipientEmail, reporter.BurnerName,
                 report.Description, content,
-                reporter.PreferredLanguage), ct);
+                reporter.PreferredLanguage.IsSupportedCultureCode()
+                    ? reporter.PreferredLanguage : CultureCatalog.DefaultCultureCode), ct);
         }
         else
         {
@@ -202,7 +203,9 @@ internal sealed class FeedbackService(
         try
         {
             var reporter = await userService.GetUserInfoAsync(report.UserId, ct);
-            var notification = emailMessages.FeedbackResponseNotification(reporter?.PreferredLanguage);
+            var language = reporter?.PreferredLanguage;
+            var notification = emailMessages.FeedbackResponseNotification(
+                language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode);
 
             // No action link: /Feedback/{id} is Admin-only now, so the reporter would land on a 403.
             // The response text itself reaches them in the FeedbackResponse email.

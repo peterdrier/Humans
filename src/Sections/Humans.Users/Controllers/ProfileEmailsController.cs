@@ -124,7 +124,8 @@ internal sealed class ProfileEmailsController(
             info?.BurnerName ?? string.Empty,
             verificationUrl!,
             result.IsConflict,
-            user.PreferredLanguage));
+            user.PreferredLanguage.IsSupportedCultureCode()
+                ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode));
 
         logger.LogInformation(
             "Sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
@@ -774,7 +775,8 @@ internal sealed class ProfileEmailsController(
             info?.BurnerName ?? string.Empty,
             verificationUrl!,
             result.IsConflict,
-            targetUser.PreferredLanguage),
+            targetUser.PreferredLanguage.IsSupportedCultureCode()
+                ? targetUser.PreferredLanguage : CultureCatalog.DefaultCultureCode),
             ct);
 
         logger.LogInformation(
