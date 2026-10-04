@@ -37,7 +37,7 @@
       (memory/architecture/section-project-cycle-fix.md).
     -->
     <ProjectReference Include="..\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -18,7 +18,7 @@
     <ProjectReference Include="..\Sections\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Holded\Humans.Holded.csproj" />
@@ -48,7 +48,6 @@
     <ProjectReference Include="..\Sections\Humans.Finance\Humans.Finance.csproj" />
     <ProjectReference Include="..\Sections\Humans.Gate\Humans.Gate.csproj" />
     <ProjectReference Include="..\Sections\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Sections\Humans.Onboarding\Humans.Onboarding.csproj" />
     <ProjectReference Include="..\Sections\Humans.Governance\Humans.Governance.csproj" />
     <ProjectReference Include="..\Sections\Humans.Guide\Humans.Guide.csproj" />

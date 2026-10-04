@@ -44,7 +44,7 @@
       from Humans.Finance itself (memory/architecture/section-project-cycle-fix.md).
     -->
     <ProjectReference Include="..\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <!--
       The Holded API client (IHoldedClient + its DTOs and typed exceptions) the outbox drain
       writes purchase documents through. Contracts leaf only; Humans.Holded is never referenced.

@@ -29,7 +29,6 @@
       for the merge lineage the export envelope carries, IClock and ILogger — nothing else.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 

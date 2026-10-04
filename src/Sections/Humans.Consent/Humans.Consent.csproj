@@ -37,7 +37,7 @@
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <!--
       Onboarding's leaf, for the consent-check threshold ConsentController peer-calls after
       a submit. It is a leaf *project* precisely so this reference is not a cycle:
