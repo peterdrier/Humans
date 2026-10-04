@@ -599,17 +599,16 @@ internal sealed class GoogleController(
         ViewData["GoogleNotConfigured"] = !googleClient.IsConfigured;
         var events = (await googleSyncService.GetRecentOutboxEventsAsync(200, ct)).ToList();
 
-        // Display info via UserInfo cache (one lookup/user). GoogleEmail from IsGoogle row, else primary. BurnerName per burnername-is-the-display-name.
+        // Display info via the UserInfo batch lookup. GoogleEmail from IsGoogle row, else primary. BurnerName per burnername-is-the-display-name.
         var userIds = events.Select(e => e.UserId).Distinct().ToList();
         var teamIds = events.Select(e => e.TeamId).Distinct().ToList();
-        var googleEmailLookup = new Dictionary<Guid, string>(userIds.Count);
-        var displayNameLookup = new Dictionary<Guid, string>(userIds.Count);
-        foreach (var userId in userIds)
-        {
-            var info = await UserService.GetUserInfoAsync(userId, ct);
-            googleEmailLookup[userId] = info?.GoogleEmail ?? info?.Email ?? "unknown";
-            displayNameLookup[userId] = info?.BurnerName ?? "(unknown)";
-        }
+        IReadOnlyDictionary<Guid, UserInfo> infos = userIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await UserService.GetUserInfosAsync(userIds, ct);
+        var googleEmailLookup = userIds.ToDictionary(userId => userId,
+            userId => infos.GetValueOrDefault(userId)?.GoogleEmail ?? infos.GetValueOrDefault(userId)?.Email ?? "unknown");
+        var displayNameLookup = userIds.ToDictionary(userId => userId,
+            userId => infos.GetValueOrDefault(userId)?.BurnerName ?? "(unknown)");
         var teamsById = await teamService.GetTeamsAsync(ct);
         var teamLookup = teamIds
             .Where(teamsById.ContainsKey)

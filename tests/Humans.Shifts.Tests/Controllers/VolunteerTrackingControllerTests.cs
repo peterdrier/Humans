@@ -60,6 +60,8 @@ public class VolunteerTrackingControllerTests
 
     public VolunteerTrackingControllerTests()
     {
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>());
         var userStore = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
@@ -221,12 +223,13 @@ public class VolunteerTrackingControllerTests
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
             .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15), rows,
                 []));
-        _userService.GetUserInfoAsync(aliceId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(StubUserInfo(aliceId, "Alice")));
-        _userService.GetUserInfoAsync(bobId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(StubUserInfo(bobId, "Bob")));
-        _userService.GetUserInfoAsync(carolId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(StubUserInfo(carolId, "Carol")));
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [aliceId] = StubUserInfo(aliceId, "Alice"),
+                [bobId] = StubUserInfo(bobId, "Bob"),
+                [carolId] = StubUserInfo(carolId, "Carol")
+            });
 
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 

@@ -136,6 +136,10 @@ public class EventsControllerTests
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
             new ValueTask<UserInfo?>(Read<UserInfo?>(MakeUserInfo(call.Arg<Guid>(), "Human"),
                 call.Arg<Guid>() == userId ? "Viewer" : "Submitter", call.Arg<CancellationToken>())));
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+            new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(Read<IReadOnlyDictionary<Guid, UserInfo>>(
+                call.Arg<IReadOnlyCollection<Guid>>().Distinct().ToDictionary(id => id, id => MakeUserInfo(id, "Human")),
+                "Submitter", call.Arg<CancellationToken>())));
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
             Read<EventGuideSettingsView?>(settings, "Guide", call.Arg<CancellationToken>()));
         _guide.GetEventSettingsByIdAsync(settings.EventSettingsId, Arg.Any<CancellationToken>()).Returns(call =>

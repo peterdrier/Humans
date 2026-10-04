@@ -51,12 +51,10 @@ internal sealed class VolunteerTrackingController(
             .Concat(data.UnbookedCohort.Select(r => r.UserId))
             .Distinct()
             .ToArray();
-        var nameByUserId = new Dictionary<Guid, string>(displayUserIds.Length);
-        foreach (var uid in displayUserIds)
-        {
-            var info = await _userService.GetUserInfoAsync(uid, ct);
-            nameByUserId[uid] = info?.BurnerName ?? "";
-        }
+        IReadOnlyDictionary<Guid, UserInfo> infos = displayUserIds.Length == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await _userService.GetUserInfosAsync(displayUserIds, ct);
+        var nameByUserId = displayUserIds.ToDictionary(uid => uid, uid => infos.GetValueOrDefault(uid)?.BurnerName ?? "");
 
         var mainSorted = data.MainCohort
             .Where(r => !hideNoGaps || r.GapCount > 0)

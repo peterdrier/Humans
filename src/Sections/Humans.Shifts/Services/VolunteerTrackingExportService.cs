@@ -168,17 +168,11 @@ internal sealed class VolunteerTrackingExportService(
                       .First());
     }
 
-    // Intentionally sequential — at our small scale (CLAUDE.md scale guidance), the round-trip
-    // cost is negligible and sequential code is easier to debug than parallel awaits.
     private async Task<Dictionary<Guid, string>> LoadPlayaNamesAsync(IReadOnlyList<Guid> userIds, CancellationToken ct)
     {
-        var result = new Dictionary<Guid, string>();
-        foreach (var id in userIds)
-        {
-            var info = await _userService.GetUserInfoAsync(id, ct);
-            result[id] = info?.BurnerName ?? "(unknown)";
-        }
-        return result;
+        if (userIds.Count == 0) return [];
+        var infos = await _userService.GetUserInfosAsync(userIds, ct);
+        return userIds.ToDictionary(id => id, id => infos.GetValueOrDefault(id)?.BurnerName ?? "(unknown)");
     }
 
     private static int[] ComputeTotals(

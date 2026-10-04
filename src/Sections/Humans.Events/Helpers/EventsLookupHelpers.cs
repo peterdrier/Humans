@@ -10,9 +10,7 @@ using Humans.Users.Contracts;
 namespace Humans.Events.Helpers;
 
 /// <summary>
-/// Cross-controller lookup helpers for the Events section. Both id-loops are
-/// thin passes over already-cached read-models (UserInfo + CampInfo), so
-/// the per-id awaits are dictionary hits in the steady state.
+/// Cross-controller lookup helpers for the Events section. Uses the existing Users batch lookup and cached CampInfo projections.
 /// </summary>
 internal static class EventsLookupHelpers
 {
@@ -49,13 +47,10 @@ internal static class EventsLookupHelpers
     public static async Task<Dictionary<Guid, UserInfo>> LoadSubmittersAsync(
         IUserServiceRead users, IEnumerable<Guid> userIds, CancellationToken ct = default)
     {
-        var result = new Dictionary<Guid, UserInfo>();
-        foreach (var id in userIds)
-        {
-            var info = await users.GetUserInfoAsync(id, ct);
-            if (info != null) result[id] = info;
-        }
-        return result;
+        var ids = userIds.Distinct().ToArray();
+        if (ids.Length == 0) return [];
+        var infos = await users.GetUserInfosAsync(ids, ct);
+        return new Dictionary<Guid, UserInfo>(infos);
     }
 
     /// <summary>The burn the guide is configured for, or null when the guide is not configured.</summary>

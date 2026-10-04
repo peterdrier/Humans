@@ -91,6 +91,10 @@ public class EventsApiControllerTests
         _users.GetUserInfoAsync(approved.SubmitterUserId, Arg.Any<CancellationToken>()).Returns(call =>
             new ValueTask<UserInfo?>(Read<UserInfo?>(MakeUserInfo(approved.SubmitterUserId, "Host"),
                 "Submitter", call.Arg<CancellationToken>())));
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+            new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(Read<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [approved.SubmitterUserId] = MakeUserInfo(approved.SubmitterUserId, "Host") },
+                "Submitter", call.Arg<CancellationToken>())));
         _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns(call =>
             Read<IReadOnlyList<EventCategoryView>>([], "Categories", call.Arg<CancellationToken>()));
         _guide.GetFavouritesWithEventsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
@@ -114,8 +118,8 @@ public class EventsApiControllerTests
     public async Task GetEvents_IndividualEventWithoutHost_FallsBackToSubmitterBurnerName()
     {
         var submitterId = Guid.NewGuid();
-        _users.GetUserInfoAsync(submitterId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(submitterId, "Fire Dancer")));
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [submitterId] = MakeUserInfo(submitterId, "Fire Dancer") });
         StubApprovedEvents(MakeEvent(campId: null, submitterId, host: null));
 
         var dto = await SingleResultAsync();
@@ -127,8 +131,8 @@ public class EventsApiControllerTests
     public async Task GetEvents_IndividualEventWithHost_UsesHost()
     {
         var submitterId = Guid.NewGuid();
-        _users.GetUserInfoAsync(submitterId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(submitterId, "Fire Dancer")));
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [submitterId] = MakeUserInfo(submitterId, "Fire Dancer") });
         StubApprovedEvents(MakeEvent(campId: null, submitterId, host: "Explicit Host"));
 
         var dto = await SingleResultAsync();

@@ -71,8 +71,8 @@ public sealed class EventsModerationControllerTests
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventGuideSettingsView?)null);
         _guide.GetEventStatusCountsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<EventStatus, int>());
         _guide.GetEventsByStatusAsync(EventStatus.Pending, Arg.Any<CancellationToken>()).Returns([pending]);
-        _users.GetUserInfoAsync(submitterId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfoFor(submitterId)));
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [submitterId] = UserInfoFor(submitterId) });
 
         var controller = BuildController(moderatorId, pending.Id);
 

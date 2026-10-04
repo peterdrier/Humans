@@ -78,6 +78,8 @@ public class GoogleControllerSyncCancellationTests
             var teamId = Guid.NewGuid();
             _syncService.GetRecentOutboxEventsAsync(200, Arg.Any<CancellationToken>())
                 .Returns([new GoogleSyncOutboxEventSnapshot(Guid.NewGuid(), "test", teamId, userId, default, null, 0, null, false)]);
+            _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(new Dictionary<Guid, UserInfo>());
             var teams = Substitute.For<ITeamServiceRead>();
             teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
             _resources.GetResourcesByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -86,7 +88,8 @@ public class GoogleControllerSyncCancellationTests
             (await controller.SyncOutbox(teams, Substitute.For<IGoogleDriveActivityClient>())).Should().BeOfType<ViewResult>();
 
             await _syncService.Received(1).GetRecentOutboxEventsAsync(200, ct);
-            await _users.Received(1).GetUserInfoAsync(userId, ct);
+            await _users.Received(1).GetUserInfosAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(userId)), ct);
             await teams.Received(1).GetTeamsAsync(ct);
             await _resources.Received(1).GetResourcesByTeamIdsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(teamId)), ct);
         }
