@@ -355,6 +355,11 @@ public class CampControllerTests
             ("RemoveHistoricalName", "Camps_Flash_HistoricalNameWrongCamp"),
             ("DeleteImage", "Camps_Flash_ImageNotFound"),
             ("DeleteImage", "Camps_Flash_ImageWrongCamp"),
+            ("WithdrawSeason", "Camps_Flash_RoleSeasonNotFound"),
+            ("WithdrawSeason", "Camps_Flash_SeasonWrongCamp"),
+            ("WithdrawSeason", "Camps_Flash_SeasonWithdrawRequiresOpen"),
+            ("MarkFull", "Camps_Flash_RoleSeasonNotFound"),
+            ("MarkFull", "Camps_Flash_SeasonWrongCamp"),
         })
         {
             logger.ClearReceivedCalls();
@@ -377,9 +382,20 @@ public class CampControllerTests
                 case "DeleteImage":
                     _camps.DeleteImageAsync(camp.Id, targetId).ThrowsAsync(failure);
                     result = controller.DeleteImage(camp.Slug, targetId); break;
+                case "WithdrawSeason":
+                    _camps.WithdrawSeasonAsync(camp.Id, targetId).ThrowsAsync(failure);
+                    result = controller.Withdraw(camp.Slug, targetId); break;
+                case "MarkFull":
+                    _camps.SetSeasonStatusAsync(camp.Id, targetId, CampSeasonStatus.Full).ThrowsAsync(failure);
+                    result = controller.MarkFull(camp.Slug, targetId); break;
                 default: throw new InvalidOperationException("Unknown test action");
             }
-            (await result).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(action is "RemoveHistoricalName" or "DeleteImage" ? "Edit" : "Members");
+            (await result).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(action switch
+            {
+                "RemoveHistoricalName" or "DeleteImage" => "Edit",
+                "WithdrawSeason" or "MarkFull" => "Details",
+                _ => "Members"
+            });
             var expected = localizer[key];
             expected.ResourceNotFound.Should().BeFalse();
             controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);

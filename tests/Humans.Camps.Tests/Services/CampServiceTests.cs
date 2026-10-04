@@ -1671,7 +1671,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var action = () => _service.SetSeasonStatusAsync(Guid.NewGuid(), Guid.NewGuid(), CampSeasonStatus.Full, Xunit.TestContext.Current.CancellationToken);
 
-        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_RoleSeasonNotFound");
     }
 
     [HumansFact]
@@ -1686,7 +1686,7 @@ public sealed class CampServiceTests : CampsTestHarness
         // a caller authorized against a different camp must not be able to flip this season's status.
         var action = () => _service.SetSeasonStatusAsync(Guid.NewGuid(), season.Id, CampSeasonStatus.Full, Xunit.TestContext.Current.CancellationToken);
 
-        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not belong*");
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_SeasonWrongCamp");
     }
 
     [HumansFact]
@@ -1712,7 +1712,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var action = () => _service.WithdrawSeasonAsync(Guid.NewGuid(), season.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not belong*");
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_SeasonWrongCamp");
 
         var unchanged = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id, Xunit.TestContext.Current.CancellationToken);
         unchanged.Status.Should().Be(CampSeasonStatus.Active);

@@ -658,8 +658,8 @@ internal sealed class CampController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Camp season withdrawal failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
-            SetError(ex.Message);
+            logger.LogWarning("Camp season withdrawal rejected for camp {CampId}, slug {Slug}, and season {SeasonId}: {Reason}", camp.Id, slug, seasonId, ex.Message);
+            SetError(campsLocalizer[ex.Message].Value);
         }
 
         return RedirectToAction(nameof(Details), new { slug });
@@ -683,8 +683,8 @@ internal sealed class CampController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Marking camp season full failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
-            SetError(ex.Message);
+            logger.LogWarning("Marking camp season full rejected for camp {CampId}, slug {Slug}, and season {SeasonId}: {Reason}", camp.Id, slug, seasonId, ex.Message);
+            SetError(campsLocalizer[ex.Message].Value);
         }
 
         return RedirectToAction(nameof(Details), new { slug });

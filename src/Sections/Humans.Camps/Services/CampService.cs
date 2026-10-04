@@ -640,7 +640,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         {
             if (season.CampId != scopedCampId)
             {
-                throw new InvalidOperationException("Season does not belong to the specified camp.");
+                throw new InvalidOperationException("Camps_Flash_SeasonWrongCamp");
             }
 
             season.Withdraw(now);
@@ -650,7 +650,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
         if (!found)
         {
-            throw new InvalidOperationException("Season not found.");
+            throw new InvalidOperationException("Camps_Flash_RoleSeasonNotFound");
         }
 
         await _auditLog.LogAsync(
@@ -729,7 +729,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         {
             if (season.CampId != scopedCampId)
             {
-                throw new InvalidOperationException("Season does not belong to the specified camp.");
+                throw new InvalidOperationException("Camps_Flash_SeasonWrongCamp");
             }
 
             season.SetStatus(status, now);
@@ -738,7 +738,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
         if (!found)
         {
-            throw new InvalidOperationException("Season not found.");
+            throw new InvalidOperationException("Camps_Flash_RoleSeasonNotFound");
         }
 
         await _auditLog.LogAsync(
