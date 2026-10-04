@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Events. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 8
+next_id: 9
 inbox:
   - added: 2026-08-24
     id: EVENTS-1
@@ -28,3 +28,7 @@ inbox:
     id: EVENTS-6
     what: "EventsApiController's day-offset path always runs with tz == null because the shared test ctor stubs guide settings to null (EventsApiControllerTests.cs:28-32), so the non-null branch is never executed. Found by /section-doctor on Events 2026-09-09. (split 2026-09-20 from the bundled row of the same date; one row per independently-fixable defect.)"
     review: light
+  - added: 2026-10-04
+    id: EVENTS-8
+    what: "BulkEventCsvParser.Parse embeds translated header/row errors in FormatException.Message; EventsController bulk upload logs and displays that message. This violates no-localized-exception-messages. Preserve all-row translated feedback while separating developer diagnostics through an agreed parse result/error contract; changing the parser surface requires approval. Found during the daily production sweep."
+    review: panel
