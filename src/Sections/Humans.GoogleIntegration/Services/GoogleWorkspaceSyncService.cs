@@ -1188,12 +1188,8 @@ internal sealed class GoogleWorkspaceSyncService(
         var reports = new List<GroupSettingsDriftReport>();
         foreach (var resource in filtered)
         {
-            var groupEmail = teamsById[resource.TeamId].GoogleGroupEmail;
-            if (string.IsNullOrEmpty(groupEmail))
-            {
-                var prefix = resource.Url?.Split("/g/").LastOrDefault();
-                groupEmail = prefix is not null ? $"{prefix}@{_options.Domain}" : null;
-            }
+            var groupEmail = GoogleGroupKeyHelper.TryGetGroupKey(
+                resource, teamsById[resource.TeamId].GoogleGroupEmail, _options.Domain);
 
             if (string.IsNullOrEmpty(groupEmail))
             {

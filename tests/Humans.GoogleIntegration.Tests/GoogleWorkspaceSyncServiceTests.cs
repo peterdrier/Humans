@@ -131,6 +131,37 @@ public sealed class GoogleWorkspaceSyncServiceTests
     // ==========================================================================
 
     [HumansTheory]
+    [Xunit.InlineData(null, "legacy@nobodies.team", "legacy@nobodies.team")]
+    [Xunit.InlineData("https://groups.google.com/a/other.team/g/project", "numeric-id", "project@other.team")]
+    [Xunit.InlineData("https://groups.google.com/a/nobodies.team/g/project/", "numeric-id", "project@nobodies.team")]
+    public async Task CheckGroupSettingsAsync_UsesTheSharedGroupEmailResolution(string? url, string googleId, string email)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var resource = new GoogleResource
+        {
+            Id = Guid.NewGuid(), TeamId = TestTeamId, ResourceType = GoogleResourceType.Group,
+            GoogleId = googleId, Url = url, Name = "Project", IsActive = true
+        };
+        var team = new TeamInfo(
+            TestTeamId, "Test Team", null, "test-team",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue, Members: []);
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, ct).Returns(SyncMode.AddOnly);
+        _resourceRepository.GetActiveResourceCountsByTeamAsync(ct).Returns(new Dictionary<Guid, int> { [TestTeamId] = 1 });
+        _resourceRepository.GetActiveByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
+            .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResource>> { [TestTeamId] = [resource] });
+        _teamService.GetTeamsAsync(ct).Returns(new Dictionary<Guid, TeamInfo> { [TestTeamId] = team });
+        _groupProvisioning.GetGroupSettingsAsync(Arg.Any<string>(), ct)
+            .Returns(new GroupSettingsGetResult(null, new GoogleClientError(404, "Group unavailable.")));
+
+        var result = await _syncService.CheckGroupSettingsAsync(ct);
+
+        result.Reports.Should().ContainSingle().Which.GroupEmail.Should().Be(email);
+        await _groupProvisioning.Received(1).GetGroupSettingsAsync(email, ct);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task GetAllDomainGroups_CallerCancellationIsNotAGroupSettingsError(bool callerAborted)
