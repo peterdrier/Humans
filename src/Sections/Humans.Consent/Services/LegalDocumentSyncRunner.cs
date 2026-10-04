@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Teams.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Consent.Data;
@@ -120,11 +121,12 @@ internal sealed class LegalDocumentSyncRunner(
                 continue;
             }
 
+            var language = user.PreferredLanguage;
             await emailService.SendAsync(emailMessages.ReConsentsRequired(
                 effectiveEmail,
                 user.BurnerName,
                 outstandingDocuments[userId].Select(d => d.Name).ToList(),
-                user.PreferredLanguage),
+                language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode),
                 cancellationToken);
 
             notificationCount++;
