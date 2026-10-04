@@ -750,8 +750,8 @@ public sealed class ExpenseReportServiceTests
         logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning);
         var warning = logger.Entries.Single(e => e.Level == LogLevel.Warning);
         warning.Exception.Should().BeNull("a rejected upload is user input, not a system failure");
-        warning.Message.Should().Contain(expectedMessage,
-            because: "RunMutationAsync appends the rejection as the {Reason} property");
+        warning.Message.Should().Contain("Expense validation rejected:",
+            because: "the warning carries the invariant diagnostic, independent of member feedback");
         warning.Message.Should().Contain(lineId.ToString(),
             because: "the caller's structured identifiers must survive into the warning");
         logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);
@@ -772,6 +772,11 @@ public sealed class ExpenseReportServiceTests
         {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
             await using var content = new MemoryStream();
+            Func<Task> rejectUpload = async () => await _sut.AttachFileToLineAsync(
+                Guid.NewGuid(), Guid.NewGuid(), false, Guid.NewGuid(),
+                "receipt.pdf", "application/pdf", content, Xunit.TestContext.Current.CancellationToken);
+            var uploadFailure = await rejectUpload.Should().ThrowAsync<InvalidOperationException>();
+            uploadFailure.Which.Message.Should().Be("Expense validation rejected: Expenses_Flash_SelectFile.");
 
             var result = await _sut.AddLineWithResultAsync(
                 Guid.NewGuid(), Guid.NewGuid(), false, "Receipt", 10m,
@@ -788,6 +793,33 @@ public sealed class ExpenseReportServiceTests
         {
             CultureInfo.CurrentUICulture = originalCulture;
         }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("en")]
+    [Xunit.InlineData("es")]
+    [Xunit.InlineData("de")]
+    [Xunit.InlineData("it")]
+    [Xunit.InlineData("fr")]
+    [Xunit.InlineData("ca")]
+    public async Task EditRefusal_KeepsInvariantDiagnosticsAndLocalizedFeedback(string culture)
+    {
+        using var scope = new CultureScope(culture);
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var reportId = await _sut.CreateDraftAsync(
+            submitter, submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var otherUser = Guid.NewGuid();
+        var lineId = Guid.NewGuid();
+        Func<Task> rejectEdit = () => _sut.UpdateLineAsync(
+            reportId, otherUser, false, lineId, "Item", 10m, Xunit.TestContext.Current.CancellationToken);
+
+        var refusal = await rejectEdit.Should().ThrowAsync<UnauthorizedAccessException>();
+        refusal.Which.Message.Should().Be("Expense authorization rejected: Expenses_Validation_OnlySubmitterCanEdit.");
+        var result = await _sut.UpdateLineWithResultAsync(
+            reportId, otherUser, false, lineId, "Item", 10m, Xunit.TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be(_localizer["Expenses_Validation_OnlySubmitterCanEdit"].Value);
     }
 
     [HumansFact]
@@ -954,7 +986,7 @@ public sealed class ExpenseReportServiceTests
 
         var act = async () => await _sut.AddLineAsync(id, submitter, false, "Proof", 10m, parentLineId: receiptId, ct: Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*invoice line*");
+            .WithMessage("Expense validation rejected: Expenses_Validation_ProofRowsRequireInvoice.");
     }
 
     [HumansFact]
@@ -966,7 +998,7 @@ public sealed class ExpenseReportServiceTests
 
         var act = async () => await _sut.AddLineAsync(id, submitter, false, "Proof", 10m, parentLineId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Parent line not found*");
+            .WithMessage("Expense validation rejected: Expenses_Validation_ParentLineNotFound.");
     }
 
     [HumansFact]
@@ -1281,7 +1313,7 @@ public sealed class ExpenseReportServiceTests
 
         var act = async () => await _sut.SubmitAsync(id, submitter, false, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*at least one line*");
+            .WithMessage("Expense validation rejected: Expenses_Validation_ReportNeedsLine.");
     }
 
     [HumansFact]
@@ -1442,7 +1474,8 @@ public sealed class ExpenseReportServiceTests
         warning.Exception.Should().BeNull("no stack trace should be logged for a validation rejection");
         warning.Message.Should().Contain(id.ToString(),
             because: "the caller's structured identifiers (report ID) must survive into the warning");
-        warning.Message.Should().Contain("attachment");
+        warning.Message.Should().Contain("Expense validation rejected: Expenses_Validation_ReceiptInvoiceNeedAttachment.");
+        result.ErrorMessage.Should().Contain("attachment");
         logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);
     }
 
@@ -1743,7 +1776,7 @@ public sealed class ExpenseReportServiceTests
             reportId, admin, true, activeCategory.Id, "reclassified", Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*different budget year*");
+            .WithMessage("Expense validation rejected: Expenses_Validation_CategoryDifferentBudgetYear.");
         var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
         loaded!.BudgetYearId.Should().Be(oldYearId);
     }

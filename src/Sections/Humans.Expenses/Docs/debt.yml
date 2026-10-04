@@ -27,7 +27,3 @@ inbox:
     id: EXP-8
     what: "ExpenseReportService.AttachFileToLineAsync supports replacing an existing attachment but leaves the old metadata row and stored file orphaned after success. Failure rollback intentionally restores the old linkage. Replacing linkage and deleting superseded metadata must commit together before post-audit file cleanup; current AddAttachmentAsync/SetLineAttachmentAsync/RemoveAttachmentAsync methods use separate saves, so a proper replacement operation needs approved repository surface. Coordinate with EXP-6/7. Found during the nightly production scan."
     review: panel
-  - added: 2026-10-04
-    id: EXP-9
-    what: "ExpenseReportService throws localized text in private ExpenseValidationException and UnauthorizedAccessException; RunMutationAsync returns ex.Message as ErrorMessage. This violates no-localized-exception-messages. Preserve localized mutation feedback through an independent structured result/error value, including the authorization failure paths; do not translate caught diagnostic messages. Found during the daily sweep."
-    review: panel
