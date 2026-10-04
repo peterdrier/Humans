@@ -107,6 +107,35 @@ public sealed class CachingTicketQueryServiceTests
         await _inner.Received(2).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task GetUserTicketHoldingsAsync_LoadStartedBeforeInvalidation_DoesNotRepopulateCache(
+        bool expired, bool invalidateAll)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var old = new UserTicketHoldings(1, [], TicketCount: 1);
+        var current = new UserTicketHoldings(0, []);
+        var pending = new TaskCompletionSource<UserTicketHoldings>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (expired)
+        {
+            SeedHoldings(UserA, old);
+            await _decorator.GetUserTicketHoldingsAsync(UserA, ct);
+            _clock.Advance(Duration.FromMinutes(6));
+        }
+        _inner.GetUserTicketHoldingsAsync(UserA, ct).Returns(pending.Task, Task.FromResult(current));
+        var read = _decorator.GetUserTicketHoldingsAsync(UserA, ct);
+
+        if (invalidateAll) _decorator.InvalidateAll();
+        else _decorator.InvalidateAfterTransfer(UserA, UserB);
+        pending.SetResult(old);
+        (await read).Should().BeSameAs(old);
+
+        (await _decorator.GetUserTicketHoldingsAsync(UserA, ct)).Should().BeSameAs(current);
+    }
+
     [HumansFact]
     public async Task InvalidateAfterTransfer_DropsProjectionAndBothUsersPerUserEntries()
     {
