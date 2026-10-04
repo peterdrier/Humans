@@ -379,4 +379,9 @@
   <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>Eine Verzweigungsbedingung verweist auf eine Frage, die nicht davor liegt. Betroffene Frage-IDs: {0}.</value></data>
   <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>Eine Is/IsNot-Verzweigungsklausel hat keine Optionswerte (die Bedingung wäre leer). Betroffene Frage-IDs: {0}.</value></data>
   <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Gitter-, Rangfolgen- und Informationsfragen können keine Verzweigungsquellen sein. Betroffene Frage-IDs: {0}.</value></data>
+  <data name="Surveys_EditAuthorOnly" xml:space="preserve"><value>Nur die Person, die die Umfrage erstellt hat, darf sie bearbeiten.</value></data>
+  <data name="Surveys_VoteEditLocked" xml:space="preserve"><value>Eine Asociado-Abstimmung kann nach ihrer Öffnung nicht mehr bearbeitet werden.</value></data>
+  <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>Der Asociado-Abstimmungsmodus kann nach Öffnung der Umfrage nicht mehr geändert werden.</value></data>
+  <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Nur die Person, die die Umfrage erstellt hat, darf sie zur Genehmigung einreichen.</value></data>
+  <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Nur eine Umfrage im Entwurfsstatus kann zur Genehmigung eingereicht werden.</value></data>
 </root>

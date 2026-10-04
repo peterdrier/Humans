@@ -393,4 +393,9 @@
   <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>Una condición de ramificación hace referencia a una pregunta que no es estrictamente anterior. Identificadores de las preguntas afectadas: {0}.</value></data>
   <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>Una cláusula Is/IsNot de ramificación no tiene valores de opción (la condición sería vacía). Identificadores de las preguntas afectadas: {0}.</value></data>
   <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Las preguntas de cuadrícula, voto clasificado e información no pueden ser fuentes de ramificación. Identificadores de las preguntas afectadas: {0}.</value></data>
+  <data name="Surveys_EditAuthorOnly" xml:space="preserve"><value>Solo quien creó la encuesta puede editarla.</value></data>
+  <data name="Surveys_VoteEditLocked" xml:space="preserve"><value>Una votación de Asociados no puede editarse una vez abierta.</value></data>
+  <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>El modo de votación de Asociados no puede cambiarse una vez abierta la encuesta.</value></data>
+  <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Solo quien creó la encuesta puede enviarla para su aprobación.</value></data>
+  <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Solo una encuesta en borrador puede enviarse para su aprobación.</value></data>
 </root>

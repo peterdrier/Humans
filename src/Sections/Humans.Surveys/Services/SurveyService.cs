@@ -262,19 +262,19 @@ internal sealed class SurveyService(
         // The controller's resource handler says the same thing before rendering a button; this is
         // the enforcing copy, so an edit refused there is refused here too whoever the caller is.
         if (!viewer.IsBoardOrAdmin && existing.CreatedByUserId != actorUserId)
-            throw new InvalidOperationException("Only the survey's author may edit it.");
+            throw new InvalidOperationException(ErrorMessage("Surveys_EditAuthorOnly"));
         if (existing.IsAsociadoVote == true
             && existing.Status != SurveyStatus.Draft
             && !allowRankedAvailabilityChanges)
         {
             throw new InvalidOperationException(
-                "An Asociado vote cannot be edited after it has opened.");
+                ErrorMessage("Surveys_VoteEditLocked"));
         }
         if (existing.Status != SurveyStatus.Draft
             && (existing.IsAsociadoVote == true) != input.IsAsociadoVote)
         {
             throw new InvalidOperationException(
-                "Asociado vote mode cannot change after the survey has opened.");
+                ErrorMessage("Surveys_VoteModeLocked"));
         }
         var publicSlug = NormalizeSlug(input.PublicSlug);
         var prepared = await PrepareInformationImagesAsync(surveyId, input, existing, ct);
@@ -438,7 +438,7 @@ internal sealed class SurveyService(
         if (detail.Editable.IsAsociadoVote && detail.Status != SurveyStatus.Draft)
         {
             throw new InvalidOperationException(
-                "An Asociado vote cannot be edited after it has opened.");
+                ErrorMessage("Surveys_VoteEditLocked"));
         }
         var e = detail.Editable;
         var source = e.DefaultCulture;
@@ -619,9 +619,9 @@ internal sealed class SurveyService(
         var survey = await repo.GetByIdAsync(surveyId, ct)
             ?? throw new InvalidOperationException("Survey not found.");
         if (survey.CreatedByUserId != actorUserId)
-            throw new InvalidOperationException("Only the survey's author may submit it for approval.");
+            throw new InvalidOperationException(ErrorMessage("Surveys_SubmitAuthorOnly"));
         if (survey.Status != SurveyStatus.Draft)
-            throw new InvalidOperationException("Only a Draft survey can be submitted for approval.");
+            throw new InvalidOperationException(ErrorMessage("Surveys_SubmitDraftOnly"));
 
         var now = clock.GetCurrentInstant();
         await repo.SubmitForApprovalAsync(surveyId, now, ct);

@@ -160,7 +160,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
   (`UpdateAsync`, translation pre-fill, ranked availability), so an edit the handler refuses is refused
   whoever the caller is.
   Preview wizard banners, their email-send control and the email-preview page use the site UI language in all six cultures. Question-type choices, grid and ranked option-value validation, and branching configuration errors also use that language. Builder and results status badges reuse the localized survey-status captions.
-  Ordinary authors’ create/save and preview-email success notices use the site UI language in all six cultures. Preview errors (missing survey, missing notification address, failed queueing) also use the site UI language, independently of the invitation’s recipient language.
+  Ordinary authors’ create/save and preview-email success notices use the site UI language in all six cultures. Author-only edit and submission refusals, Draft-only submission, and opened-vote edit/mode locks also use that language without changing their guards. Preview errors (missing survey, missing notification address, failed queueing) also use the site UI language, independently of the invitation’s recipient language.
   The builder's **Save and review recipients** action continues to the Send page; a Draft with
   net-new recipients can be opened there before the separate invitation confirmation.
 - **`/Survey/Answer?t={token}`** — `SurveyController` invited wizard (token carries identity; never the current principal).

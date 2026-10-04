@@ -379,4 +379,9 @@
   <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>Una condició de ramificació fa referència a una pregunta que no és estrictament anterior. Identificadors de les preguntes afectades: {0}.</value></data>
   <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>Una clàusula Is/IsNot de ramificació no té valors d’opció (la condició seria buida). Identificadors de les preguntes afectades: {0}.</value></data>
   <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Les preguntes de graella, vot classificat i informació no poden ser fonts de ramificació. Identificadors de les preguntes afectades: {0}.</value></data>
+  <data name="Surveys_EditAuthorOnly" xml:space="preserve"><value>Només qui ha creat l'enquesta pot editar-la.</value></data>
+  <data name="Surveys_VoteEditLocked" xml:space="preserve"><value>Una votació dels Asociados no es pot editar un cop oberta.</value></data>
+  <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>El mode de votació dels Asociados no es pot canviar un cop oberta l'enquesta.</value></data>
+  <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Només qui ha creat l'enquesta pot enviar-la per a la seva aprovació.</value></data>
+  <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Només una enquesta en esborrany pot enviar-se per a la seva aprovació.</value></data>
 </root>

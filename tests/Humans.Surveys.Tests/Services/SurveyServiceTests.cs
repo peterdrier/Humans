@@ -4484,9 +4484,16 @@ public class SurveyServiceTests
             AuditAction.SurveySubmittedForApproval, "Survey", survey.Id, Arg.Any<string>(), authorId);
     }
 
-    [HumansFact]
-    public async Task SubmitForApprovalAsync_throws_for_a_non_author()
+    [HumansTheory]
+    [InlineData("en", "Only the survey's author may submit it for approval.")]
+    [InlineData("es", "Solo quien creó la encuesta puede enviarla para su aprobación.")]
+    [InlineData("de", "Nur die Person, die die Umfrage erstellt hat, darf sie zur Genehmigung einreichen.")]
+    [InlineData("it", "Solo chi ha creato il sondaggio può inviarlo per l'approvazione.")]
+    [InlineData("fr", "Seule la personne qui a créé le questionnaire peut le soumettre pour approbation.")]
+    [InlineData("ca", "Només qui ha creat l'enquesta pot enviar-la per a la seva aprovació.")]
+    public async Task SubmitForApprovalAsync_throws_for_a_non_author(string culture, string expectedMessage)
     {
+        using var cultureScope = new Humans.Base.Extensions.CultureScope(culture);
         var authorId = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: authorId);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -4494,7 +4501,7 @@ public class SurveyServiceTests
         var act = async () => await CreateService().SubmitForApprovalAsync(
             survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(expectedMessage);
         await _repo.DidNotReceive().SubmitForApprovalAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 

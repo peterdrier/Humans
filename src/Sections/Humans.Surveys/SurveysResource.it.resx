@@ -379,4 +379,9 @@
   <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>Una condizione di ramificazione fa riferimento a una domanda che non è strettamente precedente. ID delle domande interessate: {0}.</value></data>
   <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>Una clausola Is/IsNot di ramificazione non ha valori di opzione (la condizione sarebbe vuota). ID delle domande interessate: {0}.</value></data>
   <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Le domande a griglia, a scelta classificata e informative non possono essere fonti di ramificazione. ID delle domande interessate: {0}.</value></data>
+  <data name="Surveys_EditAuthorOnly" xml:space="preserve"><value>Solo chi ha creato il sondaggio può modificarlo.</value></data>
+  <data name="Surveys_VoteEditLocked" xml:space="preserve"><value>Un voto degli Asociados non può essere modificato dopo la sua apertura.</value></data>
+  <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>La modalità di voto degli Asociados non può cambiare dopo l’apertura del sondaggio.</value></data>
+  <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Solo chi ha creato il sondaggio può inviarlo per l'approvazione.</value></data>
+  <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Solo un sondaggio in bozza può essere inviato per l’approvazione.</value></data>
 </root>

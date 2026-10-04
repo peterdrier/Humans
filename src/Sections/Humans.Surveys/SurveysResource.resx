@@ -374,4 +374,9 @@
   <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>A branching condition references a question that is not strictly earlier. Offending question ids: {0}.</value></data>
   <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>A branching Is/IsNot clause has no option values (the condition would be vacuous). Offending question ids: {0}.</value></data>
   <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Grid, RankedChoice, and Information questions cannot be branching sources. Offending question ids: {0}.</value></data>
+  <data name="Surveys_EditAuthorOnly" xml:space="preserve"><value>Only the survey's author may edit it.</value></data>
+  <data name="Surveys_VoteEditLocked" xml:space="preserve"><value>An Asociado vote cannot be edited after it has opened.</value></data>
+  <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>Asociado vote mode cannot change after the survey has opened.</value></data>
+  <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Only the survey's author may submit it for approval.</value></data>
+  <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Only a Draft survey can be submitted for approval.</value></data>
 </root>

@@ -379,4 +379,9 @@
   <data name="Surveys_BranchForwardReference" xml:space="preserve"><value>Une condition de branchement fait référence à une question qui ne la précède pas strictement. Identifiants des questions concernées : {0}.</value></data>
   <data name="Surveys_BranchValuesRequired" xml:space="preserve"><value>Une clause Is/IsNot de branchement n’a pas de valeurs d’option (la condition serait vide). Identifiants des questions concernées : {0}.</value></data>
   <data name="Surveys_BranchSourceInvalid" xml:space="preserve"><value>Les questions en grille, à choix classé et informatives ne peuvent pas être des sources de branchement. Identifiants des questions concernées : {0}.</value></data>
+  <data name="Surveys_EditAuthorOnly" xml:space="preserve"><value>Seule la personne qui a créé le questionnaire peut le modifier.</value></data>
+  <data name="Surveys_VoteEditLocked" xml:space="preserve"><value>Un vote des Asociados ne peut plus être modifié après son ouverture.</value></data>
+  <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>Le mode de vote des Asociados ne peut plus changer après l’ouverture du questionnaire.</value></data>
+  <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Seule la personne qui a créé le questionnaire peut le soumettre pour approbation.</value></data>
+  <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Seul un questionnaire à l’état de brouillon peut être soumis pour approbation.</value></data>
 </root>
