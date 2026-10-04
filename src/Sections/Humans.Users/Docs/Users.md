@@ -737,6 +737,8 @@ Admin-only flows for the section's cross-account hygiene (the `/Profile/Admin/*`
 
 Account deletion cascades (user-requested / admin-initiated / expiry-triggered) are orchestrated by `IAccountDeletionService` (`src/Sections/Humans.Users/Services/AccountDeletionService.cs`). `ProfileService` owns only profile-picture storage (`IProfilePictureService`); profile-data anonymization is `IUserServiceInternal.AnonymizeProfileForDeletionAsync`. User-initiated deletion request and cancel both live on `IAccountDeletionService` (`RequestDeletionAsync`, `CancelDeletionAsync`). `ProfileController.RequestDeletion` (signed-in users with profiles), `GuestAccountController.RequestDeletion` (profileless users) and `UserController.CancelDeletion` call the orchestrator directly — no manual `User.DeletionRequestedAt`/`DeletionScheduledFor`/`DeletionEligibleAfter` writes anywhere else. The orchestrator computes the optional `DeletionEligibleAfter` (post-event hold for current-event ticket holders) inline via `ITicketServiceRead.GetUserTicketHoldingsAsync` so every entry point gets the same treatment.
 
+Deletion requests invalidate the user's shift authorization and view caches after the write attempt, including failures in later membership/role cleanup or the confirmation email. Those failures still propagate; cache cleanup never reports an incomplete cascade as successful.
+
 ### Touch-and-clean guidance
 
 - Cross-section reads for `Profile.User` / `UserEmail.User` / `CommunicationPreference.User` must go through `IUserServiceRead.GetUserInfosAsync` — do not re-add nav properties to the entities.
