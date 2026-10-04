@@ -344,4 +344,5 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Brotkrümelnavigation</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Vorschau starten</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Dankesseite ansehen</value></data>
+  <data name="Surveys_PublicSlugTooLong" xml:space="preserve"><value>Die Kennung des öffentlichen Links darf höchstens {0} Zeichen lang sein.</value></data>
 </root>

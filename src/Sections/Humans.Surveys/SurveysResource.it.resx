@@ -344,4 +344,5 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Navigazione breadcrumb</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Avvia anteprima</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Anteprima dei ringraziamenti</value></data>
+  <data name="Surveys_PublicSlugTooLong" xml:space="preserve"><value>L’identificatore del link pubblico non può superare i {0} caratteri.</value></data>
 </root>

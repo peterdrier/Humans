@@ -686,9 +686,11 @@ public class SurveyServiceTests
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Reserved_slug_is_rejected_before_uploading_information_images(bool existing)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Invalid_slug_is_rejected_before_uploading_information_images(bool existing, bool tooLong)
     {
         var ct = TestContext.Current.CancellationToken;
         var survey = SurveyWith(SurveyStatus.Draft, null, null);
@@ -701,7 +703,7 @@ public class SurveyServiceTests
             InformationImages:
             [new InformationImageInput(null, L("Forecast"), L("Forecast table"),
                 Upload: new SurveyImageUpload(content, "image/png", "forecast.png", 3))]);
-        var input = Input(information) with { PublicSlug = " Admin " };
+        var input = Input(information) with { PublicSlug = tooLong ? new string('a', 81) : " Admin " };
         var service = CreateService();
         var act = async () =>
         {
@@ -711,23 +713,34 @@ public class SurveyServiceTests
                 await service.CreateAsync(input, Guid.NewGuid(), ct);
         };
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Slug 'admin' is reserved.");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(tooLong
+            ? "The public link slug must be no longer than 80 characters."
+            : "Slug 'admin' is reserved.");
         await _fileStorage.DidNotReceive().SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task CreateAsync_accepts_non_reserved_slug_and_normalises_it()
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task CreateAsync_accepts_non_reserved_slug_and_normalises_it(int example)
     {
         Survey? captured = null;
         _repo.When(r => r.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
              .Do(ci => captured = ci.Arg<Survey>());
 
-        await CreateService().CreateAsync(InputWithSlug(" Summer-Feedback "), Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var slug = example switch
+        {
+            1 => new string('A', 80),
+            2 => string.Concat(Enumerable.Repeat("🔥", 80)),
+            _ => "Summer-Feedback"
+        };
+        await CreateService().CreateAsync(InputWithSlug($" {slug} "), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         captured.Should().NotBeNull();
-        captured!.PublicSlug.Should().Be("summer-feedback");
+        captured!.PublicSlug.Should().Be(slug.ToLowerInvariant());
     }
 
     [HumansFact]

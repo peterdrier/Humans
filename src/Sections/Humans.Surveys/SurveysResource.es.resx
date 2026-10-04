@@ -358,4 +358,5 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Navegación de ruta</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Iniciar vista previa</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Vista previa del agradecimiento</value></data>
+  <data name="Surveys_PublicSlugTooLong" xml:space="preserve"><value>El identificador del enlace público no puede superar los {0} caracteres.</value></data>
 </root>

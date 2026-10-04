@@ -339,4 +339,5 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb navigation</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Start preview</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Preview thank-you</value></data>
+  <data name="Surveys_PublicSlugTooLong" xml:space="preserve"><value>The public link slug must be no longer than {0} characters.</value></data>
 </root>

@@ -344,4 +344,5 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Commencer l’aperçu</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Aperçu du remerciement</value></data>
+  <data name="Surveys_PublicSlugTooLong" xml:space="preserve"><value>L’identifiant du lien public ne peut pas dépasser {0} caractères.</value></data>
 </root>

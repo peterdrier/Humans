@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Resources;
+using System.Text;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
@@ -41,6 +44,8 @@ internal sealed class SurveyService(
     internal const string AuthoredSurveys = "AuthoredSurveys";
     internal const string SurveyInvitations = "SurveyInvitations";
 
+    private static readonly ResourceManager ErrorResources = new(typeof(SurveysResource));
+    private const int PublicSlugMaxLength = 80;
     private const int InvitationEmailSubjectMaxLength = 200;
     private const int InvitationEmailMessageMaxLength = 4000;
     private const int MaxInformationImages = 5;
@@ -2950,6 +2955,14 @@ internal sealed class SurveyService(
     {
         if (string.IsNullOrWhiteSpace(slug)) return null;
         var normalized = slug.Trim().ToLowerInvariant();
+        // PostgreSQL's varchar limit counts characters, not UTF-16 code units.
+        if (normalized.EnumerateRunes().Count() > PublicSlugMaxLength)
+        {
+            throw new InvalidOperationException(string.Format(
+                CultureInfo.CurrentUICulture,
+                ErrorResources.GetString("Surveys_PublicSlugTooLong", CultureInfo.CurrentUICulture)!,
+                PublicSlugMaxLength));
+        }
         if (ReservedSlugs.Contains(normalized))
         {
             throw new InvalidOperationException($"Slug '{normalized}' is reserved.");

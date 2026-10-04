@@ -344,4 +344,5 @@
   <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Navegació de ruta</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Inicia la previsualització</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Previsualitza l’agraïment</value></data>
+  <data name="Surveys_PublicSlugTooLong" xml:space="preserve"><value>L’identificador de l’enllaç públic no pot superar els {0} caràcters.</value></data>
 </root>
