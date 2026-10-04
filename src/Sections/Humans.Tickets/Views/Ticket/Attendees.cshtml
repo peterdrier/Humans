@@ -9,7 +9,7 @@
 
     @{
         Func<AttendeeRow, IHtmlContent> priceCell = @<text>
-            @item.Price.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)
+            @item.Price.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)
             @if (item.Price > TicketConstants.VipThresholdEuros)
             {
                 <span class="badge bg-warning text-dark" title="VIP ticket">VIP</span>
@@ -19,8 +19,8 @@
             @if (item.Price > TicketConstants.VipThresholdEuros)
             {
                 <small>
-                    <span title="Taxable portion">@TicketConstants.VipThresholdEuros.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span>
-                    + <span class="text-muted" title="VIP donation (VAT-free)">@((item.Price - TicketConstants.VipThresholdEuros).ToString("N2", System.Globalization.CultureInfo.CurrentCulture)) donation</span>
+                    <span title="Taxable portion">@TicketConstants.VipThresholdEuros.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</span>
+                    + <span class="text-muted" title="VIP donation (VAT-free)">@((item.Price - TicketConstants.VipThresholdEuros).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)) donation</span>
                 </small>
             }
             else

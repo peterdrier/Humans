@@ -102,6 +102,80 @@ public class TicketDashboardViewTests
         Assert.DoesNotContain("€", html);
     }
 
+    [HumansTheory]
+    [InlineData("en", "1,234", "1,234.50", "315.00", "919.50", "12.5%")]
+    [InlineData("es", "1.234", "1.234,50", "315,00", "919,50", "12,5%")]
+    [InlineData("de", "1.234", "1.234,50", "315,00", "919,50", "12,5%")]
+    [InlineData("it", "1.234", "1.234,50", "315,00", "919,50", "12,5%")]
+    [InlineData("fr", "1\u202f234", "1\u202f234,50", "315,00", "919,50", "12,5%")]
+    [InlineData("ca", "1.234", "1.234,50", "315,00", "919,50", "12,5%")]
+    public async Task DashboardNumbers_UseUiCultureAcrossCardsRowsAndTotals(
+        string language, string count, string amount, string taxable, string vip, string rate)
+    {
+        var index = await RenderAsync("Index", new TicketDashboardViewModel
+        {
+            IsConfigured = true, TicketsSold = 1234, TicketsRemaining = 1234,
+            TotalCapacity = 1234, BreakEvenTarget = 1234, Revenue = 1234, NetRevenue = 1234,
+            AveragePrice = 1234.5m, TotalStripeFees = 1234, TotalApplicationFees = 1234,
+            FeesByPaymentMethod = [new PaymentMethodFeeBreakdown
+            {
+                TotalAmount = 1234, TotalStripeFees = 1234.5m, TotalApplicationFees = 1234.5m,
+                EffectiveRate = 12.5m,
+            }],
+            RecentOrders = [new TicketOrderSummary { Amount = 1234 }],
+            DailySales = [new DailySalesPoint { Date = "2026-07-01", RollingAverage = 12.5m }],
+        }, language);
+        Assert.True(index.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(count), StringSplitOptions.None).Length >= 8);
+        Assert.True(index.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(amount), StringSplitOptions.None).Length >= 4);
+        Assert.Contains(rate, index);
+        Assert.Contains("\"rollingAverage\":12.5", index);
+
+        var orders = await RenderAsync("Orders", new TicketOrdersViewModel
+        {
+            Orders = [new OrderRow
+            {
+                TotalAmount = 1234.5m, DiscountAmount = 1234.5m, DonationAmount = 1234.5m,
+                VatAmount = 1234.5m, StripeFee = 1234.5m, ApplicationFee = 1234.5m,
+            }],
+        }, language);
+        Assert.Equal(7, orders.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(amount), StringSplitOptions.None).Length);
+
+        var attendees = await RenderAsync("Attendees", new TicketAttendeesViewModel
+        {
+            Attendees = [new AttendeeRow { Price = 1234.5m }],
+        }, language);
+        Assert.Contains(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(amount), attendees);
+        Assert.Contains(taxable, attendees);
+        Assert.Contains(vip, attendees);
+
+        var aggregates = await RenderAsync("SalesAggregates", new TicketSalesAggregatesViewModel
+        {
+            WeeklySales = [new WeeklySalesAggregate
+            {
+                OrderCount = 1234, TicketsSold = 1234, GrossRevenue = 1234.5m,
+                Donations = 1234.5m, VatAmount = 1234.5m, VipDonations = 1234.5m,
+            }],
+            QuarterlySales = [new QuarterlySalesAggregate
+            {
+                OrderCount = 1234, TicketsSold = 1234, GrossRevenue = 1234.5m,
+                Donations = 1234.5m, VatAmount = 1234.5m, VipDonations = 1234.5m,
+            }],
+            MonthlySales = [new MonthlySalesAggregate
+            {
+                OrderCount = 1234, TicketsSold = 1234, GrossRevenue = 1234.5m,
+                Donations = 1234.5m, VatAmount = 1234.5m, VipDonations = 1234.5m,
+                StripeFees = 1234.5m, ApplicationFees = 1234.5m, RefundedGross = 1234.5m,
+                TicketIncomeInclVat = 1234.5m,
+            }],
+            ByTicketType = [new TicketTypeSalesAggregate { Price = 1234.5m, TicketsSold = 1234, FaceValue = 1234.5m }],
+            ByDiscountCampaign = [new DiscountCampaignAggregate
+            {
+                CodesGranted = 1234, CodesUsed = 1234, AverageDiscount = 1234.5m, TotalDiscount = 1234.5m,
+            }],
+        }, language);
+        Assert.True(aggregates.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(amount), StringSplitOptions.None).Length >= 36);
+    }
+
     private static async Task<string> RenderAsync(string page, object model, string cultureName = "en", string? viewPath = null)
     {
         using var culture = new CultureScope(cultureName);

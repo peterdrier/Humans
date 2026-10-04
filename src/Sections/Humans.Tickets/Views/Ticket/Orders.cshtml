@@ -21,7 +21,7 @@
         Func<OrderRow, IHtmlContent> discountCell = @<text>
             @if (item.DiscountAmount.HasValue)
             {
-                <span title="@(item.DiscountCode ?? "")">-@item.DiscountAmount.Value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span>
+                <span title="@(item.DiscountCode ?? "")">-@item.DiscountAmount.Value.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</span>
             }
             else
             {
@@ -31,7 +31,7 @@
         Func<OrderRow, IHtmlContent> donationCell = @<text>
             @if (item.DonationAmount > 0)
             {
-                <span>@item.DonationAmount.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span>
+                <span>@item.DonationAmount.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</span>
             }
             else
             {
@@ -41,7 +41,7 @@
         Func<OrderRow, IHtmlContent> vatCell = @<text>
             @if (item.VatAmount > 0)
             {
-                <span>@item.VatAmount.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span>
+                <span>@item.VatAmount.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</span>
             }
             else
             {
@@ -61,7 +61,7 @@
         Func<OrderRow, IHtmlContent> stripeFeeCell = @<text>
             @if (item.StripeFee.HasValue)
             {
-                @item.StripeFee.Value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)
+                @item.StripeFee.Value.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)
             }
             else
             {
@@ -71,7 +71,7 @@
         Func<OrderRow, IHtmlContent> ttFeeCell = @<text>
             @if (item.ApplicationFee.HasValue)
             {
-                @item.ApplicationFee.Value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)
+                @item.ApplicationFee.Value.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)
             }
             else
             {

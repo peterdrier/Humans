@@ -107,7 +107,7 @@
                                 @Localizer["ProfileEdit_CurrentLocation"] <strong>@Model.City, @Model.CountryCode</strong>
                                 @if (Model.Latitude.HasValue && Model.Longitude.HasValue)
                                 {
-                                    <text> (@Model.Latitude.Value.ToString("F4"), @Model.Longitude.Value.ToString("F4"))</text>
+                                    <text> (@Model.Latitude.Value.ToString("F4", System.Globalization.CultureInfo.CurrentUICulture), @Model.Longitude.Value.ToString("F4", System.Globalization.CultureInfo.CurrentUICulture))</text>
                                 }
                             </small>
                         </div>

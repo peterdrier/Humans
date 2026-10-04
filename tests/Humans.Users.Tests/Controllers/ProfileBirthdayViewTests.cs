@@ -38,6 +38,27 @@ public class ProfileBirthdayViewTests
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("en", "(41.2345, -1.2345)")]
+    [Xunit.InlineData("es", "(41,2345, -1,2345)")]
+    [Xunit.InlineData("de", "(41,2345, -1,2345)")]
+    [Xunit.InlineData("it", "(41,2345, -1,2345)")]
+    [Xunit.InlineData("fr", "(41,2345, -1,2345)")]
+    [Xunit.InlineData("ca", "(41,2345, -1,2345)")]
+    public async Task LocationCoordinates_UseUiCultureAndKeepEnglishInputValues(string language, string coordinates)
+    {
+        using var inputCulture = new CultureScope("en");
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+        var html = await RenderAsync("Edit", new ProfileViewModel
+        {
+            City = "Example", CountryCode = "ES", Latitude = 41.2345, Longitude = -1.2345,
+        });
+
+        html.Should().Contain(coordinates);
+        html.Should().Contain("value=\"41.2345\"").And.Contain("value=\"-1.2345\"");
+        CultureInfo.CurrentCulture.Name.Should().Be("en");
+    }
+
     private static async Task<string> RenderAsync(string page, object model)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions

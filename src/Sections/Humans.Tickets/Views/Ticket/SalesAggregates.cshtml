@@ -38,13 +38,13 @@
                             var net = week.GrossRevenue - week.VatAmount - week.Donations - week.VipDonations;
                             <tr>
                                 <td>@week.WeekLabel</td>
-                                <td class="text-end">@week.OrderCount.ToString("N0")</td>
-                                <td class="text-end">@week.TicketsSold.ToString("N0")</td>
-                                <td class="text-end">@week.GrossRevenue.ToString("N2")</td>
-                                <td class="text-end">@week.Donations.ToString("N2")</td>
-                                <td class="text-end">@week.VipDonations.ToString("N2")</td>
-                                <td class="text-end">@week.VatAmount.ToString("N2")</td>
-                                <td class="text-end">@net.ToString("N2")</td>
+                                <td class="text-end">@week.OrderCount.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@week.TicketsSold.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@week.GrossRevenue.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@week.Donations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@week.VipDonations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@week.VatAmount.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@net.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                             </tr>
                         }
                     </tbody>
@@ -58,13 +58,13 @@
                         }
                         <tr class="fw-bold">
                             <td>Total</td>
-                            <td class="text-end">@Model.WeeklySales.Sum(w => w.OrderCount).ToString("N0")</td>
-                            <td class="text-end">@Model.WeeklySales.Sum(w => w.TicketsSold).ToString("N0")</td>
-                            <td class="text-end">@weeklyTotalGross.ToString("N2")</td>
-                            <td class="text-end">@weeklyTotalDonations.ToString("N2")</td>
-                            <td class="text-end">@weeklyTotalVipDonations.ToString("N2")</td>
-                            <td class="text-end">@weeklyTotalVat.ToString("N2")</td>
-                            <td class="text-end">@weeklyTotalNet.ToString("N2")</td>
+                            <td class="text-end">@Model.WeeklySales.Sum(w => w.OrderCount).ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@Model.WeeklySales.Sum(w => w.TicketsSold).ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@weeklyTotalGross.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@weeklyTotalDonations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@weeklyTotalVipDonations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@weeklyTotalVat.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@weeklyTotalNet.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -115,17 +115,17 @@
                         {
                             <tr>
                                 <td>@m.MonthLabel</td>
-                                <td class="text-end">@m.OrderCount.ToString("N0")</td>
-                                <td class="text-end">@m.TicketsSold.ToString("N0")</td>
-                                <td class="text-end">@m.GrossRevenue.ToString("N2")</td>
-                                <td class="text-end">@m.Donations.ToString("N2")</td>
-                                <td class="text-end">@m.VipDonations.ToString("N2")</td>
-                                <td class="text-end">@m.TicketIncomeInclVat.ToString("N2")</td>
-                                <td class="text-end">@m.VatAmount.ToString("N2")</td>
-                                <td class="text-end">@m.TicketIncomeExVat.ToString("N2")</td>
-                                <td class="text-end">@m.StripeFees.ToString("N2")</td>
-                                <td class="text-end">@m.ApplicationFees.ToString("N2")</td>
-                                <td class="text-end">@m.RefundedGross.ToString("N2")</td>
+                                <td class="text-end">@m.OrderCount.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@m.TicketsSold.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@m.GrossRevenue.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@m.Donations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@m.VipDonations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@m.TicketIncomeInclVat.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@m.VatAmount.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@m.TicketIncomeExVat.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@m.StripeFees.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@m.ApplicationFees.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@m.RefundedGross.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                             </tr>
                         }
                     </tbody>
@@ -140,17 +140,17 @@
                         }
                         <tr class="fw-bold">
                             <td>Total</td>
-                            <td class="text-end">@Model.MonthlySales.Sum(m => m.OrderCount).ToString("N0")</td>
-                            <td class="text-end">@Model.MonthlySales.Sum(m => m.TicketsSold).ToString("N0")</td>
-                            <td class="text-end">@mGross.ToString("N2")</td>
-                            <td class="text-end">@mDonations.ToString("N2")</td>
-                            <td class="text-end">@mVip.ToString("N2")</td>
-                            <td class="text-end">@mInclVat.ToString("N2")</td>
-                            <td class="text-end">@mVat.ToString("N2")</td>
-                            <td class="text-end">@mExVat.ToString("N2")</td>
-                            <td class="text-end">@Model.MonthlySales.Sum(m => m.StripeFees).ToString("N2")</td>
-                            <td class="text-end">@Model.MonthlySales.Sum(m => m.ApplicationFees).ToString("N2")</td>
-                            <td class="text-end">@Model.MonthlySales.Sum(m => m.RefundedGross).ToString("N2")</td>
+                            <td class="text-end">@Model.MonthlySales.Sum(m => m.OrderCount).ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@Model.MonthlySales.Sum(m => m.TicketsSold).ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@mGross.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@mDonations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@mVip.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@mInclVat.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@mVat.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@mExVat.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@Model.MonthlySales.Sum(m => m.StripeFees).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@Model.MonthlySales.Sum(m => m.ApplicationFees).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@Model.MonthlySales.Sum(m => m.RefundedGross).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -197,13 +197,13 @@
                             var net = q.GrossRevenue - q.VatAmount - q.Donations - q.VipDonations;
                             <tr>
                                 <td>@q.QuarterLabel</td>
-                                <td class="text-end">@q.OrderCount.ToString("N0")</td>
-                                <td class="text-end">@q.TicketsSold.ToString("N0")</td>
-                                <td class="text-end">@q.GrossRevenue.ToString("N2")</td>
-                                <td class="text-end">@q.Donations.ToString("N2")</td>
-                                <td class="text-end">@q.VipDonations.ToString("N2")</td>
-                                <td class="text-end">@q.VatAmount.ToString("N2")</td>
-                                <td class="text-end">@net.ToString("N2")</td>
+                                <td class="text-end">@q.OrderCount.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@q.TicketsSold.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@q.GrossRevenue.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@q.Donations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@q.VipDonations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@q.VatAmount.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@net.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                             </tr>
                         }
                     </tbody>
@@ -217,20 +217,20 @@
                         }
                         <tr class="fw-bold">
                             <td>Total</td>
-                            <td class="text-end">@Model.QuarterlySales.Sum(q => q.OrderCount).ToString("N0")</td>
-                            <td class="text-end">@Model.QuarterlySales.Sum(q => q.TicketsSold).ToString("N0")</td>
-                            <td class="text-end">@totalGross.ToString("N2")</td>
-                            <td class="text-end">@totalDonations.ToString("N2")</td>
-                            <td class="text-end">@totalVipDonations.ToString("N2")</td>
-                            <td class="text-end">@totalVat.ToString("N2")</td>
-                            <td class="text-end">@totalNet.ToString("N2")</td>
+                            <td class="text-end">@Model.QuarterlySales.Sum(q => q.OrderCount).ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@Model.QuarterlySales.Sum(q => q.TicketsSold).ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@totalGross.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@totalDonations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@totalVipDonations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@totalVat.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@totalNet.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                         </tr>
                     </tfoot>
                 </table>
                 <div class="px-3 py-2">
                     <small class="text-muted">
                         <i class="fa-solid fa-circle-info"></i>
-                        VAT is computed at 10% on ticket revenue only (up to @TicketConstants.VipThresholdEuros.ToString("N0") EUR per ticket).
+                        VAT is computed at 10% on ticket revenue only (up to @TicketConstants.VipThresholdEuros.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture) EUR per ticket).
                         Amounts above this threshold are classified as VIP donations (VAT-free).
                         Standalone donations from TicketTailor are also VAT-free.
                     </small>
@@ -264,9 +264,9 @@
                         {
                             <tr>
                                 <td>@type.TicketTypeName</td>
-                                <td class="text-end">@type.Price.ToString("N2")</td>
-                                <td class="text-end">@type.TicketsSold.ToString("N0")</td>
-                                <td class="text-end">@type.FaceValue.ToString("N2")</td>
+                                <td class="text-end">@type.Price.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@type.TicketsSold.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@type.FaceValue.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                             </tr>
                         }
                     </tbody>
@@ -274,8 +274,8 @@
                         <tr class="fw-bold">
                             <td>Total</td>
                             <td></td>
-                            <td class="text-end">@Model.ByTicketType.Sum(t => t.TicketsSold).ToString("N0")</td>
-                            <td class="text-end">@Model.ByTicketType.Sum(t => t.FaceValue).ToString("N2")</td>
+                            <td class="text-end">@Model.ByTicketType.Sum(t => t.TicketsSold).ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@Model.ByTicketType.Sum(t => t.FaceValue).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -317,20 +317,20 @@
                         {
                             <tr>
                                 <td>@campaign.CampaignTitle</td>
-                                <td class="text-end">@(campaign.CodesGranted?.ToString("N0") ?? "—")</td>
-                                <td class="text-end">@campaign.CodesUsed.ToString("N0")</td>
-                                <td class="text-end">@campaign.AverageDiscount.ToString("N2")</td>
-                                <td class="text-end">@campaign.TotalDiscount.ToString("N2")</td>
+                                <td class="text-end">@(campaign.CodesGranted?.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture) ?? "—")</td>
+                                <td class="text-end">@campaign.CodesUsed.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@campaign.AverageDiscount.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@campaign.TotalDiscount.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                             </tr>
                         }
                     </tbody>
                     <tfoot>
                         <tr class="fw-bold">
                             <td>Total</td>
-                            <td class="text-end">@Model.ByDiscountCampaign.Sum(d => d.CodesGranted ?? 0).ToString("N0")</td>
-                            <td class="text-end">@Model.ByDiscountCampaign.Sum(d => d.CodesUsed).ToString("N0")</td>
+                            <td class="text-end">@Model.ByDiscountCampaign.Sum(d => d.CodesGranted ?? 0).ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@Model.ByDiscountCampaign.Sum(d => d.CodesUsed).ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
                             <td></td>
-                            <td class="text-end">@Model.ByDiscountCampaign.Sum(d => d.TotalDiscount).ToString("N2")</td>
+                            <td class="text-end">@Model.ByDiscountCampaign.Sum(d => d.TotalDiscount).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                         </tr>
                     </tfoot>
                 </table>
