@@ -78,13 +78,13 @@ public class CalendarServiceValidationTests
                 : Task.FromResult(false));
         var start = Instant.FromUtc(2026, 6, 1, 10, 0);
         var dto = new CreateCalendarEventDto("Event", null, null, null, Guid.NewGuid(),
-            start, start + Duration.FromHours(1), false, null, "UTC");
+            start, start + Duration.FromHours(1), false, null, null);
 
         var result = await service.UpdateEventWithResultAsync(id, dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.NotFound.Should().Be(!dependencyFailure, "only a missing event row warrants the missing result");
-        result.ErrorMessage.Should().Be(dependencyFailure ? "Calendar_InvalidTimedEvent" : "Calendar event not found.");
+        result.ErrorMessage.Should().Be(dependencyFailure ? "Calendar_SaveFailed" : "Calendar event not found.");
         audit.ReceivedCalls().Should().BeEmpty();
     }
 
@@ -510,15 +510,20 @@ public class CalendarServiceValidationTests
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task EventMutation_UnexpectedWriteFailureReturnsLocalizedSaveKey(bool update)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task EventMutation_UnexpectedWriteFailureReturnsLocalizedSaveKey(bool update, bool invalidOperation)
     {
         var repo = Substitute.For<ICalendarRepository>();
+        Exception failure = invalidOperation
+            ? new InvalidOperationException("Calendar_CannotChangeEventType")
+            : new IOException("database unavailable");
         repo.AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new IOException("database unavailable")));
+            .Returns(Task.FromException(failure));
         repo.UpdateAsync(Arg.Any<Guid>(), Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(new IOException("database unavailable")));
+            .Returns(Task.FromException<bool>(failure));
         var service = BuildService(repo);
         var dto = new CreateCalendarEventDto(
             "Event", null, null, null, Guid.NewGuid(),
