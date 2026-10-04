@@ -136,7 +136,7 @@ Append-only audit log. DB-level: `OnDelete(DeleteBehavior.Restrict)` prevents ca
 | DayOffset | int? | Day offset (from gate opening) of the favourited occurrence of a recurring event. Null = whole event (every occurrence). Rows created before this column existed also mean "whole event". |
 | CreatedAt | Instant | |
 
-Unique constraint on (UserId, GuideEventId, DayOffset) with `NULLS NOT DISTINCT` (PG15+), so a user cannot hold two whole-event (null-day) favourites for the same event.
+Unique constraint on (UserId, GuideEventId, DayOffset) with `NULLS NOT DISTINCT` (PG15+), so a user cannot hold two whole-event (null-day) favourites for the same event. A duplicate caught at insert returns the same already-favourited result as the initial lookup; unrelated persistence failures still propagate.
 
 Adding a favourite requires a currently approved event. A supplied day on a recurring event with authored recurrence days must match one of those offsets; invalid targets are rejected before persistence (API 404 for missing/unpublished events, 400 for invalid occurrence days). Null still favourites the whole event, and non-recurring events retain their day-ignoring expansion behavior.
 

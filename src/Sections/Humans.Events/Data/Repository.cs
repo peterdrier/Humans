@@ -397,7 +397,17 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
             .AnyAsync(ct);
         if (exists) return false;
         ctx.EventFavourites.Add(favourite);
-        await ctx.SaveChangesAsync(ct);
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+               { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+                 ConstraintName: "IX_event_favourites_UserId_GuideEventId_DayOffset" })
+        {
+            // Another add stored the same target after the absence check.
+            return false;
+        }
         return true;
     }
 
