@@ -427,13 +427,19 @@ function showToast(message, type) {
                         popover.dispose();
                         return null;
                     }
-                    return r.ok ? r.text() : '';
+                    if (!r.ok) throw new Error(r.status);
+                    return r.text();
                 })
                 .then(function (html) {
                     if (html) {
                         cache[cacheKey] = html;
                         popover.setContent({ '.popover-body': html });
                     }
+                })
+                .catch(function () {
+                    // A failed load must not leave a permanent spinner or block a later hover.
+                    popover.dispose();
+                    el._popoverInit = false;
                 });
         }
     }, true);
