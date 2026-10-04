@@ -76,6 +76,20 @@ public class EventsControllerTests
     [Xunit.InlineData(nameof(EventsController.Browse), "Submitter")]
     [Xunit.InlineData(nameof(EventsController.Browse), "Categories")]
     [Xunit.InlineData(nameof(EventsController.Browse), "Venues")]
+    [Xunit.InlineData(nameof(EventsController.BarrioSubmit), "Camp")]
+    [Xunit.InlineData(nameof(EventsController.BarrioSubmit), "Viewer")]
+    [Xunit.InlineData(nameof(EventsController.BarrioSubmit), "Guide")]
+    [Xunit.InlineData(nameof(EventsController.BarrioSubmit), "Burn")]
+    [Xunit.InlineData(nameof(EventsController.BarrioSubmit), "Categories")]
+    [Xunit.InlineData(nameof(EventsController.BarrioEdit), "Camp")]
+    [Xunit.InlineData(nameof(EventsController.BarrioEdit), "Viewer")]
+    [Xunit.InlineData(nameof(EventsController.BarrioEdit), "Event")]
+    [Xunit.InlineData(nameof(EventsController.BarrioEdit), "Guide")]
+    [Xunit.InlineData(nameof(EventsController.BarrioEdit), "Burn")]
+    [Xunit.InlineData(nameof(EventsController.BarrioEdit), "Categories")]
+    [Xunit.InlineData(nameof(EventsController.BulkUploadTemplate), "Camp")]
+    [Xunit.InlineData(nameof(EventsController.BulkUploadTemplate), "Viewer")]
+    [Xunit.InlineData(nameof(EventsController.BulkUploadTemplate), "Template")]
     public async Task MemberReadPages_StopLoadingAfterRequestCancellation(string route, string boundary)
     {
         using var request = new CancellationTokenSource();
@@ -106,6 +120,15 @@ public class EventsControllerTests
             default, default, default, default, 1, null, null, null, 0, null, null)
         { LeadUserIds = [userId] };
         var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
+        var campEvent = MakeEvent(campId, userId, EventStatus.ResubmitRequested);
+        _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<CampInfo?>(camp, "Camp", call.Arg<CancellationToken>()));
+        _guide.GetCampEventAsync(campEvent.Id, camp.Id, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<Event?>(campEvent, "Event", call.Arg<CancellationToken>()));
+        _guide.BuildBulkUploadTemplateAsync(camp.Id, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+            Read<byte[]>([], "Template", call.Arg<CancellationToken>()));
         var submitterId = Guid.NewGuid();
         var approved = new ApprovedEventView(Guid.NewGuid(), null, null, submitterId, Guid.NewGuid(), "music", "Music", false,
             null, "Event", "Description", null, null, Instant.FromUtc(2026, 8, 1, 18, 0), 60, false, null, null,
@@ -142,10 +165,17 @@ public class EventsControllerTests
             nameof(EventsController.MySubmissions) => controller.MySubmissions,
             nameof(EventsController.Submit) => controller.Submit,
             nameof(EventsController.Edit) => () => controller.Edit(guideEvent.Id),
+            nameof(EventsController.BarrioSubmit) => () => controller.BarrioSubmit(camp.Slug),
+            nameof(EventsController.BarrioEdit) => () => controller.BarrioEdit(camp.Slug, campEvent.Id),
+            nameof(EventsController.BulkUploadTemplate) => () => controller.BulkUploadTemplate(camp.Slug),
             nameof(EventsController.Schedule) => controller.Schedule,
             _ => () => controller.Browse(null, null, null, null),
         };
-        (await load()).Should().BeOfType<ViewResult>();
+        var loaded = await load();
+        if (string.Equals(route, nameof(EventsController.BulkUploadTemplate), StringComparison.Ordinal))
+            loaded.Should().BeOfType<FileContentResult>();
+        else
+            loaded.Should().BeOfType<ViewResult>();
         abandon = true;
         await load.Should().ThrowAsync<OperationCanceledException>();
     }

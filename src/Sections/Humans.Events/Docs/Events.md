@@ -201,6 +201,8 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 - Bulk CSV parsing and row-validation errors use the uploader’s UI culture, while column names and CSV syntax tokens remain unchanged. Invalid CSV values and quoting produce warnings without exception details; unexpected read or parser failures produce error logs with their exception, while the uploader sees generic feedback. Bulk CSV upload is all-or-nothing: if any row fails validation, no events are created or updated. Its bounded in-memory read stops when the request is aborted. Existing recurring events keep their authored day offsets when the CSV weekday selection is unchanged, even if other fields change; a changed recurrence selection is expanded across the event window. Rows with a non-empty `Id` update the matched camp event; rows with an empty `Id` create a new event. Each existing-event `Id` may appear only once, so conflicting edits cannot silently overwrite each other, a category name must identify exactly one active category, and recurrence values must use `true`/`false` plus the documented weekday tokens. `Withdrawn` events cannot be modified via bulk upload.
 - `StartAt` is always stored as UTC `Instant`; timezone conversion is done at presentation layer using `EventGuideSettingsView.TimeZoneId`.
 
+- Barrio submit/edit GETs and the CSV-template GET propagate browser cancellation through their camp/user authorization reads, guide/event settings, event lookup and form/template data. Writes begin only after the preflight reads finish.
+
 ## Negative Access Rules
 
 - Non-moderators **cannot** approve, reject, or request edits on any event.
