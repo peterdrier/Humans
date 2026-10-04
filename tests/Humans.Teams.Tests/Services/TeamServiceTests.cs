@@ -19,6 +19,7 @@ using Humans.Auth.Services;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Email.Contracts;
+using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
@@ -572,6 +573,71 @@ public sealed class TeamServiceTests : TeamsTestHarness
             });
         stored.IsPublicPage.Should().BeTrue();
         stored.ShowCoordinatorsOnPublicPage.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task UpdateTeamPageContentAsync_DependencyFailure_DoesNotExposeDiagnostics(
+        bool duringWrite, bool argumentFailure)
+    {
+        var repo = Substitute.For<ITeamRepository>();
+        var team = SeedTeam("Alpha");
+        Exception failure = argumentFailure
+            ? new ArgumentException("Internal persistence details", nameof(duringWrite))
+            : new InvalidOperationException("Internal persistence details");
+        if (duringWrite)
+        {
+            repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
+            repo.UpdateTeamAsync(Arg.Any<Team>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException(failure));
+        }
+        else
+        {
+            repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<Team?>(failure));
+        }
+        var service = new TeamService(
+            repo, Substitute.For<IAuditLogService>(), Notifier,
+            Substitute.For<IShiftManagementServiceRead>(),
+            Substitute.For<INotificationMeterCacheInvalidator>(), ShiftAuthInvalidator,
+            AdminAuthorization, Substitute.For<IEarlyEntryInvalidator>(),
+            new ServiceLocatorBuilder().Build(), Clock, NullLogger<TeamService>.Instance);
+
+        var result = await service.UpdateTeamPageContentAsync(
+            team.Id, "Welcome", [], true, false, Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData("missing", "not found")]
+    [InlineData("too-many", "A team can have at most 3 calls to action.")]
+    [InlineData("two-primary", "Only one primary call to action is allowed.")]
+    [InlineData("system", "Only departments (non-system, top-level teams) can be made public.")]
+    public async Task UpdateTeamPageContentAsync_KnownRefusal_RetainsFeedback(string refusal, string message)
+    {
+        var team = SeedTeam("Alpha", string.Equals(refusal, "system", StringComparison.Ordinal) ? SystemTeamType.Volunteers : SystemTeamType.None);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var actions = refusal switch
+        {
+            "too-many" => Enumerable.Range(0, 4)
+                .Select(i => new TeamPageCallToActionInput($"Action {i}", "/join", CallToActionStyle.Secondary)).ToList(),
+            "two-primary" => Enumerable.Range(0, 2)
+                .Select(i => new TeamPageCallToActionInput($"Action {i}", "/join", CallToActionStyle.Primary)).ToList(),
+            _ => new List<TeamPageCallToActionInput>()
+        };
+
+        var result = await _service.UpdateTeamPageContentAsync(
+            string.Equals(refusal, "missing", StringComparison.Ordinal) ? Guid.NewGuid() : team.Id,
+            "Welcome", actions, true, false, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain(message);
     }
 
     // ==========================================================================

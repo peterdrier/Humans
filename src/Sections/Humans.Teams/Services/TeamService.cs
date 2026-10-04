@@ -530,18 +530,18 @@ internal sealed class TeamService(
         try
         {
             var team = await repo.FindForMutationAsync(teamId, cancellationToken)
-                ?? throw new InvalidOperationException($"Team {teamId} not found");
+                ?? throw new TeamPageRuleException($"Team {teamId} not found");
 
             if (normalizedCallsToAction.Count > 3)
-                throw new InvalidOperationException("A team can have at most 3 calls to action.");
+                throw new TeamPageRuleException("A team can have at most 3 calls to action.");
 
             if (normalizedCallsToAction.Count(c => c.Style == CallToActionStyle.Primary) > 1)
-                throw new InvalidOperationException("Only one primary call to action is allowed.");
+                throw new TeamPageRuleException("Only one primary call to action is allowed.");
 
             var canBePublic = !team.IsSystemTeam && !team.ParentTeamId.HasValue;
 
             if (isPublicPage && !canBePublic)
-                throw new InvalidOperationException("Only departments (non-system, top-level teams) can be made public.");
+                throw new TeamPageRuleException("Only departments (non-system, top-level teams) can be made public.");
 
             var now = clock.GetCurrentInstant();
             team.PageContent = pageContent;
@@ -561,11 +561,23 @@ internal sealed class TeamService(
 
             return TeamPageUpdateResult.Success();
         }
-        catch (InvalidOperationException ex)
+        catch (TeamPageRuleException ex)
         {
-            logger.LogWarning(ex, "Failed to update team page for team {TeamId} by user {UserId}", teamId, updatedByUserId);
+            logger.LogWarning("Team page update rejected for team {TeamId} by user {UserId}: {Reason}", teamId, updatedByUserId, ex.Message);
             return TeamPageUpdateResult.Failed(ex.Message);
         }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to update team page for team {TeamId} by user {UserId}", teamId, updatedByUserId);
+            return new TeamPageUpdateResult(false, null);
+        }
+    }
+
+    private sealed class TeamPageRuleException : InvalidOperationException
+    {
+        public TeamPageRuleException() { }
+        public TeamPageRuleException(string? message) : base(message) { }
+        public TeamPageRuleException(string? message, Exception? innerException) : base(message, innerException) { }
     }
 
     public async Task<TeamWithGroupResult> CreateTeamWithGoogleGroupAsync(
