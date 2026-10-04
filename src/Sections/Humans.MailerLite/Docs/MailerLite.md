@@ -77,7 +77,7 @@ All routes are `AdminOnly`.
 - `MailerLiteClient` retries a `429` response up to twice more (3 attempts total), honouring the response's `Retry-After` header (clamped to 0–90s; defaults to 60s when the header is absent or unparsable) before giving up (nobodies-collective/Humans#1103).
 - Successful subscriber erasure (including a remote 404) removes the address from the cached subscriber list and recomputes account status totals from the remaining snapshot. A failed remote deletion retains both.
 - Group creation requires a returned group before appending to the cached snapshot; missing/null response data fails without poisoning the existing group list.
-- Cache refresh replaces the subscriber/group snapshot only after both page walks succeed. Missing page data or metadata, repeated subscriber cursors, and inconsistent group page numbers throw and retain the last successful snapshot. Group reads follow pagination metadata even across empty intermediate pages.
+- Cache refresh replaces the subscriber/group snapshot only after both page walks succeed. Missing page data or metadata, null subscriber/group items, repeated subscriber cursors, and inconsistent group page numbers throw and retain the last successful snapshot. Group reads follow pagination metadata even across empty intermediate pages.
 
 ## Negative Access Rules
 

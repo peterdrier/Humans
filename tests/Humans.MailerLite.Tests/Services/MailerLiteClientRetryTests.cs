@@ -15,6 +15,8 @@ public class MailerLiteClientRetryTests
     [HumansTheory]
     [Xunit.InlineData("null-subscribers")]
     [Xunit.InlineData("null-groups")]
+    [Xunit.InlineData("null-subscriber-item")]
+    [Xunit.InlineData("null-group-item")]
     [Xunit.InlineData("repeated-cursor")]
     [Xunit.InlineData("wrong-group-page")]
     [Xunit.InlineData("invalid-last-page")]
@@ -30,6 +32,8 @@ public class MailerLiteClientRetryTests
 
         if (string.Equals(shape, "null-subscribers", StringComparison.Ordinal))
             handler.EnqueueJson(HttpStatusCode.OK, "null");
+        else if (string.Equals(shape, "null-subscriber-item", StringComparison.Ordinal))
+            handler.EnqueueJson(HttpStatusCode.OK, """{"data":[null],"meta":{"next_cursor":null}}""");
         else if (string.Equals(shape, "repeated-cursor", StringComparison.Ordinal))
         {
             const string repeatedPage = """{"data":[],"meta":{"next_cursor":"same-cursor"}}""";
@@ -43,6 +47,7 @@ public class MailerLiteClientRetryTests
         var groupPage = shape switch
         {
             "null-groups" => "null",
+            "null-group-item" => """{"data":[null],"meta":{"current_page":1,"last_page":1}}""",
             "wrong-group-page" => HumansGroupPage.Replace("\"current_page\":1", "\"current_page\":2", StringComparison.Ordinal),
             "invalid-last-page" => HumansGroupPage.Replace("\"last_page\":1", "\"last_page\":0", StringComparison.Ordinal),
             _ => HumansGroupPage,
@@ -54,6 +59,10 @@ public class MailerLiteClientRetryTests
         await act.Should().ThrowAsync<HttpRequestException>();
         (await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(original);
         client.LastFetchedAt.Should().Be(fetchedAt);
+        var emails = new List<string>();
+        await foreach (var subscriber in client.ListSubscribersAsync(Xunit.TestContext.Current.CancellationToken))
+            emails.Add(subscriber.Email);
+        emails.Should().ContainSingle().Which.Should().Be("alice@example.org");
         (await client.ListGroupsAsync(Xunit.TestContext.Current.CancellationToken)).Should().ContainSingle(g => g.Id == "42");
     }
 
