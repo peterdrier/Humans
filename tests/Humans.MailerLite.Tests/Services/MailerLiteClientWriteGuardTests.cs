@@ -7,6 +7,30 @@ namespace Humans.MailerLite.Tests.Services;
 
 public class MailerLiteClientWriteGuardTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("{}")]
+    [Xunit.InlineData("{\"data\":null}")]
+    public async Task CreateGroupAsync_RejectsMissingGroupWithoutPoisoningTheSnapshot(string response)
+    {
+        var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"next_cursor":null}}""");
+        handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"current_page":1,"last_page":1}}""");
+        handler.EnqueueJson(HttpStatusCode.OK, response);
+        handler.EnqueueJson(HttpStatusCode.OK,
+            """{"data":{"id":"42","name":"Humans - Test","created_at":"2026-01-01 00:00:00","active_count":0,"unsubscribed_count":0,"unconfirmed_count":0,"bounced_count":0,"junk_count":0}}""");
+        var client = NewClient(handler);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await client.ListGroupsAsync(ct);
+
+        var create = async () => await client.CreateGroupAsync("Humans - Test", ct);
+        await create.Should().ThrowAsync<InvalidOperationException>().WithMessage("*CreateGroup*");
+        (await client.ListGroupsAsync(ct)).Should().BeEmpty();
+
+        var group = await client.CreateGroupAsync("Humans - Test", ct);
+        group.Id.Should().Be("42");
+        (await client.ListGroupsAsync(ct)).Should().ContainSingle().Which.Should().Be(group);
+    }
+
     [HumansFact]
     public async Task CreateGroupAsync_RejectsNonHumansName()
     {

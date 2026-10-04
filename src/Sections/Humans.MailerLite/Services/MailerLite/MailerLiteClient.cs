@@ -73,11 +73,12 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         using var body = JsonContent.Create(new { name }, options: Json);
         using var resp = await SendAsync(HttpMethod.Post, "/api/groups", body, ct);
         resp.EnsureSuccessStatusCode();
-        var env = await resp.Content.ReadFromJsonAsync<GroupSingleEnvelope>(Json, ct)
-            ?? throw new InvalidOperationException("MailerLite returned empty body on CreateGroup.");
+        var env = await resp.Content.ReadFromJsonAsync<GroupSingleEnvelope>(Json, ct);
+        var group = env?.Data
+            ?? throw new InvalidOperationException("MailerLite returned no group on CreateGroup.");
 
-        await AppendToGroupsCacheAsync(env.Data, ct);
-        return env.Data;
+        await AppendToGroupsCacheAsync(group, ct);
+        return group;
     }
 
     // Assign/Unassign/BulkImport deliberately don't invalidate — the sync service holds its
