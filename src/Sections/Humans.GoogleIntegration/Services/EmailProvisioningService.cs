@@ -2,6 +2,7 @@ using Humans.GoogleIntegration.Contracts;
 using System.Globalization;
 using System.Resources;
 using Humans.Base.Extensions;
+using Humans.Base.Configuration;
 using System.Text;
 using Humans.Base.Helpers;
 using Humans.AuditLog.Contracts;
@@ -121,17 +122,19 @@ internal sealed class EmailProvisioningService(
                 $"Provisioned and linked @nobodies.team account: {fullEmail}",
                 provisionedByUserId);
 
+            var language = user.PreferredLanguage.IsSupportedCultureCode()
+                ? user.PreferredLanguage
+                : CultureCatalog.DefaultCultureCode;
             if (!string.IsNullOrEmpty(recoveryEmail))
             {
                 await emailService.SendAsync(emailMessages.WorkspaceCredentials(
                     recoveryEmail, user.BurnerName, fullEmail, tempPassword,
-                    user.PreferredLanguage));
+                    language));
             }
 
             try
             {
-                var culture = CultureInfo.GetCultureInfo(
-                    user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");
+                var culture = CultureInfo.GetCultureInfo(language);
                 await notificationService.SendAsync(
                     NotificationSource.WorkspaceCredentialsReady,
                     NotificationClass.Informational,

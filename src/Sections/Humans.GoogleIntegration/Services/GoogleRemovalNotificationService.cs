@@ -1,3 +1,5 @@
+using Humans.Base.Extensions;
+using Humans.Base.Configuration;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
@@ -59,7 +61,9 @@ internal sealed class GoogleRemovalNotificationService(
         var userName = !string.IsNullOrWhiteSpace(user.BurnerName)
             ? user.BurnerName
             : removedEmail;
-        var culture = string.IsNullOrWhiteSpace(user.PreferredLanguage) ? "en" : user.PreferredLanguage;
+        var culture = user.PreferredLanguage.IsSupportedCultureCode()
+            ? user.PreferredLanguage
+            : CultureCatalog.DefaultCultureCode;
 
         var otherGoogleEmail = user.UserEmails
             .FirstOrDefault(ue => ue.IsVerified

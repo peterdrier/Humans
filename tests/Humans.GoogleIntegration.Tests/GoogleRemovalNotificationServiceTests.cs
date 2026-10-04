@@ -1,4 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
+using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.GoogleIntegration.Services;
@@ -91,9 +92,15 @@ public sealed class GoogleRemovalNotificationServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task NotifyRemovalAsync_SecondaryCleanup_SendsVariant2()
+    [HumansTheory]
+    [Xunit.InlineData("fr", "fr")]
+    [Xunit.InlineData("", "en")]
+    [Xunit.InlineData(" ", "en")]
+    [Xunit.InlineData("not a culture!", "en")]
+    [Xunit.InlineData("fr-FR", "en")]
+    public async Task NotifyRemovalAsync_SecondaryCleanup_SendsVariant2(string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         // Variant 2 fixture: the removed address has IsGoogle=true, AND a
         // sibling row also has IsGoogle=true that is not being removed.
         // The selector picks the sibling as the surviving primary.
@@ -101,7 +108,7 @@ public sealed class GoogleRemovalNotificationServiceTests
         var user = BuildUserWithEmails(
             userId,
             "Alice",
-            "fr",
+            language,
             ("old@nobodies.team", verified: true, isGoogle: true),
             ("new@nobodies.team", verified: true, isGoogle: true));
 
@@ -124,7 +131,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             Arg.Is<EmailMessage>(m => m.TemplateName == "google_access_removal_secondary_cleanup"
                 && m.RecipientEmail == "old@nobodies.team" && m.RecipientName == "Alice"
                 && m.HtmlBody.Contains("new@nobodies.team", StringComparison.Ordinal)
-                && m.Subject.EndsWith("#fr", StringComparison.Ordinal)),
+                && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
 
         // Variant 1 sub-templates must NOT be sent.
@@ -134,14 +141,20 @@ public sealed class GoogleRemovalNotificationServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task NotifyRemovalAsync_LossOfAccess_Group_SendsVariant1Group()
+    [HumansTheory]
+    [Xunit.InlineData("es", "es")]
+    [Xunit.InlineData("", "en")]
+    [Xunit.InlineData(" ", "en")]
+    [Xunit.InlineData("not a culture!", "en")]
+    [Xunit.InlineData("fr-FR", "en")]
+    public async Task NotifyRemovalAsync_LossOfAccess_Group_SendsVariant1Group(string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var userId = Guid.NewGuid();
         var user = BuildUserWithEmails(
             userId,
             "Bob",
-            "es",
+            language,
             ("primary@nobodies.team", verified: true, isGoogle: true));
 
         _userEmailService.FindByAddressAsync("primary@nobodies.team", false, true, Arg.Any<CancellationToken>())
@@ -164,21 +177,27 @@ public sealed class GoogleRemovalNotificationServiceTests
                 && m.RecipientEmail == "primary@nobodies.team" && m.RecipientName == "Bob"
                 && m.HtmlBody.Contains("Comms Team", StringComparison.Ordinal)
                 && m.HtmlBody.Contains("comms@nobodies.team", StringComparison.Ordinal)
-                && m.Subject.EndsWith("#es", StringComparison.Ordinal)),
+                && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
         await _emailService.DidNotReceive().SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "google_access_removal_secondary_cleanup"),
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task NotifyRemovalAsync_LossOfAccess_Drive_SendsVariant1Drive()
+    [HumansTheory]
+    [Xunit.InlineData("ca", "ca")]
+    [Xunit.InlineData("", "en")]
+    [Xunit.InlineData(" ", "en")]
+    [Xunit.InlineData("not a culture!", "en")]
+    [Xunit.InlineData("fr-FR", "en")]
+    public async Task NotifyRemovalAsync_LossOfAccess_Drive_SendsVariant1Drive(string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var userId = Guid.NewGuid();
         var user = BuildUserWithEmails(
             userId,
             "Carol",
-            "ca",
+            language,
             ("only@nobodies.team", verified: true, isGoogle: true));
 
         _userEmailService.FindByAddressAsync("only@nobodies.team", false, true, Arg.Any<CancellationToken>())
@@ -200,7 +219,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             Arg.Is<EmailMessage>(m => m.TemplateName == "google_drive_removal_loss_of_access"
                 && m.RecipientEmail == "only@nobodies.team" && m.RecipientName == "Carol"
                 && m.HtmlBody.Contains("Public Resources", StringComparison.Ordinal)
-                && m.Subject.EndsWith("#ca", StringComparison.Ordinal)),
+                && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
         await _emailService.DidNotReceive().SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "google_group_removal_loss_of_access"),
