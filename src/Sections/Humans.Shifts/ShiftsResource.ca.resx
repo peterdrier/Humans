@@ -1247,4 +1247,10 @@
   <data name="ShiftInfo_Quirk_QuietWork" xml:space="preserve"><value>Treball tranquil</value></data>
   <data name="ShiftInfo_Quirk_PhysicalWorkOK" xml:space="preserve"><value>Puc fer treball físic</value></data>
   <data name="ShiftInfo_Quirk_NoHeights" xml:space="preserve"><value>Sense altures</value></data>
+  <data name="Enum_SignupStatus_Pending" xml:space="preserve"><value>Pendent</value></data>
+  <data name="Enum_SignupStatus_Confirmed" xml:space="preserve"><value>Confirmat</value></data>
+  <data name="Enum_SignupStatus_Refused" xml:space="preserve"><value>Rebutjat</value></data>
+  <data name="Enum_SignupStatus_Bailed" xml:space="preserve"><value>Retirat</value></data>
+  <data name="Enum_SignupStatus_Cancelled" xml:space="preserve"><value>Cancel·lat</value></data>
+  <data name="Enum_SignupStatus_NoShow" xml:space="preserve"><value>No s’ha presentat</value></data>
 </root>

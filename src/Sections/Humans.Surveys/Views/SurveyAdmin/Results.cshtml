@@ -24,7 +24,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="mb-0">@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)</h1>
     <div class="d-flex align-items-center gap-2">
-        <span class="badge @StatusBadge(Model.Status)">@Model.Status</span>
+        <span class="badge @StatusBadge(Model.Status)">@Localizer.EnumDisplay(Model.Status)</span>
         @if (!Model.IsEmbargoed)
         {
             <a asp-controller="SurveyAdmin" asp-action="ExportCsv" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">@Localizer["Survey_Admin_Results_DownloadCsv"]</a>

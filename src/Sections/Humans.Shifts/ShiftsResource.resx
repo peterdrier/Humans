@@ -461,4 +461,10 @@
   <data name="ShiftInfo_Quirk_QuietWork" xml:space="preserve"><value>Quiet Work</value></data>
   <data name="ShiftInfo_Quirk_PhysicalWorkOK" xml:space="preserve"><value>Physical Work OK</value></data>
   <data name="ShiftInfo_Quirk_NoHeights" xml:space="preserve"><value>No Heights</value></data>
+  <data name="Enum_SignupStatus_Pending" xml:space="preserve"><value>Pending</value></data>
+  <data name="Enum_SignupStatus_Confirmed" xml:space="preserve"><value>Confirmed</value></data>
+  <data name="Enum_SignupStatus_Refused" xml:space="preserve"><value>Refused</value></data>
+  <data name="Enum_SignupStatus_Bailed" xml:space="preserve"><value>Withdrawn</value></data>
+  <data name="Enum_SignupStatus_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="Enum_SignupStatus_NoShow" xml:space="preserve"><value>No show</value></data>
 </root>

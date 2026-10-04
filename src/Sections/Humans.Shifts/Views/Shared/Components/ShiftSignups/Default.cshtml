@@ -118,7 +118,7 @@
                                     <td class="ps-3">@item.DepartmentName</td>
                                     <td>@signup.RotaName</td>
                                     <td>@signup.Date.ToWeekdayDayMonth()</td>
-                                    <td><span class="badge @StatusBadge(signup.Status)">@signup.Status</span></td>
+                                    <td><span class="badge @StatusBadge(signup.Status)">@Localizer.EnumDisplay(signup.Status)</span></td>
                                 </tr>
                             }
                         </tbody>
