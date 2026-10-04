@@ -1,3 +1,5 @@
+using Xunit;
+using System.Text.Json;
 using System.Net;
 using System.Reflection;
 using System.Text;
@@ -133,7 +135,29 @@ public sealed class LegalDocumentServiceTests : IDisposable
         handler.Requests.Should().OnlyContain(uri => uri.Query == "?ref=legal-preview");
     }
 
-    private sealed class LegalContentHandler : HttpMessageHandler
+    [HumansTheory]
+    [InlineData(498, 500)]
+    [InlineData(499, 499)]
+    public async Task CommitSummary_TruncatesWithoutSplittingUnicode(int prefixLength, int expectedLength)
+    {
+        var message = new string('A', prefixLength) + "😀" + "remaining\nCommit body";
+        using var handler = new LegalContentHandler(message);
+        var connector = new GitHubLegalDocumentConnector(
+            Options.Create(new GitHubSettings { Owner = "nobodies", Repository = "legal" }),
+            NullLogger<GitHubLegalDocumentConnector>.Instance);
+        var client = new GitHubClient(new Connection(
+            new ProductHeaderValue("test"), new HttpClientAdapter(() => handler)));
+        typeof(GitHubLegalDocumentConnector)
+            .GetField("_client", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(connector, client);
+
+        var summary = await connector.GetCommitMessageAsync("abc", TestContext.Current.CancellationToken);
+
+        summary.Should().Be(message[..expectedLength]);
+        new UTF8Encoding(false, true).GetBytes(summary!).Should().NotBeEmpty();
+    }
+
+    private sealed class LegalContentHandler(string? commitMessage = null) : HttpMessageHandler
     {
         public List<Uri> Requests { get; } = [];
 
@@ -149,7 +173,9 @@ public sealed class LegalDocumentServiceTests : IDisposable
                 """;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(Requests.Count == 1 ? directory : file,
+                Content = new StringContent(commitMessage is not null
+                    ? JsonSerializer.Serialize(new { commit = new { message = commitMessage } })
+                    : Requests.Count == 1 ? directory : file,
                     Encoding.UTF8, "application/json")
             });
         }

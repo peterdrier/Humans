@@ -197,6 +197,23 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         record.UserAgent.Should().HaveLength(500);
     }
 
+    [HumansTheory]
+    [InlineData(498, 500)]
+    [InlineData(499, 499)]
+    public async Task SubmitConsentAsync_TruncatesUserAgentWithoutSplittingUnicode(int prefixLength, int expectedLength)
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+        var agent = new string('A', prefixLength) + "😀" + "remaining";
+
+        await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", agent, TestContext.Current.CancellationToken);
+
+        var record = await LegalDb.ConsentRecords.FirstAsync(TestContext.Current.CancellationToken);
+        record.UserAgent.Should().Be(agent[..expectedLength]);
+        new UTF8Encoding(false, true).GetBytes(record.UserAgent).Should().NotBeEmpty();
+    }
+
     // Threshold check (formerly SubmitConsentAsync_CallsSetConsentCheckPending)
     // moved out of ConsentService entirely — it's a director method on
     // IOnboardingService now, invoked by controllers as a peer call after

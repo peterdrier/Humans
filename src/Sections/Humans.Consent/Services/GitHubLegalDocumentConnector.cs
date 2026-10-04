@@ -142,7 +142,11 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
             var commit = await _client.Repository.Commit.Get(_settings.Owner, _settings.Repository, sha);
             var message = commit.Commit.Message;
             var firstLine = message.Split('\n', 2)[0].Trim();
-            return firstLine.Length > 500 ? firstLine[..500] : firstLine;
+            var length = Math.Min(500, firstLine.Length);
+            if (length < firstLine.Length && char.IsHighSurrogate(firstLine[length - 1])
+                && char.IsLowSurrogate(firstLine[length]))
+                length--;
+            return firstLine[..length];
         }
         catch (ApiException ex)
         {

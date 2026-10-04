@@ -57,7 +57,7 @@ Aggregate-local nav `LegalDocument.Versions` kept. Cross-domain nav `LegalDocume
 | EffectiveFrom | Instant | |
 | RequiresReConsent | bool | |
 | CreatedAt | Instant | |
-| ChangesSummary | string? (2000) | |
+| ChangesSummary | string? (2000) | Imported GitHub commit first lines are capped at 500 UTF-16 units without splitting a surrogate pair |
 
 Aggregate-local nav `DocumentVersion.LegalDocument` kept. Aggregate-local nav `DocumentVersion.ConsentRecords` declared on the entity and configured in `DocumentVersionConfiguration`; not currently walked by the service layer.
 
@@ -74,7 +74,7 @@ Append-only per design-rules §12. **DB triggers** (`prevent_consent_record_upda
 | DocumentVersionId | Guid | FK → `document_versions` |
 | ConsentedAt | Instant | |
 | IpAddress | string (45) | IPv6-capable; service passes value through unchanged |
-| UserAgent | string (1024) | Service truncates to 500 chars before persisting |
+| UserAgent | string (1024) | Service caps at 500 UTF-16 units without splitting a surrogate pair |
 | ContentHash | string (64) | SHA-256 hex of canonical Spanish content at consent time |
 | ExplicitConsent | bool | Always true for valid records |
 
