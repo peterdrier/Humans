@@ -461,7 +461,8 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
 
         foreach (var src in sourceRows)
         {
-            if (targetPendingTeamIdSet.Contains(src.TeamId))
+            if (src.Status == TeamJoinRequestStatus.Pending
+                && targetPendingTeamIdSet.Contains(src.TeamId))
             {
                 // Target already has an active pending request to this team —
                 // drop source's row (target's stands).

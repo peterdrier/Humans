@@ -339,7 +339,7 @@ internal interface ITeamRepository : IRepository
     /// <summary>
     /// Account-merge fold: re-FKs every <see cref="TeamJoinRequest"/> authored
     /// by <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
-    /// When source has a request to a team where target <em>also</em> has an
+    /// When source has a pending request to a team where target <em>also</em> has an
     /// active (<see cref="TeamJoinRequestStatus.Pending"/>) request, the
     /// source row is dropped (target's pending request stands). All other
     /// source rows (historical statuses, or pending-without-target-conflict)
