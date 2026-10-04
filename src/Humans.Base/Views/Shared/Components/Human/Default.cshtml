@@ -11,7 +11,7 @@
         {
             return $"<img src=\"{enc.Encode(Model.ProfilePictureUrl)}\" alt=\"{enc.Encode(Model.DisplayName)}\" class=\"rounded-circle {Model.CssClass}{classExtra}\" style=\"{sizeStyle} object-fit: cover;\" />";
         }
-        var initial = string.IsNullOrEmpty(Model.DisplayName) ? "?" : Model.DisplayName[..1];
+        var initial = string.IsNullOrEmpty(Model.DisplayName) ? "?" : StringInfo.GetNextTextElement(Model.DisplayName);
         var fontRemStr = Model.FontRem.ToString(CultureInfo.InvariantCulture);
         return $"<div class=\"{Model.BgColor} rounded-circle d-flex align-items-center justify-content-center text-white {Model.CssClass}{classExtra}\" style=\"{sizeStyle} font-size: {fontRemStr}rem;\">{enc.Encode(initial)}</div>";
     }

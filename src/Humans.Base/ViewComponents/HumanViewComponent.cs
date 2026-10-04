@@ -80,6 +80,7 @@ public class HumanViewComponent(IUserServiceRead userService, IUrlHelperFactory 
 public class HumanViewModel
 {
     public Guid UserId { get; init; }
+    /// <summary>Member display name; fallback avatars show its first complete Unicode text element.</summary>
     public string DisplayName { get; init; } = "";
     public string? ProfilePictureUrl { get; init; }
     public HumanLayout Layout { get; init; }
