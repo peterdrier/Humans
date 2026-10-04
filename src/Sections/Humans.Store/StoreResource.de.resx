@@ -99,4 +99,12 @@
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Zurückgegebene Kautionen</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Erstattungsbetrag</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>Eine Rechnung kann nur ausgestellt werden, wenn der Saldo der Bestellung null ist.</value></data>
+  <data name="Store_Error_QuantityPositive" xml:space="preserve"><value>Die Menge muss positiv sein</value></data>
+  <data name="Store_Error_OrderNotFound" xml:space="preserve"><value>Bestellung {0} nicht gefunden</value></data>
+  <data name="Store_Error_AddLineIssued" xml:space="preserve"><value>Zu einer fakturierten Bestellung können keine Positionen hinzugefügt werden</value></data>
+  <data name="Store_Error_ProductNotFound" xml:space="preserve"><value>Produkt {0} nicht gefunden</value></data>
+  <data name="Store_Error_ProductDeactivated" xml:space="preserve"><value>Das Produkt '{0}' wurde deaktiviert und kann nicht mehr bestellt werden</value></data>
+  <data name="Store_Error_LineNotFound" xml:space="preserve"><value>Position {0} nicht gefunden</value></data>
+  <data name="Store_Error_LineWrongOrder" xml:space="preserve"><value>Position {0} gehört nicht zu Bestellung {1}</value></data>
+  <data name="Store_Error_RemoveLineIssued" xml:space="preserve"><value>Aus einer fakturierten Bestellung können keine Positionen entfernt werden</value></data>
 </root>

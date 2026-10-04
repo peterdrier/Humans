@@ -144,4 +144,12 @@
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Deposits returned</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Refund amount</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>An invoice can only be issued when the order balance is zero.</value></data>
+  <data name="Store_Error_QuantityPositive" xml:space="preserve"><value>Qty must be positive</value></data>
+  <data name="Store_Error_OrderNotFound" xml:space="preserve"><value>Order {0} not found</value></data>
+  <data name="Store_Error_AddLineIssued" xml:space="preserve"><value>Cannot add lines to an issued order</value></data>
+  <data name="Store_Error_ProductNotFound" xml:space="preserve"><value>Product {0} not found</value></data>
+  <data name="Store_Error_ProductDeactivated" xml:space="preserve"><value>Product '{0}' has been deactivated and is no longer orderable</value></data>
+  <data name="Store_Error_LineNotFound" xml:space="preserve"><value>Line {0} not found</value></data>
+  <data name="Store_Error_LineWrongOrder" xml:space="preserve"><value>Line {0} does not belong to order {1}</value></data>
+  <data name="Store_Error_RemoveLineIssued" xml:space="preserve"><value>Cannot remove lines from an issued order</value></data>
 </root>

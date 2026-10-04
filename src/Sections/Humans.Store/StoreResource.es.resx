@@ -107,4 +107,12 @@
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Fianzas devueltas</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Importe a reembolsar</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>Solo se puede emitir la factura cuando el saldo del pedido es cero.</value></data>
+  <data name="Store_Error_QuantityPositive" xml:space="preserve"><value>La cantidad debe ser positiva</value></data>
+  <data name="Store_Error_OrderNotFound" xml:space="preserve"><value>Pedido {0} no encontrado</value></data>
+  <data name="Store_Error_AddLineIssued" xml:space="preserve"><value>No se pueden añadir líneas a un pedido facturado</value></data>
+  <data name="Store_Error_ProductNotFound" xml:space="preserve"><value>Producto {0} no encontrado</value></data>
+  <data name="Store_Error_ProductDeactivated" xml:space="preserve"><value>El producto '{0}' se ha desactivado y ya no se puede pedir</value></data>
+  <data name="Store_Error_LineNotFound" xml:space="preserve"><value>Línea {0} no encontrada</value></data>
+  <data name="Store_Error_LineWrongOrder" xml:space="preserve"><value>La línea {0} no pertenece al pedido {1}</value></data>
+  <data name="Store_Error_RemoveLineIssued" xml:space="preserve"><value>No se pueden eliminar líneas de un pedido facturado</value></data>
 </root>

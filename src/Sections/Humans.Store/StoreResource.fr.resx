@@ -99,4 +99,12 @@
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Cautions restituées</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Montant à rembourser</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>La facture ne peut être émise que lorsque le solde de la commande est nul.</value></data>
+  <data name="Store_Error_QuantityPositive" xml:space="preserve"><value>La quantité doit être positive</value></data>
+  <data name="Store_Error_OrderNotFound" xml:space="preserve"><value>Commande {0} introuvable</value></data>
+  <data name="Store_Error_AddLineIssued" xml:space="preserve"><value>Impossible d’ajouter des lignes à une commande facturée</value></data>
+  <data name="Store_Error_ProductNotFound" xml:space="preserve"><value>Produit {0} introuvable</value></data>
+  <data name="Store_Error_ProductDeactivated" xml:space="preserve"><value>Le produit '{0}' a été désactivé et ne peut plus être commandé</value></data>
+  <data name="Store_Error_LineNotFound" xml:space="preserve"><value>Ligne {0} introuvable</value></data>
+  <data name="Store_Error_LineWrongOrder" xml:space="preserve"><value>La ligne {0} n’appartient pas à la commande {1}</value></data>
+  <data name="Store_Error_RemoveLineIssued" xml:space="preserve"><value>Impossible de supprimer des lignes d’une commande facturée</value></data>
 </root>

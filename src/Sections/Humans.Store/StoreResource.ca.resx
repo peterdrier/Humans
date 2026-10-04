@@ -99,4 +99,12 @@
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Fiances retornades</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Import a reemborsar</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>La factura només es pot emetre quan el saldo de la comanda és zero.</value></data>
+  <data name="Store_Error_QuantityPositive" xml:space="preserve"><value>La quantitat ha de ser positiva</value></data>
+  <data name="Store_Error_OrderNotFound" xml:space="preserve"><value>Comanda {0} no trobada</value></data>
+  <data name="Store_Error_AddLineIssued" xml:space="preserve"><value>No es poden afegir línies a una comanda facturada</value></data>
+  <data name="Store_Error_ProductNotFound" xml:space="preserve"><value>Producte {0} no trobat</value></data>
+  <data name="Store_Error_ProductDeactivated" xml:space="preserve"><value>El producte '{0}' s’ha desactivat i ja no es pot demanar</value></data>
+  <data name="Store_Error_LineNotFound" xml:space="preserve"><value>Línia {0} no trobada</value></data>
+  <data name="Store_Error_LineWrongOrder" xml:space="preserve"><value>La línia {0} no pertany a la comanda {1}</value></data>
+  <data name="Store_Error_RemoveLineIssued" xml:space="preserve"><value>No es poden eliminar línies d’una comanda facturada</value></data>
 </root>

@@ -10,6 +10,7 @@ using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
 using Humans.Base.Enums;
+using Humans.Base.Extensions;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -585,14 +586,21 @@ public class ServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    [HumansFact]
-    public async Task AddLineWithResultAsync_returns_failure_for_expected_validation()
+    [HumansTheory]
+    [InlineData("en", "Qty must be positive")]
+    [InlineData("es", "La cantidad debe ser positiva")]
+    [InlineData("de", "Die Menge muss positiv sein")]
+    [InlineData("it", "La quantità deve essere positiva")]
+    [InlineData("fr", "La quantité doit être positive")]
+    [InlineData("ca", "La quantitat ha de ser positiva")]
+    public async Task AddLineWithResultAsync_returns_localized_quantity_validation(string culture, string message)
     {
+        using var scope = new CultureScope(culture);
         var result = await _service.AddLineWithResultAsync(
             Guid.NewGuid(), Guid.NewGuid(), 0, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("Qty must be positive");
+        result.ErrorMessage.Should().Be(message);
     }
 
     [HumansFact]

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Resources;
 using System.Text.Json;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
@@ -30,6 +31,8 @@ internal sealed class Service(
     IOptions<StoreSectionOptions> options,
     ILogger<Service> logger) : IStoreAccountingRead
 {
+    private static readonly ResourceManager ErrorResources = new(typeof(StoreResource));
+
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
         BuildIndexDataAsync(userId, allCounterparties: false, ct);
 
@@ -521,20 +524,20 @@ internal sealed class Service(
     public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
     {
         if (qty <= 0)
-            throw new ArgumentException("Qty must be positive", nameof(qty));
+            throw new ArgumentException(ErrorMessage("Store_Error_QuantityPositive"), nameof(qty));
 
         var order = await repo.GetOrderByIdAsync(orderId, ct)
-            ?? throw new InvalidOperationException($"Order {orderId} not found");
+            ?? throw new InvalidOperationException(ErrorMessage("Store_Error_OrderNotFound", orderId));
 
         if (order.State != OrderState.Open)
-            throw new InvalidOperationException("Cannot add lines to an issued order");
+            throw new InvalidOperationException(ErrorMessage("Store_Error_AddLineIssued"));
 
         var product = await repo.GetProductByIdAsync(productId, ct)
-            ?? throw new InvalidOperationException($"Product {productId} not found");
+            ?? throw new InvalidOperationException(ErrorMessage("Store_Error_ProductNotFound", productId));
 
         if (!product.IsActive)
             throw new InvalidOperationException(
-                $"Product '{product.Name}' has been deactivated and is no longer orderable");
+                ErrorMessage("Store_Error_ProductDeactivated", product.Name));
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
@@ -579,7 +582,9 @@ internal sealed class Service(
         catch (ArgumentException ex)
         {
             logger.LogWarning("AddLine validation failed for order {OrderId}: {Reason}", orderId, ex.Message);
-            return MutationResult.Failure(ex.Message);
+            return MutationResult.Failure(string.Equals(ex.ParamName, nameof(qty), StringComparison.Ordinal)
+                ? ErrorMessage("Store_Error_QuantityPositive")
+                : ex.Message);
         }
         catch (InvalidOperationException ex)
         {
@@ -591,13 +596,13 @@ internal sealed class Service(
     public async Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
     {
         var ctx = await repo.GetLineWithOrderAndProductAsync(lineId, ct)
-            ?? throw new InvalidOperationException($"Line {lineId} not found");
+            ?? throw new InvalidOperationException(ErrorMessage("Store_Error_LineNotFound", lineId));
 
         if (ctx.OrderId != orderId)
-            throw new InvalidOperationException($"Line {lineId} does not belong to order {orderId}");
+            throw new InvalidOperationException(ErrorMessage("Store_Error_LineWrongOrder", lineId, orderId));
 
         if (ctx.OrderState != OrderState.Open)
-            throw new InvalidOperationException("Cannot remove lines from an issued order");
+            throw new InvalidOperationException(ErrorMessage("Store_Error_RemoveLineIssued"));
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
@@ -1846,6 +1851,10 @@ internal sealed class Service(
         }
         return "(unknown)";
     }
+
+    private static string ErrorMessage(string resourceKey, params object[] arguments) =>
+        string.Format(CultureInfo.CurrentUICulture,
+            ErrorResources.GetString(resourceKey, CultureInfo.CurrentUICulture)!, arguments);
 
     private static void EnsureBillable(Order order)
     {

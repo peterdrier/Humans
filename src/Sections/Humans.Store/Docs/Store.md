@@ -205,6 +205,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 ## Invariants
 
 - Member-facing order pages localize their breadcrumb navigation label in all six supported cultures.
+- Member line-add/remove validation errors use Store resources in all six cultures. Quantity results show the translated rule without an exception parameter-name suffix; rejection conditions and authorization remain unchanged.
 
 - The Store index loads selected camp and department orders in batches through existing repository reads, then shares one product-name and live-price snapshot across the cards. Camp cards retain the highest-balance legacy order, and team cards retain the first matching order; viewer scoping is unchanged.
 - Store index and order GETs retain request cancellation during viewer resolution as well as their existing token-capable reads. Payment, invoice and order mutations retain their existing token boundaries.
