@@ -211,16 +211,8 @@ internal static class FormatGalleryModelBuilder
 
     private static string Invoke(MethodInfo method, object?[] args, CultureInfo culture)
     {
-        var previous = CultureInfo.CurrentCulture;
-        CultureInfo.CurrentCulture = culture;
-        try
-        {
-            return method.Invoke(null, args) as string ?? "(null)";
-        }
-        finally
-        {
-            CultureInfo.CurrentCulture = previous;
-        }
+        using var scope = new CultureScope(culture.Name);
+        return method.Invoke(null, args) as string ?? "(null)";
     }
 
     private static string DescribeInput(MethodInfo method)

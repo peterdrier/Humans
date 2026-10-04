@@ -704,9 +704,17 @@ public sealed class BudgetServiceTests
         result.Should().Be(0);
     }
 
-    [HumansFact]
-    public async Task RefreshTicketingProjectionsAsync_materializes_projected_weeks_when_projection_is_valid()
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task RefreshTicketingProjectionsAsync_materializes_projected_weeks_when_projection_is_valid(string culture)
     {
+        using var scope = new Humans.Base.Extensions.CultureScope(culture);
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en");
         var (groupId, _, revenueCatId, _) = await SeedTicketingYearAsync();
         await ConfigureProjectionAsync(groupId,
             startDate: new LocalDate(2026, 3, 15),
@@ -724,6 +732,10 @@ public sealed class BudgetServiceTests
                 && li.Description.StartsWith("Projected:"))
             .ToListAsync(TestContext.Current.CancellationToken);
         projectedRevenueItems.Should().NotBeEmpty();
+        projectedRevenueItems.Should().AllSatisfy(item => item.Description.Should().MatchRegex(
+            "^Projected: Week of (Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Mar|Apr) [0-9]+–(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Mar|Apr) [0-9]+$"));
+        System.Globalization.CultureInfo.CurrentCulture.Name.Should().Be("en");
+        System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be(culture);
     }
 
     [HumansTheory]

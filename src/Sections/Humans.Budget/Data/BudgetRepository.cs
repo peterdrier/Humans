@@ -1108,6 +1108,8 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (projection is null) return 0;
 
+        // Persist canonical English descriptions independently of the operator's UI language.
+        using var culture = new CultureScope("en");
         var created = 0;
         foreach (var week in projection.CalculateWeeks(today))
         {
