@@ -9,7 +9,6 @@
     <Project Path="src/Sections/Humans.Agent/Humans.Agent.csproj" />
     <Project Path="src/Sections/Humans.AuditLog/Humans.AuditLog.csproj" />
     <Project Path="src/Sections/Humans.Auth/Humans.Auth.csproj" />
-    <Project Path="src/Sections/Humans.Auth.Contracts/Humans.Auth.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Backdoor/Humans.Backdoor.csproj" />
     <Project Path="src/Sections/Humans.Budget/Humans.Budget.csproj" />
     <Project Path="src/Sections/Humans.Calendar/Humans.Calendar.csproj" />
