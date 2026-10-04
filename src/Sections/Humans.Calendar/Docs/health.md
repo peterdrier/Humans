@@ -100,7 +100,7 @@ Stated so a violation is recognisable.
    renders only that (`Views/Shared/Components/UserCalendar/Default.cshtml:10`).
 4. Every mutation writes an audit entry naming the actor. Entry-level mutations also name
    the owning team (`Services/CalendarService.cs:90`); occurrence-level ones do not
-   (`Services/CalendarService.cs:492`).
+   (`Services/CalendarService.cs:489`).
 5. A failed audit write never rolls back or hides a committed change, and never passes
    silently (`Services/CalendarService.cs:94`).
 6. On a timed entry, `RecurrenceRule` and `RecurrenceTimezone` are both set or both null —
@@ -109,18 +109,18 @@ Stated so a violation is recognisable.
 7. A malformed RRULE (`Services/CalendarService.cs:145`) or an unknown IANA zone
    (`Services/CalendarService.cs:154`) is rejected at write time, so no read can fail
    expanding a stored row. An all-day rule that would introduce a time of day is rejected
-   with them (`Services/CalendarService.cs:255`).
+   with them (`Services/CalendarService.cs:254`).
 8. `RecurrenceUntilUtc` bounds a timed series and `RecurrenceUntilDate` an all-day one, each
    the last point the rule can produce or null for open-ended rules, and
    `CalendarOccurrenceExpander.FilterForWindow` — the only prefilter — reads them as that
    and keeps every row carrying an exception, which can sit outside either bound
-   (`Services/CalendarOccurrenceExpander.cs:197`).
+   (`Services/CalendarOccurrenceExpander.cs:200`).
 9. A timed entry has a start and an end instant and no dates; an all-day entry has a start
    date and an exclusive end date and no instants (`Domain/CalendarEvent.cs:36`). Forms show
    the inclusive last day; `CalendarService.AllDayWindow` and `AllDayInclusiveEndDate` are
    the only conversion (`Services/CalendarService.cs:29`).
 10. A row written before the date columns existed is read as dates once, at the projection
-    boundary, in the zone it was written with (`Services/CalendarOccurrenceExpander.cs:228`).
+    boundary, in the zone it was written with (`Services/CalendarOccurrenceExpander.cs:231`).
     Nothing below that boundary needs a backfill, and nothing above it sees the old columns.
 11. Soft-delete hides an entry (`Data/Configurations/CalendarEventConfiguration.cs:30`) and
     its exception rows (`Data/Configurations/CalendarEventExceptionConfiguration.cs:30`) from
@@ -155,7 +155,7 @@ Stated so a violation is recognisable.
     (`Services/CalendarFeedTokenService.cs:33`).
 20. The data export reports whether a feed exists, never the token
     (`Services/CalendarFeedTokenService.cs:46`); merging two accounts deletes the absorbed
-    account's token rather than moving it (`Services/CalendarFeedTokenService.cs:77`).
+    account's token rather than moving it (`Services/CalendarFeedTokenService.cs:76`).
 
 ## 5. Seams — specified, not built
 
@@ -232,3 +232,4 @@ Settled decisions. Later runs should stop re-litigating these.
 |---|---|---|---|
 | 1 | 2026-09-01 | List view rendered all-day and multi-day events wrong; documented-but-unpinned invariants given tests; false crefs and a phantom `OwningTeam` nav cut | peterdrier/Humans#1578 |
 | 2 | 2026-09-19 | Workgroups' contributor named everywhere the set was enumerated as Shifts + Events only; comments describing code that is not there corrected; resolved debt rows and dead prose cut | peterdrier/Humans#1744 |
+| 3 | 2026-10-04 | Guide said editing a series changes only future occurrences and never mentioned the personal feed; target gained the feed-token half; the audit-failure LogCritical pinned | pending |
