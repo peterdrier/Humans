@@ -30,7 +30,10 @@ public class CampAdminViewTests
         var prefix = new string('a', fits ? 98 : 99);
         var camp = new CampCardViewModel
         {
-            Id = Guid.NewGuid(), SeasonId = Guid.NewGuid(), Name = "Camp", Slug = "camp",
+            Id = Guid.NewGuid(),
+            SeasonId = Guid.NewGuid(),
+            Name = "Camp",
+            Slug = "camp",
             BlurbShort = prefix + "😀tail",
         };
         var model = new CampAdminViewModel();

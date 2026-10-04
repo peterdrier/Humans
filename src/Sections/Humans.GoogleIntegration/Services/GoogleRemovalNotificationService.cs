@@ -1,5 +1,4 @@
 using Humans.Base.Extensions;
-using Humans.Base.Configuration;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;

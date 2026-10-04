@@ -32,8 +32,10 @@ public class ExpenseReportViewTests
         var report = Report(ExpenseReportStatus.Draft, prefix + "😀tail");
         object model = review ? new ExpenseReviewViewModel
         {
-            Reports = [report], SubmitterNames = new Dictionary<Guid, string>(),
-            DepartmentNames = new Dictionary<Guid, string>(), FailedHoldedPushReportIds = new HashSet<Guid>(),
+            Reports = [report],
+            SubmitterNames = new Dictionary<Guid, string>(),
+            DepartmentNames = new Dictionary<Guid, string>(),
+            FailedHoldedPushReportIds = new HashSet<Guid>(),
         } : new ExpensesIndexViewModel { Reports = [report] };
 
         var html = await RenderAsync(review ? "Review" : "Index", model);
@@ -63,10 +65,17 @@ public class ExpenseReportViewTests
 
     private static ExpenseReportDto Report(ExpenseReportStatus status, string? note = null) => new()
     {
-        Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(), BudgetCategoryId = Guid.NewGuid(),
-        BudgetYearId = Guid.NewGuid(), Status = status,
-        PayeeName = "", PayeeIban = "", Total = 0, Lines = [],
-        CreatedAt = Instant.FromUtc(2026, 7, 1, 0, 0), UpdatedAt = Instant.FromUtc(2026, 7, 1, 0, 0),
+        Id = Guid.NewGuid(),
+        SubmitterUserId = Guid.NewGuid(),
+        BudgetCategoryId = Guid.NewGuid(),
+        BudgetYearId = Guid.NewGuid(),
+        Status = status,
+        PayeeName = "",
+        PayeeIban = "",
+        Total = 0,
+        Lines = [],
+        CreatedAt = Instant.FromUtc(2026, 7, 1, 0, 0),
+        UpdatedAt = Instant.FromUtc(2026, 7, 1, 0, 0),
         Note = note,
     };
 

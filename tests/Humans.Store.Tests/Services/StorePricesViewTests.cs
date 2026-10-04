@@ -73,7 +73,8 @@ public class StorePricesViewTests
             state, null, null, null, null, null, null, [], [], 0, 0, 0, 0, 0, Instant.FromUtc(2026, 7, 1, 0, 0));
         var html = await RenderAsync("Index", new IndexViewModel
         {
-            Year = 2026, Counterparties = [new CounterpartyOrders(OrderCounterpartyType.Camp, campId, "Camp", 2026, [order])],
+            Year = 2026,
+            Counterparties = [new CounterpartyOrders(OrderCounterpartyType.Camp, campId, "Camp", 2026, [order])],
             CanManageByCounterparty = new Dictionary<Guid, bool> { [campId] = false },
         });
 

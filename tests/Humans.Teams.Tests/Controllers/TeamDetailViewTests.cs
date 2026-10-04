@@ -36,8 +36,11 @@ public class TeamDetailViewTests
         using var language = new CultureScope(culture);
         var model = new TeamDetailViewModel
         {
-            Name = "Example", Slug = "example", IsAuthenticated = true,
-            IsSystemTeam = true, SystemTeamType = type,
+            Name = "Example",
+            Slug = "example",
+            IsAuthenticated = true,
+            IsSystemTeam = true,
+            SystemTeamType = type,
         };
         var html = await RenderAsync("/Views/Team/Details.cshtml", model);
 
@@ -55,7 +58,9 @@ public class TeamDetailViewTests
         var prefix = new string('a', limit - (fits ? 2 : 1));
         var team = new TeamSummaryViewModel
         {
-            Name = "Example", Slug = "example", Description = prefix + "😀tail",
+            Name = "Example",
+            Slug = "example",
+            Description = prefix + "😀tail",
         };
         var model = directory ? (object)new TeamIndexViewModel { Departments = [team] } : team;
         var path = directory ? "/Views/Team/Index.cshtml" : "/Views/Team/_TeamCard.cshtml";

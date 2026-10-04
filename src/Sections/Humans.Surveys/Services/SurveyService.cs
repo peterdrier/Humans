@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Resources;
-using System.Text;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;

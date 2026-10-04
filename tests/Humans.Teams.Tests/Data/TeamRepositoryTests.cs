@@ -226,20 +226,29 @@ public sealed class TeamRepositoryTests : IDisposable
         var target = Guid.NewGuid();
         var sourceRequest = new TeamJoinRequest
         {
-            Id = Guid.NewGuid(), TeamId = team.Id, UserId = source,
-            Status = sourceStatus, RequestedAt = _clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = source,
+            Status = sourceStatus,
+            RequestedAt = _clock.GetCurrentInstant(),
             Message = "Source request"
         };
         sourceRequest.StateHistory.Add(new TeamJoinRequestStateHistory
         {
-            Id = Guid.NewGuid(), TeamJoinRequestId = sourceRequest.Id,
-            Status = sourceStatus, ChangedAt = _clock.GetCurrentInstant(),
-            ChangedByUserId = source, Notes = "Recorded transition"
+            Id = Guid.NewGuid(),
+            TeamJoinRequestId = sourceRequest.Id,
+            Status = sourceStatus,
+            ChangedAt = _clock.GetCurrentInstant(),
+            ChangedByUserId = source,
+            Notes = "Recorded transition"
         });
         var targetRequest = new TeamJoinRequest
         {
-            Id = Guid.NewGuid(), TeamId = team.Id, UserId = target,
-            Status = TeamJoinRequestStatus.Pending, RequestedAt = _clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = target,
+            Status = TeamJoinRequestStatus.Pending,
+            RequestedAt = _clock.GetCurrentInstant()
         };
         await _dbContext.TeamJoinRequests.AddRangeAsync([sourceRequest, targetRequest], ct);
         await _dbContext.SaveChangesAsync(ct);

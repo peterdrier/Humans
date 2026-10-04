@@ -35,7 +35,9 @@ public class BudgetSummaryViewTests
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
         var html = await RenderAsync("Summary", new BudgetSummaryViewModel
         {
-            YearName = "2026", TotalIncome = 100, TotalExpenses = -100,
+            YearName = "2026",
+            TotalIncome = 100,
+            TotalExpenses = -100,
             IncomeSlices = [new BudgetSliceResult { Name = "Income", Amount = 10.5m, Percentage = 10.5m }],
             ExpenseSlices = [new BudgetSliceResult { Name = "Expense", Amount = 20.5m, Percentage = 20.5m }],
         });

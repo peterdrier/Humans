@@ -51,7 +51,10 @@ public class ProfileBirthdayViewTests
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
         var html = await RenderAsync("Edit", new ProfileViewModel
         {
-            City = "Example", CountryCode = "ES", Latitude = 41.2345, Longitude = -1.2345,
+            City = "Example",
+            CountryCode = "ES",
+            Latitude = 41.2345,
+            Longitude = -1.2345,
         });
 
         html.Should().Contain(coordinates);

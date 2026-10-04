@@ -1759,7 +1759,8 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var member = Guid.NewGuid();
         _fx.StubActiveUsers(member);
         var info = (await _fx.Users.GetUserInfosAsync([member], ct))[member]
-            with { PreferredLanguage = language };
+            with
+        { PreferredLanguage = language };
         _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [member] = info }));

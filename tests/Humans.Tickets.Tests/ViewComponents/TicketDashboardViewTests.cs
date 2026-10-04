@@ -114,9 +114,16 @@ public class TicketDashboardViewTests
     {
         var index = await RenderAsync("Index", new TicketDashboardViewModel
         {
-            IsConfigured = true, TicketsSold = 1234, TicketsRemaining = 1234,
-            TotalCapacity = 1234, BreakEvenTarget = 1234, Revenue = 1234, NetRevenue = 1234,
-            AveragePrice = 1234.5m, TotalStripeFees = 1234, TotalApplicationFees = 1234,
+            IsConfigured = true,
+            TicketsSold = 1234,
+            TicketsRemaining = 1234,
+            TotalCapacity = 1234,
+            BreakEvenTarget = 1234,
+            Revenue = 1234,
+            NetRevenue = 1234,
+            AveragePrice = 1234.5m,
+            TotalStripeFees = 1234,
+            TotalApplicationFees = 1234,
             FeesByPaymentMethod = [new PaymentMethodFeeBreakdown
             {
                 TotalAmount = 1234, TotalStripeFees = 1234.5m, TotalApplicationFees = 1234.5m,

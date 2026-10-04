@@ -32,9 +32,13 @@ public class FeedbackListViewTests
         var name = prefix + "😀tail";
         var report = new FeedbackListItemViewModel
         {
-            Id = Guid.NewGuid(), Category = FeedbackCategory.Bug, Status = FeedbackStatus.Open,
-            PageUrl = "/", CreatedAt = new DateTime(2026, 7, 1),
-            AssignedToName = team ? null : name, AssignedToTeamName = team ? name : null,
+            Id = Guid.NewGuid(),
+            Category = FeedbackCategory.Bug,
+            Status = FeedbackStatus.Open,
+            PageUrl = "/",
+            CreatedAt = new DateTime(2026, 7, 1),
+            AssignedToName = team ? null : name,
+            AssignedToTeamName = team ? name : null,
         };
         var html = await RenderAsync("Index", new FeedbackPageViewModel { Reports = [report] });
 
