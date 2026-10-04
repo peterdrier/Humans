@@ -433,7 +433,7 @@ internal sealed class CampController(
             return errorResult;
         }
 
-        var editData = await _campService.GetCampEditDataAsync(camp.Id, year);
+        var editData = await _campService.GetCampEditDataAsync(camp.Id, year, ct);
         if (editData is null)
         {
             SetError(campsLocalizer["Camps_Flash_NoSeason"].Value);
@@ -455,7 +455,7 @@ internal sealed class CampController(
             return errorResult;
         }
 
-        var editData = await _campService.GetCampEditDataAsync(camp.Id, year);
+        var editData = await _campService.GetCampEditDataAsync(camp.Id, year, ct);
         if (editData is null)
         {
             SetError(campsLocalizer["Camps_Flash_NoSeason"].Value);

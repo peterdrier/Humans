@@ -68,6 +68,55 @@ public class CampControllerTests
         await load.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    [HumansTheory]
+    [InlineData(nameof(CampController.Edit), "Camp")]
+    [InlineData(nameof(CampController.Edit), "Viewer")]
+    [InlineData(nameof(CampController.Edit), "EditData")]
+    [InlineData(nameof(CampController.Members), "Camp")]
+    [InlineData(nameof(CampController.Members), "Viewer")]
+    [InlineData(nameof(CampController.Members), "EditData")]
+    public async Task ManagementReadPages_StopLoadingAfterRequestCancellation(string route, string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var abandon = false;
+        var boundaryToken = CancellationToken.None;
+        async Task<T> Read<T>(T value, string name, CancellationToken ct)
+        {
+            if (abandon && string.Equals(name, boundary, StringComparison.Ordinal))
+            {
+                await request.CancelAsync();
+                boundaryToken = ct;
+            }
+            ct.ThrowIfCancellationRequested();
+            return value;
+        }
+
+        var userId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha", CampSeasonStatus.Active, userId);
+        var season = camp.Seasons.Single();
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<CampInfo?>(camp, "Camp", call.Arg<CancellationToken>()));
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+            new ValueTask<UserInfo?>(Read<UserInfo?>(MakeUserInfo(userId), "Viewer", call.Arg<CancellationToken>())));
+        _camps.GetCampEditDataAsync(camp.Id, null, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<CampEditData?>(MakeEditData(camp, season), "EditData", call.Arg<CancellationToken>()));
+        _authorization.AuthorizeAsync(
+            Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        _roles.BuildPanelAsync(season.Id, Arg.Any<CancellationToken>())
+            .Returns(new CampRolesPanelData(season.Id, []));
+        var controller = BuildController(userId);
+        controller.HttpContext.RequestAborted = request.Token;
+        Func<Task<IActionResult>> load = string.Equals(route, nameof(CampController.Edit), StringComparison.Ordinal)
+            ? () => controller.Edit(camp.Slug, null, request.Token)
+            : () => controller.Members(camp.Slug, null, request.Token);
+
+        (await load()).Should().BeOfType<ViewResult>();
+        abandon = true;
+        await load.Should().ThrowAsync<OperationCanceledException>();
+        boundaryToken.Should().Be(request.Token);
+    }
+
     [HumansFact]
     public void UploadImage_allows_one_valid_image_without_accepting_a_larger_request()
     {

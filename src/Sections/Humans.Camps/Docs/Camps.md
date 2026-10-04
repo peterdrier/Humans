@@ -184,7 +184,7 @@ Four controllers serve this section. The MVC URL surface is dual-routed under `/
 
 Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/architecture/design-rules.md` § "Admin is not a section": `/Admin/*` is a nav holder for actions whose services live in their owning sections).
 
-The shared camp-event authorization preflight propagates browser cancellation through its camp and current-user reads before authorizing submission or beginning an event write.
+The shared camp-management and camp-event authorization preflights propagate browser cancellation through camp and current-user reads before authorizing or beginning a write. Camp edit and members GETs also forward cancellation to their edit-data reads; subsequent members and roles reads retain the same token.
 
 The admin dashboard and CSV export propagate request cancellation through their settings, camp, role, and lead-user reads. A cancelled request is rethrown without an error toast or failure log.
 
