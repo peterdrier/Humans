@@ -21,6 +21,14 @@ public class HoldedClientTests
             new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
 
     [HumansTheory]
+    [Xunit.InlineData("expense-account", "{malformed")]
+    [Xunit.InlineData("expense-account", "{\"id\":42}")]
+    [Xunit.InlineData("expense-account", "null", false)]
+    [Xunit.InlineData("expense-account", "{}", false)]
+    [Xunit.InlineData("expense-account", "{\"id\":null}", false)]
+    [Xunit.InlineData("expense-account", "{\"id\":\"\"}", false)]
+    [Xunit.InlineData("expense-account", "{\"id\":\"  \"}", false)]
+    [Xunit.InlineData("expense-account", "{\"id\":\"account-1\"}", true, true)]
     [Xunit.InlineData("purchase", "{\"id\":\"doc-1\"}", true, true)]
     [Xunit.InlineData("contact", "{\"id\":\"contact-1\"}", true, true)]
     [Xunit.InlineData("invoice", "{\"id\":\"invoice-1\"}", true, true)]
@@ -66,6 +74,8 @@ public class HoldedClientTests
         var date = Instant.FromUtc(2026, 5, 10, 0, 0);
         Func<Task<string>> act = operation switch
         {
+            "expense-account" => () => client.CreateExpenseAccountAsync(62900000, "Otros servicios",
+                Xunit.TestContext.Current.CancellationToken),
             "purchase" => () => client.CreatePurchaseDocumentAsync(new()
             { ContactId = "contact-1", ContactName = "Alice", Date = date, Lines = [] },
                 Xunit.TestContext.Current.CancellationToken),

@@ -306,13 +306,15 @@ internal sealed class HoldedClient : IHoldedClient
         { Content = JsonContent.Create(payload, options: OmitNulls) };
         AttachAuth(req);
         using var resp = await SendAsync(req, ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
         try
         {
+            var body = await resp.Content.ReadAsStringAsync(ct);
             var node = JsonNode.Parse(body)
-                ?? throw new HoldedTransientException("Holded returned empty body");
-            return node["id"]?.GetValue<string>()
-                ?? throw new HoldedTransientException("Holded create-account response missing id");
+                ?? throw new HoldedPermanentException("Holded returned no expense-account identity after accepting creation.");
+            var id = node["id"]?.GetValue<string>();
+            if (string.IsNullOrWhiteSpace(id))
+                throw new HoldedPermanentException("Holded returned no expense-account identity after accepting creation.");
+            return id;
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
