@@ -654,19 +654,12 @@ internal sealed class CachingCampService(
         }
     }
 
-    private async Task MutateAsync(Func<Task> mutation)
-    {
-        try
+    private Task MutateAsync(Func<Task> mutation) =>
+        MutateAsync(async () =>
         {
             await mutation();
-        }
-        catch
-        {
-            RefreshAll();
-            await InvalidateSettingsAsync(CancellationToken.None);
-            throw;
-        }
-    }
+            return true;
+        });
 
     private async Task<T> WithInner<T>(Func<ICampService, Task<T>> work)
     {

@@ -306,17 +306,12 @@ internal sealed class CachingWorkgroupService(
     /// entry), and a cache left holding the pre-write register would serve that stale
     /// snapshot until the next successful write.
     /// </summary>
-    private async Task MutateAsync(Func<IWorkgroupService, Task> work)
-    {
-        try
+    private Task MutateAsync(Func<IWorkgroupService, Task> work) =>
+        MutateAsync(async inner =>
         {
-            await WithInner(work);
-        }
-        finally
-        {
-            ClearRegisterCache();
-        }
-    }
+            await work(inner);
+            return true;
+        });
 
     private async Task<T> MutateAsync<T>(Func<IWorkgroupService, Task<T>> work)
     {

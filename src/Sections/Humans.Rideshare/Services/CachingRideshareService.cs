@@ -132,17 +132,12 @@ internal sealed class CachingRideshareService(
 
     // A repository write can commit before audit/notification work fails. Always evict
     // the previous snapshot, and let the original failure reach the caller.
-    private async Task MutateAsync(Func<IRideshareService, Task> work)
-    {
-        try
+    private Task MutateAsync(Func<IRideshareService, Task> work) =>
+        MutateAsync(async inner =>
         {
-            await WithInner(work);
-        }
-        finally
-        {
-            ClearSnapshotCache();
-        }
-    }
+            await work(inner);
+            return true;
+        });
 
     private async Task<T> MutateAsync<T>(Func<IRideshareService, Task<T>> work)
     {
@@ -170,12 +165,5 @@ internal sealed class CachingRideshareService(
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IRideshareService>(InnerServiceKey);
         return await work(inner);
-    }
-
-    private async Task WithInner(Func<IRideshareService, Task> work)
-    {
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IRideshareService>(InnerServiceKey);
-        await work(inner);
     }
 }
