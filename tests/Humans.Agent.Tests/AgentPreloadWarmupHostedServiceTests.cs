@@ -15,6 +15,44 @@ namespace Humans.Agent.Tests;
 public class AgentPreloadWarmupHostedServiceTests
 {
     [HumansFact]
+    public async Task WarmAsync_stops_pending_reads_when_the_host_is_stopping()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var lifetime = Substitute.For<Microsoft.Extensions.Hosting.IHostApplicationLifetime>();
+        lifetime.ApplicationStopping.Returns(shutdown.Token);
+        var started = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var corpus = Substitute.For<IAgentPreloadCorpusBuilder>();
+        corpus.BuildAsync(Arg.Any<AgentPreloadConfig>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var token = call.Arg<CancellationToken>();
+                started.TrySetResult(token);
+                await resume.Task.WaitAsync(TestContext.Current.CancellationToken);
+                token.ThrowIfCancellationRequested();
+                return "corpus";
+            });
+        var source = new ListCountingSource();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var services = new ServiceCollection();
+        services.AddSingleton(corpus);
+        services.AddSingleton(new CommunityFaqReader(source, cache, NullLogger<CommunityFaqReader>.Instance));
+        await using var sp = services.BuildServiceProvider();
+        var svc = new AgentPreloadWarmupHostedService(
+            lifetime, sp.GetRequiredService<IServiceScopeFactory>(), NullLogger<AgentPreloadWarmupHostedService>.Instance);
+
+        var warming = svc.WarmAsync();
+        var readToken = await started.Task;
+        await shutdown.CancelAsync();
+        resume.SetResult();
+        await warming;
+
+        readToken.Should().Be(shutdown.Token);
+        await corpus.Received(1).BuildAsync(Arg.Any<AgentPreloadConfig>(), Arg.Any<CancellationToken>());
+        source.ListCalls.Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task WarmCachesAsync_builds_every_tier_and_lists_community_topics()
     {
         var corpus = Substitute.For<IAgentPreloadCorpusBuilder>();
