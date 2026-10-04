@@ -56,6 +56,30 @@ public class StorePricesViewTests
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("en", OrderState.Open, "Open")]
+    [Xunit.InlineData("es", OrderState.Open, "Abierto")]
+    [Xunit.InlineData("de", OrderState.Open, "Offen")]
+    [Xunit.InlineData("it", OrderState.Open, "Aperto")]
+    [Xunit.InlineData("fr", OrderState.Open, "Ouverte")]
+    [Xunit.InlineData("ca", OrderState.Open, "Oberta")]
+    [Xunit.InlineData("en", OrderState.InvoiceIssued, "Invoice issued")]
+    [Xunit.InlineData("es", OrderState.InvoiceIssued, "Factura emitida")]
+    public async Task MemberOrderList_UsesExistingStateLabels(string language, OrderState state, string label)
+    {
+        using var culture = new CultureScope(language);
+        var campId = Guid.NewGuid();
+        var order = new OrderDto(Guid.NewGuid(), campId, null, OrderCounterpartyType.Camp, "Camp", 2026,
+            state, null, null, null, null, null, null, [], [], 0, 0, 0, 0, 0, Instant.FromUtc(2026, 7, 1, 0, 0));
+        var html = await RenderAsync("Index", new IndexViewModel
+        {
+            Year = 2026, Counterparties = [new CounterpartyOrders(OrderCounterpartyType.Camp, campId, "Camp", 2026, [order])],
+            CanManageByCounterparty = new Dictionary<Guid, bool> { [campId] = false },
+        });
+
+        html.Should().Contain($"class=\"badge bg-secondary\">{HtmlEncoder.Default.Encode(label)}</span>");
+    }
+
     private static async Task<string> RenderAsync(string page, object model)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions

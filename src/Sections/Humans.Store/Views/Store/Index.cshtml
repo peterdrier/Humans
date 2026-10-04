@@ -74,7 +74,7 @@ else
                             @foreach (var order in cp.Orders)
                             {
                                 <tr>
-                                    <td><span class="badge bg-secondary">@order.State</span></td>
+                                    <td><span class="badge bg-secondary">@Localizer.EnumDisplay(order.State)</span></td>
                                     @if (cp.CounterpartyType == OrderCounterpartyType.Camp)
                                     {
                                         <td class="text-end">@((order.LinesSubtotalEur + order.VatTotalEur).ToEuro())</td>

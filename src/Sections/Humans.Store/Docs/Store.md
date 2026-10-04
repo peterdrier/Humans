@@ -204,6 +204,8 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 ## Invariants
 
+- Member order-list status badges reuse the same six-culture order-state labels as the detail page, keeping their badge colors and stored state values unchanged.
+
 - Member catalog and camp-order VAT percentage labels use the selected UI culture’s decimal separator. VAT calculation, rounding, price snapshots and invariant payment-input values are unchanged.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
