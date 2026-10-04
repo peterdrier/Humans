@@ -379,4 +379,7 @@
   <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>Asociado vote mode cannot change after the survey has opened.</value></data>
   <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Only the survey's author may submit it for approval.</value></data>
   <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Only a Draft survey can be submitted for approval.</value></data>
+  <data name="Surveys_PublicSlugReserved" xml:space="preserve"><value>Slug '{0}' is reserved.</value></data>
+  <data name="Surveys_AudienceTeamRequired" xml:space="preserve"><value>A team is required for the Team audience.</value></data>
+  <data name="Surveys_AudienceCutoffRequired" xml:space="preserve"><value>A cutoff date is required for the Logged in since audience.</value></data>
 </root>

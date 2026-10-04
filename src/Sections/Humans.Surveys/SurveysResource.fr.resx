@@ -384,4 +384,7 @@
   <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>Le mode de vote des Asociados ne peut plus changer après l’ouverture du questionnaire.</value></data>
   <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Seule la personne qui a créé le questionnaire peut le soumettre pour approbation.</value></data>
   <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Seul un questionnaire à l’état de brouillon peut être soumis pour approbation.</value></data>
+  <data name="Surveys_PublicSlugReserved" xml:space="preserve"><value>Le slug '{0}' est réservé.</value></data>
+  <data name="Surveys_AudienceTeamRequired" xml:space="preserve"><value>Une équipe doit être sélectionnée pour le public Équipe.</value></data>
+  <data name="Surveys_AudienceCutoffRequired" xml:space="preserve"><value>Une date de début est requise pour le public des personnes connectées depuis une date.</value></data>
 </root>

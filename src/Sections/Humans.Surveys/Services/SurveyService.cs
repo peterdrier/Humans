@@ -2432,9 +2432,9 @@ internal sealed class SurveyService(
         if (!Enum.IsDefined(type.Value))
             return "The selected survey audience is not supported.";
         if (type == SurveyAudienceType.Team && teamId is null)
-            return "A team is required for the Team audience.";
+            return ErrorMessage("Surveys_AudienceTeamRequired");
         if (type == SurveyAudienceType.LoggedInSince && loggedInSince is null)
-            return "A cutoff date is required for the Logged in since audience.";
+            return ErrorMessage("Surveys_AudienceCutoffRequired");
         return null;
     }
 
@@ -2970,7 +2970,7 @@ internal sealed class SurveyService(
         }
         if (ReservedSlugs.Contains(normalized))
         {
-            throw new InvalidOperationException($"Slug '{normalized}' is reserved.");
+            throw new InvalidOperationException(ErrorMessage("Surveys_PublicSlugReserved", normalized));
         }
 
         return normalized;

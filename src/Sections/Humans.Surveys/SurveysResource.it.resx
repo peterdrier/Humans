@@ -384,4 +384,7 @@
   <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>La modalità di voto degli Asociados non può cambiare dopo l’apertura del sondaggio.</value></data>
   <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Solo chi ha creato il sondaggio può inviarlo per l'approvazione.</value></data>
   <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Solo un sondaggio in bozza può essere inviato per l’approvazione.</value></data>
+  <data name="Surveys_PublicSlugReserved" xml:space="preserve"><value>Lo slug '{0}' è riservato.</value></data>
+  <data name="Surveys_AudienceTeamRequired" xml:space="preserve"><value>È necessario selezionare un team per il pubblico Team.</value></data>
+  <data name="Surveys_AudienceCutoffRequired" xml:space="preserve"><value>È necessaria una data iniziale per il pubblico di chi ha effettuato l’accesso a partire da una data.</value></data>
 </root>

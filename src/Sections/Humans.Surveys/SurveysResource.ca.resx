@@ -384,4 +384,7 @@
   <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>El mode de votació dels Asociados no es pot canviar un cop oberta l'enquesta.</value></data>
   <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Només qui ha creat l'enquesta pot enviar-la per a la seva aprovació.</value></data>
   <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Només una enquesta en esborrany pot enviar-se per a la seva aprovació.</value></data>
+  <data name="Surveys_PublicSlugReserved" xml:space="preserve"><value>El slug '{0}' està reservat.</value></data>
+  <data name="Surveys_AudienceTeamRequired" xml:space="preserve"><value>Cal seleccionar un equip per al públic Equip.</value></data>
+  <data name="Surveys_AudienceCutoffRequired" xml:space="preserve"><value>Cal una data d'inici per al públic de qui s'ha connectat des d'una data.</value></data>
 </root>

@@ -398,4 +398,7 @@
   <data name="Surveys_VoteModeLocked" xml:space="preserve"><value>El modo de votación de Asociados no puede cambiarse una vez abierta la encuesta.</value></data>
   <data name="Surveys_SubmitAuthorOnly" xml:space="preserve"><value>Solo quien creó la encuesta puede enviarla para su aprobación.</value></data>
   <data name="Surveys_SubmitDraftOnly" xml:space="preserve"><value>Solo una encuesta en borrador puede enviarse para su aprobación.</value></data>
+  <data name="Surveys_PublicSlugReserved" xml:space="preserve"><value>El slug '{0}' está reservado.</value></data>
+  <data name="Surveys_AudienceTeamRequired" xml:space="preserve"><value>Es necesario seleccionar un equipo para el público Equipo.</value></data>
+  <data name="Surveys_AudienceCutoffRequired" xml:space="preserve"><value>Es necesaria una fecha de inicio para el público de quienes se han conectado desde una fecha.</value></data>
 </root>

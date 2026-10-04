@@ -750,14 +750,22 @@ public class SurveyServiceTests
         captured!.PublicSlug.Should().Be(slug.ToLowerInvariant());
     }
 
-    [HumansFact]
-    public async Task CreateAsync_rejects_team_audience_without_team_and_does_not_persist()
+    [HumansTheory]
+    [InlineData("en", "A team is required for the Team audience.")]
+    [InlineData("es", "Es necesario seleccionar un equipo para el público Equipo.")]
+    [InlineData("de", "Für die Zielgruppe Team muss ein Team ausgewählt werden.")]
+    [InlineData("it", "È necessario selezionare un team per il pubblico Team.")]
+    [InlineData("fr", "Une équipe doit être sélectionnée pour le public Équipe.")]
+    [InlineData("ca", "Cal seleccionar un equip per al públic Equip.")]
+    public async Task CreateAsync_rejects_team_audience_without_team_and_does_not_persist(
+        string culture, string expectedMessage)
     {
+        using var cultureScope = new Humans.Base.Extensions.CultureScope(culture);
         var act = async () => await CreateService().CreateAsync(
             InputWithAudience(SurveyAudienceType.Team), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*team is required*");
+            .WithMessage(expectedMessage);
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
