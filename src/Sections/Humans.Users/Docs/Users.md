@@ -195,6 +195,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- Self-service email visibility accepts only defined visibility values. Unsupported text and out-of-range numeric input use the existing hidden fallback rather than persisting an undefined audience; valid names, case-insensitive names and defined numeric values retain their meaning.
+
 - Member email-add refusals (invalid address, already added or merge pending) and verification refusals (no pending email or expired/invalid token) render localized Users messages in all six cultures; service guards and logged reasons are unchanged.
 
 - Own and visible member profile onsite chips retain GET request cancellation when reading the active event year; onsite visibility and cached participation selection remain unchanged.

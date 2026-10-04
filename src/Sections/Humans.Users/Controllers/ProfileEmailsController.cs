@@ -276,6 +276,7 @@ internal sealed class ProfileEmailsController(
 
     private static ContactFieldVisibility? ParseEmailVisibility(string? visibility) =>
         !string.IsNullOrEmpty(visibility) && Enum.TryParse<ContactFieldVisibility>(visibility, ignoreCase: true, out var parsed)
+            && Enum.IsDefined(parsed)
             ? parsed
             : null;
 

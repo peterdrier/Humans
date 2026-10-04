@@ -686,6 +686,26 @@ public class ProfileEmailsControllerGridTests
             .Which.ActionName.Should().Be("Emails");
     }
 
+    [HumansTheory]
+    [InlineData("99", null)]
+    [InlineData("-1", null)]
+    [InlineData("BoardOnly", ContactFieldVisibility.BoardOnly)]
+    [InlineData("allactiveprofiles", ContactFieldVisibility.AllActiveProfiles)]
+    [InlineData("0", ContactFieldVisibility.BoardOnly)]
+    [InlineData("3", ContactFieldVisibility.AllActiveProfiles)]
+    [InlineData("", null)]
+    [InlineData("unsupported", null)]
+    public async Task SetEmailVisibility_UsesDefinedVisibilityOrHidden(string input, ContactFieldVisibility? expected)
+    {
+        var emailId = Guid.NewGuid();
+
+        var result = await _controller.SetEmailVisibility(emailId, input);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        await _userEmailService.Received(1).SetVisibilityAsync(
+            _userId, emailId, expected, Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task SetEmailVisibility_AsSelf_AuditsWithUserAsActor()
     {
