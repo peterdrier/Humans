@@ -1574,8 +1574,15 @@ internal sealed class Service(
         }
     }
 
-    public async Task<SepaBookingResult> BookSepaTransferAsync(
-        Guid transferId, string bankMovementId, Guid? actorUserId)
+    public Task<SepaBookingResult> BookSepaTransferAsync(
+        Guid transferId, string bankMovementId, Guid? actorUserId) =>
+        RunBookingAsync(() => BookOneTransferAsync(transferId, bankMovementId, actorUserId));
+
+    public Task<SepaBookingResult> BookSepaFileAsync(
+        Guid fileId, string bankMovementId, Guid actorUserId) =>
+        RunBookingAsync(() => BookOneFileAsync(fileId, bankMovementId, actorUserId));
+
+    private async Task<SepaBookingResult> RunBookingAsync(Func<Task<SepaBookingResult>> booking)
     {
         if (BookingUnavailableReason() is { } unavailable)
             return new SepaBookingResult(false, unavailable);
@@ -1583,28 +1590,11 @@ internal sealed class Service(
         // The "is it already booked?" read and the stamp that answers it sit either side of several
         // Holded round-trips, so two callers inside that window — a Book click while the sweep runs,
         // or a double-submitted form — would both read "not booked" and both post the whole amount.
-        // One server, and a booking takes seconds: serialise them outright.
+        // One server, and a booking takes seconds: serialise both entry points outright.
         await BookingGate.WaitAsync(CancellationToken.None);
         try
         {
-            return await BookOneTransferAsync(transferId, bankMovementId, actorUserId);
-        }
-        finally
-        {
-            BookingGate.Release();
-        }
-    }
-
-    public async Task<SepaBookingResult> BookSepaFileAsync(
-        Guid fileId, string bankMovementId, Guid actorUserId)
-    {
-        if (BookingUnavailableReason() is { } unavailable)
-            return new SepaBookingResult(false, unavailable);
-
-        await BookingGate.WaitAsync(CancellationToken.None);
-        try
-        {
-            return await BookOneFileAsync(fileId, bankMovementId, actorUserId);
+            return await booking();
         }
         finally
         {
