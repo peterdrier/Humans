@@ -476,10 +476,11 @@ internal sealed class TeamService(
         }
         if (isPromotedToDirectory.HasValue)
             team.IsPromotedToDirectory = isPromotedToDirectory.Value;
+        var earlyEntryChanged = false;
         if (earlyEntryEnabled is { } eeFlag && eeFlag != team.EarlyEntryEnabled)
         {
             team.EarlyEntryEnabled = eeFlag;
-            earlyEntryInvalidator.InvalidateAll(); // flag flip changes who contributes; cheap at our small scale
+            earlyEntryChanged = true;
         }
         if (team.IsSystemTeam || parentTeamId.HasValue)
         {
@@ -488,7 +489,16 @@ internal sealed class TeamService(
         }
         team.UpdatedAt = clock.GetCurrentInstant();
 
-        await repo.UpdateTeamAsync(team, cancellationToken);
+        try
+        {
+            await repo.UpdateTeamAsync(team, cancellationToken);
+        }
+        finally
+        {
+            // Evict after the save attempt: a read during it still sees the old flag.
+            // A failed completion can also follow a committed write.
+            if (earlyEntryChanged) earlyEntryInvalidator.InvalidateAll();
+        }
 
         InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
 

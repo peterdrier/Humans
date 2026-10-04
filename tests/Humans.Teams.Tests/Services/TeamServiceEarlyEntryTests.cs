@@ -366,6 +366,38 @@ public sealed class TeamServiceEarlyEntryTests
         _eeInvalidator.Received(1).InvalidateAll();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task UpdateTeamAsync_EarlyEntryFlag_EvictsAfterSaveAttempt(bool saveFails)
+    {
+        var team = new Team { Id = Guid.NewGuid(), Name = "Toggle", Slug = "toggle" };
+        _repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
+        _repo.SlugExistsAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(false);
+        var pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _repo.UpdateTeamAsync(team, Arg.Any<CancellationToken>()).Returns(pending.Task);
+
+        var write = _service.UpdateTeamAsync(
+            team.Id, team.Name, team.Description, team.RequiresApproval, isActive: true,
+            earlyEntryEnabled: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        _eeInvalidator.DidNotReceive().InvalidateAll();
+        if (saveFails)
+        {
+            pending.SetException(new InvalidOperationException("Save completion is uncertain."));
+        }
+        else
+        {
+            pending.SetResult();
+        }
+        InvalidOperationException? failure = null;
+        try { await write; }
+        catch (InvalidOperationException ex) { failure = ex; }
+        if (saveFails) failure.Should().BeOfType<InvalidOperationException>().Which.Message.Should().Be("Save completion is uncertain.");
+        else failure.Should().BeNull();
+        _eeInvalidator.Received(1).InvalidateAll();
+    }
+
     [HumansFact]
     public async Task UpdateTeamAsync_FlagUnchanged_DoesNotInvalidate()
     {
