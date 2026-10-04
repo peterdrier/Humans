@@ -272,7 +272,7 @@ internal sealed class CalendarService(
         return last is null ? null : LocalDate.FromDateTime(last.Period.StartTime.Value).PlusDays(days);
     }
 
-    private async Task<CalendarEvent> UpdateEventAsync(Guid id, CreateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
+    private async Task<CalendarEvent?> UpdateEventAsync(Guid id, CreateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
     {
         ValidateRecurrenceRule(dto.RecurrenceRule);
         ValidateTimezone(dto.RecurrenceTimezone);
@@ -323,7 +323,7 @@ internal sealed class CalendarService(
         }, ct);
 
         if (!found || mutated is null)
-            throw new InvalidOperationException($"CalendarEvent {id} not found.");
+            return null;
 
         // Audit best-effort: DB write already committed. See CreateEventAsync.
         try
@@ -353,6 +353,11 @@ internal sealed class CalendarService(
         try
         {
             var ev = await UpdateEventAsync(id, dto, updatedByUserId, ct);
+            if (ev is null)
+            {
+                logger.LogWarning("Calendar event {EventId} not found during update", id);
+                return CalendarEventMutationResult.Missing("Calendar event not found.");
+            }
             return CalendarEventMutationResult.Success(ev);
         }
         catch (ValidationException ex)
@@ -360,11 +365,6 @@ internal sealed class CalendarService(
             logger.LogWarning("Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
             return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex),
                 CalendarValidationErrorKey(ex, dto.IsAllDay));
-        }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-        {
-            logger.LogWarning(ex, "Calendar event {EventId} not found during update", id);
-            return CalendarEventMutationResult.Missing("Calendar event not found.");
         }
         catch (InvalidOperationException ex)
         {

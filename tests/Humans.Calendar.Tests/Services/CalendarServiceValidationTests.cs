@@ -64,6 +64,31 @@ public class CalendarServiceValidationTests
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UpdateEventWithResultAsync_UsesTheRepositoryMissingOutcome(bool dependencyFailure)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var audit = Substitute.For<IAuditLogService>();
+        var service = BuildService(repo, audit);
+        var id = Guid.NewGuid();
+        repo.UpdateAsync(id, Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
+            .Returns(_ => dependencyFailure
+                ? Task.FromException<bool>(new InvalidOperationException("Required property not found in persistence metadata."))
+                : Task.FromResult(false));
+        var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+        var dto = new CreateCalendarEventDto("Event", null, null, null, Guid.NewGuid(),
+            start, start + Duration.FromHours(1), false, null, "UTC");
+
+        var result = await service.UpdateEventWithResultAsync(id, dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.NotFound.Should().Be(!dependencyFailure, "only a missing event row warrants the missing result");
+        result.ErrorMessage.Should().Be(dependencyFailure ? "Calendar_InvalidTimedEvent" : "Calendar event not found.");
+        audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("  ")]

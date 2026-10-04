@@ -17,5 +17,5 @@ inbox:
     review: panel
   - added: 2026-10-04
     id: CAL-7
-    what: "CalendarService.CreateEventWithResultAsync/UpdateEventWithResultAsync still select failure outcomes from InvalidOperationException.Message (Calendar_ prefix and not-found text). The recurrence validation field classifier was corrected to structured metadata in this run; remaining event-rule/missing-row cases need an owner result or structured error design rather than localized exception text. Found during the daily sweep; preserve missing-row and event-type-change feedback."
+    what: "CalendarService.CreateEventWithResultAsync/UpdateEventWithResultAsync still select failure outcomes from InvalidOperationException.Message (Calendar_ prefix). The recurrence validation field classifier uses structured metadata and update missing-row results now use the repository outcome; remaining event-rule cases need an owner result or structured error design rather than localized exception text. Found during the daily sweep; preserve missing-row and event-type-change feedback."
     review: panel
