@@ -258,6 +258,26 @@ public class AgentServiceTests
     }
 
     [HumansFact]
+    public async Task PromptPreview_propagates_cancellation_during_token_counting()
+    {
+        var logger = Substitute.For<ILogger<AgentService>>();
+        var (service, client) = await BuildService(settings => settings.Enabled = true, logger: logger);
+        var conversationId = await StartConversation(service, client, Guid.NewGuid());
+        using var cancellation = new CancellationTokenSource();
+        client.CountTokensStarted = token =>
+        {
+            token.Should().Be(cancellation.Token);
+            cancellation.Cancel();
+        };
+
+        var preview = () => service.GetPromptPreviewForAdminAsync(conversationId, cancellation.Token);
+        var failure = await preview.Should().ThrowAsync<OperationCanceledException>();
+        failure.Which.CancellationToken.Should().Be(cancellation.Token);
+        logger.DidNotReceive().Log(LogLevel.Warning, Arg.Any<EventId>(), Arg.Any<object>(),
+            Arg.Any<Exception?>(), Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [HumansFact]
     public async Task Ask_synthesizes_a_final_answer_when_the_tool_call_cap_is_reached()
     {
         var userId = Guid.NewGuid();

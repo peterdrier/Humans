@@ -626,13 +626,13 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             .ToList();
 
         // Measure the system prompt with the real tokenizer (count_tokens). This is a diagnostic
-        // nicety — a failed/rate-limited count must never break the admin page, so null on error.
+        // nicety — a failed/rate-limited count renders as null; request cancellation propagates.
         int? systemPromptTokens = null;
         try
         {
             systemPromptTokens = await _client.CountTokensAsync(settings.Model, systemPrompt, ct);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             // Expected/transient (rate limit, network) — log the reason at Warning, drop the
             // stack trace per memory/code/always-log-problems.md.
