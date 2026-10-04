@@ -204,6 +204,8 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 ## Invariants
 
+- Admin summary camp totals use the selected UI culture, matching the table’s row amounts. Camp-only totals, payment calculations and invariant sort keys remain unchanged.
+
 - Member order price-history tables supply localized date/action/description headers through the shared audit component’s keyed labels, preserving product predicates, column order and audit entries.
 
 - Member order-list status badges reuse the same six-culture order-state labels as the detail page, keeping their badge colors and stored state values unchanged.

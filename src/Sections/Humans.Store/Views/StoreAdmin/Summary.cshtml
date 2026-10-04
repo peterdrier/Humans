@@ -62,9 +62,9 @@
                         new TableFooterCell($"{camps.Count} camps"),
                         new TableFooterCell(""),
                         new TableFooterCell(""),
-                        new TableFooterCell(camps.Sum(r => r.TotalDueEur).ToString("N2", System.Globalization.CultureInfo.CurrentCulture), "text-end"),
-                        new TableFooterCell(camps.Sum(r => r.PaymentsTotalEur).ToString("N2", System.Globalization.CultureInfo.CurrentCulture), "text-end"),
-                        new TableFooterCell(camps.Sum(r => r.BalanceEur).ToString("N2", System.Globalization.CultureInfo.CurrentCulture), "text-end"))
+                        new TableFooterCell(camps.Sum(r => r.TotalDueEur).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture), "text-end"),
+                        new TableFooterCell(camps.Sum(r => r.PaymentsTotalEur).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture), "text-end"),
+                        new TableFooterCell(camps.Sum(r => r.BalanceEur).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture), "text-end"))
                 .Build();
             <partial name="_Table" model="counterpartyTable" />
         }

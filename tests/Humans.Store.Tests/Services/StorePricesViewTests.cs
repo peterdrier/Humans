@@ -108,7 +108,34 @@ public class StorePricesViewTests
             headers.Should().Contain(HtmlEncoder.Default.Encode(label));
     }
 
-    private static async Task<string> RenderAsync(string page, object model, IReadOnlyList<AuditEvent>? history = null)
+    [HumansTheory]
+    [Xunit.InlineData("en", "2,469.00", "1,234.50")]
+    [Xunit.InlineData("es", "2.469,00", "1.234,50")]
+    [Xunit.InlineData("de", "2.469,00", "1.234,50")]
+    [Xunit.InlineData("it", "2.469,00", "1.234,50")]
+    [Xunit.InlineData("fr", "2\u202f469,00", "1\u202f234,50")]
+    [Xunit.InlineData("ca", "2.469,00", "1.234,50")]
+    public async Task AdminSummary_CampTotalsUseUiCultureLikeRows(string language, string due, string paidAndBalance)
+    {
+        using var inputCulture = new CultureScope("en");
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+        var model = new SummaryViewModel
+        {
+            Summary = new SummaryDto(2026,
+                [new OrderSummaryDto(Guid.NewGuid(), OrderCounterpartyType.Camp, Guid.NewGuid(), "Camp",
+                    OrderState.Open, 2469m, 1234.5m, 1234.5m)], [], new CrossTabDto([], [])),
+        };
+
+        var html = await RenderAsync("Summary", model, viewPath: "/Views/StoreAdmin/Summary.cshtml");
+
+        var footer = html[html.IndexOf("<tfoot", StringComparison.Ordinal)..];
+        footer = footer[..footer.IndexOf("</tfoot>", StringComparison.Ordinal)];
+        footer.Should().Contain(HtmlEncoder.Default.Encode(due));
+        footer.Split(HtmlEncoder.Default.Encode(paidAndBalance), StringSplitOptions.None).Should().HaveCount(3);
+        CultureInfo.CurrentCulture.Name.Should().Be("en");
+    }
+
+    private static async Task<string> RenderAsync(string page, object model, IReadOnlyList<AuditEvent>? history = null, string? viewPath = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -141,7 +168,7 @@ public class StorePricesViewTests
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
         var result = services.GetRequiredService<IRazorViewEngine>()
-            .GetView(null, $"/Views/Store/{page}.cshtml", isMainPage: false);
+            .GetView(null, viewPath ?? $"/Views/Store/{page}.cshtml", isMainPage: false);
         result.Success.Should().BeTrue();
         var http = new DefaultHttpContext { RequestServices = services };
         var route = new RouteData();

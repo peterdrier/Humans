@@ -48,6 +48,34 @@ public class BudgetSummaryViewTests
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("en", "1,234%")]
+    [Xunit.InlineData("es", "1.234%")]
+    [Xunit.InlineData("de", "1.234%")]
+    [Xunit.InlineData("it", "1.234%")]
+    [Xunit.InlineData("fr", "1\u202f234%")]
+    [Xunit.InlineData("ca", "1.234%")]
+    public async Task CategoryUtilization_UsesUiCultureAndKeepsProgressWidthNumeric(string language, string percentage)
+    {
+        using var inputCulture = new CultureScope("en");
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+        var id = Guid.NewGuid();
+        var model = new CoordinatorCategoryDetailViewModel
+        {
+            Category = new BudgetCategorySnapshot(id, Guid.NewGuid(), "Category", 100m,
+                ExpenditureType.OpEx, null, 0, null,
+                [new BudgetCategoryLineItemSnapshot(Guid.NewGuid(), id, "Line", 1234m,
+                    null, null, null, null, 0, false, false, 0)]),
+            Teams = [],
+        };
+
+        var html = await RenderAsync("CategoryDetail", model);
+
+        html.Should().Contain($">{HtmlEncoder.Default.Encode(percentage)}</small>");
+        html.Should().Contain("width: 100%");
+        CultureInfo.CurrentCulture.Name.Should().Be("en");
+    }
+
     private static async Task<string> RenderAsync(string page, object model)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
