@@ -75,7 +75,7 @@
 <hr />
 
 @{
-    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    var culture = System.Globalization.CultureInfo.CurrentUICulture;
     // Monday-first; weekday names come from culture data, not resources.
     var weekdays = new[] { ("MO", DayOfWeek.Monday), ("TU", DayOfWeek.Tuesday), ("WE", DayOfWeek.Wednesday),
         ("TH", DayOfWeek.Thursday), ("FR", DayOfWeek.Friday), ("SA", DayOfWeek.Saturday), ("SU", DayOfWeek.Sunday) };

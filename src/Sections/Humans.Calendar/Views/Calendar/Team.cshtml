@@ -8,7 +8,7 @@
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 mb-0">@teamName — @Model.Month.Year @System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(Model.Month.Month)</h1>
+        <h1 class="h3 mb-0">@teamName — @Model.Month.Year @System.Globalization.CultureInfo.CurrentUICulture.DateTimeFormat.GetMonthName(Model.Month.Month)</h1>
         <div>
             <a class="btn btn-sm btn-primary" asp-action="Create" asp-route-teamId="@Model.FilterTeamId">@Localizer["Calendar_NewEvent"]</a>
             <a class="btn btn-sm btn-outline-secondary" asp-action="Team" asp-route-teamId="@Model.FilterTeamId" asp-route-year="@prev.Year" asp-route-month="@prev.Month">&larr; @Localizer["Calendar_Prev"]</a>

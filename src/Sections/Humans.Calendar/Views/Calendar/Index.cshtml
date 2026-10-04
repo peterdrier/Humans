@@ -29,7 +29,7 @@
         weekLayouts[w] = CalendarGridLayout.BuildWeekLayout(weekStart, weekOccs, zone);
     }
 
-    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    var culture = System.Globalization.CultureInfo.CurrentUICulture;
     // Monday-first week; abbreviated day names come from culture data, not resources.
     var dayHeaders = Enumerable.Range(0, 7)
         .Select(i => culture.DateTimeFormat.GetAbbreviatedDayName((DayOfWeek)((i + 1) % 7)))
