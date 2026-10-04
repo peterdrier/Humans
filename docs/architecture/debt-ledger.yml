@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 73
+next_id: 74
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -318,6 +318,10 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
+  - added: 2026-10-04
+    id: CENTRAL-73
+    what: "Backdoor IssuesController classifies every InvalidOperationException from PostComment as missing, and PatchField selects 404 versus 422 from Message containing 'not found'. Persistence faults can masquerade as missing/rule refusals and expose diagnostics. Browser Issues mutation wrappers now distinguish private known exceptions, but IIssueTriage exposes only throwing methods; agree a public error/result contract before repairing the machine path. Found during the daily debt sweep."
+    review: panel
   - added: 2026-10-04
     id: CENTRAL-72
     what: "MailerLiteImportService.ApplyAsync (ReplaceUnverifiedEmail) and AttendeeContactImportService.ApplyDecisionAsync (DeleteUnverifiedThenCreate) delete the sole unverified UserEmail before account provisioning. If provisioning fails, the address stays removed while the batch reports an error. Reordering alone reuses the unverified owner; compensation can overwrite concurrent user changes. Needs a Users-owned coordinated replacement operation and agreed failure semantics through public contracts; deferred in the daily sweep."

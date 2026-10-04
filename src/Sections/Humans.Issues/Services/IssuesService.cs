@@ -94,7 +94,7 @@ internal sealed class IssuesService(
 
         if (trimmed.Length > MaxSectionLength)
         {
-            throw new InvalidOperationException(
+            throw new IssueRuleException(
                 $"Section must be {MaxSectionLength} characters or fewer.");
         }
 
@@ -242,7 +242,7 @@ internal sealed class IssuesService(
         var issue = await repo.FindForMutationAsync(issueId, ct);
         return issue is not null && CanHandle(issue, viewer)
             ? issue
-            : throw new InvalidOperationException($"Issue {issueId} not found");
+            : throw new IssueNotFoundException($"Issue {issueId} not found");
     }
 
     private static IssueDetail MapDetail(Issue issue) => new(
@@ -534,7 +534,7 @@ internal sealed class IssuesService(
             await UpdateStatusAsync(issueId, viewer, newStatus, actorUserId, ct);
             return IssueMutationResult.Success();
         }
-        catch (InvalidOperationException)
+        catch (IssueNotFoundException)
         {
             logger.LogWarning("Issue {IssueId} not found during UpdateStatus", issueId);
             return IssueMutationResult.Missing("Issue not found.");
@@ -601,7 +601,7 @@ internal sealed class IssuesService(
             await UpdateAssigneeAsync(issueId, viewer, newAssigneeUserId, actorUserId, ct);
             return IssueMutationResult.Success();
         }
-        catch (InvalidOperationException)
+        catch (IssueNotFoundException)
         {
             logger.LogWarning("Issue {IssueId} not found during UpdateAssignee", issueId);
             return IssueMutationResult.Missing("Issue not found.");
@@ -627,7 +627,7 @@ internal sealed class IssuesService(
 
         if (issue.Status.IsTerminal())
         {
-            throw new InvalidOperationException(
+            throw new IssueRuleException(
                 $"Cannot change section on a terminal issue (status: {issue.Status}).");
         }
 
@@ -659,7 +659,12 @@ internal sealed class IssuesService(
             await UpdateSectionAsync(issueId, viewer, newSection, actorUserId, ct);
             return IssueMutationResult.Success();
         }
-        catch (InvalidOperationException ex)
+        catch (IssueNotFoundException)
+        {
+            logger.LogWarning("Issue {IssueId} not found during UpdateSection", issueId);
+            return IssueMutationResult.Missing("Issue not found.");
+        }
+        catch (IssueRuleException ex)
         {
             logger.LogWarning("Issue {IssueId} UpdateSection rejected: {Reason}", issueId, ex.Message);
             return IssueMutationResult.Failed(ex.Message);
@@ -700,7 +705,7 @@ internal sealed class IssuesService(
             await SetGitHubIssueNumberAsync(issueId, viewer, githubIssueNumber, actorUserId, ct);
             return IssueMutationResult.Success();
         }
-        catch (InvalidOperationException)
+        catch (IssueNotFoundException)
         {
             logger.LogWarning("Issue {IssueId} not found during SetGitHubIssue", issueId);
             return IssueMutationResult.Missing("Issue not found.");
@@ -1133,5 +1138,19 @@ internal sealed class IssuesService(
                 logger.LogError(ex, "Failed to dispatch {Source} issue notices for language {Language}", source, group.Key);
             }
         }
+    }
+
+    private sealed class IssueNotFoundException : InvalidOperationException
+    {
+        public IssueNotFoundException() { }
+        public IssueNotFoundException(string message) : base(message) { }
+        public IssueNotFoundException(string message, Exception innerException) : base(message, innerException) { }
+    }
+
+    private sealed class IssueRuleException : InvalidOperationException
+    {
+        public IssueRuleException() { }
+        public IssueRuleException(string message) : base(message) { }
+        public IssueRuleException(string message, Exception innerException) : base(message, innerException) { }
     }
 }

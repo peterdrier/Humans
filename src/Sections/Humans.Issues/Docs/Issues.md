@@ -121,7 +121,7 @@ Known area labels in the member submission form, issue list and detail view use 
 
 - The queue detail panel accepts only the latest selection request’s response; earlier successes and unavailable responses cannot replace the selected item’s content or wire stale forms.
 
-- Mutation result wrappers log missing/inaccessible issues and terminal-section rejections at Warning without exception stacks; unexpected failures retain Error logs and their exceptions.
+- Browser mutation result wrappers distinguish known missing/inaccessible issues and section-rule rejections from unexpected failures. Known rejections log Warning without exception stacks; unexpected failures retain Error logs and their exceptions and return generic failure text, never persistence diagnostics or false missing results. Every browser triage action returns 404 if the issue disappears after preflight.
 
 - Every issue is linked to the human who submitted it (`ReporterUserId` is required).
 - The GDPR export includes stored browser user agent and submission context alongside the reporter’s issues and comments; it excludes issues reported by other people.

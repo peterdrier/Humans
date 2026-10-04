@@ -5,6 +5,7 @@ using Humans.Issues.Controllers;
 using Humans.Issues.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
@@ -202,6 +203,39 @@ public sealed class IssuesServiceTests
             ct.ThrowIfCancellationRequested();
             return Task.CompletedTask;
         }
+    }
+
+    [HumansFact]
+    public async Task UpdateSection_ReturnsNotFoundWhenTheIssueDisappearsAfterPreflight()
+    {
+        var user = SeedUser();
+        var issue = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
+        var detail = await _service.GetIssueByIdAsync(issue.issueId, Admin, Xunit.TestContext.Current.CancellationToken);
+        var mutations = Substitute.For<IIssuesService>();
+        mutations.GetIssueByIdAsync(issue.issueId, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(detail);
+        mutations.UpdateSectionWithResultAsync(issue.issueId, Arg.Any<IssueViewer>(), "Teams", user.Id,
+            Arg.Any<CancellationToken>()).Returns(IssueMutationResult.Missing("Issue not found."));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var context = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Role, RoleNames.Admin)], "test"))
+        };
+        var controller = new IssuesController(mutations, authorization, _userService,
+            Domain.TestIssueQueues.Shipped(), services.GetRequiredService<IStringLocalizer<IssuesResource>>(),
+            NullLogger<IssuesController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = context },
+            TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())
+        };
+
+        var result = await controller.UpdateSection(issue.issueId, new UpdateIssueSectionModel { Section = "Teams" });
+
+        result.Should().BeOfType<NotFoundResult>();
     }
 
     [HumansTheory]
@@ -847,6 +881,63 @@ public sealed class IssuesServiceTests
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("Status", false)]
+    [InlineData("Status", true)]
+    [InlineData("Assignee", false)]
+    [InlineData("Assignee", true)]
+    [InlineData("Section", false)]
+    [InlineData("Section", true)]
+    [InlineData("GitHub", false)]
+    [InlineData("GitHub", true)]
+    public async Task MutationResults_DoNotMisclassifyPersistenceDiagnostics(string field, bool failDuringLookup)
+    {
+        var repo = Substitute.For<IIssuesRepository>();
+        var issue = new Issue { Id = Guid.NewGuid(), Status = IssueStatus.Open, Section = "Tickets" };
+        var failure = new InvalidOperationException("Required persistence property not found.");
+        repo.FindForMutationAsync(issue.Id, Arg.Any<CancellationToken>()).Returns(_ => failDuringLookup
+            ? Task.FromException<Issue?>(failure) : Task.FromResult<Issue?>(issue));
+        repo.SaveTrackedIssueAsync(issue, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        var env = Substitute.For<IHostEnvironment>();
+        env.ContentRootPath.Returns(Path.GetTempPath());
+        var service = new IssuesApplicationService(
+            repo, _userService, _userEmailService, _roleService,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
+            _issuesBadge, Cache, Clock, env, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var result = field switch
+        {
+            "Status" => await service.UpdateStatusWithResultAsync(issue.Id, Admin, IssueStatus.Resolved, Admin.UserId, ct),
+            "Assignee" => await service.UpdateAssigneeWithResultAsync(issue.Id, Admin, Guid.NewGuid(), Admin.UserId, ct),
+            "Section" => await service.UpdateSectionWithResultAsync(issue.Id, Admin, "Teams", Admin.UserId, ct),
+            _ => await service.SetGitHubIssueNumberWithResultAsync(issue.Id, Admin, 1234, Admin.UserId, ct),
+        };
+
+        result.Succeeded.Should().BeFalse();
+        result.NotFound.Should().BeFalse();
+        result.ErrorMessage.Should().NotContain(failure.Message);
+        _logger.ReceivedCalls().Should().ContainSingle(call =>
+            call.GetMethodInfo().Name == "Log" &&
+            (LogLevel)call.GetArguments()[0]! == LogLevel.Error &&
+            ReferenceEquals(call.GetArguments()[3], failure));
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UpdateSectionWithResultAsync_MasksMissingAndInaccessibleIssues(bool inaccessible)
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
+        var result = await _service.UpdateSectionWithResultAsync(
+            inaccessible ? issueId : Guid.NewGuid(), new IssueViewer(Guid.NewGuid(), []), "Teams", Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.NotFound.Should().BeTrue();
+        result.ErrorMessage.Should().Be("Issue not found.");
     }
 
     [HumansFact]

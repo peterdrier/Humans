@@ -381,6 +381,7 @@ internal sealed class IssuesController(
         if (!auth.Succeeded) return Forbid();
 
         var result = await issues.UpdateSectionWithResultAsync(id, viewer, model.Section, user.Id);
+        if (result.NotFound) return NotFound();
         if (result.Succeeded)
         {
             SetSuccess(localizer["Issue_Section_Updated"].Value);
