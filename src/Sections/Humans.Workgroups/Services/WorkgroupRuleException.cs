@@ -9,23 +9,17 @@ namespace Humans.Workgroups.Services;
 /// </summary>
 internal sealed class WorkgroupRuleException : InvalidOperationException
 {
-    public WorkgroupRuleException() : base("A workgroup rule rejected the operation.") { }
-    public WorkgroupRuleException(string key) : this(key, args: []) { }
-    public WorkgroupRuleException(string key, Exception inner)
-        : base($"Workgroup rule '{key}' rejected the operation.", inner)
-    {
-        Key = key;
-    }
+    public WorkgroupRuleException() { }
+    public WorkgroupRuleException(string message) : base(message) { }
+    public WorkgroupRuleException(string message, Exception inner) : base(message, inner) { }
 
-    public WorkgroupRuleException(string key, params object[] args)
-        : base($"Workgroup rule '{key}' rejected the operation.")
+    public WorkgroupRuleException(string key, params object[] args) : base(key)
     {
-        Key = key;
         Args = args;
     }
 
-    /// <summary>The stable localization key, independent of the diagnostic message.</summary>
-    public string Key { get; } = string.Empty;
+    /// <summary>The <see cref="WorkgroupsResource"/> key (the message as thrown).</summary>
+    public string Key => Message;
 
     public object[] Args { get; } = [];
 }

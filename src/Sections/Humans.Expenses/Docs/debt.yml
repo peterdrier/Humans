@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Expenses. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 10
+next_id: 11
 inbox:
   - added: 2026-08-26
     id: EXP-1
@@ -26,4 +26,8 @@ inbox:
   - added: 2026-10-04
     id: EXP-8
     what: "ExpenseReportService.AttachFileToLineAsync supports replacing an existing attachment but leaves the old metadata row and stored file orphaned after success. Failure rollback intentionally restores the old linkage. Replacing linkage and deleting superseded metadata must commit together before post-audit file cleanup; current AddAttachmentAsync/SetLineAttachmentAsync/RemoveAttachmentAsync methods use separate saves, so a proper replacement operation needs approved repository surface. Coordinate with EXP-6/7. Found during the nightly production scan."
+    review: panel
+  - added: 2026-10-04
+    id: EXP-10
+    what: "ExpenseValidationException carries localized text: ExpenseReportService throws it with localizer[\"Expenses_Validation_...\"] messages and the WithResult wrappers surface ex.Message to members. Exceptions are never localized (no-localized-exception-messages); refusals need a result shape the controller localizes, which is new surface needing Peter's approval. Coordinate with EXP-1. Peter, debt review of peterdrier/Humans#1903."
     review: panel

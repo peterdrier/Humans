@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Calendar. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 8
+next_id: 9
 inbox:
   - added: 2026-09-19
     id: CAL-4
@@ -21,4 +21,8 @@ inbox:
   - added: 2026-10-04
     id: CAL-7
     what: "CalendarService.UpdateEventWithResultAsync tells not-found apart from every other rejection by matching \"not found\" in the message of an exception its own private UpdateEventAsync throws; the private method could report the missing row directly, as DeleteEventAsync's repository call already does (finding 11, /section-doctor on Calendar 2026-10-04)."
+    review: panel
+  - added: 2026-10-04
+    id: CAL-8
+    what: "CalendarService maps caught exceptions to resx keys: UpdateEventWithResultAsync/CreateEventWithResultAsync pass ex.Message through when it starts with \"Calendar_\", and CalendarValidationMemberName switches on it. Exceptions are never localized (no-localized-exception-messages); validation refusals belong in the mutation result, not the exception message. Coordinate with CAL-7. Peter, debt review of peterdrier/Humans#1903."
     review: panel

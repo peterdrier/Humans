@@ -128,14 +128,14 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 - Every `CalendarEvent` has a non-null `OwningTeamId` — a bare Guid naming a team, with no database FK constraint and no navigation property.
 - Only authenticated humans may create, edit, or delete events, or manage exceptions (enforced by `[Authorize]` on `CalendarController`).
-- Unexpected create/edit failures return `Calendar_SaveFailed` for the controller to localize in all six cultures; detailed exceptions remain in server logs. Event-rule refusals carry private structured error keys separate from English diagnostics; a dependency exception's wording never selects a form error.
+- Unexpected create/edit failures return `Calendar_SaveFailed` for the controller to localize in all six cultures; detailed exceptions remain in server logs.
 - Every mutating action (create / update / delete / cancel-occurrence / override-occurrence) writes an `AuditLogEntry` with the actor's user ID.
 - Update missing-row results come from the repository outcome, not diagnostic text. A dependency failure mentioning "not found" remains an ordinary failure.
 - Create and update result wrappers preserve caller cancellation before commit; they do not turn a canceled operation into an ordinary validation or persistence failure. After any successful event or occurrence mutation, the cache refresh runs without the browser token, so an abort cannot make a committed write fail during refresh. Malformed recurrence and unknown timezone rejections remain Warning logs with their reason, without exception stacks.
 - Title is required (non-null, non-empty).
 - Create/edit form required, length and URL validation errors use shared resources in all six cultures; input limits and URL validation are unchanged.
 - Occurrence override text stays optional. The form enforces the stored title/description/location/URL limits (200/4000/500/2000), validates URLs, and redisplays localized errors before writing an exception.
-- Calendar form parse and fallback validation messages use `CalendarResource` in every supported culture. Timed service validation results also return resource keys for malformed recurrence, unknown timezone, and invalid event fields, while detailed diagnostics stay in server logs. Recurrence errors remain attached to their specific form field through validation member metadata, independently of diagnostic wording or the submitted rule.
+- Calendar form parse and fallback validation messages use `CalendarResource` in every supported culture. Timed service validation results also return resource keys for malformed recurrence, unknown timezone, and invalid event fields, while detailed diagnostics stay in server logs. Recurrence errors remain attached to their specific form field.
 - Timed events require `StartUtc <= EndUtc` and have no date fields. All-day writes require `StartDate < EndDateExclusive` and have no start/end instants.
 - Zero-duration timed occurrences are included when their start is in `[from, to)`, including the window's start. Positive-duration occurrences must overlap the window; an occurrence ending exactly at `from` is excluded.
 - Forms display inclusive end dates; `CalendarService.AllDayWindow` / `AllDayInclusiveEndDate` convert between inclusive and exclusive `LocalDate` values without a timezone.

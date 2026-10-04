@@ -72,8 +72,7 @@ internal sealed class CalendarService(
 
         var errors = ev.Validate();
         if (errors.Count > 0)
-            throw new CalendarEventRuleException("CalendarEvent is invalid: " + string.Join("; ", errors),
-                dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : "Calendar_InvalidTimedEvent");
+            throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
 
         ev.RecurrenceUntilUtc = dto.IsAllDay ? null : ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
         ev.RecurrenceUntilDate = dto.IsAllDay ? ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null;
@@ -116,10 +115,11 @@ internal sealed class CalendarService(
             return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex),
                 CalendarValidationErrorKey(ex, dto.IsAllDay));
         }
-        catch (CalendarEventRuleException ex)
+        catch (InvalidOperationException ex)
         {
-            logger.LogWarning("Calendar event create rejected: {Reason}", ex.Message);
-            return CalendarEventMutationResult.Failed(ex.ErrorKey);
+            logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
+            return CalendarEventMutationResult.Failed(ex.Message.StartsWith("Calendar_", StringComparison.Ordinal)
+                ? ex.Message : dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : "Calendar_InvalidTimedEvent");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -132,16 +132,6 @@ internal sealed class CalendarService(
         }
     }
 
-    private sealed class CalendarEventRuleException : InvalidOperationException
-    {
-        public CalendarEventRuleException() : base("A calendar event rule rejected the operation.") { }
-        public CalendarEventRuleException(string message) : base(message) { }
-        public CalendarEventRuleException(string message, Exception inner) : base(message, inner) { }
-        public CalendarEventRuleException(string message, string errorKey) : base(message) => ErrorKey = errorKey;
-
-        public string ErrorKey { get; } = "Calendar_SaveFailed";
-    }
-
     // Reject malformed RRULE at write time so reads can't crash during occurrence expansion.
     internal static void ValidateRecurrenceRule(string? rrule)
     {
@@ -152,9 +142,7 @@ internal sealed class CalendarService(
         }
         catch (Exception ex)
         {
-            throw new ValidationException(
-                new ValidationResult($"Recurrence rule is malformed: {ex.Message}",
-                    [nameof(CreateCalendarEventDto.RecurrenceRule)]), null, rrule);
+            throw new ValidationException($"Recurrence rule is malformed: {ex.Message}");
         }
     }
 
@@ -163,9 +151,7 @@ internal sealed class CalendarService(
     {
         if (string.IsNullOrWhiteSpace(tz)) return;
         if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz) is null)
-            throw new ValidationException(
-                new ValidationResult($"Recurrence timezone is unknown: '{tz}'.",
-                    [nameof(CreateCalendarEventDto.RecurrenceTimezone)]), null, tz);
+            throw new ValidationException($"Recurrence timezone is unknown: '{tz}'.");
     }
 
     private static string CalendarValidationErrorKey(ValidationException ex, bool isAllDay) =>
@@ -176,7 +162,9 @@ internal sealed class CalendarService(
         };
 
     private static string CalendarValidationMemberName(ValidationException ex) =>
-        ex.ValidationResult.MemberNames.FirstOrDefault() ?? nameof(CreateCalendarEventDto.RecurrenceRule);
+        ex.Message.Contains("timezone", StringComparison.OrdinalIgnoreCase)
+            ? nameof(CreateCalendarEventDto.RecurrenceTimezone)
+            : nameof(CreateCalendarEventDto.RecurrenceRule);
 
     // Denormalised RRULE end (UNTIL or COUNT-bounded last occurrence), read by
     // CalendarOccurrenceExpander.FilterForWindow's in-memory prefilter. Null only for open-ended rules.
@@ -263,9 +251,7 @@ internal sealed class CalendarService(
                 part.Equals("FREQ=MINUTELY", StringComparison.OrdinalIgnoreCase) ||
                 part.Equals("FREQ=SECONDLY", StringComparison.OrdinalIgnoreCase) ||
                 (part.StartsWith("UNTIL=", StringComparison.OrdinalIgnoreCase) && part.Length != 14))
-                throw new ValidationException(
-                    new ValidationResult("All-day recurrence rules must use dates without times.",
-                        [nameof(CreateCalendarEventDto.RecurrenceRule)]), null, rule);
+                throw new ValidationException("All-day recurrence rules must use dates without times.");
         }
         var pattern = new RecurrencePattern(rule);
         var days = NodaTime.Period.Between(start.Value, end.Value, PeriodUnits.Days).Days;
@@ -292,8 +278,7 @@ internal sealed class CalendarService(
         var found = await repo.UpdateAsync(id, ev =>
         {
             if (ev.IsAllDay != dto.IsAllDay && ev.Exceptions.Count > 0)
-                throw new CalendarEventRuleException("Cannot change the date/time type of an event with occurrence exceptions.",
-                    "Calendar_CannotChangeEventType");
+                throw new InvalidOperationException("Calendar_CannotChangeEventType");
             if (ev.IsAllDay)
             {
                 var previous = CalendarOccurrenceExpander.ToInfo(ev);
@@ -324,8 +309,7 @@ internal sealed class CalendarService(
 
             var errors = ev.Validate();
             if (errors.Count > 0)
-                throw new CalendarEventRuleException("CalendarEvent is invalid: " + string.Join("; ", errors),
-                    dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : "Calendar_InvalidTimedEvent");
+                throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
 
             ev.RecurrenceUntilUtc = dto.IsAllDay ? null : ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
             ev.RecurrenceUntilDate = dto.IsAllDay ? ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null;
@@ -377,10 +361,11 @@ internal sealed class CalendarService(
             return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex),
                 CalendarValidationErrorKey(ex, dto.IsAllDay));
         }
-        catch (CalendarEventRuleException ex)
+        catch (InvalidOperationException ex)
         {
-            logger.LogWarning("Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
-            return CalendarEventMutationResult.Failed(ex.ErrorKey);
+            logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
+            return CalendarEventMutationResult.Failed(ex.Message.StartsWith("Calendar_", StringComparison.Ordinal)
+                ? ex.Message : dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : "Calendar_InvalidTimedEvent");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

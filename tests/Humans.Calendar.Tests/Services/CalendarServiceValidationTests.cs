@@ -84,7 +84,7 @@ public class CalendarServiceValidationTests
 
         result.Succeeded.Should().BeFalse();
         result.NotFound.Should().Be(!dependencyFailure, "only a missing event row warrants the missing result");
-        result.ErrorMessage.Should().Be(dependencyFailure ? "Calendar_SaveFailed" : "Calendar event not found.");
+        result.ErrorMessage.Should().Be(dependencyFailure ? "Calendar_InvalidTimedEvent" : "Calendar event not found.");
         audit.ReceivedCalls().Should().BeEmpty();
     }
 
@@ -165,12 +165,8 @@ public class CalendarServiceValidationTests
         act.Should().Throw<DateTimeZoneNotFoundException>();
     }
 
-    [HumansTheory]
-    [InlineData("FREQ=NOT_A_REAL_FREQ", false)]
-    [InlineData("FREQ=TIMEZONE", false)]
-    [InlineData("FREQ=NOT_A_REAL_FREQ", true)]
-    [InlineData("FREQ=TIMEZONE", true)]
-    public async Task EventWithResultAsync_returns_validation_member_for_malformed_recurrence(string rule, bool update)
+    [HumansFact]
+    public async Task CreateEventWithResultAsync_returns_validation_member_for_malformed_recurrence()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var logger = Substitute.For<ILogger<CalendarService>>();
@@ -186,12 +182,10 @@ public class CalendarServiceValidationTests
             StartUtc: Instant.FromUtc(2026, 5, 15, 17, 0),
             EndUtc: Instant.FromUtc(2026, 5, 15, 18, 0),
             IsAllDay: false,
-            RecurrenceRule: rule,
+            RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
             RecurrenceTimezone: "Europe/Madrid");
 
-        var result = update
-            ? await service.UpdateEventWithResultAsync(Guid.NewGuid(), dto, Guid.NewGuid(), TestContext.Current.CancellationToken)
-            : await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         var log = logger.ReceivedCalls().Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).GetArguments();
@@ -516,22 +510,15 @@ public class CalendarServiceValidationTests
     }
 
     [HumansTheory]
-    [InlineData(false, null)]
-    [InlineData(true, null)]
-    [InlineData(false, "Required property missing in persistence metadata.")]
-    [InlineData(true, "Required property missing in persistence metadata.")]
-    [InlineData(false, "Calendar_CannotChangeEventType")]
-    [InlineData(true, "Calendar_CannotChangeEventType")]
-    public async Task EventMutation_UnexpectedWriteFailureReturnsLocalizedSaveKey(bool update, string? invalidOperationMessage)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EventMutation_UnexpectedWriteFailureReturnsLocalizedSaveKey(bool update)
     {
-        Exception failure = invalidOperationMessage is null
-            ? new IOException("database unavailable")
-            : new InvalidOperationException(invalidOperationMessage);
         var repo = Substitute.For<ICalendarRepository>();
         repo.AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(failure));
+            .Returns(Task.FromException(new IOException("database unavailable")));
         repo.UpdateAsync(Arg.Any<Guid>(), Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(failure));
+            .Returns(Task.FromException<bool>(new IOException("database unavailable")));
         var service = BuildService(repo);
         var dto = new CreateCalendarEventDto(
             "Event", null, null, null, Guid.NewGuid(),
