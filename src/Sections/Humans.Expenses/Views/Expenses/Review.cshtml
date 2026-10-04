@@ -4,7 +4,7 @@
     ViewData["Title"] = Localizer["Expenses_ReviewQueueTitle"].Value;
 }
 
-<nav aria-label="breadcrumb" class="mb-3">
+<nav aria-label="@Localizer["Expenses_BreadcrumbNavigation"]" class="mb-3">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Expenses_MyReportsTitle"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["Expenses_ReviewQueue"]</li>
