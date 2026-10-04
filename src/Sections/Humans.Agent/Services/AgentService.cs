@@ -307,6 +307,8 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
 
         while (true)
         {
+            // A stop reason belongs to this provider request, never the preceding tool iteration.
+            finalFinalizer = null;
             var iterationAssistantText = new StringBuilder();
             var pendingToolCalls = new List<AnthropicToolCall>();
 
@@ -333,6 +335,13 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                     usage.CacheReadTokens += f.CacheReadTokens;
                     usage.CacheCreationTokens += f.CacheCreationTokens;
                 }
+            }
+
+            if (finalFinalizer is null)
+            {
+                _logger.LogError(
+                    "Agent provider stream ended without a finalizer for conversation {ConversationId}", conversation.Id);
+                finalFinalizer = new AgentTurnFinalizer(0, 0, 0, 0, settings.Model, "error");
             }
 
             // A max_tokens cutoff mid tool-call JSON still yields a (possibly truncated)

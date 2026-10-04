@@ -100,7 +100,10 @@ Conversation list and transcript GETs propagate request cancellation through vie
    rendered data attributes supply all browser messages, including the handoff fallback.
    Interrupted streams retain partial answers and issue handoffs with a localized error
    note. EOF without a finalizer is an interruption; a received finalizer protects the
-   completed reply from subsequent transport failures.
+   completed reply from subsequent transport failures. Provider EOF without a finalizer
+   also ends the turn with an error, preserving partial prose and usage from completed
+   requests. Stop reasons are scoped to each provider request; incomplete requests never
+   dispatch their pending tools using a previous request's stop reason.
 7. **Append-only conversations per user.** A user can only post to conversations they own. `AgentController` rejects cross-user access with 404.
 8. **Issue handoff is propose-only.** `route_to_issue` carries `{title, category, description}`. The dispatcher never writes a row server-side; the SSE stream emits an `issueProposal` token and the client opens the Issues submission modal pre-filled. The user reviews and submits via `/Issues/Submit`. Historical legacy auto-created `FeedbackReport.AgentConversationId` links are immutable.
    Unrecognized categories, including undefined numeric enum values, fall back to Question.

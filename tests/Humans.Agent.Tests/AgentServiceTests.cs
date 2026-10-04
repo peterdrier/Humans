@@ -617,6 +617,58 @@ public class AgentServiceTests
             .Should().BeEmpty("a failed tool dispatch is not a fetched doc");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Ask_marks_provider_eof_without_a_finalizer_as_an_error(bool afterToolIteration)
+    {
+        var userId = Guid.NewGuid();
+        var dispatcher = Substitute.For<IAgentToolDispatcher>();
+        dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => new AnthropicToolResult(call.Arg<AnthropicToolCall>().Id, "guide", IsError: false));
+        var logger = Substitute.For<ILogger<AgentService>>();
+        var store = new AgentRateLimitStore();
+        var (service, client) = await BuildService(settings => settings.Enabled = true,
+            rateLimitStore: store, toolDispatcher: dispatcher, logger: logger);
+        if (afterToolIteration)
+        {
+            client.EnqueueTurn(
+                new AgentTurnToken(null, new AnthropicToolCall("complete", "fetch_section_guide", """{"section":"teams"}"""), null),
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "claude-sonnet-4-6", "tool_use")));
+        }
+        client.EnqueueTurn(
+            new AgentTurnToken("Partial answer", null, null),
+            new AgentTurnToken(null, new AnthropicToolCall("interrupted", "fetch_section_guide", """{"section":"camps"}"""), null));
+
+        var tokens = new List<AgentTurnToken>();
+        await foreach (var token in service.AskAsync(new AgentTurnRequest(
+            Guid.Empty, userId, "What are teams?", "es"), Xunit.TestContext.Current.CancellationToken))
+            tokens.Add(token);
+
+        var finalizer = tokens.Last().Finalizer!;
+        finalizer.StopReason.Should().Be("error");
+        finalizer.InputTokens.Should().Be(afterToolIteration ? 100 : 0);
+        finalizer.OutputTokens.Should().Be(afterToolIteration ? 20 : 0);
+        finalizer.CacheReadTokens.Should().Be(afterToolIteration ? 5 : 0);
+        finalizer.CacheCreationTokens.Should().Be(afterToolIteration ? 3 : 0);
+        string.Concat(tokens.Select(token => token.TextDelta)).Should().Be("Partial answer");
+        await dispatcher.DidNotReceive().DispatchAsync(
+            Arg.Is<AnthropicToolCall>(call => call.Id == "interrupted"), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await dispatcher.Received(afterToolIteration ? 1 : 0).DispatchAsync(
+            Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        var transcript = await service.GetConversationForUserAsync(
+            userId, finalizer.ConversationId, Xunit.TestContext.Current.CancellationToken);
+        var assistant = transcript!.Messages.Should().ContainSingle(message => message.Role == AgentRole.Assistant).Subject;
+        assistant.Content.Should().Be("Partial answer");
+        assistant.PromptTokens.Should().Be(finalizer.InputTokens);
+        assistant.OutputTokens.Should().Be(finalizer.OutputTokens);
+        var usage = store.Get(userId, new LocalDate(2026, 4, 21), hour: 12);
+        usage.MessagesToday.Should().Be(1);
+        usage.TokensToday.Should().Be(afterToolIteration ? 120 : 0);
+        logger.Received(1).Log(LogLevel.Error, Arg.Any<EventId>(), Arg.Any<object>(),
+            Arg.Any<Exception?>(), Arg.Any<Func<object, Exception?, string>>());
+    }
+
     [HumansFact]
     public async Task Ask_persists_an_assistant_message_when_an_exception_escapes_the_turn()
     {
