@@ -21,6 +21,10 @@ public class HoldedClientTests
             new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
 
     [HumansTheory]
+    [Xunit.InlineData("purchase", "{\"id\":\"doc-1\"}", true, true)]
+    [Xunit.InlineData("contact", "{\"id\":\"contact-1\"}", true, true)]
+    [Xunit.InlineData("invoice", "{\"id\":\"invoice-1\"}", true, true)]
+    [Xunit.InlineData("receipt", "{\"id\":\"receipt-1\"}", true, true)]
     [Xunit.InlineData("purchase", "{malformed")]
     [Xunit.InlineData("purchase", "{\"id\":42}")]
     [Xunit.InlineData("contact", "{malformed")]
@@ -49,13 +53,15 @@ public class HoldedClientTests
     [Xunit.InlineData("receipt", "{\"id\":null}", false)]
     [Xunit.InlineData("receipt", "{\"id\":\"\"}", false)]
     [Xunit.InlineData("receipt", "{\"id\":\"  \"}", false)]
-    public async Task CreationResponses_normalize_unreadable_success_without_retrying(string operation, string json, bool parseError = true)
+    public async Task CreationResponses_normalize_unreadable_success_without_retrying(string operation, string json, bool parseError = true, bool invalidCharset = false)
     {
         var calls = 0;
         var client = Make(new StubHandler(_ =>
         {
             calls++;
-            return Respond(HttpStatusCode.Created, json);
+            var response = Respond(HttpStatusCode.Created, json);
+            if (invalidCharset) response.Content.Headers.ContentType!.CharSet = "unsupported-charset";
+            return response;
         }));
         var date = Instant.FromUtc(2026, 5, 10, 0, 0);
         Func<Task<string>> act = operation switch
@@ -289,16 +295,31 @@ public class HoldedClientTests
         id.Should().Be("unconfirmed:doc-123");
     }
 
-    [HumansFact]
-    public async Task PayPurchaseDocumentAsync_UnparseableResponseBody_ReturnsAnUnconfirmedRef()
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task AcceptedFinancialPosting_UnreadableResponse_ReturnsAnUnconfirmedRef(bool ledgerEntry, bool invalidCharset)
     {
-        var handler = new StubHandler(_ => Respond(HttpStatusCode.Created, "not json"));
+        var calls = 0;
+        var handler = new StubHandler(_ =>
+        {
+            calls++;
+            var response = Respond(HttpStatusCode.Created, invalidCharset ? "{\"id\":\"posted-1\"}" : "not json");
+            if (invalidCharset) response.Content.Headers.ContentType!.CharSet = "unsupported-charset";
+            return response;
+        });
+        var client = Make(handler);
+        var date = new LocalDate(2026, 8, 25);
+        var ct = Xunit.TestContext.Current.CancellationToken;
 
-        var id = await Make(handler).PayPurchaseDocumentAsync(
-            "doc-123", 5m, "treasury-1", new LocalDate(2026, 8, 25), null,
-            Xunit.TestContext.Current.CancellationToken);
+        var id = ledgerEntry
+            ? await client.PostLedgerEntryAsync(date, 40000004, 57200001, 5m, "SEPA payout", ct)
+            : await client.PayPurchaseDocumentAsync("doc-123", 5m, "treasury-1", date, null, ct);
 
-        id.Should().Be("unconfirmed:doc-123");
+        id.Should().Be(ledgerEntry ? "unconfirmed:entry" : "unconfirmed:doc-123");
+        calls.Should().Be(1);
     }
 
     [HumansFact]

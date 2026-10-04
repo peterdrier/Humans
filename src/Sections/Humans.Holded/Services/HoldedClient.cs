@@ -88,10 +88,10 @@ internal sealed class HoldedClient : IHoldedClient
         AttachAuth(req);
 
         using var resp = await SendAsync(req, ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
-        // A successful create may already be persisted remotely; a missing ID cannot be retried safely.
+        // A successful create may already be persisted remotely; an unreadable response cannot be retried safely.
         try
         {
+            var body = await resp.Content.ReadAsStringAsync(ct);
             var node = JsonNode.Parse(body)
                 ?? throw new HoldedPermanentException("Holded returned no purchase identity after accepting creation.");
             var id = node["id"]?.GetValue<string>();
@@ -203,10 +203,10 @@ internal sealed class HoldedClient : IHoldedClient
         AttachAuth(req);
 
         using var resp = await SendAsync(req, ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
         string? id = null;
         try
         {
+            var body = await resp.Content.ReadAsStringAsync(ct);
             id = JsonNode.Parse(body)?["id"]?.GetValue<string>();
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
@@ -254,10 +254,10 @@ internal sealed class HoldedClient : IHoldedClient
         AttachAuth(req);
 
         using var resp = await SendAsync(req, ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
         string? id = null;
         try
         {
+            var body = await resp.Content.ReadAsStringAsync(ct);
             id = JsonNode.Parse(body)?["id"]?.GetValue<string>();
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
