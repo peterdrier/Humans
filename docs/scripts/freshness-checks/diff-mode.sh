@@ -505,7 +505,7 @@ import os, pathlib, shutil, subprocess, sys, tempfile
 for script_path in sys.argv[1:]:
     script = pathlib.Path(script_path).resolve()
     is_stats = script.name == 'dev-stats.sh'
-    for mode in ('valid', 'empty', 'partial', 'failed'):
+    for mode in ('valid', 'empty', 'partial', 'failed', *(['short', 'long', 'unrelated', 'no-header'] if is_stats else [])):
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             (root / 'docs').mkdir()
@@ -517,8 +517,15 @@ for script_path in sys.argv[1:]:
                            + 'if [[ "$1" == log ]]; then ' + date_output + 'exit 0; fi\nexit 2\n')
             git.chmod(0o755)
             if is_stats:
-                row = '| 2026-10-01 | ' + ' | '.join(['1'] * 19) + ' |\n'
-                (root / 'docs/development-stats.md').write_text('No rows\n' if mode == 'empty' else row)
+                columns = 22 if mode == 'short' else 24 if mode == 'long' else 23
+                header = '## Codebase Growth\n\n| Date | ' + ' | '.join(f'Metric {i}' for i in range(23)) + ' |\n'
+                row = '| 2026-10-01 | ' + ' | '.join(['1'] * columns) + ' |\n'
+                text = header + ('' if mode == 'empty' else row)
+                if mode == 'unrelated':
+                    text = header + '## Other history\n' + row
+                if mode == 'no-header':
+                    text = row
+                (root / 'docs/development-stats.md').write_text(text)
                 command, match = 'grep', '[[ "$1" == -E ]]'
             else:
                 row = 'commit_date,a,b,c,d\n' + ('' if mode == 'empty' else '2026-10-01,1,2,3,4\n')
