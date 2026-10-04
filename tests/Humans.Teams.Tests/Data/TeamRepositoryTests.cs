@@ -10,6 +10,7 @@ using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
+using Xunit;
 
 #pragma warning disable CS0618
 
@@ -44,6 +45,35 @@ public sealed class TeamRepositoryTests : IDisposable
     // ==========================================================================
     // Team reads
     // ==========================================================================
+
+    [HumansTheory]
+    [InlineData(nameof(CallToAction.Text))]
+    [InlineData(nameof(CallToAction.Url))]
+    [InlineData(nameof(CallToAction.Style))]
+    public async Task CallsToActionChangeTracking_OnlyMarksChangedValues(string changedField)
+    {
+        var team = await SeedTeamAsync("Page");
+        var action = new CallToAction { Text = "Join", Url = "/join", Style = CallToActionStyle.Secondary };
+        team.CallsToAction = [action];
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _dbContext.ChangeTracker.DetectChanges();
+        _dbContext.Entry(team).Property(t => t.CallsToAction).IsModified.Should().BeFalse();
+        (await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+
+        switch (changedField)
+        {
+            case nameof(CallToAction.Text): action.Text = "Volunteer"; break;
+            case nameof(CallToAction.Url): action.Url = "/volunteer"; break;
+            case nameof(CallToAction.Style): action.Style = CallToActionStyle.Primary; break;
+        }
+
+        _dbContext.ChangeTracker.DetectChanges();
+        _dbContext.Entry(team).Property(t => t.CallsToAction).IsModified.Should().BeTrue();
+        (await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        var stored = await _repo.GetByIdAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+        stored!.CallsToAction.Should().ContainSingle().Which.Should().BeEquivalentTo(action);
+    }
 
     [HumansFact]
     public async Task GetAllForAdminAsync_LargePageDoesNotWrapToEarlierTeams()
