@@ -50,7 +50,7 @@
       The Holded API client (IHoldedClient + its DTOs and typed exceptions) the outbox drain
       writes purchase documents through. Contracts leaf only; Humans.Holded is never referenced.
     -->
-    <ProjectReference Include="..\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Holded\Humans.Holded.csproj" />
   </ItemGroup>
 
   <ItemGroup>
