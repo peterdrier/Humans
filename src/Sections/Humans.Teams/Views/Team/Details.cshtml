@@ -2,6 +2,9 @@
 @model Humans.Teams.Models.TeamDetailViewModel
 @{
     ViewData["Title"] = Model.Name;
+    var systemTeamLabel = Model.SystemTeamType is { } teamType
+        ? SharedLocalizer.EnumDisplay(teamType)
+        : string.Empty;
 }
 
 
@@ -27,7 +30,7 @@
                     {
                         @if (Model.IsSystemTeam)
                         {
-                            <span class="badge bg-secondary">@Model.SystemTeamType @SharedLocalizer["Teams_Member"]</span>
+                            <span class="badge bg-secondary">@systemTeamLabel @SharedLocalizer["Teams_Member"]</span>
                         }
                         @if (Model.IsCurrentUserMember)
                         {
@@ -53,7 +56,7 @@
                 @if (Model.IsAuthenticated && Model.IsSystemTeam)
                 {
                     <div class="alert alert-info mb-0">
-                        @string.Format(Localizer["TeamDetail_SystemTeamInfo"].Value, Model.SystemTeamType)
+                        @string.Format(Localizer["TeamDetail_SystemTeamInfo"].Value, systemTeamLabel)
                     </div>
                 }
             </div>

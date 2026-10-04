@@ -1295,4 +1295,10 @@
   <data name="Validation_EmailAddress" xml:space="preserve"><value>Saisissez une adresse e-mail valide.</value></data>
   <data name="Validation_InvalidValue" xml:space="preserve"><value>Saisissez une valeur valide.</value></data>
   <data name="Validation_Number" xml:space="preserve"><value>Saisissez un nombre.</value></data>
+  <data name="Enum_SystemTeamType_Volunteers" xml:space="preserve"><value>Bénévoles</value></data>
+  <data name="Enum_SystemTeamType_Coordinators" xml:space="preserve"><value>Coordinateurs</value></data>
+  <data name="Enum_SystemTeamType_Board" xml:space="preserve"><value>Conseil d’administration</value></data>
+  <data name="Enum_SystemTeamType_Asociados" xml:space="preserve"><value>Asociados</value></data>
+  <data name="Enum_SystemTeamType_Colaboradors" xml:space="preserve"><value>Colaboradores</value></data>
+  <data name="Enum_SystemTeamType_BarrioLeads" xml:space="preserve"><value>Responsables de camp</value></data>
 </root>

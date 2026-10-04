@@ -793,4 +793,10 @@
   <data name="Validation_EmailAddress" xml:space="preserve"><value>Enter a valid email address.</value></data>
   <data name="Validation_InvalidValue" xml:space="preserve"><value>Enter a valid value.</value></data>
   <data name="Validation_Number" xml:space="preserve"><value>Enter a number.</value></data>
+  <data name="Enum_SystemTeamType_Volunteers" xml:space="preserve"><value>Volunteers</value></data>
+  <data name="Enum_SystemTeamType_Coordinators" xml:space="preserve"><value>Coordinators</value></data>
+  <data name="Enum_SystemTeamType_Board" xml:space="preserve"><value>Board</value></data>
+  <data name="Enum_SystemTeamType_Asociados" xml:space="preserve"><value>Asociados</value></data>
+  <data name="Enum_SystemTeamType_Colaboradors" xml:space="preserve"><value>Colaboradores</value></data>
+  <data name="Enum_SystemTeamType_BarrioLeads" xml:space="preserve"><value>Camp Leads</value></data>
 </root>
