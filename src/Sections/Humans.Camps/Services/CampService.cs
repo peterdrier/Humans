@@ -536,7 +536,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         {
             if (season.CampId != scopedCampId)
             {
-                throw new InvalidOperationException("Season does not belong to the specified camp.");
+                throw new InvalidOperationException("Camps_Flash_SeasonWrongCamp");
             }
 
             season.BlurbLong = data.BlurbLong;
@@ -562,7 +562,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
         if (!found)
         {
-            throw new InvalidOperationException("Season not found.");
+            throw new InvalidOperationException("Camps_Flash_RoleSeasonNotFound");
         }
 
         await _auditLog.LogAsync(
@@ -790,12 +790,12 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             var scopedSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken);
             if (scopedSeason is null)
             {
-                return CampUpdateResult.Failure("Season not found.");
+                return CampUpdateResult.Failure("Camps_Flash_RoleSeasonNotFound");
             }
 
             if (scopedSeason.CampId != input.CampId)
             {
-                return CampUpdateResult.Failure("Season does not belong to the specified camp.");
+                return CampUpdateResult.Failure("Camps_Flash_SeasonWrongCamp");
             }
 
             var updated = await _repo.UpdateCampFieldsAsync(
@@ -812,7 +812,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
             if (!updated)
             {
-                return CampUpdateResult.Failure("Camp not found.");
+                return CampUpdateResult.Failure("Camps_Flash_CampNotFound");
             }
 
             await _auditLog.LogAsync(
@@ -823,7 +823,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
             await UpdateSeasonAsync(input.CampId, input.SeasonId, input.SeasonData, cancellationToken);
 
             var currentSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken)
-                ?? throw new InvalidOperationException("Season not found.");
+                ?? throw new InvalidOperationException("Camps_Flash_RoleSeasonNotFound");
 
             if (!string.Equals(currentSeason.Name, input.SeasonName, StringComparison.Ordinal))
             {

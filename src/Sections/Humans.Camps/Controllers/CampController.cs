@@ -606,7 +606,7 @@ internal sealed class CampController(
 
         if (!result.Succeeded)
         {
-            ModelState.AddModelError(string.Empty, result.ErrorMessage ?? campsLocalizer["Camps_Flash_UpdateFailed"].Value);
+            ModelState.AddModelError(string.Empty, campsLocalizer[result.ErrorMessage ?? "Camps_Flash_UpdateFailed"].Value);
             await PopulateEditReadOnlyFieldsAsync(model, camp);
             return View(model);
         }

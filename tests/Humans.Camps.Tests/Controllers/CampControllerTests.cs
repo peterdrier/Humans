@@ -578,6 +578,41 @@ public class CampControllerTests
         controller.TempData[tempDataKey].Should().Be(translated);
     }
 
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task Edit_LocalizesScopedUpdateRefusals(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var localizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
+        var actorId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: actorId);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUserInfo(actorId)));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+
+        foreach (var key in new[] { "Camps_Flash_RoleSeasonNotFound", "Camps_Flash_SeasonWrongCamp", "Camps_Flash_CampNotFound" })
+        {
+            _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), Arg.Any<CancellationToken>())
+                .Returns(CampUpdateResult.Failure(key));
+            var controller = BuildController(actorId, localizer);
+            var model = new CampEditViewModel { CampId = camp.Id, SeasonId = camp.Seasons[0].Id, Year = 2026 };
+
+            var result = await controller.Edit(camp.Slug, model);
+
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            var expected = localizer[key];
+            expected.ResourceNotFound.Should().BeFalse();
+            controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
+        }
+    }
+
     [HumansFact]
     public async Task AddMember_PropagatesRequestCancellation()
     {

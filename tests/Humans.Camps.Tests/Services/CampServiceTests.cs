@@ -1699,7 +1699,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var action = () => _service.UpdateSeasonAsync(Guid.NewGuid(), season.Id, MakeSeasonData(), Xunit.TestContext.Current.CancellationToken);
 
-        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not belong*");
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("Camps_Flash_SeasonWrongCamp");
     }
 
     [HumansFact]
@@ -1751,6 +1751,7 @@ public sealed class CampServiceTests : CampsTestHarness
             Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Camps_Flash_SeasonWrongCamp");
         var unchanged = await CampsDb.Camps.AsNoTracking().FirstAsync(c => c.Id == campA.Id, Xunit.TestContext.Current.CancellationToken);
         unchanged.ContactEmail.Should().Be("test@camp.com",
             because: "no camp-level field may commit when the submitted season belongs to another camp");
