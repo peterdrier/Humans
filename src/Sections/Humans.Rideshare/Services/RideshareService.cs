@@ -665,7 +665,10 @@ internal sealed class RideshareService(
         try
         {
             var name = await DisplayNameAsync(actorUserId, ct);
-            var language = (await users.GetUserInfoAsync(recipientUserId, ct))?.PreferredLanguage ?? "en";
+            var preferredLanguage = (await users.GetUserInfoAsync(recipientUserId, ct))?.PreferredLanguage;
+            var language = preferredLanguage.IsSupportedCultureCode()
+                ? preferredLanguage!
+                : CultureCatalog.DefaultCultureCode;
             string title, body, actionLabel;
             // CultureScope so ambient-culture formatting (ToWeekdayDayMonth) follows the recipient too.
             using (new CultureScope(language, logger))
