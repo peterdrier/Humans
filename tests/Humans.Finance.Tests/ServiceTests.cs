@@ -2712,6 +2712,65 @@ public class HoldedFinanceServiceTests
         row.IbanMasked.Should().Be("ES79****789");
     }
 
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData(40000007)]
+    public async Task ListCreditorAccounts_ResolvesSiblingContactBeforeCachedAccountNumber(int? cachedNumber)
+    {
+        var userId = SeedTwoContactsOnOneAccount();
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = cachedNumber },
+        });
+
+        var (rows, unresolved) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
+
+        unresolved.Should().BeEmpty();
+        var row = rows.Should().ContainSingle().Subject;
+        row.SupplierAccountNum.Should().Be(40000004);
+        row.Bindings.Should().ContainSingle().Which.UserId.Should().Be(userId);
+        row.Name.Should().Be("Ana Ruiz");
+    }
+
+    [HumansFact]
+    public async Task GetCreditorLedger_ShowsBoundSiblingContact()
+    {
+        SeedTwoContactsOnOneAccount();
+        _holded.GetLedgerLinesAsync(40000004, Arg.Any<CancellationToken>())
+            .Returns(new List<HoldedLedgerLineInfo> { Line(1, 0, 40000004, FixedNow, credit: 30m) });
+
+        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, TestContext.Current.CancellationToken);
+
+        ledger.Should().NotBeNull();
+        ledger.Contact.Should().NotBeNull();
+        ledger.Contact.Name.Should().Be("Ana Ruiz");
+        ledger.Contact.Iban.Should().Be(AnaIban);
+        ledger.OwedToMember.Should().Be(30m);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetCreditorLedger_OmitsAmbiguousContactHeader(bool boundToBoth)
+    {
+        SeedTwoContactsOnOneAccount();
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(boundToBoth
+            ? new List<HoldedCreditorContact>
+            {
+                new() { UserId = Guid.NewGuid(), HoldedContactId = "c1", SupplierAccountNum = 40000004 },
+                new() { UserId = Guid.NewGuid(), HoldedContactId = "c2", SupplierAccountNum = 40000004 },
+            }
+            : []);
+        _holded.GetLedgerLinesAsync(40000004, Arg.Any<CancellationToken>())
+            .Returns(new List<HoldedLedgerLineInfo> { Line(1, 0, 40000004, FixedNow, credit: 30m) });
+
+        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, TestContext.Current.CancellationToken);
+
+        ledger.Should().NotBeNull();
+        ledger.Contact.Should().BeNull();
+        ledger.OwedToMember.Should().Be(30m);
+    }
+
     // ─── SEPA booking into Holded (nobodies-collective/Humans#1141) ──────────────
 
     private static readonly Guid BookableTransferId = Guid.Parse("11111111-1111-1111-1111-111111111111");
