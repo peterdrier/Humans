@@ -318,6 +318,24 @@ public sealed class CampaignServiceTests
             Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("99")]
+    [Xunit.InlineData("-1")]
+    [Xunit.InlineData("unknown")]
+    public async Task GenerateAndImportDiscountCodesAsync_InvalidKind_DoesNotGenerateOrImport(string discountType)
+    {
+        var campaign = await SeedCampaignAsync();
+
+        var result = await _service.GenerateAndImportDiscountCodesAsync(
+            campaign.Id, 2, discountType, 10m, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("InvalidDiscountType");
+        await _ticketDiscountCodes.DidNotReceive().GenerateAsync(
+            Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>());
+        (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
     [HumansFact]
     public async Task ActivateAsync_DraftWithCodes_TransitionsToActive()
     {

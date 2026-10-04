@@ -329,7 +329,8 @@ internal sealed class CampaignService(
         if (count <= 0)
             return new CampaignGenerateCodesResult(false, "InvalidCount");
 
-        if (!Enum.TryParse<TicketDiscountKind>(discountType, ignoreCase: true, out var parsedKind))
+        if (!Enum.TryParse<TicketDiscountKind>(discountType, ignoreCase: true, out var parsedKind) ||
+            !Enum.IsDefined(parsedKind))
             return new CampaignGenerateCodesResult(false, "InvalidDiscountType");
 
         // Through Tickets' contract leaf, never the Base vendor port — Tickets is the
