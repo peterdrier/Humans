@@ -38,10 +38,16 @@ public sealed class CachingCalendarServiceTests
         var before = BuildInfo(title: "Before");
         var ev = new CalendarEvent
         {
-            Id = before.Id, Title = before.Title, OwningTeamId = before.OwningTeamId,
-            StartUtc = before.StartUtc, EndUtc = before.EndUtc, CreatedAt = before.CreatedAt,
-            UpdatedAt = before.UpdatedAt, CreatedByUserId = before.CreatedByUserId,
-            RecurrenceRule = "FREQ=DAILY;COUNT=3", RecurrenceTimezone = "UTC",
+            Id = before.Id,
+            Title = before.Title,
+            OwningTeamId = before.OwningTeamId,
+            StartUtc = before.StartUtc,
+            EndUtc = before.EndUtc,
+            CreatedAt = before.CreatedAt,
+            UpdatedAt = before.UpdatedAt,
+            CreatedByUserId = before.CreatedByUserId,
+            RecurrenceRule = "FREQ=DAILY;COUNT=3",
+            RecurrenceTimezone = "UTC",
         };
         var ct = TestContext.Current.CancellationToken;
         await repo.AddAsync(ev, ct);

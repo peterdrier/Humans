@@ -150,7 +150,7 @@ internal sealed partial class CampRepository
             return true;
         }
         catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
-            { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_camp_role_assignments_unique" })
+        { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_camp_role_assignments_unique" })
         {
             // Unique-index race on (CampSeasonId, CampRoleDefinitionId, CampMemberId) —
             // caller treats false as "already holds role".

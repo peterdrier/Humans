@@ -24,8 +24,11 @@ public class AttendeeContactImportServicePlanTests
         var harness = new PlanHarness();
         var attendee = new TicketAttendee
         {
-            Id = Guid.NewGuid(), VendorTicketId = "tkt_ambiguous", VendorEventId = "evt_active",
-            AttendeeEmail = "victim@gmail.com", Status = TicketAttendeeStatus.Valid,
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tkt_ambiguous",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "victim@gmail.com",
+            Status = TicketAttendeeStatus.Valid,
         };
         harness.AddUnmatched(attendee);
         var firstOwner = Guid.NewGuid();

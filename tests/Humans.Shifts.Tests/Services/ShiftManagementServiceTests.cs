@@ -97,8 +97,12 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         var rota = create ? new Rota
         {
-            Id = Guid.NewGuid(), EventSettingsId = settings.Id, TeamId = existing.TeamId,
-            Name = "New rota", CreatedAt = TestNow, UpdatedAt = TestNow,
+            Id = Guid.NewGuid(),
+            EventSettingsId = settings.Id,
+            TeamId = existing.TeamId,
+            Name = "New rota",
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
         } : existing;
         rota.Name = "Changed rota";
         var real = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);

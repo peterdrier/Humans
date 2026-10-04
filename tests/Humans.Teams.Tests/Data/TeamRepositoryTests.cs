@@ -119,9 +119,12 @@ public sealed class TeamRepositoryTests : IDisposable
         var repo = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));
         var team = new Team
         {
-            Id = Guid.NewGuid(), Name = "Design", Slug = "design",
+            Id = Guid.NewGuid(),
+            Name = "Design",
+            Slug = "design",
             RequiresApproval = requiresApproval,
-            CreatedAt = _clock.GetCurrentInstant(), UpdatedAt = _clock.GetCurrentInstant()
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
         };
 
         (await repo.AddTeamWithRequiresApprovalOverrideAsync(

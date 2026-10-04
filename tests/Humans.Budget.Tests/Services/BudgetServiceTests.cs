@@ -651,7 +651,9 @@ public sealed class BudgetServiceTests
         var corrected = week with { StripeFees = 0m, TicketTailorFees = 0m };
         var nextWeek = corrected with
         {
-            Monday = new LocalDate(2026, 3, 9), Sunday = new LocalDate(2026, 3, 15), WeekLabel = "Mar 9–Mar 15"
+            Monday = new LocalDate(2026, 3, 9),
+            Sunday = new LocalDate(2026, 3, 15),
+            WeekLabel = "Mar 9–Mar 15"
         };
         await _service.SyncTicketingActualsAsync(_yearId, [corrected, nextWeek], actorUserId: null, ct);
 

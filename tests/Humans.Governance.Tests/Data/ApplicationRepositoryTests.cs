@@ -229,13 +229,18 @@ public sealed class ApplicationRepositoryTests : IDisposable
         var app = SeedApp();
         app.StateHistory.Add(new ApplicationStateHistory
         {
-            ApplicationId = app.Id, Status = ApplicationStatus.Submitted,
-            ChangedByUserId = app.UserId, ChangedAt = app.SubmittedAt, Notes = "Original submission"
+            ApplicationId = app.Id,
+            Status = ApplicationStatus.Submitted,
+            ChangedByUserId = app.UserId,
+            ChangedAt = app.SubmittedAt,
+            Notes = "Original submission"
         });
         app.BoardVotes.Add(new BoardVote
         {
-            ApplicationId = app.Id, BoardMemberUserId = Guid.NewGuid(),
-            Vote = VoteChoice.Yay, VotedAt = app.SubmittedAt
+            ApplicationId = app.Id,
+            BoardMemberUserId = Guid.NewGuid(),
+            Vote = VoteChoice.Yay,
+            VotedAt = app.SubmittedAt
         });
         await _dbContext.SaveChangesAsync(ct);
 

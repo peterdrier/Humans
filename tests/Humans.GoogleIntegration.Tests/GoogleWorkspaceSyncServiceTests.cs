@@ -139,8 +139,13 @@ public sealed class GoogleWorkspaceSyncServiceTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         var resource = new GoogleResource
         {
-            Id = Guid.NewGuid(), TeamId = TestTeamId, ResourceType = GoogleResourceType.Group,
-            GoogleId = googleId, Url = url, Name = "Project", IsActive = true
+            Id = Guid.NewGuid(),
+            TeamId = TestTeamId,
+            ResourceType = GoogleResourceType.Group,
+            GoogleId = googleId,
+            Url = url,
+            Name = "Project",
+            IsActive = true
         };
         var team = new TeamInfo(
             TestTeamId, "Test Team", null, "test-team",

@@ -219,8 +219,10 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             await db.SaveChangesAsync(ct);
         }
         catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
-            { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
-                ConstraintName: "IX_teams_Slug" or "IX_teams_CustomSlug" })
+        {
+            SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "IX_teams_Slug" or "IX_teams_CustomSlug"
+        })
         {
             // Slug-constraint collision — a slug race against a
             // concurrent create of the same name. Return false so the service
@@ -611,7 +613,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             return true;
         }
         catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
-            { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_team_members_active_unique" })
+        { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_team_members_active_unique" })
         {
             return false;
         }
@@ -633,7 +635,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             return true;
         }
         catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
-            { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_team_members_active_unique" })
+        { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_team_members_active_unique" })
         {
             return false;
         }
