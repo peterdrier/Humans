@@ -128,7 +128,7 @@ Missing, unknown or revoked key → 401. Unknown id → 404. Mutations (deletion
 
 ## Triggers
 
-- On `route_to_issue` tool call: no server-side write. `AgentService` yields an `AgentIssueProposal` token; the client opens the Issues modal pre-filled. The user submits (or doesn't) via `/Issues/Submit` — admin triage filtering hooks into the Issues section, not Agent.
+- On `route_to_issue` tool call: no server-side write. `AgentService` yields an `AgentIssueProposal` token; the client opens the Issues modal pre-filled. Proposal titles and descriptions retain the form's 200/5000 UTF-16 code-unit limits without splitting a Unicode surrogate pair. The user submits (or doesn't) via `/Issues/Submit` — admin triage filtering hooks into the Issues section, not Agent.
 - On `AgentSettings` update: `IAgentSettingsStore` reloads the singleton; next request sees the new value.
 - On user deletion: no cross-section cascade. Agent owns no FK to `users`; orphaned `agent_conversations` rows are cleaned up by `AgentConversationRetentionJob` within `RetentionDays`. `FeedbackReport.AgentConversationId` is owned by Feedback and is left as-is (the column may dangle if the conversation was purged; readers must tolerate `null` lookups).
 
