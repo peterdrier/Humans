@@ -114,6 +114,50 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
             GoogleSyncSource.ManualSync);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ProcessQueuedAsync_EmailStatusFailure_RemainsPendingUntilTailSucceeds(bool resourceReadFails)
+    {
+        var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        var fail = true;
+        var failure = new DbUpdateException("Email status persistence unavailable");
+        _resourceRepository.GetActiveByTeamIdAsync(outboxEvent.TeamId, Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                if (fail && resourceReadFails) throw failure;
+                return Task.FromResult<IReadOnlyList<GoogleResource>>(
+                    [new GoogleResource
+                    {
+                        Id = Guid.NewGuid(), TeamId = outboxEvent.TeamId,
+                        ResourceType = GoogleResourceType.DriveFolder, GoogleId = "folder",
+                        Name = "Folder", IsActive = true,
+                    }]);
+            });
+        _userService.TrySetGoogleEmailStatusFromSyncAsync(
+                outboxEvent.UserId, GoogleEmailStatus.Valid, Arg.Any<CancellationToken>())
+            .Returns(_ => fail ? throw failure : Task.FromResult(true));
+
+        await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var pending = await _outboxRepository.GetProcessingBatchAsync(10, 10, Xunit.TestContext.Current.CancellationToken);
+        pending.Should().ContainSingle().Which.Id.Should().Be(outboxEvent.Id);
+        pending[0].RetryCount.Should().Be(1);
+        pending[0].LastError.Should().Be(failure.Message);
+        _metrics.DidNotReceive().RecordSyncOperation("success");
+
+        fail = false;
+        await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var stored = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking()
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        stored.ProcessedAt.Should().Be(_clock.GetCurrentInstant());
+        stored.LastError.Should().BeNull();
+        _metrics.Received(1).RecordSyncOperation("success");
+        await _userService.Received(resourceReadFails ? 1 : 2).TrySetGoogleEmailStatusFromSyncAsync(
+            outboxEvent.UserId, GoogleEmailStatus.Valid, Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task ProcessQueuedAsync_AccountLinkResyncEvent_RecordsManualSource()
     {

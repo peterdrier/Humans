@@ -109,10 +109,6 @@ internal sealed class GoogleSyncOutboxProcessor(
                         throw new InvalidOperationException($"Unknown outbox event type '{outboxEvent.EventType}'.");
                 }
 
-                await outboxRepository.MarkProcessedAsync(
-                    outboxEvent.Id, clock.GetCurrentInstant(), cancellationToken);
-                metrics.RecordSyncOperation("success");
-
                 // Only mark user as Valid when the event actually touched Google APIs
                 // (AddUserToTeamResources with linked resources). RemoveUserFromTeamResources
                 // is a no-op, and Add with zero resources doesn't validate the email.
@@ -126,6 +122,12 @@ internal sealed class GoogleSyncOutboxProcessor(
                             ResolvedUserId(outboxEvent.UserId), GoogleEmailStatus.Valid, cancellationToken);
                     }
                 }
+
+                // Finish the status tail before closing the event: its failure
+                // must remain eligible for the retry path below.
+                await outboxRepository.MarkProcessedAsync(
+                    outboxEvent.Id, clock.GetCurrentInstant(), cancellationToken);
+                metrics.RecordSyncOperation("success");
             }
             catch (Google.GoogleApiException ex) when (ex.Error?.Code is int code && PermanentErrorCodes.Contains(code))
             {
