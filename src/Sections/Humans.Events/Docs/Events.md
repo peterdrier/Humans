@@ -174,6 +174,8 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 ## Invariants
 
+- Global-search result rows pass browser cancellation to the approved-event lookup; approved-only visibility and missing-result behavior are unchanged.
+
 - Individual and camp submitter edits check `CanBeEditedBySubmitter` before changing fields. Every permitted status is accepted by `UpdateAndResubmitAsync`; the controllers call it directly without exception-message classification.
 
 - Member personal/camp event submission forms and My Submissions localize breadcrumb navigation labels in all six supported cultures.

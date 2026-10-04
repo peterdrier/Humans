@@ -3,6 +3,8 @@ using Humans.Base.Enums;
 using Humans.Camps.Contracts;
 using Humans.Camps.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using NSubstitute;
 
 namespace Humans.Camps.Tests.ViewComponents;
@@ -22,7 +24,7 @@ public class CampsSearchResultViewComponentTests
         StubSettings(publicYear: 2026);
         var id = StubCamp("garden", (2025, "Old Name"), (2026, "Garden of Joy"));
 
-        var result = await new CampsSearchResultViewComponent(_camps).InvokeAsync(id);
+        var result = await CreateComponent().InvokeAsync(id);
 
         var model = result.Should().BeOfType<ViewViewComponentResult>()
             .Subject.ViewData!.Model.Should().BeOfType<CampsSearchResultViewModel>().Subject;
@@ -36,7 +38,7 @@ public class CampsSearchResultViewComponentTests
         StubSettings(publicYear: 2026);
         var id = StubCamp("garden", (2024, "Long Ago"));
 
-        var result = await new CampsSearchResultViewComponent(_camps).InvokeAsync(id);
+        var result = await CreateComponent().InvokeAsync(id);
 
         result.Should().BeOfType<ViewViewComponentResult>()
             .Subject.ViewData!.Model.Should().BeOfType<CampsSearchResultViewModel>()
@@ -48,10 +50,36 @@ public class CampsSearchResultViewComponentTests
     {
         _camps.GetCampByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((CampInfo?)null);
 
-        (await new CampsSearchResultViewComponent(_camps).InvokeAsync(Guid.NewGuid()))
+        (await CreateComponent().InvokeAsync(Guid.NewGuid()))
             .Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
         await _camps.DidNotReceive().GetSettingsAsync(Arg.Any<CancellationToken>());
     }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task AbandonedRequest_CancelsCampAndPublicYearReads(bool settings)
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        StubSettings(publicYear: 2026);
+        var id = StubCamp("garden", (2026, "Garden"));
+        if (settings)
+            _camps.GetSettingsAsync(aborted.Token).Returns(Task.FromCanceled<CampSettingsInfo>(aborted.Token));
+        else
+            _camps.GetCampByIdAsync(id, aborted.Token).Returns(Task.FromCanceled<CampInfo?>(aborted.Token));
+        var act = () => CreateComponent(aborted.Token).InvokeAsync(id);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    private CampsSearchResultViewComponent CreateComponent(CancellationToken ct = default) => new(_camps)
+    {
+        ViewComponentContext = new ViewComponentContext
+        {
+            ViewContext = new ViewContext { HttpContext = new DefaultHttpContext { RequestAborted = ct } },
+        },
+    };
 
     private void StubSettings(int publicYear) =>
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>())

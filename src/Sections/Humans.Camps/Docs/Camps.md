@@ -199,6 +199,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 ## Invariants
 
+- Global-search result rows pass browser cancellation through both the camp and public-year settings reads; season-name selection and missing-result behavior are unchanged.
+
 - Admin pending/withdrawn Barrio description previews preserve whole UTF-16 surrogate pairs within their existing 100-unit limit; full descriptions and approval/reactivation behavior stay unchanged.
 
 - The registration GET carries request cancellation through season settings and registration instructions; abandoning the page stops those loads. POST redisplay helpers keep their existing cancellation boundary.

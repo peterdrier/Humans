@@ -2,6 +2,8 @@ using AwesomeAssertions;
 using Humans.Events.Contracts;
 using Humans.Events.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using NodaTime;
 using NSubstitute;
 
@@ -22,7 +24,7 @@ public class EventsSearchResultViewComponentTests
         var wanted = Approved("Sunrise Yoga");
         _events.GetApprovedEventByIdAsync(wanted.Id, Arg.Any<CancellationToken>()).Returns(wanted);
 
-        var result = await new EventsSearchResultViewComponent(_events).InvokeAsync(wanted.Id);
+        var result = await CreateComponent().InvokeAsync(wanted.Id);
 
         var model = result.Should().BeOfType<ViewViewComponentResult>()
             .Subject.ViewData!.Model.Should().BeOfType<EventsSearchResultViewModel>().Subject;
@@ -37,10 +39,30 @@ public class EventsSearchResultViewComponentTests
         _events.GetApprovedEventByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((ApprovedEventView?)null);
 
-        var result = await new EventsSearchResultViewComponent(_events).InvokeAsync(Guid.NewGuid());
+        var result = await CreateComponent().InvokeAsync(Guid.NewGuid());
 
         result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
     }
+
+    [HumansFact]
+    public async Task AbandonedRequest_CancelsResultLookup()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        var id = Guid.NewGuid();
+        _events.GetApprovedEventByIdAsync(id, aborted.Token).Returns(Task.FromCanceled<ApprovedEventView?>(aborted.Token));
+        var act = () => CreateComponent(aborted.Token).InvokeAsync(id);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    private EventsSearchResultViewComponent CreateComponent(CancellationToken ct = default) => new(_events)
+    {
+        ViewComponentContext = new ViewComponentContext
+        {
+            ViewContext = new ViewContext { HttpContext = new DefaultHttpContext { RequestAborted = ct } },
+        },
+    };
 
     private static ApprovedEventView Approved(string title) => new(
         Id: Guid.NewGuid(), CampId: Guid.NewGuid(), GuideSharedVenueId: null, SubmitterUserId: Guid.NewGuid(),
