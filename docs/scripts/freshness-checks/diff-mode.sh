@@ -683,6 +683,67 @@ else
   FAIL=$((FAIL+1))
 fi
 
+# A changed Reforge snapshot schema must never be appended below an old CSV
+# header, or mixed with earlier snapshots in a full rebuild. Git/Reforge are
+# stubbed: the fixture creates ordinary temporary folders, never worktrees.
+if python3 - <<'PYTEST'
+import os, pathlib, subprocess, tempfile
+script = pathlib.Path('docs/scripts/generate-reforge-history.sh').resolve()
+for full, mode in ((False, 'same'), (False, 'changed'), (True, 'changed'), (True, 'mixed')):
+    with tempfile.TemporaryDirectory() as directory:
+        root = pathlib.Path(directory)
+        (root / 'docs').mkdir()
+        output = root / 'docs/reforge-history.csv'
+        original = 'commit_date,commit,metric\n2026-01-01,old,1\n'
+        output.write_text(original)
+        tools = root / 'bin'
+        tools.mkdir()
+        git = tools / 'git'
+        git.write_text("""#!/bin/bash
+case "$1" in
+rev-parse) echo old;;
+log) printf '2026-01-02 first\n2026-01-03 second\n';;
+worktree)
+  if [ "$2" = add ]; then mkdir -p "$5"; fi;;
+-C)
+  if [ "$3" = checkout ] && [ "$4" = --quiet ] && [ "$5" != HEAD ]; then
+    printf '%s' "$5" > "$2/selected"
+  fi;;
+*) exit 42;;
+esac
+""")
+        reforge = tools / 'reforge'
+        reforge.write_text("""#!/bin/bash
+commit=$(cat selected)
+header=metric
+if [ "$SCHEMA_MODE" = changed ] || { [ "$SCHEMA_MODE" = mixed ] && [ "$commit" = second ]; }; then header=other_metric; fi
+if [ "$commit" = first ]; then day=2026-01-02; else day=2026-01-03; fi
+printf 'commit_date,commit,%s\n%s,%s,2\n' "$header" "$day" "$commit" > "$5"
+""")
+        git.chmod(0o755)
+        reforge.chmod(0o755)
+        env = {**os.environ, 'PATH': f'{tools}:{os.environ["PATH"]}', 'SCHEMA_MODE': mode}
+        result = subprocess.run(['bash', str(script), *(['--full'] if full else [])],
+                                cwd=root, env=env, text=True, capture_output=True)
+        if mode == 'mixed' or (not full and mode == 'changed'):
+            assert result.returncode != 0, result
+            assert output.read_text() == original, output.read_text()
+            assert 'schema' in result.stderr.lower(), result.stderr
+        else:
+            assert result.returncode == 0, result
+            rows = output.read_text().splitlines()
+            expected = 'other_metric' if mode == 'changed' else 'metric'
+            assert rows[0] == f'commit_date,commit,{expected}', rows
+            assert len(rows) == (3 if full else 4), rows
+PYTEST
+then
+  echo "PASS [test 17]: history generator preserves CSV on snapshot schema mismatch"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 17]: history generator snapshot schema validation"
+  FAIL=$((FAIL+1))
+fi
+
 echo ""
 echo "═══ Summary ═══"
 echo "Passed: $PASS"

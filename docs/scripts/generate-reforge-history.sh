@@ -140,6 +140,9 @@ N=0
 OK=0
 FAIL=0
 SNAPSHOT_HEADER=""
+if [ "$FULL" != "true" ]; then
+  SNAPSHOT_HEADER=$(head -1 "$CSV")
+fi
 
 for COMMIT in $COMMITS; do
   N=$((N+1))
@@ -158,8 +161,12 @@ for COMMIT in $COMMITS; do
   # server holding the caller's checkout and silently record rows for the wrong
   # commit. The subshell keeps the caller's cwd unchanged for the merge below.
   if ( cd "$SNAPSHOT_WORKTREE" && reforge snapshot --solution "$SNAPSHOT_WORKTREE/$SOLUTION" --append "$SNAP" >/dev/null 2>&1 ) && [ -s "$SNAP" ] && [ -n "$(tail -n +2 "$SNAP")" ]; then
+    CURRENT_HEADER=$(head -1 "$SNAP")
     if [ -z "$SNAPSHOT_HEADER" ]; then
-      SNAPSHOT_HEADER=$(head -1 "$SNAP")
+      SNAPSHOT_HEADER="$CURRENT_HEADER"
+    elif [ "$CURRENT_HEADER" != "$SNAPSHOT_HEADER" ]; then
+      echo "Error: snapshot schema differs from the CSV header; existing CSV was preserved." >&2
+      exit 1
     fi
     # Strip header (first line); append the data row to the gap accumulator.
     tail -n +2 "$SNAP" >> "$GAP_ROWS"
@@ -188,9 +195,6 @@ fi
 # Merge existing rows only in incremental mode. Full rebuilds use the header
 # from a successful snapshot, not the old schema or an empty failed snapshot.
 HEADER="$SNAPSHOT_HEADER"
-if [ "$FULL" != "true" ] && [ -f "$CSV" ]; then
-  HEADER=$(head -1 "$CSV")
-fi
 
 MERGED="$WORK_DIR/merged.csv"
 {
