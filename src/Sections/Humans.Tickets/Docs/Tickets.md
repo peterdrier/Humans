@@ -82,6 +82,8 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 
 ## Invariants
 
+- The self/admin profile ticket-holdings card passes browser cancellation to its holdings and early-entry reads. Public profile viewers remain excluded before any ticket lookup; self/admin empty-card behavior is unchanged.
+
 - Guest order totals format amounts in the selected UI culture and retain each order’s currency code.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.

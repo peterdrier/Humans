@@ -21,7 +21,7 @@ public sealed class TicketHoldingsViewComponent(
             return Content(string.Empty);
 
         var showEmpty = viewMode == ProfileCardViewMode.Admin;
-        var holdings = await queryService.GetUserTicketHoldingsAsync(userId);
+        var holdings = await queryService.GetUserTicketHoldingsAsync(userId, HttpContext.RequestAborted);
 
         if (!showEmpty && holdings.OrderCount == 0 && holdings.Tickets.Count == 0)
             return Content(string.Empty);
