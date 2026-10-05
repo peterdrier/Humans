@@ -532,6 +532,9 @@ internal sealed class TeamAdminController(
             return Forbid();
         }
 
+        if (!await ResourceMatchesTeamAsync(resourceId, team.Id))
+            return NotFound();
+
         if (level == DrivePermissionLevel.None)
         {
             SetError("Invalid permission level.");
@@ -571,6 +574,9 @@ internal sealed class TeamAdminController(
             return BadRequest(ModelState);
         }
 
+        if (!await ResourceMatchesTeamAsync(resourceId, team.Id))
+            return NotFound();
+
         var result = await teamResourceService.SetRestrictInheritedAccessWithResultAsync(
             resourceId,
             restrict,
@@ -609,6 +615,9 @@ internal sealed class TeamAdminController(
             return Forbid();
         }
 
+        if (!await ResourceMatchesTeamAsync(resourceId, team.Id))
+            return NotFound();
+
         await teamResourceService.UnlinkResourceAsync(resourceId);
         SetSuccess(localizer["TeamAdmin_ResourceUnlinked"].Value);
 
@@ -635,6 +644,9 @@ internal sealed class TeamAdminController(
         {
             return Forbid();
         }
+
+        if (!await ResourceMatchesTeamAsync(resourceId, team.Id))
+            return NotFound();
 
         try
         {
@@ -1244,6 +1256,14 @@ internal sealed class TeamAdminController(
 
         var combined = matchingTeamMembers.Concat(nonMembers).ToList();
         return Json(combined);
+    }
+
+    private async Task<bool> ResourceMatchesTeamAsync(Guid resourceId, Guid teamId)
+    {
+        var resource = await teamResourceService.GetResourceByIdAsync(resourceId, HttpContext.RequestAborted);
+        if (resource?.TeamId == teamId) return true;
+        logger.LogWarning("Rejected resource {ResourceId} outside requested team {TeamId}", resourceId, teamId);
+        return false;
     }
 
     private async Task<bool> CanManageResourcesAsync(Team team, Guid userId, CancellationToken ct = default)

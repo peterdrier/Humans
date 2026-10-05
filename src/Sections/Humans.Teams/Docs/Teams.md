@@ -183,6 +183,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Invariants
 
+- Resource permission edits, inheritance toggles, unlinking and single-resource sync verify that the resource belongs to the team named in the URL after the existing team authorization. Missing or foreign resources return HTTP 404 with a Warning before any mutation; authorization refusals remain Forbid. Ownership is read through GoogleIntegration’s existing snapshot contract, and outbound mutations retain detached cancellation.
+
 - The inherited-access restriction POST rejects invalid binding with HTTP 400 and a Warning after its existing resource-management authorization, before dispatching a Google mutation. Unauthorized callers retain Forbid; explicit false remains valid.
 
 - Teams's email links use the shared `Email:BaseUrl`, normalized by Shell to omit trailing slashes before a route is appended.
@@ -250,6 +252,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - Regular humans **cannot** manage other teams' members, roles, or settings.
 - Coordinators **cannot** create, delete, or edit team admin settings (name, approval mode, parent, Google prefix). They can only edit the team page and manage members/roles for their own department.
 - Sub-team managers **cannot** manage Google resources, the parent department, sibling sub-teams, or team admin settings.
+- A resource manager cannot target another team’s resource ID through an authorized team’s URL.
 - TeamsAdmin **cannot** delete teams or execute sync actions.
 - Nobody can manually add or remove members from system teams.
 
