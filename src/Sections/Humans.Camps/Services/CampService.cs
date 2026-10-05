@@ -1532,14 +1532,15 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         // Called from AccountMergeService.MergeAsync's ordered fan-out; must stay idempotent.
         // Folds the source's CampMember rows onto the survivor and carries their
         // CampRoleAssignments along — Camp Lead is a CampRoleAssignment now, so leads move too.
+        var leadUserIds = await _repo.GetActiveLeadUserIdsAsync(ct);
         await _repo.ReassignMembershipsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        // Folding duplicate pending requests also changes the reviewing leads' counts.
+        foreach (var leadUserId in leadUserIds.Append(sourceUserId).Append(targetUserId).Distinct())
+            _leadBadgeInvalidator.Invalidate(leadUserId);
 
-        // Lead moves change Barrio Leads team membership + lead-badge cache for both users.
+        // Lead moves change Barrio Leads team membership for both users.
         await _systemTeamSync.SyncMembershipForUserAsync(sourceUserId, SystemTeamType.BarrioLeads, ct);
         await _systemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.BarrioLeads, ct);
-        _leadBadgeInvalidator.Invalidate(sourceUserId);
-        _leadBadgeInvalidator.Invalidate(targetUserId);
-
         // The fold can move HasEarlyEntry CampMember rows between the two users, so evict
         // both per-user early-entry caches (mirrors the Teams membership fold).
         _earlyEntryInvalidator.InvalidateUser(sourceUserId);
@@ -1579,7 +1580,11 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     /// </summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
+        var leadUserIds = await _repo.GetActiveLeadUserIdsAsync(ct);
         await _repo.DeleteCampFootprintForUserAsync(userId, ct);
+        // Capture before deletion, which can remove this user's own lead assignment.
+        foreach (var leadUserId in leadUserIds.Append(userId).Distinct())
+            _leadBadgeInvalidator.Invalidate(leadUserId);
         _earlyEntryInvalidator.InvalidateUser(userId);
 
         // The cached CampInfo projection carries the rosters this just emptied, and the
