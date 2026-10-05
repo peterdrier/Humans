@@ -87,3 +87,43 @@ test('mixed text and numeric labels use one text ordering for the whole column',
     assert.deepEqual(result.ascending, expected);
     assert.deepEqual(result.descending, [...expected].reverse());
 });
+
+function clickRow(overrides = {}, interactive = null) {
+    let click;
+    const row = { getAttribute: () => '/Governance/BoardVoting/application-1' };
+    const context = {
+        window: { location: '/Governance/BoardVoting' },
+        document: { addEventListener(event, handler) { click = handler; } },
+    };
+    vm.createContext(context);
+    vm.runInContext(site.slice(site.indexOf('// Clickable table rows'),
+        site.indexOf('// Declarative client-side table sorting')), context);
+    click({ button: 0, target: {
+        closest(selector) {
+            if (selector === 'tr[data-href]') return row;
+            return selector.split(',').some(part => part.trim() === interactive) ? {} : null;
+        },
+    }, ...overrides });
+    return context.window.location;
+}
+
+test('ordinary clicks on row content navigate to the row destination', () => {
+    assert.equal(clickRow(), '/Governance/BoardVoting/application-1');
+});
+
+test('links and controls inside a clickable row retain their own action', () => {
+    for (const selector of ['a', 'button', 'input', 'select', 'textarea', 'label', 'summary',
+        '[role="button"]', '[role="link"]', '[contenteditable]']) {
+        assert.equal(clickRow({}, selector), '/Governance/BoardVoting');
+    }
+    assert.equal(clickRow({ ctrlKey: true }, 'a'), '/Governance/BoardVoting');
+});
+
+test('row navigation ignores handled clicks, modifiers and non-primary buttons', () => {
+    for (const overrides of [
+        { defaultPrevented: true }, { ctrlKey: true }, { metaKey: true },
+        { shiftKey: true }, { altKey: true }, { button: 1 },
+    ]) {
+        assert.equal(clickRow(overrides), '/Governance/BoardVoting');
+    }
+});

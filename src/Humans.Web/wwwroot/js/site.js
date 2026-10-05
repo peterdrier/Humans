@@ -47,6 +47,8 @@ document.addEventListener('change', function (e) {
 
 // Clickable table rows via [data-href]
 document.addEventListener('click', function (e) {
+    if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    if (e.target.closest('a, button, input, select, textarea, label, summary, [role="button"], [role="link"], [contenteditable]')) return;
     var row = e.target.closest('tr[data-href]');
     if (row) {
         window.location = row.getAttribute('data-href');
