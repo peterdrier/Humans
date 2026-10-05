@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 
 namespace Humans.Email.Contracts;
@@ -23,5 +24,6 @@ public interface IEmailService : IApplicationService
     /// <see cref="TimeSensitiveTemplates"/>. The recipient user id is taken from <see cref="EmailMessage.UserId"/>
     /// when supplied, otherwise resolved from the recipient address.
     /// </summary>
+    [ExternalWrite]
     Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default);
 }
