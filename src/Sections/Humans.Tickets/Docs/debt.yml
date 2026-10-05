@@ -9,7 +9,8 @@ inbox:
     review: light
   - added: 2026-09-05
     id: TICKETS-1
-    what: "Test gaps from the invariant matrix (finding 15, /section-doctor on Tickets 2026-09-05): (a) TicketQueryService.EraseForUserAsync has no behavior test (only the DI sweep); (b) GetUserTicketExportDataAsync is untested; (c) TicketQueryService.GetMatchedTicketUserIdsAsync and GetMatchedUserIdsForEmailsAsync have no test anywhere; (d) 'sync removes Ticketed when no valid ticket remains' is unpinned — the participation tests cover add/flip only."
+    what: "Test gaps from the invariant matrix (finding 15, /section-doctor on Tickets 2026-09-05): (a) TicketQueryService.EraseForUserAsync's service test seeds no rows, so nothing shows a member's order and attendee rows tombstoned through the service (the repository tests pin the tombstone itself); (d) 'sync removes Ticketed when no valid ticket remains' is unpinned — the participation tests cover add/flip only."
+    status: partial
     review: light
   - added: 2026-10-04
     id: TICKETS-10
