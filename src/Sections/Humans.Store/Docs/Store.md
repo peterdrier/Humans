@@ -23,7 +23,7 @@ Per-camp catalog ordering, multi-method payments, and consolidated Holded factur
 
 ### Product
 
-Catalog item for a given event year.
+Catalog item for a given event year. The catalog renders descriptions as sanitized Markdown; sorting catalog rows preserves tables nested inside those descriptions.
 
 **Table:** `store_products`
 

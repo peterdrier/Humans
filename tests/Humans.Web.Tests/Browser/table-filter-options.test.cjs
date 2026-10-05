@@ -35,12 +35,18 @@ test('dropdown filters retain labels that match object properties and filter the
         ['constructor', 'constructor']);
 });
 
-function sortValues(values, sortType = 'auto') {
+function sortValues(values, sortType = 'auto', nestedValues = []) {
     const rows = values.map(textContent => ({ cells: [{ dataset: {}, textContent }] }));
+    const nestedRows = nestedValues.map(textContent => ({ cells: [{ dataset: {}, textContent }] }));
+    const nestedBody = { rows: nestedRows };
     const tbody = {
         rows,
-        querySelectorAll() { return this.rows; },
-        appendChild(row) { this.rows.splice(this.rows.indexOf(row), 1); this.rows.push(row); },
+        querySelectorAll() { return [...this.rows, ...nestedBody.rows]; },
+        appendChild(row) {
+            const previousRows = this.rows.includes(row) ? this.rows : nestedBody.rows;
+            previousRows.splice(previousRows.indexOf(row), 1);
+            this.rows.push(row);
+        },
     };
     const attributes = {};
     const header = {
@@ -60,7 +66,8 @@ function sortValues(values, sortType = 'auto') {
     header.click();
     const ascending = tbody.rows.map(row => row.cells[0].textContent);
     header.click();
-    return { ascending, descending: tbody.rows.map(row => row.cells[0].textContent) };
+    return { ascending, descending: tbody.rows.map(row => row.cells[0].textContent),
+        nested: nestedBody.rows.map(row => row.cells[0].textContent) };
 }
 
 test('auto sorting compares complete labels rather than their numeric prefixes', () => {
@@ -126,4 +133,11 @@ test('row navigation ignores handled clicks, modifiers and non-primary buttons',
     ]) {
         assert.equal(clickRow(overrides), '/Governance/BoardVoting');
     }
+});
+
+test('sorting outer rows preserves table rows inside Markdown descriptions', () => {
+    const result = sortValues(['Zulu', 'Alpha'], 'auto', ['Item', 'Value', 'A', '1']);
+    assert.deepEqual(result.ascending, ['Alpha', 'Zulu']);
+    assert.deepEqual(result.descending, ['Zulu', 'Alpha']);
+    assert.deepEqual(result.nested, ['Item', 'Value', 'A', '1']);
 });

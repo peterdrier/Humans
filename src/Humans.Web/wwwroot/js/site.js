@@ -126,7 +126,7 @@ document.addEventListener('click', function (e) {
                 var activeIndicator = th.querySelector('.sort-indicator');
                 if (activeIndicator) activeIndicator.textContent = nextDirection === 'asc' ? ' ▲' : ' ▼';
 
-                var rows = Array.from(tbody.querySelectorAll('tr'));
+                var rows = Array.from(tbody.rows);
                 var comparisonType = sortType === 'auto'
                     ? (rows.every(function (row) {
                         return numberForSort(valueFromRow(row, columnIndex, key)) !== null;
