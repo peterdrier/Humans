@@ -109,7 +109,7 @@ internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUs
             sinceInstant = parsed.Value;
         }
 
-        // Rows arrive ordered by SubmittedAt — the cursor below relies on it.
+        // Preserve the section's export order, including ballot-id order for Asociado votes.
         var filtered = export.Rows
             .Where(r => anonymity is null || r.Anonymity == anonymity)
             .Where(r => sinceInstant is null || (r.SubmittedAt is { } at && at >= sinceInstant))
@@ -121,7 +121,7 @@ internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUs
             return Content(md, "text/markdown", Encoding.UTF8);
         }
 
-        // Offset-based opaque cursor over the filtered, time-ordered rows.
+        // Offset-based opaque cursor over the filtered rows in stable export order.
         var offset = DecodeCursor(cursor);
         var pageSize = limit.ClampPageSize(max: MaxLimit);
         var page = filtered.Skip(offset).Take(pageSize).ToList();

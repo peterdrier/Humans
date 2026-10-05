@@ -91,8 +91,9 @@ available in ordinary surveys too.
 After close, admins may inspect individual ballots, but the drill-down labels
 them only as Ballot 1, Ballot 2, and so on: no voter name, user id,
 participation id, response id, or submission timestamp is exposed. Result
-exports and the Backdoor API likewise suppress identity for every Asociado
-ballot, including any legacy Identified row.
+exports and the Backdoor API likewise suppress identity and submission timestamps
+for every Asociado ballot, including any legacy Identified row. Export rows order
+by response id rather than submission time.
 
 ## Data model
 

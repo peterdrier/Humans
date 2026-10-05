@@ -4338,7 +4338,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task Closed_asociado_vote_exposes_unattributed_ballots_without_identified_respondents()
+    public async Task Closed_asociado_vote_exposes_unattributed_ballots_and_exports_without_identity_or_timing()
     {
         var survey = SurveyWith(SurveyStatus.Closed, SurveyAudienceType.Asociados, null);
         survey.IsAsociadoVote = true;
@@ -4362,6 +4362,9 @@ public class SurveyServiceTests
                 Guid.NewGuid(),
                 TextAnswer(questionId, "legacy")),
         };
+        Array.Sort(responses, (a, b) => a.Id.CompareTo(b.Id));
+        responses[0].SubmittedAt = now;
+        responses[1].SubmittedAt = now - Duration.FromDays(1);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _repo.GetResponsesForResultsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(responses);
         _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
@@ -4369,6 +4372,7 @@ public class SurveyServiceTests
 
         var scoped = await CreateService().GetScopedResultsAsync(
             survey.Id, SurveyResultsScope.Combined, TestContext.Current.CancellationToken);
+        var export = await CreateService().GetResponseExportAsync(survey.Id, TestContext.Current.CancellationToken);
 
         scoped!.IsAsociadoVote.Should().BeTrue();
         scoped.Results.IdentifiedRespondents.Should().BeEmpty();
@@ -4377,6 +4381,9 @@ public class SurveyServiceTests
             .SelectMany(ballot => ballot.Answers)
             .Select(answer => answer.TextValue)
             .Should().BeEquivalentTo("unlinkable", "legacy");
+        export!.Rows.Should().HaveCount(2).And.OnlyContain(row =>
+            row.UserId == null && row.UserName == null && row.SubmittedAt == null);
+        export.Rows.Select(row => row.ResponseId).Should().Equal(responses[0].Id, responses[1].Id);
         await _userService.DidNotReceive().GetUserInfosAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }
