@@ -253,7 +253,7 @@ Outbound invoices to members/barrios:
   - (VAT is not stored as its own line item — settlement math lives in the cash-flow
     computation; no donation handling or quarter-boundary splitting exists in the sync)
 - **Projections** via `TicketingBudgetService.GetProjectionsAsync`:
-  - Virtual (non-persisted) weekly entries for future weeks from current week to event date
+  - Virtual (non-persisted) weekly entries for future weeks from current week to event date (inclusive, including a one-day final week when the event is on Monday)
   - Recalculates from latest actuals: remaining tickets / remaining days = projected daily rate
   - Fees computed on revenue; VAT on revenue at the projection's VAT rate (inclusive
     formula), while the Stripe/TicketTailor fee line items carry the fixed 21% fee VAT rate

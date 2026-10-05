@@ -56,7 +56,7 @@ internal sealed class TicketingProjection
             : StartDate.Value.PlusDays(1 - (int)StartDate.Value.DayOfWeek);
         var isFirstWeek = true;
 
-        while (weekStart < EventDate.Value)
+        while (weekStart <= EventDate.Value)
         {
             var weekEnd = weekStart.PlusDays(6);
             if (weekEnd > EventDate.Value) weekEnd = EventDate.Value;

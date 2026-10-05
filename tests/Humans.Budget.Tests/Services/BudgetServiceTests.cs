@@ -766,16 +766,19 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
-    [InlineData(22, 5, 47)]
-    [InlineData(1, 5, 35)]
-    [InlineData(22, 0, 12)]
+    [InlineData(22, 5, 47, 15, 5, 15)]
+    [InlineData(1, 5, 35, 15, 5, 15)]
+    [InlineData(22, 0, 12, 15, 5, 1)]
+    [InlineData(22, 5, 47, 13, 5, 5)]
+    [InlineData(22, 0, 12, 13, 5, 1)]
+    [InlineData(22, 5, 47, 12, 4, 35)]
     public async Task Ticketing_projection_preview_matches_materialized_weeks(
-        int startDay, int dailyRate, int firstWeekTickets)
+        int startDay, int dailyRate, int firstWeekTickets, int eventDay, int weeks, int lastWeekTickets)
     {
         Clock.Reset(Instant.FromUtc(2026, 3, 17, 12, 0));
         var (groupId, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
         await ConfigureProjectionAsync(groupId, new LocalDate(2026, 3, startDay),
-            new LocalDate(2026, 4, 15), 19.99m, dailyRate);
+            new LocalDate(2026, 4, eventDay), 19.99m, dailyRate);
         await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
             var projection = await ctx.TicketingProjections.SingleAsync(
@@ -789,11 +792,11 @@ public sealed class BudgetServiceTests
 
         var preview = await _service.GetTicketingProjectionEntriesAsync(
             groupId, TestContext.Current.CancellationToken);
-        preview.Should().HaveCount(5);
+        preview.Should().HaveCount(weeks);
         preview[0].WeekStart.Should().Be(new LocalDate(2026, 3, 16));
         preview[0].ProjectedTickets.Should().Be(firstWeekTickets);
-        preview[^1].WeekEnd.Should().Be(new LocalDate(2026, 4, 15));
-        preview[^1].ProjectedTickets.Should().Be(dailyRate == 0 ? 1 : 15);
+        preview[^1].WeekEnd.Should().Be(new LocalDate(2026, 4, eventDay));
+        preview[^1].ProjectedTickets.Should().Be(lastWeekTickets);
 
         await _service.RefreshTicketingProjectionsAsync(_yearId, null, TestContext.Current.CancellationToken);
 
