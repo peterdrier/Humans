@@ -124,13 +124,13 @@ public class TicketDashboardViewTests
             AveragePrice = 1234.5m,
             TotalStripeFees = 1234,
             TotalApplicationFees = 1234,
-            FeesByPaymentMethod = [new PaymentMethodFeeBreakdown
+            FeesByPaymentMethod = [new FeeBreakdownByMethod
             {
                 TotalAmount = 1234, TotalStripeFees = 1234.5m, TotalApplicationFees = 1234.5m,
                 EffectiveRate = 12.5m,
             }],
-            RecentOrders = [new TicketOrderSummary { Amount = 1234 }],
-            DailySales = [new DailySalesPoint { Date = "2026-07-01", RollingAverage = 12.5m }],
+            RecentOrders = [new RecentOrder { Amount = 1234 }],
+            DailySales = [new DailySales { Date = "2026-07-01", RollingAverage = 12.5m }],
         }, language);
         Assert.True(index.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(count), StringSplitOptions.None).Length >= 8);
         Assert.True(index.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(amount), StringSplitOptions.None).Length >= 4);

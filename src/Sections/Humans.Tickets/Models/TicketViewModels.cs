@@ -23,47 +23,18 @@ internal sealed class TicketDashboardViewModel
     public decimal TotalApplicationFees { get; set; }
     public decimal NetRevenue { get; set; }
 
-    public List<PaymentMethodFeeBreakdown> FeesByPaymentMethod { get; set; } = [];
+    public List<FeeBreakdownByMethod> FeesByPaymentMethod { get; set; } = [];
 
-    public List<DailySalesPoint> DailySales { get; set; } = [];
+    public List<DailySales> DailySales { get; set; } = [];
 
     public int UnmatchedOrderCount { get; set; }
     public TicketSyncStatus SyncStatus { get; set; }
     public string? SyncError { get; set; }
     public Instant? LastSyncAt { get; set; }
 
-    public List<TicketOrderSummary> RecentOrders { get; set; } = [];
+    public List<RecentOrder> RecentOrders { get; set; } = [];
 
     public bool IsConfigured { get; set; }
-}
-
-internal sealed class PaymentMethodFeeBreakdown
-{
-    public string PaymentMethod { get; set; } = string.Empty;
-    public int OrderCount { get; set; }
-    public decimal TotalAmount { get; set; }
-    public decimal TotalStripeFees { get; set; }
-    public decimal TotalApplicationFees { get; set; }
-    public decimal EffectiveRate { get; set; } // StripeFee as % of amount
-}
-
-internal sealed class DailySalesPoint
-{
-    public string Date { get; set; } = string.Empty; // "2026-05-15" for Chart.js
-    public int TicketsSold { get; set; }
-    public decimal? RollingAverage { get; set; } // 7-day rolling avg
-}
-
-internal sealed class TicketOrderSummary
-{
-    public Guid Id { get; set; }
-    public string BuyerName { get; set; } = string.Empty;
-    public int TicketCount { get; set; }
-    public decimal Amount { get; set; }
-    public string Currency { get; set; } = "EUR";
-    public Instant PurchasedAt { get; set; }
-    public bool IsMatched { get; set; }
-    public TicketPaymentStatus PaymentStatus { get; set; }
 }
 
 internal sealed class TicketOrdersViewModel() : PagedListViewModel(25)

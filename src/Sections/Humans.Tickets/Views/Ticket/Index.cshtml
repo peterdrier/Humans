@@ -115,13 +115,13 @@
     @if (Model.FeesByPaymentMethod.Count > 0)
     {
         var currency = Model.Currency;
-        Func<PaymentMethodFeeBreakdown, IHtmlContent> grossAmountCell =
+        Func<FeeBreakdownByMethod, IHtmlContent> grossAmountCell =
             @<text>@currency @item.TotalAmount.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</text>;
-        Func<PaymentMethodFeeBreakdown, IHtmlContent> stripeFeeCell =
+        Func<FeeBreakdownByMethod, IHtmlContent> stripeFeeCell =
             @<text>@currency @item.TotalStripeFees.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</text>;
-        Func<PaymentMethodFeeBreakdown, IHtmlContent> ttFeeCell =
+        Func<FeeBreakdownByMethod, IHtmlContent> ttFeeCell =
             @<text>@currency @item.TotalApplicationFees.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</text>;
-        Func<PaymentMethodFeeBreakdown, IHtmlContent> effectiveRateCell =
+        Func<FeeBreakdownByMethod, IHtmlContent> effectiveRateCell =
             @<text>@item.EffectiveRate.ToString(System.Globalization.CultureInfo.CurrentUICulture)%</text>;
         var feesTable = TableModel.For(Model.FeesByPaymentMethod.ToList())
             .Column("Payment Method", pm => pm.PaymentMethod)
@@ -190,9 +190,9 @@
                 </div>
                 <div class="card-body p-0">
                     @{
-                        Func<TicketOrderSummary, IHtmlContent> recentAmountCell =
+                        Func<RecentOrder, IHtmlContent> recentAmountCell =
                             @<text>@item.Currency @item.Amount.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</text>;
-                        Func<TicketOrderSummary, IHtmlContent> recentMatchedCell = @<text>
+                        Func<RecentOrder, IHtmlContent> recentMatchedCell = @<text>
                             @if (item.IsMatched)
                             {
                                 <span class="badge bg-success"><i class="fa-solid fa-check"></i></span>

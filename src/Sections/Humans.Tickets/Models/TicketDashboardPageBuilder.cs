@@ -40,36 +40,13 @@ internal sealed class TicketDashboardPageBuilder(
             TotalStripeFees = stats.TotalStripeFees,
             TotalApplicationFees = stats.TotalApplicationFees,
             NetRevenue = stats.NetRevenue,
-            FeesByPaymentMethod = stats.FeesByPaymentMethod.Select(f => new PaymentMethodFeeBreakdown
-            {
-                PaymentMethod = f.PaymentMethod,
-                OrderCount = f.OrderCount,
-                TotalAmount = f.TotalAmount,
-                TotalStripeFees = f.TotalStripeFees,
-                TotalApplicationFees = f.TotalApplicationFees,
-                EffectiveRate = f.EffectiveRate,
-            }).ToList(),
-            DailySales = stats.DailySalesPoints.Select(d => new DailySalesPoint
-            {
-                Date = d.Date,
-                TicketsSold = d.TicketsSold,
-                RollingAverage = d.RollingAverage,
-            }).ToList(),
+            FeesByPaymentMethod = stats.FeesByPaymentMethod,
+            DailySales = stats.DailySalesPoints,
             UnmatchedOrderCount = stats.UnmatchedOrderCount,
             SyncStatus = stats.SyncStatus,
             SyncError = stats.SyncError,
             LastSyncAt = stats.LastSyncAt,
-            RecentOrders = stats.RecentOrders.Select(o => new TicketOrderSummary
-            {
-                Id = o.Id,
-                BuyerName = o.BuyerName,
-                TicketCount = o.TicketCount,
-                Amount = o.Amount,
-                Currency = o.Currency,
-                PurchasedAt = o.PurchasedAt,
-                IsMatched = o.IsMatched,
-                PaymentStatus = o.PaymentStatus,
-            }).ToList(),
+            RecentOrders = stats.RecentOrders,
             IsConfigured = true,
         };
     }
