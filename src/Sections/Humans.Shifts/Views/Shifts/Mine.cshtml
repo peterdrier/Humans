@@ -343,11 +343,12 @@
         var days = form.querySelectorAll('.avail-cal-day:not(.avail-cal-empty)');
         var countEl = document.getElementById('availCount');
         var totalDays = days.length;
+        var daysSelectedLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Shifts_DaysSelected"].Value));
 
         function updateCount() {
             var selected = form.querySelectorAll('.avail-cal-selected').length;
             if (countEl) {
-                countEl.textContent = selected + ' / ' + totalDays + ' @Localizer["Shifts_DaysSelected"].Value';
+                countEl.textContent = selected + ' / ' + totalDays + ' ' + daysSelectedLabel;
             }
         }
 
