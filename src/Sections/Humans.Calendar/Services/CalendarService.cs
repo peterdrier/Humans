@@ -471,8 +471,16 @@ internal sealed class CalendarService(
                     if (x.OverrideStartUtc is not null || x.OverrideEndUtc is not null)
                         throw new InvalidOperationException("An all-day occurrence cannot have a time.");
                     var start = x.OverrideStartDate ?? originalDate!.Value;
-                    var end = x.OverrideEndDateExclusive ?? start.PlusDays(
-                        NodaTime.Period.Between(info.StartDate!.Value, info.EndDateExclusive!.Value, PeriodUnits.Days).Days);
+                    LocalDate end;
+                    try
+                    {
+                        end = x.OverrideEndDateExclusive ?? start.PlusDays(
+                            NodaTime.Period.Between(info.StartDate!.Value, info.EndDateExclusive!.Value, PeriodUnits.Days).Days);
+                    }
+                    catch (OverflowException ex)
+                    {
+                        throw new InvalidOperationException("An all-day occurrence requires a representable date range.", ex);
+                    }
                     if (end <= start) throw new InvalidOperationException("An all-day occurrence requires a non-empty date range.");
                 }
                 else

@@ -186,7 +186,7 @@ Every timed recurring event is tied to an IANA timezone (e.g., `"Europe/Madrid"`
 
 This ensures a recurring "19:00 weekly on Monday" stays at 19:00 local time even when daylight saving changes occur.
 
-All-day events carry only `LocalDate` ranges, including their recurrence bounds and override identities. Create/edit forms require a representable following date for the inclusive end; 9999-12-31 is refused as a localized date-range error. Expansion preserves calendar-day duration across DST; views never convert these dates into viewer timezones. The occurrence editor accepts dates only, and the service rejects times. Existing instant-based all-day rows are projected to dates using their original zone (Madrid for one-off events); ordinary saves write dates. A series with saved exceptions retains its timed/all-day type.
+All-day events carry only `LocalDate` ranges, including their recurrence bounds and override identities. Create/edit forms require a representable following date for the inclusive end; 9999-12-31 is refused as a localized date-range error. Expansion preserves calendar-day duration across DST; views never convert these dates into viewer timezones. The occurrence editor accepts dates only, and the service rejects times. Its inclusive end and any preserved-duration end must remain representable; refusal uses the localized occurrence-range error without saving an exception. Existing instant-based all-day rows are projected to dates using their original zone (Madrid for one-off events); ordinary saves write dates. A series with saved exceptions retains its timed/all-day type.
 
 ## Related Features
 

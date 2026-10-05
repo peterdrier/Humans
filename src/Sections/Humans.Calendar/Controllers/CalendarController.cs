@@ -469,6 +469,7 @@ internal sealed class CalendarController : HumansControllerBase
         if (!ModelState.IsValid) return View("OccurrenceEdit", form);
         if (zone is null || !form.TryBuildOverride(zone, out var dto))
         {
+            _logger.LogWarning("Rejected calendar occurrence override for event {EventId}", id);
             ModelState.AddModelError(string.Empty, _localizer["Calendar_InvalidOccurrenceOverride"]);
             return View("OccurrenceEdit", form);
         }
@@ -479,6 +480,7 @@ internal sealed class CalendarController : HumansControllerBase
         }
         catch (InvalidOperationException)
         {
+            _logger.LogWarning("Rejected calendar occurrence override for event {EventId}", id);
             ModelState.AddModelError(string.Empty, _localizer["Calendar_InvalidOccurrenceOverride"]);
             return View("OccurrenceEdit", form);
         }

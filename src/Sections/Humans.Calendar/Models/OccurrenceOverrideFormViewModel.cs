@@ -33,18 +33,23 @@ internal sealed class OccurrenceOverrideFormViewModel
 
     /// <summary>
     /// Builds the override DTO from the posted form. Returns <c>false</c> when an all-day
-    /// field carries a time of day — the form offers dates there, so a non-zero time means
+    /// field carries a time of day or its inclusive end cannot advance to an exclusive date.
+    /// The form offers dates there, so a non-zero time means
     /// the post did not come from the form and the caller re-renders rather than saving.
     /// </summary>
     public bool TryBuildOverride(DateTimeZone zone, out Humans.Calendar.Services.Dtos.OverrideOccurrenceDto dto)
     {
+        dto = null!;
+        if (OverrideStartDateLocal?.TimeOfDay > TimeSpan.Zero || OverrideEndDateLocal?.TimeOfDay > TimeSpan.Zero
+            || (OverrideEndDateLocal is { } inclusiveEnd && LocalDate.FromDateTime(inclusiveEnd) == LocalDate.MaxIsoValue))
+            return false;
         dto = new(
             OverrideStartLocal is { } start ? LocalDateTime.FromDateTime(start).InZoneLeniently(zone).ToInstant() : null,
             OverrideEndLocal is { } end ? LocalDateTime.FromDateTime(end).InZoneLeniently(zone).ToInstant() : null,
             OverrideTitle, OverrideDescription, OverrideLocation, OverrideLocationUrl,
             OverrideStartDateLocal is { } date ? LocalDate.FromDateTime(date) : null,
             OverrideEndDateLocal is { } last ? LocalDate.FromDateTime(last).PlusDays(1) : null);
-        return !(OverrideStartDateLocal?.TimeOfDay > TimeSpan.Zero || OverrideEndDateLocal?.TimeOfDay > TimeSpan.Zero);
+        return true;
     }
 
     public static LocalDate? TryParseOriginalDate(string s)
