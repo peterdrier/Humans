@@ -1643,8 +1643,12 @@ public sealed class ExpenseReportServiceTests
             AuditEntityTypes.User);
     }
 
-    [HumansFact]
-    public async Task SaveSubmitterIbanWithResultAsync_ReturnsValidationFailure_WhenIbanInvalid()
+    [HumansTheory]
+    [Xunit.InlineData("not-an-iban")]
+    [Xunit.InlineData("ESAA00000000000000000060")]
+    [Xunit.InlineData("FR14É0000000000000000000085")]
+    [Xunit.InlineData("ES91٢1000418450200051332")]
+    public async Task SaveSubmitterIbanWithResultAsync_ReturnsValidationFailure_WhenIbanInvalid(string iban)
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1652,11 +1656,13 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
 
-        var result = await _sut.SaveSubmitterIbanWithResultAsync(reportId, submitter, "not-an-iban", Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.SaveSubmitterIbanWithResultAsync(reportId, submitter, iban, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.IsValidationError.Should().BeTrue();
         result.MessageKey.Should().Be("Expenses_Iban_InvalidFormat");
+        await _userService.DidNotReceive().SetProfileIbanAsync(
+            Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     // ─────────────────── Acting on a member's behalf ─────────────────────────
