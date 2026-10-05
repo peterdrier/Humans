@@ -129,9 +129,6 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 ## Invariants
 
-- Consent's email links use the shared `Email:BaseUrl`, normalized by Shell to omit trailing slashes before a route is appended.
-
-
 - The consent dashboard renders section service DTOs directly, sorting pending teams/documents before signed ones and then by ordinal name. It retains UTC date display and the ten most recent history rows; the controller does not copy DTOs into duplicate row models.
 
 - The member consent dashboard and review pages localize breadcrumb navigation labels in all six supported cultures.

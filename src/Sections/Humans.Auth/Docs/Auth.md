@@ -119,9 +119,6 @@ The auth surface is mid-transition. Phase by phase:
 
 ## Invariants
 
-- Auth's email links use the shared `Email:BaseUrl`, normalized by Shell to omit trailing slashes before a route is appended.
-
-
 - Role-assignment paging computes offsets without integer overflow; extreme pages cannot wrap into earlier assignments.
 
 - Role assignments are temporal: a new assignment is always added (never "resurrected" by clearing `ValidTo`). `RevokeAllActiveAsync(userId)` stamps `ValidTo = now` on every currently-active row in one write.

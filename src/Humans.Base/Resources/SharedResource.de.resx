@@ -56,6 +56,7 @@
     <value>Schließen</value>
   </data>
   <data name="Common_FilterColumn" xml:space="preserve"><value>{0} filtern</value></data>
+  <data name="Common_All" xml:space="preserve"><value>Alle</value></data>
   <data name="SectionHelp_Title" xml:space="preserve"><value>Bereichshilfe</value></data>
   <data name="SectionHelp_Guide" xml:space="preserve"><value>Leitfaden</value></data>
   <data name="SectionHelp_Glossary" xml:space="preserve"><value>Glossar</value></data>

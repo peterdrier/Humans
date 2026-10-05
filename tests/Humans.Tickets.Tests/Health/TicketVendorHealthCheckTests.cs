@@ -23,7 +23,8 @@ public class TicketVendorHealthCheckTests
         var logger = Substitute.For<ILogger<TicketVendorHealthCheck>>();
         var sut = new TicketVendorHealthCheck(vendor, Options.Create(new TicketVendorSettings
         {
-            EventId = "event", ApiKey = "configured"
+            EventId = "event",
+            ApiKey = "configured"
         }), logger);
 
         var probe = sut.CheckHealthAsync(new HealthCheckContext(), cancellation.Token);

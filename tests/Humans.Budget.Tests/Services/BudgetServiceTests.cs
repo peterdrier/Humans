@@ -148,12 +148,12 @@ public sealed class BudgetServiceTests
         else Assert.IsType<RedirectToActionResult>(result);
         if (!viewerExists || invalidField is not null) Assert.Empty(budget.ReceivedCalls());
         else switch (action)
-        {
-            case 0: await budget.Received(1).CreateCategoryAsync(_yearId, "Category", 0m, default, null, viewerId); break;
-            case 1: await budget.Received(1).UpdateCategoryAsync(_yearId, "Category", 0m, default, viewerId); break;
-            case 2: await budget.Received(1).CreateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId); break;
-            default: await budget.Received(1).UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId); break;
-        }
+            {
+                case 0: await budget.Received(1).CreateCategoryAsync(_yearId, "Category", 0m, default, null, viewerId); break;
+                case 1: await budget.Received(1).UpdateCategoryAsync(_yearId, "Category", 0m, default, viewerId); break;
+                case 2: await budget.Received(1).CreateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId); break;
+                default: await budget.Received(1).UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId); break;
+            }
     }
 
     [HumansTheory]
@@ -961,6 +961,20 @@ public sealed class BudgetServiceTests
             lines.Single(li => li.BudgetCategoryId == feesCatId && li.ExpectedDate == week.WeekStart
                 && li.Description.Contains("TT fees:", StringComparison.Ordinal)).Amount.Should().Be(-week.ProjectedTtFees);
         }
+    }
+
+    [HumansFact]
+    public async Task Ticketing_projection_stops_once_a_Monday_event_has_passed()
+    {
+        Clock.Reset(Instant.FromUtc(2026, 4, 15, 12, 0));
+        var (groupId, _, _, _) = await SeedTicketingYearAsync();
+        await ConfigureProjectionAsync(groupId, new LocalDate(2026, 3, 22),
+            new LocalDate(2026, 4, 13), 19.99m, 5);
+
+        var preview = await _service.GetTicketingProjectionEntriesAsync(
+            groupId, TestContext.Current.CancellationToken);
+
+        preview.Should().BeEmpty();
     }
 
     // Guards the ordering invariant: materialization runs in the repo AFTER

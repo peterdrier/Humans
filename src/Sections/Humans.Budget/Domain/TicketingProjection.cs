@@ -47,7 +47,7 @@ internal sealed class TicketingProjection
     internal IEnumerable<(LocalDate Start, LocalDate End, int Tickets, decimal Revenue,
         decimal StripeFees, decimal TicketTailorFees)> CalculateWeeks(LocalDate today)
     {
-        if (StartDate is null || EventDate is null || AverageTicketPrice == 0)
+        if (StartDate is null || EventDate is null || AverageTicketPrice == 0 || today > EventDate.Value)
             yield break;
 
         var currentMonday = today.PlusDays(1 - (int)today.DayOfWeek);

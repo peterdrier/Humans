@@ -76,7 +76,8 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             missingKey ? "RankedOptions[1].OptionKey" : "RankedOptions[1].Selection", "Invalid value.");
         var form = new AssemblyBallotFormViewModel
         {
-            VoteId = vote.Id, Choice = abstain ? AssemblyBallotChoice.Abstain : AssemblyBallotChoice.Ranked,
+            VoteId = vote.Id,
+            Choice = abstain ? AssemblyBallotChoice.Abstain : AssemblyBallotChoice.Ranked,
             RankedOptions = [new() { OptionKey = "a", Selection = 1 }, new() { OptionKey = "b", Selection = null }]
         };
 

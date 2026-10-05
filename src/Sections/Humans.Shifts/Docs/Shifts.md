@@ -120,8 +120,6 @@ The `event_participations` entity is owned by Users — the natural key is User 
 
 ### Shift tag tables
 
-Availability and tag-preference forms reject malformed bound lists with HTTP 400 and a Warning before replacing saved selections. Missing users still receive Challenge; an omitted list deliberately clears the selections.
-
 - `shift_tags` — read/written by `ShiftManagementService` via `IShiftManagementRepository`. Many-to-many with rotas via the `rota_shift_tags` join table. Seeded with 8 initial values in `ShiftTagConfiguration`. Name column is unique (`IX_shift_tags_name_unique`).
 - `volunteer_tag_preferences` — read/written by `ShiftManagementService` via `IShiftManagementRepository`. Unique on `(UserId, ShiftTagId)`. Cross-domain `UserId` is a bare Guid column with no FK constraint (nobodies-collective/Humans#992); section-local FK to `ShiftTag`.
 
@@ -294,6 +292,7 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
   - Confirmed signups are capped at `MaxVolunteers` per shift before they roll into `FilledHours`, so a pie never exceeds 100 %.
   - All-day shifts contribute the standard 08:00–18:00 window's duration per slot, never `Shift.Duration` directly.
   - Service (`IShiftManagementService.GetDepartmentCoveragePiesAsync`) returns rows in natural `TeamName` order; the "promoted sub-team next to its parent" display ordering is applied in `ShiftBrowsePageBuilder.OrderPiesGroupedByParent` (display ordering belongs in view-model assembly).
+- Availability and tag-preference forms reject malformed bound lists with HTTP 400 and a Warning before replacing saved selections. Missing users still receive Challenge; an omitted list deliberately clears the selections.
 - Shared volunteer-search scripts serialize URLs and labels as JavaScript-safe JSON, preserving translated accents, apostrophes and line breaks without HTML entity text. The member availability calendar’s selected-day counter preserves its localized label through the same JSON encoding.
 - **Admin workload totals:** rota and department shift totals share the same calculation: confirmed slots are capped per shift, pending signups contribute only to the pending count, and all-day hours use the standard 08:00–18:00 window. Department role hours are folded in afterward.
 - **Browse-page day filter** (`?day=yyyy-MM-dd`, see [feature](features/day-filter.md)): a single-day selection overrides the phase-card and date-range filters and forces the flat rota list to rank by total remaining slots descending instead of urgency score, so fully-booked rotas sink to the bottom rather than being hidden. The dropdown's option list (`ShiftBrowsePageBuilder.BuildDayOptionsAsync`) is built from an unfiltered browse query so it doesn't shrink as other filters narrow the page.

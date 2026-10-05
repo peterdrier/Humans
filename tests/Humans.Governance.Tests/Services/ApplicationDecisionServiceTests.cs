@@ -911,15 +911,20 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
         GovernanceDb.BoardVotes.Add(new BoardVote
         {
-            Id = Guid.NewGuid(), ApplicationId = app.Id, BoardMemberUserId = viewerId,
-            Vote = VoteChoice.Maybe, VotedAt = Clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            ApplicationId = app.Id,
+            BoardMemberUserId = viewerId,
+            Vote = VoteChoice.Maybe,
+            VotedAt = Clock.GetCurrentInstant()
         });
         await SaveAllAsync(TestContext.Current.CancellationToken);
         ClearAllTrackers();
         _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
             new ValueTask<UserInfo?>(new User
             {
-                Id = call.Arg<Guid>(), DisplayName = "Human", Email = "human@example.com"
+                Id = call.Arg<Guid>(),
+                DisplayName = "Human",
+                Email = "human@example.com"
             }.ToUserInfo()));
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
@@ -945,15 +950,19 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             .GetMetadataForParameter(parameter);
         var descriptor = new ControllerParameterDescriptor
         {
-            Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+            Name = parameter.Name!,
+            ParameterType = parameter.ParameterType,
+            ParameterInfo = parameter
         };
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
         {
-            Metadata = metadata, CacheToken = parameter
+            Metadata = metadata,
+            CacheToken = parameter
         });
         var values = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["ApplicationId"] = app.Id.ToString(), ["BoardMeetingDate"] = "2026-03-01"
+            ["ApplicationId"] = app.Id.ToString(),
+            ["BoardMeetingDate"] = "2026-03-01"
         };
         if (valid) values[finalize ? "Approved" : "vote"] = finalize ? "false" : "0";
         else if (malformed) values[finalize ? "Approved" : "vote"] = "not-a-choice";

@@ -71,9 +71,16 @@ public class CalendarControllerICalTests
         var teamId = Guid.NewGuid();
         await repository.AddAsync(new CalendarEvent
         {
-            Id = id, Title = "Daily", OwningTeamId = teamId, IsAllDay = true,
-            StartDate = new LocalDate(2026, 6, 1), EndDateExclusive = new LocalDate(2026, 6, 2),
-            RecurrenceRule = "FREQ=DAILY", CreatedByUserId = _viewer, CreatedAt = _now, UpdatedAt = _now
+            Id = id,
+            Title = "Daily",
+            OwningTeamId = teamId,
+            IsAllDay = true,
+            StartDate = new LocalDate(2026, 6, 1),
+            EndDateExclusive = new LocalDate(2026, 6, 2),
+            RecurrenceRule = "FREQ=DAILY",
+            CreatedByUserId = _viewer,
+            CreatedAt = _now,
+            UpdatedAt = _now
         }, ct);
         _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
             id, "Daily", null, null, null, teamId, null, null,
@@ -132,7 +139,9 @@ public class CalendarControllerICalTests
             .Returns(CalendarEventMutationResult.Success(saved));
         var form = new CalendarEventFormViewModel
         {
-            Title = "Last day", OwningTeamId = teamId, IsAllDay = true,
+            Title = "Last day",
+            OwningTeamId = teamId,
+            IsAllDay = true,
             StartDateLocal = new DateTime(9999, 12, string.Equals(endKind, "blank", StringComparison.Ordinal) ? 31 : 30),
             EndDateLocal = string.Equals(endKind, "blank", StringComparison.Ordinal) ? null
                 : new DateTime(9999, 12, string.Equals(endKind, "valid", StringComparison.Ordinal) ? 30 : 31)

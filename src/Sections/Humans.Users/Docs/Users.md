@@ -195,9 +195,6 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
-- Users's email links use the shared `Email:BaseUrl`, normalized by Shell to omit trailing slashes before a route is appended.
-
-
 - Self-service email visibility accepts only defined visibility values. Unsupported text and out-of-range numeric input use the existing hidden fallback rather than persisting an undefined audience; valid names, case-insensitive names and defined numeric values retain their meaning.
 
 - Own and visible member profile onsite chips retain GET request cancellation when reading the active event year; onsite visibility and cached participation selection remain unchanged.

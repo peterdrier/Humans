@@ -26,12 +26,12 @@ internal static class AgentPricing
     public static PriceRow GetPriceRow(string model)
     {
         if (string.IsNullOrWhiteSpace(model)) return _fallback;
-        foreach (var (prefix, row) in _pricesByModelPrefix)
-        {
-            if (model.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                return row;
-        }
-        return _fallback;
+        // Longest matching prefix wins, so claude-opus-4-5 never falls through to claude-opus-4.
+        return _pricesByModelPrefix
+            .Where(p => model.StartsWith(p.Key, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(p => p.Key.Length)
+            .Select(p => p.Value)
+            .FirstOrDefault() ?? _fallback;
     }
 
     /// <summary>USD for one message. <paramref name="promptTokens"/> excludes cache-read (Anthropic reports separately). Slightly under-counts cache-warm phases.</summary>

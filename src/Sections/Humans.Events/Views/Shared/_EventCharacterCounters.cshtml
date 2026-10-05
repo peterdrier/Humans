@@ -1,8 +1,8 @@
 <script>
     (function () {
-        ['title', 'description'].forEach(function (field) {
-            var input = document.getElementById(field + 'Input');
-            var counter = document.getElementById(field + 'Counter');
+        [['Title', 'titleCounter'], ['Description', 'descriptionCounter']].forEach(function (ids) {
+            var input = document.getElementById(ids[0]);
+            var counter = document.getElementById(ids[1]);
             if (input && counter) {
                 input.addEventListener('input', function () {
                     counter.textContent = input.maxLength - input.value.length;
