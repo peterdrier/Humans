@@ -1,4 +1,11 @@
 using Humans.Base.Extensions;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
+using System.Globalization;
+using Humans.Governance.Models;
 using System.Text.Json;
 using System.Security.Claims;
 using Humans.Governance.Controllers;
@@ -889,6 +896,90 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         vote.Vote.Should().Be(VoteChoice.Yay);
         vote.Note.Should().Be("Support");
         vote.VotedAt.Should().Be(votedAt);
+    }
+
+    [HumansTheory]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    public async Task BoardDecisions_RequireExplicitValidBoundChoices(bool finalize, bool malformed, bool valid)
+    {
+        var viewerId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        GovernanceDb.BoardVotes.Add(new BoardVote
+        {
+            Id = Guid.NewGuid(), ApplicationId = app.Id, BoardMemberUserId = viewerId,
+            Vote = VoteChoice.Maybe, VotedAt = Clock.GetCurrentInstant()
+        });
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        ClearAllTrackers();
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+            new ValueTask<UserInfo?>(new User
+            {
+                Id = call.Arg<Guid>(), DisplayName = "Human", Email = "human@example.com"
+            }.ToUserInfo()));
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "Test"))
+        };
+        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = new GovernanceBoardVotingController(_userService, _service,
+            NullLogger<GovernanceBoardVotingController>.Instance, localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            Url = Substitute.For<IUrlHelper>(),
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+        var method = typeof(GovernanceBoardVotingController).GetMethod(finalize ? "Finalize" : "Vote")!;
+        var parameter = method.GetParameters()[finalize ? 0 : 1];
+        var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>())
+            .GetMetadataForParameter(parameter);
+        var descriptor = new ControllerParameterDescriptor
+        {
+            Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+        };
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata, CacheToken = parameter
+        });
+        var values = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["ApplicationId"] = app.Id.ToString(), ["BoardMeetingDate"] = "2026-03-01"
+        };
+        if (valid) values[finalize ? "Approved" : "vote"] = finalize ? "false" : "0";
+        else if (malformed) values[finalize ? "Approved" : "vote"] = "not-a-choice";
+        var bound = await services.GetRequiredService<ParameterBinder>().BindModelAsync(
+            controller.ControllerContext, binder,
+            new FormValueProvider(BindingSource.Form, new FormCollection(values), CultureInfo.InvariantCulture),
+            descriptor, metadata, value: null);
+        var result = finalize
+            ? await controller.Finalize((BoardVotingFinalizeModel)bound.Model!)
+            : await controller.Vote(app.Id, bound.IsModelSet ? (VoteChoice)bound.Model! : default, null);
+
+        if (valid) result.Should().BeOfType<RedirectToActionResult>();
+        else result.Should().BeOfType<BadRequestObjectResult>();
+        await using var stored = await GovernanceDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await stored.Applications.SingleAsync(a => a.Id == app.Id, TestContext.Current.CancellationToken))
+            .Status.Should().Be(finalize && valid ? ApplicationStatus.Rejected : ApplicationStatus.Submitted);
+        if (finalize && valid)
+            (await stored.BoardVotes.CountAsync(v => v.ApplicationId == app.Id, TestContext.Current.CancellationToken)).Should().Be(0);
+        else
+            (await stored.BoardVotes.SingleAsync(v => v.ApplicationId == app.Id, TestContext.Current.CancellationToken))
+                .Vote.Should().Be(valid ? VoteChoice.Yay : VoteChoice.Maybe);
+        if (!valid)
+        {
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            _emailService.ReceivedCalls().Should().BeEmpty();
+        }
     }
 
     [HumansFact]

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Governance.Services;
 using Humans.Governance.Domain;
 using Humans.Base.Controllers;
@@ -112,11 +113,16 @@ internal sealed class GovernanceBoardVotingController(
     [HttpPost("Vote")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.BoardOnly)]
-    public async Task<IActionResult> Vote(Guid applicationId, VoteChoice vote, string? note)
+    public async Task<IActionResult> Vote(Guid applicationId, [BindRequired] VoteChoice vote, string? note)
     {
         var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid board decision form for application {ApplicationId}", applicationId);
+            return BadRequest(ModelState);
+        }
 
         try
         {
@@ -152,6 +158,11 @@ internal sealed class GovernanceBoardVotingController(
         var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid board decision form for application {ApplicationId}", model.ApplicationId);
+            return BadRequest(ModelState);
+        }
 
         LocalDate? meetingDate = null;
         if (!string.IsNullOrWhiteSpace(model.BoardMeetingDate))
