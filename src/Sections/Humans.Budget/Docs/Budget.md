@@ -193,6 +193,8 @@ Stored as string via `HasConversion<string>()`.
 
 ## Invariants
 
+- Budget group create/update forms reject binding errors with HTTP 400 and a Warning after current-user resolution, before changing restrictions or sort order. Missing users retain HTTP 404; explicit false restriction flags remain valid.
+
 - The member overview’s income and expense percentage labels use the selected UI culture. Their one-decimal precision, percentage calculations and invariant chart JSON values are unchanged. Member and finance chart money tooltips follow the document’s selected UI language rather than the browser’s default locale.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant. Coordinator category utilization percentages use the same UI culture; the capped progress-bar width retains machine formatting.

@@ -293,6 +293,12 @@ internal sealed class BudgetAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed budget group form for {GroupOrYearId}", budgetYearId);
+            return BadRequest(ModelState);
+        }
+
         try
         {
             await budgetService.CreateGroupAsync(budgetYearId, name, isRestricted, user.Id);
@@ -313,6 +319,12 @@ internal sealed class BudgetAdminController(
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed budget group form for {GroupOrYearId}", id);
+            return BadRequest(ModelState);
+        }
 
         try
         {

@@ -1,4 +1,11 @@
 using AwesomeAssertions;
+using System.Security.Claims;
+using Humans.Budget.Controllers;
+using Humans.Finance.Contracts;
+using Humans.Tickets.Contracts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime.Testing;
 using Humans.Teams.Contracts;
@@ -54,6 +61,52 @@ public sealed class BudgetServiceTests
             userService,
             Clock,
             NullLogger<BudgetServiceImpl>.Instance);
+    }
+
+    [HumansTheory]
+    [InlineData(false, "isRestricted", true)]
+    [InlineData(true, "isRestricted", true)]
+    [InlineData(true, "sortOrder", true)]
+    [InlineData(false, "isRestricted", false)]
+    [InlineData(true, "isRestricted", false)]
+    [InlineData(true, "sortOrder", false)]
+    [InlineData(false, null, true)]
+    [InlineData(true, null, true)]
+    public async Task GroupForm_InvalidBinding_DoesNotMutate(bool update, string? invalidField, bool viewerExists)
+    {
+        var viewerId = Guid.NewGuid();
+        var budget = Substitute.For<IBudgetService>();
+        var users = Substitute.For<IUserServiceRead>();
+        if (viewerExists)
+            users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
+                UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
+        var tickets = Substitute.For<ITicketServiceRead>();
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "test"))
+        };
+        var controller = new BudgetAdminController(budget, _teamService,
+            new TicketingBudgetService(tickets, budget, Clock, NullLogger<TicketingBudgetService>.Instance),
+            tickets, Clock, users, Substitute.For<IHoldedFinanceServiceRead>(),
+            NullLogger<BudgetAdminController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        if (invalidField is not null) controller.ModelState.AddModelError(invalidField, "Invalid value.");
+
+        var result = update
+            ? await controller.UpdateGroup(_yearId, "Existing", 0, false)
+            : await controller.CreateGroup(_yearId, "New", false);
+
+        if (!viewerExists) Assert.IsType<NotFoundResult>(result);
+        else if (invalidField is not null) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<RedirectToActionResult>(result);
+        if (!viewerExists || invalidField is not null) Assert.Empty(budget.ReceivedCalls());
+        else if (update) await budget.Received(1).UpdateGroupAsync(_yearId, "Existing", 0, false, viewerId);
+        else await budget.Received(1).CreateGroupAsync(_yearId, "New", false, viewerId);
     }
 
     // ─── VAT rate validation ─────────────────────────────────────────────────
