@@ -131,9 +131,11 @@ function requestPopupHtml(r, i18n) {
 }
 
 function personHtml(name, pictureUrl, role) {
+    const initial = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+        .segment(name || '?')[Symbol.iterator]().next().value.segment.toUpperCase();
     const avatar = pictureUrl
         ? `<img src="${esc(pictureUrl)}" alt="" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">`
-        : `<span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-secondary text-white me-2" style="width: 32px; height: 32px;">${esc((name || '?').charAt(0).toUpperCase())}</span>`;
+        : `<span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-secondary text-white me-2" style="width: 32px; height: 32px;">${esc(initial)}</span>`;
     return `<div class="d-flex align-items-center mb-1">${avatar}<div><div class="fw-semibold">${esc(name)}</div><div class="small text-muted">${esc(role)}</div></div></div>`;
 }
 

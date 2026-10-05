@@ -193,6 +193,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 - Global-search result rows pass browser cancellation to the team lookup; display fields and missing-result behavior are unchanged.
 
+- People-map avatar initials retain the first Unicode grapheme of each of the first two nonempty space-separated words, including combining accents and joined emoji; initials remain HTML-escaped.
+
 - Team description previews keep their 150-character card and 200-character public-directory limits without splitting UTF-16 surrogate pairs; Markdown sanitization and full stored descriptions are preserved.
 
 - Authenticated system-team detail badges and membership-criteria text use shared system-team labels in all six cultures; stored enum values and team names are unchanged.
