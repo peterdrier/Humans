@@ -22,6 +22,7 @@ public sealed class PiiRedactionEnricher : ILogEventEnricher
         "IpAddress",
         "RemoteIp",
         "To",
+        "Recipient",
     };
 
     private const string ICalFeedPathPrefix = "/api/ical/";
@@ -109,6 +110,7 @@ public sealed class PiiRedactionEnricher : ILogEventEnricher
         // Email-like properties: retain up to 2 UTF-16 units + ***@domain
         if (propertyName.Contains("email", StringComparison.OrdinalIgnoreCase) ||
             propertyName.Equals("To", StringComparison.OrdinalIgnoreCase) ||
+            propertyName.Equals("Recipient", StringComparison.OrdinalIgnoreCase) ||
             propertyName.Equals("UserEmail", StringComparison.OrdinalIgnoreCase))
         {
             var atIndex = stringValue.IndexOf("@", StringComparison.Ordinal);

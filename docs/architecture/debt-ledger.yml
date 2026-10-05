@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 77
+next_id: 78
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -507,4 +507,9 @@ inbox:
   - added: 2026-10-04
     id: CENTRAL-75
     what: "Containers Service validators throw localized InvalidOperationException messages for names, images and placement geometry. CityPlanningApiController.SaveContainerPlacement identifies validation failure by comparing ex.Message to a localized ContainersResource value. This violates no-localized-exception-messages and couples failure classification to translated wording. A structured owner validation result should preserve existing localized form/API feedback while leaving exception messages developer-facing; public result/contract changes need approval. Found during the daily production sweep."
+    review: panel
+
+  - added: 2026-10-05
+    id: CENTRAL-77
+    what: "DoNotPersist account-deletion mail bypasses the outbox but still reaches SmtpEmailTransport/StubEmailTransport Recipient and Subject logs, and ProcessAccountDeletionsJob logs transport exceptions. Base recipient redaction masks only part of the address and does not scrub subjects or exceptions, so the no-stored-recipient erasure guarantee is not met. Found during the daily debt sweep. Agree an approved privacy signal through the internal transport boundary and diagnostic/error handling before changing the public surface; preserve normal delivery diagnostics and deletion confirmation."
     review: panel
