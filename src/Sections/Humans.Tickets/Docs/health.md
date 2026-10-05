@@ -60,7 +60,7 @@ The layout these shapes imply:
 - Buyer-only matches never count as holding a ticket: ownership is the attendee's
   `MatchedUserId` (`Services/TicketAttendeeOwnership.cs:17`), the ticket count reads attendee
   rows with a verified-email fallback (`Services/TicketQueryService.cs:38`), and
-  `HasEventTicketAsync` reads attendee rows only (`Data/TicketRepository.cs:437`).
+  `HasEventTicketAsync` reads attendee rows only (`Data/TicketRepository.cs:423`).
 - A gate scan leaves `Status = Valid` and stamps `CheckedInAt`; a ticket is sendable only while
   both hold, checked in the row flag (`Services/TicketTransferService.cs:60`), the confirm step
   (`Services/TicketTransferService.cs:73`) and request creation.
@@ -82,13 +82,13 @@ The layout these shapes imply:
   a sync-sourced `Ticketed` row once no valid ticket remains
   (`Services/TicketSyncService.cs:509`).
 - Erasure tombstones name and email in place and keeps the rows
-  (`Data/TicketRepository.cs:956`); a later sync never writes them back while the row carries
+  (`Data/TicketRepository.cs:937`); a later sync never writes them back while the row carries
   `PiiErasedAt` or the tombstone shape (`Data/TicketRepository.cs:190`).
 - Board reads the dashboard and reporting tabs (`Controllers/TicketController.cs:17`) but triggers
   no sync (`Controllers/TicketController.cs:167`) and downloads no export
   (`Controllers/TicketController.cs:248`); full re-sync, backfill and the donor list are Admin
   only (`Controllers/TicketController.cs:177`, `Controllers/TicketController.cs:316`); every
-  donor-list download audits (`Services/TicketQueryService.cs:805`).
+  donor-list download audits (`Services/TicketQueryService.cs:779`).
 - `TicketVendorSettings.IsConfigured == false` short-circuits the dashboard
   (`Models/TicketDashboardPageBuilder.cs:17`), the member status card
   (`ViewComponents/MemberTicketStatusViewComponent.cs:30`), the health check
