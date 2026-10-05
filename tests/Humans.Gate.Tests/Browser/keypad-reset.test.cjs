@@ -41,3 +41,43 @@ test('a normal complete PIN submits once after painting and can be reset', () =>
     p.paint(); assert.deepEqual(p.completed, ['1234']);
     p.reset(); p.enter('5678'); p.paint(); assert.deepEqual(p.completed, ['1234', '5678']);
 });
+
+function verdictRenderer(redirected) {
+    const source = readFileSync(resolve(__dirname,
+        '../../../src/Sections/Humans.Gate/wwwroot/js/gate/gate.js'), 'utf8');
+    const script = source.slice(source.indexOf('    async function render('),
+        source.indexOf('    // Never leave the operator'));
+    const result = { innerHTML: 'previous card' };
+    const requests = [];
+    const context = {
+        result, token: 'antiforgery', clearResetTimer() {}, afterRender() {},
+        renderError: () => { result.innerHTML = 'Request failed'; },
+        console: { error() {} },
+        fetch: async (url, options) => {
+            requests.push({ url, options });
+            if (redirected && options.redirect === 'error') throw new TypeError('redirect blocked');
+            return { ok: true, text: async () => redirected ? '<form>Login</form>' : 'verdict card' };
+        },
+    };
+    vm.createContext(context);
+    vm.runInContext(script + '\nthis.renderVerdict = render;', context);
+    return { result, requests, render: context.renderVerdict };
+}
+
+for (const body of [null, 'barcode=TICKET']) {
+    test(`verdict ${body === null ? 'lookup' : 'decision'} rejects a redirected login page`, async () => {
+        const ui = verdictRenderer(true);
+        await ui.render('/Gate/Card', body);
+        assert.equal(ui.result.innerHTML, 'Request failed');
+    });
+    test(`verdict ${body === null ? 'lookup' : 'decision'} still renders a successful partial`, async () => {
+        const ui = verdictRenderer(false);
+        await ui.render('/Gate/Card', body);
+        assert.equal(ui.result.innerHTML, 'verdict card');
+        assert.equal(ui.requests[0].options.method, body === null ? undefined : 'POST');
+        if (body !== null) {
+            assert.equal(ui.requests[0].options.headers.RequestVerificationToken, 'antiforgery');
+            assert.equal(ui.requests[0].options.body, body);
+        }
+    });
+}

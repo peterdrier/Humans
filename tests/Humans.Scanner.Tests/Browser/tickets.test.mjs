@@ -20,8 +20,8 @@ function scanner(t) {
         if (originalWindow === undefined) delete globalThis.window;
         else globalThis.window = originalWindow;
     });
-    t.mock.method(globalThis, 'fetch', () => {
-        const call = deferred();
+    t.mock.method(globalThis, 'fetch', (url, options) => {
+        const call = { ...deferred(), url, options };
         calls.push(call);
         return call.promise;
     });
@@ -81,6 +81,19 @@ test('current failure is visible and a later success replaces it', async t => {
     const s = scanner(t);
     s.lookup('BAD');
     s.calls[0].reject(new Error('offline'));
+    await settle();
+    assert.equal(s.card.innerHTML, 'Lookup failed');
+    s.lookup('GOOD');
+    s.calls[1].resolve(success('GOOD TICKET'));
+    await settle();
+    assert.equal(s.card.innerHTML, 'GOOD TICKET');
+});
+
+test('a redirected login page is a lookup failure and a later ticket can load', async t => {
+    const s = scanner(t);
+    s.lookup('SESSION-EXPIRED');
+    if (s.calls[0].options?.redirect === 'error') s.calls[0].reject(new TypeError('redirect blocked'));
+    else s.calls[0].resolve(success('<form>Login</form>'));
     await settle();
     assert.equal(s.card.innerHTML, 'Lookup failed');
     s.lookup('GOOD');
