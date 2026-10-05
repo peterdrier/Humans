@@ -1,0 +1,13 @@
+<script>
+    (function () {
+        ['title', 'description'].forEach(function (field) {
+            var input = document.getElementById(field + 'Input');
+            var counter = document.getElementById(field + 'Counter');
+            if (input && counter) {
+                input.addEventListener('input', function () {
+                    counter.textContent = input.maxLength - input.value.length;
+                });
+            }
+        });
+    })();
+</script>

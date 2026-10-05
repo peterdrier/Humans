@@ -161,25 +161,9 @@
 <partial name="_MarkdownHelp" />
 
 @section Scripts {
+    <partial name="_EventCharacterCounters" />
     <script>
         (function () {
-            // Live character counters
-            var titleInput = document.getElementById('titleInput');
-            var titleCounter = document.getElementById('titleCounter');
-            var descInput = document.getElementById('descriptionInput');
-            var descCounter = document.getElementById('descriptionCounter');
-
-            if (titleInput && titleCounter) {
-                titleInput.addEventListener('input', function () {
-                    titleCounter.textContent = 80 - titleInput.value.length;
-                });
-            }
-            if (descInput && descCounter) {
-                descInput.addEventListener('input', function () {
-                    descCounter.textContent = 450 - descInput.value.length;
-                });
-            }
-
             // All-day toggle
             var allDayCheck = document.getElementById('IsAllDay');
             var startTimeField = document.getElementById('startTimeField');
