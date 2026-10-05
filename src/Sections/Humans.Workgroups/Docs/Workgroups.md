@@ -264,7 +264,7 @@ Settings and Register an existing group on first setup or after clearing the que
 - Refused and Withdrawn require non-empty `Reasons`.
 - Registration creates the Drive subfolder before the status flips; a folder-creation
   failure leaves the group Applied so the Secretary can retry. Application and both
-  registration paths run to completion independently of request cancellation.
+  registration paths run to completion independently of request cancellation. Both are marked `[ExternalWrite]`, and their admin write calls explicitly pass `CancellationToken.None`; authorization and form reads retain the request token.
 - Reactivation reverses Dormant fully: status, Drive access (write again), and `Reasons`
   cleared.
 - The 14-day application clock and the 30-day update clock are notices only — see the daily

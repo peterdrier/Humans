@@ -45,7 +45,8 @@ internal sealed class WorkgroupsAdminController(
     [HttpPost("{id:guid}/Register")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Register(Guid id, CancellationToken ct) =>
-        ActAsync(actor => workgroups.RegisterAsync(id, actor, ct), "Registered", ct);
+        // Folder creation and its registration tail must survive a browser disconnect.
+        ActAsync(actor => workgroups.RegisterAsync(id, actor, CancellationToken.None), "Registered", ct);
 
     [HttpPost("{id:guid}/Refer")]
     [ValidateAntiForgeryToken]
@@ -101,7 +102,7 @@ internal sealed class WorkgroupsAdminController(
             await workgroups.RegisterExistingAsync(user.Id,
                 new WorkgroupBootstrap(model.Application.ToApplication(), model.CoordinatorUserId, registeredAt,
                     model.Budget.ToSave()),
-                ct);
+                CancellationToken.None);
         }
         catch (WorkgroupRuleException ex)
         {

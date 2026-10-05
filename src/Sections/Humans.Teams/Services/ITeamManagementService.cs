@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Enums;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
@@ -228,6 +229,7 @@ internal interface ITeamManagementService : ITeamService
     /// is cleared so the team never points at a group that does not exist.
     /// <c>GroupWarning</c> carries the operator-facing message in that case.
     /// </summary>
+    [ExternalWrite]
     Task<TeamWithGroupResult> CreateTeamWithGoogleGroupAsync(
         string name,
         string? description,
@@ -243,6 +245,7 @@ internal interface ITeamManagementService : ITeamService
     /// sync failed or needs reactivation confirmation; the team update itself
     /// has already succeeded in that case.
     /// </summary>
+    [ExternalWrite]
     Task<TeamWithGroupResult> UpdateTeamWithGoogleGroupAsync(
         Guid teamId,
         string name,
