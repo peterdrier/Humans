@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 76
+next_id: 77
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -318,6 +318,12 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
+  - added: 2026-10-05
+    id: CENTRAL-76
+    what: "Consent's SendReConsentReminderJob selects recipients through Governance's GetUsersRequiringStatusUpdateAsync, which returns active-assignment users only after required consent grace periods have expired. The same audience feeds Users' suspension job 30 minutes later (04:00 reminder, 04:30 suspension), while the reminder email promises the configured ConsentReminderDaysBeforeSuspension (30) days remain. That setting affects wording only, not eligibility. Found during the daily debt sweep."
+    review: panel
+    status: needs-detail
+    blocked_on: "Agree a pre-expiry reminder audience and per-recipient deadline/document selection through section contracts; preserve the expired-consent suspension audience and cooldown semantics. New public surface needs approval."
   - added: 2026-10-04
     id: CENTRAL-74
     what: "FeedbackController's four triage mutations map arbitrary InvalidOperationException dependency failures to 404, while BackdoorFeedbackController also classifies missing reports from exception message text. FeedbackService's throwing interface provides no structured missing/rule result. Persistence faults can therefore masquerade as missing reports without their error diagnostics. Agree an owner-defined error/result contract before repairing both callers; new public surface needs approval. Found during the daily debt sweep."
