@@ -161,7 +161,9 @@ internal sealed class CalendarService(
         if (string.IsNullOrWhiteSpace(rrule)) return;
         try
         {
-            _ = new RecurrencePattern(rrule);
+            var pattern = new RecurrencePattern(rrule);
+            if (pattern.ByDay.Any(day => day.Offset is < -53 or 0 or > 53))
+                throw new FormatException("BYDAY ordinal offsets must be between -53 and 53, excluding zero.");
         }
         catch (Exception ex)
         {
