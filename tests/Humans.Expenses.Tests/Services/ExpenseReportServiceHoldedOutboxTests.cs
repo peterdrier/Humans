@@ -769,6 +769,43 @@ public class ExpenseReportServiceHoldedOutboxTests
 
     // ─── Transient error ──────────────────────────────────────────────────────
 
+    [HumansTheory]
+    [Xunit.InlineData(false, 0)]
+    [Xunit.InlineData(false, 9)]
+    [Xunit.InlineData(true, 0)]
+    public async Task Long_outbox_errors_fit_bookkeeping_and_keep_writeoffs_audited(bool permanent, int retries)
+    {
+        var report = MakeReport();
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        outboxEvent.RetryCount = retries;
+        var error = new string('e', 1999) + "😀" + new string('e', 2100);
+        HoldedApiException failure = permanent
+            ? new HoldedPermanentException(error)
+            : new HoldedTransientException(error);
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<string>(failure));
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        var writeoff = permanent || retries == 9;
+        var write = _repo.ReceivedCalls().Single(c => string.Equals(c.GetMethodInfo().Name,
+            writeoff ? nameof(IExpenseRepository.MarkOutboxFailedPermanentlyAsync) : nameof(IExpenseRepository.IncrementOutboxRetryAsync),
+            StringComparison.Ordinal));
+        var savedError = (string)write.GetArguments()[1]!;
+        savedError.Length.Should().BeLessThanOrEqualTo(2000);
+        char.IsHighSurrogate(savedError[^1]).Should().BeFalse();
+        if (writeoff)
+        {
+            await _auditLog.Received(1).LogAsync(
+                AuditAction.ExpenseHoldedFailed, Arg.Any<string>(), report.Id,
+                Arg.Is<string>(s => s.Length <= 4000 && s.Contains(savedError, StringComparison.Ordinal)),
+                Arg.Any<string>(), null, null);
+        }
+    }
+
     [HumansFact]
     public async Task TransientException_IncrementRetry_NotMarkedProcessed()
     {

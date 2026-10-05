@@ -1335,7 +1335,7 @@ internal sealed class ExpenseReportService(
                         "Transient error processing Holded outbox event {OutboxEventId} — attempt {Attempt}/{MaxRetries}, retrying at {NextRetryAt}",
                         outboxEvent.Id, attempts, MaxOutboxRetries, nextRetryAt);
                     await repo.IncrementOutboxRetryAsync(
-                        outboxEvent.Id, ex.Message, nextRetryAt, ct);
+                        outboxEvent.Id, BoundOutboxError(ex.Message), nextRetryAt, ct);
                 }
             }
             catch (HoldedPermanentException ex)
@@ -1358,6 +1358,7 @@ internal sealed class ExpenseReportService(
     private async Task WriteOffOutboxEventAsync(
         HoldedExpenseOutboxEvent outboxEvent, string error, CancellationToken ct)
     {
+        error = BoundOutboxError(error);
         await repo.MarkOutboxFailedPermanentlyAsync(
             outboxEvent.Id, error, clock.GetCurrentInstant(), ct);
 
@@ -1366,6 +1367,17 @@ internal sealed class ExpenseReportService(
             AuditEntityTypes.Report, outboxEvent.ExpenseReportId,
             $"Holded push failed permanently: {error}",
             OutboxJobName);
+    }
+
+    // Fits the outbox's varchar(2000) and the prefixed audit description; logs retain the exception.
+    private static string BoundOutboxError(string error)
+    {
+        const int maxLength = 2000;
+        if (error.Length <= maxLength) return error;
+        var length = maxLength;
+        if (char.IsHighSurrogate(error[length - 1]) && char.IsLowSurrogate(error[length]))
+            length--;
+        return error[..length];
     }
 
     private async Task ProcessHoldedCreateAsync(

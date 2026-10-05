@@ -132,6 +132,8 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Invariants
 
+- Holded outbox retries and write-offs bound saved error summaries to 2000 UTF-16 units without splitting surrogate pairs. Permanent-failure audits use the same bounded summary; logs retain the full exception.
+
 - Member report-list status badges reuse the section’s existing labels in all six cultures and the shared badge-color registry; stored status values and workflow rules are unchanged.
 
 - Report-subject previews retain their 60-character member-list and 80-character review-queue limits without splitting UTF-16 surrogate pairs; full notes remain unchanged.

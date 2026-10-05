@@ -125,6 +125,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 - `TicketSyncState` is a singleton row (Id = 1). `LastSyncAt` is the resume cursor passed back to the vendor as `updated_at.gte` on the next run. A sync stuck in `Running` for >30 minutes is auto-reset to `Error` by `GetDashboardStatsAsync` (crash recovery).
 - A vendor 5xx/transport failure **and** a vendor request timeout are both transient: `LastSyncAt` is preserved, `SyncStatus` returns to `Idle`, and the job retries next run without rethrowing. Only a genuine fault (anything else, including a real cancellation) sets `SyncStatus = Error`, persists `LastError`, and rethrows.
 - Every configured sync attempt clears the local order and user-holdings cache slices on exit, including failure or cancellation: later stages can fail after order/attendee writes have committed, and readers must reload that persisted state.
+- Sync failures persist an error summary within 2000 UTF-16 units without splitting a surrogate pair; the original exception is logged and rethrown in full.
 
 ## Negative Access Rules
 
