@@ -34,3 +34,56 @@ test('dropdown filters retain labels that match object properties and filter the
     assert.deepEqual(rows.filter(row => row.style.display !== 'none').map(row => row.textContent),
         ['constructor', 'constructor']);
 });
+
+function sortValues(values, sortType = 'auto') {
+    const rows = values.map(textContent => ({ cells: [{ dataset: {}, textContent }] }));
+    const tbody = {
+        rows,
+        querySelectorAll() { return this.rows; },
+        appendChild(row) { this.rows.splice(this.rows.indexOf(row), 1); this.rows.push(row); },
+    };
+    const attributes = {};
+    const header = {
+        dataset: { sortCol: '0', sortType }, classList: { add() {}, remove() {} },
+        getAttribute(name) { return attributes[name]; },
+        setAttribute(name, value) { attributes[name] = value; },
+        removeAttribute(name) { delete attributes[name]; },
+        querySelector() { return null; },
+        addEventListener(event, handler) { this[event] = handler; },
+    };
+    const table = { tBodies: [tbody], querySelectorAll: () => [header] };
+    const context = { document: { querySelectorAll: () => [table] } };
+    vm.createContext(context);
+    const sortingScript = site.slice(site.indexOf('// Declarative client-side table sorting'),
+        site.indexOf('// Declarative client-side table filtering'));
+    vm.runInContext(sortingScript, context);
+    header.click();
+    const ascending = tbody.rows.map(row => row.cells[0].textContent);
+    header.click();
+    return { ascending, descending: tbody.rows.map(row => row.cells[0].textContent) };
+}
+
+test('auto sorting compares complete labels rather than their numeric prefixes', () => {
+    const labels = ['10 Blue', '2 Blue', '2 Amber', '1 Red'];
+    const expected = [...labels].sort((a, b) => a.localeCompare(b));
+    const result = sortValues(labels);
+    assert.deepEqual(result.ascending, expected);
+    assert.deepEqual(result.descending, [...expected].reverse());
+});
+
+test('auto and explicit numeric sorting compare complete numeric values numerically', () => {
+    for (const sortType of ['auto', 'number']) {
+        const result = sortValues(['10.5', '2', '-1', '€1,000.00'], sortType);
+        assert.deepEqual(result.ascending, ['-1', '2', '10.5', '€1,000.00']);
+        assert.deepEqual(result.descending, ['€1,000.00', '10.5', '2', '-1']);
+    }
+});
+
+
+test('mixed text and numeric labels use one text ordering for the whole column', () => {
+    const labels = ['2', '10', '1 Red'];
+    const expected = [...labels].sort((a, b) => a.localeCompare(b));
+    const result = sortValues(labels);
+    assert.deepEqual(result.ascending, expected);
+    assert.deepEqual(result.descending, [...expected].reverse());
+});

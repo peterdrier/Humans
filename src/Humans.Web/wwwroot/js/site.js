@@ -63,8 +63,8 @@ document.addEventListener('click', function (e) {
 
     function numberForSort(value) {
         var normalized = textForSort(value).replace(/[,%\s€]/g, '');
-        var parsed = parseFloat(normalized);
-        return isNaN(parsed) ? null : parsed;
+        var parsed = normalized === '' ? NaN : Number(normalized);
+        return Number.isFinite(parsed) ? parsed : null;
     }
 
     function valueFromRow(row, columnIndex, key) {
@@ -80,7 +80,7 @@ document.addEventListener('click', function (e) {
     function compareValues(a, b, sortType) {
         var aNumber = numberForSort(a);
         var bNumber = numberForSort(b);
-        var numeric = sortType === 'number' || (sortType !== 'text' && aNumber !== null && bNumber !== null);
+        var numeric = sortType === 'number';
 
         if (numeric) {
             return (aNumber || 0) - (bNumber || 0);
@@ -125,10 +125,15 @@ document.addEventListener('click', function (e) {
                 if (activeIndicator) activeIndicator.textContent = nextDirection === 'asc' ? ' ▲' : ' ▼';
 
                 var rows = Array.from(tbody.querySelectorAll('tr'));
+                var comparisonType = sortType === 'auto'
+                    ? (rows.every(function (row) {
+                        return numberForSort(valueFromRow(row, columnIndex, key)) !== null;
+                    }) ? 'number' : 'text')
+                    : sortType;
                 rows.sort(function (a, b) {
                     var aValue = valueFromRow(a, columnIndex, key);
                     var bValue = valueFromRow(b, columnIndex, key);
-                    return compareValues(aValue, bValue, sortType) * directionMultiplier;
+                    return compareValues(aValue, bValue, comparisonType) * directionMultiplier;
                 });
 
                 rows.forEach(function (row) { tbody.appendChild(row); });
