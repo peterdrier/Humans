@@ -159,6 +159,35 @@ public class HoldedClientSalesDocumentTests
         doc.RawJson.Should().Be(json);
     }
 
+    [HumansTheory]
+    [InlineData(HoldedSalesDocumentKind.Invoice, "{}")]
+    [InlineData(HoldedSalesDocumentKind.Invoice, "{\"total\":null}")]
+    [InlineData(HoldedSalesDocumentKind.SalesReceipt, "{}")]
+    [InlineData(HoldedSalesDocumentKind.SalesReceipt, "{\"total\":null}")]
+    public async Task GetSalesDocumentAsync_RejectsAnAbsentTotal(
+        HoldedSalesDocumentKind kind, string json)
+    {
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, json));
+
+        var act = async () => await Make(handler).GetSalesDocumentAsync(
+            kind, "doc-9", TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansTheory]
+    [InlineData(HoldedSalesDocumentKind.Invoice)]
+    [InlineData(HoldedSalesDocumentKind.SalesReceipt)]
+    public async Task GetSalesDocumentAsync_PreservesAnExplicitZeroTotal(HoldedSalesDocumentKind kind)
+    {
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, "{\"total\":\"0.00\"}"));
+
+        var document = await Make(handler).GetSalesDocumentAsync(
+            kind, "doc-9", TestContext.Current.CancellationToken);
+
+        document.Total.Should().Be(0m);
+    }
+
     [HumansFact]
     public async Task CreateSalesDocumentAsync_OmitsTheContactOnAReceipt()
     {
