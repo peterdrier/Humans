@@ -431,10 +431,6 @@ inbox:
     status: needs-detail
     blocked_on: "A measured failure rate under parallel load plus one captured timeout; Integration.Tests is local-only, so the claim needs Peter's machine to reproduce."
   - added: 2026-06-12
-    id: CENTRAL-1
-    what: "HumansMetricsService migration out of Infrastructure (touches 6+ sections)"
-    review: panel
-  - added: 2026-06-12
     id: CENTRAL-2
     what: "GoogleWorkspaceHealthCheck direct Google.Apis imports — extract IHealthCheckGoogleClient"
     review: panel
