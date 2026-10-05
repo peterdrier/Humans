@@ -120,6 +120,8 @@ The `event_participations` entity is owned by Users — the natural key is User 
 
 ### Shift tag tables
 
+Availability and tag-preference forms reject malformed bound lists with HTTP 400 and a Warning before replacing saved selections. Missing users still receive Challenge; an omitted list deliberately clears the selections.
+
 - `shift_tags` — read/written by `ShiftManagementService` via `IShiftManagementRepository`. Many-to-many with rotas via the `rota_shift_tags` join table. Seeded with 8 initial values in `ShiftTagConfiguration`. Name column is unique (`IX_shift_tags_name_unique`).
 - `volunteer_tag_preferences` — read/written by `ShiftManagementService` via `IShiftManagementRepository`. Unique on `(UserId, ShiftTagId)`. Cross-domain `UserId` is a bare Guid column with no FK constraint (nobodies-collective/Humans#992); section-local FK to `ShiftTag`.
 

@@ -395,6 +395,12 @@ internal sealed class ShiftsController(
             return currentUserNotFound;
         }
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed volunteer availability form for {UserId}", user.Id);
+            return BadRequest(ModelState);
+        }
+
         var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
         if (es is null) return BadRequest(localizer["VolTrack_NoActiveEvent"].Value);
 
@@ -411,6 +417,12 @@ internal sealed class ShiftsController(
         if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
+        }
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed volunteer tag preferences form for {UserId}", user.Id);
+            return BadRequest(ModelState);
         }
 
         await shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, tagIds ?? []);
