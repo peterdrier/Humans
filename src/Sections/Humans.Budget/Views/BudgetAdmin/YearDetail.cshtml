@@ -294,8 +294,8 @@
                                     var eventDate = eventDateInput.value;
                                     if (!eventDate) return 0;
                                     var today = new Date();
-                                    today.setHours(0, 0, 0, 0);
-                                    var event_ = new Date(eventDate + 'T00:00:00');
+                                    today.setUTCHours(0, 0, 0, 0);
+                                    var event_ = new Date(eventDate + 'T00:00:00Z');
                                     var diff = Math.floor((event_ - today) / (1000 * 60 * 60 * 24));
                                     return Math.max(0, diff);
                                 }
