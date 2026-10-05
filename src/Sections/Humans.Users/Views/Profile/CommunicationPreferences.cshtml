@@ -43,7 +43,9 @@
             body.append('__RequestVerificationToken',
                 document.querySelector('input[name="__RequestVerificationToken"]').value);
 
-            this.disabled = true;
+            // Both channel values travel together; serialize saves within this row.
+            var controls = row.querySelectorAll('.pref-toggle');
+            controls.forEach(function (control) { control.disabled = true; });
             var self = this;
 
             fetch('@Url.Action("UpdatePreference")', {
@@ -62,7 +64,7 @@
                 row.classList.add('table-danger');
                 setTimeout(function () { row.classList.remove('table-danger'); }, 1500);
             }).finally(function () {
-                self.disabled = false;
+                controls.forEach(function (control) { control.disabled = false; });
             });
         });
     });
