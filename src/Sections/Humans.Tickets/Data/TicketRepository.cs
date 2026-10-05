@@ -389,26 +389,16 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetAllMatchedAttendeeUserIdsAsync(
-        CancellationToken ct = default)
+    public async Task<IReadOnlyList<Guid>> GetEventTicketHolderUserIdsAsync(
+        string vendorEventId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
-            .Where(a => a.MatchedUserId != null)
+            .Where(a => a.MatchedUserId != null &&
+                        a.VendorEventId == vendorEventId &&
+                        (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn))
             .Select(a => a.MatchedUserId!.Value)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetAllMatchedOrderUserIdsAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
-            .AsNoTracking()
-            .Where(o => o.MatchedUserId != null)
-            .Select(o => o.MatchedUserId!.Value)
             .Distinct()
             .ToListAsync(ct);
     }

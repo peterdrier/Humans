@@ -30,7 +30,7 @@ Ticket data syncs automatically. Attendees are auto-matched to humans by email, 
 - **Orders** (`/Tickets/Orders`) — paginated orders with donation/VAT columns
 - **Attendees** (`/Tickets/Attendees`) — paginated attendees with VIP badges and taxable/donation split
 - **Codes** (`/Tickets/Codes`) — discount-code redemption tied to campaigns (read-only here; codes are *generated* on the Campaign detail page)
-- **Who Hasn't Bought** (`/Tickets/WhoHasntBought`) — active Volunteers without matched tickets
+- **Who Hasn't Bought** (`/Tickets/WhoHasntBought`) — active Volunteers without a valid ticket for the current event
 - **Sales Aggregates** (`/Tickets/SalesAggregates`) — weekly and quarterly reports
 
 ## As a Volunteer
@@ -83,7 +83,7 @@ A separate **Full Re-sync** button (Admin-only, with a confirmation prompt) clea
 
 ### Who hasn't bought yet
 
-`/Tickets/WhoHasntBought` lists active Volunteers with no matched tickets, excluding those who have declared they are not attending this year. Filter by team, membership tier, or ticket-status, and search across name and any verified email (so you can find humans whose ticket was bought under a secondary address).
+`/Tickets/WhoHasntBought` lists active Volunteers with no valid ticket for the current event (buying for someone else, a voided ticket or a ticket from an earlier year does not count), excluding those who have declared they are not attending this year. Filter by team, membership tier, or ticket-status, and search across name and any verified email (so you can find humans whose ticket was bought under a secondary address).
 
 ### Backfilling participation
 

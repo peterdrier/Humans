@@ -216,9 +216,12 @@ internal interface ITicketRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<string>> GetValidAttendeeEmailsAsync(CancellationToken ct = default);
 
-    Task<IReadOnlyList<Guid>> GetAllMatchedAttendeeUserIdsAsync(CancellationToken ct = default);
-
-    Task<IReadOnlyList<Guid>> GetAllMatchedOrderUserIdsAsync(CancellationToken ct = default);
+    /// <summary>
+    /// Users matched to a <c>Valid</c> or <c>CheckedIn</c> attendee row for the event — the
+    /// set form of <see cref="HasEventTicketAsync"/>. Orders are not consulted.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetEventTicketHolderUserIdsAsync(
+        string vendorEventId, CancellationToken ct = default);
 
     /// <summary>
     /// True when the user is matched to a <c>Valid</c> or <c>CheckedIn</c> attendee row for the

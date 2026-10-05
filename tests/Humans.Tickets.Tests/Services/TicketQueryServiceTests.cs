@@ -777,22 +777,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         var userWithTicket = CreateUser("Has Ticket", "hasticket@example.com");
         var userWithout = CreateUser("No Ticket", "noticket@example.com");
 
-        var orderId = Guid.NewGuid();
-        TicketsDb.TicketOrders.Add(new TicketOrder
-        {
-            Id = orderId,
-            VendorOrderId = "ord_1",
-            BuyerName = "Has Ticket",
-            BuyerEmail = "hasticket@example.com",
-            TotalAmount = 100m,
-            Currency = "EUR",
-            PaymentStatus = TicketPaymentStatus.Paid,
-            VendorEventId = "ev_test",
-            PurchasedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
-            SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
-            MatchedUserId = userWithTicket.Id,
-        });
-
+        SetCurrentEvent("ev_test");
+        SeedOrder("ord_1", "ev_test", buyerId: userWithTicket.Id, (userWithTicket.Id, TicketAttendeeStatus.Valid));
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Wire service dependencies — both users are Volunteers members with Profiles.
@@ -811,21 +797,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         var userWithTicket = CreateUser("Has Ticket", "has@example.com");
         var userWithout = CreateUser("No Ticket", "no@example.com");
 
-        TicketsDb.TicketOrders.Add(new TicketOrder
-        {
-            Id = Guid.NewGuid(),
-            VendorOrderId = "ord_1",
-            BuyerName = "Has Ticket",
-            BuyerEmail = "has@example.com",
-            TotalAmount = 100m,
-            Currency = "EUR",
-            PaymentStatus = TicketPaymentStatus.Paid,
-            VendorEventId = "ev_test",
-            PurchasedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
-            SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
-            MatchedUserId = userWithTicket.Id,
-        });
-
+        SetCurrentEvent("ev_test");
+        SeedOrder("ord_1", "ev_test", buyerId: userWithTicket.Id, (userWithTicket.Id, TicketAttendeeStatus.CheckedIn));
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         WireWhoHasntBoughtDependencies(userWithTicket, userWithout);
@@ -837,6 +810,27 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         var bought = await _service.GetWhoHasntBoughtAsync(null, null, null, "bought", 1, 25);
         bought.TotalCount.Should().Be(1);
         bought.Humans.Single().UserId.Should().Be(userWithTicket.Id);
+    }
+
+    [HumansFact]
+    public async Task GetWhoHasntBoughtAsync_CountsOnlyCurrentEventValidAttendeeMatches()
+    {
+        var buyerOnly = CreateUser("Buyer Only", "buyer@example.com");
+        var voided = CreateUser("Voided", "voided@example.com");
+        var lastYear = CreateUser("Last Year", "lastyear@example.com");
+
+        SetCurrentEvent("ev_test");
+        SeedOrder("ord_buyer", "ev_test", buyerId: buyerOnly.Id, (null, TicketAttendeeStatus.Valid));
+        SeedOrder("ord_void", "ev_test", buyerId: null, (voided.Id, TicketAttendeeStatus.Void));
+        SeedOrder("ord_old", "ev_old", buyerId: null, (lastYear.Id, TicketAttendeeStatus.Valid));
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        WireWhoHasntBoughtDependencies(buyerOnly, voided, lastYear);
+
+        var result = await _service.GetWhoHasntBoughtAsync(null, null, null, null, 1, 25);
+
+        result.TotalCount.Should().Be(3);
+        result.Humans.Should().OnlyContain(h => !h.HasTicket);
     }
 
     [HumansFact]
@@ -1090,6 +1084,45 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     // ====================================================================
     // Helpers
     // ====================================================================
+
+    private void SetCurrentEvent(string vendorEventId) =>
+        TicketsDb.TicketSyncStates.Add(new TicketSyncState { Id = 1, VendorEventId = vendorEventId });
+
+    private void SeedOrder(
+        string vendorOrderId, string vendorEventId, Guid? buyerId,
+        params (Guid? UserId, TicketAttendeeStatus Status)[] attendees)
+    {
+        var orderId = Guid.NewGuid();
+        var syncedAt = Instant.FromUtc(2026, 3, 1, 10, 0);
+        TicketsDb.TicketOrders.Add(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = vendorOrderId,
+            BuyerName = "Buyer",
+            BuyerEmail = "buyer@example.com",
+            TotalAmount = 100m,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            VendorEventId = vendorEventId,
+            PurchasedAt = syncedAt,
+            SyncedAt = syncedAt,
+            MatchedUserId = buyerId,
+            Attendees = attendees.Select((a, i) => new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                VendorTicketId = $"{vendorOrderId}_tkt_{i}",
+                TicketOrderId = orderId,
+                TicketOrder = null!,
+                AttendeeName = "Attendee",
+                TicketTypeName = "General",
+                Price = 100m,
+                Status = a.Status,
+                MatchedUserId = a.UserId,
+                VendorEventId = vendorEventId,
+                SyncedAt = syncedAt,
+            }).ToList(),
+        });
+    }
 
     private void WireWhoHasntBoughtDependencies(params User[] users)
     {

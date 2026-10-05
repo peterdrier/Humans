@@ -70,11 +70,14 @@ internal sealed class TicketQueryService(
         return types.ToList();
     }
 
-    private async Task<HashSet<Guid>> GetAllMatchedUserIdsAsync()
+    private async Task<HashSet<Guid>> GetCurrentEventTicketHolderIdsAsync()
     {
-        var fromAttendees = await ticketRepository.GetAllMatchedAttendeeUserIdsAsync();
-        var fromOrders = await ticketRepository.GetAllMatchedOrderUserIdsAsync();
-        return fromAttendees.Concat(fromOrders).ToHashSet();
+        var syncState = await ticketRepository.GetSyncStateAsync();
+        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
+            return [];
+
+        var ids = await ticketRepository.GetEventTicketHolderUserIdsAsync(syncState.VendorEventId);
+        return ids.ToHashSet();
     }
 
     public async Task<TicketDashboardStats> GetDashboardStatsAsync()
@@ -583,7 +586,7 @@ internal sealed class TicketQueryService(
         string? search, string? filterTeam, string? filterTier, string? filterTicketStatus,
         int page, int pageSize)
     {
-        var matchedUserIds = await GetAllMatchedUserIdsAsync();
+        var matchedUserIds = await GetCurrentEventTicketHolderIdsAsync();
 
         var allUsers = await userService.GetAllUserInfosAsync().ConfigureAwait(false);
         var volunteerTeam = await teamService.GetTeamAsync(SystemTeamIds.Volunteers);
