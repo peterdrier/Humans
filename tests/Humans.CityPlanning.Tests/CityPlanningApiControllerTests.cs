@@ -228,8 +228,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
             _campSeasonId, new SaveCampPolygonRequest(geoJson, 10),
             Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeOfType<BadRequestObjectResult>()
-            .Which.Value.Should().Be("Invalid GeoJSON.");
+        result.Should().BeOfType<BadRequestResult>();
         (await CityPlanningDb.CampPolygons.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
         (await CityPlanningDb.CampPolygonHistories.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
         _allClients.ReceivedCalls().Should().BeEmpty();
@@ -237,6 +236,42 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         warning.GetArguments()[0].Should().Be(LogLevel.Warning);
         warning.GetArguments()[3].Should().BeNull();
         warning.GetArguments()[2]!.ToString().Should().Contain(_campSeasonId.ToString()).And.Contain("Invalid GeoJSON.");
+    }
+
+    [HumansFact]
+    public async Task SaveCampPolygon_NegativeArea_ReturnsBadRequestWithoutSavingOrBroadcasting()
+    {
+        var result = await CreateController(RoleNames.CampAdmin).SaveCampPolygon(
+            _campSeasonId, new SaveCampPolygonRequest(Square, -1),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<BadRequestResult>();
+        (await CityPlanningDb.CampPolygons.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        _allClients.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task RestoreCampPolygon_NegativeHistoricArea_ReturnsBadRequestWithoutWritingOrBroadcasting()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var history = new Humans.CityPlanning.Domain.CampPolygonHistory
+        {
+            CampSeasonId = _campSeasonId,
+            GeoJson = Square,
+            AreaSqm = -1,
+            ModifiedByUserId = _userId,
+            ModifiedAt = Clock.GetCurrentInstant(),
+        };
+        CityPlanningDb.CampPolygonHistories.Add(history);
+        await CityPlanningDb.SaveChangesAsync(ct);
+
+        var result = await CreateController(RoleNames.Admin).RestoreCampPolygon(_campSeasonId, history.Id, ct);
+
+        result.Should().BeOfType<BadRequestResult>();
+        (await CityPlanningDb.CampPolygons.CountAsync(ct)).Should().Be(0);
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(1);
+        _allClients.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

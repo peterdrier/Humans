@@ -195,6 +195,8 @@ internal sealed class CityPlanningService(
     {
         if (string.IsNullOrWhiteSpace(geoJson) || !IsValidCampGeometry(geoJson))
             throw new ArgumentException("Invalid GeoJSON.", nameof(geoJson));
+        if (!double.IsFinite(areaSqm) || areaSqm < 0)
+            throw new ArgumentException("Area must be finite and non-negative.", nameof(areaSqm));
 
         var now = clock.GetCurrentInstant();
         var polygon = await repo.SavePolygonAndAppendHistoryAsync(
