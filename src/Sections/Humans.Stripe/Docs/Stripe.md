@@ -94,6 +94,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   recording, transitioning and reconciling a payment is Store's.
 - The webhook registrar **cannot** run outside a `*.n.burn.camp` host, and **cannot** run
   at all without `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY`.
+- The registrar's 15-second deadline includes the paged GitHub open-PR lookup. A pending read stops being awaited when the deadline expires; cancellation aborts registration rather than being treated as an unavailable PR list.
 - Refunds, payouts and chargebacks **cannot** be issued from the app — they are
   dashboard-manual by design
   ([`memory/architecture/refunds-manual-via-dashboard.md`](../../../../memory/architecture/refunds-manual-via-dashboard.md)).
@@ -109,7 +110,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   one and stamps its signing secret into `StripeSettings` in memory. The own-URL deletion is
   ordered last, immediately before the create, so an abort mid-cleanup cannot leave this host
   without an endpoint. The cross-PR half is skipped when the open-PR list cannot be fetched;
-  the own-URL half always runs.
+  the own-URL half needs no PR list. The registrar deadline still aborts the whole sequence.
 - On a `permission_error` from any call, the connector logs which key is missing which
   scope and either returns `null` (reads) or rethrows (checkout creation).
 
