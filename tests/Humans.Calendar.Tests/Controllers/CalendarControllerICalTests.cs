@@ -50,6 +50,51 @@ public class CalendarControllerICalTests
             .Returns(new Dictionary<Guid, TeamInfo>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(2026, 0)]
+    [Xunit.InlineData(2026, 13)]
+    [Xunit.InlineData(int.MaxValue, 6)]
+    [Xunit.InlineData(int.MinValue, 6)]
+    [Xunit.InlineData(0, 6)]
+    [Xunit.InlineData(9999, 12)]
+    public async Task MonthPages_InvalidQuery_RejectBeforeReadingEventsOrMintingFeed(int year, int month)
+    {
+        var teamId = Guid.NewGuid();
+        _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(
+            new TeamInfo(teamId, "Team", null, "team", true, false, SystemTeamType.None,
+                false, false, false, false, Instant.MinValue, []));
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        (await CreateController().Index(year, month, null, ct)).Should().BeOfType<BadRequestResult>();
+        (await CreateController().List(year, month, null, ct)).Should().BeOfType<BadRequestResult>();
+        (await CreateController().Team(teamId, year, month, ct)).Should().BeOfType<BadRequestResult>();
+        _calendarRead.ReceivedCalls().Should().BeEmpty();
+        _feedTokens.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task MonthPages_BindingFailure_DoesNotSilentlyUseTheCurrentMonth()
+    {
+        var controller = CreateController();
+        controller.ModelState.AddModelError("month", "Not a number.");
+
+        (await controller.Index(null, null, null, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeOfType<BadRequestResult>();
+        _calendarRead.ReceivedCalls().Should().BeEmpty();
+        _feedTokens.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(1, 2)]
+    [Xunit.InlineData(9999, 11)]
+    public async Task MonthPages_RepresentableBoundaryMonths_RemainAvailable(int year, int month)
+    {
+        var result = await CreateController().Index(year, month, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<CalendarMonthViewModel>()
+            .Which.Month.Should().Be(new YearMonth(year, month));
+    }
+
     [HumansFact]
     public async Task Index_uses_the_browser_timezone_for_calendar_windows()
     {

@@ -51,6 +51,7 @@ internal sealed class CalendarController : HumansControllerBase
         CancellationToken ct)
     {
         var model = await BuildMonthViewAsync(year, month, teamId, ct);
+        if (model is null) return BadRequest();
 
         // The personal iCal feed card renders below the grid, on this page only.
         // A viewer with no UserInfo row (merged away) simply gets no card rather
@@ -86,19 +87,23 @@ internal sealed class CalendarController : HumansControllerBase
         [FromQuery] int? year,
         [FromQuery] int? month,
         [FromQuery] Guid? teamId,
-        CancellationToken ct) =>
-        View(await BuildMonthViewAsync(year, month, teamId, ct));
+        CancellationToken ct)
+    {
+        var model = await BuildMonthViewAsync(year, month, teamId, ct);
+        return model is null ? BadRequest() : View(model);
+    }
 
     /// <summary>
     /// The month window Index and List both render — same query, same view model,
     /// differing only in which view renders it (grid vs one row per day).
     /// </summary>
-    private async Task<CalendarMonthViewModel> BuildMonthViewAsync(
+    private async Task<CalendarMonthViewModel?> BuildMonthViewAsync(
         int? year, int? month, Guid? teamId, CancellationToken ct)
     {
         var zone = GetViewerZone();
-        var today = _clock.GetCurrentInstant().InZone(zone).Date;
-        var ym = new YearMonth(year ?? today.Year, month ?? today.Month);
+        var resolvedMonth = ResolveMonth(year, month, zone);
+        if (resolvedMonth is null) return null;
+        var ym = resolvedMonth.Value;
 
         // The whole rendered grid, not just the month: Index pads the first and last weeks
         // with adjacent-month days, and querying only [1st, 1st of next month) left those
@@ -114,6 +119,29 @@ internal sealed class CalendarController : HumansControllerBase
             Occurrences: occ,
             FilterTeamId: teamId,
             ViewerTimezoneLabel: zone.Id);
+    }
+
+    private YearMonth? ResolveMonth(int? year, int? month, DateTimeZone zone)
+    {
+        if (!ModelState.IsValid) return null;
+        var today = _clock.GetCurrentInstant().InZone(zone).Date;
+        try
+        {
+            var resolved = new YearMonth(year ?? today.Year, month ?? today.Month);
+            _ = resolved.PlusMonths(-1);
+            _ = resolved.PlusMonths(1);
+            var (start, end) = CalendarGridLayout.MonthGridBounds(resolved);
+            // Date display and recurrence expansion require BCL dates in any event zone.
+            _ = start.AtMidnight().InZoneLeniently(zone).ToInstant()
+                .WithOffset(Offset.MinValue).LocalDateTime.ToDateTimeUnspecified();
+            _ = end.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant()
+                .WithOffset(Offset.MaxValue).LocalDateTime.ToDateTimeUnspecified();
+            return resolved;
+        }
+        catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException or InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     [HttpGet("Agenda")]
@@ -146,8 +174,9 @@ internal sealed class CalendarController : HumansControllerBase
         if (team is null) return NotFound();
 
         var zone = GetViewerZone();
-        var today = _clock.GetCurrentInstant().InZone(zone).Date;
-        var ym = new YearMonth(year ?? today.Year, month ?? today.Month);
+        var resolvedMonth = ResolveMonth(year, month, zone);
+        if (resolvedMonth is null) return BadRequest();
+        var ym = resolvedMonth.Value;
 
         var firstOfMonth = new LocalDate(ym.Year, ym.Month, 1);
         var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(ym.Year, ym.Month);
