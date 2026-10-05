@@ -13,7 +13,7 @@ internal interface ITicketService : ITicketServiceRead, IApplicationService
 {
     /// <summary>
     /// Compute aggregated dashboard statistics: revenue, fees, daily sales,
-    /// recent orders, volunteer coverage, and sync state.
+    /// recent orders, and sync state.
     /// </summary>
     Task<TicketDashboardStats> GetDashboardStatsAsync();
 

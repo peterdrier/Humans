@@ -13,7 +13,6 @@ internal sealed class TicketDashboardStats
     public decimal TotalStripeFees { get; init; }
     public decimal TotalApplicationFees { get; init; }
     public decimal NetRevenue { get; init; }
-    public decimal AveragePrice { get; init; }
     public decimal GrossAveragePrice { get; init; }
     public int UnmatchedOrderCount { get; init; }
 
@@ -25,11 +24,6 @@ internal sealed class TicketDashboardStats
     public TicketSyncStatus SyncStatus { get; init; }
     public string? SyncError { get; init; }
     public Instant? LastSyncAt { get; init; }
-
-    // Volunteer ticket coverage
-    public int TotalActiveVolunteers { get; init; }
-    public int VolunteersWithTickets { get; init; }
-    public decimal VolunteerCoveragePercent { get; init; }
 }
 
 internal sealed class FeeBreakdownByMethod

@@ -95,8 +95,8 @@ The TicketTailor "after checkout" redirect URL points at this route.
 
 ### Ticketing Dashboard (admin)
 
-- **Avg. Net Price** — net revenue divided by tickets sold (Stripe/TT fees deducted). Handles zero tickets gracefully.
-- **Volunteer Ticket Coverage** — percentage and count of active Volunteers team members matched as ticket attendees. Progress bar with color thresholds (green >= 75%, yellow >= 50%, red < 50%). Links to "Who Hasn't Bought?" detail view.
+- **Avg. Gross Price** — gross revenue divided by tickets sold. Handles zero tickets gracefully.
+- **Who hasn't bought?** — link in the Attention list to the Volunteers-without-a-ticket detail view.
 
 ### Homepage Dashboard (per-user)
 

@@ -115,7 +115,7 @@ The layout these shapes imply:
 - No local ticket issuance of any kind; Humans never creates a ticket except as a transfer
   reissue from a held seat.
 - No volunteer-coverage figure on the dashboard: the coverage card was replaced by the user
-  set-membership view and the figure has no reader.
+  set-membership view, and the "Who hasn't bought?" list is the operational answer.
 
 ## Load-bearing weirdness
 

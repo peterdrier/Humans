@@ -35,8 +35,6 @@ internal sealed class TicketDashboardViewModel
     public List<TicketOrderSummary> RecentOrders { get; set; } = [];
 
     public bool IsConfigured { get; set; }
-
-    public int WhoHasntBoughtCount { get; set; }
 }
 
 internal sealed class PaymentMethodFeeBreakdown

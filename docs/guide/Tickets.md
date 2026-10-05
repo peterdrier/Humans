@@ -12,7 +12,7 @@
   src/Sections/Humans.Tickets/Contracts/ITicketVendorService.cs
 -->
 <!-- freshness:flag-on-change
-  Ticket dashboard, sales/attendees/orders views, sync triggering, codes/redemption, gate list, and Volunteer Ticket Coverage. Review when ticket views, sync service, or ticket entities change.
+  Ticket dashboard, sales/attendees/orders views, sync triggering, codes/redemption, and gate list. Review when ticket views, sync service, or ticket entities change.
 -->
 
 # Tickets
@@ -26,7 +26,7 @@ Ticket data syncs automatically. Attendees are auto-matched to humans by email, 
 ## Key pages at a glance
 
 - **Your Ticket card** — card on your home dashboard (`/`) showing your ticket status
-- **Tickets dashboard** (`/Tickets`) — summary cards, Volunteer Ticket Coverage, participation breakdown, daily sales chart, problems list, recent orders
+- **Tickets dashboard** (`/Tickets`) — summary cards, daily sales chart, fees by payment method, attention list, recent orders
 - **Orders** (`/Tickets/Orders`) — paginated orders with donation/VAT columns
 - **Attendees** (`/Tickets/Attendees`) — paginated attendees with VIP badges and taxable/donation split
 - **Codes** (`/Tickets/Codes`) — discount-code redemption tied to campaigns (read-only here; codes are *generated* on the Campaign detail page)
@@ -57,7 +57,7 @@ Ticket Admin, Admin, and Board all see the Tickets dashboard. Board can view eve
 
 ### Dashboard, orders, and attendees
 
-`/Tickets` shows five summary cards across the top — Tickets Sold (with a break-even progress bar against capacity), Gross Revenue (with a fees percentage), Net Revenue (with the Stripe / TT split), Avg. Gross Price, and Tickets Remaining. Below them are a Volunteer Ticket Coverage card (matched-attendee Volunteers as a percentage of active Volunteers, colour-coded by coverage band), a Participation Breakdown donut (Has Ticket / No Ticket / Not Coming for the active event year), a Daily Sales chart with a 7-day rolling average line, a Fees by Payment Method table when fees are present, an Attention list (unmatched orders, sync errors, low-remaining warning), and Recent Orders. The coverage card links through to "Who Hasn't Bought?".
+`/Tickets` shows five summary cards across the top — Tickets Sold (with a break-even progress bar against capacity), Gross Revenue (with a fees percentage), Net Revenue (with the Stripe / TT split), Avg. Gross Price, and Tickets Remaining. Below them are a Daily Sales chart with a 7-day rolling average line, a Fees by Payment Method table when fees are present, an Attention list (unmatched orders, sync errors, low-remaining warning, and a link to "Who Hasn't Bought?"), and Recent Orders.
 
 `/Tickets/Orders` lists every order with search, sort, filter (payment status, ticket type, matched/unmatched), and per-order donation, VAT, discount, payment-method, and Stripe-fee columns. `/Tickets/Attendees` lists every issued ticket with a VIP badge above the VIP threshold (315 EUR) and the split between taxable portion and VIP donation premium; its search box matches attendee name, email, or the ticket's barcode.
 
@@ -83,7 +83,7 @@ A separate **Full Re-sync** button (Admin-only, with a confirmation prompt) clea
 
 ### Who hasn't bought yet
 
-`/Tickets/WhoHasntBought` lists active Volunteers with no matched tickets, excluding those who have declared they are not attending this year. Filter by team, membership tier, or ticket-status, and search across name and any verified email (so you can find humans whose ticket was bought under a secondary address). Operational companion to the Volunteer Ticket Coverage card.
+`/Tickets/WhoHasntBought` lists active Volunteers with no matched tickets, excluding those who have declared they are not attending this year. Filter by team, membership tier, or ticket-status, and search across name and any verified email (so you can find humans whose ticket was bought under a secondary address).
 
 ### Backfilling participation
 

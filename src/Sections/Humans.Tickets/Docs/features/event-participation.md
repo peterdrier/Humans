@@ -15,7 +15,7 @@
 
 ## Business Context
 
-Track yearly event participation status for each human, enabling self-service opt-out for those not attending and providing admin visibility into participation breakdown.
+Track yearly event participation status for each human, enabling self-service opt-out for those not attending and keeping those humans off the admin "Who Hasn't Bought" list.
 
 ## User Stories
 
@@ -31,8 +31,7 @@ Track yearly event participation status for each human, enabling self-service op
 - Ticket purchase overrides a previous NotAttending declaration
 - Ticket void/transfer with no remaining tickets removes Ticketed record
 
-### As an admin, I can see participation breakdown
-- Donut chart on ticket dashboard: Has Ticket / No Ticket / Not Coming
+### As an admin, I can see who still needs a ticket
 - "Who Hasn't Bought" excludes humans who declared not attending
 
 ### As an admin, I can backfill historical data
