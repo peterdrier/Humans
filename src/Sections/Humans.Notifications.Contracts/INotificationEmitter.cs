@@ -22,11 +22,21 @@ public interface INotificationEmitter
     /// Sends a notification to specific individual users.
     /// Creates one notification per user (individual resolution scope).
     /// </summary>
+    /// <param name="source">The section or feature that originated the notification.</param>
+    /// <param name="notificationClass">The notification kind used for categorization and resolution.</param>
+    /// <param name="priority">The urgency level shown to recipients.</param>
+    /// <param name="title">The notification title.</param>
+    /// <param name="recipientUserIds">The user IDs that will each receive a notification.</param>
+    /// <param name="body">Optional notification body.</param>
+    /// <param name="actionUrl">Optional destination URL for the notification action.</param>
+    /// <param name="actionLabel">Optional label for the action link.</param>
+    /// <param name="targetGroupName">Optional group name used to identify the notification target.</param>
     /// <param name="sourceKey">
     /// Optional correlation key for the source entity (e.g. an issue id) so the
     /// originating section can later auto-resolve these notifications via
     /// <c>ResolveBySourceKeyAsync</c> when that entity is dealt with.
     /// </param>
+    /// <param name="cancellationToken">Token used to cancel the send operation.</param>
     Task SendAsync(
         NotificationSource source,
         NotificationClass notificationClass,

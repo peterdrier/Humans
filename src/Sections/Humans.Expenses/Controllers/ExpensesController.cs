@@ -859,6 +859,7 @@ internal sealed class ExpensesController(
         model.Categories = await BuildCategoryOptionsAsync(report);
     }
 
+    /// <summary>Category options from the report’s accounting year or the active year.</summary>
     /// <param name="report">
     /// When given and already submitted, the options come from the budget year that report is
     /// booked to rather than the active one — offering this year's categories on last year's

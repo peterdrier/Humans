@@ -40,6 +40,7 @@ public interface IMagicLinkService : IApplicationService
     /// </summary>
     /// <param name="token">The signup token to redeem.</param>
     /// <param name="expectedEmail">Optional email for logging on failure.</param>
+    /// <param name="ct">Token used to cancel the verification and token consumption.</param>
     /// <returns>The email address if the token was valid and unused; null if expired, invalid, or already redeemed.</returns>
     Task<string?> VerifyAndConsumeSignupTokenAsync(
         string token, string? expectedEmail = null, CancellationToken ct = default);

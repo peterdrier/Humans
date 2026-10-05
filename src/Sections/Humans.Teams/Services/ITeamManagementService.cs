@@ -342,6 +342,7 @@ internal interface ITeamManagementService : ITeamService
     /// Gets the management role definition name for each team that has one.
     /// </summary>
     /// <param name="teamIds">The team IDs to check.</param>
+    /// <param name="cancellationToken">Cancellation token for the lookup.</param>
     /// <returns>Dictionary mapping team ID to the management role name.</returns>
     Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
@@ -545,7 +546,7 @@ internal sealed record TeamRoleManagementToggleResult(
 /// </summary>
 internal sealed record TeamWithGroupResult(Team Team, string? GroupWarning);
 
-/// <summary>What <see cref="ITeamService.JoinTeamAsync"/> did, per the team's join policy.</summary>
+/// <summary>What <see cref="ITeamManagementService.JoinTeamAsync"/> did, per the team's join policy.</summary>
 internal enum TeamJoinOutcome
 {
     /// <summary>Open team — the user is now an active member.</summary>

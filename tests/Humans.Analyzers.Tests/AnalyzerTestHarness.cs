@@ -16,6 +16,9 @@ internal static class AnalyzerTestHarness
     /// It is load-bearing only where a rule asks whether the compilation is a section, since
     /// <c>AssemblyScope.IsSection</c> looks up <c>&lt;assemblyName&gt;.Section</c>.
     /// </summary>
+    /// <param name="analyzer">The analyzer to run.</param>
+    /// <param name="assemblyName">The synthetic compilation’s assembly name.</param>
+    /// <param name="source">The source being analyzed.</param>
     /// <param name="referencedSource">
     /// Optional: compiled into its own assembly and added as a reference, rather than
     /// into <paramref name="source"/>'s own compilation. For rules that key off a

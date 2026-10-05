@@ -169,7 +169,7 @@ internal sealed class ShiftBrowsePageBuilder(
     /// Rebuilds a single shift's display item plus the caller's signup state, for
     /// re-rendering one browse-table row after a signup/cancel toggle (avoids
     /// rebuilding the whole page). Resolves the active event and re-reads the shift
-    /// through the same <see cref="IShiftManagementService.GetBrowseShiftsAsync"/>
+    /// through the same <see cref="IShiftManagementServiceRead.GetBrowseShiftsAsync"/>
     /// path <see cref="BuildAsync"/> uses, so the row's counts stay consistent.
     /// </summary>
     public async Task<(ShiftDisplayItem Item, bool IsSignedUp, SignupStatus? Status)?> BuildRowAsync(

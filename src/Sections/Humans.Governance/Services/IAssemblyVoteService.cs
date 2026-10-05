@@ -70,6 +70,9 @@ internal interface IAssemblyVoteService : IApplicationService
     /// Grants the individual-ballot list regardless of the vote's disclosure switch, and
     /// causes the view to be audited.
     /// </param>
+    /// <param name="voteId">The vote whose closed results are requested.</param>
+    /// <param name="userId">The member viewing the results.</param>
+    /// <param name="ct">Token used to cancel the request.</param>
     Task<AssemblyVoteResultsView?> GetResultsAsync(
         Guid voteId, Guid userId, bool viewerIsBoardOrAdmin, CancellationToken ct = default);
 

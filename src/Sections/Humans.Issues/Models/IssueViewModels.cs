@@ -172,7 +172,7 @@ internal sealed class PostIssueCommentModel
 
     /// <summary>
     /// Optional: when true, also moves the issue to <see cref="IssueStatus.Resolved"/>
-    /// after posting the comment. Wired up by the "Comment & mark resolved" button.
+    /// after posting the comment. Wired up by the "Comment &amp; mark resolved" button.
     /// </summary>
     public bool ResolveOnPost { get; set; }
 }

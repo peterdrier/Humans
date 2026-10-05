@@ -39,6 +39,7 @@ public interface IStripeService : IApplicationService
     /// <param name="cancelUrl">Absolute URL Stripe redirects to if the user cancels checkout.</param>
     /// <param name="customerEmail">Optional pre-fill for the Stripe-collected email; pass null to let Stripe collect it.</param>
     /// <param name="lineItemDescription">Human-readable description shown on the Stripe-hosted page and receipt.</param>
+    /// <param name="ct">Token for cancelling the Stripe request.</param>
     [ExternalWrite]
     Task<string> CreateCheckoutSessionAsync(
         Guid storeOrderId,

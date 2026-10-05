@@ -2,7 +2,7 @@ using NodaTime;
 
 namespace Humans.Holded.Contracts;
 
-/// <summary>A P&L expense account from Holded (`expensesaccounts` / chart).</summary>
+/// <summary>A P&amp;L expense account from Holded (`expensesaccounts` / chart).</summary>
 public sealed record HoldedExpenseAccountDto
 {
     public required string Id { get; init; }

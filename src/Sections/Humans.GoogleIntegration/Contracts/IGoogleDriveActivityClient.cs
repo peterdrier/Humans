@@ -3,7 +3,7 @@ namespace Humans.GoogleIntegration.Contracts;
 /// <summary>
 /// Narrow connector over the Google Drive Activity API v2 and the Admin
 /// Directory API, scoped to the read-only operations performed by
-/// <see cref="IDriveActivityMonitorService"/>. The real Google-backed client and the
+/// <c>Humans.Monitor.Contracts.IDriveActivityMonitorService</c>. The real Google-backed client and the
 /// dev-mode stub live in <c>Humans.GoogleIntegration/Services/Workspace/</c>. Public in
 /// <c>Contracts/</c> because Monitor consumes it across an assembly boundary; shape-neutral so no consumer
 /// imports <c>Google.Apis.*</c> (design-rules §13).
@@ -54,6 +54,7 @@ public interface IGoogleDriveActivityClient
     /// Lower-bound filter applied as <c>time &gt;= "{value}"</c> on the query.
     /// The caller formats as an invariant-culture ISO-8601 instant.
     /// </param>
+    /// <param name="ct">Token used to cancel the enumeration.</param>
     /// <remarks>
     /// May throw <see cref="DriveActivityResourceNotFoundException"/> when the
     /// underlying Drive item has been deleted.

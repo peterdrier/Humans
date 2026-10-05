@@ -22,7 +22,7 @@ namespace Humans.Consent.Services;
 /// </para>
 /// <para>
 /// Synchronous invalidation on <see
-/// cref="IConsentService.SubmitConsentAsync"/> is the load-bearing
+/// cref="Humans.Consent.Contracts.IConsentSubmission.SubmitConsentAsync"/> is the load-bearing
 /// invariant of this cache: the controller redirects immediately after
 /// the submit returns, and the next-page consent-banner check must not
 /// observe a stale "still required" entry. The caching decorator refreshes

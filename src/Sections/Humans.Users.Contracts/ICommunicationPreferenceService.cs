@@ -4,8 +4,8 @@ namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Status of a CommunicationPreference token validation attempt.
-/// Distinct from <see cref="UnsubscribeTokenResult"/> which is the high-level
-/// result returned by <see cref="IUnsubscribeService"/>.
+/// Distinct from <c>UnsubscribeTokenResult</c> which is the high-level
+/// result returned by <c>IUnsubscribeService</c>.
 /// </summary>
 public enum TokenValidationStatus
 {

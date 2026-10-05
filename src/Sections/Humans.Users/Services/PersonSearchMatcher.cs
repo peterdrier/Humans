@@ -15,7 +15,7 @@ internal sealed record PersonSearchMatch(string Field, string? Snippet, string? 
 /// Pure, scope-confined matcher for person search. Operates on the cached <see cref="UserInfo"/>
 /// read-model so callers (CachingUserService) stay a thin iteration + Guid fast-path over it.
 /// Matching is accent- and case-insensitive; name matching is whitespace-token-split.
-/// <paramref name="fields"/> IS the authorization model — the matcher never reads a field its
+/// <c>fields</c> IS the authorization model — the matcher never reads a field its
 /// scope flag is unset. Board/private fields (notes, IBAN, emergency contact, GDPR health) are
 /// never searchable under any flag.
 /// </summary>

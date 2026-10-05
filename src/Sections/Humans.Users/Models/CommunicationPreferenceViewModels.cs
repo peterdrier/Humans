@@ -15,7 +15,7 @@ internal sealed class CommunicationPreferencesViewModel
 
     /// <summary>
     /// Category encoded in the unsubscribe token, when present. Drives the one-click
-    /// "Unsubscribe from <category>" banner and pre-focuses that row in the matrix.
+    /// "Unsubscribe from &lt;category&gt;" banner and pre-focuses that row in the matrix.
     /// </summary>
     public MessageCategory? HighlightCategory { get; set; }
 

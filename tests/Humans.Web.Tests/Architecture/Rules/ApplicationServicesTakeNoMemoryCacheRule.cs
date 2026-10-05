@@ -19,14 +19,14 @@ namespace Humans.Web.Tests.Architecture.Rules;
 /// <list type="bullet">
 ///   <item><c>Humans.Camps.Services.CampContactService</c> — contact name cache</item>
 ///   <item><c>IssuesService</c> — issues cache</item>
-///   <item><see cref="LegalDocumentService"/> — document version cache</item>
-///   <item><see cref="NotificationEmitter"/> — throttle-key cache</item>
-///   <item><see cref="NotificationInboxService"/> — inbox cache</item>
-///   <item><see cref="NotificationMeterProvider"/> — meter cache</item>
-///   <item><see cref="NotificationService"/> — notification preferences cache</item>
-///   <item><see cref="ShiftManagementService"/> — shift data cache</item>
+///   <item><c>Humans.Consent.Services.LegalDocumentService</c> — document version cache</item>
+///   <item><c>Humans.Notifications.Services.NotificationEmitter</c> — throttle-key cache</item>
+///   <item><c>Humans.Notifications.Services.NotificationInboxService</c> — inbox cache</item>
+///   <item><c>Humans.Notifications.Services.NotificationMeterProvider</c> — meter cache</item>
+///   <item><c>Humans.Notifications.Services.NotificationService</c> — notification preferences cache</item>
+///   <item><c>Humans.Shifts.Services.ShiftManagementService</c> — shift data cache</item>
 ///   <item><c>Humans.Feedback.Services.FeedbackService</c> — feedback-badge count cache (nav badges)</item>
-///   <item><see cref="ApplicationDecisionService"/> — voting-badge count cache (nav badges)</item>
+///   <item><c>Humans.Governance.Services.ApplicationDecisionService</c> — voting-badge count cache (nav badges)</item>
 ///   <item><c>Humans.Finance.Services.Service</c> — Holded contact-list cache (nobodies-collective/Humans#976)</item>
 ///   <item><c>Humans.Guide.Services.GuideContentService</c> — rendered guide-page cache</item>
 ///   <item><c>Humans.Auth.Services.MagicLinkRateLimiter</c> — magic-link replay + signup-cooldown state</item>

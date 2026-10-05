@@ -5,7 +5,7 @@ namespace Humans.Shifts.Models;
 /// <summary>
 /// Shared per-shift / per-rota mapping used by both the full browse
 /// (<c>ShiftsController.Index</c>) and the onboarding widget step-2 view
-/// (<see cref="OnboardingWidget.OnboardingShiftsBrowseModelBuilder"/>).
+/// (<c>OnboardingShiftsStepBuilder</c>).
 ///
 /// Pure mapping over <see cref="UrgentShiftInfo"/> — no service dependencies and
 /// no arithmetic: the section resolves the absolute window and the period inside
@@ -14,7 +14,7 @@ namespace Humans.Shifts.Models;
 internal static class ShiftBrowseMapper
 {
     /// <summary>
-    /// Maps a single <see cref="UrgentShift"/> to a <see cref="ShiftDisplayItem"/>.
+    /// Maps a single <see cref="UrgentShiftInfo"/> to a <see cref="ShiftDisplayItem"/>.
     /// </summary>
     internal static ShiftDisplayItem MapToDisplayItem(UrgentShiftInfo u)
     {

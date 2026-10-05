@@ -24,15 +24,15 @@ namespace Humans.Shifts.Contracts;
 public interface IShiftViewInvalidator : IInvalidator
 {
     /// <summary>
-    /// Drops the cached <see cref="ShiftUserView"/> for a single
+    /// Drops the cached <c>ShiftUserView</c> for a single
     /// user. The next <see cref="IShiftView.GetUserAsync"/> call re-loads from the
     /// inner service.
     /// </summary>
     void InvalidateUser(Guid userId);
 
     /// <summary>
-    /// Drops the cached <see cref="ShiftRotaView"/> for a single
-    /// rota. The next <see cref="IShiftView.GetRotaAsync"/> call re-loads from the
+    /// Drops the cached <c>ShiftRotaView</c> for a single
+    /// rota. The next <c>IShiftRowView.GetRotaAsync</c> call re-loads from the
     /// inner service.
     /// </summary>
     void InvalidateRota(Guid rotaId);

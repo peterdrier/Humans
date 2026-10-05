@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Http;
 namespace Humans.Base.ViewComponents;
 
 /// <summary>Where the current admin page sits in the nav: its group, and the item (tab) it is or belongs under.</summary>
+/// <param name="Group">The containing navigation group.</param>
+/// <param name="Item">The matching navigation item.</param>
 /// <param name="IsExact">The route is the item itself, not a subpage of it.</param>
 public sealed record AdminNavLocation(AdminNavGroup Group, AdminNavItem Item, bool IsExact);
 

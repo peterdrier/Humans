@@ -130,7 +130,7 @@ internal partial interface IUserRepository
 
     /// <summary>
     /// Issue nobodies-collective/Humans#697. Applies a single OAuth-reconcile
-    /// data change inside one <see cref="DbContext"/> + one
+    /// data change inside one <see cref="Microsoft.EntityFrameworkCore.DbContext"/> + one
     /// <see cref="Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction"/>.
     /// Atomicity guarantee: when the plan includes a cross-user displaced
     /// row alongside the signing user's mutation, either every operation

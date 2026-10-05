@@ -7,7 +7,7 @@ namespace Humans.Analyzers;
 
 /// <summary>
 /// HUM0028 — every interface that extends
-/// <see cref="Humans.Base.Interfaces.IInvalidator"/> is a new
+/// <c>Humans.Base.Interfaces.IInvalidator</c> is a new
 /// cache-invalidator concept. A separate invalidator existing is itself a
 /// smell — usually a cross-section write or a flush the owning section's
 /// service + caching decorator should have absorbed. The marker makes the

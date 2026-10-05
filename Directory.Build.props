@@ -9,6 +9,8 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Validate XML comments and cref links; missing comments remain covered by CS1591 below. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <!-- Ship satellite assemblies for every culture in CultureCatalog.SupportedCultureCodes -->
     <SatelliteResourceLanguages>en;es;ca;de;fr;it</SatelliteResourceLanguages>

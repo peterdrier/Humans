@@ -136,7 +136,7 @@ public interface IUserEmailService
     /// <summary>
     /// Idempotent verified-email add for the import-flow account-creation path
     /// (<c>AccountProvisioningService</c>): on a freshly created User the row
-    /// is added through <see cref="UserEmailService"/> rather than the
+    /// is added through <c>UserEmailService</c> rather than the
     /// repository directly so it goes through the same orchestrator
     /// (Primary + Google invariants, UserInfo invalidation) as every
     /// other UserEmail-add path. Issue nobodies-collective/Humans#687.
@@ -268,10 +268,10 @@ public interface IUserEmailService
     /// <summary>
     /// Sets the user's canonical Google Workspace identity to the given verified
     /// email row. Single-transaction exclusive flip via
-    /// <see cref="IUserRepository.SetUserEmailGoogleExclusiveAsync"/>: the target row's
+    /// <c>IUserRepository.SetUserEmailGoogleExclusiveAsync</c>: the target row's
     /// <see cref="UserEmail.IsGoogle"/> goes to true, every sibling row for the
     /// same user is cleared. Owner-gated via
-    /// <see cref="IUserRepository.GetUserEmailByIdAndUserIdAsync"/>; returns
+    /// <c>IUserRepository.GetUserEmailByIdAndUserIdAsync</c>; returns
     /// <c>false</c> if the row is not found for this user or is not verified.
     /// Service-auth-free per the design rules: the controller authorizes against
     /// <paramref name="userId"/>, which is the <b>target</b> user (not the actor).
@@ -289,7 +289,7 @@ public interface IUserEmailService
     /// invariant violation that bypasses <see cref="SetGoogleAsync"/>).
     /// Returns <c>false</c> when the row is not found for this user or is
     /// already cleared. Owner-gated via
-    /// <see cref="IUserRepository.GetUserEmailByIdAndUserIdAsync"/>.
+    /// <c>IUserRepository.GetUserEmailByIdAndUserIdAsync</c>.
     /// </summary>
     Task<bool> ClearGoogleAsync(
         Guid userId, Guid userEmailId, Guid actorUserId,
@@ -355,7 +355,7 @@ public interface IUserEmailService
 
     /// <summary>
     /// Issue nobodies-collective/Humans#697. The single OAuth-callback entry
-    /// point that mutates <see cref="Domain.Entities.UserEmail"/> rows. Called
+    /// point that mutates <see cref="UserEmail"/> rows. Called
     /// once per OAuth-success path in <c>AccountController</c> after Identity's
     /// <c>AspNetUserLogins</c> row points at <paramref name="userId"/>. Policy
     /// ladder (all inside a single transaction):
@@ -472,7 +472,7 @@ public record OAuthReconcileResult(
     bool DisplacedUserLeftWithoutVerifiedEmail);
 
 /// <summary>
-/// Narrow projection describing a <see cref="Domain.Entities.UserEmail"/>
+/// Narrow projection describing a <see cref="UserEmail"/>
 /// row used by admin cross-section matching. Avoids leaking the full entity
 /// outside the owning section.
 /// </summary>

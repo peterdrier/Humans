@@ -25,7 +25,7 @@ namespace Humans.Analyzers.Internal.Rules;
 /// <para>
 /// Mechanism: across the <c>Humans.Infrastructure</c> compilation, collect every
 /// reference (read or write) to an application DbContext's DbSet from inside a type
-/// implementing <see cref="Humans.Base.Interfaces.Repositories.IRepository"/>,
+/// implementing <c>Humans.Base.Interfaces.Repositories.IRepository</c>,
 /// then build <c>DbSet → {referencing repository types}</c>. A table referenced by
 /// N&gt;1 repositories produces a diagnostic at each access site. Phase 1 detects
 /// only direct references: <c>ctx.&lt;DbSet&gt;</c> property access (including DbSets

@@ -218,7 +218,7 @@ internal sealed class TeamAdminController(
     /// <summary>
     /// Board/Admin-only roster: every member's burner name next to their legal name.
     /// <c>TeamAuthorizationHandler</c> already passes Board and Admin for
-    /// <c>ManageCoordinators</c>, so the policy narrows <see cref="ResolveTeamManagementAsync"/>
+    /// <c>ManageCoordinators</c>, so the policy narrows <see cref="HumansTeamControllerBase.ResolveTeamManagementAsync"/>
     /// (which also serves coordinators) down to exactly Board-or-Admin.
     /// </summary>
     [HttpGet("Roster")]

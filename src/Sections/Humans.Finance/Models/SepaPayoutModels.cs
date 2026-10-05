@@ -43,6 +43,7 @@ internal sealed record SepaPayoutResult(string? FileName, string? Xml, string? E
 
 /// <summary>Whether SEPA generation is available at all, and the ceiling it enforces.</summary>
 /// <param name="UnavailableReason">Null when configured; otherwise what the admin must set.</param>
+/// <param name="MaxPerTransfer">The maximum permitted amount for an individual transfer.</param>
 internal sealed record SepaPayoutSettings(decimal MaxPerTransfer, string? UnavailableReason)
 {
     public bool IsAvailable => UnavailableReason is null;
@@ -65,6 +66,11 @@ internal sealed record SepaTransferVm(SepaPayoutTransferRow Row, string MemberNa
 /// <summary>One generated file and its transfers, as the screen groups them.</summary>
 /// <param name="BatchLine">The single bank line that debited this whole file, when there is one to
 /// process.</param>
+/// <param name="FileId">The generated payout file's identifier.</param>
+/// <param name="FileName">The generated file's name.</param>
+/// <param name="GeneratedAt">When the payout file was generated.</param>
+/// <param name="GeneratedByName">The display name of the user who generated the file.</param>
+/// <param name="Transfers">The transfers included in the file.</param>
 internal sealed record SepaPayoutFileVm(
     Guid FileId,
     string FileName,
@@ -80,6 +86,7 @@ internal sealed record SepaPayoutFileVm(
 /// transfer, or matched ambiguously — the "needs a human" panel.</param>
 /// <param name="BankFeedError">Set when the live bank-feed call failed; every row then falls back to
 /// "waiting for the Sabadell line" and the page renders a warning banner instead of failing.</param>
+/// <param name="Files">Generated payout files and their transfers.</param>
 internal sealed record SepaPayoutsPageVm(
     IReadOnlyList<SepaPayoutFileVm> Files,
     string? UnavailableReason,

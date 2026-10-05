@@ -41,7 +41,7 @@ internal static class UserStateEvaluator
     /// <summary>
     /// A row erased via GDPR Article 17. Keyed on the minted tombstone email
     /// (<c>deleted-&lt;id&gt;@deleted.local</c>, written by
-    /// <see cref="Humans.Base.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>)
+    /// <see cref="Humans.Users.Data.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>)
     /// rather than any user-editable name field — a member cannot produce that email themselves
     /// (nobodies-collective/Humans#1742: a burner/display name of "Deleted User" must not read as
     /// erased). Reads <see cref="User.IdentityEmailColumn"/> (the raw Identity column), not the

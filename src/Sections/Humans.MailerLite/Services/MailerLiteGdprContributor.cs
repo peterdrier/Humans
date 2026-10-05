@@ -14,7 +14,7 @@ namespace Humans.MailerLite.Services;
 /// deletes the person's MailerLite subscriber outright (nobodies-collective/Humans#853).
 ///
 /// <para>
-/// Separate class rather than adding this role to <see cref="MailerLiteClient"/>: that
+/// Separate class rather than adding this role to <see cref="MailerLite.MailerLiteClient"/>: that
 /// class is a Singleton (design §15 — it holds its own subscriber/group cache), so its
 /// dependencies must all be Singleton-safe, and resolving a user's email needs the Scoped
 /// <see cref="IUserEmailService"/>.

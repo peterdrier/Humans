@@ -57,6 +57,10 @@ internal sealed record StripeOrphanPayment(
 /// (key unset or missing read scope) — in which case <see cref="Orphans"/> is empty rather than
 /// false-flagging every recorded payment as an orphan.
 /// </param>
+/// <param name="WebhookConfigured">Whether the Stripe webhook is configured.</param>
+/// <param name="CheckoutConfigured">Whether Stripe Checkout is configured.</param>
+/// <param name="Rows">The Stripe sessions and their local reconciliation status.</param>
+/// <param name="Orphans">Recorded Stripe payments with no matching session, for review.</param>
 internal sealed record StripeReconciliationReport(
     bool WebhookConfigured,
     bool CheckoutConfigured,

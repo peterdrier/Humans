@@ -460,10 +460,6 @@ inbox:
     what: "HumansControllerBase.SetError service-locates ILoggerFactory off HttpContext.RequestServices while SetSuccess and SetInfo resolve nothing. The original symptom is gone — the lookup is null-conditional (HttpContext?.RequestServices?.GetService), so it no longer throws in a controller unit test — but the asymmetry and the service-location remain, and injecting the logger would remove both. No test scaffolding rides on it: Onboarding's controller tests set ControllerContext and ctrl.Url because RedirectToAction resolves IUrlHelperFactory, which injection here would not change. Base's, so it has no section ledger. Found by /section-doctor on Onboarding 2026-08-23; symptom re-verified and corrected, test-scaffolding claim struck, 2026-09-13."
     review: panel
   - added: 2026-09-11
-    id: CENTRAL-42
-    what: "GenerateDocumentationFile is set in no project in this repo, so CS1574 never fires and a broken <see cref> target never fails a build; Calendar alone was carrying a batch of them. Repo-wide (finding 5, /section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Guide 2026-09-11)."
-    review: light
-  - added: 2026-09-11
     id: CENTRAL-43
     what: "Calendar's authorization posture ([Authorize] on the controller, one anonymous feed action) is enforced by nothing. It cannot be a per-section test (memory/architecture/no-tests-for-absences.md) and the behavioural alternative needs a WebApplicationFactory, which lives only in the never-CI integration project (finding 17, /section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Guide 2026-09-11)."
     review: panel
