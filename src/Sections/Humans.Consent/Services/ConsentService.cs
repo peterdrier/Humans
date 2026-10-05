@@ -121,6 +121,10 @@ internal sealed class ConsentService(
         Guid userId, Guid documentVersionId, bool explicitConsent,
         string ipAddress, string userAgent, CancellationToken ct = default)
     {
+        // Refuse before any write: a false append-only record would block a later valid signature.
+        if (!explicitConsent)
+            return new ConsentSubmitResult(false, ErrorKey: "ExplicitConsentRequired");
+
         // Defense-in-depth Stub gate: never write a ConsentRecord for a profile without verified legal name.
         var info = await userService.GetUserInfoAsync(userId, ct);
         if (info is null || !info.HasRequiredNameFields)

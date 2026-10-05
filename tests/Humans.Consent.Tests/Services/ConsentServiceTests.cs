@@ -135,6 +135,28 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
+    public async Task SubmitConsentAsync_WithoutExplicitConsent_LeavesTheVersionSignable()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "Spanish text" });
+
+        var refused = await _service.SubmitConsentAsync(
+            userId, versionId, false, "127.0.0.1", "Agent", Xunit.TestContext.Current.CancellationToken);
+
+        refused.Success.Should().BeFalse();
+        refused.ErrorKey.Should().Be("ExplicitConsentRequired");
+        (await LegalDb.ConsentRecords.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        _metrics.DidNotReceive().RecordConsentGiven();
+
+        var signed = await _service.SubmitConsentAsync(
+            userId, versionId, true, "127.0.0.1", "Agent", Xunit.TestContext.Current.CancellationToken);
+        signed.Success.Should().BeTrue();
+        (await LegalDb.ConsentRecords.SingleAsync(Xunit.TestContext.Current.CancellationToken))
+            .ExplicitConsent.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task SubmitConsentAsync_ComputesCorrectSha256Hash()
     {
         var userId = Guid.NewGuid();
