@@ -34,7 +34,7 @@ public sealed class ExpensesControllerTests
     [Xunit.InlineData("AttachFile", "Edit")]
     [Xunit.InlineData("RemoveAttachment", "Edit")]
     [Xunit.InlineData("Submit", "Submit")]
-    [Xunit.InlineData("Withdraw", null)]
+    [Xunit.InlineData("Withdraw", "Withdraw")]
     [Xunit.InlineData("IbanGet", "Edit")]
     [Xunit.InlineData("IbanPost", "Edit")]
     [Xunit.InlineData("Endorse", "Endorse")]
@@ -43,7 +43,7 @@ public sealed class ExpensesControllerTests
     [Xunit.InlineData("Reject", "FinanceReject")]
     [Xunit.InlineData("HoldedRetry", "RequeueHoldedPush")]
     public async Task Report_actions_stop_on_missing_actor_missing_report_and_denied_access(
-        string action, string? expectedOperation)
+        string action, string expectedOperation)
     {
         var actorId = Guid.NewGuid();
         var reportId = Guid.NewGuid();
@@ -102,10 +102,74 @@ public sealed class ExpensesControllerTests
                 .SelectMany(requirements => requirements))
             .OfType<ExpenseReportOperationRequirement>()
             .Select(requirement => requirement.Operation.ToString()).ToList();
-        if (expectedOperation is null)
-            operations.Should().BeEmpty("withdrawal retains its ownership check");
+        operations.Should().Contain(expectedOperation);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(ExpenseReportStatus.Draft, true, false)]
+    [Xunit.InlineData(ExpenseReportStatus.Submitted, true, true)]
+    [Xunit.InlineData(ExpenseReportStatus.CoordinatorEndorsed, true, true)]
+    [Xunit.InlineData(ExpenseReportStatus.Approved, true, true)]
+    [Xunit.InlineData(ExpenseReportStatus.Withdrawn, true, false)]
+    [Xunit.InlineData(ExpenseReportStatus.Submitted, false, false)]
+    [Xunit.InlineData(ExpenseReportStatus.Approved, false, false)]
+    public async Task Withdraw_UsesResourcePolicyBeforeMutation(
+        ExpenseReportStatus status, bool isSubmitter, bool allowed)
+    {
+        var actorId = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
+        var report = new ExpenseReportDto
+        {
+            Id = reportId, SubmitterUserId = isSubmitter ? actorId : Guid.NewGuid(),
+            BudgetCategoryId = Guid.NewGuid(), BudgetYearId = Guid.NewGuid(), Status = status,
+            PayeeName = "Submitter", PayeeIban = "", Total = 0,
+            CreatedAt = default, UpdatedAt = default, Lines = []
+        };
+        var reports = Substitute.For<IExpenseReportService>();
+        reports.GetAsync(reportId).Returns(report);
+        reports.WithdrawWithResultAsync(reportId, actorId).Returns(ExpenseMutationResult.Success);
+        var handler = new ExpenseReportAuthorizationHandler(
+            Substitute.For<IBudgetServiceRead>(), Substitute.For<Humans.Teams.Contracts.ITeamServiceRead>());
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), report,
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(async call =>
+            {
+                var context = new AuthorizationHandlerContext(
+                    call.Arg<IEnumerable<IAuthorizationRequirement>>(), call.Arg<ClaimsPrincipal>(), report);
+                await handler.HandleAsync(context);
+                return context.HasSucceeded ? AuthorizationResult.Success() : AuthorizationResult.Failed();
+            });
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([
+                new Claim(ClaimTypes.NameIdentifier, actorId.ToString()),
+                new Claim(ClaimTypes.Role, RoleNames.FinanceAdmin)], "test"))
+        };
+        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = new ExpensesController(users, reports, Substitute.For<IBudgetServiceRead>(),
+            Substitute.For<IHoldedFinanceServiceRead>(), authorization, NullLogger<ExpensesController>.Instance, localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+
+        var result = await controller.Withdraw(reportId);
+
+        if (allowed)
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await reports.Received(1).WithdrawWithResultAsync(reportId, actorId);
+        }
         else
-            operations.Should().Contain(expectedOperation);
+        {
+            result.Should().BeOfType<ForbidResult>();
+            await reports.DidNotReceive().WithdrawWithResultAsync(reportId, actorId);
+        }
     }
 
     [HumansTheory]

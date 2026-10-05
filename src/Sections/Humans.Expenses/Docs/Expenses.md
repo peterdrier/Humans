@@ -132,6 +132,8 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Invariants
 
+- Withdrawal POST and its detail-page button use `ExpenseReportOperation.Withdraw`: only the submitter of a Submitted, CoordinatorEndorsed, or Approved report may withdraw. Draft and already Withdrawn reports return 403 before mutation; FinanceAdmin/Admin cannot withdraw another person's report.
+
 - The Holded outbox drain is marked as an external write; HTTP mutations must not pass browser cancellation into its vendor operations. Report transitions only queue the work.
 
 - Holded outbox retries and write-offs bound saved error summaries to 2000 UTF-16 units without splitting surrogate pairs. Permanent-failure audits use the same bounded summary; logs retain the full exception.
