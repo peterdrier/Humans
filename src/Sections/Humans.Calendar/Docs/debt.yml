@@ -9,11 +9,6 @@ inbox:
     status: partial
     review: panel
   - added: 2026-09-19
-    id: CAL-5
-    what: "CalendarOccurrenceExpander.Expand still applies per-occurrence exceptions, re-creates moved occurrences and windows the result in one body; rule expansion has moved out to BuildOccurrences (finding 18, /section-doctor on Calendar 2026-09-19)."
-    status: partial
-    review: panel
-  - added: 2026-09-19
     id: CAL-6
     what: "health.md §4.3 — the feed URL and token are never rendered into a page — has no test anywhere, and a regression there leaks a personal feed token. ICalFeedApiController is invisible to EndpointAuthorizationTests because it derives from ControllerBase, not Controller; §4.5's LogCritical is asserted on the create and cancel-occurrence paths only, not on update, delete or override; §4.15 and §4.18 are unpinned (finding 19, /section-doctor on Calendar 2026-09-19; narrowed by finding 9, 2026-10-04)."
     status: partial
