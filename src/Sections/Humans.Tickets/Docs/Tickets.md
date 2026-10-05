@@ -82,23 +82,9 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 
 ## Invariants
 
-- The admin participation-backfill form GET retains browser cancellation through its default-year lookup; CSV submission and writes retain their existing boundaries.
-
-- The onsite roster GET retains request cancellation for its active-year settings lookup before reading the roster; scanner access, filters and newest-check-in ordering remain unchanged.
-
-- The self/admin profile ticket-holdings card passes browser cancellation to its holdings and early-entry reads. Public profile viewers remain excluded before any ticket lookup; self/admin empty-card behavior is unchanged.
-
-- Guest order totals format amounts in the selected UI culture and retain each order’s currency code.
-
-- Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant. Dashboard cards, order and attendee amounts, VIP splits, fee rates and sales aggregate totals use the same UI culture; chart JSON stays numeric.
-
-- Order, attendee and who-has-not-bought paging computes offsets without integer overflow; extreme pages cannot wrap into earlier rows. Filters, ordering and total counts are unchanged.
-
-- Member transfer-index GETs propagate request cancellation to viewer resolution before ticket, transfer and early-entry reads. Transfer POST boundaries are unchanged.
-
+- Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant. Guest order totals, dashboard cards, order and attendee amounts, VIP splits, fee rates and sales aggregate totals use the same UI culture; chart JSON stays numeric.
 - Member transfer Submit/Cancel validation errors resolve through Tickets resources in all six cultures. Unknown failure text stays in logs; the wizard and cancellation toast use translated fallbacks.
 - Transfer row DTOs carry sender/decider IDs; their names are rendered by the existing human components. Row assembly does not load unused user-name snapshots, so a profile lookup cannot fail a committed response or prevent a transfer list from loading. Transfer/attendee reads remain required.
-
 - `TicketHoldingsViewComponent` is contributed (`Humans.Tickets/SectionUserParts.cs`, `IUserPart`) to Users' `user-profile-sidebar` and `user-admin-detail-sidebar` slots. It renders nothing for `ProfileCardViewMode.Public` — its only visibility check — and shows an empty-holdings card only for `Admin`.
 - Ticket orders and attendees are synced from the external vendor — they cannot be manually created or edited from this app.
 - Stripe enrichment (`PaymentMethod`, `PaymentMethodDetail`, `StripeFee`, `ApplicationFee`) is preserved across re-syncs and only re-run for orders that have a `StripePaymentIntentId` and are still missing fee data; if `IStripeService.IsConfigured` is false the pass is silently skipped.
@@ -113,9 +99,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 - Sender cannot send to themselves.
 - On every **holder-facing** stub surface (homepage strip, holdings list, transfer wizard) the Early Entry pill is the **viewer's own** earliest entry date, never the attendee's: all three go through the single `TicketStubInfo.From(row, holderEarlyEntry)` mapper, which stamps one value the caller resolved from `IEarlyEntryService` for the *current* viewer. A transfer therefore cannot leak the sender's EE status to the recipient, and the pill can never be present on one holder surface and missing on another.
 - The **Scanner gate card is the deliberate exception**: it is staff-facing and must show the *scanned attendee's* EE, not the operator's. `ScannerController` resolves `IEarlyEntryService` for `hit.MatchedUserId` and constructs `TicketStubInfo` directly instead of going through `From`. Do not "consolidate" it onto the shared mapper — that would blank the pill for gate staff.
-- Every stub shows the active event's configured `EventName` through `ISettingsService.GetActiveEventSettingsAsync`, falling back to the localized Tickets title when no event is configured. Its admission text, status badges, Early Entry label, and transfer-pending stamp use `TicketsResource` in all supported cultures.
-- The holder-facing ticket holdings card localizes its title, order count, and empty state through `TicketsResource` in all supported cultures.
-- The member ticket-status card localizes its transfer link through `TicketsResource` in all supported cultures.
+- Every stub shows the active event's configured `EventName` through `ISettingsService.GetActiveEventSettingsAsync`, falling back to the localized Tickets title when no event is configured. Its admission text, status badges, Early Entry label, and transfer-pending stamp — like the holdings card's title, order count and empty state, and the ticket-status card's transfer link — use `TicketsResource` in all supported cultures.
 - Admin decisions: **"Process transfer"** runs the automated TicketTailor void(-to-hold)+reissue and, on success, sets `Approved` and writes the swapped local attendee rows; on a partial failure (`VoidSucceededIssueFailed`) **"Retry reissue"** re-issues from the held seat (one click) and, on success, sets `Approved`; **"Mark successful"** sets `Approved` with no vendor call; **"Cancel transfer"** requires a reason and sets `Rejected`. On vendor failure the request stays `Pending` with the diagnostic recorded; a partial request can't be cancelled, rejected, or re-processed — only Retry or Mark successful. The next ticket sync reconciles `ticket_attendees`.
 - Transfer decisions (including Sender cancel and Retry reissue) share an in-process gate across service instances. Status is reloaded inside the gate, and it is held through vendor writes, local persistence, audit, and notifications; overlapping submissions cannot void or issue the same transfer twice. Retry waits without request cancellation because the original void has already committed.
 - Vendor failure details retain their 1500 UTF-16 code-unit prefix budget plus an ellipsis, without splitting a Unicode surrogate pair. The surrounding diagnostic still records the failed stage and held seat.
