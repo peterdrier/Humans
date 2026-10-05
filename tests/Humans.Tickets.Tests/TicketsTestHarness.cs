@@ -13,14 +13,6 @@ namespace Humans.Tickets.Tests;
 /// <see cref="TicketsDbContext"/> and factory, a deterministic clock, and an in-memory
 /// people registry standing in for the Users tables the section cannot see.
 /// </summary>
-/// <remarks>
-/// Replaces <c>Humans.Application.Tests</c>' <c>ServiceTestHarness</c>, which is built
-/// around an in-memory <c>HumansDbContext</c> a section test project has no business
-/// seeing (G5-SECTION-TEMPLATE.md step 8). The member names are deliberately the
-/// harness's — <c>Db</c>, <c>SeedUser</c>, <c>NewDbBackedUserService</c>,
-/// <c>SaveAllAsync</c>, <c>Clock</c> — so the test bodies moved across unchanged
-/// (Campaigns' "rewrite the stub, not the tests", Issues' naming trick).
-/// </remarks>
 public abstract class TicketsTestHarness : IDisposable
 {
     private static readonly System.Reflection.PropertyInfo LegacyDisplayNameProperty =

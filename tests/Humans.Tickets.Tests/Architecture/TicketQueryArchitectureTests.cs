@@ -8,8 +8,7 @@ namespace Humans.Tickets.Tests.Architecture;
 
 /// <summary>
 /// Architecture tests enforcing the §15 repository pattern for the Tickets
-/// query surface — migrated per issue nobodies-collective/Humans#545 sub-task
-/// #545a, decorator lifted per T-07.
+/// query surface.
 ///
 /// <para>
 /// The inner <see cref="TicketQueryService"/> goes through
@@ -62,8 +61,6 @@ public class TicketQueryArchitectureTests
         // single cache-truth — write-side callers can no longer rely on a
         // poke reaching every key. Catches accidental "helper" classes that
         // claim the interface and silently do partial eviction.
-        // One assembly since the G5 move: the inner service and the decorator are both
-        // Humans.Tickets. Kept as a set so a future split is a one-line change here.
         var assemblies = new[] { typeof(CachingTicketQueryService).Assembly };
 
         var impls = assemblies

@@ -438,10 +438,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             .ToListAsync(ct);
     }
 
-    // ==========================================================================
-    // Reads — TicketOrders
-    // ==========================================================================
-
     public async Task<IReadOnlyList<TicketOrder>> GetOrdersMatchedToUserAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -468,9 +464,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     public async Task<IReadOnlyList<TicketAttendee>> GetAttendeesVisibleToUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        // Buyer-visibility arm (a.TicketOrder.MatchedUserId == userId) removed in
-        // nobodies-collective/Humans#856: it returned attendees owned by other accounts
-        // to the buyer, leaking cross-account ticket data. Ownership is attendee-only.
+        // Ownership is attendee-only: the buyer never sees attendees owned by other
+        // accounts (nobodies-collective/Humans#856).
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()

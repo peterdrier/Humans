@@ -891,7 +891,7 @@ public sealed class TicketTransferServiceTests
         Guid id, Guid orderId, Guid attendeeMatchedUserId, TicketAttendeeStatus status,
         Instant? checkedInAt = null)
     {
-        // Buyer-fallback removed in nobodies-collective/Humans#856.
+        // The buyer never owns the attendee (nobodies-collective/Humans#856).
         // Ownership is determined by TicketAttendee.MatchedUserId only.
         var order = new TicketOrder
         {

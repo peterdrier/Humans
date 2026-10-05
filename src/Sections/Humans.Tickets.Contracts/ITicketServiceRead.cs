@@ -10,9 +10,8 @@ namespace Humans.Tickets.Contracts;
 /// <remarks>
 /// Every call site outside the section uses only these
 /// methods. A caller wanting a derived aggregate gets a property on
-/// <see cref="TicketOrderInfo"/>, not a third method
-/// (memory/architecture/read-model-enrichment.md); <see cref="SurfaceBudgetAttribute"/>
-/// is what makes that the cheaper path, and raising it is the owner's call, out of band.
+/// <see cref="TicketOrderInfo"/>, not a new method
+/// (memory/architecture/read-model-enrichment.md).
 /// </remarks>
 public interface ITicketServiceRead
 {

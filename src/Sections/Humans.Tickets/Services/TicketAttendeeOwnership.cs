@@ -4,10 +4,9 @@ namespace Humans.Tickets.Services;
 
 /// <summary>
 /// Current ticket holder = attendee.MatchedUserId; null if unmatched or vendor-only.
-/// The legacy buyer-fallback (attendee.TicketOrder?.MatchedUserId) was removed in
-/// nobodies-collective/Humans#856: every attendee matched via AttendeeContactImportService
-/// has its own MatchedUserId, so the order-buyer arm only leaked cross-account tickets.
-/// Unmatched attendees (MatchedUserId == null) are not owned by anyone until matched.
+/// The order buyer never owns the attendee (nobodies-collective/Humans#856): falling back
+/// to the order's MatchedUserId leaks tickets across accounts. Unmatched attendees are
+/// owned by no one until matched.
 /// </summary>
 internal static class TicketAttendeeOwnership
 {

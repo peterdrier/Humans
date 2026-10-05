@@ -107,9 +107,8 @@ public class OnsiteRosterServiceTests
     public async Task GetRosterAsync_SkipsRowsWithNullCheckedInAt()
     {
         // OnsiteUserRow.CheckedInAt is null when the snapshot view of the cache
-        // happens to have an Attended row without a stored timestamp (legacy /
-        // pre-#736 rows). The service filters these out — they don't belong in
-        // a "currently onsite" view.
+        // happens to have an Attended row without a stored timestamp. The service
+        // filters these out — they don't belong in a "currently onsite" view.
         var nullId = Guid.NewGuid();
         var liveId = Guid.NewGuid();
         var ts = Instant.FromUtc(2026, 7, 8, 12, 0);

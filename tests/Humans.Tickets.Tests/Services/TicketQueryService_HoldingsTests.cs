@@ -78,8 +78,8 @@ public sealed class TicketQueryService_HoldingsTests
         _ticketRepo.GetOrdersMatchedToUserAsync(UserA, Arg.Any<CancellationToken>())
             .Returns([order1, order2]);
 
-        // GetAttendeesVisibleToUserAsync now returns only attendees where MatchedUserId == userId
-        // (buyer-fallback removed in nobodies-collective/Humans#856).
+        // GetAttendeesVisibleToUserAsync returns only attendees where MatchedUserId == userId
+        // (the buyer never owns the attendee, nobodies-collective/Humans#856).
         // Order 1: attendee matched to UserA (counts); unmatched attendee not returned by repo
         // Order 2: attendee matched to UserB (not returned for UserA)
         // Order 3 (UserB's order): attendee matched to UserA via MatchedUserId (counts for UserA)

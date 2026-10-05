@@ -74,8 +74,8 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<ITicketTransferService>(sp => sp.GetRequiredService<TicketTransferService>());
         services.AddScoped<ITicketTransferQueue>(sp => sp.GetRequiredService<TicketTransferService>());
 
-        // The section is the application's only door to ticketing: these two forward to the
-        // Base vendor port so no other section has to name it (design brief §2).
+        // The gateway serves the Tickets.Contracts ports by forwarding to ITicketVendorService,
+        // so consumers never name the vendor port.
         services.AddScoped<TicketVendorGateway>();
         services.AddScoped<ITicketDiscountCodes>(sp => sp.GetRequiredService<TicketVendorGateway>());
         services.AddScoped<ITicketVendorMirror>(sp => sp.GetRequiredService<TicketVendorGateway>());

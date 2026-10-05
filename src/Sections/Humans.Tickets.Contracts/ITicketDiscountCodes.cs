@@ -9,11 +9,8 @@ namespace Humans.Tickets.Contracts;
 /// </summary>
 /// <remarks>
 /// Tickets is the application's only door to ticketing, so a section asks <em>Tickets</em>
-/// for codes and Tickets asks the vendor. Campaigns used to call
-/// <c>ITicketVendorService.GenerateDiscountCodesAsync</c> directly; that cow path is closed
-/// here, which is what makes the second consumer a project reference rather than a design
-/// conversation. Nothing outside Humans.Tickets and Shell's vendor health check may inject
-/// the vendor port — pinned by <c>TicketVendorPortArchitectureTests</c>.
+/// for codes and Tickets asks the vendor. Campaigns calls this interface. Nothing outside
+/// Humans.Tickets may inject the vendor port — pinned by <c>TicketVendorPortArchitectureTests</c>.
 /// </remarks>
 public interface ITicketDiscountCodes : IApplicationService
 {
