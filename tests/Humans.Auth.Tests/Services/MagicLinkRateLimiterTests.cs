@@ -83,14 +83,17 @@ public sealed class MagicLinkRateLimiterTests : IDisposable
     }
 
     [HumansFact]
-    public async Task TryConsumeTokenAsync_TokensSharingNoPrefix_DoNotCollide()
+    public async Task TokensSharingAPrefix_HaveIndependentRedemptionAndRelease()
     {
-        // Keys are built from a 32-char prefix, so two tokens are only distinct
-        // to this limiter if they differ inside it.
-        await _limiter.TryConsumeTokenAsync("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-one", TokenLifetime);
+        const string First = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-one";
+        const string Second = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-two";
+        (await _limiter.TryConsumeTokenAsync(First, TokenLifetime)).Should().BeTrue();
+        (await _limiter.TryConsumeTokenAsync(Second, TokenLifetime)).Should().BeTrue();
 
-        (await _limiter.TryConsumeTokenAsync("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-two", TokenLifetime))
-            .Should().BeTrue();
+        _limiter.ReleaseTokenReservation(First);
+
+        (await _limiter.TryConsumeTokenAsync(First, TokenLifetime)).Should().BeTrue();
+        (await _limiter.TryConsumeTokenAsync(Second, TokenLifetime)).Should().BeFalse();
     }
 
     public void Dispose() => _cache.Dispose();
