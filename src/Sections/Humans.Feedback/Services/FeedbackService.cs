@@ -388,8 +388,11 @@ internal sealed class FeedbackService(
     /// <summary>Own reports and their free text are hard-deleted; triage links elsewhere are detached.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
+        var screenshotKeys = await repository.EraseForUserAsync(userId, ct);
+        navBadge.Invalidate();
+
         // The screenshots are the reporter's own uploads — they go with the rows.
-        foreach (var key in await repository.EraseForUserAsync(userId, ct))
+        foreach (var key in screenshotKeys)
         {
             try
             {
