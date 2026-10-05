@@ -31,7 +31,7 @@ GDPR and CAN-SPAM compliance require giving users control over which communicati
 
 Category names, descriptions, the clock-derived Ticketing year heading and ticket-lock note are localized in all six supported cultures on member and guest pages. Guest one-click banners and legacy Marketing unsubscribe pages share the translated category names.
 
-The member panel currently shows only the Email control. Its updates preserve the existing inbox setting rather than resetting the hidden channel.
+The member panel currently shows only the Email control. Its updates preserve the existing inbox setting rather than resetting the hidden channel. Save requests reject redirects; an expired or revoked session restores the checkbox and shows failure feedback instead of confirming a save.
 
 Guest updates serialize per row by disabling both editable channels and the matching one-click unsubscribe control while a save is pending. Success/failure unlocks the row; failures revert the edited value. Other categories stay independent.
 

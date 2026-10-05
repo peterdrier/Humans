@@ -7,17 +7,23 @@ const view = fs.readFileSync(path.resolve(__dirname, '../../../src/Sections/Huma
 const script = view.slice(view.indexOf('<script>') + 8, view.indexOf('</script>'));
 const flush = () => new Promise(resolve => setImmediate(resolve));
 function form(alertEnabled) {
-    let change, resolve;
+    let change, resolve, reject, options;
     const requests = [];
+    const classes = new Set();
     const row = { dataset: { alertEnabled: String(alertEnabled) }, querySelector: selector => selector.includes('email') ? email : null,
-        classList: { add() {}, remove() {} } };
+        classList: { add: value => classes.add(value), remove: value => classes.delete(value) } };
     const email = { checked: true, disabled: false, dataset: { category: 'Marketing', channel: 'email' }, closest: () => row,
         addEventListener: (name, handler) => change = () => handler.call(email) };
     vm.runInNewContext(script, { URLSearchParams, setTimeout() {},
         document: { querySelectorAll: () => [email], querySelector: () => ({ value: 'token' }) },
-        fetch: (url, options) => { requests.push(new URLSearchParams(options.body)); return new Promise(yes => resolve = yes); },
+        fetch: (url, requestOptions) => {
+            options = requestOptions;
+            requests.push(new URLSearchParams(options.body));
+            return new Promise((yes, no) => { resolve = yes; reject = no; });
+        },
     });
-    return { email, requests, change: () => { email.checked = !email.checked; change(); }, reply: ok => resolve({ ok }) };
+    return { email, requests, classes, change: () => { email.checked = !email.checked; change(); }, reply: ok => resolve({ ok }),
+        redirect: () => options.redirect === 'error' ? reject(new TypeError('redirect blocked')) : resolve({ ok: true }) };
 }
 for (const enabled of [false, true]) {
     test(`changing email preserves the existing inbox setting ${enabled}`, async () => {
@@ -36,5 +42,15 @@ test('failed email update restores the checkbox without changing the inbox setti
     ui.change(); ui.reply(false); await flush();
     assert.equal(ui.email.checked, true);
     assert.equal(ui.email.disabled, false);
+    assert.equal(ui.requests[0].get('alertEnabled'), 'false');
+});
+
+test('a redirected login page cannot confirm a preference save', async () => {
+    const ui = form(false);
+    ui.change(); ui.redirect(); await flush();
+    assert.equal(ui.email.checked, true);
+    assert.equal(ui.email.disabled, false);
+    assert.equal(ui.classes.has('table-success'), false);
+    assert.equal(ui.classes.has('table-danger'), true);
     assert.equal(ui.requests[0].get('alertEnabled'), 'false');
 });
