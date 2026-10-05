@@ -238,6 +238,9 @@ Settings and Register an existing group on first setup or after clearing the que
 
 ## Invariants
 
+- Workgroups's email links use the shared `Email:BaseUrl`, normalized by Shell to omit trailing slashes before a route is appended.
+
+
 - The visible workgroup budget card uses the shared euro formatter in the selected UI culture.
 
 - Budget preparation remains cancellable. Account creation or linking runs independently of browser cancellation through Finance, then persists the binding, system log and audit. Amount-only saves retain cancellation until their save succeeds, then finish the log and audit independently.

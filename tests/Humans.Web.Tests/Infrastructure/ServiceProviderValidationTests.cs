@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Globalization;
 using Humans.Base;
+using Humans.Base.Configuration;
 using Humans.Web.ModelBinders;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +18,7 @@ using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace Humans.Web.Tests.Infrastructure;
 
@@ -30,6 +32,23 @@ namespace Humans.Web.Tests.Infrastructure;
 /// </summary>
 public sealed class ServiceProviderValidationTests
 {
+    [HumansTheory]
+    [InlineData("https://example.com/", "/Account/MagicLinkConfirm")]
+    [InlineData("https://example.com", "/Account/MagicLinkConfirm")]
+    [InlineData("https://example.com/humans/", "/humans/Account/MagicLinkConfirm")]
+    public void Email_link_base_does_not_duplicate_route_separators(string baseUrl, string expectedPath)
+    {
+        var configuration = BuildMinimalConfiguration();
+        configuration["Email:BaseUrl"] = baseUrl;
+        var registrations = new ServiceCollection();
+        Extensions.Infrastructure.EmailInfrastructureExtensions.AddEmailInfrastructure(
+            registrations, configuration, new StubHostEnvironment());
+        using var services = registrations.BuildServiceProvider();
+        var settings = services.GetRequiredService<IOptions<EmailSettings>>().Value;
+
+        new Uri($"{settings.BaseUrl}/Account/MagicLinkConfirm").AbsolutePath.Should().Be(expectedPath);
+    }
+
     [HumansFact]
     public void NoSingletonConstructorInjectsAScopedService()
     {

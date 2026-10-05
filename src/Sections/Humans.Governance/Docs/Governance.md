@@ -248,6 +248,9 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Invariants
 
+- Governance's email links use the shared `Email:BaseUrl`, normalized by Shell to omit trailing slashes before a route is appended.
+
+
 - Member tier-application and assembly-vote pages localize breadcrumb navigation labels in all six supported cultures.
 
 - Application-admin paging computes offsets without integer overflow; extreme pages cannot wrap into earlier applications.

@@ -112,6 +112,9 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 
 ## Invariants
 
+- Email's email links use the shared `Email:BaseUrl`, normalized by Shell to omit trailing slashes before a route is appended.
+
+
 - Configured SMTP health probes propagate requested timeout/abort cancellation without logging or returning a connection failure; canceled probes start no connection.
 
 - Outbox dashboard statistics, daily counts and the backfill review GET observe request cancellation; backfill confirmation remains an explicit audited write.

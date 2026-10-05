@@ -183,6 +183,9 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Invariants
 
+- Teams's email links use the shared `Email:BaseUrl`, normalized by Shell to omit trailing slashes before a route is appended.
+
+
 - Team creation persists the requested approval mode on the initial insert. The EF true sentinel preserves open teams without a second update.
 
 - The parent-team resource inheritance warning reflects only the current selection. Changing or clearing the parent hides the prior list immediately and invalidates earlier lookup responses or errors.
