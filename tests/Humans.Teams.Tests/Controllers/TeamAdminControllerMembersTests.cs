@@ -26,6 +26,51 @@ namespace Humans.Teams.Tests.Controllers;
 public class TeamAdminControllerMembersTests
 {
     [HumansTheory]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task InheritedAccess_InvalidBinding_DoesNotDispatch(bool allowed, bool invalidBinding)
+    {
+        var userId = Guid.NewGuid();
+        var resourceId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserServiceRead>();
+        var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
+        var resources = Substitute.For<ITeamResourceService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+        teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
+        resources.CanManageTeamResourcesAsync(team.Id, userId, Arg.Any<CancellationToken>()).Returns(allowed);
+        resources.SetRestrictInheritedAccessWithResultAsync(resourceId, false, CancellationToken.None)
+            .Returns(TeamResourceMutationResult.Success());
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var controller = new TeamAdminController(teams, resources, Substitute.For<IGoogleSyncService>(), users,
+            Substitute.For<IEmailProvisioningService>(), Substitute.For<IAuthorizationService>(),
+            NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<ITicketServiceRead>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        if (invalidBinding) controller.ModelState.AddModelError("restrict", "Not a boolean.");
+
+        var result = await controller.ToggleRestrictInheritedAccess(team.Slug, resourceId, false);
+
+        if (!allowed) Assert.IsType<ForbidResult>(result);
+        else if (invalidBinding) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<RedirectToActionResult>(result);
+        if (!allowed || invalidBinding)
+            await resources.DidNotReceive().SetRestrictInheritedAccessWithResultAsync(
+                Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        else await resources.Received(1).SetRestrictInheritedAccessWithResultAsync(resourceId, false, CancellationToken.None);
+    }
+
+    [HumansTheory]
     [InlineData("reject", false)]
     [InlineData("remove", false)]
     [InlineData("add", false)]

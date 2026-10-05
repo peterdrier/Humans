@@ -565,6 +565,12 @@ internal sealed class TeamAdminController(
             return Forbid();
         }
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed inherited-access form for resource {ResourceId}", resourceId);
+            return BadRequest(ModelState);
+        }
+
         var result = await teamResourceService.SetRestrictInheritedAccessWithResultAsync(
             resourceId,
             restrict,

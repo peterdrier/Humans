@@ -183,6 +183,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Invariants
 
+- The inherited-access restriction POST rejects invalid binding with HTTP 400 and a Warning after its existing resource-management authorization, before dispatching a Google mutation. Unauthorized callers retain Forbid; explicit false remains valid.
+
 - Teams's email links use the shared `Email:BaseUrl`, normalized by Shell to omit trailing slashes before a route is appended.
 
 
