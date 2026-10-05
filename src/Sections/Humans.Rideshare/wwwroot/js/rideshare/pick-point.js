@@ -33,7 +33,7 @@ function init(el) {
     if (initial) place(initial.lng, initial.lat);
 
     map.on('click', e => {
-        const { lng, lat } = e.lngLat;
+        const { lng, lat } = e.lngLat.wrap();
         latInput.value = lat.toFixed(5);
         lngInput.value = lng.toFixed(5);
         place(lng, lat);
@@ -42,6 +42,7 @@ function init(el) {
     const onEdit = () => {
         const p = readPoint(latInput, lngInput);
         if (p) { place(p.lng, p.lat); map.easeTo({ center: [p.lng, p.lat] }); }
+        else if (marker) { marker.remove(); marker = null; }
     };
     latInput.addEventListener('change', onEdit);
     lngInput.addEventListener('change', onEdit);
@@ -59,5 +60,6 @@ function init(el) {
 function readPoint(latInput, lngInput) {
     const lat = parseFloat(latInput.value);
     const lng = parseFloat(lngInput.value);
-    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+    return Number.isFinite(lat) && Number.isFinite(lng)
+        && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 ? { lat, lng } : null;
 }
