@@ -46,8 +46,8 @@ internal sealed class GoogleSyncLogService(
             Role = role,
             Source = source,
             Success = success,
-            ErrorMessage = errorMessage,
-            Description = $"{jobName}: {description}",
+            ErrorMessage = errorMessage is null ? null : BoundLogText(errorMessage),
+            Description = BoundLogText($"{jobName}: {description}"),
             JobName = jobName,
             OccurredAt = clock.GetCurrentInstant()
         };
@@ -66,6 +66,15 @@ internal sealed class GoogleSyncLogService(
         logger.LogInformation(
             "Google sync: {Action} {Role} for {Email} on resource {ResourceId} ({Source}, Success={Success})",
             action, role, userEmail, resourceId, source, success);
+    }
+
+    private static string BoundLogText(string text)
+    {
+        if (text.Length <= 4000) return text;
+        var length = 4000;
+        if (char.IsHighSurrogate(text[length - 1]) && char.IsLowSurrogate(text[length]))
+            length--;
+        return text[..length];
     }
 
     public async Task<IReadOnlyList<GoogleSyncLogView>> GetForResourceAsync(

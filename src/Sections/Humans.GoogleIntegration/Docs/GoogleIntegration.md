@@ -110,6 +110,8 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 
 ## Invariants
 
+- Persisted resource errors are bounded to 2000 UTF-16 units; sync-log descriptions (including their job prefix) and errors are bounded to 4000. Bounds preserve surrogate pairs so long vendor failures cannot prevent failure-state or audit-row persistence.
+
 - Outbox error previews preserve whole UTF-16 surrogate pairs within their existing 120-unit limit; tooltips retain the complete stored error, and retry behavior is unchanged.
 
 - Domain-group listing and its team picker use browser cancellation. Aborted per-group settings fetches propagate through the listing instead of becoming group errors; caller cancellation logs warnings without exception stacks. Dependency failures retain their existing error feedback.

@@ -500,8 +500,10 @@ public class HoldedFinanceServiceTests
             CancellationToken.None);
     }
 
-    [HumansFact]
-    public async Task Sync_sets_error_state_on_exception()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Sync_sets_error_state_on_exception(bool longError)
     {
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
 
@@ -509,7 +511,9 @@ public class HoldedFinanceServiceTests
             .ReturnsForAnyArgs(new HoldedDocSyncState());
 
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Throws(new InvalidOperationException("Holded API unavailable"));
+            .Throws(new InvalidOperationException(longError
+                ? new string('e', 1999) + "😀" + new string('e', 2000)
+                : "Holded API unavailable"));
 
         HoldedDocSyncState? savedState = null;
         await _repo.SaveDocSyncStateAsync(
@@ -525,6 +529,8 @@ public class HoldedFinanceServiceTests
         savedState.Should().NotBeNull();
         savedState!.Status.Should().Be("Error");
         savedState.LastError.Should().NotBeNullOrEmpty();
+        savedState.LastError!.Length.Should().BeLessThanOrEqualTo(2000);
+        char.IsHighSurrogate(savedState.LastError[^1]).Should().BeFalse();
     }
 
     // ─── Creditor data (derived from the cached daybook ledger, via the Holded section) ────

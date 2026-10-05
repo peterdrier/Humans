@@ -1,3 +1,4 @@
+using Xunit;
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.GoogleIntegration.Data;
@@ -194,6 +195,30 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
     {
         var deactivated = await _repository.DeactivateByTeamAsync(Guid.NewGuid(), resourceType: null, ct: Xunit.TestContext.Current.CancellationToken);
         deactivated.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SetErrorMessageManyAsync_PersistsBoundedErrorsForAllSelectedResources(bool longError)
+    {
+        var first = Seed(Guid.NewGuid(), "first", GoogleResourceType.DriveFolder);
+        var second = Seed(Guid.NewGuid(), "second", GoogleResourceType.Group);
+        var unaffected = Seed(Guid.NewGuid(), "unaffected", GoogleResourceType.Group);
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        var error = longError ? new string('e', 1999) + "😀" + new string('e', 2000) : "Google unavailable";
+
+        await _repository.SetErrorMessageManyAsync([first.Id, second.Id], error,
+            Xunit.TestContext.Current.CancellationToken);
+
+        await using var check = new GoogleIntegrationDbContext(_options);
+        foreach (var id in new[] { first.Id, second.Id })
+        {
+            var row = await check.GoogleResources.FindAsync([id], Xunit.TestContext.Current.CancellationToken);
+            row!.ErrorMessage.Should().Be(longError ? new string('e', 1999) : error);
+        }
+        (await check.GoogleResources.FindAsync([unaffected.Id], Xunit.TestContext.Current.CancellationToken))!
+            .ErrorMessage.Should().BeNull();
     }
 
     private GoogleResource Seed(
