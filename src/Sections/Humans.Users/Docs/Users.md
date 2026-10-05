@@ -641,6 +641,8 @@ Admin-only flows for the section's cross-account hygiene (the `/Profile/Admin/*`
 | `/Profile/Admin/NameBackfill` (GET), `/Profile/Admin/NameBackfill/Run` (POST) | BurnerName/legal-name backfill onto `users` (`UserNameBackfillAdminController`, `AdminOnly`; idempotent) |
 | `/Profile/Admin/PictureMigration` (GET), `/Profile/Admin/PictureMigration/Run` (POST) | Profile-picture filesystem migration verification (`ProfilePictureMigrationAdminController`, `AdminOnly`; idempotent) |
 
+Email Problems remediation buttons use the shared `data-confirm` handler: each click prompts once, and cancellation prevents submission.
+
 ## Actors & Roles
 
 | Actor | Capabilities |

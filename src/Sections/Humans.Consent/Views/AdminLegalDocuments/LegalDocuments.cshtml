@@ -79,12 +79,4 @@
     document.getElementById('teamId').addEventListener('change', function () {
         this.form.submit();
     });
-
-    document.querySelectorAll('[data-confirm]').forEach(function (button) {
-        button.addEventListener('click', function (e) {
-            if (!confirm(this.getAttribute('data-confirm'))) {
-                e.preventDefault();
-            }
-        });
-    });
 </script>

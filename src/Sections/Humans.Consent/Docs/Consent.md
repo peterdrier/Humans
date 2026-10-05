@@ -115,6 +115,8 @@ Three controllers serve this section.
 | `/Legal/Admin/Documents/{id}/Sync` | POST | Trigger single-document sync |
 | `/Legal/Admin/Documents/{id}/Versions/{versionId}/Summary` | POST | Edit version changes summary |
 
+Document archival uses the shared `data-confirm` handler: each click prompts once, and cancellation prevents submission. The team filter still submits when its selection changes.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
