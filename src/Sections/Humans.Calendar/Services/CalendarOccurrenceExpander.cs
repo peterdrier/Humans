@@ -109,6 +109,7 @@ internal static class CalendarOccurrenceExpander
             .Select(x => x.OriginalOccurrenceDate!.Value)
             .Append(fromDate.PlusDays(-days))
             .Min();
+        searchDate = LocalDate.Max(searchDate, ev.StartDate.Value);
         var searchStart = new CalDateTime(searchDate.ToDateTimeUnspecified(), hasTime: false);
         return ical.GetOccurrences(searchStart, new EvaluationOptions())
             .TakeWhile(o => LocalDate.FromDateTime(o.Period.StartTime.Value) < toDate)
@@ -143,6 +144,7 @@ internal static class CalendarOccurrenceExpander
             .Select(x => x.OriginalOccurrenceStartUtc!.Value)
             .Append(from.Minus(duration))
             .Min();
+        searchFrom = Instant.Max(searchFrom, ev.StartUtc.Value);
         var searchStart = new CalDateTime(searchFrom.InZone(zone).LocalDateTime.ToDateTimeUnspecified(), zone.Id, hasTime: true);
         // A repeated local hour can precede the instant cutoff even when its clock time is later.
         // Generate through a conservative local bound; OverlapsWindow checks the actual instants.

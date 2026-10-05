@@ -118,19 +118,23 @@ public sealed class CalendarOccurrenceExpanderTests
                 Instant.FromUtc(2026, 6, 3, 10, 0));
     }
 
-    [HumansFact]
-    public void Expand_IncludesOverrideMovedIntoWindow()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public void Expand_IncludesOverrideMovedIntoWindow(bool nearDateBoundary)
     {
         var eventId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
         var originalStart = Instant.FromUtc(2026, 6, 1, 10, 0);
-        var movedStart = Instant.FromUtc(2026, 6, 5, 14, 0);
+        var movedStart = nearDateBoundary ? Instant.FromUtc(1, 2, 1, 14, 0) : Instant.FromUtc(2026, 6, 5, 14, 0);
+        var movedEnd = movedStart.Plus(Duration.FromHours(2));
+        var from = movedStart.InUtc().Date.AtStartOfDayInZone(DateTimeZone.Utc).ToInstant();
         var info = BuildInfo(
             id: eventId,
             teamId: teamId,
             title: "Original",
             start: originalStart,
-            end: Instant.FromUtc(2026, 6, 1, 11, 0),
+            end: originalStart.Plus(nearDateBoundary ? Duration.FromDays(60) : Duration.FromHours(1)),
             recurrenceRule: "FREQ=DAILY;COUNT=2",
             exceptions:
             [
@@ -139,7 +143,7 @@ public sealed class CalendarOccurrenceExpanderTests
                     OriginalOccurrenceStartUtc: originalStart,
                     IsCancelled: false,
                     OverrideStartUtc: movedStart,
-                    OverrideEndUtc: Instant.FromUtc(2026, 6, 5, 16, 0),
+                    OverrideEndUtc: movedEnd,
                     OverrideTitle: "Moved",
                     OverrideDescription: null,
                     OverrideLocation: null,
@@ -148,8 +152,8 @@ public sealed class CalendarOccurrenceExpanderTests
 
         var results = CalendarOccurrenceExpander.Expand(
             [info],
-            Instant.FromUtc(2026, 6, 5, 0, 0),
-            Instant.FromUtc(2026, 6, 6, 0, 0),
+            from,
+            from.Plus(Duration.FromDays(1)),
             new Dictionary<Guid, string> { [teamId] = "Calendar Team" },
             NullLogger.Instance);
 
@@ -157,7 +161,7 @@ public sealed class CalendarOccurrenceExpanderTests
         result.EventId.Should().Be(eventId);
         result.Title.Should().Be("Moved");
         result.OccurrenceStartUtc.Should().Be(movedStart);
-        result.OccurrenceEndUtc.Should().Be(Instant.FromUtc(2026, 6, 5, 16, 0));
+        result.OccurrenceEndUtc.Should().Be(movedEnd);
         result.OriginalOccurrenceStartUtc.Should().Be(originalStart);
         result.OwningTeamName.Should().Be("Calendar Team");
     }
@@ -282,10 +286,14 @@ public sealed class CalendarOccurrenceExpanderTests
         results.Should().HaveCount(5);
     }
 
-    [HumansFact]
-    public void Expand_DateOverrideMovedBeforeSeries_SurvivesPrefilterAndPreservesDuration()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public void Expand_DateOverrideMovedBeforeSeries_SurvivesPrefilterAndPreservesDuration(bool nearDateBoundary)
     {
         var date = new LocalDate(2026, 6, 10);
+        var movedDate = nearDateBoundary ? new LocalDate(1, 2, 1) : new LocalDate(2026, 3, 29);
+        var days = nearDateBoundary ? 60 : 2;
         var info = BuildInfo(recurrenceRule: "FREQ=DAILY;COUNT=2") with
         {
             IsAllDay = true,
@@ -293,18 +301,18 @@ public sealed class CalendarOccurrenceExpanderTests
             EndUtc = null,
             RecurrenceTimezone = null,
             StartDate = date,
-            EndDateExclusive = date.PlusDays(2),
-            RecurrenceUntilDate = date.PlusDays(3),
+            EndDateExclusive = date.PlusDays(days),
+            RecurrenceUntilDate = date.PlusDays(days + 1),
             Exceptions = [new CalendarEventExceptionInfo(Guid.NewGuid(), null, false, null, null,
-                "Moved", null, null, null, date, new LocalDate(2026, 3, 29))],
+                "Moved", null, null, null, date, movedDate)],
         };
-        var from = Instant.FromUtc(2026, 3, 29, 0, 0);
-        var to = Instant.FromUtc(2026, 3, 30, 0, 0);
+        var from = movedDate.AtStartOfDayInZone(DateTimeZone.Utc).ToInstant();
+        var to = from.Plus(Duration.FromDays(1));
         var filtered = CalendarOccurrenceExpander.FilterForWindow([info], from, to, null);
         var result = CalendarOccurrenceExpander.Expand(filtered, from, to, new Dictionary<Guid, string>(), NullLogger.Instance)
             .Should().ContainSingle().Subject;
-        result.StartDate.Should().Be(new LocalDate(2026, 3, 29));
-        result.EndDateExclusive.Should().Be(new LocalDate(2026, 3, 31));
+        result.StartDate.Should().Be(movedDate);
+        result.EndDateExclusive.Should().Be(movedDate.PlusDays(days));
         result.OriginalOccurrenceDate.Should().Be(date);
         result.Title.Should().Be("Moved");
     }

@@ -126,6 +126,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 - Month headings, grid weekday headings and recurrence weekday labels follow the selected UI culture in all six languages. Input culture stays English; Monday-first ordering, recurrence codes and timezone handling are unchanged.
 
+- Recurrence lookback stops at the series start, keeping BCL date boundaries safe. Start-moved overrides may still appear before the series; end-only extensions still use their original recurrence identities.
 - Index, List and Team reject malformed month queries and dates outside the representable navigation/grid window with HTTP 400 before reading occurrences or minting a feed token. Omitted dates still use the viewer’s current month.
 - Every `CalendarEvent` has a non-null `OwningTeamId` — a bare Guid naming a team, with no database FK constraint and no navigation property.
 - Only authenticated humans may create, edit, or delete events, or manage exceptions (enforced by `[Authorize]` on `CalendarController`).
