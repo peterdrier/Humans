@@ -377,6 +377,12 @@ internal sealed class CalendarController : HumansControllerBase
                 ModelState.AddModelError(nameof(form.EndDateLocal), _localizer["Calendar_EndDateBeforeStart"]);
                 return;
             }
+            if (inclusiveEnd == LocalDate.MaxIsoValue)
+            {
+                _logger.LogWarning("Rejected all-day end date {EndDate}: exclusive end exceeds calendar bounds", inclusiveEnd);
+                ModelState.AddModelError(nameof(form.EndDateLocal), _localizer["Calendar_InvalidAllDayEvent"]);
+                return;
+            }
             (startDate, endDate) = CalendarService.AllDayWindow(firstDate, inclusiveEnd);
             return;
         }

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Calendar.Controllers;
+using Humans.Calendar.Domain;
 using Humans.Calendar.Models;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
@@ -48,6 +49,56 @@ public class CalendarControllerICalTests
             .Returns(Array.Empty<CalendarOccurrence>());
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, "blank")]
+    [Xunit.InlineData(true, "blank")]
+    [Xunit.InlineData(false, "last")]
+    [Xunit.InlineData(true, "last")]
+    [Xunit.InlineData(false, "valid")]
+    [Xunit.InlineData(true, "valid")]
+    public async Task AllDayForms_RequireARepresentableExclusiveEnd(bool edit, string endKind)
+    {
+        var id = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(
+            new TeamInfo(teamId, "Team", null, "team", true, false, SystemTeamType.None,
+                false, false, false, false, _now, []));
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Existing", null, null, null, teamId, null, null,
+            IsAllDay: true, RecurrenceRule: null, RecurrenceTimezone: null, _now, _now));
+        var saved = new CalendarEvent { Id = id, Title = "Last day", OwningTeamId = teamId, IsAllDay = true };
+        _calendar.CreateEventWithResultAsync(Arg.Any<CreateCalendarEventDto>(), _viewer, Arg.Any<CancellationToken>())
+            .Returns(CalendarEventMutationResult.Success(saved));
+        _calendar.UpdateEventWithResultAsync(id, Arg.Any<CreateCalendarEventDto>(), _viewer, Arg.Any<CancellationToken>())
+            .Returns(CalendarEventMutationResult.Success(saved));
+        var form = new CalendarEventFormViewModel
+        {
+            Title = "Last day", OwningTeamId = teamId, IsAllDay = true,
+            StartDateLocal = new DateTime(9999, 12, string.Equals(endKind, "blank", StringComparison.Ordinal) ? 31 : 30),
+            EndDateLocal = string.Equals(endKind, "blank", StringComparison.Ordinal) ? null
+                : new DateTime(9999, 12, string.Equals(endKind, "valid", StringComparison.Ordinal) ? 30 : 31)
+        };
+        var controller = CreateController();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var result = edit ? await controller.Edit(id, form, ct) : await controller.Create(form, ct);
+
+        if (string.Equals(endKind, "valid", StringComparison.Ordinal))
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            if (edit) await _calendar.Received(1).UpdateEventWithResultAsync(id,
+                Arg.Is<CreateCalendarEventDto>(d => d.EndDateExclusive == new LocalDate(9999, 12, 31)), _viewer, ct);
+            else await _calendar.Received(1).CreateEventWithResultAsync(
+                Arg.Is<CreateCalendarEventDto>(d => d.EndDateExclusive == new LocalDate(9999, 12, 31)), _viewer, ct);
+        }
+        else
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
+            controller.ModelState[nameof(form.EndDateLocal)]!.Errors.Should().ContainSingle()
+                .Which.ErrorMessage.Should().Be("Calendar_InvalidAllDayEvent");
+            _calendar.ReceivedCalls().Should().BeEmpty();
+        }
     }
 
     [HumansTheory]
