@@ -70,7 +70,7 @@ No schema changes. The public-coordinator gate filters the existing `ITeamServic
 
 `HumanViewComponent` gains a `popoverPublic` parameter (and `HumanViewModel.ShowPopoverPublic` flag). When set, `Default.cshtml` emits `data-human-popover-public="true"` on the Card no-link branch and bypasses the usual `link != HumanLink.None` gate. The scope is intentionally limited to the Card no-link branch — that is the only layout the public coordinator card uses today, and other layouts have no public-popover caller. See the `Default.cshtml` comments for the explicit scope contract.
 
-`wwwroot/js/site.js` popover bootstrap delegate matches `[data-human-popover-public]` in addition to `[data-human-popover]` and fetches `/Profile/{id}/PublicPopover`. A 404 response disposes the popover silently. Other HTTP or network failures dispose the loading spinner and allow the next hover to retry.
+`wwwroot/js/site.js` popover bootstrap delegate matches `[data-human-popover-public]` in addition to `[data-human-popover]` and fetches `/Profile/{id}/PublicPopover`. Requests reject redirects instead of embedding or caching another page as profile content. A 404 response disposes the popover silently. Other HTTP or network failures dispose the loading spinner and allow the next hover to retry.
 
 ## Related
 

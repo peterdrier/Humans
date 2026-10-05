@@ -24,9 +24,13 @@ function page(responses) {
             dispose() { this.disposed = true; }
             setContent(content) { this.content = content['.popover-body']; }
         } },
-        fetch: async () => {
+        fetch: async (_, options) => {
             const response = responses[requests++];
             if (response instanceof Error) throw response;
+            if (response === 'login redirect') {
+                if (options && options.redirect === 'error') throw new TypeError('redirect blocked');
+                return { status: 200, ok: true, text: async () => '<form>Login</form>' };
+            }
             return { status: response, ok: response === 200, text: async () => '<p>Profile</p>' };
         },
     };
@@ -59,4 +63,15 @@ test('a 404 suppresses the popover without repeatedly probing the absent profile
     assert.equal(ui.popovers[0].disposed, true);
     await ui.hover();
     assert.equal(ui.requests(), 1);
+});
+
+
+test('a login redirect never becomes cached profile content and a later hover retries', async () => {
+    const ui = page(['login redirect', 200]);
+    await ui.hover();
+    assert.equal(ui.popovers[0].content, undefined);
+    assert.equal(ui.popovers[0].disposed, true);
+    await ui.hover();
+    assert.equal(ui.requests(), 2);
+    assert.equal(ui.popovers[1].content, '<p>Profile</p>');
 });

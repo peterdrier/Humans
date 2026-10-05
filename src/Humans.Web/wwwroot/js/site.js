@@ -426,7 +426,7 @@ function showToast(message, type) {
         if (cache[cacheKey]) {
             popover.setContent({ '.popover-body': cache[cacheKey] });
         } else {
-            fetch(endpoint)
+            fetch(endpoint, { redirect: 'error' })
                 .then(function (r) {
                     // 404 from PublicPopover means "no public role" — suppress
                     // the spinner tooltip instead of showing an error.
