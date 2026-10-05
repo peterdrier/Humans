@@ -11,6 +11,8 @@
 The payments connector. Wraps the Stripe.NET SDK behind `IStripeService` so no other
 assembly names a Stripe type. Owns no tables and no UI.
 
+Checkout Session creation is marked `[ExternalWrite]` on `IStripeService`; state-changing controllers must detach request cancellation at the call boundary. Stripe’s client honors the token supplied by its caller.
+
 ## Concepts
 
 - A **Stripe account** is one merchant account with one API key. Two are in use: the
