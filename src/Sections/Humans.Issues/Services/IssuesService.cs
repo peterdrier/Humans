@@ -841,8 +841,18 @@ internal sealed class IssuesService(
     /// <summary>Reported issues and their free text are hard-deleted; triage links elsewhere are detached.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
+        var ownIssues = await repo.GetForUserExportAsync(userId, ct);
+        var badgeUserIds = new HashSet<Guid> { userId };
+        foreach (var section in ownIssues.Select(i => i.Section).Distinct(StringComparer.Ordinal))
+        {
+            badgeUserIds.UnionWith(await ResolveBadgeUserIdsAsync(userId, section, previousSection: null, ct));
+        }
+
+        var erasedIssueIds = await repo.EraseForUserAsync(userId, ct);
+        issuesBadge.InvalidateMany(badgeUserIds);
+
         // The screenshots are the reporter's own uploads — they go with the rows.
-        foreach (var issueId in await repo.EraseForUserAsync(userId, ct))
+        foreach (var issueId in erasedIssueIds)
         {
             DeleteScreenshotDirectory(issueId);
         }
