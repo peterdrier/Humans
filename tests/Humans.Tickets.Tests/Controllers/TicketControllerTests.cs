@@ -12,6 +12,7 @@ using Humans.Base.Authorization;
 using Humans.Tickets.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Xunit;
 
 namespace Humans.Tickets.Tests.Controllers;
 
@@ -63,5 +64,29 @@ public class TicketControllerTests
         action.GetCustomAttribute<HttpGetAttribute>()!.Template.Should().Be("Export/Donations");
         action.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be(PolicyNames.AdminOnly,
             because: "the class policy admits Board and TicketAdmin; the donor list carries buyer PII and is admin-only");
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(TicketController.Sync), PolicyNames.TicketAdminOrAdmin)]
+    [InlineData(nameof(TicketController.ExportAttendees), PolicyNames.TicketAdminOrAdmin)]
+    [InlineData(nameof(TicketController.ExportOrders), PolicyNames.TicketAdminOrAdmin)]
+    [InlineData(nameof(TicketController.ExportAccountantReport), PolicyNames.TicketAdminOrAdmin)]
+    [InlineData(nameof(TicketController.FullResync), PolicyNames.AdminOnly)]
+    [InlineData(nameof(TicketController.ParticipationBackfill), PolicyNames.AdminOnly)]
+    public void Action_narrows_the_class_policy_so_Board_is_denied(string actionName, string policy)
+    {
+        var actions = typeof(TicketController).GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .Where(m => string.Equals(m.Name, actionName, StringComparison.Ordinal))
+            .ToList();
+
+        actions.Should().NotBeEmpty();
+        actions.Should().AllSatisfy(a => a.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be(policy));
+    }
+
+    [HumansFact]
+    public void TransferAdmin_class_admits_TicketAdmin_and_Admin_only()
+    {
+        typeof(TicketTransferAdminController).GetCustomAttribute<AuthorizeAttribute>()!.Policy
+            .Should().Be(PolicyNames.TicketAdminOrAdmin);
     }
 }

@@ -719,6 +719,41 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
+    public async Task SyncEventParticipations_RemovesTicketed_WhenNoValidTicketRemains()
+    {
+        // Cache shows Ticketed-from-sync; the vendor now reports the user's only ticket void.
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        SeedUserEmail(userId, "alice@example.com", isOAuth: true);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _shiftManagementService.GetActiveEventSettingsAsync()
+            .Returns(BurnFixtures.Burn(year: 2026));
+
+        _userService.GetAllParticipationsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<UserParticipationRow>
+            {
+                new(userId, ParticipationStatus.Ticketed, ParticipationSource.TicketSync, null)
+            });
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_void", "Alice", "alice@example.com") });
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto>
+            {
+                MakeTicketDto("tkt_void", "ord_void", "Alice", "alice@example.com", status: "void")
+            });
+
+        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _userService.Received(1).RemoveTicketSyncParticipationAsync(
+            userId, 2026, Arg.Any<CancellationToken>());
+        await _userService.DidNotReceive().SetParticipationFromTicketSyncAsync(
+            Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<ParticipationStatus>(),
+            Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task SyncEventParticipations_StillWrites_WhenTicketedHolderChecksIn()
     {
         // Cache shows Ticketed; vendor now reports checked-in. The status genuinely
