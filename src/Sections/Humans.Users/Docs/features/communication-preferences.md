@@ -67,6 +67,7 @@ When a user opts out of Facilitated Messages, the "Send Message" button is hidde
 
 - `GET /Profile/Me/CommunicationPreferences` — view/edit preferences
 - `POST /Profile/Me/CommunicationPreferences/Update` — save one category's preference
+- Member and guest preference updates return HTTP 400 for malformed binding before saving channels; missing users/tokens remain HTTP 401.
 - `GET /Profile/Me/Notifications` — permanent redirect to above (backwards compat)
 - `GET /Guest/CommunicationPreferences`, `POST /Guest/CommunicationPreferences/Update` — profileless-account variant (`GuestAccountController`, `[AllowAnonymous]`; accepts an unsubscribe token in place of a session; `UpdateSource` is `"Guest"` when signed in, `"MagicLink"` via token)
 

@@ -49,6 +49,7 @@ namespace Humans.Users.Tests.Controllers;
 public class ProfileControllerEditTests
 {
     private readonly IProfileEditorService _profileEditorService = Substitute.For<IProfileEditorService>();
+    private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly IApplicationDecisionService _applicationDecisionService =
         Substitute.For<IApplicationDecisionService>();
@@ -90,7 +91,7 @@ public class ProfileControllerEditTests
             userManager,
             _profileEditorService,
             Substitute.For<IContactFieldService>(),
-            Substitute.For<ICommunicationPreferenceService>(),
+            _commPrefService,
             _onboardingService,
             Substitute.For<IShiftSignups>(),
             _settings,
@@ -160,6 +161,33 @@ public class ProfileControllerEditTests
         // The happy path now also writes meal-pref + allergies onto the shift
         // profile. Return a fresh profile by default so existing tests don't NRE
         // when the controller sets fields on it.
+    }
+
+    [HumansTheory]
+    [InlineData("emailEnabled", true)]
+    [InlineData("alertEnabled", true)]
+    [InlineData("emailEnabled", false)]
+    [InlineData("alertEnabled", false)]
+    public async Task UpdatePreference_InvalidBinding_DoesNotChangeChannels(string field, bool viewerExists)
+    {
+        if (!viewerExists)
+            _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>((UserInfo?)null));
+        _controller.ModelState.AddModelError(field, "Not a boolean.");
+        var result = await _controller.UpdatePreference(MessageCategory.Marketing,
+            !string.Equals(field, "emailEnabled", StringComparison.Ordinal),
+            !string.Equals(field, "alertEnabled", StringComparison.Ordinal));
+
+        if (viewerExists) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<UnauthorizedResult>(result);
+        Assert.Empty(_commPrefService.ReceivedCalls());
+    }
+
+    [HumansFact]
+    public async Task UpdatePreference_ExplicitFalseFlags_RemainValid()
+    {
+        Assert.IsType<OkResult>(await _controller.UpdatePreference(MessageCategory.Marketing, false, false));
+        await _commPrefService.Received(1).UpdatePreferenceAsync(_userId, MessageCategory.Marketing,
+            true, false, "Profile", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

@@ -85,6 +85,37 @@ public class GuestAccountControllerTests
     }
 
     [HumansTheory]
+    [InlineData("emailEnabled", true)]
+    [InlineData("alertEnabled", true)]
+    [InlineData("emailEnabled", false)]
+    [InlineData("alertEnabled", false)]
+    public async Task UpdatePreference_InvalidBinding_DoesNotChangeChannels(string field, bool viewerExists)
+    {
+        var user = new User { Id = Guid.NewGuid(), DisplayName = "Human" };
+        var controller = BuildSut(user);
+        if (!viewerExists)
+            _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>((UserInfo?)null));
+        controller.ModelState.AddModelError(field, "Not a boolean.");
+        var result = await controller.UpdatePreference(MessageCategory.Marketing,
+            !string.Equals(field, "emailEnabled", StringComparison.Ordinal),
+            !string.Equals(field, "alertEnabled", StringComparison.Ordinal), null);
+
+        if (viewerExists) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<UnauthorizedResult>(result);
+        Assert.Empty(_commPrefService.ReceivedCalls());
+    }
+
+    [HumansFact]
+    public async Task UpdatePreference_ExplicitFalseFlags_RemainValid()
+    {
+        var user = new User { Id = Guid.NewGuid(), DisplayName = "Human" };
+        var controller = BuildSut(user);
+        Assert.IsType<OkResult>(await controller.UpdatePreference(MessageCategory.Marketing, false, false, null));
+        await _commPrefService.Received(1).UpdatePreferenceAsync(user.Id, MessageCategory.Marketing,
+            true, false, "Guest", Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [InlineData("Viewer")]
     [InlineData("TokenViewer")]
     [InlineData("Preferences")]

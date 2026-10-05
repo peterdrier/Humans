@@ -66,6 +66,11 @@ internal sealed class GuestAccountController(
             var (userId, _, fromToken) = await ResolveUserIdOrTokenAsync(utoken);
             if (userId is null)
                 return Unauthorized();
+            if (!ModelState.IsValid)
+            {
+                logger.LogWarning("Rejected malformed communication preference update for {UserId}", userId.Value);
+                return BadRequest(ModelState);
+            }
 
             if (!CanUpdatePreference(category))
                 return BadRequest(localizer["Users_Profile_AlwaysOnCategoryCannotChange"].Value);
