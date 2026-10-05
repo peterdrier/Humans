@@ -123,6 +123,7 @@ Known area labels in the member submission form, issue list and detail view use 
 
 - Browser mutation result wrappers distinguish known missing/inaccessible issues and section-rule rejections from unexpected failures. Known rejections log Warning without exception stacks; unexpected failures retain Error logs and their exceptions and return generic failure text, never persistence diagnostics or false missing results. Every browser triage action returns 404 if the issue disappears after preflight.
 
+- Submission categories and status updates must be defined enum values; invalid service inputs fail before persistence or notifications.
 - Every issue is linked to the human who submitted it (`ReporterUserId` is required).
 - The GDPR export includes stored browser user agent and submission context alongside the reporter’s issues and comments; it excludes issues reported by other people.
 - Status flows Triage → Open → InProgress → Resolved/WontFix/Duplicate. Transitioning out of a terminal status clears `ResolvedAt` and `ResolvedByUserId`.

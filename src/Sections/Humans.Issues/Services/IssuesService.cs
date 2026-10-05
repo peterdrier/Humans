@@ -127,6 +127,8 @@ internal sealed class IssuesService(
         IReadOnlyList<string>? reporterRoles = null,
         CancellationToken ct = default)
     {
+        if (!Enum.IsDefined(category))
+            throw new ArgumentOutOfRangeException(nameof(category), category, "Unknown issue category.");
         section = NormalizeSection(section);
 
         var now = clock.GetCurrentInstant();
@@ -487,6 +489,8 @@ internal sealed class IssuesService(
         CancellationToken ct = default)
     {
         var issue = await FindHandleableAsync(issueId, viewer, ct);
+        if (!Enum.IsDefined(newStatus))
+            throw new ArgumentOutOfRangeException(nameof(newStatus), newStatus, "Unknown issue status.");
 
         var oldStatus = issue.Status;
         if (oldStatus == newStatus) return;

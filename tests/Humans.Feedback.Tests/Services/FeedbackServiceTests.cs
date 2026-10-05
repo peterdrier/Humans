@@ -126,6 +126,20 @@ public sealed class FeedbackServiceTests
     }
 
     [HumansTheory]
+    [InlineData(-1)]
+    [InlineData(999)]
+    public async Task UpdateStatusAsync_UndefinedStatus_PreservesStoredState(int status)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var report = await CreateTestReport();
+        var act = () => _service.UpdateStatusAsync(report.Id, (FeedbackStatus)status, Guid.NewGuid(), ct);
+
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>().WithMessage("Unknown feedback status.*");
+        (await FeedbackDb.FeedbackReports.AsNoTracking().SingleAsync(ct)).Status.Should().Be(FeedbackStatus.Open);
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData(FeedbackStatus.Resolved)]
     [InlineData(FeedbackStatus.WontFix)]
     public async Task UpdateStatusAsync_SetsResolvedFields_WhenTerminal(FeedbackStatus terminal)

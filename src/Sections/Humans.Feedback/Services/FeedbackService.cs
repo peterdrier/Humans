@@ -74,6 +74,9 @@ internal sealed class FeedbackService(
         var report = await repository.FindForMutationAsync(id, cancellationToken)
             ?? throw new InvalidOperationException($"Feedback report {id} not found");
 
+        if (!Enum.IsDefined(status))
+            throw new ArgumentOutOfRangeException(nameof(status), status, "Unknown feedback status.");
+
         var now = clock.GetCurrentInstant();
         report.Status = status;
         report.UpdatedAt = now;

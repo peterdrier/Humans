@@ -741,6 +741,35 @@ public sealed class IssuesServiceTests
     }
 
     // ==========================================================================
+    [HumansTheory]
+    [InlineData(-1)]
+    [InlineData(999)]
+    public async Task SubmitIssueAsync_undefined_category_writes_nothing(int category)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var act = () => _service.SubmitIssueAsync(Guid.NewGuid(), (IssueCategory)category,
+            "Title", "Description", null, null, null, null, null, ct: ct);
+
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>().WithMessage("Unknown issue category.*");
+        (await _issuesDb.Issues.CountAsync(ct)).Should().Be(0);
+        _notificationService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(-1)]
+    [InlineData(999)]
+    public async Task UpdateStatusAsync_undefined_status_preserves_stored_state(int status)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var act = () => _service.UpdateStatusAsync(issueId, Admin, (IssueStatus)status, Admin.UserId, ct);
+
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>().WithMessage("Unknown issue status.*");
+        (await _issuesDb.Issues.AsNoTracking().SingleAsync(ct)).Status.Should().Be(IssueStatus.Open);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        _notificationService.ReceivedCalls().Should().BeEmpty();
+    }
+
     // UpdateStatusAsync
     // ==========================================================================
 
