@@ -95,6 +95,52 @@ public class CalendarControllerICalTests
             .Which.Month.Should().Be(new YearMonth(year, month));
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("binding")]
+    [Xunit.InlineData("reversed")]
+    [Xunit.InlineData("minimum")]
+    [Xunit.InlineData("maximum")]
+    public async Task Agenda_InvalidRange_RejectsBeforeReadingEvents(string failure)
+    {
+        var controller = CreateController();
+        DateTime? from = new DateTime(2026, 6, 1);
+        DateTime? to = new DateTime(2026, 6, 2);
+        switch (failure)
+        {
+            case "binding":
+                controller.ModelState.AddModelError("from", "Not a date.");
+                from = null;
+                break;
+            case "reversed":
+                to = from.Value.AddDays(-1);
+                break;
+            case "minimum":
+                from = DateTime.MinValue;
+                break;
+            case "maximum":
+                to = DateTime.MaxValue;
+                break;
+        }
+
+        (await controller.Agenda(from, to, null, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeOfType<BadRequestResult>();
+        _calendarRead.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(1, 1, 2)]
+    [Xunit.InlineData(2026, 6, 1)]
+    [Xunit.InlineData(9999, 12, 29)]
+    public async Task Agenda_ValidSameDayRange_IncludesTheWholeDay(int year, int month, int day)
+    {
+        var date = new DateTime(year, month, day);
+        var result = await CreateController().Agenda(date, date, null, Xunit.TestContext.Current.CancellationToken);
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<CalendarAgendaViewModel>().Subject;
+        var zone = DateTimeZoneProviders.Tzdb[model.ViewerTimezoneLabel];
+        model.FromUtc.InZone(zone).Date.Should().Be(LocalDate.FromDateTime(date));
+        model.ToUtc.InZone(zone).Date.Should().Be(LocalDate.FromDateTime(date.AddDays(1)));
+    }
+
     [HumansFact]
     public async Task Index_uses_the_browser_timezone_for_calendar_windows()
     {
@@ -338,7 +384,8 @@ public class CalendarControllerICalTests
             _calendar,
             _teams,
             new FakeClock(_now),
-            localizer)
+            localizer,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CalendarController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),

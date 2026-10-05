@@ -128,6 +128,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 - Recurrence lookback stops at the series start, keeping BCL date boundaries safe. Start-moved overrides may still appear before the series; end-only extensions still use their original recurrence identities.
 - Index, List and Team reject malformed month queries and dates outside the representable navigation/grid window with HTTP 400 before reading occurrences or minting a feed token. Omitted dates still use the viewer’s current month.
+- Agenda rejects malformed, reversed or unrepresentable date ranges with HTTP 400 and a Warning log before reading occurrences. Its end date remains inclusive; omitted dates retain the viewer-local today → today+60d defaults.
 - Every `CalendarEvent` has a non-null `OwningTeamId` — a bare Guid naming a team, with no database FK constraint and no navigation property.
 - Only authenticated humans may create, edit, or delete events, or manage exceptions (enforced by `[Authorize]` on `CalendarController`).
 - Unexpected create/edit failures return `Calendar_SaveFailed` for the controller to localize in all six cultures; detailed exceptions remain in server logs.

@@ -23,6 +23,7 @@ internal sealed class CalendarController : HumansControllerBase
     private readonly ITeamServiceRead _teams;
     private readonly ICalendarFeedTokenService _feedTokens;
     private readonly IClock _clock;
+    private readonly ILogger<CalendarController> _logger;
     private readonly Microsoft.Extensions.Localization.IStringLocalizer<CalendarResource> _localizer;
 
     public CalendarController(
@@ -32,7 +33,8 @@ internal sealed class CalendarController : HumansControllerBase
         ICalendarService calendar,
         ITeamServiceRead teams,
         IClock clock,
-        Microsoft.Extensions.Localization.IStringLocalizer<CalendarResource> localizer)
+        Microsoft.Extensions.Localization.IStringLocalizer<CalendarResource> localizer,
+        ILogger<CalendarController> logger)
         : base(userService)
     {
         _feedTokens = feedTokens;
@@ -41,6 +43,7 @@ internal sealed class CalendarController : HumansControllerBase
         _teams = teams;
         _clock = clock;
         _localizer = localizer;
+        _logger = logger;
     }
 
     [HttpGet("")]
@@ -131,17 +134,21 @@ internal sealed class CalendarController : HumansControllerBase
             _ = resolved.PlusMonths(-1);
             _ = resolved.PlusMonths(1);
             var (start, end) = CalendarGridLayout.MonthGridBounds(resolved);
-            // Date display and recurrence expansion require BCL dates in any event zone.
-            _ = start.AtMidnight().InZoneLeniently(zone).ToInstant()
-                .WithOffset(Offset.MinValue).LocalDateTime.ToDateTimeUnspecified();
-            _ = end.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant()
-                .WithOffset(Offset.MaxValue).LocalDateTime.ToDateTimeUnspecified();
+            ValidateWindowBounds(start.AtMidnight().InZoneLeniently(zone).ToInstant(),
+                end.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant());
             return resolved;
         }
         catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException or InvalidOperationException)
         {
             return null;
         }
+    }
+
+    private static void ValidateWindowBounds(Instant from, Instant to)
+    {
+        // Date display and recurrence expansion require BCL dates in any event zone.
+        _ = from.WithOffset(Offset.MinValue).LocalDateTime.ToDateTimeUnspecified();
+        _ = to.WithOffset(Offset.MaxValue).LocalDateTime.ToDateTimeUnspecified();
     }
 
     [HttpGet("Agenda")]
@@ -151,13 +158,32 @@ internal sealed class CalendarController : HumansControllerBase
         [FromQuery] Guid? teamId,
         CancellationToken ct)
     {
+        if (!ModelState.IsValid)
+        {
+            _logger.LogWarning("Rejected malformed calendar agenda date query");
+            return BadRequest();
+        }
         var zone = GetViewerZone();
-        var today = _clock.GetCurrentInstant().InZone(zone).Date;
-        var start = from is null ? today : LocalDate.FromDateTime(from.Value);
-        var end = to is null ? today.PlusDays(60) : LocalDate.FromDateTime(to.Value);
-
-        var fromUtc = start.AtMidnight().InZoneLeniently(zone).ToInstant();
-        var toUtc = end.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
+        Instant fromUtc, toUtc;
+        try
+        {
+            var today = _clock.GetCurrentInstant().InZone(zone).Date;
+            var start = from is null ? today : LocalDate.FromDateTime(from.Value);
+            var end = to is null ? today.PlusDays(60) : LocalDate.FromDateTime(to.Value);
+            if (end < start)
+            {
+                _logger.LogWarning("Rejected reversed calendar agenda range from {From} to {To}", from, to);
+                return BadRequest();
+            }
+            fromUtc = start.AtMidnight().InZoneLeniently(zone).ToInstant();
+            toUtc = end.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
+            ValidateWindowBounds(fromUtc, toUtc);
+        }
+        catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException or InvalidOperationException)
+        {
+            _logger.LogWarning("Rejected unrepresentable calendar agenda range from {From} to {To}", from, to);
+            return BadRequest();
+        }
 
         var occ = await _calendarRead.GetOccurrencesInWindowAsync(fromUtc, toUtc, teamId, ct);
         return View(new CalendarAgendaViewModel(fromUtc, toUtc, occ, teamId, zone.Id));
