@@ -152,4 +152,4 @@ The layout these shapes imply:
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-09-05 | First doctoring: invariant doc rebuilt against the code, narration purged, dead resx keys cut, sync-cursor test pinned | peterdrier/Humans#1589 |
-| section-doctor | 2026-10-05 | Dashboard computes and docs describe only what `/Tickets` renders; view model renders the service DTOs | pending |
+| section-doctor | 2026-10-05 | Dashboard computes and docs describe only what `/Tickets` renders; view model renders the service DTOs | peterdrier/Humans#1905 |
