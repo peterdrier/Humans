@@ -81,6 +81,8 @@ Inbox selection checkboxes have a localized accessible label in all six supporte
 
 ## Invariants
 
+- Inbox keyboard Enter activates a notification’s action once, cancelling native activation when the row handler clicks it.
+
 - Notifications are stored events — once written, they are persisted until cleaned up by `CleanupNotificationsJob` (resolved older than 7 days; unresolved informational older than 30 days; unresolved rows of **retired sources** purged outright; other actionable notifications are never auto-cleaned — they represent real work).
 - Meters are **never** stored. `NotificationMeterProvider` computes them from each owning section's public service; do not add a `meter_counts` table.
 - Aborted meter reads propagate caller cancellation without Error logging or caching fallback zero counts, for both global and per-camp-lead caches. Other computation failures retain the logged best-effort fallback.
