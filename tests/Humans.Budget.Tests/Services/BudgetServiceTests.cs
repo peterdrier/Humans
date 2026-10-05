@@ -4,6 +4,8 @@ using Humans.Budget.Controllers;
 using Humans.Finance.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -74,6 +76,23 @@ public sealed class BudgetServiceTests
     [InlineData(true, null, true)]
     public async Task GroupForm_InvalidBinding_DoesNotMutate(bool update, string? invalidField, bool viewerExists)
     {
+        var (controller, budget, viewerId) = CreateAdminController(viewerExists);
+        if (invalidField is not null) controller.ModelState.AddModelError(invalidField, "Invalid value.");
+
+        var result = update
+            ? await controller.UpdateGroup(_yearId, "Existing", 0, false)
+            : await controller.CreateGroup(_yearId, "New", false);
+
+        if (!viewerExists) Assert.IsType<NotFoundResult>(result);
+        else if (invalidField is not null) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<RedirectToActionResult>(result);
+        if (!viewerExists || invalidField is not null) Assert.Empty(budget.ReceivedCalls());
+        else if (update) await budget.Received(1).UpdateGroupAsync(_yearId, "Existing", 0, false, viewerId);
+        else await budget.Received(1).CreateGroupAsync(_yearId, "New", false, viewerId);
+    }
+
+    private (BudgetAdminController Controller, IBudgetService Budget, Guid ViewerId) CreateAdminController(bool viewerExists)
+    {
         var viewerId = Guid.NewGuid();
         var budget = Substitute.For<IBudgetService>();
         var users = Substitute.For<IUserServiceRead>();
@@ -95,18 +114,94 @@ public sealed class BudgetServiceTests
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
             Url = Substitute.For<IUrlHelper>()
         };
-        if (invalidField is not null) controller.ModelState.AddModelError(invalidField, "Invalid value.");
+        return (controller, budget, viewerId);
+    }
 
-        var result = update
-            ? await controller.UpdateGroup(_yearId, "Existing", 0, false)
-            : await controller.CreateGroup(_yearId, "New", false);
+    [HumansTheory]
+    [InlineData(0, "amount", true)]
+    [InlineData(0, "amount", false)]
+    [InlineData(0, null, true)]
+    [InlineData(1, "amount", true)]
+    [InlineData(1, "amount", false)]
+    [InlineData(1, null, true)]
+    [InlineData(2, "amount", true)]
+    [InlineData(2, "amount", false)]
+    [InlineData(2, null, true)]
+    [InlineData(3, "amount", true)]
+    [InlineData(3, "amount", false)]
+    [InlineData(3, null, true)]
+    public async Task FinancialForm_InvalidBinding_DoesNotMutate(int action, string? invalidField, bool viewerExists)
+    {
+        var (controller, budget, viewerId) = CreateAdminController(viewerExists);
+        if (invalidField is not null)
+            controller.ModelState.AddModelError(action < 2 ? "allocatedAmount" : invalidField, "Invalid number.");
 
+        var result = action switch
+        {
+            0 => await controller.CreateCategory(_yearId, "Category", 0m, default, null, _yearId),
+            1 => await controller.UpdateCategory(_yearId, "Category", 0m, default),
+            2 => await controller.CreateLineItem(_yearId, "Item", 0m, null, null, null, 0),
+            _ => await controller.UpdateLineItem(_yearId, "Item", 0m, null, null, null, 0, _yearId)
+        };
         if (!viewerExists) Assert.IsType<NotFoundResult>(result);
         else if (invalidField is not null) Assert.IsType<BadRequestObjectResult>(result);
         else Assert.IsType<RedirectToActionResult>(result);
         if (!viewerExists || invalidField is not null) Assert.Empty(budget.ReceivedCalls());
-        else if (update) await budget.Received(1).UpdateGroupAsync(_yearId, "Existing", 0, false, viewerId);
-        else await budget.Received(1).CreateGroupAsync(_yearId, "New", false, viewerId);
+        else switch (action)
+        {
+            case 0: await budget.Received(1).CreateCategoryAsync(_yearId, "Category", 0m, default, null, viewerId); break;
+            case 1: await budget.Received(1).UpdateCategoryAsync(_yearId, "Category", 0m, default, viewerId); break;
+            case 2: await budget.Received(1).CreateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId); break;
+            default: await budget.Received(1).UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId); break;
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    public async Task CoordinatorLineForm_ValidatesAfterAuthorization(bool update, bool malformed, bool allowed)
+    {
+        var (admin, budget, viewerId) = CreateAdminController(true);
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
+        var category = new BudgetCategorySnapshot(_yearId, _yearId, "Category", 0m, default, null, 0, null, []);
+        budget.GetCategoryByIdAsync(_yearId).Returns(category);
+        budget.GetLineItemByIdAsync(_yearId).Returns(new BudgetLineItemSnapshot(
+            _yearId, _yearId, "Item", 0m, null, null, null, 0, false, false, 0));
+        var auth = Substitute.For<IAuthorizationService>();
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), category, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var localizer = Substitute.For<IStringLocalizer<Humans.Budget.BudgetResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = new BudgetController(budget, auth, users, localizer, NullLogger<BudgetController>.Instance)
+        {
+            ControllerContext = admin.ControllerContext,
+            TempData = admin.TempData,
+            Url = admin.Url
+        };
+        if (malformed) controller.ModelState.AddModelError("amount", "Invalid number.");
+        budget.ClearReceivedCalls();
+        var result = update
+            ? await controller.UpdateLineItem(_yearId, "Item", 0m, null, null, null, 0, _yearId)
+            : await controller.CreateLineItem(_yearId, "Item", 0m, null, null, null, 0);
+        if (allowed && malformed) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<RedirectToActionResult>(result);
+        if (allowed && !malformed)
+        {
+            if (update) await budget.Received(1).UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId);
+            else await budget.Received(1).CreateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId);
+        }
+        else
+        {
+            await budget.DidNotReceiveWithAnyArgs().CreateLineItemAsync(default, default!, default, default, default, default, default, default);
+            await budget.DidNotReceiveWithAnyArgs().UpdateLineItemAsync(default, default!, default, default, default, default, default, default);
+        }
     }
 
     // ─── VAT rate validation ─────────────────────────────────────────────────

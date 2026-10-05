@@ -149,6 +149,12 @@ internal sealed class BudgetController(
         var authResult = await AuthorizeCategoryEditAsync(budgetCategoryId);
         if (authResult is not null) return authResult;
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed budget line item form");
+            return BadRequest(ModelState);
+        }
+
         var nodaDate = expectedDate.HasValue ? LocalDate.FromDateTime(expectedDate.Value) : (LocalDate?)null;
 
         try
@@ -179,6 +185,12 @@ internal sealed class BudgetController(
 
         var authResult = await AuthorizeCategoryEditAsync(lineItem.BudgetCategoryId);
         if (authResult is not null) return authResult;
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed budget line item form");
+            return BadRequest(ModelState);
+        }
 
         var nodaDate = expectedDate.HasValue ? LocalDate.FromDateTime(expectedDate.Value) : (LocalDate?)null;
 
