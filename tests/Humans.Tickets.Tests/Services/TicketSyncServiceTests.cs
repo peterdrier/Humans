@@ -258,6 +258,12 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_TransientError_ReturnsGracefully()
     {
+        // A deferred sync must not move the cursor: the next run re-fetches from the last success.
+        var lastSuccess = Instant.FromUtc(2026, 2, 1, 0, 0);
+        var seeded = await TicketsDb.TicketSyncStates.FirstAsync(s => s.Id == 1, Xunit.TestContext.Current.CancellationToken);
+        seeded.LastSyncAt = lastSuccess;
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new HttpRequestException("API unavailable"));
 
@@ -268,6 +274,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             .FirstAsync(s => s.Id == 1, Xunit.TestContext.Current.CancellationToken);
         syncState.SyncStatus.Should().Be(TicketSyncStatus.Idle);
         syncState.LastError.Should().BeNull();
+        syncState.LastSyncAt.Should().Be(lastSuccess);
     }
 
     [HumansFact]
