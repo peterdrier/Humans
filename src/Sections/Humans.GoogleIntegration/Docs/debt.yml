@@ -7,8 +7,3 @@ inbox:
     id: GOOGLE-4
     what: "GoogleSyncOutboxProcessor infers GoogleEmailStatus.Valid from AddUserToTeamResourcesAsync returning plus activeResources.Count > 0. GoogleWorkspaceSyncService can return without a vendor call when Drive mode is None, and group-only resources enqueue deferred group sync rather than accepting the address. Drive failures can also be logged and returned. This contradicts the successful-Google-acceptance invariant and can turn Unknown into a green Valid badge without verification. Needs an agreed acceptance signal from actual Drive/group outcomes; mode/resource-kind guards alone leave the soft-failure path. Public contract or new write-dependency changes need approval; deferred during the daily sweep."
     review: panel
-  - added: 2026-09-14
-    id: GOOGLE-2
-    what: "Docs/features/drive-activity-monitoring.md presents the 24h fallback as the mechanism rather than the fallback, omits the people/{client_id} service-account arm of identity resolution entirely, and attributes service-account email extraction to DriveActivityMonitorService when the connector does it. Its freshness trigger block names neither src/Sections/Humans.Monitor/Section.cs nor Controllers/MonitorController.cs (finding 27, /section-doctor on Monitor 2026-09-02; swept in by /section-doctor on Issues 2026-09-14)."
-    review: light
-    root: CENTRAL-57

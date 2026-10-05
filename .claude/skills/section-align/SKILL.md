@@ -48,7 +48,7 @@ ALL="$SEC"                                         # whole section, for size/inv
 # which is this section's own and would invert the check into a self-scan.
 OTHER_ENTITIES=$(ls -d src/Sections/Humans.*/Domain 2>/dev/null | grep -v "^$SEC/Domain$")
 
-# Not every section has every folder: Humans.Auth and Humans.Gdpr have no
+# Not every section has every folder: Humans.Auth has no
 # Controllers/ and no Views/. `git grep pat a/ b/` (no `--`) aborts the whole
 # command with "fatal: no such path in the working tree" if ANY path is
 # missing, so filter the list before passing it.

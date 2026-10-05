@@ -52,8 +52,7 @@ public sealed class Section : ISection, IIssueQueueOwner
         // off the public surface.
         services.AddScoped<IBudgetDemoSeeder, DevelopmentBudgetSeeder>();
 
-        // Resource-based handlers move into the section; the policies they satisfy stay in
-        // Shell's AuthorizationPolicyExtensions (design §8's asymmetry, §15 step 6).
+        // Resource-based handlers register here; section-owned policies register through ISectionPolicies.
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
     }
 

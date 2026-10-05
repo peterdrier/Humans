@@ -315,7 +315,7 @@ See [`docs/architecture/dependency-graph.md`](dependency-graph.md) for the full 
 
 ### 8a. User-Scoped Sections Must Contribute to the GDPR Export
 
-Every section whose owned tables hold per-user rows MUST implement `IUserDataContributor` (`Humans.Gdpr.Contracts`) so the GDPR Article 15 data export (`IGdprService`) can assemble a complete document without any cross-section database reads. The orchestrator injects `IEnumerable<IUserDataContributor>`, fans out one call per contributor, and merges the returned slices into the JSON document the user downloads from `/Profile/Me/DownloadData`.
+Every section whose owned tables hold per-user rows MUST implement `IUserDataContributor` (`Humans.Gdpr.Contracts`) so the GDPR Article 15 data export (`IGdprService`) can assemble a complete document without any cross-section database reads. The orchestrator injects `IEnumerable<IUserDataContributor>`, fans out one call per contributor, and merges the returned slices into the JSON document the user downloads from `/Profile/Me/DownloadData` or `/Guest/DownloadData`.
 
 Adding a new user-scoped section to §8 above requires three coupled steps — all three, in any order, before the PR can land:
 
@@ -344,7 +344,7 @@ See [`docs/features/global/gdpr-export.md`](../features/global/gdpr-export.md) f
 
 ### 8b. Cross-Section Fanout — Contributor Pattern
 
-§8a's GDPR export is one instance of a recurring shape: an **orchestrator that owns no tables, injects `IEnumerable<IContributor>`, calls only the contributor interface, and merges the returned slices** — never reaching into another section's repository or running cross-section `Include` chains. Sections opt in by implementing the contributor interface; each contributor reads only its own owned tables, and cross-section names flow through the existing `I{Section}ServiceRead` surfaces. The orchestrator iterates sequentially and never appears in §8's table-ownership map. **The original reason for iterating sequentially is obsolete** — it was "the contributors share the scoped `HumansDbContext`, which is not thread-safe", but contributors such as `ExpenseReportService`, `SurveyService`, `AgentService`, `EventService` and Finance's `Service` read through their own `IDbContextFactory<TContext>` against separate contexts, and independent factory-created contexts are safe to use concurrently (EF's restriction is on concurrent operations against the *same* instance). Sequential iteration is now a consistency and simplicity choice, not a correctness requirement.
+§8a's GDPR export is one instance of a recurring shape: an **orchestrator that owns no tables, injects `IEnumerable<IContributor>`, calls only the contributor interface, and merges the returned slices** — never reaching into another section's repository or running cross-section `Include` chains. Sections opt in by implementing the contributor interface; each contributor reads only its own owned tables, and cross-section names flow through the existing `I{Section}ServiceRead` surfaces. The orchestrator iterates sequentially and never appears in §8's table-ownership map. Contributors use their own section's context instances, whether scoped (for example, `AgentRepository`) or factory-created. EF forbids concurrent operations against the same context instance; independent instances can run concurrently. Sequential iteration remains a consistency and simplicity choice.
 
 The fanouts:
 

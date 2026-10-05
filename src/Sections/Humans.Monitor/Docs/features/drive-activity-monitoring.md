@@ -1,6 +1,8 @@
 <!-- freshness:triggers
   src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs
   src/Sections/Humans.Monitor/Jobs/DriveActivityMonitorJob.cs
+  src/Sections/Humans.Monitor/Section.cs
+  src/Sections/Humans.GoogleIntegration/Services/Workspace/TeamResourceGoogleClient.cs
   src/Sections/Humans.AuditLog/Controllers/AuditLogController.cs
   src/Sections/Humans.AuditLog/Views/AuditLog/Index.cshtml
   src/Sections/Humans.AuditLog/Domain/AuditLogEntry.cs
@@ -93,19 +95,19 @@ POST https://driveactivity.googleapis.com/v2/activity:query
 For each active Drive folder resource:
 1. Query Drive Activity API for activities since the last successful run (`SettingKeys.DriveActivityMonitorLastRunAt`), falling back to 24 hours ago if no marker is stored yet
 2. Filter to permission change activities (`PrimaryActionDetail.PermissionChange != null`)
-3. Check if any actor is the system's service account (by `KnownUser.PersonName` email match)
+3. Check if any actor is the system's service account by email or `people/{client_id}` identity
 4. If NOT initiated by the service account, log as anomalous
 
 ### Actor Identification
 
 The Drive Activity API identifies actors as:
-- `User.KnownUser.PersonName` - user email address
+- `User.KnownUser.PersonName` - email address or `people/{id}`; the per-scan resolver tries Admin Directory, then the Users external-login read model, retaining the raw id if unresolved
 - `Administrator` - Google Workspace admin
 - `System` - Google system action
 
 ### Service Account Email Extraction
 
-Parsed from the service account JSON key file's `client_email` field, matching the pattern used by `TeamResourceService`.
+Monitor asks `IGoogleDriveActivityClient` for the service account email and client id. The GoogleIntegration connector delegates key parsing to `TeamResourceGoogleClient`, which reads `client_email` and `client_id`. Monitor seeds its resolver with `people/{client_id}` so service-account actors resolve to the account email.
 
 ## Data Model
 

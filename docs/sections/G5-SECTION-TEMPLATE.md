@@ -1035,9 +1035,8 @@ Git Bash.)
      (`memory/architecture/base-ui-registries-are-section-populated.md`; proven: Expenses). If
      the helper's only callers were the section's own views, it is not a registry problem at all
      — move it in and delete it from Base.
-6. [ ] Authorization *policies* stay in Shell's `AuthorizationPolicyExtensions`; resource-based
-   *handlers* move into the section (spec §8's asymmetry: DI registration moves, policy
-   registration does not).
+6. [ ] Register section-owned authorization policies through `ISectionPolicies` and
+   resource-based handlers through `Section.Register`. Shell registers shared platform policies.
    - **A Shell-resident base class that several sections derive from moves down to `Humans.UI`
      at the first section's G5.** A section cannot reference `Humans.Web`, so the section's
      `<Section>ApiKeyAuthFilter` cannot keep deriving from `Humans.Web/Filters`'

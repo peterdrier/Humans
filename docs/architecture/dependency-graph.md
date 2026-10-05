@@ -4,6 +4,12 @@ Directed graph of **cross-section** service-to-service dependencies. Intra-secti
 omitted by design — a section's internal wiring belongs to the section; this map shows the
 coupling between sections.
 
+Backdoor is a leaf machine API section. Its controllers also consume Agent
+(`IAgentTranscriptRead`), Feedback (`IFeedbackTriage`), Issues (`IIssueTriage`),
+and Surveys (`ISurveyAnalysisRead`). Those controller dependencies are outside
+this service-to-service diagram; the Backdoor node below represents only
+`BackdoorApiKeyService`.
+
 ## How to read
 
 - Solid black arrow (`-->`) = ctor-injected dependency, eagerly resolved.
@@ -17,6 +23,7 @@ coupling between sections.
 ```mermaid
 graph LR
     %% ── Section colors ──
+    classDef backdoor fill:#64748b,color:#fff
     classDef profiles fill:#4a9eff,color:#fff
     classDef teams fill:#22c55e,color:#fff
     classDef camps fill:#f59e0b,color:#fff
@@ -67,7 +74,7 @@ graph LR
     Metrics[HumansMetricsService]:::crosscut
 
     %% ── Section services (only those with cross-section edges) ──
-    Backdoor[BackdoorApiKeyService]:::crosscut
+    Backdoor[BackdoorApiKeyService]:::backdoor
 
     User[UserService]:::users
     UEmail[UserEmailService]:::users
