@@ -417,10 +417,6 @@ inbox:
     what: "nobodies-collective/Humans#1631 decoupled Shifts from the app-wide event calendar (Settings mints ids, Shifts creates its own knobs row on demand) but left event_settings' app-wide columns (EventName, Year, TimeZoneId, GateOpeningDate, all offsets, EarlyEntryCapacity, BarriosEarlyEntryAllocation, EarlyEntryClose) and IsActive in place, per memory/architecture/no-column-drops-for-decoupling.md and no-drops-until-prod-verified.md — the columns are fully dead (no Shifts code reads or writes them beyond satisfying NOT NULL on insert) but not dropped. A follow-up migration to drop them needs Peter's per-case approval and prod verification that no reader regressed first."
     review: panel
   - added: 2026-08-05
-    id: CENTRAL-9
-    what: "Extend [ExternalWrite] marking to the Holded surface (ExpenseReportService transitions reaching holdedClient.CreatePurchaseDocumentAsync / ApprovePurchaseDocumentAsync / UploadAttachmentAsync via RunMutationAsync; HoldedFinanceService.EnsureCreditorContactAsync, CreateExpenseAccountAsync) so HUM0033 guards it. No defect exists today — ExpensesController and FinanceController declare no CancellationToken parameter — so this is future-proofing per memory/architecture/cancellation-token-propagation.md (found while auditing nobodies-collective/Humans#950)"
-    review: panel
-  - added: 2026-08-05
     id: CENTRAL-10
     what: "GoogleController.SyncExecute / SyncExecuteAll run a full Workspace reconcile inline on the request thread. Moving them to Hangfire (the TicketController.Sync pattern) is blocked on UI: Views/Google/Sync.cshtml:142,163 calls loadTab() in the fetch continuation, so the tab refresh depends on the POST having completed the reconcile — fire-and-forget would re-render stale diffs. Needs a progress/polling affordance (deferred from nobodies-collective/Humans#950)"
     review: panel
