@@ -250,6 +250,12 @@ internal sealed class MailerLiteAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Commit([FromForm] int? maxPerOutcome, CancellationToken ct)
     {
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed MailerLite import limit");
+            return BadRequest(ModelState);
+        }
+
         var fresh = await import.BuildPlanAsync(ct);
 
         if (TempData["PlanCountsSnapshot"] is string snapshotJson)

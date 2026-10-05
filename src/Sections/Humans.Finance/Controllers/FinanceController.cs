@@ -44,6 +44,11 @@ internal sealed class FinanceController(
     public async Task<IActionResult> ProvisionHoldedAccounts(int blockStart, bool addAll)
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed Holded provisioning form for actor {ActorUserId}", actorUserId);
+            return BadRequest(ModelState);
+        }
         try
         {
             var n = await holdedConnector.ProvisionAsync(blockStart, addAll, actorUserId);
