@@ -1,5 +1,13 @@
 using Humans.Base.Extensions;
 using AwesomeAssertions;
+using System.Security.Claims;
+using Humans.Base.Constants;
+using Humans.Governance.Controllers;
+using Humans.Governance.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Localization;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Governance.Domain;
@@ -25,6 +33,86 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     private readonly AssemblyVoteServiceFixture _fx = new();
 
     public void Dispose() => _fx.Dispose();
+
+    [HumansTheory]
+    [InlineData("malformed")]
+    [InlineData("missing-key")]
+    [InlineData("blank")]
+    [InlineData("abstain")]
+    [InlineData("denied")]
+    [InlineData("denied-malformed")]
+    [InlineData("denied-duplicate")]
+    public async Task BallotForm_MalformedRank_DoesNotReplaceTheStoredRanking(string scenario)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var vote = await _fx.AddVoteAsync(kind: AssemblyVoteKind.RankedChoice, options: [("a", 0), ("b", 1)]);
+        var userId = Guid.NewGuid();
+        var denied = scenario.StartsWith("denied", StringComparison.Ordinal);
+        if (!denied)
+        {
+            await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
+            await _fx.Service.CastBallotAsync(vote.Id, userId, AssemblyBallotChoice.Ranked, ["a", "b"], ct);
+        }
+        var historyBefore = await _fx.Db.AssemblyBallotHistories.CountAsync(ct);
+        _fx.Audit.ClearReceivedCalls();
+        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var controller = new GovernanceVotesController(_fx.Users, _fx.Service, localizer,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var abstain = string.Equals(scenario, "abstain", StringComparison.Ordinal);
+        var missingKey = string.Equals(scenario, "missing-key", StringComparison.Ordinal);
+        var malformed = missingKey || string.Equals(scenario, "malformed", StringComparison.Ordinal)
+            || string.Equals(scenario, "denied-malformed", StringComparison.Ordinal);
+        if (malformed || abstain) controller.ModelState.AddModelError(
+            missingKey ? "RankedOptions[1].OptionKey" : "RankedOptions[1].Selection", "Invalid value.");
+        var form = new AssemblyBallotFormViewModel
+        {
+            VoteId = vote.Id, Choice = abstain ? AssemblyBallotChoice.Abstain : AssemblyBallotChoice.Ranked,
+            RankedOptions = [new() { OptionKey = "a", Selection = 1 }, new() { OptionKey = "b", Selection = null }]
+        };
+
+        if (missingKey) form.RankedOptions[1].OptionKey = null!; // MVC can bind an empty non-nullable string as null.
+        if (string.Equals(scenario, "denied-duplicate", StringComparison.Ordinal)) form.RankedOptions[1].Selection = 1;
+
+        var result = await controller.Ballot(vote.Id, form, ct);
+
+        if (denied)
+        {
+            result.Should().BeOfType<ForbidResult>();
+            (await _fx.Db.AssemblyBallots.CountAsync(ct)).Should().Be(0);
+            _fx.Audit.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+        var ballot = await _fx.Db.AssemblyBallots.AsNoTracking().SingleAsync(ct);
+        if (malformed)
+        {
+            ballot.Revision.Should().Be(1);
+            ballot.Ranking.Should().Equal("a", "b");
+            var redisplayed = result.Should().BeOfType<ViewResult>().Which.Model
+                .Should().BeOfType<AssemblyVoteDetailViewModel>().Which;
+            redisplayed.SelectedChoice.Should().Be(AssemblyBallotChoice.Ranked);
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Votes_BallotInvalid");
+            (await _fx.Db.AssemblyBallotHistories.CountAsync(ct)).Should().Be(historyBefore);
+            _fx.Audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            ballot.Revision.Should().Be(2);
+            ballot.Choice.Should().Be(form.Choice);
+            if (abstain) ballot.Ranking.Should().BeNull();
+            else ballot.Ranking.Should().Equal("a");
+        }
+    }
 
     // ==========================================================================
     // Casting a ballot
