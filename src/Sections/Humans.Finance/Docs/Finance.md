@@ -118,7 +118,7 @@ contact, three write paths with different collision remedies, and no unique inde
 
 ### HoldedDocSyncState
 
-**Table:** `holded_doc_sync_state` (singleton, `Id = 1`, lazy-created)
+**Table:** `holded_doc_sync_state` (singleton, `Id = 1`, persisted on the first explicit sync-state save)
 
 Fields: `LastSyncAt`, `Status` (`Idle / Running / Error` string), `LastError`, `StatusChangedAt`, `LastSyncedDocCount`. Status of the purchase-doc sync only — the ledger mirror and its own sync states are the **Holded section**'s (`src/Sections/Humans.Holded/Docs/Holded.md`); Finance reads it via `IHoldedService`.
 
@@ -296,6 +296,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 - None on the budget side: this section only reads Budget, so it fires no Budget-side effects.
 - On **SEPA payout generation**: after the file and its transfers are saved and audited, one `sepa_payout_generated` email per transfer goes to the bound member (`FinanceEmails.SepaPayoutGenerated`, `MessageCategory.System`, in their supported preferred language, with English fallback for blank, malformed or unsupported preferences) naming the amount and the masked IBAN. A refused batch sends nothing; a member with no notification email is logged and skipped. Recipient lookup and individual email failures are logged without blocking download of the saved file or suppressing later recipients; notifications finish independently of request cancellation after the save. Booking sends nothing — by then the money has moved (peterdrier/Humans#1820).
+- Status reads (`GetDocSyncInfoAsync` and the connector overview) never insert sync state. Before the first sync they return an unsaved Idle default; `SaveDocSyncStateAsync` owns singleton creation and updates.
 - When the sync job starts, `HoldedDocSyncState.Status` flips to `Running`. On success returns to `Idle` with `LastSyncAt` and `LastSyncedDocCount` updated. On exception goes to `Error` with `LastError` bounded to its 2000-unit column without splitting UTF-16 surrogate pairs; the original exception is logged and rethrown, and the next scheduled run retries. Caller-aborted syncs log a stack-free warning and rethrow cancellation; dependency failures retain error logs with exceptions.
 
 ## Cross-Section Dependencies

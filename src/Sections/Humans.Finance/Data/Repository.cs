@@ -238,26 +238,13 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ── Purchase-doc sync state (singleton, lazy-created) ─────────────────────
+    // ── Purchase-doc sync state (singleton, persisted on explicit save) ─────────────────────
 
     public async Task<HoldedDocSyncState> GetOrCreateDocSyncStateAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var existing = await ctx.HoldedDocSyncStates.AsNoTracking().FirstOrDefaultAsync(s => s.Id == 1, ct);
-        if (existing is not null) return existing;
-
-        var created = new HoldedDocSyncState();
-        ctx.HoldedDocSyncStates.Add(created);
-        try
-        {
-            await ctx.SaveChangesAsync(ct);
-            return created;
-        }
-        catch (DbUpdateException)
-        {
-            // Lost the Id=1 insert race to a concurrent caller; the winner's row is the singleton.
-            return await ctx.HoldedDocSyncStates.AsNoTracking().FirstAsync(s => s.Id == 1, ct);
-        }
+        return await ctx.HoldedDocSyncStates.AsNoTracking().FirstOrDefaultAsync(s => s.Id == 1, ct)
+            ?? new HoldedDocSyncState();
     }
 
     public async Task SaveDocSyncStateAsync(HoldedDocSyncState state, CancellationToken ct = default)
