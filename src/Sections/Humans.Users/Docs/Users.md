@@ -203,7 +203,7 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 - Member, guest and read-only admin communication-preference checkboxes expose localized channel/category names to assistive technology, including locked and unchecked controls.
 
-- Member and guest preference saves disable both editable channels in the category until completion; guest saves also disable the matching one-click unsubscribe action. Writes to one category cannot overlap in the page; other categories remain available, and failures restore the edited value before unlocking.
+- Guest preference saves disable both editable channels and the matching one-click unsubscribe action until completion. Writes to one category cannot overlap in the page; other categories remain available, and failures restore the edited value before unlocking.
 
 - Member email-preference changes preserve the row’s existing inbox preference when the alert control is not shown; changing email cannot silently re-enable inbox notifications.
 

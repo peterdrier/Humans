@@ -1874,7 +1874,7 @@ Git Bash.)
     - **Add the section's negative access rule to the render test, and read the status code
       off the app rather than off the invariants doc.** The move rehomes the controller into an
       internal type in another assembly routed by `SectionControllerFeatureProvider`, while its
-      policy stays in Shell's `AuthorizationPolicyExtensions` (step 6's asymmetry) — one GET as
+      policy may still live in Shell's `AuthorizationPolicyExtensions` — one GET as
       a non-privileged persona is what proves the two halves still meet, and it is three lines
       beside the pages loop. Expect **`302` to `Program.cs`'s `AccessDeniedPath`, not `403`**:
       cookie authentication redirects an authenticated-but-unauthorized request, app-wide.

@@ -900,16 +900,19 @@ public sealed class ExpenseReportServiceTests
         var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
         loaded!.Lines[0].AttachmentId.Should().BeNull();
 
-        await _fileStorage.Received(1).DeleteAsync(
-            $"uploads/expense-attachments/{attach.Id}{attach.Extension}",
-            Arg.Any<CancellationToken>());
-        await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseAttachmentRemoved,
-            "ExpenseReport", id,
-            Arg.Any<string>(),
-            submitter,
-            submitter,
-            AuditEntityTypes.User);
+        Received.InOrder(() =>
+        {
+            _ = AuditLog.LogAsync(
+                AuditAction.ExpenseAttachmentRemoved,
+                "ExpenseReport", id,
+                Arg.Any<string>(),
+                submitter,
+                submitter,
+                AuditEntityTypes.User);
+            _ = _fileStorage.DeleteAsync(
+                $"uploads/expense-attachments/{attach.Id}{attach.Extension}",
+                CancellationToken.None);
+        });
     }
 
     [HumansFact]

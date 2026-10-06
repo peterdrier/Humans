@@ -15,13 +15,9 @@ inbox:
     id: EXP-6
     what: "ExpenseReportService.RemoveAttachmentFromLineAsync unlinks the line and deletes attachment metadata in separate repository saves. Failure or cancellation between them leaves orphan metadata without the removal audit. An atomic owning-repository operation needs an approved interface change; the existing setters cannot compose into one save. Found during the daily debt source audit."
     review: panel
-  - added: 2026-10-03
-    id: EXP-7
-    what: "ExpenseReportService.RemoveAttachmentFromLineAsync passes request cancellation to post-commit file cleanup and writes its audit afterward. Cancellation can strand the file; cleanup must follow committed metadata and audit with CancellationToken.None (file-metadata-commit-order). Coordinate with EXP-6 to fix the whole removal workflow. Found during the daily debt source audit."
-    review: panel
   - added: 2026-10-04
     id: EXP-8
-    what: "ExpenseReportService.AttachFileToLineAsync supports replacing an existing attachment but leaves the old metadata row and stored file orphaned after success. Failure rollback intentionally restores the old linkage. Replacing linkage and deleting superseded metadata must commit together before post-audit file cleanup; current AddAttachmentAsync/SetLineAttachmentAsync/RemoveAttachmentAsync methods use separate saves, so a proper replacement operation needs approved repository surface. Coordinate with EXP-6/7. Found during the nightly production scan."
+    what: "ExpenseReportService.AttachFileToLineAsync supports replacing an existing attachment but leaves the old metadata row and stored file orphaned after success. Failure rollback intentionally restores the old linkage. Replacing linkage and deleting superseded metadata must commit together before post-audit file cleanup; current AddAttachmentAsync/SetLineAttachmentAsync/RemoveAttachmentAsync methods use separate saves, so a proper replacement operation needs approved repository surface. Coordinate with EXP-6. Found during the nightly production scan."
     review: panel
   - added: 2026-10-04
     id: EXP-10

@@ -123,10 +123,17 @@ public sealed class ExpensesControllerTests
             .Returns(UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
         var report = new ExpenseReportDto
         {
-            Id = reportId, SubmitterUserId = isSubmitter ? actorId : Guid.NewGuid(),
-            BudgetCategoryId = Guid.NewGuid(), BudgetYearId = Guid.NewGuid(), Status = status,
-            PayeeName = "Submitter", PayeeIban = "", Total = 0,
-            CreatedAt = default, UpdatedAt = default, Lines = []
+            Id = reportId,
+            SubmitterUserId = isSubmitter ? actorId : Guid.NewGuid(),
+            BudgetCategoryId = Guid.NewGuid(),
+            BudgetYearId = Guid.NewGuid(),
+            Status = status,
+            PayeeName = "Submitter",
+            PayeeIban = "",
+            Total = 0,
+            CreatedAt = default,
+            UpdatedAt = default,
+            Lines = []
         };
         var reports = Substitute.For<IExpenseReportService>();
         reports.GetAsync(reportId).Returns(report);

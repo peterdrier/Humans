@@ -2,6 +2,7 @@
   src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs
   src/Sections/Humans.Monitor/Jobs/DriveActivityMonitorJob.cs
   src/Sections/Humans.Monitor/Section.cs
+  src/Sections/Humans.Monitor/Controllers/MonitorController.cs
   src/Sections/Humans.GoogleIntegration/Services/Workspace/TeamResourceGoogleClient.cs
   src/Sections/Humans.AuditLog/Controllers/AuditLogController.cs
   src/Sections/Humans.AuditLog/Views/AuditLog/Index.cshtml
@@ -163,7 +164,7 @@ Time-window dedup: each run queries only activity since the last successful run'
 ## Limitations
 
 - **Drive folders only:** Google Groups do not support the Drive Activity API. Group membership changes are detected by the existing drift detection in `PreviewSyncAllAsync`.
-- **24-hour lookback:** Activities older than 24 hours from the last check may be missed if the job fails to run. The hourly schedule with 24-hour lookback provides significant overlap.
+- **Lookback marker:** Each run covers activity since the last successful run (`DriveActivityMonitor:LastRunAt`); the 24-hour window applies only before a marker exists. Activity from before the first successful run may be missed.
 - **Actor identification:** The Drive Activity API may not always provide the actor's email (e.g., for external users). In such cases, the actor is logged as "unknown".
 
 ## Related Features

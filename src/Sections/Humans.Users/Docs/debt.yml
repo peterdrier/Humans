@@ -18,9 +18,3 @@ inbox:
   - added: 2026-09-06
     id: USERS-6
     what: "Data/Configurations/UserEmailConfiguration.cs:68-71 declares a partial unique index on user_emails.Email (IsVerified = true) — a unique index on a user-editable string, forbidden by memory/architecture/unique-constraints-ids-only.md. The cross-account check is already service-enforced (VerifyEmailAsync and AdminMarkVerifiedAsync open a merge request; the OAuth reconcile blocks or displaces), so the index is a backstop only. Dropping it is a Users migration (Codex finding on peterdrier/Humans#1603)."
-  - added: 2026-10-03
-    id: USERS-10
-    what: "CommunicationPreferenceRepository.ReassignToUserAsync collapses duplicate categories without retaining the source row's SubscribedAt, losing known opt-in history when the target has no timestamp. Both-known timestamps need a policy: earliest-known across accounts versus preserving the target's non-null stamp. Found during the nightly source audit."
-    review: panel
-    status: needs-detail
-    blocked_on: "Specify timestamp retention on merge, including two different known dates; current docs say earliest known and never overwrite a non-null stamp."
