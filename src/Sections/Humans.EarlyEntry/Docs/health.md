@@ -168,4 +168,4 @@ field when it is `Sources.Count > 1`.
 | Date | Run | Headline |
 |---|---|---|
 | 2026-09-05 | [run](../../../../docs/health/runs/2026-09-05-EarlyEntry.md) | First doctor pass. peterdrier/Humans#1593 |
-| 2026-10-06 | [run](../../../../docs/health/runs/2026-10-06-EarlyEntry.md) | Docs describe the settings-listener eviction and the section's own nav group. pending |
+| 2026-10-06 | [run](../../../../docs/health/runs/2026-10-06-EarlyEntry.md) | Docs describe the settings-listener eviction and the section's own nav group. peterdrier/Humans#1915 |
