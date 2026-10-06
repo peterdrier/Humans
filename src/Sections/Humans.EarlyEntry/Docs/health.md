@@ -9,6 +9,7 @@
   src/Sections/Humans.Shifts/Services/VolunteerTrackingExportService.cs
   src/Sections/Humans.Shifts/Services/ShiftEarlyEntryProjection.cs
   src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
+  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
   src/Sections/Humans.Settings/Contracts/IEventSettingsChangeListener.cs
   src/Sections/Humans.Settings/Services/Service.cs
   src/Sections/Humans.Teams/Section.cs
@@ -52,7 +53,7 @@ redundant slot can be given to someone else.
 | **The event's dates moved** | An event-settings save shifted every derived date. | `IEventSettingsChangeListener.EventSettingsChanged` (Settings' fan-out; this section listens) |
 
 The first two are the same collapse — earliest date, distinct reasons — applied to all
-people or to one. The last three are inbound: other sections supply grants or say when to
+people or to one. The rest are inbound: other sections supply grants or say when to
 forget.
 
 ## 3. Structure
@@ -105,7 +106,7 @@ field when it is `Sources.Count > 1`.
 - The roster needs `ShiftDashboardAccess` (Admin, NoInfoAdmin, VolunteerCoordinator)
   (`src/Sections/Humans.EarlyEntry/Controllers/EarlyEntryRosterController.cs:12`; pinned:
   `EarlyEntryArchitectureTests.RosterRequiresShiftDashboardAccess`).
-- The section exposes no write: its one action is a GET
+- The section exposes no write: the roster controller serves GET only
   (`src/Sections/Humans.EarlyEntry/Controllers/EarlyEntryRosterController.cs:17`).
 
 ## 5. Seams

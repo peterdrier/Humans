@@ -8,6 +8,7 @@
   src/Sections/Humans.Shifts/Services/VolunteerTrackingExportService.cs
   src/Sections/Humans.Shifts/Services/ShiftEarlyEntryProjection.cs
   src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
+  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
   src/Sections/Humans.Settings/Contracts/IEventSettingsChangeListener.cs
   src/Sections/Humans.Settings/Services/Service.cs
   src/Sections/Humans.Teams/Section.cs

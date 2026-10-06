@@ -7,7 +7,7 @@
 
 ## Assessment summary
 
-Second pass over EarlyEntry, selected on age plus churn since run 1: the event-settings move to Settings and the admin-nav rework both landed in between. The code held its shape — a provider fan-out, a Singleton decorator caching the per-person answer, one read-only admin page. What drifted was the description of the change that landed: the [target](../../../src/Sections/Humans.EarlyEntry/Docs/health.md) named Settings as a caller of `IEarlyEntryInvalidator` and still listed settings-save eviction as an unbuilt seam, when Settings fans out over `IEventSettingsChangeListener` and the decorator evicts; the invariant doc left Settings out of the section's dependencies and still put the roster in the "Tickets" nav group. The last run's sweep queue never reached a ledger; its eviction gaps in Camps and Teams still hold and are now filed with their owners, beside two new ones met this run.
+Second pass over EarlyEntry, selected on age plus churn since run 1: the event-settings move to Settings and the admin-nav rework both landed in between. The code held its shape — a provider fan-out, a Singleton decorator caching the per-person answer, one read-only admin page. What drifted was the description of the change that landed: the [target](../../../src/Sections/Humans.EarlyEntry/Docs/health.md) named Settings as a caller of `IEarlyEntryInvalidator` and still listed settings-save eviction as an unbuilt seam, when Settings fans out over `IEventSettingsChangeListener` and the decorator evicts; the invariant doc left Settings out of the section's dependencies and still put the roster in the "Tickets" nav group. The last run's sweep queue never reached a ledger; its eviction gaps in Camps and Teams still hold and are now filed with their owners, beside new ones met this run.
 
 Independence check: pass — findings 1, 2 and 14 come from the target (the settings-eviction spec-vs-reality delta, the nav-group shape, and `UserEarlyEntry` as a partial duplicate of the roster row).
 
@@ -26,7 +26,7 @@ Independence check: pass — findings 1, 2 and 14 come from the target (the sett
 11. A trailing comment in `CachingEarlyEntryService.GetForUserAsync` restated the class summary.
 12. Contributor write paths that skip eviction: `CampService.DeleteCampAsync` and `TeamService.PermanentlyDeleteTeamAsync` (carried from run 1, never ledgered); `ShiftManagementService.DeleteEventAsync`; and team deactivation, which also leaves the team's grants live. Filed as CAMPS-7, TEAMS-9, TEAMS-10, SHIFTS-8.
 13. Carried from run 1, never ledgered and still true: `docs/sections/SECTION-TEMPLATE.md` names projects that no longer exist, and the early-entry wheat marker in `docs/architecture/design-rules.md` cites a plan file not in the tree. New: `AdminLayoutRenderTests` labels name per-section `_ViewStart` files the admin-nav rework deleted. Filed as CENTRAL-78 and CENTRAL-77.
-14. `UserEarlyEntry` duplicates the roster row less two fields; Peter ruled the fold on finding 11 of run 1 and it has not landed. Filed as EARLYENTRY-1.
+14. `UserEarlyEntry` duplicates the roster row less `UserId` and `HasMultiple`; Peter ruled the fold on finding 11 of run 1 and it has not landed. Filed as EARLYENTRY-1.
 15. Inbox: nobodies-collective/Humans#735 — edit. Its 2026-06-10 comment lists early-entry status on the volunteer profile badges as shipped; `_VolunteerProfileBadges.cshtml` shows none today. The remaining scope (roster filters, daily arrivals, an explicit shift flag) still holds. The Inbox thread's claim that `ShiftEarlyEntryProjection` no longer exists was wrong: it is in `src/Sections/Humans.Shifts/Services/ShiftEarlyEntryProjection.cs`.
 16. Freshness triggers named `ShiftManagementService.cs`, which writes nothing early entry derives from any more, and missed the Settings listener and service.
 17. Run 1's ruling on its finding 1 (wire `InvalidateAll` into the Shifts gate and build-offset writes) is moot: those writes moved to Settings, and the listener covers them.
@@ -48,7 +48,7 @@ Independence check: pass — findings 1, 2 and 14 come from the target (the sett
 - Finding 12 and 13 — other sections' and shared code; filed with their owners, not struck.
 - Finding 14 — a public contract change across Gate, Scanner and Tickets; Peter's ruling has it land on its own.
 - Finding 15 — existing issues are read-only to a run; recommendation only.
-- Blocked at selection: Agent (#1893), Tickets (#1905).
+- Blocked at selection: Agent (peterdrier/Humans#1893), Tickets (peterdrier/Humans#1905).
 - Phase 8 skipped (unattended routine). The run used its own `section-doctor/*` branch per the skill rather than the session's default branch.
 - 2026-10-06: no live render; the roster view was not edited.
 
@@ -58,7 +58,7 @@ Independence check: pass — findings 1, 2 and 14 come from the target (the sett
 
 **Wasted motion.** The first reforge run raced the restore and refused a partial model; it only ran once the solution build had finished. The doc-strike commits were pushed after the section's test project passed but before the full solution suite ran; the full suite ran before the next push.
 
-**What striking revealed.** The previous run's sweep queue had stayed in its run file and never reached a ledger, so two of its eviction gaps were still open a month later with nobody tracking them. Reading the delete paths for those turned up two more (Shifts' event delete, Teams' deactivation). The Inbox thread said `ShiftEarlyEntryProjection` was gone; it was not, which is why absence claims get re-grepped on main.
+**What striking revealed.** The previous run's sweep queue had stayed in its run file and never reached a ledger, so its eviction gaps were still open a month later with nobody tracking them. Reading the delete paths for those turned up more (Shifts' event delete, Teams' deactivation). The Inbox thread said `ShiftEarlyEntryProjection` was gone; it was not, which is why absence claims get re-grepped on main.
 
 **Target diff.** The earlier target was wrong rather than the section having moved: it described settings eviction as Settings calling the invalidator, and it kept the nav group the rework replaced. The new target lists the listener as a shape, gives every invariant an enforcing line, and drops the "never writes audit or notifications" bullet, which had no enforcement site.
 
