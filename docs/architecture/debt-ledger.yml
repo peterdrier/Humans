@@ -257,12 +257,12 @@ themes:
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
     last_swept: 2026-06-14
-    remaining: 111
+    remaining: 66
     notes: >-
       Each inbox entry carries its own review tier and a stable `id`; an item is
       closed by deleting its row and citing the id in the PR — ids are never
       recycled. Shape, id format and `status:` values:
-      memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
+      memory/process/debt-ledger-additions.md. Count re-measured 2026-10-06
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   - added: 2026-10-05
