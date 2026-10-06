@@ -18,7 +18,7 @@ Run recurring autonomous tech-debt reduction passes in this repository.
 
 - Section-owned persistence and generated migrations are allowed when the task needs them. Follow [section-migrations-in-maintenance](../../../memory/process/section-migrations-in-maintenance.md); substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
 - Preserve JSON serialization contracts unless the task authorizes changing them.
-- Do not delete files, remove controller actions, or remove public members as part of the cleanup.
+- Removing or reshaping public members follows [debt-sweep-standing-policy](../../../memory/process/debt-sweep-standing-policy.md): dead members and pre-approved in-place shapes go; deleting files or controller actions still needs Peter.
 - Prefer structural simplification and consolidation over broad rewrites.
 - Treat Reforge or any score as a detector, not an objective. A score decrease alone never justifies a commit.
 - Do not add thin behavior to DTO/request/command/options/input records just to escape a parameter-bag or long-signature rule. Methods such as `ApplyTo`, `ToDto`, `RenderWith`, `BuildSummary`, `SaveAsync`, or service-delegating wrappers are acceptable only when they enforce real invariants, validation, state transitions, or domain policy that the type already owns.
