@@ -214,6 +214,11 @@ public sealed class CalendarRepositoryTests : IDisposable
             Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         changeType.Succeeded.Should().BeFalse();
         changeType.ErrorMessage.Should().Be("Calendar_CannotChangeEventType");
+        var unchanged = (await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken))!;
+        unchanged.Title.Should().Be("Edited");
+        unchanged.IsAllDay.Should().BeTrue();
+        unchanged.StartDate.Should().Be(day);
+        unchanged.Exceptions.Should().ContainSingle().Subject.OriginalOccurrenceDate.Should().Be(day);
     }
 
     [HumansTheory]

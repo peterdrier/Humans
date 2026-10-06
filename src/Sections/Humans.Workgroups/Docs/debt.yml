@@ -7,7 +7,7 @@ inbox:
     review: light
   - added: 2026-10-04
     id: WORKGROUPS-3
-    what: "WorkgroupRuleException carries a resource key and format args, and WorkgroupsController/WorkgroupsAdminController render localizer[ex.Key, ex.Args]. Exceptions are never localized (no-localized-exception-messages); rule refusals need a result type the controller localizes. Peter, debt review of peterdrier/Humans#1903."
+    what: "WorkgroupRuleException carries a resource key and format args, and WorkgroupsController/WorkgroupsAdminController render localizer[ex.Key, ex.Args]. Exceptions are never localized (no-localized-exception-messages). Peter, debt review of peterdrier/Humans#1903. Plan: the rule-checking service methods return a result record carrying the refusal key and args, the controllers localize it, and WorkgroupRuleException is deleted; throw-to-result, pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel
 # Emptied 2026-09-14: the one entry here asked for grant revocation when
 # SettingKeys.WorkgroupsRootDriveFolderId is replaced. Peter, on

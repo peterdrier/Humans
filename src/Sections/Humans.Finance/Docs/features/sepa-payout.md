@@ -290,7 +290,7 @@ Server-side, all-or-nothing:
 | Account unbound, or bound to more than one member | service |
 | Amount above the balance | service |
 | Amount below €0.01, more than 2 decimals, or above the cap | builder |
-| IBAN absent, or failing its check digits | service / builder |
+| IBAN absent, containing non-ASCII account characters or non-digit check characters, or failing its checksum | service / builder |
 | Duplicate or over-long `MsgId` / `PmtInfId` / `EndToEndId` | builder |
 | Generated XML fails the XSD | builder |
 

@@ -2982,7 +2982,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
     /// <summary>
     /// A fake <see cref="ISettingsService"/> resolving "the active event" off this
-    /// test's own <see cref="ShiftsTestHarness.ShiftsDb"/>-seeded rows (Shifts still
+    /// test's own <see cref="TeamsTestHarness.ShiftsDb"/>-seeded rows (Shifts still
     /// keys its per-event knobs by <c>settings_event</c>'s id, so its own
     /// <c>EventSettings.IsActive</c> stands in for the real Settings-owned table
     /// here). Mirrors <c>ShiftsTestHarness.NewCalendarResolver</c>, which this test

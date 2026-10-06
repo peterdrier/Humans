@@ -20,8 +20,8 @@ namespace Humans.Shifts.Data;
 /// </para>
 ///
 /// <para>
-/// Cross-domain navigation properties (<see cref="Rota.Team"/>,
-/// <see cref="ShiftSignup.User"/>) are NEVER eager-loaded here. Consumers
+/// Cross-domain references (<see cref="Rota.TeamId"/>,
+/// <see cref="ShiftSignup.UserId"/>) are bare identifiers. Consumers
 /// that need that data stitch in memory via <c>ITeamService</c> and
 /// <c>IUserService</c> at the service layer (design-rules §6b).
 /// </para>
@@ -57,7 +57,7 @@ internal partial interface IShiftManagementRepository : IRepository
 
     /// <summary>
     /// Loads one rota with an explicit same-section include shape. Read-only.
-    /// Cross-domain <see cref="Rota.Team"/> is NOT populated; callers stitch
+    /// Cross-domain <see cref="Rota.TeamId"/> is a bare identifier; callers stitch
     /// via <c>ITeamService</c>.
     /// </summary>
     Task<Rota?> GetRotaAsync(Guid rotaId, RotaReadShape shape, CancellationToken ct = default);

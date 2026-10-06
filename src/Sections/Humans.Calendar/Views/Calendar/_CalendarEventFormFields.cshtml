@@ -251,8 +251,11 @@
             q('[data-rec=monthly]').classList.toggle('d-none', f !== 'MONTHLY');
             q('[data-rec=custom]').classList.toggle('d-none', f !== 'CUSTOM');
             root.querySelectorAll('[data-unit]').forEach(function (u) { u.classList.toggle('d-none', u.dataset.unit !== f); });
-            until.required = picker && endsOn.checked;
-            count.required = picker && endsAfter.checked;
+            interval.disabled = !picker;
+            until.disabled = !picker || !endsOn.checked;
+            count.disabled = !picker || !endsAfter.checked;
+            until.required = !until.disabled;
+            count.required = !count.disabled;
             isRecurring.value = f === 'NONE' ? 'false' : 'true';
             if (f === 'NONE') rule.value = '';
             else if (picker) rule.value = compose();

@@ -108,7 +108,7 @@ internal sealed class CityPlanningApiController(
         catch (ArgumentException ex)
         {
             logger.LogWarning("Rejected camp polygon for {CampSeasonId}: {Reason}", campSeasonId, ex.Message);
-            return BadRequest("Invalid GeoJSON.");
+            return BadRequest();
         }
 
         return await BroadcastAndReturnAsync(campSeasonId, saved, cancellationToken);
@@ -128,8 +128,17 @@ internal sealed class CityPlanningApiController(
             return Forbid();
         }
 
-        var restored = await cityPlanningService.RestoreCampPolygonVersionAsync(
-            campSeasonId, historyId, userId, cancellationToken);
+        CampPolygonSaveResult? restored;
+        try
+        {
+            restored = await cityPlanningService.RestoreCampPolygonVersionAsync(
+                campSeasonId, historyId, userId, cancellationToken);
+        }
+        catch (ArgumentException ex)
+        {
+            logger.LogWarning("Rejected camp polygon restore for {CampSeasonId}: {Reason}", campSeasonId, ex.Message);
+            return BadRequest();
+        }
         if (restored is null) return NotFound();
 
         return await BroadcastAndReturnAsync(campSeasonId, restored, cancellationToken);

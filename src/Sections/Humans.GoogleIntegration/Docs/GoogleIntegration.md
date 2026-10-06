@@ -110,6 +110,8 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 
 ## Invariants
 
+- Persisted resource errors are bounded to 2000 UTF-16 units; sync-log descriptions (including their job prefix) and errors are bounded to 4000. Bounds preserve surrogate pairs so long vendor failures cannot prevent failure-state or audit-row persistence.
+
 - Outbox error previews preserve whole UTF-16 surrogate pairs within their existing 120-unit limit; tooltips retain the complete stored error, and retry behavior is unchanged.
 
 - Domain-group listing and its team picker use browser cancellation. Aborted per-group settings fetches propagate through the listing instead of becoming group errors; caller cancellation logs warnings without exception stacks. Dependency failures retain their existing error feedback.
@@ -119,6 +121,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - The Workspace accounts page renders existing `WorkspaceAccountInfo` rows directly, preserving service email ordering and status, member-link, 2FA and recovery fields.
 
 - Sync-dashboard preview loads apply only the latest response or failure for each resource tab. Drive and group previews load independently; sync POSTs keep their existing execution boundaries.
+- Preview requests reject redirects and display the load failure; login or access-denied pages cannot become sync previews.
 
 - All Google Drive resources are on Shared Drives. The system does not use regular (My Drive) folders.
 - Inherited access cannot be removed at a child folder. The legacy Teams-keyed Drive path excludes permissions with any inherited component from mutation, since Drive refuses to delete them at this level (nobodies-collective/Humans#945). The source-claimed Drive path retains direct/inherited component details: a direct elevation on a mixed permission is updated in place to the greater of the expected role and inherited floor. Departure or retirement reduces the elevation to that floor; equal-floor mixed or purely inherited permissions then need no further mutation. Pure direct extras are deleted. Role-change successes and failures enter the sync log; reducing an elevation while inherited access remains never sends a total-removal notice. A Drive delete that still 403s as inherited (a race between listing and deleting) is classified terminal and not retried until the next reconciliation pass.
@@ -138,6 +141,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - Successful Workspace provisioning sends credentials and an inbox notice in the recipient's supported preferred language (English fallback), reusing the credential email subject and linking to their profile.
 - `EmailProvisioningService.ProvisionNobodiesEmailAsync` refuses an archived id: a merge-resolved-forward id (lookup returns the survivor, whose `Id` differs) or a GDPR/legacy tombstone (`UserInfo.IsActive` false) is rejected before any Workspace call (peterdrier/Humans#1707).
 - Each Google email **address** carries a `GoogleEmailStatus` (`Unknown`, `Valid`, `Rejected`) on its `UserEmail` row (#687) — the status belongs to the address Google rejected, not the human. When Google permanently rejects the canonical address (HTTP 400/403/404), that address is set to `Rejected` and new outbox events are not enqueued for the human. Because the status lives on the address, selecting a different Google email (a fresh `Unknown` row) resets sync naturally and fresh events are enqueued.
+- The Google outbox drain is marked `[ExternalWrite]`, matching its Workspace mutations; its Hangfire entry receives a literal `CancellationToken.None`.
 - Successful outbox dispatch finishes its applicable Google-email status update before marking the event processed and counting success. A resource/status persistence failure keeps the event pending under the existing retry limit rather than closing it with an unreachable retry count.
 - Outbox retry and permanent-failure error text keeps at most 4000 UTF-16 code units, without splitting a Unicode surrogate pair. Retry counts and failure transitions are independent of truncation.
 - Permanent Google API errors (HTTP 400, 403, 404) mark outbox events as `FailedPermanently` and stop retrying immediately. Transient errors (5xx, 429, etc.) continue retrying up to the configured limit.

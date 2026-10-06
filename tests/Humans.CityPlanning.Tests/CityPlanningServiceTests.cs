@@ -76,20 +76,22 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
     // --- Tests ---
 
-    [HumansFact]
-    public async Task SaveCampPolygonAsync_FirstSave_CreatesBothPolygonAndHistory()
+    [HumansTheory]
+    [InlineData(0.0)]
+    [InlineData(500.0)]
+    public async Task SaveCampPolygonAsync_FirstSave_CreatesBothPolygonAndHistory(double areaSqm)
     {
         var campSeasonId = Guid.NewGuid();
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
 
-        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 500.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, areaSqm, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         var polygon = await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId, Xunit.TestContext.Current.CancellationToken);
         var history = await CityPlanningDb.CampPolygonHistories.AsNoTracking().SingleAsync(h => h.CampSeasonId == campSeasonId, Xunit.TestContext.Current.CancellationToken);
 
         polygon.GeoJson.Should().Be(geoJson);
-        polygon.AreaSqm.Should().Be(500.0);
+        polygon.AreaSqm.Should().Be(areaSqm);
         history.Note.Should().Be("Saved");
         history.ModifiedAt.Should().Be(Clock.GetCurrentInstant());
     }
@@ -143,6 +145,23 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("Invalid GeoJSON.*");
+        (await CityPlanningDb.CampPolygons.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansTheory]
+    [InlineData(-1.0)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public async Task SaveCampPolygonAsync_InvalidArea_RejectsWithoutSaving(double areaSqm)
+    {
+        const string geoJson = """{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}""";
+        var act = async () => await _sut.SaveCampPolygonAsync(
+            Guid.NewGuid(), geoJson, areaSqm, NewUserId(), cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("Area must be finite and non-negative.*");
         (await CityPlanningDb.CampPolygons.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
         (await CityPlanningDb.CampPolygonHistories.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }

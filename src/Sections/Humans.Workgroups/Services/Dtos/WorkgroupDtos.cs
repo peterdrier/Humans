@@ -39,6 +39,11 @@ internal sealed record WorkgroupInfo(
     public bool HasBudget => BudgetAmount is not null;
 }
 
+/// <summary>A working-group membership and its active period.</summary>
+/// <param name="Id">The membership’s identifier.</param>
+/// <param name="UserId">The member’s user identifier.</param>
+/// <param name="Role">The member’s role in the working group.</param>
+/// <param name="JoinedAt">When the membership began.</param>
 /// <param name="LeftAt">Null while the person is a current member.</param>
 internal sealed record WorkgroupMemberInfo(
     Guid Id,
@@ -142,6 +147,10 @@ internal sealed record WorkgroupMeetingSave(
     bool IsPublic,
     string? Minutes);
 
+/// <summary>A member-authored working-group log entry.</summary>
+/// <param name="OccurredOn">The date the logged event occurred.</param>
+/// <param name="Title">The optional entry title.</param>
+/// <param name="Body">The optional entry body.</param>
 /// <param name="Kind">A member kind only — Update, Disclosure, StatusRequested or Note. System kinds are the section's to write.</param>
 internal sealed record WorkgroupLogEntrySave(
     WorkgroupLogKind Kind,

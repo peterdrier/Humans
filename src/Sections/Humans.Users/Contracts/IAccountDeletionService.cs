@@ -41,7 +41,7 @@ public interface IAccountDeletionService : IOrchestrator
     /// Cancels a pending user-initiated deletion request by clearing the
     /// deletion fields on the user. Returns <c>NotFound</c> if the user
     /// does not exist; <c>NoDeletionPending</c> if no request is open.
-    /// UserInfo cache is refreshed via <see cref="IUserService.ClearDeletionAsync"/>.
+    /// UserInfo cache is refreshed via <see cref="Humans.Users.Services.IUserServiceInternal.ClearDeletionAsync"/>.
     /// </summary>
     Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default);
 
@@ -51,7 +51,7 @@ public interface IAccountDeletionService : IOrchestrator
     /// removed) and invalidates the caches that key off the user's identity
     /// (UserInfo, ActiveTeams, role-assignment claims, shift-authorization)
     /// so downstream consumers see the purged view before TTL expiry. Writes
-    /// an <see cref="Domain.Enums.AuditAction.AccountPurged"/> audit-log entry
+    /// an <see cref="Humans.AuditLog.Contracts.AuditAction.AccountPurged"/> audit-log entry
     /// keyed by <paramref name="actorId"/> (the admin running the purge) so
     /// the trail survives a subsequent right-of-access request. Returns
     /// <c>NotFound</c> if the user does not exist. Used by

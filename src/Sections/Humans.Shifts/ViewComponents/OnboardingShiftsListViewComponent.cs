@@ -11,7 +11,7 @@ namespace Humans.Shifts.ViewComponents;
 /// Contributed as the <c>IOnboardingShiftsStep.ShiftsList</c> Type from
 /// <c>SectionOnboarding</c>; invoked by <see cref="Type"/> from <c>Humans.Onboarding</c>'s
 /// <c>Views/OnboardingWidget/Shifts.cshtml</c> (nobodies-collective/Humans#1815). The caller
-/// has already filtered <paramref name="shifts"/> to the selected priority pill. It takes the
+/// has already filtered <c>shifts</c> to the selected priority pill. It takes the
 /// event by id, not as a DTO: the rota partials need this section's own
 /// <see cref="BurnSettingsInfo"/>.
 /// </remarks>

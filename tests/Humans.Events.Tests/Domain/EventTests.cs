@@ -192,8 +192,11 @@ public sealed class EventTests
         action.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    [HumansFact]
-    public void GetOccurrenceInstants_Recurring_UsesGateOpeningDayOffsets()
+    [HumansTheory]
+    [Xunit.InlineData("2,3", null)]
+    [Xunit.InlineData("invalid, 2, 3", null)]
+    [Xunit.InlineData("2,3", 3)]
+    public void GetOccurrenceInstants_Recurring_UsesGateOpeningDayOffsets(string recurrenceDays, int? dayOffset)
     {
         var timeZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var gateOpeningDate = new LocalDate(2026, 7, 5);
@@ -202,13 +205,16 @@ public sealed class EventTests
             .InZoneStrictly(timeZone)
             .ToInstant();
         guideEvent.IsRecurring = true;
-        guideEvent.RecurrenceDays = "2,3";
+        guideEvent.RecurrenceDays = recurrenceDays;
 
-        var occurrences = guideEvent.GetOccurrenceInstants(gateOpeningDate, timeZone);
+        var occurrences = guideEvent.GetOccurrenceInstants(gateOpeningDate, timeZone, dayOffset);
 
-        occurrences.Should().Equal(
-            new LocalDateTime(2026, 7, 7, 18, 30).InZoneStrictly(timeZone).ToInstant(),
-            new LocalDateTime(2026, 7, 8, 18, 30).InZoneStrictly(timeZone).ToInstant());
+        var july7 = new LocalDateTime(2026, 7, 7, 18, 30).InZoneStrictly(timeZone).ToInstant();
+        var july8 = new LocalDateTime(2026, 7, 8, 18, 30).InZoneStrictly(timeZone).ToInstant();
+        if (dayOffset == 3)
+            occurrences.Should().Equal(july8);
+        else
+            occurrences.Should().Equal(july7, july8);
     }
 
     [HumansFact]

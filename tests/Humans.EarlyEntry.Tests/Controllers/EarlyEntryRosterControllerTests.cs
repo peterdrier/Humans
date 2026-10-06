@@ -19,7 +19,7 @@ namespace Humans.EarlyEntry.Tests.Controllers;
 public class EarlyEntryRosterControllerTests
 {
     private readonly IEarlyEntryService _earlyEntryService = Substitute.For<IEarlyEntryService>();
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
 
     private EarlyEntryRosterController BuildSut()
     {

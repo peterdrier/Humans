@@ -2,7 +2,6 @@ using Humans.Base.Extensions;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Feedback.Services;
 using Humans.Feedback.Controllers;
@@ -60,7 +59,6 @@ public sealed class FeedbackServiceTests
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
-    private readonly INavBadgeCacheInvalidator _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly IFeedbackRepository _repository;
     private readonly FeedbackServiceImpl _service;
@@ -104,7 +102,7 @@ public sealed class FeedbackServiceTests
         _service = new FeedbackServiceImpl(
             _repository, userService, userEmailService, teamService,
             _emailService, _emailMessages, _notificationService,
-            _auditLog, _navBadge,
+            _auditLog, new NavBadgeCacheInvalidator(_cache),
             _fileStorage, _cache, Clock,
             NullLogger<FeedbackServiceImpl>.Instance);
     }
@@ -125,6 +123,20 @@ public sealed class FeedbackServiceTests
             .ToList();
 
         creators.Should().BeEmpty("no Feedback surface may expose a way to create a FeedbackReport");
+    }
+
+    [HumansTheory]
+    [InlineData(-1)]
+    [InlineData(999)]
+    public async Task UpdateStatusAsync_UndefinedStatus_PreservesStoredState(int status)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var report = await CreateTestReport();
+        var act = () => _service.UpdateStatusAsync(report.Id, (FeedbackStatus)status, Guid.NewGuid(), ct);
+
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>().WithMessage("Unknown feedback status.*");
+        (await FeedbackDb.FeedbackReports.AsNoTracking().SingleAsync(ct)).Status.Should().Be(FeedbackStatus.Open);
+        _auditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansTheory]
@@ -451,6 +463,8 @@ public sealed class FeedbackServiceTests
         FeedbackDb.FeedbackMessages.Add(foreignReply);
         await SaveAllAsync(ct);
 
+        (await _service.GetActionableCountAsync(ct)).Should().Be(1);
+
         using var erasureCancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var screenshotDeleted = false;
         _fileStorage.DeleteAsync("uploads/feedback/x/shot.png", Arg.Any<CancellationToken>())
@@ -463,6 +477,8 @@ public sealed class FeedbackServiceTests
             });
 
         await _service.EraseForUserAsync(erasedId, erasureCancellation.Token);
+
+        (await _service.GetActionableCountAsync(ct)).Should().Be(0, "erasure evicts the committed count");
 
         // Own report hard-deleted; its screenshot handed to IFileStorage.
         (await FeedbackDb.FeedbackReports.AsNoTracking().AnyAsync(r => r.UserId == erasedId, ct))

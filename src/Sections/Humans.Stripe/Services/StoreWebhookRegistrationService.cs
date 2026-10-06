@@ -157,7 +157,7 @@ internal sealed class StoreWebhookRegistrationService(
     private async Task DeleteObsoleteEndpointsAsync(
         WebhookEndpointService service, string ownWebhookUrl, CancellationToken ct)
     {
-        var openPrs = await TryListOpenPullRequestsAsync();
+        var openPrs = await TryListOpenPullRequestsAsync(ct);
 
         var ours = new List<WebhookEndpoint>();
 
@@ -223,7 +223,7 @@ internal sealed class StoreWebhookRegistrationService(
     /// cannot run — unconfigured, or GitHub unreachable. Null means "unknown", never "none":
     /// treating it as an empty set would delete every other preview's endpoint.
     /// </summary>
-    private async Task<ISet<int>?> TryListOpenPullRequestsAsync()
+    private async Task<ISet<int>?> TryListOpenPullRequestsAsync(CancellationToken ct)
     {
         var stripe = settings.Value;
         var github = githubSettings.Value;
@@ -237,10 +237,18 @@ internal sealed class StoreWebhookRegistrationService(
 
         try
         {
+            var client = new GitHubClient(new ProductHeaderValue("NobodiesHumans"))
+            {
+                Credentials = new Credentials(github.AccessToken),
+            };
             return await ListOpenPullRequestsAsync(
                 stripe.WebhookCleanupGitHubOwner,
                 stripe.WebhookCleanupGitHubRepository,
-                github.AccessToken);
+                client.PullRequest, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -251,17 +259,15 @@ internal sealed class StoreWebhookRegistrationService(
         }
     }
 
-    private static async Task<ISet<int>> ListOpenPullRequestsAsync(
-        string owner, string repo, string accessToken)
+    internal static async Task<ISet<int>> ListOpenPullRequestsAsync(
+        string owner, string repo, IPullRequestsClient client, CancellationToken ct)
     {
-        var client = new GitHubClient(new ProductHeaderValue("NobodiesHumans"))
-        {
-            Credentials = new Credentials(accessToken),
-        };
-        var prs = await client.PullRequest.GetAllForRepository(owner, repo, new PullRequestRequest
+        ct.ThrowIfCancellationRequested();
+        // Octokit's paged read has no token overload; bound the wait by the registrar deadline.
+        var prs = await client.GetAllForRepository(owner, repo, new PullRequestRequest
         {
             State = ItemStateFilter.Open,
-        });
+        }).WaitAsync(ct);
         return prs.Select(p => p.Number).ToHashSet();
     }
 

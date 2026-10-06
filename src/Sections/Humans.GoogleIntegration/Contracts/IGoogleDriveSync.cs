@@ -28,6 +28,7 @@ public interface IGoogleDriveSync
     /// admin-configured <c>SyncSettings</c> mode (None / AddOnly / AddAndRemove)
     /// for <see cref="SyncServiceType.GoogleDrive"/>.
     /// </param>
+    /// <param name="ct">Token used to cancel reconciliation.</param>
     [ExternalWrite]
     Task<SyncPreviewResult> ReconcileAllAsync(
         SyncAction action,

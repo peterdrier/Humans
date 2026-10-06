@@ -9,8 +9,8 @@ namespace Humans.Users.Contracts;
 ///
 /// <para>Precedence (most-final wins): Merged &gt; Deleted &gt; Rejected &gt;
 /// AdminSuspended/Suspended &gt; DeletePending &gt; Bare &gt; Active. Note GDPR deletion reuses the merge tombstone columns, so a
-/// GDPR-deleted row carries <c>MergedAt</c> too: <paramref name="isMerged"/> excludes it and
-/// <paramref name="isGdprDeleted"/> wins, classifying it as <see cref="UserState.Deleted"/>.</para>
+/// GDPR-deleted row carries <c>MergedAt</c> too: <c>isMerged</c> excludes it and
+/// <c>isGdprDeleted</c> wins, classifying it as <see cref="UserState.Deleted"/>.</para>
 ///
 /// <para>This is not a read-time access source; access reads the stored
 /// <see cref="User.State"/>. The classifier only produces the value to persist.</para>

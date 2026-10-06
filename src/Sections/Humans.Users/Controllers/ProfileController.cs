@@ -845,6 +845,11 @@ internal sealed class ProfileController(
             var user = await GetCurrentUserInfoAsync();
             if (user is null)
                 return Unauthorized();
+            if (!ModelState.IsValid)
+            {
+                logger.LogWarning("Rejected malformed communication preference update for {UserId}", user.Id);
+                return BadRequest(ModelState);
+            }
 
             if (category.IsAlwaysOn())
                 return BadRequest(localizer["Users_Profile_AlwaysOnCategoryCannotChange"].Value);

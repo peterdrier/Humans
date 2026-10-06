@@ -1,6 +1,11 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Calendar.Controllers;
+using Humans.Calendar.Domain;
+using Humans.Calendar.Data;
+using Humans.AuditLog.Contracts;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Humans.Calendar.Models;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
@@ -48,6 +53,209 @@ public class CalendarControllerICalTests
             .Returns(Array.Empty<CalendarOccurrence>());
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("explicit-max")]
+    [Xunit.InlineData("implicit-max")]
+    [Xunit.InlineData("valid")]
+    public async Task AllDayOccurrenceForm_RequiresARepresentableEffectiveEnd(string scenario)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var options = new DbContextOptionsBuilder<CalendarDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var repository = new CalendarRepository(new TestDbContextFactory<CalendarDbContext>(options));
+        var audit = Substitute.For<IAuditLogService>();
+        var calendar = new CalendarService(repository, new FakeClock(_now), audit, NullLogger<CalendarService>.Instance);
+        var id = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        await repository.AddAsync(new CalendarEvent
+        {
+            Id = id,
+            Title = "Daily",
+            OwningTeamId = teamId,
+            IsAllDay = true,
+            StartDate = new LocalDate(2026, 6, 1),
+            EndDateExclusive = new LocalDate(2026, 6, 2),
+            RecurrenceRule = "FREQ=DAILY",
+            CreatedByUserId = _viewer,
+            CreatedAt = _now,
+            UpdatedAt = _now
+        }, ct);
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Daily", null, null, null, teamId, null, null,
+            IsAllDay: true, RecurrenceRule: "FREQ=DAILY", RecurrenceTimezone: null, _now, _now));
+        var implicitEnd = string.Equals(scenario, "implicit-max", StringComparison.Ordinal);
+        var valid = string.Equals(scenario, "valid", StringComparison.Ordinal);
+        var form = new OccurrenceOverrideFormViewModel
+        {
+            OverrideStartDateLocal = new DateTime(9999, 12, implicitEnd ? 31 : 30),
+            OverrideEndDateLocal = implicitEnd ? null : new DateTime(9999, 12, valid ? 30 : 31),
+            RecurrenceTimezone = "UTC"
+        };
+        var controller = CreateController(calendar);
+
+        var result = await controller.EditOccurrence(id, "2026-06-02", form, ct);
+        var saved = await repository.GetEventByIdAsync(id, ct);
+
+        if (valid)
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            saved!.Exceptions.Should().ContainSingle().Which.OverrideEndDateExclusive
+                .Should().Be(new LocalDate(9999, 12, 31));
+            audit.ReceivedCalls().Should().ContainSingle();
+        }
+        else
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
+            controller.ModelState[string.Empty]!.Errors.Should().ContainSingle()
+                .Which.ErrorMessage.Should().Be("Calendar_InvalidOccurrenceOverride");
+            saved!.Exceptions.Should().BeEmpty();
+            audit.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, "blank")]
+    [Xunit.InlineData(true, "blank")]
+    [Xunit.InlineData(false, "last")]
+    [Xunit.InlineData(true, "last")]
+    [Xunit.InlineData(false, "valid")]
+    [Xunit.InlineData(true, "valid")]
+    public async Task AllDayForms_RequireARepresentableExclusiveEnd(bool edit, string endKind)
+    {
+        var id = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(
+            new TeamInfo(teamId, "Team", null, "team", true, false, SystemTeamType.None,
+                false, false, false, false, _now, []));
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Existing", null, null, null, teamId, null, null,
+            IsAllDay: true, RecurrenceRule: null, RecurrenceTimezone: null, _now, _now));
+        var saved = new CalendarEvent { Id = id, Title = "Last day", OwningTeamId = teamId, IsAllDay = true };
+        _calendar.CreateEventWithResultAsync(Arg.Any<CreateCalendarEventDto>(), _viewer, Arg.Any<CancellationToken>())
+            .Returns(CalendarEventMutationResult.Success(saved));
+        _calendar.UpdateEventWithResultAsync(id, Arg.Any<CreateCalendarEventDto>(), _viewer, Arg.Any<CancellationToken>())
+            .Returns(CalendarEventMutationResult.Success(saved));
+        var form = new CalendarEventFormViewModel
+        {
+            Title = "Last day",
+            OwningTeamId = teamId,
+            IsAllDay = true,
+            StartDateLocal = new DateTime(9999, 12, string.Equals(endKind, "blank", StringComparison.Ordinal) ? 31 : 30),
+            EndDateLocal = string.Equals(endKind, "blank", StringComparison.Ordinal) ? null
+                : new DateTime(9999, 12, string.Equals(endKind, "valid", StringComparison.Ordinal) ? 30 : 31)
+        };
+        var controller = CreateController();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var result = edit ? await controller.Edit(id, form, ct) : await controller.Create(form, ct);
+
+        if (string.Equals(endKind, "valid", StringComparison.Ordinal))
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            if (edit) await _calendar.Received(1).UpdateEventWithResultAsync(id,
+                Arg.Is<CreateCalendarEventDto>(d => d.EndDateExclusive == new LocalDate(9999, 12, 31)), _viewer, ct);
+            else await _calendar.Received(1).CreateEventWithResultAsync(
+                Arg.Is<CreateCalendarEventDto>(d => d.EndDateExclusive == new LocalDate(9999, 12, 31)), _viewer, ct);
+        }
+        else
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
+            controller.ModelState[nameof(form.EndDateLocal)]!.Errors.Should().ContainSingle()
+                .Which.ErrorMessage.Should().Be("Calendar_InvalidAllDayEvent");
+            _calendar.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(2026, 0)]
+    [Xunit.InlineData(2026, 13)]
+    [Xunit.InlineData(int.MaxValue, 6)]
+    [Xunit.InlineData(int.MinValue, 6)]
+    [Xunit.InlineData(0, 6)]
+    [Xunit.InlineData(9999, 12)]
+    public async Task MonthPages_InvalidQuery_RejectBeforeReadingEventsOrMintingFeed(int year, int month)
+    {
+        var teamId = Guid.NewGuid();
+        _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(
+            new TeamInfo(teamId, "Team", null, "team", true, false, SystemTeamType.None,
+                false, false, false, false, Instant.MinValue, []));
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        (await CreateController().Index(year, month, null, ct)).Should().BeOfType<BadRequestResult>();
+        (await CreateController().List(year, month, null, ct)).Should().BeOfType<BadRequestResult>();
+        (await CreateController().Team(teamId, year, month, ct)).Should().BeOfType<BadRequestResult>();
+        _calendarRead.ReceivedCalls().Should().BeEmpty();
+        _feedTokens.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task MonthPages_BindingFailure_DoesNotSilentlyUseTheCurrentMonth()
+    {
+        var controller = CreateController();
+        controller.ModelState.AddModelError("month", "Not a number.");
+
+        (await controller.Index(null, null, null, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeOfType<BadRequestResult>();
+        _calendarRead.ReceivedCalls().Should().BeEmpty();
+        _feedTokens.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(1, 2)]
+    [Xunit.InlineData(9999, 11)]
+    public async Task MonthPages_RepresentableBoundaryMonths_RemainAvailable(int year, int month)
+    {
+        var result = await CreateController().Index(year, month, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<CalendarMonthViewModel>()
+            .Which.Month.Should().Be(new YearMonth(year, month));
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("binding")]
+    [Xunit.InlineData("reversed")]
+    [Xunit.InlineData("minimum")]
+    [Xunit.InlineData("maximum")]
+    public async Task Agenda_InvalidRange_RejectsBeforeReadingEvents(string failure)
+    {
+        var controller = CreateController();
+        DateTime? from = new DateTime(2026, 6, 1);
+        DateTime? to = new DateTime(2026, 6, 2);
+        switch (failure)
+        {
+            case "binding":
+                controller.ModelState.AddModelError("from", "Not a date.");
+                from = null;
+                break;
+            case "reversed":
+                to = from.Value.AddDays(-1);
+                break;
+            case "minimum":
+                from = DateTime.MinValue;
+                break;
+            case "maximum":
+                to = DateTime.MaxValue;
+                break;
+        }
+
+        (await controller.Agenda(from, to, null, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeOfType<BadRequestResult>();
+        _calendarRead.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(1, 1, 2)]
+    [Xunit.InlineData(2026, 6, 1)]
+    [Xunit.InlineData(9999, 12, 29)]
+    public async Task Agenda_ValidSameDayRange_IncludesTheWholeDay(int year, int month, int day)
+    {
+        var date = new DateTime(year, month, day);
+        var result = await CreateController().Agenda(date, date, null, Xunit.TestContext.Current.CancellationToken);
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<CalendarAgendaViewModel>().Subject;
+        var zone = DateTimeZoneProviders.Tzdb[model.ViewerTimezoneLabel];
+        model.FromUtc.InZone(zone).Date.Should().Be(LocalDate.FromDateTime(date));
+        model.ToUtc.InZone(zone).Date.Should().Be(LocalDate.FromDateTime(date.AddDays(1)));
     }
 
     [HumansFact]
@@ -272,7 +480,7 @@ public class CalendarControllerICalTests
             .Which.Model.Should().BeOfType<CalendarMonthViewModel>().Subject;
     }
 
-    private CalendarController CreateController()
+    private CalendarController CreateController(ICalendarService? calendar = null)
     {
         var localizer = Substitute.For<IStringLocalizer<CalendarResource>>();
         localizer[Arg.Any<string>()].Returns(c => new LocalizedString((string)c[0], (string)c[0]));
@@ -290,10 +498,11 @@ public class CalendarControllerICalTests
             _users,
             _feedTokens,
             _calendarRead,
-            _calendar,
+            calendar ?? _calendar,
             _teams,
             new FakeClock(_now),
-            localizer)
+            localizer,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CalendarController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),

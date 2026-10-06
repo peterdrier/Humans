@@ -1,6 +1,9 @@
 # Nightly Debt Ladder
 
-A standing, top-down list of **work types**, not a nightly checklist. Make a
+A standing, top-down list of **work types**, not a nightly checklist. Open
+ledger rows come first: the rungs order and explain the work on them, and
+their Finds commands look for new debt only once no ledger row is actionable.
+The ledger must end every run smaller than it started (`daily-debt.md`). Make a
 brief rung-1 hygiene pass, then work substantive rungs top-down. After every
 fix, continue with another safe candidate until the work window elapses;
 then finish the current task. One run produces one PR containing all fixes.
@@ -11,8 +14,11 @@ Guardrails, working loop, and the timed-goal/commit protocol live in
 mechanics: what it is, how to find tonight's candidates, how to tell the rung
 is drained, and the done-check.
 
-**Every rung obeys `daily-debt.md`'s guardrails without exception** — public
-surface needs Peter's approval (skip, don't add it), one coherent fix or
+**Every rung obeys `daily-debt.md`'s guardrails without exception** — and
+`memory/process/debt-sweep-standing-policy.md` (D1–D13): rule-prescribed
+contract changes are pre-approved and listed in the PR (D1), `internal` types
+are never public surface (D2), a new interface/service/endpoint still goes to
+Peter in D3 format, no category-bin skips (D4); one coherent fix or
 same-correction batch per commit (possibly across sections), six cultures,
 migrations only via `dotnet ef migrations add`, never touch `NoDestructiveMigrationOps.baseline.txt` or a `[DontFix]` class.
 
@@ -21,10 +27,14 @@ an item by its id everywhere — in the PR body, in commit messages, in this fil
 by `file:line` only for a baseline/props entry, which has no ledger row. The PR body **must** list
 the ids it closed.
 
-**Seed lists below are dated 2026-09-20** (from a full-corpus audit). Verify
+**Seed lists below are dated 2026-09-20** (from a full-corpus audit; Rungs
+3, 5 and 6 corrected 2026-10-06). Seeds and counts are not facts (D10):
+re-derive them from each rung's Finds/detector every night, and fix any stale
+text in this file in the same PR. Verify
 each is still true before touching it — code moves fast and a seed item that's
 already fixed is rung-1 work (close it), not rung-N work. Once a rung's seed
-list is exhausted, fall back to its **Finds** command for anything filed since.
+list is exhausted, work the open ledger rows that rung covers, then its
+**Finds** command for anything not yet in a ledger.
 
 ---
 
@@ -84,11 +94,11 @@ dates, or ones whose `what:` describes a "stale comment"/"doc says X" pattern
   this file is prose). Three are known to be overstated:
   `obsolete-user-displayname`, `baseline-display-sort`, and
   `cs0618-pragma-nav-reads` — the last badly, since `Humans.Infrastructure`
-  no longer exists and its share of that count went with it. Also rewrite
-  the `grandfathered-hum0024-nav-strip` note: the C#-side navs are gone (the
-  G5 split moved every config into its owning section) and the only residue
-  is cross-section FK constraints in the schema, which is separate migration
-  work, not sweep work.
+  no longer exists and its share of that count went with it. Theme
+  bookkeeping (D11): add a missing `parked:` key where a theme's notes cite
+  Peter parking it; delete a retired theme that has no analyzer to re-seed
+  it (e.g. `grandfathered-hum0024-nav-strip` — its FK-constraint residue is
+  destructive schema work, a GH issue per D9, not sweep work).
 
 **Cap:** this rung never fully drains, so it could otherwise eat the whole
 night and starve every rung below it. Spend at most ~15% of tonight's budget
@@ -140,44 +150,20 @@ burning nights on instances one at a time. A sibling process is adding a
 `root:` link to symptom rows pointing at their cause — once present, prefer
 any `root:` cluster with ≥2 live members over an isolated row.
 
-**Root A — doc/comment/freshness drift after a section move or read-split.**
-Several ledger rows, same cause: nothing re-verifies a doc or freshness-trigger
-block when the code it describes moves. The actual root-cause *bug*, not
-just the symptom pattern: `docs/scripts/freshness-checks/dependency-graph.sh`
-uses `asorti` (gawk-only) but the runner's `awk` is `mawk` — the script dies
-mid-run and still prints `PASS`, so freshness drift is going undetected
-today. Fix that script first (swap `asorti` for a portable sort) — it's the
-lever that catches future instances of this whole row-class automatically.
+**Root A — doc/comment/freshness drift — drained.** The freshness-script
+`mawk`/`asorti` bug is fixed and no `root: CENTRAL-57` symptom rows remain.
+A write-time drift detector is a CI/check proposal — close such rows outright
+(D5), don't build one. Batch any newly found stale-doc rows as one-line text
+fixes (no `src/` change).
 ```
-bash docs/scripts/freshness-checks/dependency-graph.sh   # reproduces the false PASS
+grep -rn "root: " docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml
 ```
-Then, in the *same* PR if time allows (same theme: "doc freshness"), close a
-batch of the stale-doc rows themselves — they're independent one-line text
-fixes, safe to batch because none touch `src/`. The cluster is linked by
-`root: CENTRAL-57` — grep that directly rather than the word "freshness",
-which also matches unrelated Gdpr/Tickets ledger rows and misses the linked
-Development ledger row:
-```
-grep -rln "root: CENTRAL-57" docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml
-```
-Seed instances (2026-09-20, verify first): `docs/guide/Glossary.md` (no
-"assembly vote" entry), `dependency-graph.md` (duplicate `classDef monitor`;
-misclassifies Backdoor as a crosscut; names non-existent `TicketVendorService`),
-`freshness-catalog.yml` (missing Settings entry; missing Backdoor entry; no
-`Section.cs` trigger), `debt-ledger.yml`'s own HUM0028 note ("EF interceptor"
-→ direct `InvalidateAll()` calls since nobodies-collective/Humans#751), `G5-SECTION-TEMPLATE.md` (wrong
-`EmailRenderer` path; wrong "design §8" citation in several `Section.cs` files),
-`design-rules.md` (only one GDPR download route named; wrong thread-safety
-reason; wrong contributor mechanism/`AgentService` example), `.claude/skills/test-site/SKILL.md`
-(stale `/Profile/Emails` routes), `.claude/skills/section-align/SKILL.md`
-(wrong "Gdpr has no Controllers/" claim), `section-conformance.yml` (stale
-"no Docs/" note for Settings/TicketTailor).
 
-**Drained when:** the freshness script fix has landed and root-A's grep
-returns no live rows. Coverage-only clusters are not nightly work.
+**Drained when:** the grep above returns no `root:` cluster with ≥2 live
+members. Coverage-only clusters are not nightly work.
 
-**Done-check:** rerun the freshness script and confirm it no longer dies
-under `mawk`. Doc corrections require no build.
+**Done-check:** the build/test gate of whatever the cluster fix touched; doc
+corrections require no build.
 
 ---
 
@@ -239,16 +225,12 @@ For each line: find the method's caller(s) — **read the consumer first**,
 don't just delete the sort. A prior PR (peterdrier/Humans#1002) had to revert two premature
 deletions where the view rendered in repo order with no re-sort.
 
-**Seed — doable tonight without new public surface:** `GoogleResourceRepository`,
-`CampRepository.Roles.cs`, `CampaignRepository`.
+**Seed:** the `TeamRepository` rows (`GetAllRoleDefinitionsAsync`). Add a
+`SortOrder` field to `TeamRosterSlotSummary` and sort in the consumer's VM
+path. `TeamRosterSlotSummary` is `internal sealed`
+(`ITeamManagementService.cs`), so this is not public surface (D2) — do it.
 
-**Blocked, skip-and-note (needs Peter's approval, not tonight's job):** the
-`TeamRepository` rows need a `SortOrder` field added to
-`TeamRosterSlotSummary` — that's new public DTO surface. Skip per
-`daily-debt.md`'s public-surface rule; note it so nobody re-derives this.
-
-**Drained when:** the grep above (minus TicketRepository, minus the
-TeamRepository rows) returns nothing.
+**Drained when:** the grep above (minus TicketRepository) returns nothing.
 
 **Done-check:** `dotnet test tests/Humans.Web.Tests -v quiet -clp:ErrorsOnly --filter DisplaySortInControllers` — baseline shrinks by exactly the lines you removed, nothing else changes.
 
@@ -257,9 +239,11 @@ TeamRepository rows) returns nothing.
 ## Rung 6 — Dead-or-duplicate code
 
 **What:** Confirmed-dead code (zero call sites, a duplicate private helper,
-an unused enum flag) with no public-surface change. Larger "god class" /
-"duplicate mutation pipeline" rows are Peter's-call — skip those, they need
-a public interface reshape.
+an unused enum flag) with no public-surface change. A "duplicate mutation
+pipeline" collapsed into one owner-section method replacing ≥2 identical
+caller sequences is pre-approved (D1) — do it and list it in the PR, as is a section-internal
+split into a new `internal` class (D1). Only a "god class" split needing a NEW interface or service goes to Peter, as a D3
+yes/no proposal with the concrete signatures.
 
 **Finds:** `review: light` rows mentioning dead/duplicate code:
 ```
@@ -272,8 +256,6 @@ grep -B1 -A1 "review: light" docs/architecture/debt-ledger.yml src/Sections/*/Do
   (outer class + nested `UserHoldingsCache`), same name and shape.
 - `Humans.Shifts` — `ShiftBrowseQueryFlags.PriorityOnly` is read once, set
   nowhere — confirmed dead flag.
-- `Humans.MailerLite` — `MailerLiteDateConverter` is registered but nothing
-  routes through it (hand-rolled `ParseDate` duplicates its logic instead).
 - `Humans.Email` — `reportLink` is a dead parameter end-to-end in the
   feedback-reply email (resx uses `{0}`–`{2}`, renderer passes an unused `{3}`).
 - Central `inbox:` — `Login_Hello` resx key named in no view/controller/tag
@@ -345,6 +327,12 @@ etc. is not one — leave it).
 
 ## Permanently off the ladder
 
+- **Not debt (policy D6–D9) — close such rows, never add them:** tests that
+  merely pin behaviour or inventory missing tests; analyzer/inventory checks
+  for judgment calls; admin-timed operational races and slow-but-working
+  admin pages; destructive schema work (GH issue). Integration-test
+  flakiness is a GH issue. Hangfire compat shims/type remaps/migrations
+  (D13): jobs re-register at startup — delete the shim, never add one.
 - **Standalone test work:** missing coverage, controller-policy pins, test
   scaffolding, test helpers, and test-suite expansion are not sweep objectives.
   Add or update a focused test when a production fix warrants it, as part of

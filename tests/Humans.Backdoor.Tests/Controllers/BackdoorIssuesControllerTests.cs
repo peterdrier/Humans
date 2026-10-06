@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Backdoor.Controllers;
@@ -28,6 +30,25 @@ public class BackdoorIssuesControllerTests
     private readonly IIssueTriage _issues = Substitute.For<IIssueTriage>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly BackdoorIssuesController _sut;
+
+    [HumansTheory]
+    [InlineData(-1, false)]
+    [InlineData(999, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    public void Json_triage_models_validate_defined_enum_values(int value, bool valid)
+    {
+        var status = JsonSerializer.Deserialize<UpdateIssueStatusModel>("{\"Status\":" + value + "}")!;
+        var create = JsonSerializer.Deserialize<ApiCreateIssueModel>("{\"Category\":" + value + "}")!;
+        var feedback = JsonSerializer.Deserialize<UpdateFeedbackStatusModel>("{\"Status\":" + value + "}")!;
+        create.ReporterUserId = KeyOwnerId;
+        create.Title = "Title";
+        create.Description = "Description";
+
+        Validator.TryValidateObject(status, new ValidationContext(status), [], validateAllProperties: true).Should().Be(valid);
+        Validator.TryValidateObject(create, new ValidationContext(create), [], validateAllProperties: true).Should().Be(valid);
+        Validator.TryValidateObject(feedback, new ValidationContext(feedback), [], validateAllProperties: true).Should().Be(valid);
+    }
 
     public BackdoorIssuesControllerTests()
     {

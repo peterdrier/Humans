@@ -4,20 +4,10 @@ version: 1
 next_id: 7
 inbox:
   - added: 2026-08-25
-    id: STORE-2
-    what: "The store_treasury_sync_state table, its Domain/TreasurySyncState entity, Data/Configurations/TreasurySyncStateConfiguration.cs and its DbSet all ship with no code that reads or writes them — this run deleted the two unused repository accessors, and no sync job was ever built. The matching key the job was designed around (Order.Label) was abolished in #816, so the design it exists for no longer works as specified. Either the job gets built or the table gets a drop migration; a table nobody writes is a third state nobody chose. Found by /section-doctor on Store 2026-08-25."
-    review: panel
-  - added: 2026-08-25
     id: STORE-3
-    what: "Services/Service.cs is 1367 lines — the section's maxClassLoc and its only large class. It carries catalog CRUD, the order lifecycle, the Stripe payment state machine, Stripe reconciliation, the Holded issuance pipeline and the summary aggregation. Issuance alone (create + approve + adopt-a-recovered-document) is a cohesive concern with its own test class behind it and would split out without touching the others. Found by /section-doctor on Store 2026-08-25."
-    review: panel
-  - added: 2026-09-29
-    id: STORE-5
-    what: "Store persists enums as ints — store_orders.State (OrderState), store_payments.Method (PaymentMethod) and store_treasury_sync_state.SyncStatus (TreasurySyncStatus) — against the string-storage rule. Method is mid-migration: a string MethodName twin is dual-written and /Store/Admin/PaymentMethods fills old rows; once it reports none left, switch readers to MethodName and drop Method (destructive — needs Peter's per-case approval). State and SyncStatus need the same add-column / dual-write / repair-screen path. Found while adding deposit returns and refunds, 2026-09-29."
+    what: "Services/Service.cs is 1367 lines — the section's maxClassLoc and its only large class. It carries catalog CRUD, the order lifecycle, the Stripe payment state machine, Stripe reconciliation, the Holded issuance pipeline and the summary aggregation. Issuance alone (create + approve + adopt-a-recovered-document) is a cohesive concern with its own test class behind it and would split out without touching the others. Found by /section-doctor on Store 2026-08-25. Plan: extract into an internal class in this section (StoreInvoiceIssuer); pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel
   - added: 2026-10-04
     id: STORE-6
-    what: "Services/Service.cs GetOrderPageDataAsync selects the active event's catalog for editable historical orders, while Store.md defines Order.Year as the catalog year. AddLineAsync accepts any active product without checking its year; its legacy Year=0 repair runs after the line write. Historical Open orders can therefore acquire products from a different event year. Found during the daily debt sweep."
+    what: "Services/Service.cs GetOrderPageDataAsync selects the active event's catalog for editable historical orders, while Store.md defines Order.Year as the catalog year. AddLineAsync accepts any active product without checking its year; its legacy Year=0 repair runs after the line write. Historical Open orders can therefore acquire products from a different event year. Found during the daily debt sweep. Plan (follows Store.md's Order.Year rule): GetOrderPageDataAsync offers the catalog of Order.Year; AddLineAsync runs the existing audited Year=0 repair before validating, then refuses a product whose year differs from the order's (and refuses outright if the repair cannot resolve the year), writing nothing on refusal; section-internal, no public surface."
     review: panel
-    status: needs-detail
-    blocked_on: "Agree how editable historical orders select products and how unresolved legacy Year=0 orders behave, preserving the audited repair path without mutating rejected requests."

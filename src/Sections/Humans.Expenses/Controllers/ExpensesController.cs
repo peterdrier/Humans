@@ -172,9 +172,6 @@ internal sealed class ExpensesController(
                 ? $"{category.BudgetGroup?.Name} / {category.Name}"
                 : localizer["Expenses_Detail_UnknownCategory"].Value;
             var isSubmitter = report.SubmitterUserId == user.Id;
-            var canWithdraw = report.Status is ExpenseReportStatus.Submitted
-                or ExpenseReportStatus.CoordinatorEndorsed
-                or ExpenseReportStatus.Approved;
             var canEdit = await AllowsAsync(report, ExpenseReportOperation.Edit);
             // Always the *report's* IBAN state, never the viewer's — an admin setting it up for a
             // member needs the member's answer.
@@ -197,7 +194,7 @@ internal sealed class ExpensesController(
                 CategoryDisplayName = categoryName,
                 CanEdit = canEdit,
                 CanSubmit = await AllowsAsync(report, ExpenseReportOperation.Submit),
-                CanWithdraw = isSubmitter && canWithdraw,
+                CanWithdraw = await AllowsAsync(report, ExpenseReportOperation.Withdraw),
                 IsSubmitter = isSubmitter,
                 HasIban = iban.HasIban,
                 MaskedIban = iban.MaskedIban,
@@ -497,9 +494,8 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid id)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id);
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Withdraw);
         if (errorResult is not null) return errorResult;
-        if (report.SubmitterUserId != user.Id) return Forbid();
 
         var result = await service.WithdrawWithResultAsync(id, user.Id);
         SetMutationResult(result, localizer["Expenses_Flash_ReportWithdrawn"], localizer["Expenses_Flash_WithdrawFailed"]);
@@ -863,6 +859,7 @@ internal sealed class ExpensesController(
         model.Categories = await BuildCategoryOptionsAsync(report);
     }
 
+    /// <summary>Category options from the report’s accounting year or the active year.</summary>
     /// <param name="report">
     /// When given and already submitted, the options come from the budget year that report is
     /// booked to rather than the active one — offering this year's categories on last year's

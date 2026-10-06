@@ -1,4 +1,4 @@
-using System.Globalization;
+using Humans.Events.Services;
 using NodaTime;
 
 namespace Humans.Events.Contracts;
@@ -45,23 +45,8 @@ public sealed record ApprovedEventView(
 {
     /// <summary>
     /// Expands this approved event into concrete occurrence instants.
-    /// Mirrors <c>Event.GetOccurrenceInstants</c>.
     /// </summary>
-    public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate gateOpeningDate, DateTimeZone timeZone)
-    {
-        if (!IsRecurring || string.IsNullOrWhiteSpace(RecurrenceDays))
-            return [StartAt];
-
-        var startLocal = StartAt.InZone(timeZone);
-
-        return RecurrenceDays
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(token => int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var d) ? (int?)d : null)
-            .Where(d => d.HasValue)
-            .Select(d => gateOpeningDate.PlusDays(d!.Value)
-                .At(startLocal.TimeOfDay)
-                .InZoneLeniently(timeZone)
-                .ToInstant())
-            .ToList();
-    }
+    public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate gateOpeningDate, DateTimeZone timeZone) =>
+        EventRecurrenceDays.GetOccurrenceInstants(
+            StartAt, IsRecurring, RecurrenceDays, gateOpeningDate, timeZone);
 }

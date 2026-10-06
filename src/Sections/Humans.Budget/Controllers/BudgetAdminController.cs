@@ -293,6 +293,12 @@ internal sealed class BudgetAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed budget group form for {GroupOrYearId}", budgetYearId);
+            return BadRequest(ModelState);
+        }
+
         try
         {
             await budgetService.CreateGroupAsync(budgetYearId, name, isRestricted, user.Id);
@@ -313,6 +319,12 @@ internal sealed class BudgetAdminController(
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed budget group form for {GroupOrYearId}", id);
+            return BadRequest(ModelState);
+        }
 
         try
         {
@@ -357,6 +369,12 @@ internal sealed class BudgetAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed budget category form for {EntityId}", budgetGroupId);
+            return BadRequest(ModelState);
+        }
+
         try
         {
             await budgetService.CreateCategoryAsync(budgetGroupId, name, allocatedAmount, expenditureType, teamId, user.Id);
@@ -378,6 +396,12 @@ internal sealed class BudgetAdminController(
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed budget category form for {EntityId}", id);
+            return BadRequest(ModelState);
+        }
 
         try
         {
@@ -422,6 +446,12 @@ internal sealed class BudgetAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed budget line item form for {EntityId}", budgetCategoryId);
+            return BadRequest(ModelState);
+        }
+
         var nodaDate = expectedDate.HasValue ? LocalDate.FromDateTime(expectedDate.Value) : (LocalDate?)null;
 
         try
@@ -445,6 +475,12 @@ internal sealed class BudgetAdminController(
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed budget line item form for {EntityId}", id);
+            return BadRequest(ModelState);
+        }
 
         var nodaDate = expectedDate.HasValue ? LocalDate.FromDateTime(expectedDate.Value) : (LocalDate?)null;
 

@@ -21,6 +21,9 @@ internal static class EmailInfrastructureExtensions
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
         services.PostConfigure<EmailSettings>(settings =>
         {
+            // Link builders append their own route separator.
+            settings.BaseUrl = settings.BaseUrl.TrimEnd('/');
+
             if (settings.FromAddress.Contains("noreply", StringComparison.OrdinalIgnoreCase))
             {
                 // Log at startup so operators notice the misconfiguration immediately.

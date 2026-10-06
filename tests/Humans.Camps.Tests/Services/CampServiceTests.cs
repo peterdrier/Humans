@@ -1,4 +1,6 @@
 using Humans.Base.Helpers;
+using Humans.Base.Caching;
+using Microsoft.Extensions.Caching.Memory;
 using Humans.Base.Interfaces;
 using Xunit;
 using System.Text;
@@ -27,6 +29,7 @@ public sealed class CampServiceTests : CampsTestHarness
 {
     private readonly CampService _service;
     private readonly InMemoryFileStorage _fileStorage;
+    private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator = Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>();
     private readonly ICampRoleService _campRoleService;
     private readonly ICityPlanningService _cityPlanningService;
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
@@ -62,7 +65,7 @@ public sealed class CampServiceTests : CampsTestHarness
             Substitute.For<ISystemTeamSync>(),
             _fileStorage,
             Notifier,
-            Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
+            _leadBadgeInvalidator,
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningService>(() => _cityPlanningService),
             _earlyEntryInvalidator,
@@ -129,6 +132,39 @@ public sealed class CampServiceTests : CampsTestHarness
 
         _earlyEntryInvalidator.Received(1).InvalidateUser(source);
         _earlyEntryInvalidator.Received(1).InvalidateUser(target);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MembershipFoldOrErasure_EvictsOtherLeadsPendingRequestBadge(bool merge)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        await SeedUserAsync(source, "Source");
+        await SeedUserAsync(target, "Target");
+        await _service.RequestCampMembershipAsync(camp.Id, source, ct);
+        await _service.RequestCampMembershipAsync(camp.Id, target, ct);
+        var lead = camp.CreatedByUserId;
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var invalidator = new CampLeadJoinRequestsBadgeCacheInvalidator(cache);
+        _leadBadgeInvalidator.When(x => x.Invalidate(Arg.Any<Guid>()))
+            .Do(call => invalidator.Invalidate(call.Arg<Guid>()));
+        var badgeKey = CacheKeys.CampLeadJoinRequestsBadge(lead);
+        cache.Set(badgeKey, 2);
+
+        if (merge)
+            await _service.ReassignAsync(source, target, Guid.NewGuid(), Clock.GetCurrentInstant(), ct);
+        else
+            await _service.EraseForUserAsync(source, ct);
+
+        (await CampsDb.CampMembers.AsNoTracking().CountAsync(m => m.Status == CampMemberStatus.Pending, ct))
+            .Should().Be(1);
+        cache.TryGetValue<int>(badgeKey, out _).Should().BeFalse();
     }
 
     // ==========================================================================

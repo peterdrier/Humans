@@ -99,12 +99,9 @@ internal sealed class ExpenseReportService(
                 report.HoldedSupplierAccountNum, ct);
 
             var memberReports = await repo.GetForSubmitterAsync(report.SubmitterUserId, ct);
-            // A report with Holded docs is booked as payables in Holded (the purchase docs are created
-            // at outbox-drain time), so it contributes to the creditor balance from Approved onward.
-            // Approved is the report's terminal state — paid/unpaid is read from the account ledger, never the report.
-            memberRegisteredTotal = memberReports
-                .Where(r => r.Status is ExpenseReportStatus.Approved)
-                .Sum(RegisteredAmount);
+            // Withdrawal does not undo a Holded booking. Count the actual documents regardless of
+            // report status; RegisteredAmount excludes lines that have not been pushed yet.
+            memberRegisteredTotal = memberReports.Sum(RegisteredAmount);
 
             owed = status?.OwedToMember ?? 0m;
             totalPaid = status?.TotalPaid ?? 0m;
@@ -724,18 +721,6 @@ internal sealed class ExpenseReportService(
         await repo.SetLineAttachmentAsync(lineId, null, ct);
         await repo.RemoveAttachmentAsync(line.Attachment.Id, ct);
 
-        try
-        {
-            await fileStorage.DeleteAsync(
-                AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex,
-                "Could not delete attachment file {AttachmentId} for line {LineId}",
-                line.Attachment.Id, lineId);
-        }
-
         await auditLogService.LogAsync(
             AuditAction.ExpenseAttachmentRemoved,
             AuditEntityTypes.Report, reportId,
@@ -743,6 +728,20 @@ internal sealed class ExpenseReportService(
             actorUserId,
             relatedEntityId: report.SubmitterUserId,
             relatedEntityType: AuditEntityTypes.User);
+
+        // Post-commit cleanup: metadata and audit are written, so request cancellation
+        // must not strand the file.
+        try
+        {
+            await fileStorage.DeleteAsync(
+                AttachmentKey(line.Attachment.Id, line.Attachment.Extension), CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Could not delete attachment file {AttachmentId} for line {LineId}",
+                line.Attachment.Id, lineId);
+        }
     }
 
     internal async Task<bool> SubmitAsync(
@@ -1338,7 +1337,7 @@ internal sealed class ExpenseReportService(
                         "Transient error processing Holded outbox event {OutboxEventId} — attempt {Attempt}/{MaxRetries}, retrying at {NextRetryAt}",
                         outboxEvent.Id, attempts, MaxOutboxRetries, nextRetryAt);
                     await repo.IncrementOutboxRetryAsync(
-                        outboxEvent.Id, ex.Message, nextRetryAt, ct);
+                        outboxEvent.Id, BoundOutboxError(ex.Message), nextRetryAt, ct);
                 }
             }
             catch (HoldedPermanentException ex)
@@ -1361,6 +1360,7 @@ internal sealed class ExpenseReportService(
     private async Task WriteOffOutboxEventAsync(
         HoldedExpenseOutboxEvent outboxEvent, string error, CancellationToken ct)
     {
+        error = BoundOutboxError(error);
         await repo.MarkOutboxFailedPermanentlyAsync(
             outboxEvent.Id, error, clock.GetCurrentInstant(), ct);
 
@@ -1369,6 +1369,17 @@ internal sealed class ExpenseReportService(
             AuditEntityTypes.Report, outboxEvent.ExpenseReportId,
             $"Holded push failed permanently: {error}",
             OutboxJobName);
+    }
+
+    // Fits the outbox's varchar(2000) and the prefixed audit description; logs retain the exception.
+    private static string BoundOutboxError(string error)
+    {
+        const int maxLength = 2000;
+        if (error.Length <= maxLength) return error;
+        var length = maxLength;
+        if (char.IsHighSurrogate(error[length - 1]) && char.IsLowSurrogate(error[length]))
+            length--;
+        return error[..length];
     }
 
     private async Task ProcessHoldedCreateAsync(

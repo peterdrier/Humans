@@ -139,6 +139,7 @@ public sealed record SurveyRankedBallot(
 /// <summary>
 /// One exported response. <see cref="UserId"/>/<see cref="UserName"/> are populated only for
 /// <see cref="ResponseAnonymity.Identified"/> rows; both are null for CompletionTracked/Anonymous.
+/// Asociado-vote rows suppress identity and <see cref="SubmittedAt"/> regardless of anonymity.
 /// </summary>
 public sealed record SurveyExportRow(
     Guid ResponseId,

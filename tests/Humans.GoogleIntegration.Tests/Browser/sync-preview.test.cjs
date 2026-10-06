@@ -27,9 +27,9 @@ function dashboard() {
         getElementById: id => panes[id === 'drives-tab' ? 'DriveFolder' : 'Group'],
         addEventListener() {},
     };
-    vm.runInNewContext(script, { document, getRequestVerificationToken: () => 'token', fetch: url => {
+    vm.runInNewContext(script, { document, getRequestVerificationToken: () => 'token', fetch: (url, options) => {
         const request = deferred();
-        requests.push({ ...request, url });
+        requests.push({ ...request, url, options });
         return request.promise;
     } });
     return { panes, requests, load: type => tabs[type === 'DriveFolder' ? 0 : 1].show(),
@@ -75,4 +75,17 @@ test('preview that is still reading its body cannot overwrite a newer load', asy
     ui.load('Group'); ui.reply(1, 'current'); await flush();
     body.resolve('old'); await flush();
     assert.equal(ui.panes.Group.innerHTML, 'current');
+});
+
+test('a redirected login page is a preview failure and the tab can retry', async () => {
+    const ui = dashboard();
+    ui.load('DriveFolder');
+    if (ui.requests[0].options?.redirect === 'error') ui.requests[0].reject(new TypeError('redirect blocked'));
+    else ui.reply(0, '<form>Login</form>');
+    await flush();
+    assert.match(ui.panes.DriveFolder.innerHTML, /Failed to load sync data/);
+    assert.doesNotMatch(ui.panes.DriveFolder.innerHTML, /<form>Login/);
+    ui.load('DriveFolder');
+    ui.reply(1, 'current'); await flush();
+    assert.equal(ui.panes.DriveFolder.innerHTML, 'current');
 });

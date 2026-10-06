@@ -40,7 +40,7 @@ public static class PersistenceServiceCollectionExtensions
     /// The admin diagnostics pair. Registered here rather than in Web because both types are
     /// internal to this assembly — the repository so no section can inject it, the service
     /// because a public class cannot take an internal constructor parameter. Consumers bind
-    /// <see cref="Application.Interfaces.Admin.IAdminDatabaseDiagnosticsService"/>.
+    /// <see cref="Humans.Base.Interfaces.Admin.IAdminDatabaseDiagnosticsService"/>.
     /// </summary>
     public static IServiceCollection AddAdminDatabaseDiagnostics(this IServiceCollection services)
     {

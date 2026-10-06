@@ -69,6 +69,7 @@ internal interface IGoogleRemovalNotificationService : IApplicationService
     /// Why the removal happened. Currently advisory only — flows through to
     /// logs / audit but does not drive suppression (issue peterdrier/Humans#639).
     /// </param>
+    /// <param name="cancellationToken">Token used to cancel notification delivery.</param>
     Task NotifyRemovalAsync(
         string removedEmail,
         GoogleResourceType resourceType,

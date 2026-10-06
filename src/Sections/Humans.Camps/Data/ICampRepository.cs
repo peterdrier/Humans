@@ -15,7 +15,7 @@ namespace Humans.Camps.Data;
 /// context so callers never have to reason about the EF context lifetime.
 /// Cross-domain user navigation is not resolved by this repository; the
 /// application service stitches display names from
-/// <see cref="Users.IUserService"/> per design-rules §6.
+/// <see cref="Humans.Users.Contracts.IUserServiceRead"/> per design-rules §6.
 /// </remarks>
 internal partial interface ICampRepository : IRepository
 {

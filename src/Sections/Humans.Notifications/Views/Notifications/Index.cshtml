@@ -241,7 +241,10 @@
                 var row = document.activeElement ? document.activeElement.closest('.notification-row') : null;
                 if (row) {
                     var actionBtn = row.querySelector('.notification-action-btn, .notification-text-link');
-                    if (actionBtn) actionBtn.click();
+                    if (actionBtn) {
+                        e.preventDefault();
+                        actionBtn.click();
+                    }
                 }
             }
         });

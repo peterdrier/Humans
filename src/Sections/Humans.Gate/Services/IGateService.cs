@@ -113,6 +113,17 @@ internal enum GatePinSetResult
 }
 
 /// <summary>Write-free result of evaluating a scan, before the agent's ID decision.</summary>
+/// <param name="Outcome">The server-computed pre-check result: stop, supervisor review, or proceed to photo-ID confirmation.</param>
+/// <param name="Barcode">The normalized barcode that was evaluated.</param>
+/// <param name="GuestName">The attendee name on the matched ticket, or null when no current-event ticket matched.</param>
+/// <param name="TicketTypeName">The ticket type name for the matched attendee, or null when unmatched.</param>
+/// <param name="IsEarly">Whether the outcome permits proceeding with early entry after photo-ID confirmation.</param>
+/// <param name="EarlyEntrySource">The source labels for the guest's Early Entry grant, or null if none; remains server-side for privacy.</param>
+/// <param name="TicketAttendeeId">The matched ticket-attendee ID, or null when unmatched.</param>
+/// <param name="GuestUserId">The Humans user ID matched to the ticket, or null when the ticket is unmatched.</param>
+/// <param name="PreviousAdmitAt">The time this barcode was previously admitted locally, or null if it has not been admitted.</param>
+/// <param name="PreviousAdmitByUserId">The gate staffer's user ID for the previous local admission, or null if there was none.</param>
+/// <param name="VendorTicketId">The vendor-issued ticket ID for mirroring an admission check-in, or null when unavailable.</param>
 /// <param name="EarliestEntryDate">The earliest event-local date the holder may enter (their Early Entry grant), or null if they hold none. Drives the precise too-early reason. Date only — the EE source stays server-side (privacy I2).</param>
 /// <param name="Today">Today's calendar date in the event time zone, for the "today is …" half of the too-early reason. Null when not computed (e.g. invalid barcode).</param>
 /// <param name="GeneralEntryDate">The event-local date general entry opens, for the no-Early-Entry too-early reason. Null when the cutoff is unconfigured.</param>

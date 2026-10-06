@@ -14,7 +14,7 @@ New durable surface is technical debt until proven otherwise. Before adding any 
 3. Prefer caller-side composition on existing list-returning or DTO-returning methods when the extra logic is local to one caller.
 4. Extract shared code only when there are multiple live call sites, one obvious owner, and the extraction makes the net system simpler.
 5. If new surface is still necessary, state which existing options were rejected and why.
-6. Stop and ask Peter before adding public/interface surface, or before adding a parallel service/repository/helper where an owner already exists.
+6. Stop and ask Peter before adding public/interface surface, or before adding a parallel service/repository/helper where an owner already exists. Exception (Peter, 2026-10-06): a contract change whose shape an existing rule already prescribes is pre-approved and listed in the PR, and `internal` types are never public surface — [`debt-sweep-standing-policy`](debt-sweep-standing-policy.md) D1/D2.
 
 **Approval-required is not default-deny.** The gate exists to make surface growth deliberate, not impossible — surface has a cost, but there is a reasonableness argument, and a read-only stats/aggregate view is the canonical reasonable case. When a task needs surface that requires approval, propose the minimal reasonable version and ask; never silently drop the feature and narrate the descope as "needed approval" afterward — that converts the gate into a veto Peter never issued (Peter, 2026-08-12, PR peterdrier/Humans#1272: a spec'd dashboard tile was dropped because the section had no public read surface; the right move was proposing the read-leaf promotion, which he approved on sight).
 
@@ -26,3 +26,4 @@ New durable surface is technical debt until proven otherwise. Before adding any 
 
 **Related:**
 - [`../architecture/interface-method-additions-are-debt.md`](../architecture/interface-method-additions-are-debt.md)
+- [`debt-sweep-standing-policy`](debt-sweep-standing-policy.md)

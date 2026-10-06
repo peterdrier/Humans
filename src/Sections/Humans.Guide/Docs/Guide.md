@@ -73,6 +73,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - Segmenting is lossless: a file's segments rejoin to the file exactly, so a reader who can see every block gets the page as written.
 - Only `GuideContentService` reads or writes `guide:*` cache entries. No other service touches guide content.
 - Caller cancellation stops a GitHub fetch/refresh without treating it as an availability failure or publishing a partially refreshed cache. Existing cached documents remain intact.
+- Configured GitHub health probes await the repository read with the framework's timeout/abort token. Requested cancellation propagates without logging or returning an availability failure; an already-canceled probe starts no request.
 
 ## Negative Access Rules
 

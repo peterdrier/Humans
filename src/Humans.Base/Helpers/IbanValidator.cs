@@ -61,13 +61,14 @@ public static class IbanValidator
         var country = v[..2];
         if (!Lengths.TryGetValue(country, out var expectedLen)) return false;
         if (v.Length != expectedLen) return false;
-        if (!v.All(char.IsLetterOrDigit)) return false;
+        if (!char.IsAsciiDigit(v[2]) || !char.IsAsciiDigit(v[3])) return false;
+        if (!v.All(char.IsAsciiLetterOrDigit)) return false;
 
         var rearranged = v[4..] + v[..4];
         var sb = new System.Text.StringBuilder(rearranged.Length * 2);
         foreach (var c in rearranged)
         {
-            if (char.IsDigit(c)) sb.Append(c);
+            if (char.IsAsciiDigit(c)) sb.Append(c);
             else sb.Append((c - 'A' + 10).ToString(CultureInfo.InvariantCulture));
         }
         var big = BigInteger.Parse(sb.ToString(), CultureInfo.InvariantCulture);

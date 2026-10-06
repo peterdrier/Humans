@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Base.ViewComponents;
 
+/// <summary>The current admin page’s navigation trail.</summary>
+/// <param name="IsSubpage">Whether the route is below its nav item.</param>
 /// <param name="Group">The group label; null off the nav, where only <paramref name="Title"/> renders.</param>
 /// <param name="Page">The nav item the route is, or is a subpage of.</param>
 /// <param name="Trail">A subpage's own crumbs after <paramref name="Page"/>, itself last (its <c>Crumbs</c> section); replaces <paramref name="Title"/>.</param>

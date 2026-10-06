@@ -118,7 +118,7 @@ contact, three write paths with different collision remedies, and no unique inde
 
 ### HoldedDocSyncState
 
-**Table:** `holded_doc_sync_state` (singleton, `Id = 1`, lazy-created)
+**Table:** `holded_doc_sync_state` (singleton, `Id = 1`, persisted on the first explicit sync-state save)
 
 Fields: `LastSyncAt`, `Status` (`Idle / Running / Error` string), `LastError`, `StatusChangedAt`, `LastSyncedDocCount`. Status of the purchase-doc sync only — the ledger mirror and its own sync states are the **Holded section**'s (`src/Sections/Humans.Holded/Docs/Holded.md`); Finance reads it via `IHoldedService`.
 
@@ -217,6 +217,10 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 ## Invariants
 
+- Finance marks account provisioning, create-or-link expense accounts, and creditor-contact creation as external writes. State-changing HTTP callers must not pass browser cancellation into those Holded mutations.
+
+- Holded provisioning POSTs reject binding errors with HTTP 400 and a Warning after actor resolution, before planning or creating accounts. Missing actors retain Challenge; explicit false add-all flags remain valid.
+
 - The SEPA payout list forwards request cancellation through payout loading and member-name lookup.
 
 - A purchase doc is attributed **as a whole, by its first product line's** booked account (plus the union of doc-level and line-level tags), and its full `Total` lands on that one category. A multi-line doc booked across several Holded accounts is not split; line-level attribution is a deliberate later refinement (`Service.MapDoc`).
@@ -258,6 +262,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 - The per-transfer cap is entered on `/Finance/Creditors` and posted with the batch — the posted value is authoritative, not `Sepa:MaxPayoutPerTransfer` (default **€50**, the field's prefill only). `FinanceController.GenerateSepa` parses it invariantly, same reasoning as the amount boxes: an `<input type="number">` posts invariant text, and model binding would read it through the request culture. Unparseable or non-positive refuses the whole batch.
 - The organisation's own SEPA identity — `Sepa:CreditorName`, `Sepa:CreditorIban`, `Sepa:CreditorIdentifier` (the NIF + suffix presenter id) — is **configuration-bound and never inferred**. With any of them unset, `/Finance/Creditors` says payout is unavailable and names the missing keys instead of offering a button. `Sepa:CreditorBic` is optional per the Sabadell guide.
 - Every generated file is validated **in-process against the official ISO 20022 XSD** (embedded at `Resources/pain.001.001.09.xsd`) before it can reach a browser; `SepaPaymentFileBuilder.Build` returns only files that validate. The builder is pure — no IO, no clock, no configuration — so all of its rules are unit-tested directly.
+- IBAN validation requires two ASCII check digits and ASCII account letters/digits before the checksum. Malformed Unicode input is refused before XML generation; valid account letters and existing spacing normalization remain supported.
 - The file's `GrpHdr/CreDtTm`, requested execution date, and download filename all use Europe/Madrid local time. `CreDtTm` carries no zone suffix, so writing a UTC clock value there would mislabel it as local time.
 - `MsgId`, `PmtInfId` and `EndToEndId` are derived from the persisted row ids (`"M"`/`"P"` + the file id, `"E"` + the transfer id — 33 chars, inside the 35 cap). The transfer row is minted before the file is built and never changes, so the `EndToEndId` the bank quotes always points back at one row.
 - The file omits postal addresses, `CdtrAgt`, `ChrgBr` and every category-purpose code entirely — **never `SALA`**, which would route a reimbursement as payroll. `RmtInf/Ustrd` is a single occurrence, capped at 140, and carries **this transfer's own** creditor account number and the payee's name (`"<account> - NCA - <creditor name>"`, `NCA` the fixed org tag) so a bank line ties back to an account and a person without opening the file. `EndToEndId` is unaffected.
@@ -291,7 +296,8 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 - None on the budget side: this section only reads Budget, so it fires no Budget-side effects.
 - On **SEPA payout generation**: after the file and its transfers are saved and audited, one `sepa_payout_generated` email per transfer goes to the bound member (`FinanceEmails.SepaPayoutGenerated`, `MessageCategory.System`, in their supported preferred language, with English fallback for blank, malformed or unsupported preferences) naming the amount and the masked IBAN. A refused batch sends nothing; a member with no notification email is logged and skipped. Recipient lookup and individual email failures are logged without blocking download of the saved file or suppressing later recipients; notifications finish independently of request cancellation after the save. Booking sends nothing — by then the money has moved (peterdrier/Humans#1820).
-- When the sync job starts, `HoldedDocSyncState.Status` flips to `Running`. On success returns to `Idle` with `LastSyncAt` and `LastSyncedDocCount` updated. On exception goes to `Error` with `LastError` populated; next scheduled run retries. Caller-aborted syncs log a stack-free warning and rethrow cancellation; dependency failures retain error logs with exceptions.
+- Status reads (`GetDocSyncInfoAsync` and the connector overview) never insert sync state. Before the first sync they return an unsaved Idle default; `SaveDocSyncStateAsync` owns singleton creation and updates.
+- When the sync job starts, `HoldedDocSyncState.Status` flips to `Running`. On success returns to `Idle` with `LastSyncAt` and `LastSyncedDocCount` updated. On exception goes to `Error` with `LastError` bounded to its 2000-unit column without splitting UTF-16 surrogate pairs; the original exception is logged and rethrown, and the next scheduled run retries. Caller-aborted syncs log a stack-free warning and rethrow cancellation; dependency failures retain error logs with exceptions.
 
 ## Cross-Section Dependencies
 

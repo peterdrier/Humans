@@ -18,7 +18,7 @@ public sealed record CampSettingsInfo(
 /// <summary>
 /// Canonical Camps read-model entry (T-06). One <see cref="CampInfo"/> per
 /// camp in the <c>CachingCampService</c> projection; year-keyed views like
-/// <see cref="ICampService.GetCampsForYearAsync"/> are filtered snapshots of
+/// <see cref="ICampServiceRead.GetCampsForYearAsync"/> are filtered snapshots of
 /// this canonical per-camp cache, never separate cache entries.
 /// </summary>
 /// <remarks>
@@ -39,11 +39,11 @@ public sealed record CampSettingsInfo(
 /// which also counts consumed grants retained on Removed rows — the two numbers
 /// differ by design. The
 /// methods that flip those fields —
-/// <see cref="ICampService.SetEarlyEntryAsync"/>,
-/// <see cref="ICampService.RemoveCampMemberAsync"/>,
-/// <see cref="ICampService.LeaveCampMembershipAsync"/>, and the membership
+/// <c>ICampService.SetEarlyEntryAsync</c>,
+/// <c>ICampService.RemoveCampMemberAsync</c>,
+/// <c>ICampService.LeaveCampMembershipAsync</c>, and the membership
 /// confirm/withdraw paths — invalidate the affected camp via
-/// <see cref="ICampInfoInvalidator"/> inside the decorator, so the cached
+/// <c>ICampInfoInvalidator</c> inside the decorator, so the cached
 /// projection rebuilds with the current count on the next read. No bypass
 /// is possible because only the inner <c>CampService</c> /
 /// <c>CampRoleService</c> may touch <c>ICampRepository</c>

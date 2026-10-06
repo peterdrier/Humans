@@ -123,27 +123,33 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _ticketCache.Received(1).InvalidateAll();
     }
 
-    [HumansFact]
-    public async Task SyncOrdersAndAttendeesAsync_ClearsTicketSnapshotsWhenRedemptionFailsAfterWrites()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SyncOrdersAndAttendeesAsync_ClearsTicketSnapshotsWhenRedemptionFailsAfterWrites(bool oversizedError)
     {
+        var error = oversizedError
+            ? new string('e', 1999) + "😀" + new string('e', 100)
+            : "redemption storage unavailable";
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns([MakeOrderDto("ord_partial", "Buyer", "buyer@example.com", discountCode: "discount10")]);
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns([MakeTicketDto("ti_partial", "ord_partial", "Attendee", "attendee@example.com")]);
         _campaignService.MarkGrantsRedeemedAsync(
                 Arg.Any<IReadOnlyCollection<DiscountCodeRedemption>>(), Arg.Any<CancellationToken>())
-            .Throws(new InvalidOperationException("redemption storage unavailable"));
+            .Throws(new InvalidOperationException(error));
 
         var act = () => _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("redemption storage unavailable");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(error);
 
         // Orders and attendees have already committed; readers must reload those rows.
         (await TicketsDb.TicketOrders.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
             .VendorOrderId.Should().Be("ord_partial");
         (await TicketsDb.TicketAttendees.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
             .VendorTicketId.Should().Be("ti_partial");
-        (await TicketsDb.TicketSyncStates.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
-            .SyncStatus.Should().Be(TicketSyncStatus.Error);
+        var state = await TicketsDb.TicketSyncStates.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        state.SyncStatus.Should().Be(TicketSyncStatus.Error);
+        state.LastError.Should().Be(oversizedError ? new string('e', 1999) : error);
         _ticketCache.Received(1).InvalidateAll();
     }
 

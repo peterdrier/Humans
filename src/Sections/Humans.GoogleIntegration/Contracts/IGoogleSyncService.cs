@@ -17,6 +17,9 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     /// type, then optionally executes adds/removes based on the action. Google Group
     /// membership is handled by <see cref="IGoogleGroupSync"/>.
     /// </summary>
+    /// <param name="resourceType">The kind of Drive resources to reconcile.</param>
+    /// <param name="action">Whether to preview the changes or execute them.</param>
+    /// <param name="cancellationToken">Token used to cancel the sync.</param>
     /// <param name="syncSource">The trigger recorded on any Drive sync-log rows.</param>
     [ExternalWrite]
     Task<SyncPreviewResult> SyncResourcesByTypeAsync(

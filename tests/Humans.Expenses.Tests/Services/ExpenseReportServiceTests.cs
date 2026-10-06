@@ -900,16 +900,19 @@ public sealed class ExpenseReportServiceTests
         var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
         loaded!.Lines[0].AttachmentId.Should().BeNull();
 
-        await _fileStorage.Received(1).DeleteAsync(
-            $"uploads/expense-attachments/{attach.Id}{attach.Extension}",
-            Arg.Any<CancellationToken>());
-        await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseAttachmentRemoved,
-            "ExpenseReport", id,
-            Arg.Any<string>(),
-            submitter,
-            submitter,
-            AuditEntityTypes.User);
+        Received.InOrder(() =>
+        {
+            _ = AuditLog.LogAsync(
+                AuditAction.ExpenseAttachmentRemoved,
+                "ExpenseReport", id,
+                Arg.Any<string>(),
+                submitter,
+                submitter,
+                AuditEntityTypes.User);
+            _ = _fileStorage.DeleteAsync(
+                $"uploads/expense-attachments/{attach.Id}{attach.Extension}",
+                CancellationToken.None);
+        });
     }
 
     [HumansFact]
@@ -1643,8 +1646,12 @@ public sealed class ExpenseReportServiceTests
             AuditEntityTypes.User);
     }
 
-    [HumansFact]
-    public async Task SaveSubmitterIbanWithResultAsync_ReturnsValidationFailure_WhenIbanInvalid()
+    [HumansTheory]
+    [Xunit.InlineData("not-an-iban")]
+    [Xunit.InlineData("ESAA00000000000000000060")]
+    [Xunit.InlineData("FR14É0000000000000000000085")]
+    [Xunit.InlineData("ES91٢1000418450200051332")]
+    public async Task SaveSubmitterIbanWithResultAsync_ReturnsValidationFailure_WhenIbanInvalid(string iban)
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1652,11 +1659,13 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
 
-        var result = await _sut.SaveSubmitterIbanWithResultAsync(reportId, submitter, "not-an-iban", Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.SaveSubmitterIbanWithResultAsync(reportId, submitter, iban, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.IsValidationError.Should().BeTrue();
         result.MessageKey.Should().Be("Expenses_Iban_InvalidFormat");
+        await _userService.DidNotReceive().SetProfileIbanAsync(
+            Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     // ─────────────────── Acting on a member's behalf ─────────────────────────
@@ -2708,8 +2717,10 @@ public sealed class ExpenseReportServiceTests
         timeline.OtherAmount.Should().Be(200m - report!.Total);
     }
 
-    [HumansFact]
-    public async Task GetHoldedTimelineAsync_RegisteredTotal_UsesThePayableNotTheReceiptsTotal()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task GetHoldedTimelineAsync_RegisteredTotal_UsesThePayableNotTheReceiptsTotal(bool withdrawn)
     {
         // The seeded report has a 50 € line capped at 30 €, so a 30 € creditor balance is fully
         // explained by this report — counting the receipts total would leave 20 € as "other".
@@ -2725,6 +2736,9 @@ public sealed class ExpenseReportServiceTests
             .Returns(new HoldedCreditorStatus(40000007, Balance: -30m, OwedToMember: 30m,
                 LastPaymentDate: null, TotalPaid: 0m));
 
+        if (withdrawn)
+            (await _sut.WithdrawAsync(reportId, userId, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+
         var report = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
         var timeline = await _sut.GetHoldedTimelineAsync(report!, Xunit.TestContext.Current.CancellationToken);
 
@@ -2733,8 +2747,10 @@ public sealed class ExpenseReportServiceTests
         timeline.OtherAmount.Should().Be(0m);
     }
 
-    [HumansFact]
-    public async Task GetHoldedTimelineAsync_RegisteredTotal_CountsOnlyLinesWhoseDocExists()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task GetHoldedTimelineAsync_RegisteredTotal_CountsOnlyLinesWhoseDocExists(bool withdrawn)
     {
         // A per-line push that failed partway: line A's doc was created, line B's wasn't yet.
         // Only A's 40 € is booked in Holded, so the registered total must not claim B's 60 € too.
@@ -2760,6 +2776,9 @@ public sealed class ExpenseReportServiceTests
         _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
             .Returns(new HoldedCreditorStatus(40000007, Balance: -40m, OwedToMember: 40m,
                 LastPaymentDate: null, TotalPaid: 0m));
+
+        if (withdrawn)
+            (await _sut.WithdrawAsync(reportId, userId, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var report = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
         var timeline = await _sut.GetHoldedTimelineAsync(report!, Xunit.TestContext.Current.CancellationToken);

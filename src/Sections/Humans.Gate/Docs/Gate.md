@@ -140,6 +140,7 @@ nobodies-collective/Humans#933.)
 
 ## Invariants
 
+- Verdict-card requests reject redirects and display the request-failure card; login or access-denied pages cannot become admission verdicts.
 - Resetting the shared PIN keypad cancels its pending delayed completion. Closing the supervisor override with Cancel cannot submit the PIN afterward; a reopened panel submits only its new entry.
 
 - The cutoff is evaluated against the server clock; `ClientScanAt` never influences it.

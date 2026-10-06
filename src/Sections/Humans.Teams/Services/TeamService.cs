@@ -2073,6 +2073,7 @@ internal sealed class TeamService(
 
         // TeamJoinRequest fold.
         await repo.ReassignActiveJoinRequestsAsync(sourceUserId, targetUserId, cancellationToken);
+        notificationMeterInvalidator.Invalidate();
 
         // Early-entry grants fold.
         await repo.ReassignEarlyEntryGrantsAsync(sourceUserId, targetUserId, cancellationToken);
@@ -2157,6 +2158,7 @@ internal sealed class TeamService(
     {
         await RevokeAllMembershipsAsync(userId, ct);
         await repo.DeleteJoinRequestsForUserAsync(userId, ct);
+        notificationMeterInvalidator.Invalidate();
         await DeleteEarlyEntryGrantsForUserAsync(userId, ct);
 
         // No cache call here: this type is the inner service, where the invalidation

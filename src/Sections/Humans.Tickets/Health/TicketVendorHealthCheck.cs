@@ -52,6 +52,10 @@ internal sealed class TicketVendorHealthCheck(
             return HealthCheckResult.Unhealthy(
                 $"Ticket vendor API unreachable: {ex.Message}", ex);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (OperationCanceledException)
         {
             logger.LogWarning("Ticket vendor health check timed out.");

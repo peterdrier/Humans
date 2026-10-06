@@ -48,7 +48,7 @@ Conversational helper backed by Anthropic Claude. Available to any authenticated
 | FetchedDocs | string[]? | Section/feature slugs the tool dispatcher loaded for this turn |
 | RefusalReason | string? | Set when the turn was refused (rate limit, abuse, disabled, etc.) |
 | HandedOffToFeedbackId | Guid? | Legacy. Was populated when `route_to_feedback` auto-created a FeedbackReport. New turns leave it null — see "Issue handoff" below. Column kept for historical rows. |
-| PromptTokens / OutputTokens / CachedTokens | int | Anthropic usage |
+| PromptTokens / OutputTokens / CachedTokens | int | Anthropic usage; stored PromptTokens includes fresh input and cache writes, while CachedTokens counts cache reads |
 | Model | string | Model id used for the turn |
 | DurationMs | int | Wall-clock duration of the turn |
 | CreatedAt | Instant | Append timestamp |
@@ -79,11 +79,13 @@ The member history page uses localized labels, including the link to each transc
 
 ## Invariants
 
+- Enabled Anthropic DNS health probes propagate requested timeout/abort cancellation instead of reporting a DNS failure; disabled probes still skip DNS.
+
 - FAQ overview routing summaries keep their 200-character prefix and word-boundary trimming without splitting UTF-16 surrogate pairs; complete source bodies are unchanged.
 
 Admin conversation-list paging clamps negative page numbers to zero and calculates offsets without integer overflow. A page beyond the available history stays empty rather than wrapping into earlier conversations; the Older link also stays within the integer page range.
 
-Conversation list and transcript GETs propagate request cancellation through viewer resolution before their conversation reads; ownership denials remain 404.
+Conversation list and transcript GETs propagate request cancellation through viewer resolution before their conversation reads; ownership denials remain 404. Prompt-preview token counting also propagates request cancellation without a failure warning; vendor failures still render the preview without a token count.
 
 1. **Terms link, not gate.** The Assistant panel shows a persistent "AI Terms" link below the composer that opens `/Legal/agent-chat` (the rendered Agent Chat Terms from `nobodies-collective/legal`). There is no explicit consent step — opening the panel and sending a message constitutes use; the terms describe what's sent, retention, and rights. The team-required-doc consent flow (`IConsentServiceRead.GetPendingDocumentNamesAsync`) is intentionally NOT used here; agent use is opt-in, not a membership precondition.
 <!-- NOTE: Data sent to Anthropic per turn: display name, preferred locale, tier, approved flag, role assignments (names + expiry), team memberships (names only), consent pending list, open ticket IDs, open feedback IDs, open shift IDs, and conversation messages. Data NOT sent: email, phone, birthday, dietary/medical fields, payment info, profile picture, other users' personal data. Anthropic DPA: 30-day retention for abuse monitoring, no training on API inputs. GDPR export (IUserDataContributor) and retention purge (AgentConversationRetentionJob) cover the full lifecycle. -->
@@ -109,7 +111,7 @@ Conversation list and transcript GETs propagate request cancellation through vie
    Unrecognized categories, including undefined numeric enum values, fall back to Question.
 <!-- route_to_issue is propose-only; do not revert to server-side auto-creation of FeedbackReport rows. -->
 9. **Retention.** Conversations older than `AgentSettings.RetentionDays` are hard-deleted daily.
-10. **Single provider.** One `AnthropicClient` instance, one configured model at a time. No multi-provider fallback in Phase 1.
+10. **Single provider.** One `AnthropicClient` instance, one configured model at a time. No multi-provider fallback in Phase 1. Spend estimates use each message’s recorded model: Haiku 4.5 and Opus 4.5–4.8 use their published rates, while legacy Opus 4/4.1 retain their higher rates. Unknown models use the Sonnet fallback. Cache writes join fresh input in stored totals and daily-token accounting, including interrupted turns; stream finalizers retain the provider’s separate counters. The spend estimate prices writes at the standard input rate, without their premium. Historical rows that omitted writes remain unchanged.
 11. **A turn never ends with an empty assistant reply.** If the tool loop (including cap-hit synthesis) produces no assistant prose, `AgentService` fills in a localized fallback before persisting instead of storing/streaming a blank bubble: for a `route_to_issue` handoff, a fallback line kept in lockstep with the widget's `Help_Agent_IssueProposed` strings (persisted only, not streamed — the widget already renders its own localized line live); otherwise a generic "couldn't answer" fallback that IS streamed to the client and logged as a warning (nobodies-collective/Humans#1144).
 12. **A doc-fetch miss is recoverable, never a dead end.** `fetch_section_guide` / `fetch_feature_spec` / `fetch_community_faq` name the accepted keys in their error string so the model can correct its own call. `AgentSectionKeys` (`Humans.Agent.Contracts`) owns the accepted key set and additionally resolves the help-widget key namespace onto section keys (`Profile`/`Profiles`→`Users`, `OnboardingReview`→`Onboarding`, `LegalAndConsent`→`Consent`, `Admin`/`Board`→`Governance`, `Barrios`→`Camps`, `CityPlanning*`→`CityPlanning`, `ContainerMap`→`Containers`); every alias target must be whitelisted, and every glossary heading the preload corpus emits must resolve.
 <!-- NOTE: Model default is Sonnet 4.6 (not Haiku). Prototype validated that Haiku is ~3x cheaper (~$7/mo vs ~$20/mo at 5 sessions/day x 4 turns) but Sonnet's precision and grounding matter for a support helper — both are production-viable but Sonnet is more concise and confidently grounded. The model is admin-configurable at AgentSettings.Model so the org can revisit after real usage data. -->

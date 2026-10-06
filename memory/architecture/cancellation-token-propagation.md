@@ -54,10 +54,9 @@ applied (nobodies-collective/Humans#950; split from #946).
 **Hangfire jobs are already non-cancellable here — don't reason as if they
 aren't.** Every job registration bakes a *literal* `CancellationToken.None` into
 the enqueue expression: all 21 `RecurringJob.AddOrUpdate<…>(… ExecuteAsync(
-CancellationToken.None) …)` registrations plus every ad-hoc `Enqueue`. That
-falls out of [`hangfire-method-signature-stable`](../code/hangfire-method-signature-stable.md),
-which requires passing every parameter explicitly at the enqueue site so the
-serialized `MethodInfo` stays pinned. The consequence: the process-lifetime row
+CancellationToken.None) …)` registrations plus every ad-hoc `Enqueue`. Every
+parameter is passed explicitly at the enqueue site, so the serialized `MethodInfo`
+stays pinned. The consequence: the process-lifetime row
 above is a *category*, not a live case — a job's `CancellationToken` parameter is
 always `None` at runtime, so a Workspace/Holded/MailerLite write on a job path
 cannot be torn by shutdown either. Before "honouring the job token at safe

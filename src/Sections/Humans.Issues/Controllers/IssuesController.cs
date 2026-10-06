@@ -323,6 +323,11 @@ internal sealed class IssuesController(
         if (issue is null) return NotFound();
         var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid issue triage form for {IssueId}", id);
+            return BadRequest(ModelState);
+        }
 
         var result = await issues.UpdateStatusWithResultAsync(id, viewer, model.Status, user.Id);
         if (result.NotFound) return NotFound();
@@ -351,6 +356,11 @@ internal sealed class IssuesController(
         if (issue is null) return NotFound();
         var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid issue triage form for {IssueId}", id);
+            return BadRequest(ModelState);
+        }
 
         var result = await issues.UpdateAssigneeWithResultAsync(id, viewer, model.AssigneeUserId, user.Id);
         if (result.NotFound) return NotFound();
@@ -379,6 +389,11 @@ internal sealed class IssuesController(
         if (issue is null) return NotFound();
         var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid issue triage form for {IssueId}", id);
+            return BadRequest(ModelState);
+        }
 
         var result = await issues.UpdateSectionWithResultAsync(id, viewer, model.Section, user.Id);
         if (result.NotFound) return NotFound();
@@ -412,6 +427,11 @@ internal sealed class IssuesController(
         if (issue is null) return NotFound();
         var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid issue triage form for {IssueId}", id);
+            return BadRequest(ModelState);
+        }
 
         var result = await issues.SetGitHubIssueNumberWithResultAsync(id, viewer, model.GitHubIssueNumber, user.Id);
         if (result.NotFound) return NotFound();

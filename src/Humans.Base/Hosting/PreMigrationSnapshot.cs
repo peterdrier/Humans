@@ -97,6 +97,7 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
     /// (none of it still pending) — the marker's own migrations having finished is what makes it
     /// safe to retire instead of carrying it forward as a stale rollback point.
     /// </param>
+    /// <param name="cancellationToken">Cancels snapshot capture before migration.</param>
     /// <exception cref="InvalidOperationException">
     /// The dump could not be taken. Thrown so the caller aborts before migrating.
     /// </exception>

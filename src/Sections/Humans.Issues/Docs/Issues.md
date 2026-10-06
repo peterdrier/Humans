@@ -122,7 +122,9 @@ Known area labels in the member submission form, issue list and detail view use 
 - The queue detail panel accepts only the latest selection request’s response; earlier successes and unavailable responses cannot replace the selected item’s content or wire stale forms.
 
 - Browser mutation result wrappers distinguish known missing/inaccessible issues and section-rule rejections from unexpected failures. Known rejections log Warning without exception stacks; unexpected failures retain Error logs and their exceptions and return generic failure text, never persistence diagnostics or false missing results. Every browser triage action returns 404 if the issue disappears after preflight.
+- Browser status, assignee, section and GitHub-link updates reject invalid model binding/validation with HTTP 400 and a Warning before calling the mutation service. Existing issue lookup and handler authorization run first; malformed values never become default status or cleared optional fields.
 
+- Submission categories and status updates must be defined enum values; invalid service inputs fail before persistence or notifications.
 - Every issue is linked to the human who submitted it (`ReporterUserId` is required).
 - The GDPR export includes stored browser user agent and submission context alongside the reporter’s issues and comments; it excludes issues reported by other people.
 - Status flows Triage → Open → InProgress → Resolved/WontFix/Duplicate. Transitioning out of a terminal status clears `ResolvedAt` and `ResolvedByUserId`.
@@ -157,6 +159,7 @@ Known area labels in the member submission form, issue list and detail view use 
 - When a reporter comments on a terminal issue, the issue is auto-reopened to `Open` and an audit row records the implicit status change with actor = the reporter.
 - When the actionable count for a viewer could have changed (issue created, status changed, comment posted, section changed), the nav-badge cache is invalidated via `INavBadgeCacheInvalidator`. Assignment does not move the count — `CountActionableAsync` filters on status + section + reporter only — so `UpdateAssigneeAsync` does not invalidate.
 - **Retention.** Issues that have been in a terminal state (Resolved / WontFix / Duplicate) for at least 6 months are deleted by `CleanupIssuesJob` (daily Hangfire job at 05:00 UTC). Comments cascade via FK; the screenshot directory under `wwwroot/uploads/issues/{id}/` is removed best-effort in the same pass. A reporter comment that auto-reopens a terminal issue clears `ResolvedAt`, which automatically excludes the issue from the retention sweep.
+- GDPR erasure resolves the reporter, admins and role-holders for the owned issues’ sections before deletion, then invalidates their actionable-count caches after the save and before screenshot cleanup.
 - When a user is purged via `IAccountDeletionService.PurgeAsync`, `IssuesService.EraseForUserAsync` deletes their reported issues outright (comments cascade via the one real FK, `FK_issue_comments_issues_IssueId`; the screenshot directory is removed). Comments they left on other people's issues keep the row with `SenderUserId` nulled; `AssigneeUserId` / `ResolvedByUserId` on other people's issues are nulled the same way — in C#, not by a DB delete behavior, since there is none.
 
 ## Cross-Section Dependencies

@@ -12,7 +12,7 @@ namespace Humans.Shifts.Authorization;
 /// role-holder on any team or sub-team. Encodes the OR inside the handler so
 /// <see cref="PolicyNames.ShiftDepartmentManager"/> can express role-or-team-coord
 /// as a single requirement (multiple requirements on a policy AND together).
-/// Reads the coordinator-team-ids list through <see cref="IShiftManagementService.GetCoordinatorTeamIdsAsync"/>
+/// Reads the coordinator-team-ids list through <see cref="IShiftManagementServiceRead.GetCoordinatorTeamIdsAsync"/>
 /// so it picks up the existing 60-second per-user cache (CacheKeys.ShiftAuthorization)
 /// rather than hitting the DB on every request.
 /// </summary>

@@ -135,6 +135,29 @@ public sealed class LegalDocumentServiceTests : IDisposable
         handler.Requests.Should().OnlyContain(uri => uri.Query == "?ref=legal-preview");
     }
 
+    [HumansFact]
+    public async Task FileRead_PreservesUtf8ContentForTheDiscoveredSha_WhenBranchAdvances()
+    {
+        using var handler = new LegalContentHandler(branchAdvances: true);
+        var connector = new GitHubLegalDocumentConnector(
+            Options.Create(new GitHubSettings { Owner = "nobodies", Repository = "legal", Branch = "legal-preview" }),
+            NullLogger<GitHubLegalDocumentConnector>.Instance);
+        var client = new GitHubClient(new Connection(
+            new ProductHeaderValue("test"), new HttpClientAdapter(() => handler)));
+        typeof(GitHubLegalDocumentConnector)
+            .GetField("_client", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(connector, client);
+
+        var file = await connector.GetFileContentAsync("Estatutos/ESTATUTOS.md", TestContext.Current.CancellationToken);
+
+        file.Should().NotBeNull();
+        file!.Sha.Should().Be("abc");
+        file.Content.Should().Be("Consentimiento: sí 😀");
+        handler.Requests.Should().HaveCount(2);
+        handler.Requests[0].Query.Should().Be("?ref=legal-preview");
+        handler.Requests[1].AbsolutePath.Should().Be("/repos/nobodies/legal/git/blobs/abc");
+    }
+
     [HumansTheory]
     [InlineData(498, 500)]
     [InlineData(499, 499)]
@@ -209,7 +232,7 @@ public sealed class LegalDocumentServiceTests : IDisposable
         }
     }
 
-    private sealed class LegalContentHandler(string? commitMessage = null, int? pauseRequest = null) : HttpMessageHandler
+    private sealed class LegalContentHandler(string? commitMessage = null, int? pauseRequest = null, bool branchAdvances = false) : HttpMessageHandler
     {
         public List<Uri> Requests { get; } = [];
         public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -223,6 +246,17 @@ public sealed class LegalDocumentServiceTests : IDisposable
             {
                 Started.SetResult();
                 await Release.Task.WaitAsync(cancellationToken);
+            }
+            if (branchAdvances)
+            {
+                var body = Requests.Count == 1
+                    ? """{"type":"file","name":"ESTATUTOS.md","path":"Estatutos/ESTATUTOS.md","sha":"abc"}"""
+                    : request.RequestUri!.AbsolutePath.Contains("/git/blobs/", StringComparison.Ordinal)
+                        ? JsonSerializer.Serialize(new { content = Convert.ToBase64String(Encoding.UTF8.GetBytes("Consentimiento: sí 😀")), encoding = "base64", sha = "abc" })
+                        : "Changed after metadata was read";
+                var mediaType = Requests.Count == 1 || request.RequestUri!.AbsolutePath.Contains("/git/blobs/", StringComparison.Ordinal)
+                    ? "application/json" : "application/octet-stream";
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, mediaType) };
             }
             const string directory = """
                 [{"type":"file","name":"ESTATUTOS.md","path":"Estatutos/ESTATUTOS.md","sha":"abc"}]

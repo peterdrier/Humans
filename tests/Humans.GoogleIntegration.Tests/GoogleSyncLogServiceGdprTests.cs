@@ -1,3 +1,4 @@
+using Xunit;
 using AwesomeAssertions;
 using AwesomeAssertions.Execution;
 using System.Text.Json;
@@ -40,6 +41,26 @@ public sealed class GoogleSyncLogServiceGdprTests
             _serviceProvider,
             new FakeClock(Instant.FromUtc(2026, 4, 21, 12, 0)),
             NullLogger<GoogleSyncLogService>.Instance);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LogAsync_PersistsBoundedDescriptionAndError(bool longError)
+    {
+        var error = longError ? new string('e', 3999) + "😀" + new string('e', 4000) : "Google unavailable";
+        GoogleSyncLogEntry? saved = null;
+        _repo.AddAsync(Arg.Do<GoogleSyncLogEntry>(entry => saved = entry), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        await _service.LogAsync(GoogleSyncLogAction.AccessRevoked, Guid.NewGuid(), error, "Sync",
+            "member@example.com", "reader", GoogleSyncSource.ScheduledSync, success: false,
+            errorMessage: error, ct: Xunit.TestContext.Current.CancellationToken);
+
+        saved.Should().NotBeNull();
+        saved!.Description.Should().Be(longError ? "Sync: " + new string('e', 3994) : "Sync: " + error);
+        saved.ErrorMessage.Should().Be(longError ? new string('e', 3999) : error);
+        saved.Success.Should().BeFalse();
     }
 
     /// <summary>Answers the resolving read the way Users does: the tombstone id reads back as the

@@ -33,37 +33,44 @@ internal static class CalendarOccurrenceExpander
             var occurrences = BuildOccurrences(ev, name, recurring, from, to, fromDate, toDate, logger);
             if (occurrences is null) continue;
 
-            var handled = new HashSet<Guid>();
-            foreach (var occurrence in occurrences)
-            {
-                var exception = recurring ? ev.Exceptions.FirstOrDefault(x => ev.IsAllDay
-                    ? x.OriginalOccurrenceDate == occurrence.OriginalOccurrenceDate
-                    : x.OriginalOccurrenceStartUtc == occurrence.OriginalOccurrenceStartUtc) : null;
-                if (exception is not null) handled.Add(exception.Id);
-                if (exception?.IsCancelled == true) continue;
-                var result = exception is null ? occurrence : ApplyOverride(occurrence, exception);
-                if (OverlapsWindow(result, from, to, fromDate, toDate)) results.Add(result);
-            }
-            // Only an actual start move is independent of the current recurrence rule.
-            // Text and end-only edits require an identity generated above, including extended lookback.
-            foreach (var exception in ev.Exceptions.Where(x => !handled.Contains(x.Id) && !x.IsCancelled))
-            {
-                if (!recurring || (ev.IsAllDay
-                    ? exception.OverrideStartDate is null || exception.OverrideStartDate == exception.OriginalOccurrenceDate
-                    : exception.OverrideStartUtc is null || exception.OverrideStartUtc == exception.OriginalOccurrenceStartUtc))
-                    continue;
-                var date = exception.OriginalOccurrenceDate;
-                var start = exception.OriginalOccurrenceStartUtc;
-                var original = ev.IsAllDay
-                    ? CreateOccurrence(ev, name, null, null, date,
-                        date!.Value.PlusDays(NodaTime.Period.Between(ev.StartDate!.Value, ev.EndDateExclusive!.Value, PeriodUnits.Days).Days), true)
-                    : CreateOccurrence(ev, name, start,
-                        ev.EndUtc is null ? null : start!.Value.Plus(ev.EndUtc.Value - ev.StartUtc!.Value), null, null, true);
-                var result = ApplyOverride(original, exception);
-                if (OverlapsWindow(result, from, to, fromDate, toDate)) results.Add(result);
-            }
+            results.AddRange(ApplyExceptions(ev, name, recurring, occurrences)
+                .Where(result => OverlapsWindow(result, from, to, fromDate, toDate)));
         }
         return OrderForDisplay(results);
+    }
+
+    private static IEnumerable<CalendarOccurrence> ApplyExceptions(
+        CalendarEventInfo ev, string name, bool recurring, IEnumerable<CalendarOccurrence> occurrences)
+    {
+        var handled = new HashSet<Guid>();
+        foreach (var occurrence in occurrences)
+        {
+            var exception = recurring ? ev.Exceptions.FirstOrDefault(x => ev.IsAllDay
+                ? x.OriginalOccurrenceDate == occurrence.OriginalOccurrenceDate
+                : x.OriginalOccurrenceStartUtc == occurrence.OriginalOccurrenceStartUtc) : null;
+            if (exception is not null) handled.Add(exception.Id);
+            if (exception?.IsCancelled == true) continue;
+            var result = exception is null ? occurrence : ApplyOverride(occurrence, exception);
+            yield return result;
+        }
+        // Only an actual start move is independent of the current recurrence rule.
+        // Text and end-only edits require an identity generated above, including extended lookback.
+        foreach (var exception in ev.Exceptions.Where(x => !handled.Contains(x.Id) && !x.IsCancelled))
+        {
+            if (!recurring || (ev.IsAllDay
+                ? exception.OverrideStartDate is null || exception.OverrideStartDate == exception.OriginalOccurrenceDate
+                : exception.OverrideStartUtc is null || exception.OverrideStartUtc == exception.OriginalOccurrenceStartUtc))
+                continue;
+            var date = exception.OriginalOccurrenceDate;
+            var start = exception.OriginalOccurrenceStartUtc;
+            var original = ev.IsAllDay
+                ? CreateOccurrence(ev, name, null, null, date,
+                    date!.Value.PlusDays(NodaTime.Period.Between(ev.StartDate!.Value, ev.EndDateExclusive!.Value, PeriodUnits.Days).Days), true)
+                : CreateOccurrence(ev, name, start,
+                    ev.EndUtc is null ? null : start!.Value.Plus(ev.EndUtc.Value - ev.StartUtc!.Value), null, null, true);
+            var result = ApplyOverride(original, exception);
+            yield return result;
+        }
     }
 
     /// <summary>
@@ -109,6 +116,7 @@ internal static class CalendarOccurrenceExpander
             .Select(x => x.OriginalOccurrenceDate!.Value)
             .Append(fromDate.PlusDays(-days))
             .Min();
+        searchDate = LocalDate.Max(searchDate, ev.StartDate.Value);
         var searchStart = new CalDateTime(searchDate.ToDateTimeUnspecified(), hasTime: false);
         return ical.GetOccurrences(searchStart, new EvaluationOptions())
             .TakeWhile(o => LocalDate.FromDateTime(o.Period.StartTime.Value) < toDate)
@@ -143,6 +151,7 @@ internal static class CalendarOccurrenceExpander
             .Select(x => x.OriginalOccurrenceStartUtc!.Value)
             .Append(from.Minus(duration))
             .Min();
+        searchFrom = Instant.Max(searchFrom, ev.StartUtc.Value);
         var searchStart = new CalDateTime(searchFrom.InZone(zone).LocalDateTime.ToDateTimeUnspecified(), zone.Id, hasTime: true);
         // A repeated local hour can precede the instant cutoff even when its clock time is later.
         // Generate through a conservative local bound; OverlapsWindow checks the actual instants.

@@ -8,7 +8,7 @@ namespace Humans.GoogleIntegration.Contracts;
 /// detects collisions (two sources claiming the same group), hydrates user IDs
 /// and applies user-state filtering uniformly, then diffs against Google and
 /// applies changes through the existing
-/// <see cref="IGoogleGroupMembershipClient"/> connector.
+/// <see cref="Humans.GoogleIntegration.Services.Workspace.IGoogleGroupMembershipClient"/> connector.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -42,6 +42,7 @@ public interface IGoogleGroupSync
     /// Google; <see cref="SyncAction.Execute"/> applies changes per the
     /// admin-configured <c>SyncSettings</c> mode (None / AddOnly / AddAndRemove).
     /// </param>
+    /// <param name="ct">Token used to cancel reconciliation.</param>
     [ExternalWrite]
     Task<SyncPreviewResult> ReconcileAllAsync(
         SyncAction action,

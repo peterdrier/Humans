@@ -236,7 +236,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                 // DailyTokenCap; and a turn that fails deterministically must still cost a
                 // message, or a repeatable backend error becomes an unmetered send loop.
                 _rateLimit.Record(request.UserId, today, hour,
-                    messagesDelta: 1, tokensDelta: turnUsage.PromptTokens + turnUsage.OutputTokens);
+                    messagesDelta: 1, tokensDelta: turnUsage.InputTokensIncludingCacheWrites + turnUsage.OutputTokens);
             }
         }
     }
@@ -250,6 +250,9 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         public int OutputTokens;
         public int CacheReadTokens;
         public int CacheCreationTokens;
+
+        // Cache writes are input too; stream finalizers retain the separate provider counters.
+        public int InputTokensIncludingCacheWrites => PromptTokens + CacheCreationTokens;
     }
 
     /// <summary>The tool-call loop and finalizer for one turn, run after the user message is
@@ -463,7 +466,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             Role = AgentRole.Assistant,
             Content = assistantText,
             CreatedAt = turnEnd,
-            PromptTokens = usage.PromptTokens,
+            PromptTokens = usage.InputTokensIncludingCacheWrites,
             OutputTokens = usage.OutputTokens,
             CachedTokens = usage.CacheReadTokens,
             Model = settings.Model,
@@ -623,13 +626,13 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             .ToList();
 
         // Measure the system prompt with the real tokenizer (count_tokens). This is a diagnostic
-        // nicety — a failed/rate-limited count must never break the admin page, so null on error.
+        // nicety — a failed/rate-limited count renders as null; request cancellation propagates.
         int? systemPromptTokens = null;
         try
         {
             systemPromptTokens = await _client.CountTokensAsync(settings.Model, systemPrompt, ct);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             // Expected/transient (rate limit, network) — log the reason at Warning, drop the
             // stack trace per memory/code/always-log-problems.md.
@@ -825,6 +828,10 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
     /// already writes for rate-limit/abuse turns (Agent.md invariant 6). Reused for the
     /// turn-exception path (nobodies-collective/Humans#963) so a failed turn shows up through the
     /// same admin refusals filter and "top refusal reasons" panel instead of a new surface.</summary>
+    /// <param name="conversationId">The conversation receiving the failure message.</param>
+    /// <param name="reason">The machine-readable refusal or failure reason.</param>
+    /// <param name="model">The model attributed to this turn.</param>
+    /// <param name="ct">Cancellation token for persisting the message.</param>
     /// <param name="usage">Provider usage to stamp on the row, or null for a turn that never
     /// reached the provider (rate_limited / abuse_flag). A turn that failed mid-flight did spend
     /// tokens, and <see cref="AgentAdminStatusService"/> prices spend straight off
@@ -841,7 +848,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             Role = AgentRole.Assistant,
             Content = "",
             CreatedAt = _clock.GetCurrentInstant(),
-            PromptTokens = usage?.PromptTokens ?? 0,
+            PromptTokens = usage?.InputTokensIncludingCacheWrites ?? 0,
             OutputTokens = usage?.OutputTokens ?? 0,
             CachedTokens = usage?.CacheReadTokens ?? 0,
             Model = model,

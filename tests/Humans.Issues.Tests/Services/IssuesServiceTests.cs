@@ -12,6 +12,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
+using Humans.Base.Caching;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
@@ -740,6 +741,35 @@ public sealed class IssuesServiceTests
     }
 
     // ==========================================================================
+    [HumansTheory]
+    [InlineData(-1)]
+    [InlineData(999)]
+    public async Task SubmitIssueAsync_undefined_category_writes_nothing(int category)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var act = () => _service.SubmitIssueAsync(Guid.NewGuid(), (IssueCategory)category,
+            "Title", "Description", null, null, null, null, null, ct: ct);
+
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>().WithMessage("Unknown issue category.*");
+        (await _issuesDb.Issues.CountAsync(ct)).Should().Be(0);
+        _notificationService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(-1)]
+    [InlineData(999)]
+    public async Task UpdateStatusAsync_undefined_status_preserves_stored_state(int status)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var act = () => _service.UpdateStatusAsync(issueId, Admin, (IssueStatus)status, Admin.UserId, ct);
+
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>().WithMessage("Unknown issue status.*");
+        (await _issuesDb.Issues.AsNoTracking().SingleAsync(ct)).Status.Should().Be(IssueStatus.Open);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        _notificationService.ReceivedCalls().Should().BeEmpty();
+    }
+
     // UpdateStatusAsync
     // ==========================================================================
 
@@ -1554,8 +1584,21 @@ public sealed class IssuesServiceTests
         SeedUser(bobId, "Bob").Email = "b@b.com";
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var aliceIssue = await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's");
-        var bobIssue = await SeedIssueRowAsync(bobId, IssueStatus.Open, "Bob's");
+        var aliceIssue = await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's", "Camps");
+        var bobIssue = await SeedIssueRowAsync(bobId, IssueStatus.Open, "Bob's", "Tickets");
+        var owner = new IssueViewer(Guid.NewGuid(), [RoleNames.CampAdmin]);
+        var unrelated = new IssueViewer(Guid.NewGuid(), [RoleNames.TicketAdmin]);
+        var reporter = new IssueViewer(aliceId, []);
+        _roleService.GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>()).Returns([Admin.UserId]);
+        _roleService.GetActiveUserIdsInRoleAsync(RoleNames.CampAdmin, Arg.Any<CancellationToken>()).Returns([owner.UserId]);
+        _roleService.GetActiveUserIdsInRoleAsync(RoleNames.TicketAdmin, Arg.Any<CancellationToken>()).Returns([unrelated.UserId]);
+        _issuesBadge.When(b => b.InvalidateMany(Arg.Any<IEnumerable<Guid>>()))
+            .Do(call => new IssuesBadgeCacheInvalidator(Cache).InvalidateMany(call.ArgAt<IEnumerable<Guid>>(0)));
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        (await _service.GetActionableCountForViewerAsync(Admin, ct)).Should().Be(2);
+        (await _service.GetActionableCountForViewerAsync(owner, ct)).Should().Be(1);
+        (await _service.GetActionableCountForViewerAsync(unrelated, ct)).Should().Be(1);
+        (await _service.GetActionableCountForViewerAsync(reporter, ct)).Should().Be(1);
 
         // Alice assigned to, and commented on, an issue that is not hers.
         var bobRow = await _issuesDb.Issues.FirstAsync(
@@ -1571,7 +1614,12 @@ public sealed class IssuesServiceTests
         });
         await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.EraseForUserAsync(aliceId, Xunit.TestContext.Current.CancellationToken);
+        await _service.EraseForUserAsync(aliceId, ct);
+
+        (await _service.GetActionableCountForViewerAsync(Admin, ct)).Should().Be(1);
+        (await _service.GetActionableCountForViewerAsync(owner, ct)).Should().Be(0);
+        (await _service.GetActionableCountForViewerAsync(unrelated, ct)).Should().Be(1);
+        (await _service.GetActionableCountForViewerAsync(reporter, ct)).Should().Be(0);
 
         _issuesDb.ChangeTracker.Clear();
         var remaining = await _issuesDb.Issues

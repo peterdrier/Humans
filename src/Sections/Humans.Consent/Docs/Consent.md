@@ -78,6 +78,8 @@ Append-only per design-rules §12. **DB triggers** (`prevent_consent_record_upda
 | ContentHash | string (64) | SHA-256 hex of canonical Spanish content at consent time |
 | ExplicitConsent | bool | Always true for valid records |
 
+`ConsentService.SubmitConsentAsync` refuses unchecked consent before writing any record or recording consent metrics. The document remains signable on a later explicit submission; UI checkbox guards are an additional check.
+
 **Unique index:** `(UserId, DocumentVersionId)` — prevents duplicate consents for the same version.
 
 Cross-aggregate nav `ConsentRecord.DocumentVersion` — still declared and walked by `ConsentRepository.GetAllForUserIdsAsync` (`.Include(c => c.DocumentVersion).ThenInclude(v => v.LegalDocument)`) to surface document name + version number on the user's consent-history view.
@@ -115,6 +117,8 @@ Three controllers serve this section.
 | `/Legal/Admin/Documents/{id}/Sync` | POST | Trigger single-document sync |
 | `/Legal/Admin/Documents/{id}/Versions/{versionId}/Summary` | POST | Edit version changes summary |
 
+Document archival uses the shared `data-confirm` handler: each click prompts once, and cancellation prevents submission. The team filter still submits when its selection changes.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -134,10 +138,12 @@ Three controllers serve this section.
 - Consent dashboard and review reads carry request cancellation through viewer resolution, the stub-profile check and dashboard/document reads. Submit and its invalid-form redisplay retain their existing mutation boundaries.
 
 - Consent records are immutable. Database triggers prevent UPDATE and DELETE operations on `consent_records`. Only INSERT is allowed to maintain GDPR audit trail integrity (§12).
+- Required-version snapshots for all documents and for a single team share the same latest-effective-version selection; documents without an effective version are omitted.
 - Legal documents can be global (required of all humans) or team-scoped (required when joining a specific team).
 - Sync emails consolidate only outstanding required documents belonging to each recipient’s teams. Optional updates and required updates already signed by that recipient do not trigger a consent email. Emails use the recipient’s supported saved language, with English fallback for missing or unsupported preferences.
 - When all required global documents have active consent, the human's consent check status transitions from unset to Pending.
 - Legal documents are synced from a GitHub repository by a background job.
+- Synced version content is fetched by each file’s immutable blob SHA. The canonical Spanish content and version SHA come from the same fetch, reused without a second branch read.
 - GitHub document reads use the configured `GitHub:Branch`, including both directory discovery and translated file content for the anonymous `/Legal` pages.
 - When a new document version is published, existing consents for the old version become stale and re-consent is required.
 - Per-user reads on `consent_records` chain-follow merge tombstones via the resolved record's `UserInfo.AllUserIds` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge, DB triggers (`prevent_consent_record_update`, `prevent_consent_record_delete`) make any rewrite physically impossible.

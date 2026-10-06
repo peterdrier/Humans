@@ -6,7 +6,7 @@ namespace Humans.Agent.Services.Stores;
 /// <summary>
 /// In-memory snapshot of the last <c>AgentConversationRetentionJob</c> run.
 /// Singleton; readers (admin status view) and writer (retention job) race on
-/// the snapshot reference, so we publish via <see cref="Interlocked.Exchange"/>
+/// the snapshot reference, so we publish via <see cref="Interlocked.Exchange{T}(ref T, T)"/>
 /// to match the pattern used by <c>AgentSettingsStore</c>.
 /// </summary>
 internal sealed class AgentRetentionRunStore : IAgentRetentionRunStore

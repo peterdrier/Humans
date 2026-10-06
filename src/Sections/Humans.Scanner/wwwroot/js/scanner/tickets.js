@@ -19,7 +19,7 @@ export function initTicketScanner(refs) {
         card.replaceChildren();
         card.setAttribute('aria-busy', 'true');
         try {
-            const resp = await fetch(`${cardUrl}?barcode=${encodeURIComponent(value)}`);
+            const resp = await fetch(`${cardUrl}?barcode=${encodeURIComponent(value)}`, { redirect: 'error' });
             if (resp.ok) {
                 const html = await resp.text();
                 if (request === currentLookup) card.innerHTML = html;

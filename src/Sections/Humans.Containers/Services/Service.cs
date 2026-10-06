@@ -129,17 +129,7 @@ internal sealed class Service(
             $"Updated container '{updated.Name}'",
             actorUserId,
             relatedEntityId: updated.CampId, relatedEntityType: AuditEntityTypes.Camp);
-        foreach (var path in obsoletePaths.Distinct(StringComparer.Ordinal))
-        {
-            try
-            {
-                await fileStorage.DeleteAsync(path, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to delete image file {StoragePath} after container {ContainerId} was updated", path, id);
-            }
-        }
+        await DeleteObsoleteImagesAsync(obsoletePaths, id, "updated");
         return ToDto(updated, await repo.GetImagesAsync([id], ct));
     }
 
@@ -163,7 +153,12 @@ internal sealed class Service(
             actorUserId,
             relatedEntityId: container.CampId, relatedEntityType: AuditEntityTypes.Camp);
 
-        foreach (var path in imagePaths.Distinct(StringComparer.Ordinal))
+        await DeleteObsoleteImagesAsync(imagePaths, id, "deleted");
+    }
+
+    private async Task DeleteObsoleteImagesAsync(IEnumerable<string> paths, Guid containerId, string operation)
+    {
+        foreach (var path in paths.Distinct(StringComparer.Ordinal))
         {
             try
             {
@@ -171,7 +166,8 @@ internal sealed class Service(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to delete image file {StoragePath} after container {ContainerId} was deleted", path, id);
+                logger.LogError(ex, "Failed to delete image file {StoragePath} after container {ContainerId} was {Operation}",
+                    path, containerId, operation);
             }
         }
     }

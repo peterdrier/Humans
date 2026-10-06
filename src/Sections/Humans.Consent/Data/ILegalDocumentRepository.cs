@@ -19,11 +19,11 @@ namespace Humans.Consent.Data;
 /// <c>AsNoTracking</c>; writes create and dispose short-lived contexts via
 /// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{LegalDbContext}"/>
 /// so the repository can be registered Singleton alongside
-/// <see cref="IUserRepository"/>, etc.
+/// <c>IUserRepository</c>, etc.
 ///
 /// <para>
 /// Legal documents carry a cross-section TeamId only. Callers that need team
-/// data call <see cref="Teams.ITeamService"/> and stitch by
+/// data call <see cref="ITeamServiceRead"/> and stitch by
 /// <see cref="LegalDocument.TeamId"/>.
 /// </para>
 /// </remarks>
@@ -43,7 +43,7 @@ internal interface ILegalDocumentRepository : IRepository
     /// <summary>
     /// Loads legal documents, optionally filtered by team id. Includes
     /// aggregate-local <c>Versions</c>. Read-only (AsNoTracking). Callers
-    /// that need per-team grouping stitch with <see cref="ITeamService"/>.
+    /// that need per-team grouping stitch with <see cref="ITeamServiceRead"/>.
     /// </summary>
     Task<IReadOnlyList<LegalDocument>> GetDocumentsAsync(
         Guid? teamId, CancellationToken ct = default);
@@ -57,7 +57,7 @@ internal interface ILegalDocumentRepository : IRepository
     /// <summary>
     /// Returns every active, required legal document with <c>Versions</c>
     /// included. Read-only (AsNoTracking). Used by
-    /// <see cref="ILegalDocumentSyncService.GetRequiredVersionsAsync"/>.
+    /// <see cref="Humans.Consent.Contracts.ILegalDocumentSyncServiceRead.GetRequiredVersionsAsync"/>.
     /// </summary>
     Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsAsync(CancellationToken ct = default);
 

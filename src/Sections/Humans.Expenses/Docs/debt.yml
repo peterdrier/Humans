@@ -5,29 +5,17 @@ next_id: 11
 inbox:
   - added: 2026-08-26
     id: EXP-1
-    what: "Every mutation on the section exists twice: an internal XxxAsync that throws ExpenseValidationException and a public XxxWithResultAsync that catches it and returns a result object. Services/ExpenseReportService.cs carries both halves for each transition, so a caller can reach the throwing form and a reader has to check which one a call site took. One shape per transition would delete the wrapper layer, but the choice of which shape survives changes IExpenseReportService's surface. Found by /section-doctor on Expenses 2026-08-26."
+    what: "Every mutation on the section exists twice: an internal XxxAsync that throws ExpenseValidationException and a public XxxWithResultAsync that catches it and returns a result object. Services/ExpenseReportService.cs carries both halves for each transition, so a caller can reach the throwing form and a reader has to check which one a call site took. The exception also carries localized text (localizer['Expenses_Validation_...']) that the wrappers surface as ex.Message, violating no-localized-exception-messages (merged from EXP-10, Peter's debt review of peterdrier/Humans#1903). Found by /section-doctor on Expenses 2026-08-26. Plan: keep only the result-returning form per transition, with refusals carried as resource keys the controller localizes, and delete the throwing twins and ExpenseValidationException. IExpenseReportService is internal (D2); throw-to-result is pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel
   - added: 2026-08-26
     id: EXP-3
-    what: "Services/ExpenseReportService.cs is the section's maxClassLoc and its only large class. It holds the report state machine, the Holded outbox drain and its backoff, the Holded purchase-document conversation (ProcessHoldedCreateAsync, the section's longest method), and the GDPR export contributor. The Holded conversation is a cohesive concern with its own failure model and would split out without touching the state machine. Found by /section-doctor on Expenses 2026-08-26."
-    review: panel
-  - added: 2026-08-26
-    id: EXP-4
-    what: "ExpenseReportOperation.Withdraw is granted by ExpenseReportAuthorizationHandler (submitter, on Submitted/CoordinatorEndorsed/Approved) and no code asks for it: ExpensesController.Withdraw hand-rolls report.SubmitterUserId != user.Id instead. Wiring the operation is not a no-op — a submitter withdrawing a Draft would get a 403 where they now get a red toast from the repository's own refusal — so it is a behaviour change, not a cleanup. Found by /section-doctor on Expenses 2026-08-26."
+    what: "Services/ExpenseReportService.cs is the section's maxClassLoc and its only large class. It holds the report state machine, the Holded outbox drain and its backoff, the Holded purchase-document conversation (ProcessHoldedCreateAsync, the section's longest method), and the GDPR export contributor. The Holded conversation is a cohesive concern with its own failure model and would split out without touching the state machine. Found by /section-doctor on Expenses 2026-08-26. Plan: extract into an internal class in this section (ExpenseHoldedPublisher); pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel
   - added: 2026-10-03
     id: EXP-6
-    what: "ExpenseReportService.RemoveAttachmentFromLineAsync unlinks the line and deletes attachment metadata in separate repository saves. Failure or cancellation between them leaves orphan metadata without the removal audit. An atomic owning-repository operation needs an approved interface change; the existing setters cannot compose into one save. Found during the daily debt source audit."
-    review: panel
-  - added: 2026-10-03
-    id: EXP-7
-    what: "ExpenseReportService.RemoveAttachmentFromLineAsync passes request cancellation to post-commit file cleanup and writes its audit afterward. Cancellation can strand the file; cleanup must follow committed metadata and audit with CancellationToken.None (file-metadata-commit-order). Coordinate with EXP-6 to fix the whole removal workflow. Found during the daily debt source audit."
+    what: "ExpenseReportService.RemoveAttachmentFromLineAsync unlinks the line and deletes attachment metadata in separate repository saves. Failure or cancellation between them leaves orphan metadata without the removal audit. Found during the daily debt source audit. Plan: one internal repository method that unlinks the line and deletes the metadata in a single SaveChanges, then audit and delete the stored file after commit; repositories are internal, not public surface per debt-sweep-standing-policy D2, list in PR."
     review: panel
   - added: 2026-10-04
     id: EXP-8
-    what: "ExpenseReportService.AttachFileToLineAsync supports replacing an existing attachment but leaves the old metadata row and stored file orphaned after success. Failure rollback intentionally restores the old linkage. Replacing linkage and deleting superseded metadata must commit together before post-audit file cleanup; current AddAttachmentAsync/SetLineAttachmentAsync/RemoveAttachmentAsync methods use separate saves, so a proper replacement operation needs approved repository surface. Coordinate with EXP-6/7. Found during the nightly production scan."
-    review: panel
-  - added: 2026-10-04
-    id: EXP-10
-    what: "ExpenseValidationException carries localized text: ExpenseReportService throws it with localizer[\"Expenses_Validation_...\"] messages and the WithResult wrappers surface ex.Message to members. Exceptions are never localized (no-localized-exception-messages); refusals need a result shape the controller localizes, which is new surface needing Peter's approval. Coordinate with EXP-1. Peter, debt review of peterdrier/Humans#1903."
+    what: "ExpenseReportService.AttachFileToLineAsync supports replacing an existing attachment but leaves the old metadata row and stored file orphaned after success. Failure rollback intentionally restores the old linkage. Current AddAttachmentAsync/SetLineAttachmentAsync/RemoveAttachmentAsync use separate saves. Found during the nightly production scan. Plan: one internal repository method that adds the new metadata, relinks the line and deletes the superseded metadata in a single SaveChanges, then audit and delete the old file after commit (same shape as EXP-6); internal, not public surface per debt-sweep-standing-policy D2, list in PR."
     review: panel

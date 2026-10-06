@@ -44,7 +44,7 @@ Deprioritize:
 
 - cosmetic naming-only cleanups
 - large rewrites with weak behavioral payoff
-- breaking interface churn unless the call graph is fully understood
+- breaking interface churn unless the call graph is fully understood or the change is a pre-approved shape under debt-sweep-standing-policy
 - file splitting done only to reduce line count
 - moving assignments, string formatting, or service calls into DTO/request/command records only to make a metric stop flagging them
 

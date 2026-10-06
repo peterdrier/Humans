@@ -11,7 +11,7 @@ namespace Humans.Users.Controllers;
 
 /// <summary>
 /// Landing pages for non-Active users — the account-status wall (Suspended/Rejected/Deleted/Merged)
-/// and the pending-deletion cancel screen. Exempt from <see cref="MembershipRequiredFilter"/> (these
+/// and the pending-deletion cancel screen. Exempt from <c>MembershipRequiredFilter</c> (these
 /// ARE the redirect targets), so each action self-checks the caller's state.
 /// </summary>
 [Authorize]

@@ -4,9 +4,9 @@ namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Sections implement this to participate in account merge. Each impl re-FKs
-/// its user-keyed rows from the eliminated user (<paramref name="mergedFromUserId"/>
+/// its user-keyed rows from the eliminated user (<c>mergedFromUserId</c>
 /// — the source row being tombstoned) onto the surviving user
-/// (<paramref name="mergedToUserId"/> — the target).
+/// (<c>mergedToUserId</c> — the target).
 ///
 /// <para>
 /// The orchestrator (<c>AccountMergeService.MergeAsync</c>) fans out across

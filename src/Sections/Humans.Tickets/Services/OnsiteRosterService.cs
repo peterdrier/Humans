@@ -7,7 +7,7 @@ namespace Humans.Tickets.Services;
 
 /// <summary>
 /// Builds the "Who's onsite" roster (#736): joins
-/// <see cref="IUserService.GetOnsiteUsersAsync"/> output with camp / team /
+/// <see cref="IUserServiceRead.GetOnsiteUsersAsync"/> output with camp / team /
 /// governance-role names and applies filters. Pure orchestration over existing
 /// section services — no DB access.
 /// </summary>

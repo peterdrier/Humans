@@ -47,6 +47,7 @@
 - **The ticket card must never mark check-in, write `EventParticipation`, or mutate ticket state.** Scanner is not an attendance gateway.
 - No database tables are owned by this section.
 - Starting a ticket lookup clears the previous person’s card and marks the card region busy until the latest response body or failure completes. Only the latest ticket lookup may replace the displayed card, including when older requests fail or finish reading their response body later. The latest lookup still displays its own failure.
+- Ticket-card requests reject redirects and display the lookup failure; login or access-denied pages cannot become ticket cards.
 - The camera stream is released (`MediaStreamTrack.stop()` on every track) on Stop, on `pagehide` and on `beforeunload`. A camera acquired after its startup was abandoned is released immediately. Stopped or superseded sessions cannot deliver decoded results or restart their frame loop; late ZXing controls are stopped, and restart waits for pending decoder cleanup before reusing the preview.
 
 ## Negative Access Rules

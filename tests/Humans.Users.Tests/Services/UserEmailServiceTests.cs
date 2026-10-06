@@ -1762,8 +1762,10 @@ public class UserEmailServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    [HumansFact]
-    public async Task AdminMarkVerifiedAsync_DuplicateEmail_CreatesMergeRequestWithoutVerifying()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task AdminMarkVerifiedAsync_DuplicateEmail_CreatesMergeRequestWithoutVerifying(bool alreadyPending)
     {
         // Mirrors VerifyEmailAsync's duplicate-handling: if the address is
         // already verified on another account, the admin path must NOT
@@ -1794,13 +1796,13 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns([conflicting]);
         _mergeService.HasPendingForEmailIdAsync(rowId, Arg.Any<CancellationToken>())
-            .Returns(false);
+            .Returns(alreadyPending);
 
         var result = await _service.AdminMarkVerifiedAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
         result.MergeRequestCreated.Should().BeTrue();
         pending.IsVerified.Should().BeFalse();
-        await _mergeService.Received(1).CreateAsync(
+        await _mergeService.Received(alreadyPending ? 0 : 1).CreateAsync(
             Arg.Is<AccountMergeRequest>(m =>
                 m.TargetUserId == userId
                 && m.SourceUserId == otherUserId

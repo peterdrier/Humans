@@ -64,6 +64,8 @@ public class PiiRedactionEnricherTests
     [Xunit.InlineData("Email", "ab@example.com", "ab***@example.com")]
     [Xunit.InlineData("Email", "x😀@example.com", "x***@example.com")]
     [Xunit.InlineData("To", "x😀@example.com", "x***@example.com")]
+    [Xunit.InlineData("Recipient", "alice@example.com", "al***@example.com")]
+    [Xunit.InlineData("recipient", "x😀@example.com", "x***@example.com")]
     [Xunit.InlineData("Email", "😀@example.com", "😀***@example.com")]
     public void Enrich_retained_pii_prefix_preserves_unicode_without_exposing_more(
         string propertyName, string text, string expected)

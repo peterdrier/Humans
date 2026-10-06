@@ -89,14 +89,15 @@ Until budget exhausted or theme drained, per item (one item or one tight cluster
 2. `dotnet build Humans.slnx -v quiet`.
 3. Targeted tests: the touched section's tests + `--filter` the Architecture tests. Full `dotnet test Humans.slnx -v quiet` at minimum before each push.
 4. **EF verification** (items changing the persistent model): follow [section-migrations-in-maintenance](../../../memory/process/section-migrations-in-maintenance.md). Generate the owning context's migration with `dotnet ef`, inspect its snapshot diff, run `has-pending-model-changes` with that context and project, and pass the EF migration review gate before commit. Use `memory/process/ef-multi-context-commands.md` for the context/project pair. A migration is allowed only when the item set out to change the schema. Drift the item did not intend → revert the item, record it (Phase 7 question or inbox), continue; the unattended loop never generates a migration to absorb a surprise. Code-only changes that cannot alter the schema need no EF tooling.
-5. **Forbidden-move grep** on the item diff: `#pragma warning disable HUM`, `[SuppressMessage`, *new* `[Grandfathered]`, `// ReSharper disable`, visibility narrowing that dodges a rule rather than fixes it. Any hit → revert the item, record in report.
+5. **Forbidden-move grep** on the item diff: `#pragma warning disable HUM`, `[SuppressMessage`, *new* `[Grandfathered]`, `// ReSharper disable`, visibility narrowing that dodges a rule rather than fixes it. Any hit → revert the item, record in report. Exception (`debt-sweep-standing-policy` D12): a new `[Grandfathered]` that makes already-existing debt visible to an analyzer is allowed — say so in the commit message.
    Also forbidden (judgment, not grep): **splitting a controller method into controller-local helpers** (private methods, static helpers, local functions, VM factories) **to satisfy a per-method metric**. The metric is a proxy for "no business logic in controllers" — the fix is a service move, or an honest "this is presentation; the threshold is miscalibrated" finding (grandfather stays, record it). Rejected and reverted wholesale on 2026-06-12.
 6. **`review: panel` themes only:** dispatch a second-opinion reviewer subagent — opus-tier, read-only, score-blind, default-reject (refactor-swarm posture): "is this fix a good idea, not merely green — name the concept that improved in one sentence." Name it `debt-review-<item>-opus`, description tagged `(opus)`. Reject → rework once; persistent reject → revert, skip item, record.
 7. Commit with a one-line `debt(<theme-id>): <what>` message. Push every 3–5 items.
 
 Rules of the loop:
 
-- **Stop-and-ask classes are skip-and-ask classes here:** interface/public-surface additions (`interface-method-additions-are-debt`), required columns, privilege changes → skip the item, queue a Phase 7 question. A **storage drop is never a Phase 7 item**: `no-drops-until-prod-verified` gives every destructive migration its own PR, so an item whose migration would drop storage is skipped and recorded as separately scoped work, never bundled into the sweep PR on a Phase 7 yes. Substantial architecture transitions also go to explicit planning and dedicated PRs. Never block the loop waiting.
+- **Standing policy first:** [`debt-sweep-standing-policy`](../../../memory/process/debt-sweep-standing-policy.md) (D1–D13) decides what is pre-approved, what closes outright and what is not debt. Rule-prescribed contract changes (D1) are done and listed in the PR under **Pre-approved contract changes**; `internal` types are never public surface (D2). No category-bin skips (D4): every skipped item gets a one-line code check first; a failed check means close it.
+- **Stop-and-ask classes are skip-and-ask classes here:** a NEW interface, service or endpoint (`interface-method-additions-are-debt`, minus the D1 shapes), required columns, privilege changes → skip the item, queue a Phase 7 question in D3 format. A **storage drop is never a Phase 7 item**: `no-drops-until-prod-verified` gives every destructive migration its own PR, so an item whose migration would drop storage is skipped and recorded as separately scoped work, never bundled into the sweep PR on a Phase 7 yes. Substantial architecture transitions also go to explicit planning and dedicated PRs. Never block the loop waiting.
 - Off-theme debt discovered while working → append to an `inbox`: the owning section's file when one section owns the fix (any section — writing another's ledger is intended), the central ledger otherwise. Never chased.
 - Mechanical edit fan-out is allowed via edit-only subagent workers (sonnet, named `<task>-sonnet`, absolute `$WORKTREE` paths, no git/build); the orchestrator owns all git and build commands.
 - An item that can't be made green after a genuine attempt → revert it cleanly, record, continue. Never leave the branch red between commits.
@@ -125,6 +126,9 @@ gh pr create --repo peterdrier/Humans --base main \
 ## Fixed
 <per-item bullets>
 
+## Pre-approved contract changes
+<D1 change — signature before → after — prescribing rule>
+
 ## Skipped
 <item — reason>
 
@@ -142,7 +146,7 @@ One PR per sweep. Print the PR URL.
 
 ## Phase 7: Resolve review items inline (no homework)
 
-After the PR is open and **before** teardown, present **every item that needs Peter's judgment inline in chat** — terse, numbered, one line each, answerable in a word or two: skipped schema/interface items, panel rejects worth debating, uncertain classifications, anything queued during the loop. The report is the record, not the delivery channel — assume Peter never opens it. Inline prose, never the `AskUserQuestion` tool (project rule).
+After the PR is open and **before** teardown, present **every item that needs Peter's judgment inline in chat** — numbered, each answerable cold by someone who has NOT read the ledger (D3): what the code does today, what would change, why it matters, then a yes/no proposal with a concrete signature. A row id alone is never enough. Items: skipped schema/interface items, panel rejects worth debating, uncertain classifications, anything queued during the loop. The report is the record, not the delivery channel — assume Peter never opens it. Inline prose, never the `AskUserQuestion` tool (project rule).
 
 Wait for answers. Apply resulting edits in the worktree, **`git add` + new `git commit`** (a bare push after editing sends nothing), update the report's skipped/questions sections with each resolution, `git push`.
 

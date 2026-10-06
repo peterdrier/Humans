@@ -88,10 +88,10 @@ internal sealed class HoldedClient : IHoldedClient
         AttachAuth(req);
 
         using var resp = await SendAsync(req, ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
-        // A successful create may already be persisted remotely; a missing ID cannot be retried safely.
+        // A successful create may already be persisted remotely; an unreadable response cannot be retried safely.
         try
         {
+            var body = await resp.Content.ReadAsStringAsync(ct);
             var node = JsonNode.Parse(body)
                 ?? throw new HoldedPermanentException("Holded returned no purchase identity after accepting creation.");
             var id = node["id"]?.GetValue<string>();
@@ -203,10 +203,10 @@ internal sealed class HoldedClient : IHoldedClient
         AttachAuth(req);
 
         using var resp = await SendAsync(req, ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
         string? id = null;
         try
         {
+            var body = await resp.Content.ReadAsStringAsync(ct);
             id = JsonNode.Parse(body)?["id"]?.GetValue<string>();
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
@@ -254,10 +254,10 @@ internal sealed class HoldedClient : IHoldedClient
         AttachAuth(req);
 
         using var resp = await SendAsync(req, ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
         string? id = null;
         try
         {
+            var body = await resp.Content.ReadAsStringAsync(ct);
             id = JsonNode.Parse(body)?["id"]?.GetValue<string>();
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
@@ -306,13 +306,15 @@ internal sealed class HoldedClient : IHoldedClient
         { Content = JsonContent.Create(payload, options: OmitNulls) };
         AttachAuth(req);
         using var resp = await SendAsync(req, ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
         try
         {
+            var body = await resp.Content.ReadAsStringAsync(ct);
             var node = JsonNode.Parse(body)
-                ?? throw new HoldedTransientException("Holded returned empty body");
-            return node["id"]?.GetValue<string>()
-                ?? throw new HoldedTransientException("Holded create-account response missing id");
+                ?? throw new HoldedPermanentException("Holded returned no expense-account identity after accepting creation.");
+            var id = node["id"]?.GetValue<string>();
+            if (string.IsNullOrWhiteSpace(id))
+                throw new HoldedPermanentException("Holded returned no expense-account identity after accepting creation.");
+            return id;
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
@@ -487,7 +489,7 @@ internal sealed class HoldedClient : IHoldedClient
                 DocNumber = Prop(node, "document_number")?.GetValue<string>() ?? "",
                 Subtotal = ReadDecimalV2(Prop(node, "subtotal")),
                 Tax = ReadDecimalV2(Prop(node, "tax")),
-                Total = ReadDecimalV2(Prop(node, "total")),
+                Total = ReadRequiredDecimalV2(Prop(node, "total"), "total"),
                 Status = Prop(node, "status")?.GetValue<string>(),
                 IsDraft = Prop(node, "draft")?.GetValue<bool>(),
                 RawJson = body,

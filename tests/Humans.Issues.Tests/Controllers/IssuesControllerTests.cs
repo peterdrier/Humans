@@ -6,6 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Issues.Controllers;
+using Humans.Issues.Contracts;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Humans.Issues.Domain;
 using Humans.Issues.Models;
 using Humans.Issues.Services;
@@ -68,6 +70,65 @@ public sealed class IssuesControllerTests
             ("PageUrl", "Validation_MaxLength", ["", 2000]),
             ("UserAgent", "Validation_MaxLength", ["", 1000]),
             ("AdditionalContext", "Validation_MaxLength", ["", 2000]));
+    }
+
+    [HumansTheory]
+    [InlineData("status", true)]
+    [InlineData("assignee", true)]
+    [InlineData("section", true)]
+    [InlineData("github", true)]
+    [InlineData("status", false)]
+    [InlineData("assignee", false)]
+    [InlineData("section", false)]
+    [InlineData("github", false)]
+    public async Task Triage_InvalidBinding_DoesNotMutateOrBypassAuthorization(string field, bool allowed)
+    {
+        var viewerId = Guid.NewGuid();
+        var issueId = Guid.NewGuid();
+        var issues = Substitute.For<IIssuesService>();
+        issues.GetIssueByIdAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(
+            new IssueDetail(issueId, IssueStatus.Resolved, default, "Camps", "Existing", "Details",
+                null, null, null, null, viewerId, Guid.NewGuid(), viewerId, 42, null, default, default, null, 0));
+        issues.UpdateStatusWithResultAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), viewerId)
+            .Returns(IssueMutationResult.Success());
+        issues.UpdateAssigneeWithResultAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<Guid?>(), viewerId)
+            .Returns(IssueMutationResult.Success());
+        issues.UpdateSectionWithResultAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<string?>(), viewerId)
+            .Returns(IssueMutationResult.Success());
+        issues.SetGitHubIssueNumberWithResultAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<int?>(), viewerId)
+            .Returns(IssueMutationResult.Success());
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "test"))
+        };
+        var controller = new IssuesController(issues, authorization, users, new IssueSectionRouting([]),
+            localizer, NullLogger<IssuesController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+        controller.ModelState.AddModelError(field, "Malformed input.");
+        var result = field switch
+        {
+            "status" => await controller.UpdateStatus(issueId, new UpdateIssueStatusModel()),
+            "assignee" => await controller.UpdateAssignee(issueId, new UpdateIssueAssigneeModel()),
+            "section" => await controller.UpdateSection(issueId, new UpdateIssueSectionModel { Section = new string('x', 65) }),
+            _ => await controller.SetGitHubIssue(issueId, new SetIssueGitHubIssueModel())
+        };
+
+        if (allowed) result.Should().BeOfType<BadRequestObjectResult>();
+        else result.Should().BeOfType<ForbidResult>();
+        issues.ReceivedCalls().Where(call => call.GetMethodInfo().Name.EndsWith("WithResultAsync", StringComparison.Ordinal))
+            .Should().BeEmpty();
     }
 
     [HumansFact]

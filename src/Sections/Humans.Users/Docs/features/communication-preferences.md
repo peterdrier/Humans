@@ -31,7 +31,7 @@ GDPR and CAN-SPAM compliance require giving users control over which communicati
 
 Category names, descriptions, the clock-derived Ticketing year heading and ticket-lock note are localized in all six supported cultures on member and guest pages. Guest one-click banners and legacy Marketing unsubscribe pages share the translated category names.
 
-The member panel currently shows only the Email control. Its updates preserve the existing inbox setting rather than resetting the hidden channel.
+The member panel currently shows only the Email control. Its updates preserve the existing inbox setting rather than resetting the hidden channel. Save requests reject redirects; an expired or revoked session restores the checkbox and shows failure feedback instead of confirming a save.
 
 Guest updates serialize per row by disabling both editable channels and the matching one-click unsubscribe control while a save is pending. Success/failure unlocks the row; failures revert the edited value. Other categories stay independent.
 
@@ -67,6 +67,7 @@ When a user opts out of Facilitated Messages, the "Send Message" button is hidde
 
 - `GET /Profile/Me/CommunicationPreferences` — view/edit preferences
 - `POST /Profile/Me/CommunicationPreferences/Update` — save one category's preference
+- Member and guest preference updates return HTTP 400 for malformed binding before saving channels; missing users/tokens remain HTTP 401.
 - `GET /Profile/Me/Notifications` — permanent redirect to above (backwards compat)
 - `GET /Guest/CommunicationPreferences`, `POST /Guest/CommunicationPreferences/Update` — profileless-account variant (`GuestAccountController`, `[AllowAnonymous]`; accepts an unsubscribe token in place of a session; `UpdateSource` is `"Guest"` when signed in, `"MagicLink"` via token)
 

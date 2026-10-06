@@ -127,6 +127,8 @@ internal sealed class IssuesService(
         IReadOnlyList<string>? reporterRoles = null,
         CancellationToken ct = default)
     {
+        if (!Enum.IsDefined(category))
+            throw new ArgumentOutOfRangeException(nameof(category), category, "Unknown issue category.");
         section = NormalizeSection(section);
 
         var now = clock.GetCurrentInstant();
@@ -487,6 +489,8 @@ internal sealed class IssuesService(
         CancellationToken ct = default)
     {
         var issue = await FindHandleableAsync(issueId, viewer, ct);
+        if (!Enum.IsDefined(newStatus))
+            throw new ArgumentOutOfRangeException(nameof(newStatus), newStatus, "Unknown issue status.");
 
         var oldStatus = issue.Status;
         if (oldStatus == newStatus) return;
@@ -733,7 +737,7 @@ internal sealed class IssuesService(
         });
     }
 
-    /// <summary>Users whose badge count may shift on an issue mutation: reporter + admins + role-holders for current & previous sections.</summary>
+    /// <summary>Users whose badge count may shift on an issue mutation: reporter + admins + role-holders for current &amp; previous sections.</summary>
     private async Task<IReadOnlySet<Guid>> ResolveBadgeUserIdsAsync(
         Guid reporterUserId, string? section, string? previousSection,
         CancellationToken ct)
@@ -841,8 +845,18 @@ internal sealed class IssuesService(
     /// <summary>Reported issues and their free text are hard-deleted; triage links elsewhere are detached.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
+        var ownIssues = await repo.GetForUserExportAsync(userId, ct);
+        var badgeUserIds = new HashSet<Guid> { userId };
+        foreach (var section in ownIssues.Select(i => i.Section).Distinct(StringComparer.Ordinal))
+        {
+            badgeUserIds.UnionWith(await ResolveBadgeUserIdsAsync(userId, section, previousSection: null, ct));
+        }
+
+        var erasedIssueIds = await repo.EraseForUserAsync(userId, ct);
+        issuesBadge.InvalidateMany(badgeUserIds);
+
         // The screenshots are the reporter's own uploads — they go with the rows.
-        foreach (var issueId in await repo.EraseForUserAsync(userId, ct))
+        foreach (var issueId in erasedIssueIds)
         {
             DeleteScreenshotDirectory(issueId);
         }

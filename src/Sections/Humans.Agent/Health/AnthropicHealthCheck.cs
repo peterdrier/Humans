@@ -18,8 +18,13 @@ internal sealed class AnthropicHealthCheck(IAgentAvailability agent) : IHealthCh
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             _ = await System.Net.Dns.GetHostAddressesAsync("api.anthropic.com", cancellationToken);
             return HealthCheckResult.Healthy();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

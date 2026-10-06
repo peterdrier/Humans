@@ -157,7 +157,7 @@ internal interface IShiftManagementService
     /// <summary>
     /// Returns one row per department pie shown above the /Shifts page.
     /// Pie-eligible teams = top-level departments + promoted sub-teams
-    /// (<see cref="Team.IsInDirectory"/>). Non-promoted sub-team rotas roll
+    /// (<see cref="ShiftManagementService.IsInDirectory"/>). Non-promoted sub-team rotas roll
     /// up to their parent's pie. AdminOnly shifts and hidden rotas are
     /// excluded. Date filters are applied per-shift via
     /// <c>EventSettings.GateOpeningDate + DayOffset</c>.

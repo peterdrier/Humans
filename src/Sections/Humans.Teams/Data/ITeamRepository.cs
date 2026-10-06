@@ -20,7 +20,7 @@ namespace Humans.Teams.Data;
 /// <c>TeamRoleAssignment.TeamMember</c>) are <c>.Include</c>-d here where
 /// needed. Cross-domain navs (<c>TeamMember.User</c>, <c>TeamJoinRequest.User</c>,
 /// etc.) are never navigated — callers stitch display data from
-/// <see cref="Users.IUserService"/>. See design-rules §6.
+/// <see cref="Humans.Users.Contracts.IUserServiceRead"/>. See design-rules §6.
 /// </para>
 /// </summary>
 internal interface ITeamRepository : IRepository
@@ -441,14 +441,9 @@ internal interface ITeamRepository : IRepository
     Task<IReadOnlyList<(Guid TeamMemberId, Guid TeamId)>> GetActiveMembershipsForGoogleResyncAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Is the user's Google email status flagged as <see cref="GoogleEmailStatus.Rejected"/>?
-    /// Used to suppress outbox events for users whose Google account is dead.
-    /// The caller already owns the outbox semantics — this is a plain
-    /// cross-section read routed through <see cref="Users.IUserService"/> in
-    /// the application service, not here.
-    /// </summary>
-    // (no method on this interface — see IUserService.GetUserInfoAsync)
+    // GoogleEmailStatus.Rejected suppresses outbox events for users whose Google account is dead.
+    // The application service owns that decision and reads it through IUserServiceRead.GetUserInfoAsync;
+    // there is no corresponding method on this repository.
 
     // ==========================================================================
     // Early-entry grants (team_early_entry_grants)

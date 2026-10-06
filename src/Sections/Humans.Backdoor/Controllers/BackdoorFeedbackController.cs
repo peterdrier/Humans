@@ -207,6 +207,7 @@ internal sealed class PostFeedbackMessageModel
 internal sealed class UpdateFeedbackStatusModel
 {
     [Required]
+    [EnumDataType(typeof(FeedbackStatus), ErrorMessage = "Validation_InvalidValue")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public FeedbackStatus Status { get; set; }
 }

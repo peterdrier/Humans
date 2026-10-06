@@ -52,11 +52,11 @@ public interface IHoldedClient
         LocalDate date, int debitAccount, int creditAccount, decimal amount, string description,
         CancellationToken ct = default);
 
-    /// <summary>Lists all P&L expense accounts (id + number + name).</summary>
+    /// <summary>Lists all P&amp;L expense accounts (id + number + name).</summary>
     Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(
         CancellationToken ct = default);
 
-    /// <summary>Creates a P&L expense account; returns the new account id.</summary>
+    /// <summary>Creates a P&amp;L expense account; returns the new account id.</summary>
     Task<string> CreateExpenseAccountAsync(
         int accountNum, string name, CancellationToken ct = default);
 

@@ -10,7 +10,7 @@ namespace Humans.AuditLog.Contracts;
 /// re-implementing the query → batch-resolve actor/subject/team-name dance.
 /// </summary>
 /// <remarks>
-/// Reads only. The append path (<see cref="IAuditLogService.LogAsync"/> and
+/// Reads only. The append path (<see cref="IAuditLogService"/>’s <c>LogAsync</c> overloads and
 /// friends) stays where it is. Privacy guard: the viewer's GUID never
 /// appears in <see cref="AuditEvent.RenderPlainText"/> output (substituted
 /// with "You"), and entries whose action has no verb mapping render as

@@ -1713,7 +1713,7 @@ internal sealed class SurveyService(
             q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
 
         // Identity is resolved only for Identified rows in ordinary surveys. Asociado exports never
-        // expose a ballot-to-voter link, including for legacy Identified rows.
+        // expose identity, timestamps or submission order, including for legacy Identified rows.
         var identifiedUserIds = responses
             .Where(r => survey.IsAsociadoVote != true
                 && r.Anonymity == ResponseAnonymity.Identified
@@ -1725,8 +1725,9 @@ internal sealed class SurveyService(
             ? new Dictionary<Guid, UserInfo>()
             : await userService.GetUserInfosAsync(identifiedUserIds, ct);
 
-        var rows = responses
-            .OrderBy(r => r.SubmittedAt)
+        var rows = (survey.IsAsociadoVote == true
+                ? responses.OrderBy(r => r.Id)
+                : responses.OrderBy(r => r.SubmittedAt))
             .Select(r =>
             {
                 Guid? userId = null;
@@ -1754,7 +1755,8 @@ internal sealed class SurveyService(
                     .ToList();
 
                 return new SurveyExportRow(
-                    r.Id, r.Anonymity, r.InputMethod, r.Culture, r.SubmittedAt, userId, userName, answers);
+                    r.Id, r.Anonymity, r.InputMethod, r.Culture,
+                    survey.IsAsociadoVote == true ? null : r.SubmittedAt, userId, userName, answers);
             })
             .ToList();
 

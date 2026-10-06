@@ -367,6 +367,13 @@ internal sealed class Service(
                 logger.LogError(ex, "Service.SyncAsync failed");
             state.Status = "Error";
             state.LastError = ex.Message;
+            if (state.LastError.Length > 2000)
+            {
+                var length = 2000;
+                if (char.IsHighSurrogate(state.LastError[length - 1]) && char.IsLowSurrogate(state.LastError[length]))
+                    length--;
+                state.LastError = state.LastError[..length];
+            }
             state.StatusChangedAt = now;
             try { await repo.SaveDocSyncStateAsync(state, CancellationToken.None); }
             catch (Exception saveEx) { logger.LogError(saveEx, "Failed to persist error sync state"); }

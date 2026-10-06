@@ -106,6 +106,7 @@ internal sealed class BackdoorApiKeyService(
             k.Id, k.UserId, k.Label, k.DisplayPrefix, k.CreatedAt, k.LastUsedAt, k.RevokedAt))];
     }
 
+    /// <summary>Resolves an active key whose owner remains eligible.</summary>
     /// <remarks>
     /// Eligibility is re-checked here, not just at issue time: an Admin or Board assignment
     /// can expire, be revoked, or be swept by <c>RevokeAllActiveAsync</c> when the account

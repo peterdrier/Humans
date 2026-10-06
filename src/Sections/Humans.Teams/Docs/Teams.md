@@ -183,11 +183,19 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Invariants
 
+- Resource permission edits, inheritance toggles, unlinking and single-resource sync verify that the resource belongs to the team named in the URL after the existing team authorization. Missing or foreign resources return HTTP 404 with a Warning before any mutation; authorization refusals remain Forbid. Ownership is read through GoogleIntegration’s existing snapshot contract, and outbound mutations retain detached cancellation.
+
+- The inherited-access restriction POST rejects invalid binding with HTTP 400 and a Warning after its existing resource-management authorization, before dispatching a Google mutation. Unauthorized callers retain Forbid; explicit false remains valid.
+
 - Team creation persists the requested approval mode on the initial insert. The EF true sentinel preserves open teams without a second update.
 
 - The parent-team resource inheritance warning reflects only the current selection. Changing or clearing the parent hides the prior list immediately and invalidates earlier lookup responses or errors.
 
 - Global-search result rows pass browser cancellation to the team lookup; display fields and missing-result behavior are unchanged.
+
+- Team creation and editing with Google-group setup are marked `[ExternalWrite]`; their state-changing callers keep request cancellation detached through the local save and Google mutation.
+
+- People-map avatar initials retain the first Unicode grapheme of each of the first two nonempty space-separated words, including combining accents and joined emoji; initials remain HTML-escaped.
 
 - Team description previews keep their 150-character card and 200-character public-directory limits without splitting UTF-16 surrogate pairs; Markdown sanitization and full stored descriptions are preserved.
 
@@ -245,6 +253,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - Regular humans **cannot** manage other teams' members, roles, or settings.
 - Coordinators **cannot** create, delete, or edit team admin settings (name, approval mode, parent, Google prefix). They can only edit the team page and manage members/roles for their own department.
 - Sub-team managers **cannot** manage Google resources, the parent department, sibling sub-teams, or team admin settings.
+- A resource manager cannot target another team’s resource ID through an authorized team’s URL.
 - TeamsAdmin **cannot** delete teams or execute sync actions.
 - Nobody can manually add or remove members from system teams.
 
@@ -258,6 +267,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - When a department coordinator role assignment changes, the Coordinators system team membership is recalculated for the affected human. Sub-team manager changes do not affect the Coordinators system team.
 - The system team sync job runs hourly (Hangfire recurring job `teams-system-sync`), reconciling system team membership for Volunteers (consent compliance), Coordinators (department-level management role assignments), Board (active Board role assignments), Asociados/Colaboradors (approved tier applications with active terms), and Barrio Leads (active camp lead assignments). The job also reconciles `TeamMember.Role` against `IsManagement` role assignments and backfills `User.GoogleEmail` for verified `@nobodies.team` accounts. It ends with `IGoogleGroupSync.ReconcileAllAsync`, which it skips with a log line when Google Workspace is not configured (`IGoogleDriveActivityClient.IsConfigured`); the membership work itself always runs.
 - When an account merge accepts, `TeamService` participates through `IUserMerge.ReassignAsync`, folding `TeamMember`, `TeamJoinRequest`, and `TeamEarlyEntryGrant` rows onto the target account. Only a source Pending join request colliding with a target Pending request for the same team is dropped; Approved, Rejected and Withdrawn requests and their state history survive on the target. Called by `AccountMergeService.AcceptAsync` (Users section).
+- Account merge and GDPR erasure evict the notification meter after folding or deleting join requests, so the pending count refreshes with the team projection. Existing early-entry and membership-cache invalidation remain in place.
 - Each Early Entry mutation writes an `AuditLogEntry` (`EarlyEntryGranted` on add, `EarlyEntryUpdated` on edit, `EarlyEntryRevoked` on remove) against the `TeamEarlyEntryGrant` and evicts the affected user's EE cache.
 - Right-to-erasure (`IUserDataContributor.EraseForUserAsync`): ends live memberships, then hard-deletes the user's join requests and EE grants; the GDPR export contributes a `TeamEarlyEntry` data slice.
 

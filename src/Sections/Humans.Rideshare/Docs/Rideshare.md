@@ -220,6 +220,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 
 ## Invariants
 
+- Map-popup avatar initials retain the first Unicode grapheme, including combining accents and joined emoji; names and initials remain HTML-escaped.
+
 - Expected missing-record, ownership and rule rejections in member action/form helpers and admin settings log at Warning without exception stacks, preserving action/year and reason/key context. Status codes and localized form/toast feedback are unchanged.
 
 - Offer, request and My Rides pages localize the breadcrumb navigation landmark in all six cultures.
@@ -232,6 +234,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Seats remaining is derived, never stored.** `SeatsRemaining = SeatsOffered − Σ(Seats of Accepted interests on the trip)`; a trip is full when this is `≤ 0`.
 - **A request's Matched state is derived, never stored.** True when an `Accepted` interest on an `Active` trip exists with `FromUserId == request.UserId` or `RequestId == request.Id`; cancelling the trip un-matches the request.
 - **Route geometry is computed once at save and frozen.** Recomputed only on create, or on an update that changes the member point, waypoints, or direction — never at view time, and never invalidated by a later settings edit. The straight-line fallback the board draws when the stored route is absent or invalid is not a route: it is rendered at view time through the current destination, so it follows a later destination edit.
+- **Form pins match valid coordinates.** Map clicks wrap longitude into −180…180 before filling fields and placing the marker. Invalid or incomplete initial/manual coordinates remain unpinned; clearing or invalidating either field removes the pin without discarding the entered values. Valid edits restore it.
 - **Routing geometry is validated.** Provider geocodes must be Points and directions must be LineStrings with at least two positions. Coordinates must be numeric and finite, with latitude within −90…90 and longitude within −180…180. Route altitude and geometry metadata are retained. Invalid responses warn and return null. Invalid stored routes warn without exception stacks and use the existing travel-order fallback without rewriting data; when only the origin is available, the fallback is a Point.
 - **A null route never blocks a save.** When the routing provider is unavailable, `RouteGeoJson` is stored as null and a warning is logged; the save still succeeds.
 - **Declines are private.** No reason is required or stored; the declined party sees neutral language only, never a score or a broadcast reason.

@@ -17,7 +17,7 @@ public sealed record UserEmailInfo(
     Instant UpdatedAt,
     GoogleEmailStatus GoogleEmailStatus);
 
-/// <summary>Compact projection of <see cref="ContactField"/> carried inside <see cref="ProfileInfo"/>.</summary>
+/// <summary>Compact projection of <c>ContactField</c> carried inside <see cref="ProfileInfo"/>.</summary>
 public sealed record ContactFieldInfo(
     Guid Id,
     ContactFieldType FieldType,
@@ -26,20 +26,20 @@ public sealed record ContactFieldInfo(
     ContactFieldVisibility Visibility,
     int DisplayOrder);
 
-/// <summary>Compact projection of <see cref="ProfileLanguage"/>.</summary>
+/// <summary>Compact projection of <c>ProfileLanguage</c>.</summary>
 public sealed record ProfileLanguageInfo(
     Guid Id,
     string LanguageCode,
     LanguageProficiency Proficiency);
 
-/// <summary>Compact projection of <see cref="VolunteerHistoryEntry"/>.</summary>
+/// <summary>Compact projection of <c>VolunteerHistoryEntry</c>.</summary>
 public sealed record VolunteerHistoryInfo(
     Guid Id,
     LocalDate Date,
     string EventName,
     string? Description);
 
-/// <summary>Compact projection of <see cref="CommunicationPreference"/>.</summary>
+/// <summary>Compact projection of <c>CommunicationPreference</c>.</summary>
 public sealed record CommunicationPreferenceInfo(
     Guid Id,
     MessageCategory Category,
@@ -64,7 +64,7 @@ public sealed record UserExternalLoginInfo(
     string ProviderKey);
 
 /// <summary>
-/// Immutable projection of <see cref="Profile"/> carried inside <see cref="UserInfo"/>. Picture bytes excluded
+/// Immutable projection of <c>Profile</c> carried inside <see cref="UserInfo"/>. Picture bytes excluded
 /// (served via ProfileViewController.Picture); only birthday day+month carried (no year).
 /// </summary>
 public sealed record ProfileInfo(
@@ -226,7 +226,7 @@ public sealed record UserInfo(
 
     /// <summary>
     /// Sentinel value written to the legacy User.DisplayName column by
-    /// <see cref="Humans.Base.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>
+    /// <c>IUserRepository.ApplyExpiredDeletionAnonymizationAsync</c>
     /// to mark GDPR-deleted users. Read into <see cref="IsGdprAnonymized"/>
     /// at creation time so the legacy name never becomes a public UserInfo field.
     /// </summary>
@@ -236,7 +236,7 @@ public sealed record UserInfo(
     /// True when the user row is a tombstone — a merge-source
     /// (<see cref="MergedAt"/> set), a GDPR-anonymized record (legacy User.DisplayName
     /// resolved into <see cref="BurnerName"/> as <see cref="GdprAnonymizedBurnerName"/> by
-    /// <see cref="Humans.Base.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>),
+    /// <c>IUserRepository.ApplyExpiredDeletionAnonymizationAsync</c>),
     /// or a legacy tombstone whose <see cref="Email"/> still ends in the
     /// sentinel <c>.local</c> suffix (pre-<c>MergedAt</c>-column merges and
     /// historic purges wrote <c>@merged.local</c> / <c>@deleted.local</c>
@@ -457,7 +457,7 @@ public sealed record UserInfo(
     /// </summary>
     /// <summary>
     /// A row erased via GDPR Article 17. Keyed on the <c>deleted-&lt;id&gt;@deleted.local</c>
-    /// address <see cref="Humans.Base.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>
+    /// address <c>IUserRepository.ApplyExpiredDeletionAnonymizationAsync</c>
     /// mints, never on a name a member can type (nobodies-collective/Humans#1742: a member whose
     /// burner name is literally "Deleted User" was read as erased, which made
     /// <see cref="IsTombstone"/> true and dropped them out of every listing and search).

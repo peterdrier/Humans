@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Finance.Tests;
 
@@ -59,6 +60,29 @@ public class FinanceControllerTests
         controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         controller.Url = Substitute.For<IUrlHelper>();
         return controller;
+    }
+
+    [HumansTheory]
+    [InlineData("blockStart", true)]
+    [InlineData("addAll", true)]
+    [InlineData("blockStart", false)]
+    [InlineData("addAll", false)]
+    [InlineData(null, true)]
+    public async Task ProvisionHoldedAccounts_InvalidBinding_DoesNotProvision(string? invalidField, bool hasActor)
+    {
+        var actorId = Guid.NewGuid();
+        var controller = MakeControllerWithHttpContext(actorId);
+        if (!hasActor) controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        if (invalidField is not null) controller.ModelState.AddModelError(invalidField, "Invalid value.");
+        var blockStart = string.Equals(invalidField, "blockStart", StringComparison.Ordinal) ? 0 : 62900100;
+
+        var result = await controller.ProvisionHoldedAccounts(blockStart, false);
+
+        if (!hasActor) Assert.IsType<ChallengeResult>(result);
+        else if (invalidField is not null) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<RedirectToActionResult>(result);
+        if (!hasActor || invalidField is not null) Assert.Empty(_connector.ReceivedCalls());
+        else await _connector.Received(1).ProvisionAsync(62900100, false, actorId);
     }
 
     private static CreditorContactBinding Bound(Guid userId, int? num) =>

@@ -28,7 +28,7 @@ namespace Humans.Notifications.Services;
 /// every other table is reached through its owning section's public service
 /// interface. The meter counts cache (<see cref="CacheKeys.NotificationMeters"/>)
 /// is a short-TTL request-acceleration cache; writes elsewhere invalidate it via
-/// <see cref="INotificationMeterCacheInvalidator"/>.
+/// <see cref="Humans.Base.Interfaces.Caching.INotificationMeterCacheInvalidator"/>.
 /// </remarks>
 internal sealed class NotificationMeterProvider(
     IUserServiceRead userService,

@@ -1,9 +1,9 @@
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// Lifecycle state of a <see cref="Entities.User"/> — the single source of truth for access,
+/// Lifecycle state of a <c>User</c> — the single source of truth for access,
 /// suspension included. Stored as a required string column on <c>users</c>
-/// (<see cref="Entities.User.State"/>) via <c>HasConversion&lt;string&gt;()</c> and written at
+/// (<c>User.State</c>) via <c>HasConversion&lt;string&gt;()</c> and written at
 /// each transition point; nothing derives it on read.
 ///
 /// <para><b>Access rule:</b> the full app is reachable only when state is
@@ -32,7 +32,7 @@ public enum UserState
     /// <summary>Suspended for missing required consents. Shown the account-status wall with a consent-completion path.</summary>
     Suspended = 3,
 
-    /// <summary>Signup rejected (<see cref="Entities.Profile.RejectedAt"/> set). Shown the
+    /// <summary>Signup rejected (<c>Profile.RejectedAt</c> set). Shown the
     /// account-status wall, including the rejection reason when present.</summary>
     Rejected = 4,
 

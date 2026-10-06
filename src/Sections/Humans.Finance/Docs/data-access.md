@@ -23,6 +23,8 @@ creditor-**contact binding** surface (`HoldedCreditorContacts` — user ↔
 Holded supplier-account bindings, including an at-most-one-member
 collision guard).
 
+Sync-state reads return the persisted singleton or an unsaved Idle default; only `SaveDocSyncStateAsync` inserts or updates `HoldedDocSyncStates`.
+
 ### Service (Scoped)
 
 Repository: `IHoldedRepository`.

@@ -178,7 +178,7 @@ internal partial interface IUserRepository : IRepository
     /// out the account. Returns a small summary of the prior identity
     /// (effective email, display name, preferred language) or <c>null</c> if
     /// the user does not exist. Used by the account deletion job via
-    /// <see cref="AnonymizeExpiredAccountAsync"/>.
+    /// <see cref="Humans.Users.Contracts.IAccountDeletionService.AnonymizeExpiredAccountAsync"/>.
     /// </summary>
     Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default);

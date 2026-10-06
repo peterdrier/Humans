@@ -8,12 +8,16 @@ function page() {
     const source = readFileSync(resolve(__dirname,
         '../../../src/Humans.Base/Views/Shared/_VolunteerSearchScript.cshtml'), 'utf8');
     let script = source.slice(source.indexOf('(function () {'));
+    const serialized = {
+        searchUrl: '/search', voluntellUrl: '/assign', assignButtonClass: 'btn-success',
+        dietaryPreferenceStyle: 'muted', noResultsText: 'No humans found.',
+        errorText: 'Search failed.', overlapLabel: 'Overlap',
+    };
+    script = script.replace(/@Html\.Raw\(System\.Text\.Json\.JsonSerializer\.Serialize\((\w+)\)\)/g,
+        (_, name) => JSON.stringify(serialized[name]));
     for (const [key, value] of Object.entries({
-        '@Html.Raw(searchUrl)': '/search', '@Html.Raw(voluntellUrl)': '/assign',
         '@Html.Raw(Html.AntiForgeryTokenHtmlForJavaScript())': '',
-        '@assignButtonClass': 'btn-success', '@dietaryPreferenceStyle': 'muted',
-        '@noResultsText': 'No humans found.', '@errorText': 'Search failed.',
-        '@overlapLabel': 'Overlap', '@showPoolBadge.ToString().ToLowerInvariant()': 'false',
+        '@showPoolBadge.ToString().ToLowerInvariant()': 'false',
     })) script = script.replaceAll(key, value);
     const handlers = {};
     const timers = new Map();

@@ -41,7 +41,6 @@ namespace Humans.Integration.Tests.Controllers;
 /// rewrite 404s the script and <c>asp-append-version</c> silently emits no <c>?v=</c> hash
 /// rather than throwing, so both halves are asserted.
 /// </description></item>
-/// </list>
 /// <item><description>
 /// A key the resx carve missed, or a call site left on the wrong one of the section's two
 /// localizers, renders as its own raw key name — in all six languages, on a green 200. The
