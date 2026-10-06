@@ -82,9 +82,13 @@ field when it is `Sources.Count > 1`.
 - The orchestrator's only dependency is the provider fan-out — no repository, no tables
   (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:10`; pinned:
   `EarlyEntryArchitectureTests.OrchestratorInjectsOnlyTheProviderFanout`).
-- Per person: **earliest date wins**; reasons are **distinct, ordinal-compared**, in provider
-  order (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:33`); **more than one
-  reason** is what "multiple" means (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:20`).
+- Per person: **earliest date wins**
+  (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:33`); reasons are **distinct,
+  ordinal-compared**, in provider order
+  (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:34`; pinned:
+  `EarlyEntryServiceTests.Source_labels_differing_only_in_case_are_two_sources`); **more than
+  one reason** is what "multiple" means
+  (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:20`).
 - `GetRosterAsync` is live on every call
   (`src/Sections/Humans.EarlyEntry/Services/CachingEarlyEntryService.cs:50`). `GetForUserAsync`
   is cached per person, negative answers included
@@ -93,9 +97,11 @@ field when it is `Sources.Count > 1`.
   (`src/Sections/Humans.EarlyEntry/Services/CachingEarlyEntryService.cs:40`).
 - Every event-settings save evicts every cached answer
   (`src/Sections/Humans.EarlyEntry/Services/CachingEarlyEntryService.cs:76`).
-- A holder sees only their own early entry: the ticket-stub surfaces ask for the signed-in
-  user (`src/Sections/Humans.Tickets/Controllers/TicketTransferController.cs:30`); the gate card
-  asks for the scanned attendee (`src/Sections/Humans.Gate/Services/GateService.cs:74`).
+- The transfer wizard asks for the signed-in user's own early entry
+  (`src/Sections/Humans.Tickets/Controllers/TicketTransferController.cs:30`); the gate card asks
+  for the scanned attendee's (`src/Sections/Humans.Gate/Services/GateService.cs:74`). The stub
+  and holdings view components answer for the user they are invoked with, so who sees that
+  answer is the invoking page's gate, not this section's.
 - The roster needs `ShiftDashboardAccess` (Admin, NoInfoAdmin, VolunteerCoordinator)
   (`src/Sections/Humans.EarlyEntry/Controllers/EarlyEntryRosterController.cs:12`; pinned:
   `EarlyEntryArchitectureTests.RosterRequiresShiftDashboardAccess`).

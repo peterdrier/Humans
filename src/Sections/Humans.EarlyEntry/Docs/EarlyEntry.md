@@ -56,7 +56,7 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any authenticated human | Sees their own EE date on ticket-stub surfaces (homepage strip, holdings, transfer wizard) — never anyone else's. |
+| Any authenticated human | Sees their own EE date on ticket-stub surfaces (homepage strip, holdings, transfer wizard). The stub and holdings view components answer for the user they are invoked with; an admin profile view shows the profiled user's. |
 | Gate / Scanner staff | Sees the *scanned attendee's* EE on the gate card (`ScannerController`, `GateService`). |
 | `ShiftDashboardAccess` (Admin, NoInfoAdmin, VolunteerCoordinator) | Reads the full cross-source roster at `/Shifts/Admin/EarlyEntry`. |
 
@@ -80,9 +80,10 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
 
 ## Negative Access Rules
 
-- A holder **cannot** see another holder's EE on any holder-facing stub surface — all of them go
-  through `TicketStubInfo.From(row, holderEarlyEntry)` with the *viewer's* value. The gate card
-  is the deliberate staff-facing exception.
+- The transfer wizard asks only for the signed-in user's own EE. The stub and holdings view
+  components answer for the user they are invoked with, so who may see another member's EE
+  there is the invoking page's gate, not this section's. The gate card is the deliberate
+  staff-facing exception.
 - A human without `ShiftDashboardAccess` **cannot** reach `/Shifts/Admin/EarlyEntry`.
 - The section exposes no write path, so no write **cannot**-clause applies.
 
