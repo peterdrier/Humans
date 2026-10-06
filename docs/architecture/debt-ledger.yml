@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 79
+next_id: 80
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -550,7 +550,14 @@ inbox:
     id: CENTRAL-77
     what: "tests/Humans.Integration.Tests/Controllers/AdminLayoutRenderTests.cs AdminPages labels each admin page's layout site as a section `Views/<X>/_ViewStart`, but peterdrier/Humans#1809 deleted those files and the Shell's Views/_ViewStart.cshtml now picks _AdminLayout; the labels, and the test summary's \"every assembly that names the layout\", describe a shape that no longer exists (/section-doctor on EarlyEntry 2026-10-06)."
     review: light
+    root: CENTRAL-57
   - added: 2026-10-06
     id: CENTRAL-78
-    what: "docs/sections/SECTION-TEMPLATE.md still names Humans.Application, Humans.Infrastructure and tests/Humans.Application.Tests/Architecture/ in its architecture-test line and (A) Migrated block, none of which exist, so every new section doc starts from stale text; and docs/architecture/design-rules.md's wheat marker cites docs/superpowers/plans/2026-05-25-early-entry-roster.md, which is not in the tree (/section-doctor on EarlyEntry 2026-09-05, re-verified 2026-10-06)."
+    what: "docs/sections/SECTION-TEMPLATE.md still names Humans.Application, Humans.Infrastructure and tests/Humans.Application.Tests/Architecture/ in its architecture-test line and (A) Migrated block, none of which exist, so every new section doc starts from stale text (/section-doctor on EarlyEntry 2026-09-05, re-verified 2026-10-06)."
     review: light
+    root: CENTRAL-57
+  - added: 2026-10-06
+    id: CENTRAL-79
+    what: "docs/architecture/design-rules.md's early-entry wheat marker cites docs/superpowers/plans/2026-05-25-early-entry-roster.md, which is not in the tree (/section-doctor on EarlyEntry 2026-09-05, re-verified 2026-10-06)."
+    review: light
+    root: CENTRAL-57
