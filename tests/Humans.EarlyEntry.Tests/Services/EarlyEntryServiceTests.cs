@@ -86,17 +86,19 @@ public class EarlyEntryServiceTests
     }
 
     [HumansFact]
-    public async Task Single_source_is_not_flagged_HasMultiple_false()
+    public async Task Source_labels_differing_only_in_case_are_two_sources()
     {
         var userId = Guid.NewGuid();
-        var grant = new EarlyEntryGrant(userId, new LocalDate(2026, 7, 7), "Camp: Flags");
-
-        var sut = new EarlyEntryService(new[] { ProviderReturning(grant) });
+        var sut = new EarlyEntryService(new[]
+        {
+            ProviderReturning(new EarlyEntryGrant(userId, new LocalDate(2026, 7, 7), "Camp: Flags")),
+            ProviderReturning(new EarlyEntryGrant(userId, new LocalDate(2026, 7, 7), "camp: flags")),
+        });
 
         var roster = await sut.GetRosterAsync(Xunit.TestContext.Current.CancellationToken);
 
-        roster.Should().ContainSingle();
-        roster[0].HasMultiple.Should().BeFalse();
+        roster[0].Sources.Should().Equal("Camp: Flags", "camp: flags");
+        roster[0].HasMultiple.Should().BeTrue();
     }
 
     [HumansFact]
