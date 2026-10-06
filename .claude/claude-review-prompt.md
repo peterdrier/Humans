@@ -20,7 +20,7 @@ The workspace is write-blocked and the tool allow-list is matched per
 sub-command, so a Bash call that chains commands is rejected whole. Do not
 use `&&` or `;`, and do not redirect output (`>`) — /tmp and the workspace
 are both blocked, so saving the diff to a file cannot work and only costs a
-turn. Read `git diff` output straight from the tool result.
+turn. Read `.claude/pr-diff.sh` output straight from the tool result.
 
 ## Delegating
 
@@ -46,11 +46,11 @@ the PR leaves it; `git show <base-sha>:<path>` is the version it started
 from. A finding is worth far more when you have read the whole changed file
 than when you have only seen its diff hunk.
 
-`git diff` output is truncated on a large PR, and a truncated diff is not a
-reviewed PR. If the diff looks cut off, get the file list with
-`git diff --name-only <base-sha> <head-sha>` and `git show` each changed
-file, or diff one path at a time — on any PR over a few hundred lines that
-is the reliable path, not a fallback. Never
+`.claude/pr-diff.sh` output is truncated on a large PR, and a truncated
+diff is not a reviewed PR. If the diff looks cut off, get the file list with
+`.claude/pr-diff.sh --name-only` and `git show` each changed file, or diff
+one path at a time (`.claude/pr-diff.sh -- <path>`) — on any PR over a few
+hundred lines that is the reliable path, not a fallback. Never
 post a review that silently rests on a diff you know was truncated.
 
 ## What not to read

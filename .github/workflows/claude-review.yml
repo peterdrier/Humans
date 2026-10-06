@@ -36,7 +36,9 @@ name: claude-review
 # runs in agent mode and does not check out the PR head). So the review
 # prompt (.claude/claude-review-prompt.md, read by the `review-prompt`
 # step), the tool allow-list below, and the rule documents the reviewer
-# reads all come from base. The PR enters only as data: `git diff` and
+# reads all come from base. The PR enters only as data: `.claude/pr-diff.sh`
+# (a wrapper pinned to the two fetched commits — raw `git diff` is not
+# allowed, since `--no-index` reads any file on the runner) and
 # `git show <sha>:<path>` on the commits the `fetch-pr` step fetches.
 # Nothing from the PR executes. Do NOT add build/test/install steps, do NOT
 # check out the PR head, and keep the prompt out of any PR-supplied path.
@@ -151,6 +153,7 @@ jobs:
       number: ${{ steps.pr.outputs.number }}
       head_sha: ${{ steps.pr.outputs.head_sha }}
       base_sha: ${{ steps.pr.outputs.base_sha }}
+      merge_base: ${{ steps.pr.outputs.merge_base }}
       base_ref: ${{ steps.pr.outputs.base_ref }}
       skip: ${{ steps.guard.outputs.skip }}
     steps:
@@ -170,6 +173,13 @@ jobs:
           gh api "repos/${{ github.repository }}/pulls/${PR}" \
             --jq '"number=\(.number)", "head_sha=\(.head.sha)", "base_sha=\(.base.sha)", "base_ref=\(.base.ref)"' \
             | tee -a "$GITHUB_OUTPUT"
+          # The review diffs from the merge base, as the PR page does: base.sha
+          # is the base branch tip, and diffing from it on a stale branch
+          # shows base-only commits as reverse changes. Falls back to base.sha.
+          base=$(grep '^base_sha=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)
+          head=$(grep '^head_sha=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)
+          mb=$(gh api "repos/${{ github.repository }}/compare/${base}...${head}" --jq .merge_base_commit.sha 2>/dev/null || true)
+          echo "merge_base=${mb:-$base}" | tee -a "$GITHUB_OUTPUT"
 
       # Skip the review when the PR diff is docs-only. Compares
       # base.sha...head.sha via the compare API — works across forks because
@@ -224,13 +234,13 @@ jobs:
       # `ref:` pointing at the PR head.
       - uses: actions/checkout@v7
 
-      # Brings the PR's head and base commits into the object store so the
-      # reviewer can `git diff` them and `git show <sha>:<path>` any changed
-      # file. Objects only:
-      # nothing is checked out, so no PR file lands in the workspace.
+      # Brings the PR's head and merge-base commits into the object store so
+      # the reviewer can diff them and `git show <sha>:<path>` any changed
+      # file. Objects only: nothing is checked out, so no PR file lands in
+      # the workspace.
       - name: fetch-pr
         env:
-          BASE: ${{ needs.preflight.outputs.base_sha }}
+          BASE: ${{ needs.preflight.outputs.merge_base }}
           HEAD: ${{ needs.preflight.outputs.head_sha }}
         run: git fetch --no-tags --depth=1 origin "$BASE" "$HEAD"
 
@@ -248,6 +258,10 @@ jobs:
 
       - id: claude
         uses: anthropics/claude-code-action@v1
+        # The range .claude/pr-diff.sh diffs; the reviewer cannot change it.
+        env:
+          PR_MERGE_BASE: ${{ needs.preflight.outputs.merge_base }}
+          PR_HEAD: ${{ needs.preflight.outputs.head_sha }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Skips the OIDC exchange (see #713 in the header).
@@ -260,26 +274,26 @@ jobs:
               Repo name: ${{ github.event.repository.name }}
               PR:        #${{ needs.preflight.outputs.number }}
               Head SHA:  ${{ needs.preflight.outputs.head_sha }}
-              Base:      ${{ needs.preflight.outputs.base_ref }} @ ${{ needs.preflight.outputs.base_sha }}
+              Base:      ${{ needs.preflight.outputs.base_ref }} @ ${{ needs.preflight.outputs.merge_base }} (merge base)
 
             That is the PR under review. Do NOT run `gh pr list` or
             `gh pr view` to work out which PR it is, and do not look up the
             head SHA — it is above, and it is the SHA the summary comment
-            must cite. Both commits are fetched, so diff them locally and
-            start with the shape, not the content:
-            `git diff --stat ${{ needs.preflight.outputs.base_sha }} ${{ needs.preflight.outputs.head_sha }}`.
-            Under ~30 files, take the full diff next. Over that, never pull
-            the whole diff into your own context: group the files by section,
-            spawn one subagent per group with a path-filtered diff of its own
-            (`git diff <base> <head> -- <paths>`), and keep your context for
-            their reports and the summary. Do not use `gh pr diff`: GitHub
-            refuses it outright on a PR over 300 files.
+            must cite. The diff is `.claude/pr-diff.sh`, pinned to those two
+            commits: `.claude/pr-diff.sh --stat`, `--name-only`,
+            `--name-status`, or `-- <paths>` for one slice; no other options.
+            Raw `git diff` and `gh pr diff` are not allowed. Start with the
+            shape, not the content: run `--stat` first. Under ~30 files,
+            take the full diff next. Over that, never pull the whole diff
+            into your own context: group the files by section, spawn one
+            subagent per group with `.claude/pr-diff.sh -- <paths>` for its
+            slice, and keep your context for their reports and the summary.
 
             ${{ steps.prompt.outputs.body }}
           claude_args: |
             --model claude-opus-5-5
             --max-turns 100
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(git diff:*),Bash(gh pr view:*),Bash(gh pr checks:*),Bash(gh api:*),Bash(git show:*)"
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(.claude/pr-diff.sh:*),Bash(gh pr view:*),Bash(gh pr checks:*),Bash(gh api:*),Bash(git show:*)"
 
       # Surface what happened without a full debug log. The action writes
       # every SDK message to claude-execution-output.json; the result message
