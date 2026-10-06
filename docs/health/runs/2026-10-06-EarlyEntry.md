@@ -28,7 +28,7 @@ Independence check: pass — findings 1, 2 and 14 come from the target (the sett
 13. Carried from run 1, never ledgered and still true: `docs/sections/SECTION-TEMPLATE.md` names projects that no longer exist, and the early-entry wheat marker in `docs/architecture/design-rules.md` cites a plan file not in the tree. New: `AdminLayoutRenderTests` labels name per-section `_ViewStart` files the admin-nav rework deleted. Filed as CENTRAL-79, CENTRAL-80 and CENTRAL-78, each rooted at CENTRAL-57.
 14. `UserEarlyEntry` duplicates the roster row less `UserId` and `HasMultiple`; Peter ruled the fold on finding 11 of run 1 and it has not landed. Filed as EARLYENTRY-1.
 15. Inbox: nobodies-collective/Humans#735 — edit. Its 2026-06-10 comment lists early-entry status on the volunteer profile badges as shipped; `_VolunteerProfileBadges.cshtml` shows none today. The remaining scope (roster filters, daily arrivals, an explicit shift flag) still holds. The Inbox thread's claim that `ShiftEarlyEntryProjection` no longer exists was wrong: it is in `src/Sections/Humans.Shifts/Services/ShiftEarlyEntryProjection.cs`.
-16. Freshness triggers named `ShiftManagementService.cs`, which writes nothing early entry derives from any more, and missed the Settings listener and service.
+16. Freshness triggers missed the Settings listener and service. The run also struck the `ShiftManagementService.cs` trigger as writing nothing early entry derives from; that was wrong — `DeleteEventAsync` cascades to the signups the Shifts provider reads (finding 12) — and review round 1 restored it.
 17. Run 1's ruling on its finding 1 (wire `InvalidateAll` into the Shifts gate and build-offset writes) is moot: those writes moved to Settings, and the listener covers them.
 
 ## Debt verified
@@ -37,7 +37,7 @@ Independence check: pass — findings 1, 2 and 14 come from the target (the sett
 
 ## Worked
 
-- `doctor(earlyentry): docs describe the settings-listener eviction and the section's own nav group` — findings 1–5, 10, 11, 16. Doc and comment strikes ran through a sonnet executor, which added nothing beyond the listed findings. Main then corrected an xmldoc closing tag it had malformed and rewrote the Triggers bullet the executor had left alone.
+- `doctor(earlyentry): docs describe the settings-listener eviction and the section's own nav group` — findings 1–5, 10, 11, 16 (its `ShiftManagementService.cs` strike reverted in review round 1). Doc and comment strikes ran through a sonnet executor, which added nothing beyond the listed findings. Main then corrected an xmldoc closing tag it had malformed and rewrote the Triggers bullet the executor had left alone.
 - `doctor(earlyentry): ledger the eviction gaps and stale references found on the way` — findings 12, 13, 14.
 - `doctor(earlyentry): controller test substitutes the read interface the controller takes` — finding 9.
 - `doctor(earlyentry): pin ordinal source comparison in place of a subsumed test` — findings 6, 8. Reviewer: doctor-reviewer (opus high), APPROVE. It checked that every wrong `HasMultiple` rule it tried is still caught by the remaining tests, and that the new assertions match `EarlyEntryService.cs:34`. It also caught that the target cited line 33 for the ordinal rule; that cite is fixed. The new test fails under `StringComparer.OrdinalIgnoreCase` (mutation-checked on main).

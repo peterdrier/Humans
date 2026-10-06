@@ -36,3 +36,5 @@ inbox:
     id: TEAMS-10
     what: "Deactivating a team (UpdateTeamAsync with isActive false, or DeleteTeamAsync) leaves its early-entry grants live: TeamRepository.GetEarlyEntryGrantsForEnabledTeamsAsync filters on EarlyEntryEnabled only, and neither path evicts IEarlyEntryInvalidator. Whether a deactivated team still grants early entry is a Teams decision; either filter on IsActive and evict on the flip, or record that deactivation keeps grants (/section-doctor on EarlyEntry 2026-10-06)."
     review: panel
+    status: needs-detail
+    blocked_on: "A Teams policy call on whether a deactivated team keeps granting early entry."
