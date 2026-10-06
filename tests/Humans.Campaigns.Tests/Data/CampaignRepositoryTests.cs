@@ -144,10 +144,11 @@ public sealed class CampaignRepositoryTests
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
         var grant = await SeedGrantAsync(campaign, "MOVE", userId: source);
 
-        var count = await _repository.ReassignGrantsToUserAsync(
+        await _repository.ReassignGrantsToUserAsync(
             source, target, _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
-        count.Should().Be(1);
+        (await _db.CampaignGrants.CountAsync(g => g.UserId == target, Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(1);
         (await ReloadGrantAsync(grant.Id)).UserId.Should().Be(target);
     }
 
@@ -160,10 +161,11 @@ public sealed class CampaignRepositoryTests
         var sourceGrant = await SeedGrantAsync(campaign, "SRC", userId: source);
         var targetGrant = await SeedGrantAsync(campaign, "TGT", userId: target);
 
-        var count = await _repository.ReassignGrantsToUserAsync(
+        await _repository.ReassignGrantsToUserAsync(
             source, target, _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
-        count.Should().Be(1);
+        (await _db.CampaignGrants.CountAsync(g => g.UserId == target, Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(1);
         (await _db.CampaignGrants.AsNoTracking()
             .SingleOrDefaultAsync(g => g.Id == sourceGrant.Id, Xunit.TestContext.Current.CancellationToken))
             .Should().BeNull();
@@ -183,10 +185,11 @@ public sealed class CampaignRepositoryTests
         await SeedGrantAsync(campaign, "DUP-1", userId: source);
         await SeedGrantAsync(campaign, "DUP-2", userId: source);
 
-        var count = await _repository.ReassignGrantsToUserAsync(
+        await _repository.ReassignGrantsToUserAsync(
             source, target, _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
-        count.Should().Be(1);
+        (await _db.CampaignGrants.CountAsync(g => g.UserId == target, Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(1);
         (await _db.CampaignGrants.AsNoTracking()
             .CountAsync(g => g.UserId == source, Xunit.TestContext.Current.CancellationToken))
             .Should().Be(0);

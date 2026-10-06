@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Users.Controllers;
 using Humans.Users.Services;
 using Humans.Users.Models;
@@ -51,6 +52,8 @@ public class ProfileViewControllerPopoverTests
     private readonly IShiftManagementServiceRead _shiftManagement = Substitute.For<IShiftManagementServiceRead>();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
+    private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
+    private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly ProfileViewController _controller;
     private readonly Guid _viewerId = Guid.NewGuid();
 
@@ -73,8 +76,7 @@ public class ProfileViewControllerPopoverTests
         var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
-        var sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
-        sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
+        _sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _controller = new ProfileViewController(
             _userService,
@@ -84,10 +86,10 @@ public class ProfileViewControllerPopoverTests
             _commPrefService,
             _auditLogService,
             Substitute.For<IShiftSignups>(),
-            Substitute.For<ISettingsService>(),
+            _settings,
             _shiftManagement,
             localizer,
-            sharedLocalizer,
+            _sharedLocalizer,
             _teamService,
             _teamMessageOptions,
             _campService,
@@ -106,6 +108,45 @@ public class ProfileViewControllerPopoverTests
         _authorizationService.AuthorizeAsync(
                 Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Failed());
+    }
+
+    [HumansFact]
+    public async Task ViewProfile_AbandonedRequest_CancelsOnsiteYearRead()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>())
+            .Returns(BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com"));
+        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns((EventSettingsInfo?)null);
+        _settings.GetActiveEventSettingsAsync(aborted.Token)
+            .Returns(Task.FromCanceled<EventSettingsInfo?>(aborted.Token));
+
+        var act = () => _controller.ViewProfile(_viewerId, aborted.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
+    public async Task PublicPopover_UsesSharedCoordinatorLabel()
+    {
+        var id = Guid.NewGuid();
+        _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+            .Returns(BuildActiveUserInfo(id, "Coordinator", "coordinator@example.com"));
+        _sharedLocalizer["Profile_Coordinator"].Returns(new LocalizedString("Profile_Coordinator", "Coordinador"));
+        var team = new TeamInfo(
+            Guid.NewGuid(), "Infrastructure", null, "infrastructure", true, false,
+            SystemTeamType.None, false, true, false, false, Instant.FromUnixTimeSeconds(0),
+            [new TeamMemberInfo(Guid.NewGuid(), id, "Coordinator", null, null,
+                TeamMemberRole.Coordinator, Instant.FromUnixTimeSeconds(0))]);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+
+        var result = await _controller.PublicPopover(id, TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<PartialViewResult>().Subject.Model
+            .Should().BeOfType<PublicPopoverViewModel>().Subject;
+        model.RoleLabels.Should().Equal("Coordinador · Infrastructure");
     }
 
     [HumansFact]
@@ -351,13 +392,19 @@ public class ProfileViewControllerPopoverTests
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
     }
 
-    [HumansFact]
-    public async Task SendMessagePost_TeamOfferedToViewer_UsesGroupReplyToAndAudits()
+    [HumansTheory]
+    [InlineData("es", "es")]
+    [InlineData("", "en")]
+    [InlineData(" ", "en")]
+    [InlineData("not-a-culture", "en")]
+    [InlineData("pt", "en")]
+    public async Task SendMessagePost_TeamOfferedToViewer_UsesGroupReplyToAndAudits(string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var targetId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
         var viewer = BuildActiveUserInfo(_viewerId, "Coordinator", "coordinator@example.com");
-        var target = BuildActiveUserInfo(targetId, "Target", "target@example.com");
+        var target = BuildActiveUserInfo(targetId, "Target", "target@example.com") with { PreferredLanguage = language };
         _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [_viewerId] = viewer, [targetId] = target });
@@ -376,6 +423,9 @@ public class ProfileViewControllerPopoverTests
         }, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>();
+        _emailMessages.Received(1).FacilitatedMessage(
+            "target@example.com", target.BurnerName, viewer.BurnerName, "Hello",
+            true, "coordinator@example.com", expectedCulture);
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.ReplyTo == "infra@nobodies.team"),
             Arg.Any<CancellationToken>());

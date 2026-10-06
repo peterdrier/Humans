@@ -52,11 +52,9 @@ internal partial interface IUserRepository
     /// (case-insensitive on <c>Value</c>), the source row is dropped — target's
     /// row wins on collision. Surviving source rows are re-FK'd to the target's
     /// profile. <c>UpdatedAt</c> is stamped to <paramref name="updatedAt"/> on
-    /// every row touched. Returns the count of <c>contact_fields</c> rows
-    /// ultimately attributed to <paramref name="targetUserId"/>'s profile.
-    /// Returns 0 if either user has no profile.
+    /// every row touched. No-op if either user has no profile.
     /// </summary>
-    Task<int> ReassignToUserAsync(
+    Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default);
 }

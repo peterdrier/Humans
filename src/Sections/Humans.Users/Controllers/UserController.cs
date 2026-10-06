@@ -11,7 +11,7 @@ namespace Humans.Users.Controllers;
 
 /// <summary>
 /// Landing pages for non-Active users — the account-status wall (Suspended/Rejected/Deleted/Merged)
-/// and the pending-deletion cancel screen. Exempt from <see cref="MembershipRequiredFilter"/> (these
+/// and the pending-deletion cancel screen. Exempt from <c>MembershipRequiredFilter</c> (these
 /// ARE the redirect targets), so each action self-checks the caller's state.
 /// </summary>
 [Authorize]
@@ -33,7 +33,7 @@ internal sealed class UserController(
             return RedirectToAction("Index", "Home");
         }
 
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         var viewModel = new AccountStatusViewModel
         {
             State = state.Value,
@@ -47,7 +47,7 @@ internal sealed class UserController(
     [HttpGet("Deletion")]
     public async Task<IActionResult> Deletion()
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 

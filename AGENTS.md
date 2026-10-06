@@ -20,7 +20,7 @@ A few thousand real people trust this system with their personal data, and a vol
 
 ### 1. Sections own their data, end to end
 
-The app is ~40 vertical sections (`src/Sections/Humans.<Section>`), each owning its services and views, and — where it has data — its own `DbContext`, migrations, and tables (orchestrator sections like Onboarding and Gdpr own none). There is no shared DbContext — every table belongs to exactly one section. Sections interact only through public interfaces and `.Contracts` leaves. Reaching into another section's tables or internals is the cardinal sin here, and existing violations are tech debt, never precedent.
+The app is ~40 vertical sections (`src/Sections/Humans.<Section>`), each owning its services and views, and — where it has data — its own `DbContext`, migrations, and tables (orchestrator sections like Onboarding and Gdpr own none). There is no shared DbContext — every table belongs to exactly one section. Sections interact only through the public interfaces each publishes in its contracts — a `Contracts/` folder, or a `.Contracts` leaf project where a folder would close a project cycle. Reaching into another section's tables or internals is the cardinal sin here, and existing violations are tech debt, never precedent.
 
 ### 2. GDPR is a feature, not a checkbox
 
@@ -108,6 +108,7 @@ dotnet run --project src/Humans.Web
 - `-v quiet` is mandatory — default verbosity floods the context for no benefit ([`dotnet-verbosity-quiet`](memory/process/dotnet-verbosity-quiet.md)).
 - `Humans.Integration.Tests` is opt-in: `dotnet test Humans.slnx` never runs it unless `HUMANS_INTEGRATION_TESTS=1` is set. Agents never set it; only Peter opts in ([`integration-tests-are-not-ci-tests`](memory/process/integration-tests-are-not-ci-tests.md)).
 - Scope testing to the change's blast radius ([`scoped-inner-loop-tests`](memory/process/scoped-inner-loop-tests.md)): docs-only changes need no build or tests; a single-section change is gated by that section's test project (`dotnet test tests/Humans.<Section>.Tests -v quiet`, seconds — CI runs the full suite anyway); cross-section surface or an unclear radius gets `tests/Humans.Application.Tests` plus the full `dotnet test Humans.slnx -v quiet` gate before the PR.
+- XML documentation is generated during builds, so malformed comments and unresolved `cref` links fail compilation; missing documentation remains exempt (`CS1591`).
 - Analyzers enforce the call-site rules (repository access, service boundaries). A red analyzer is the answer, not an obstacle — grandfathered and baselined violations are documented tech debt and never justify a new one.
 - Version check on a deployed instance: `GET /api/version`.
 - Every PR whose branch lives in `peterdrier/Humans` gets a preview deploy at `https://{pr_id}.n.burn.camp` with its own database cloned from QA and dev login enabled — the place to verify user-visible changes for real. Fork PRs get no preview; a maintainer can deploy one by hand.
@@ -133,7 +134,7 @@ Controllers parse the request, call services, and format the response — no log
 - `memory/` — the atomic project rules (see "When you need a rule" above).
 - `tests/` — one test project per section, plus `Humans.Testing` helpers.
 
-Recurring maintenance (doc-freshness sweeps, tech-debt burndown) is skill-driven; its ledgers live at [`docs/architecture/freshness-catalog.yml`](docs/architecture/freshness-catalog.yml), [`docs/architecture/debt-ledger.yml`](docs/architecture/debt-ledger.yml), and [`docs/architecture/maintenance-log.md`](docs/architecture/maintenance-log.md) — record newly-found debt in the ledger ([`debt-ledger-additions`](memory/process/debt-ledger-additions.md)).
+Recurring maintenance (doc-freshness sweeps, tech-debt burndown) is skill-driven; its ledgers live at [`docs/architecture/freshness-catalog.yml`](docs/architecture/freshness-catalog.yml), [`docs/architecture/debt-ledger.yml`](docs/architecture/debt-ledger.yml), and [`docs/architecture/maintenance-log.md`](docs/architecture/maintenance-log.md) — record newly-found debt in the ledger ([`debt-ledger-additions`](memory/process/debt-ledger-additions.md)); burndown works existing rows before hunting new debt, and the ledger must shrink over time ([`debt-ledger-must-shrink`](memory/process/debt-ledger-must-shrink.md)).
 
 ## Taste
 

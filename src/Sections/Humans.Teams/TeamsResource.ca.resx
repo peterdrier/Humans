@@ -43,6 +43,7 @@
     <data name="MyTeams_Title" xml:space="preserve">
     <value>Els meus equips</value>
   </data>
+  <data name="Teams_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegació</value></data>
   <data name="JoinTeam_Title" xml:space="preserve">
     <value>Unir-se a {0}</value>
     <comment>{0} = team name</comment>
@@ -577,4 +578,5 @@
   <data name="Teams_Notification_ViewTeam" xml:space="preserve"><value>Mostra l’equip</value></data>
   <data name="Teams_Notification_JoinRejected" xml:space="preserve"><value>No s’ha aprovat la teva sol·licitud per unir-te a {0}</value></data>
   <data name="Teams_Notification_MemberRemoved" xml:space="preserve"><value>T’han tret de {0}</value></data>
+  <data name="Teams_TeamDetail_Calendar" xml:space="preserve"><value>Calendari de l’equip</value></data>
 </root>

@@ -37,6 +37,11 @@ internal sealed class TeamService(
     ILogger<TeamService> logger) : ITeamManagementService, ITeamSeeding, IGoogleGroupMembershipSource, IUserDataContributor, IUserMerge, IEarlyEntryProvider
 {
     private static readonly ResourceManager NoticeResources = new(typeof(TeamsResource));
+    private const int MaxTeamSlugLength = 256;
+    private static readonly HashSet<string> ReservedTeamSlugs = new(StringComparer.Ordinal)
+    {
+        "roster", "birthdays", "map", "my", "sync", "summary", "create", "search"
+    };
 
     internal const string TeamMemberships = "TeamMemberships";
     internal const string TeamJoinRequests = "TeamJoinRequests";
@@ -77,10 +82,11 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default)
     {
         var baseSlug = SlugHelper.GenerateSlug(name);
+        if (baseSlug.Length == 0)
+            baseSlug = "team";
         var now = clock.GetCurrentInstant();
 
-        string[] reservedSlugs = ["roster", "birthdays", "map", "my", "sync", "summary", "create", "search"];
-        if (Array.Exists(reservedSlugs, s => string.Equals(baseSlug, s, StringComparison.Ordinal)))
+        if (ReservedTeamSlugs.Contains(baseSlug))
             throw new InvalidOperationException($"The team name '{name}' conflicts with a reserved route");
 
         if (parentTeamId.HasValue)
@@ -97,7 +103,13 @@ internal sealed class TeamService(
 
         for (var attempt = 0; attempt < 10; attempt++)
         {
-            var slug = attempt == 0 ? baseSlug : $"{baseSlug}-{attempt + 1}";
+            var slug = baseSlug;
+            if (attempt > 0)
+            {
+                var suffix = "-" + (attempt + 1).ToString(CultureInfo.InvariantCulture);
+                var prefixLength = Math.Min(baseSlug.Length, MaxTeamSlugLength - suffix.Length);
+                slug = baseSlug[..prefixLength].TrimEnd('-') + suffix;
+            }
 
             var collidesWithExistingSlug = await repo.SlugExistsAsync(slug, excludingTeamId: null, cancellationToken);
             if (collidesWithExistingSlug)
@@ -293,7 +305,7 @@ internal sealed class TeamService(
             IsAuthenticated: true,
             IsCurrentUserMember: isCurrentUserMember,
             IsCurrentUserCoordinator: isCurrentUserCoordinator,
-            CanCurrentUserJoin: !isCurrentUserMember && !team.IsSystemTeam && pendingRequest is null,
+            CanCurrentUserJoin: team.IsActive && !isCurrentUserMember && !team.IsSystemTeam && pendingRequest is null,
             CanCurrentUserLeave: isCurrentUserMember && !team.IsSystemTeam,
             CanCurrentUserManage: canManage,
             CanCurrentUserEditTeam: isBoardMember || isAdmin || isTeamsAdmin,
@@ -414,6 +426,8 @@ internal sealed class TeamService(
             var normalized = SlugHelper.GenerateSlug(customSlug);
             if (string.IsNullOrEmpty(normalized))
                 throw new InvalidOperationException("Custom slug is not valid. Use lowercase letters, numbers, and hyphens.");
+            if (ReservedTeamSlugs.Contains(normalized))
+                throw new InvalidOperationException($"The slug '{normalized}' conflicts with a reserved route.");
 
             var customSlugTaken = await repo.SlugExistsAsync(normalized, excludingTeamId: teamId, cancellationToken);
             if (customSlugTaken)
@@ -435,8 +449,8 @@ internal sealed class TeamService(
         if (!string.Equals(team.Name, name, StringComparison.Ordinal))
         {
             var newSlug = SlugHelper.GenerateSlug(name);
-            var slugTaken = await repo.SlugExistsAsync(newSlug, excludingTeamId: teamId, cancellationToken);
-            if (!slugTaken)
+            if (!string.IsNullOrEmpty(newSlug) && !ReservedTeamSlugs.Contains(newSlug)
+                && !await repo.SlugExistsAsync(newSlug, excludingTeamId: teamId, cancellationToken))
                 team.Slug = newSlug;
         }
 
@@ -462,10 +476,11 @@ internal sealed class TeamService(
         }
         if (isPromotedToDirectory.HasValue)
             team.IsPromotedToDirectory = isPromotedToDirectory.Value;
+        var earlyEntryChanged = false;
         if (earlyEntryEnabled is { } eeFlag && eeFlag != team.EarlyEntryEnabled)
         {
             team.EarlyEntryEnabled = eeFlag;
-            earlyEntryInvalidator.InvalidateAll(); // flag flip changes who contributes; cheap at our small scale
+            earlyEntryChanged = true;
         }
         if (team.IsSystemTeam || parentTeamId.HasValue)
         {
@@ -474,7 +489,16 @@ internal sealed class TeamService(
         }
         team.UpdatedAt = clock.GetCurrentInstant();
 
-        await repo.UpdateTeamAsync(team, cancellationToken);
+        try
+        {
+            await repo.UpdateTeamAsync(team, cancellationToken);
+        }
+        finally
+        {
+            // Evict after the save attempt: a read during it still sees the old flag.
+            // A failed completion can also follow a committed write.
+            if (earlyEntryChanged) earlyEntryInvalidator.InvalidateAll();
+        }
 
         InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
 
@@ -506,18 +530,18 @@ internal sealed class TeamService(
         try
         {
             var team = await repo.FindForMutationAsync(teamId, cancellationToken)
-                ?? throw new InvalidOperationException($"Team {teamId} not found");
+                ?? throw new TeamPageRuleException($"Team {teamId} not found");
 
             if (normalizedCallsToAction.Count > 3)
-                throw new InvalidOperationException("A team can have at most 3 calls to action.");
+                throw new TeamPageRuleException("A team can have at most 3 calls to action.");
 
             if (normalizedCallsToAction.Count(c => c.Style == CallToActionStyle.Primary) > 1)
-                throw new InvalidOperationException("Only one primary call to action is allowed.");
+                throw new TeamPageRuleException("Only one primary call to action is allowed.");
 
             var canBePublic = !team.IsSystemTeam && !team.ParentTeamId.HasValue;
 
             if (isPublicPage && !canBePublic)
-                throw new InvalidOperationException("Only departments (non-system, top-level teams) can be made public.");
+                throw new TeamPageRuleException("Only departments (non-system, top-level teams) can be made public.");
 
             var now = clock.GetCurrentInstant();
             team.PageContent = pageContent;
@@ -537,11 +561,23 @@ internal sealed class TeamService(
 
             return TeamPageUpdateResult.Success();
         }
-        catch (InvalidOperationException ex)
+        catch (TeamPageRuleException ex)
         {
-            logger.LogWarning(ex, "Failed to update team page for team {TeamId} by user {UserId}", teamId, updatedByUserId);
+            logger.LogWarning("Team page update rejected for team {TeamId} by user {UserId}: {Reason}", teamId, updatedByUserId, ex.Message);
             return TeamPageUpdateResult.Failed(ex.Message);
         }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to update team page for team {TeamId} by user {UserId}", teamId, updatedByUserId);
+            return new TeamPageUpdateResult(false, null);
+        }
+    }
+
+    private sealed class TeamPageRuleException : InvalidOperationException
+    {
+        public TeamPageRuleException() { }
+        public TeamPageRuleException(string? message) : base(message) { }
+        public TeamPageRuleException(string? message, Exception? innerException) : base(message, innerException) { }
     }
 
     public async Task<TeamWithGroupResult> CreateTeamWithGoogleGroupAsync(
@@ -671,6 +707,9 @@ internal sealed class TeamService(
         var team = await repo.GetByIdWithRelationsAsync(teamId, cancellationToken)
             ?? throw new InvalidOperationException("Teams_NotFound");
 
+        if (!team.IsActive)
+            throw new InvalidOperationException("Teams_NotFound");
+
         if (team.IsSystemTeam)
             throw new InvalidOperationException("Team_CannotJoinSystem");
 
@@ -713,6 +752,9 @@ internal sealed class TeamService(
     {
         var team = await repo.GetByIdWithRelationsAsync(teamId, cancellationToken)
             ?? throw new InvalidOperationException("Teams_NotFound");
+
+        if (!team.IsActive)
+            throw new InvalidOperationException("Teams_NotFound");
 
         if (team.IsSystemTeam)
             throw new InvalidOperationException("Team_CannotJoinSystem");
@@ -2031,6 +2073,7 @@ internal sealed class TeamService(
 
         // TeamJoinRequest fold.
         await repo.ReassignActiveJoinRequestsAsync(sourceUserId, targetUserId, cancellationToken);
+        notificationMeterInvalidator.Invalidate();
 
         // Early-entry grants fold.
         await repo.ReassignEarlyEntryGrantsAsync(sourceUserId, targetUserId, cancellationToken);
@@ -2071,8 +2114,15 @@ internal sealed class TeamService(
             TeamName = GetTeamName(tjr.TeamId),
             tjr.Status,
             tjr.Message,
+            tjr.ReviewNotes,
             RequestedAt = tjr.RequestedAt.ToIso8601(),
-            ResolvedAt = tjr.ResolvedAt.ToIso8601()
+            ResolvedAt = tjr.ResolvedAt.ToIso8601(),
+            StateHistory = tjr.StateHistory.OrderBy(h => h.ChangedAt).Select(h => new
+            {
+                h.Status,
+                ChangedAt = h.ChangedAt.ToIso8601(),
+                h.Notes
+            }).ToList()
         }).ToList());
 
         var earlyEntrySlice = new UserDataSlice(TeamEarlyEntry, eeGrants.Select(g => new
@@ -2108,6 +2158,7 @@ internal sealed class TeamService(
     {
         await RevokeAllMembershipsAsync(userId, ct);
         await repo.DeleteJoinRequestsForUserAsync(userId, ct);
+        notificationMeterInvalidator.Invalidate();
         await DeleteEarlyEntryGrantsForUserAsync(userId, ct);
 
         // No cache call here: this type is the inner service, where the invalidation
@@ -2352,7 +2403,7 @@ internal sealed class TeamService(
                 await EmailService.SendAsync(EmailMessages.AddedToTeam(
                     email, user.BurnerName, team.Name, team.Slug,
                     resources.Select(r => (r.Name, r.Url)),
-                    user.PreferredLanguage),
+                    culture.Name),
                     cancellationToken);
             }
         }
@@ -2530,6 +2581,9 @@ internal sealed class TeamService(
 
         if (priorities.Count != slotCount)
             throw new InvalidOperationException($"Priorities count ({priorities.Count}) must match slot count ({slotCount})");
+
+        if (priorities.Any(priority => !Enum.IsDefined(priority)))
+            throw new InvalidOperationException("Each slot priority must be a defined priority value");
     }
 
     public async Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(

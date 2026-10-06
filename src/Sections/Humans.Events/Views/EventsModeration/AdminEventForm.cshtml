@@ -45,14 +45,14 @@
 
             <div class="mb-3">
                 <label asp-for="Title" class="form-label"></label>
-                <input asp-for="Title" class="form-control" maxlength="80" id="titleInput" />
+                <input asp-for="Title" class="form-control" maxlength="80" />
                 <div class="form-text"><span id="titleCounter">@(80 - (Model.Title?.Length ?? 0))</span> characters remaining</div>
                 <span asp-validation-for="Title" class="text-danger"></span>
             </div>
 
             <div class="mb-3">
                 <label asp-for="Description" class="form-label"></label>
-                <textarea asp-for="Description" class="form-control" rows="3" maxlength="450" id="descriptionInput"></textarea>
+                <textarea asp-for="Description" class="form-control" rows="3" maxlength="450"></textarea>
                 <div class="form-text"><span id="descriptionCounter">@(450 - (Model.Description?.Length ?? 0))</span> characters remaining</div>
                 <div class="form-text">
                     <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
@@ -131,11 +131,7 @@
                         @for (var mins = 15; mins <= 480; mins += 15)
                         {
                             var label = EventDurationFormatter.Format(mins, Localizer);
-                            <option value="@mins" selected="@(mins == Model.DurationMinutes ? "selected" : null)">@label</option>
-                        }
-                        @if (Model.DurationMinutes == 1440)
-                        {
-                            <option value="1440" selected="selected">All day</option>
+                            <option value="@mins" selected="@(mins == (Model.IsAllDay ? 60 : Model.DurationMinutes) ? "selected" : null)">@label</option>
                         }
                     </select>
                     <span asp-validation-for="DurationMinutes" class="text-danger"></span>
@@ -197,39 +193,19 @@
 <partial name="_MarkdownHelp" />
 
 @section Scripts {
+    <partial name="_EventCharacterCounters" />
     <script>
         (function () {
-            // Live character counters
-            var titleInput = document.getElementById('titleInput');
-            var titleCounter = document.getElementById('titleCounter');
-            var descInput = document.getElementById('descriptionInput');
-            var descCounter = document.getElementById('descriptionCounter');
-
-            if (titleInput && titleCounter) {
-                titleInput.addEventListener('input', function () {
-                    titleCounter.textContent = 80 - titleInput.value.length;
-                });
-            }
-            if (descInput && descCounter) {
-                descInput.addEventListener('input', function () {
-                    descCounter.textContent = 450 - descInput.value.length;
-                });
-            }
-
             // All-day toggle (individual events only)
             var allDayCheck = document.getElementById('IsAllDay');
             var startTimeField = document.getElementById('startTimeField');
             var durationField = document.getElementById('durationField');
-            var durationSelect = document.getElementById('durationSelect');
 
             function applyAllDay() {
                 if (!allDayCheck) return;
                 var allDay = allDayCheck.checked;
                 if (startTimeField) startTimeField.style.display = allDay ? 'none' : '';
                 if (durationField) durationField.style.display = allDay ? 'none' : '';
-                if (allDay && durationSelect) {
-                    durationSelect.value = '1440';
-                }
             }
 
             if (allDayCheck) {

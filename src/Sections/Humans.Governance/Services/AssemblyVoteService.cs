@@ -1448,7 +1448,7 @@ internal sealed class AssemblyVoteService(
             .ToList();
         var notified = 0;
 
-        foreach (var (rosterRow, rows, info, address) in recipients)
+        foreach (var (rosterRow, rows, info, address, language) in recipients)
         {
             // Re-read per recipient, as the reminder loop does: mailing a whole electorate
             // takes long enough for an Admin to stop, cancel or extend the vote in the
@@ -1470,11 +1470,11 @@ internal sealed class AssemblyVoteService(
                     messages.AssemblyVoteOpened(
                         address,
                         info.BurnerName,
-                        EmailTitle(current, info.PreferredLanguage),
+                        EmailTitle(current, language),
                         closesAt,
                         rosterRow.IsOfficial,
                         VoteUrl(vote.Id),
-                        info.PreferredLanguage),
+                        language),
                     ct);
 
                 // Stamped per row, immediately, as the reminder path does: the stamp is what
@@ -1517,15 +1517,21 @@ internal sealed class AssemblyVoteService(
         Truncate(vote.Title.Resolve(language, vote.OfficialCulture), MaxTitleLength);
 
     /// <summary>Trims to <paramref name="max"/> characters, ellipsis included in the count.</summary>
-    private static string Truncate(string text, int max) =>
-        text.Length <= max ? text : string.Concat(text.AsSpan(0, max - 1), "\u2026");
+    private static string Truncate(string text, int max)
+    {
+        if (text.Length <= max) return text;
+        var length = max - 1;
+        if (char.IsHighSurrogate(text[length - 1]) && char.IsLowSurrogate(text[length]))
+            length--;
+        return string.Concat(text.AsSpan(0, length), "\u2026");
+    }
 
     private async Task NotifyRosterCancelledAsync(AssemblyVote vote, CancellationToken ct)
     {
         var roster = await repository.GetRosterAsync(vote.Id, ct);
         var recipients = await RecipientsAsync(roster, ct);
 
-        foreach (var (rosterRow, _, info, address) in recipients)
+        foreach (var (rosterRow, _, info, address, language) in recipients)
         {
             try
             {
@@ -1533,9 +1539,9 @@ internal sealed class AssemblyVoteService(
                     messages.AssemblyVoteCancelled(
                         address,
                         info.BurnerName,
-                        EmailTitle(vote, info.PreferredLanguage),
+                        EmailTitle(vote, language),
                         vote.CancelReason ?? string.Empty,
-                        info.PreferredLanguage),
+                        language),
                     ct);
             }
             catch (Exception ex)
@@ -1619,7 +1625,7 @@ internal sealed class AssemblyVoteService(
     /// The group is represented by an official row where it has one, since that is the
     /// member's standing and the emails say so.</para>
     /// </remarks>
-    private async Task<List<(AssemblyVoteRoster Roster, IReadOnlyList<AssemblyVoteRoster> Rows, UserInfo Info, string Address)>>
+    private async Task<List<(AssemblyVoteRoster Roster, IReadOnlyList<AssemblyVoteRoster> Rows, UserInfo Info, string Address, string Language)>>
         RecipientsAsync(IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
     {
         var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).Distinct().ToList();
@@ -1635,11 +1641,14 @@ internal sealed class AssemblyVoteService(
             .Select(g =>
             {
                 var representative = g.FirstOrDefault(r => r.IsOfficial) ?? g.First();
+                var info = infos[representative.UserId!.Value];
                 return (
                     representative,
                     (IReadOnlyList<AssemblyVoteRoster>)g.ToList(),
-                    infos[representative.UserId!.Value],
-                    addresses[representative.UserId!.Value]);
+                    info,
+                    addresses[representative.UserId!.Value],
+                    info.PreferredLanguage.IsSupportedCultureCode()
+                        ? info.PreferredLanguage : CultureCatalog.DefaultCultureCode);
             })
             .ToList();
     }
@@ -1762,7 +1771,7 @@ internal sealed class AssemblyVoteService(
                 .ToList();
             var reminded = new List<Guid>(recipients.Count);
 
-            foreach (var (rosterRow, rows, info, address) in recipients)
+            foreach (var (rosterRow, rows, info, address, language) in recipients)
             {
                 // Eligibility is re-read per recipient, not trusted from the list: sending
                 // the whole roster takes long enough for somebody to vote, or for an Admin to
@@ -1802,11 +1811,11 @@ internal sealed class AssemblyVoteService(
                         messages.AssemblyVoteReminder(
                             address,
                             info.BurnerName,
-                            EmailTitle(current, info.PreferredLanguage),
+                            EmailTitle(current, language),
                             closesAt,
                             rosterRow.IsOfficial,
                             VoteUrl(vote.Id),
-                            info.PreferredLanguage),
+                            language),
                         ct);
 
                     // Stamped per row, immediately: the stamp is the only thing stopping the

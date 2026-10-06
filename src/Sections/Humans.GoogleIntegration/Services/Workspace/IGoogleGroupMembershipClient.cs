@@ -31,6 +31,7 @@ internal interface IGoogleGroupMembershipClient
     /// <param name="groupGoogleId">
     /// The numeric Cloud Identity group id (the <c>{id}</c> in <c>groups/{id}</c>).
     /// </param>
+    /// <param name="ct">Token used to cancel the membership listing.</param>
     /// <returns>
     /// A <see cref="GroupMembershipListResult"/> whose <c>Memberships</c>
     /// collection is non-null on success, or a populated <c>Error</c> on

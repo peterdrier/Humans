@@ -210,6 +210,24 @@ public class HoldedClientTreasuryTests
             .WithMessage("*id*");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ListBankMovementsAsync_RejectsNullRowsRatherThanReturningAnIncompleteFeed(bool mixed)
+    {
+        var rows = mixed
+            ? """{"id":"m1","account":"tr-1","date":"2026-08-18","amount":"-10.00","status":"pending"},null"""
+            : "null";
+        var json = "{\"items\":[" + rows + "],\"has_more\":false}";
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var read = async () => await client.ListBankMovementsAsync(
+            "tr-1", new LocalDate(2026, 8, 1), new LocalDate(2026, 8, 31),
+            Xunit.TestContext.Current.CancellationToken);
+
+        await read.Should().ThrowAsync<HoldedApiException>();
+    }
+
     [HumansFact]
     public async Task ListBankMovementsAsync_MalformedSuccessBody_IsAHoldedException_NotRawJson()
     {

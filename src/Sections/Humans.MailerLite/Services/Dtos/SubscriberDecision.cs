@@ -8,7 +8,8 @@ namespace Humans.MailerLite.Services.Dtos;
 internal enum SubscriberOutcome
 {
     UnconfirmedSkipped,
-    AmbiguousMultipleVerified,
+    /// <summary>Multiple verified owners or multiple unverified matching rows — skip.</summary>
+    AmbiguousEmailMatches,
 
     /// <summary>No Humans match — create a new human from the ML subscriber.</summary>
     CreateNewHuman,

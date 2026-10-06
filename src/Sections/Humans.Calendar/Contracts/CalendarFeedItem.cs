@@ -15,6 +15,11 @@ namespace Humans.Calendar.Contracts;
 /// Contributing section ("Shifts", "Events", "Workgroups"). Emitted as ICS CATEGORIES and
 /// shown as a badge in the admin widget.
 /// </param>
+/// <param name="Summary">The calendar item's short display title.</param>
+/// <param name="Description">Optional descriptive text for the calendar item.</param>
+/// <param name="Start">The item's start time.</param>
+/// <param name="End">The item's end time.</param>
+/// <param name="Location">Optional location for the calendar item.</param>
 /// <param name="Url">
 /// App-relative deep link back into the app; Calendar resolves it against the
 /// configured public base URL before emitting it as an ICS URL. Null when the

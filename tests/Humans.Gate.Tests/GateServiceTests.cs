@@ -30,6 +30,34 @@ namespace Humans.Gate.Tests;
 /// </summary>
 public class GateServiceTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("23505", "ix_gate_scan_events_admit_dedupe_key", true)]
+    [Xunit.InlineData("23505", "PK_gate_scan_events", false)]
+    [Xunit.InlineData("23503", "ix_gate_scan_events_admit_dedupe_key", false)]
+    public async Task Insert_OnlyTreatsExpectedConstraintAsDuplicate(string sqlState, string constraint, bool duplicate)
+    {
+        var failure = new DbUpdateException("Save failed", new Npgsql.PostgresException(
+            "Constraint violation", "ERROR", "ERROR", sqlState, constraintName: constraint));
+        var options = new DbContextOptionsBuilder<GateDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(new FailedInsert(failure)).Options;
+        var repo = new GateRepository(new TestDbContextFactory<GateDbContext>(options));
+        var row = new GateScanEvent { Id = Guid.NewGuid(), Barcode = "barcode", AdmitDedupeKey = "barcode" };
+        var insert = () => repo.RecordScanAsync(row, Xunit.TestContext.Current.CancellationToken);
+
+        if (duplicate)
+            (await insert()).Should().Be(GateRecordOutcome.DuplicateAdmitRejected);
+        else
+            (await insert.Should().ThrowAsync<DbUpdateException>()).Which.Should().BeSameAs(failure);
+    }
+
+    private sealed class FailedInsert(DbUpdateException failure) : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default) => throw failure;
+    }
+
     // The three ServiceTestHarness members this suite used — an in-memory GateDbContext,
     // a factory over the same store, and a fixed clock. Owned here rather than shared:
     // the harness is built around UsersDbContext and sharing it would grant a section

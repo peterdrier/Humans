@@ -1,10 +1,14 @@
 version: 1
-next_id: 3
+next_id: 4
 inbox:
   - added: 2026-09-22
     id: WORKGROUPS-2
     what: "SettingKeys.WorkgroupsRootDriveFolderId (Workgroups:RootDriveFolderId) lives in Settings' shared system_settings key/value store, which design-rules §8 says is not where new per-section state goes. Move it into Workgroups' own settings (Peter, freshness sweep 2026-09-22)."
     review: light
+  - added: 2026-10-04
+    id: WORKGROUPS-3
+    what: "WorkgroupRuleException carries a resource key and format args, and WorkgroupsController/WorkgroupsAdminController render localizer[ex.Key, ex.Args]. Exceptions are never localized (no-localized-exception-messages); rule refusals need a result type the controller localizes. Peter, debt review of peterdrier/Humans#1903."
+    review: panel
 # Emptied 2026-09-14: the one entry here asked for grant revocation when
 # SettingKeys.WorkgroupsRootDriveFolderId is replaced. Peter, on
 # peterdrier/Humans#1650: "this is fine, I won't do that" — the root is set once

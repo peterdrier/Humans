@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Stays a leaf: folding into Humans.CityPlanning would close a project cycle: Humans.CityPlanning -> Humans.Containers -> Humans.CityPlanning. -->
+
   <!--
     City Planning's cross-section surface, a leaf project rather than a Contracts/ folder
     because Containers would otherwise cycle: Humans.Containers needs

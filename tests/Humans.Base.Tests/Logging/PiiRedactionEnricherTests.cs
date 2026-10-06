@@ -55,6 +55,28 @@ public class PiiRedactionEnricherTests
         ((ScalarValue)logEvent.Properties["RequestPath"]).Value.Should().Be(42);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("Name", "Alice", "Al***")]
+    [Xunit.InlineData("Name", "A", "A")]
+    [Xunit.InlineData("Name", "x😀", "x***")]
+    [Xunit.InlineData("Name", "😀x", "😀***")]
+    [Xunit.InlineData("UserName", "x😀", "x***")]
+    [Xunit.InlineData("Email", "ab@example.com", "ab***@example.com")]
+    [Xunit.InlineData("Email", "x😀@example.com", "x***@example.com")]
+    [Xunit.InlineData("To", "x😀@example.com", "x***@example.com")]
+    [Xunit.InlineData("Recipient", "alice@example.com", "al***@example.com")]
+    [Xunit.InlineData("recipient", "x😀@example.com", "x***@example.com")]
+    [Xunit.InlineData("Email", "😀@example.com", "😀***@example.com")]
+    public void Enrich_retained_pii_prefix_preserves_unicode_without_exposing_more(
+        string propertyName, string text, string expected)
+    {
+        var logEvent = CreateLogEvent(propertyName, text);
+
+        _enricher.Enrich(logEvent, new SimplePropertyFactory());
+
+        ((ScalarValue)logEvent.Properties[propertyName]).Value.Should().Be(expected);
+    }
+
     private static LogEvent CreateLogEvent(string propertyName, object? propertyValue) => new(
         timestamp: DateTimeOffset.UtcNow,
         level: LogEventLevel.Information,

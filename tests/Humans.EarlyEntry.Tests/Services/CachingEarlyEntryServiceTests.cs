@@ -58,6 +58,33 @@ public class CachingEarlyEntryServiceTests
         await inner.Received(1).GetForUserAsync(userId, Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task GetForUserAsync_LoadStartedBeforeEviction_DoesNotRepopulateCache(
+        bool invalidateAll, bool wasGranted)
+    {
+        var (sut, inner) = CreateSut();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var grant = new UserEarlyEntry(new LocalDate(2026, 7, 1), ["Camp: Flags"]);
+        var old = wasGranted ? grant : null;
+        var current = wasGranted ? null : grant;
+        var pending = new TaskCompletionSource<UserEarlyEntry?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        inner.GetForUserAsync(userId, ct).Returns(pending.Task, Task.FromResult(current));
+        var read = sut.GetForUserAsync(userId, ct);
+
+        if (invalidateAll) sut.InvalidateAll();
+        else sut.InvalidateUser(userId);
+        pending.SetResult(old);
+        (await read).Should().Be(old);
+
+        (await sut.GetForUserAsync(userId, ct)).Should().Be(current);
+        await inner.Received(2).GetForUserAsync(userId, ct);
+    }
+
     [HumansFact]
     public async Task EventSettingsChanged_DropsEveryCachedAnswer()
     {

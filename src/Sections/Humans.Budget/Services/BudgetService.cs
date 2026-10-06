@@ -796,68 +796,18 @@ internal sealed class BudgetService(
         if (projection is null)
             return [];
 
-        if (projection.StartDate is null
-            || projection.EventDate is null
-            || projection.AverageTicketPrice == 0)
-        {
-            return [];
-        }
-
-        var today = clock.GetCurrentInstant().InUtc().Date;
-        var currentWeekMonday = GetTicketingIsoMonday(today);
-
-        var projectionStart = currentWeekMonday > projection.StartDate.Value
-            ? currentWeekMonday
-            : GetTicketingIsoMonday(projection.StartDate.Value);
-        var eventDate = projection.EventDate.Value;
-
-        if (projectionStart >= eventDate)
-            return [];
-
-        var dailyRate = projection.DailySalesRate;
-        var initialBurst = projection.InitialSalesCount;
-        var isFirstWeek = true;
-
-        var projections = new List<TicketingWeekProjection>();
-        var weekStart = projectionStart;
-
-        while (weekStart < eventDate)
-        {
-            var weekEnd = weekStart.PlusDays(6);
-            if (weekEnd > eventDate) weekEnd = eventDate;
-
-            var daysInWeek = Period.Between(weekStart, weekEnd.PlusDays(1), PeriodUnits.Days).Days;
-            var weekTickets = (int)Math.Round(dailyRate * daysInWeek);
-            if (isFirstWeek)
+        return projection.CalculateWeeks(clock.GetCurrentInstant().InUtc().Date)
+            .Select(week => new TicketingWeekProjection
             {
-                if (projectionStart <= projection.StartDate.Value)
-                    weekTickets += initialBurst;
-                isFirstWeek = false;
-            }
-            if (weekTickets <= 0) weekTickets = 1;
-
-            var weekRevenue = weekTickets * projection.AverageTicketPrice;
-            var stripeFees = weekRevenue * projection.StripeFeePercent / 100m +
-                             weekTickets * projection.StripeFeeFixed;
-            var ttFees = weekRevenue * projection.TicketTailorFeePercent / 100m;
-
-            projections.Add(new TicketingWeekProjection
-            {
-                WeekLabel = $"{weekStart.ToWeekdayDayMonth()}–{weekEnd.ToWeekdayDayMonth()}",
-                WeekStart = weekStart,
-                WeekEnd = weekEnd,
-                ProjectedTickets = weekTickets,
-                ProjectedRevenue = Math.Round(weekRevenue, 2),
-                ProjectedStripeFees = Math.Round(stripeFees, 2),
-                ProjectedTtFees = Math.Round(ttFees, 2)
-            });
-
-            weekStart = weekEnd.PlusDays(1);
-            weekStart = GetTicketingIsoMonday(weekStart);
-            if (weekStart <= weekEnd) weekStart = weekEnd.PlusDays(1);
-        }
-
-        return projections;
+                WeekLabel = $"{week.Start.ToWeekdayDayMonth()}–{week.End.ToWeekdayDayMonth()}",
+                WeekStart = week.Start,
+                WeekEnd = week.End,
+                ProjectedTickets = week.Tickets,
+                ProjectedRevenue = Math.Round(week.Revenue, 2),
+                ProjectedStripeFees = Math.Round(week.StripeFees, 2),
+                ProjectedTtFees = Math.Round(week.TicketTailorFees, 2)
+            })
+            .ToList();
     }
 
     public int GetActualTicketsSold(BudgetGroupDetail ticketingGroup)
@@ -894,13 +844,6 @@ internal sealed class BudgetService(
         }
 
         return total;
-    }
-
-    private static LocalDate GetTicketingIsoMonday(LocalDate date)
-    {
-        // NodaTime IsoDayOfWeek: Monday=1, Sunday=7.
-        var dayOfWeek = (int)date.DayOfWeek;
-        return date.PlusDays(-(dayOfWeek - 1));
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)

@@ -43,10 +43,6 @@ public sealed class CommunicationPreferencesPanelViewComponent(
             categories.Add(new CategoryPreferenceItem
             {
                 Category = category,
-                DisplayName = category == MessageCategory.Ticketing
-                    ? $"Ticketing — {clock.GetCurrentInstant().InUtc().Year}"
-                    : category.ToDisplayName(),
-                Description = category.ToDescription(),
                 // No row → fall back to the category's domain default (Marketing is
                 // opt-out-by-default, so a missing row renders unchecked, matching what
                 // the send path treats null as). Other categories default on.
@@ -64,6 +60,7 @@ public sealed class CommunicationPreferencesPanelViewComponent(
         {
             Categories = categories,
             ReadOnly = readOnly,
+            TicketingYear = clock.GetCurrentInstant().InUtc().Year,
         });
     }
 }

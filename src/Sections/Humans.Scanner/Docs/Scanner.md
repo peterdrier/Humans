@@ -3,7 +3,7 @@
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
   src/Humans.Web/Program.cs
-  src/Sections/Humans.Issues.Contracts/IIssueQueueOwner.cs
+  src/Sections/Humans.Issues/Contracts/IIssueQueueOwner.cs
   tests/Humans.Web.Tests/Authorization/EndpointAuthorizationTests.cs
 -->
 <!-- freshness:flag-on-change
@@ -46,8 +46,9 @@
 - Door context is read only when the ticket has a matched Human; otherwise every per-person field is null. The check-in timestamp is read for the active event year only.
 - **The ticket card must never mark check-in, write `EventParticipation`, or mutate ticket state.** Scanner is not an attendance gateway.
 - No database tables are owned by this section.
-- Only the latest ticket lookup may replace the displayed card, including when older requests fail or finish reading their response body later. The latest lookup still displays its own failure.
-- The camera stream is released (`MediaStreamTrack.stop()` on every track) on Stop, on `pagehide` and on `beforeunload`.
+- Starting a ticket lookup clears the previous person’s card and marks the card region busy until the latest response body or failure completes. Only the latest ticket lookup may replace the displayed card, including when older requests fail or finish reading their response body later. The latest lookup still displays its own failure.
+- Ticket-card requests reject redirects and display the lookup failure; login or access-denied pages cannot become ticket cards.
+- The camera stream is released (`MediaStreamTrack.stop()` on every track) on Stop, on `pagehide` and on `beforeunload`. A camera acquired after its startup was abandoned is released immediately. Stopped or superseded sessions cannot deliver decoded results or restart their frame loop; late ZXing controls are stopped, and restart waits for pending decoder cleanup before reusing the preview.
 
 ## Negative Access Rules
 
@@ -58,11 +59,11 @@
 ## Triggers
 
 - `/Scanner/Barcode`: no server-side side effects. Camera start/stop and the decoded-value list are managed in `wwwroot/js/scanner/barcode.js`; they produce no audit writes, notifications, or cross-section calls.
-- `/Scanner/Tickets`: reads ticket data via `ITicketServiceRead` and door context from EarlyEntry, Consent, Users, Events, Shifts (burn settings) and Calendar (the iCal feed) on each card request. No writes, no audit, no cache mutations.
+- `/Scanner/Tickets`: reads ticket data via `ITicketServiceRead` and door context from EarlyEntry, Consent, Users, Events, Settings (burn settings) and Calendar (the iCal feed) on each card request. No writes, no audit, no cache mutations.
 
 ## Cross-Section Dependencies
 
-Project references (`Humans.Scanner.csproj`): `Humans.Base`, `Humans.Events.Contracts`, `Humans.Consent.Contracts`, `Humans.Shifts.Contracts`, `Humans.Users.Contracts`, `Humans.Tickets.Contracts`, `Humans.Tickets` (section project — the `<vc:ticket-stub>` tag helper is generated from the component type, which lives there), `Humans.EarlyEntry`, and `Humans.Calendar` (section project — its `Contracts/` is a folder, not a leaf).
+Project references (`Humans.Scanner.csproj`): `Humans.Base`, `Humans.Issues` (`IIssueQueueOwner`), `Humans.Events`, `Humans.Consent`, `Humans.Settings` (burn settings), `Humans.Users.Contracts`, `Humans.Tickets.Contracts`, `Humans.Tickets` (section project as well — the `<vc:ticket-stub>` tag helper is generated from the component type, which lives there), `Humans.EarlyEntry`, and `Humans.Calendar`. A section whose contracts are a `Contracts/` folder is referenced as its section project.
 
 - **Tickets**: `ITicketServiceRead.GetTicketOrdersAsync` (read-only) and `<vc:ticket-stub>`. The barcode tool has no runtime Tickets coupling — it is gated behind `ScannerAccess` because its use case is reading TicketTailor ticket stubs.
 - **EarlyEntry**: `IEarlyEntryService.GetForUserAsync` — earliest entry date and grant-source list for the matched Human.
@@ -85,8 +86,8 @@ Project references (`Humans.Scanner.csproj`): `Humans.Base`, `Humans.Events.Cont
 
 ## Issue queue
 
-Scanner owns the `Scanner` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
-leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+Scanner owns the `Scanner` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
+folder) on its `Section` entry point, declaring the queue key and the roles that handle
 issues filed against it — `TicketAdmin, Board`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.

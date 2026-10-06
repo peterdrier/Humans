@@ -126,12 +126,11 @@ internal partial interface IUserRepository : IRepository
     /// <c>IdentityUserLogin&lt;Guid&gt;</c>'s primary key is
     /// (<c>LoginProvider</c>, <c>ProviderKey</c>) only — <c>UserId</c> is
     /// just an FK column — so two users can never share a row at the DB
-    /// level, and no de-duplication is possible. Returns the count of
-    /// logins now attributed to the target. Used by the account-merge
+    /// level, and no de-duplication is possible. Used by the account-merge
     /// fan-out to re-link sign-in credentials before archiving the source
     /// account.
     /// </summary>
-    Task<int> ReassignLoginsToUserAsync(
+    Task ReassignLoginsToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
     /// <summary>
@@ -140,10 +139,10 @@ internal partial interface IUserRepository : IRepository
     /// On (Year, UserId) collision, keeps the row with the highest
     /// <see cref="ParticipationStatus"/> per the precedence
     /// <c>Attended &gt; Ticketed &gt; NoShow &gt; NotAttending</c>.
-    /// Returns the count of rows now attributed to the target. Used by
+    /// Used by
     /// <c>AccountMergeService.AcceptAsync</c>.
     /// </summary>
-    Task<int> ReassignEventParticipationToUserAsync(
+    Task ReassignEventParticipationToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
     /// <summary>
@@ -179,7 +178,7 @@ internal partial interface IUserRepository : IRepository
     /// out the account. Returns a small summary of the prior identity
     /// (effective email, display name, preferred language) or <c>null</c> if
     /// the user does not exist. Used by the account deletion job via
-    /// <see cref="AnonymizeExpiredAccountAsync"/>.
+    /// <see cref="Humans.Users.Contracts.IAccountDeletionService.AnonymizeExpiredAccountAsync"/>.
     /// </summary>
     Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default);

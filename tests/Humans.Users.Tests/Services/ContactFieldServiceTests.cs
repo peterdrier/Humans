@@ -1,3 +1,6 @@
+using Humans.Base.Extensions;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options;
 using Humans.Auth.Contracts;
 using Humans.Users.Services;
 using AwesomeAssertions;
@@ -33,7 +36,9 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         _service = new ContactFieldService(
             repository, _userService, _teamService, _roleAssignmentService,
             Substitute.For<IUserInfoInvalidator>(),
-            Clock, NullLogger<ContactFieldService>.Instance);
+            Clock, NullLogger<ContactFieldService>.Instance,
+            new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
+                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
     }
 
     // Sets up GetTeamsAsync to return a dict containing one TeamInfo per member spec.
@@ -195,6 +200,51 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         result.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(ContactFieldVisibility.BoardOnly, true, 4)]
+    [Xunit.InlineData(ContactFieldVisibility.BoardOnly, false, 4)]
+    [Xunit.InlineData(ContactFieldVisibility.CoordinatorsAndBoard, true, 3)]
+    [Xunit.InlineData(ContactFieldVisibility.CoordinatorsAndBoard, false, 3)]
+    [Xunit.InlineData(ContactFieldVisibility.MyTeams, true, 2)]
+    [Xunit.InlineData(ContactFieldVisibility.MyTeams, false, 2)]
+    public async Task GetVisibleContactFields_UsesEachViewersPermissionsOnTheSameService(
+        ContactFieldVisibility privilege, bool privilegedFirst, int privilegedFieldCount)
+    {
+        var ownerId = Guid.NewGuid();
+        var privilegedViewerId = Guid.NewGuid();
+        var ordinaryViewerId = Guid.NewGuid();
+        StubUserInfo(ownerId, await CreateProfileWithFields(ownerId));
+        var teamId = Guid.NewGuid();
+        if (privilege == ContactFieldVisibility.BoardOnly)
+        {
+            _roleAssignmentService.IsUserBoardMemberAsync(privilegedViewerId, Arg.Any<CancellationToken>())
+                .Returns(true);
+            SetupEmptyTeams();
+        }
+        else if (privilege == ContactFieldVisibility.CoordinatorsAndBoard)
+        {
+            SetupTeams((privilegedViewerId, TeamMemberRole.Coordinator, teamId, SystemTeamType.None));
+        }
+        else
+        {
+            SetupTeams(
+                (privilegedViewerId, TeamMemberRole.Member, teamId, SystemTeamType.None),
+                (ownerId, TeamMemberRole.Member, teamId, SystemTeamType.None));
+        }
+
+        var firstViewerId = privilegedFirst ? privilegedViewerId : ordinaryViewerId;
+        var secondViewerId = privilegedFirst ? ordinaryViewerId : privilegedViewerId;
+        var firstFields = await _service.GetVisibleContactFieldsAsync(
+            ownerId, firstViewerId, Xunit.TestContext.Current.CancellationToken);
+        var secondFields = await _service.GetVisibleContactFieldsAsync(
+            ownerId, secondViewerId, Xunit.TestContext.Current.CancellationToken);
+
+        var privilegedFields = privilegedFirst ? firstFields : secondFields;
+        var ordinaryFields = privilegedFirst ? secondFields : firstFields;
+        privilegedFields.Should().HaveCount(privilegedFieldCount);
+        ordinaryFields.Should().ContainSingle().Which.Visibility.Should().Be(ContactFieldVisibility.AllActiveProfiles);
+    }
+
     [HumansFact]
     public async Task GetVisibleContactFields_FiltersFieldsByVisibility()
     {
@@ -215,6 +265,57 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         // Assert - should only see AllActiveProfiles field
         result.Should().HaveCount(1);
         result[0].Label.Should().Be("Phone");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("en")]
+    [Xunit.InlineData("es")]
+    [Xunit.InlineData("de")]
+    [Xunit.InlineData("it")]
+    [Xunit.InlineData("fr")]
+    [Xunit.InlineData("ca")]
+    public async Task GetVisibleContactFields_LocalizesDefaultLabelsAndPreservesCustomLabels(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var localizer = new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
+        var ownerId = Guid.NewGuid();
+        var profile = await CreateProfile(ownerId);
+        foreach (var type in Enum.GetValues<ContactFieldType>())
+        {
+            Db.ContactFields.Add(new ContactField
+            {
+                Id = Guid.NewGuid(),
+                ProfileId = profile.Id,
+                FieldType = type,
+                Value = "Contact value",
+                Visibility = ContactFieldVisibility.AllActiveProfiles,
+                CreatedAt = Clock.GetCurrentInstant(),
+                UpdatedAt = Clock.GetCurrentInstant(),
+            });
+        }
+        Db.ContactFields.Add(new ContactField
+        {
+            Id = Guid.NewGuid(),
+            ProfileId = profile.Id,
+            FieldType = ContactFieldType.Other,
+            CustomLabel = "My custom label",
+            Value = "Custom value",
+            Visibility = ContactFieldVisibility.AllActiveProfiles,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
+        });
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        StubUserInfo(ownerId, profile);
+        var labels = await _service.GetVisibleContactFieldsAsync(ownerId, ownerId, Xunit.TestContext.Current.CancellationToken);
+        labels.Single(f => f.FieldType == ContactFieldType.Phone).Label.Should().Be(localizer.EnumDisplay(ContactFieldType.Phone));
+        foreach (var field in labels.Where(f => !string.Equals(f.Value, "Custom value", StringComparison.Ordinal)))
+        {
+            var expected = localizer[$"Enum_ContactFieldType_{field.FieldType}"];
+            expected.ResourceNotFound.Should().BeFalse();
+            field.Label.Should().Be(expected.Value);
+        }
+        labels.Single(f => string.Equals(f.Value, "Custom value", StringComparison.Ordinal)).Label.Should().Be("My custom label");
     }
 
     [HumansFact]

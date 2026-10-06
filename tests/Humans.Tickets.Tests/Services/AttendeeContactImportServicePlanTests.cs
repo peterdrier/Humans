@@ -16,6 +16,46 @@ namespace Humans.Tickets.Tests.Services;
 
 public class AttendeeContactImportServicePlanTests
 {
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Plan_MultipleUnverifiedRows_SkipsWithoutDeletingOrProvisioning(bool sameOwner)
+    {
+        var harness = new PlanHarness();
+        var attendee = new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tkt_ambiguous",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "victim@gmail.com",
+            Status = TicketAttendeeStatus.Valid,
+        };
+        harness.AddUnmatched(attendee);
+        var firstOwner = Guid.NewGuid();
+        var secondOwner = sameOwner ? firstOwner : Guid.NewGuid();
+        harness.UserEmails.FindByAddressAsync(attendee.AttendeeEmail, true, false, Arg.Any<CancellationToken>())
+            .Returns([
+                UserEmailFixtures.Row(firstOwner, "victim@gmail.com", verified: false),
+                UserEmailFixtures.Row(secondOwner, "victim@googlemail.com", verified: false),
+            ]);
+        var service = harness.Service;
+        var plan = await service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var decision = plan.Decisions.Should().ContainSingle().Which;
+        decision.Outcome.Should().Be(AttendeeImportOutcome.AmbiguousEmailMatches);
+        decision.AmbiguousUserIds.Should().BeEquivalentTo(new[] { firstOwner, secondOwner }.Distinct());
+        decision.UnverifiedEmailIdToDelete.Should().BeNull();
+        var result = await service.ApplyAsync(plan, new HashSet<Guid> { attendee.Id }, Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.AmbiguousSkipped.Should().Be(1);
+        attendee.MatchedUserId.Should().BeNull();
+        await harness.UserEmails.DidNotReceive().DeleteEmailAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await harness.Provisioning.DidNotReceive().FindOrCreateUserByEmailAsync(
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<ContactSource>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task Plan_AttendeeWithoutEmail_ClassifiedAsSkipNoEmail()
     {
@@ -233,7 +273,7 @@ public class AttendeeContactImportServicePlanTests
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         var decision = plan.Decisions.Single();
-        decision.Outcome.Should().Be(AttendeeImportOutcome.AmbiguousMultipleVerified);
+        decision.Outcome.Should().Be(AttendeeImportOutcome.AmbiguousEmailMatches);
         decision.AmbiguousUserIds.Should().BeEquivalentTo([u1, u2]);
     }
 }

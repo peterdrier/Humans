@@ -5,14 +5,14 @@ Everything in this folder is `public`; outside it only two types are — `Sectio
 markers via `GetExportedTypes()`. Everything else is `internal`.
 
 The calendar *events* half of the section has no cross-section surface at all. Its whole
-fan-in was Shell's `CalendarController` and view models, and both moved in with the section;
+fan-in is `CalendarController` and the view models, both inside the section;
 no other section and nothing in Base reads a calendar event (design §9 B4;
-G5-SECTION-TEMPLATE.md step 5b). `ICalendarServiceRead` survives, but `internal` and inside
+G5-SECTION-TEMPLATE.md step 5b). `ICalendarServiceRead` is `internal` and inside
 `Services/`: the split it draws is between the section's cached read path and its write path,
 not between sections.
 
 What this folder holds is the **personal iCal feed** (`ICalFeedService` and its contributor
-fan-out), moved in from Base by G5 lane 4b-2c (nobodies-collective/Humans#866):
+fan-out):
 
 | Type | Who consumes it |
 |---|---|

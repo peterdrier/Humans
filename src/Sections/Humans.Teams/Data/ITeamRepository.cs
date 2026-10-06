@@ -20,7 +20,7 @@ namespace Humans.Teams.Data;
 /// <c>TeamRoleAssignment.TeamMember</c>) are <c>.Include</c>-d here where
 /// needed. Cross-domain navs (<c>TeamMember.User</c>, <c>TeamJoinRequest.User</c>,
 /// etc.) are never navigated — callers stitch display data from
-/// <see cref="Users.IUserService"/>. See design-rules §6.
+/// <see cref="Humans.Users.Contracts.IUserServiceRead"/>. See design-rules §6.
 /// </para>
 /// </summary>
 internal interface ITeamRepository : IRepository
@@ -119,9 +119,6 @@ internal interface ITeamRepository : IRepository
     Task<IReadOnlyList<(Guid ChildId, Guid ParentId)>> GetActiveChildIdsByParentsAsync(
         IReadOnlyCollection<Guid> parentTeamIds, CancellationToken ct = default);
 
-    /// <summary>Adds a new team and persists. The team is returned tracked-free.</summary>
-    Task AddTeamAsync(Team team, CancellationToken ct = default);
-
     /// <summary>
     /// Persists a <see cref="Team"/> that was loaded via
     /// <see cref="FindForMutationAsync"/> and mutated in the service layer.
@@ -130,9 +127,8 @@ internal interface ITeamRepository : IRepository
     Task UpdateTeamAsync(Team team, CancellationToken ct = default);
 
     /// <summary>
-    /// Creates a team and, in the same transaction, forces its
-    /// <c>RequiresApproval</c> column to <paramref name="requiresApproval"/>
-    /// after insert (works around the EF store-default sentinel).
+    /// Creates a team with <paramref name="requiresApproval"/> in one save.
+    /// The configured true sentinel preserves an explicit false on insert.
     /// Returns <c>true</c> on success, or <c>false</c> when persistence
     /// aborted because of a unique-constraint collision (typically a slug
     /// race against a concurrent create). The service layer uses the
@@ -171,11 +167,6 @@ internal interface ITeamRepository : IRepository
     /// <c>Team.ParentTeam</c> eagerly loaded. Detached.
     /// </summary>
     Task<IReadOnlyList<TeamMember>> GetActiveByUserIdAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Check whether the user has any active coordinator membership.
-    /// </summary>
-    Task<bool> IsAnyActiveCoordinatorAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Active non-system team ids where the user holds
@@ -329,19 +320,6 @@ internal interface ITeamRepository : IRepository
         Guid requestId, CancellationToken ct = default);
 
     /// <summary>
-    /// All pending join requests (across all teams) with the <c>Team</c>
-    /// loaded. Detached. Cross-domain <c>User</c> nav is never included.
-    /// </summary>
-    Task<IReadOnlyList<TeamJoinRequest>> GetAllPendingWithTeamsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Pending join requests for the given teams, detached, cross-domain
-    /// <c>User</c> nav excluded.
-    /// </summary>
-    Task<IReadOnlyList<TeamJoinRequest>> GetPendingForTeamIdsAsync(
-        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
-
-    /// <summary>
     /// Pending join requests for a single team, detached.
     /// </summary>
     Task<IReadOnlyList<TeamJoinRequest>> GetPendingForTeamAsync(
@@ -360,16 +338,14 @@ internal interface ITeamRepository : IRepository
     /// <summary>
     /// Account-merge fold: re-FKs every <see cref="TeamJoinRequest"/> authored
     /// by <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
-    /// When source has a request to a team where target <em>also</em> has an
+    /// When source has a pending request to a team where target <em>also</em> has an
     /// active (<see cref="TeamJoinRequestStatus.Pending"/>) request, the
     /// source row is dropped (target's pending request stands). All other
     /// source rows (historical statuses, or pending-without-target-conflict)
     /// are re-FK'd so request history is preserved on the surviving account.
-    /// Returns the count of <see cref="TeamJoinRequest"/> rows attributed to
-    /// <paramref name="targetUserId"/> after the move. Called only by
-    /// <c>TeamService.ReassignToUserAsync</c>.
+    /// Called only by <c>TeamService.ReassignAsync</c>.
     /// </summary>
-    Task<int> ReassignActiveJoinRequestsAsync(
+    Task ReassignActiveJoinRequestsAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
     // ==========================================================================
@@ -439,36 +415,6 @@ internal interface ITeamRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Role assignments for a member, with their <c>TeamRoleDefinition</c>
-    /// + <c>TeamRoleDefinition.Team</c> eagerly loaded, tracked for removal.
-    /// </summary>
-    Task<IReadOnlyList<TeamRoleAssignment>> FindAssignmentsForMemberForMutationAsync(
-        Guid teamMemberId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Role assignments for a collection of members (by id), tracked for
-    /// bulk removal. Same shape as
-    /// <see cref="FindAssignmentsForMemberForMutationAsync"/> but for many.
-    /// </summary>
-    Task<IReadOnlyList<TeamRoleAssignment>> FindAssignmentsForMembersForMutationAsync(
-        IReadOnlyCollection<Guid> teamMemberIds, CancellationToken ct = default);
-
-    /// <summary>
-    /// Does the given role assignment exist pointing at a
-    /// <see cref="TeamRoleDefinition"/> with <c>IsManagement=true</c>,
-    /// excluding <paramref name="excludingAssignmentId"/>?
-    /// </summary>
-    Task<bool> MemberHasOtherManagementAssignmentAsync(
-        Guid teamMemberId, Guid excludingAssignmentId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Find the tracked assignment for unassignment, with TeamMember + User
-    /// FK-only. (User display name is looked up through <c>IUserService</c>.)
-    /// </summary>
-    Task<TeamRoleAssignment?> FindAssignmentForMutationAsync(
-        Guid roleDefinitionId, Guid teamMemberId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns distinct user ids whose membership belongs to role definitions
     /// matching the predicate <c>IsManagement &amp;&amp; TeamId == teamId</c>.
     /// Used by <c>UpdateTeamAsync</c> to invalidate shift authorization when a
@@ -495,14 +441,9 @@ internal interface ITeamRepository : IRepository
     Task<IReadOnlyList<(Guid TeamMemberId, Guid TeamId)>> GetActiveMembershipsForGoogleResyncAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Is the user's Google email status flagged as <see cref="GoogleEmailStatus.Rejected"/>?
-    /// Used to suppress outbox events for users whose Google account is dead.
-    /// The caller already owns the outbox semantics — this is a plain
-    /// cross-section read routed through <see cref="Users.IUserService"/> in
-    /// the application service, not here.
-    /// </summary>
-    // (no method on this interface — see IUserService.GetUserInfoAsync)
+    // GoogleEmailStatus.Rejected suppresses outbox events for users whose Google account is dead.
+    // The application service owns that decision and reads it through IUserServiceRead.GetUserInfoAsync;
+    // there is no corresponding method on this repository.
 
     // ==========================================================================
     // Early-entry grants (team_early_entry_grants)

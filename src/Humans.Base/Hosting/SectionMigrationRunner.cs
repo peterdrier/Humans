@@ -41,6 +41,10 @@ internal static class SectionMigrationRunner
     /// Brings one section context up to date, choosing between the three baseline branches
     /// described on the class, and applies whatever migrations remain after that decision.
     /// </summary>
+    /// <param name="db">The section context to migrate.</param>
+    /// <param name="sentinelTable">The section’s baseline-presence table.</param>
+    /// <param name="logger">Records migration decisions and failures.</param>
+    /// <param name="ct">Cancels migration work.</param>
     /// <param name="beforeSchemaChange">
     /// Invoked immediately before anything writes to the schema — including the baseline
     /// bookkeeping, which creates the section's history table (nobodies-collective/Humans#845).

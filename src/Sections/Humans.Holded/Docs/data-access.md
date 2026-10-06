@@ -34,8 +34,8 @@ Repository: `IHoldedMirrorRepository`.
 | HoldedAccounts | R/W (chart-of-accounts cache, refreshed and reconciled every sync) |
 | HoldedApiCalls | R/W (drained from `IHoldedCallLog` after each sync/overview read) |
 
-No cross-section service calls — `IHoldedClient` (this section's own leaf,
-`Humans.Holded.Contracts` — the Holded API connector; its journal-affecting
+No cross-section service calls — `IHoldedClient` (this section's own `Contracts/` folder,
+namespace `Humans.Holded.Contracts` — the Holded API connector; its journal-affecting
 writes are `PayPurchaseDocumentAsync` and `PostLedgerEntryAsync`, called by
 Finance when a SEPA transfer is booked, plus `ListBankMovementsAsync` /
 `ReconcileBankMovementAsync` — `GET`/`POST /treasury/accounts/{id}/bank-movements[/…/reconcile]`,

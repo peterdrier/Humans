@@ -6,6 +6,7 @@ namespace Humans.Base.Logging;
 /// <summary>
 /// Serilog enricher that redacts PII values from log event properties.
 /// Property names are matched case-insensitively. IDs/GUIDs are left intact for debugging.
+/// Retained prefixes stay within two UTF-16 units without splitting surrogate pairs.
 /// </summary>
 public sealed class PiiRedactionEnricher : ILogEventEnricher
 {
@@ -21,6 +22,7 @@ public sealed class PiiRedactionEnricher : ILogEventEnricher
         "IpAddress",
         "RemoteIp",
         "To",
+        "Recipient",
     };
 
     private const string ICalFeedPathPrefix = "/api/ical/";
@@ -90,6 +92,13 @@ public sealed class PiiRedactionEnricher : ILogEventEnricher
                propertyName.Contains("secret", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static string RetainedPrefix(string value, int length)
+    {
+        if (length < value.Length && char.IsHighSurrogate(value[length - 1]) && char.IsLowSurrogate(value[length]))
+            length--;
+        return value[..length];
+    }
+
     private static object RedactValue(string propertyName, LogEventPropertyValue original)
     {
         if (original is not ScalarValue scalar || scalar.Value is not string stringValue)
@@ -98,15 +107,16 @@ public sealed class PiiRedactionEnricher : ILogEventEnricher
         if (string.IsNullOrEmpty(stringValue))
             return stringValue;
 
-        // Email-like properties: show first 2 chars + ***@domain
+        // Email-like properties: retain up to 2 UTF-16 units + ***@domain
         if (propertyName.Contains("email", StringComparison.OrdinalIgnoreCase) ||
             propertyName.Equals("To", StringComparison.OrdinalIgnoreCase) ||
+            propertyName.Equals("Recipient", StringComparison.OrdinalIgnoreCase) ||
             propertyName.Equals("UserEmail", StringComparison.OrdinalIgnoreCase))
         {
             var atIndex = stringValue.IndexOf("@", StringComparison.Ordinal);
             if (atIndex > 0)
             {
-                var prefix = stringValue[..Math.Min(2, atIndex)];
+                var prefix = RetainedPrefix(stringValue, Math.Min(2, atIndex));
                 var domain = stringValue[(atIndex + 1)..];
                 return $"{prefix}***@{domain}";
             }
@@ -119,10 +129,10 @@ public sealed class PiiRedactionEnricher : ILogEventEnricher
             return "***";
         }
 
-        // Other PII (names, phones, IPs): show first 2 chars + ***
+        // Other PII (names, phones, IPs): retain up to 2 UTF-16 units + ***
         if (stringValue.Length <= 2)
             return stringValue;
 
-        return $"{stringValue[..2]}***";
+        return $"{RetainedPrefix(stringValue, 2)}***";
     }
 }

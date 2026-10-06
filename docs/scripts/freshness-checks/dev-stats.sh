@@ -3,7 +3,8 @@
 #
 # Verifies that docs/development-stats.md has a Codebase Growth row for the
 # latest commit date on main, and that every column in the most recent row is
-# numeric (no empty cells, no non-numeric values).
+# numeric (no empty cells, no non-numeric values), with exactly the columns
+# declared by the Codebase Growth header.
 #
 # Source: git log -1 --format=%ad --date=format:%Y-%m-%d main
 # Doc:    docs/development-stats.md (last data row in Codebase Growth table)
@@ -27,8 +28,22 @@ if [ -z "$LATEST_DATE" ]; then
   exit 1
 fi
 
-# Last data row of the doc (last line that starts with `| 2`).
-if ! LAST_ROW=$({ grep -E '^\| [0-9]{4}-[0-9]{2}-[0-9]{2} \|' "$DOC" || [ "$?" -eq 1 ]; } | tail -1); then
+# The growth schema evolves with the generator. Read its own header instead
+# of accepting rows against an old hardcoded minimum column count.
+HEADER=$(awk '/^## Codebase Growth$/{growth=1; next} growth && /^## /{exit}
+  growth && /^\| Date \|/{print; exit}' "$DOC")
+if [ -z "$HEADER" ]; then
+  echo "FAIL [dev-stats]: Codebase Growth header not found in $DOC"
+  exit 1
+fi
+IFS='|' read -r -a HEADER_COLS <<< "$(echo "$HEADER" | sed -E 's/^\| //; s/ \|$//')"
+EXPECTED_COLS=${#HEADER_COLS[@]}
+NUMERIC_COLS=$((EXPECTED_COLS - 1))
+
+# Last data row in Codebase Growth, excluding unrelated dated tables.
+
+if ! LAST_ROW=$(awk '/^## Codebase Growth$/{growth=1; next} growth && /^## /{exit}
+  growth' "$DOC" | { grep -E '^\| [0-9]{4}-[0-9]{2}-[0-9]{2} \|' || [ "$?" -eq 1 ]; } | tail -1); then
   echo "FAIL [dev-stats]: could not read Codebase Growth rows from $DOC"
   exit 1
 fi
@@ -50,8 +65,7 @@ fi
 # Strip leading/trailing pipes, split on `|`.
 IFS='|' read -r -a COLS <<< "$(echo "$LAST_ROW" | sed -E 's/^\| //; s/ \|$//')"
 
-EXPECTED_COLS=20  # Date + 19 numeric columns
-if [ "${#COLS[@]}" -lt "$EXPECTED_COLS" ]; then
+if [ "${#COLS[@]}" -ne "$EXPECTED_COLS" ]; then
   echo "FAIL [dev-stats]: row for $LAST_ROW_DATE has ${#COLS[@]} columns, expected $EXPECTED_COLS"
   echo "  row: $LAST_ROW"
   exit 1
@@ -78,5 +92,5 @@ for COL in "${COLS[@]}"; do
   fi
 done
 
-echo "PASS [dev-stats]: latest commit date $LATEST_DATE present with all 19 numeric columns populated"
+echo "PASS [dev-stats]: latest commit date $LATEST_DATE present with all $NUMERIC_COLS numeric columns populated"
 exit 0

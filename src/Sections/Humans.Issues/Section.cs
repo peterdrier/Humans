@@ -50,7 +50,7 @@ public sealed class Section : ISection
         services.AddScoped<IIssuesBadgeCacheInvalidator, IssuesBadgeCacheInvalidator>();
 
         // Resource-based handler for IssuesOperationRequirement.Handle. The *policies*
-        // stay in Shell's AuthorizationPolicyExtensions; only the handler moves (design §8).
+        // register through ISectionPolicies when the section owns them; shared platform policies stay in Shell.
         services.AddSingleton<IAuthorizationHandler, IssuesAuthorizationHandler>();
 
         services.AddScoped<CleanupIssuesJob>();

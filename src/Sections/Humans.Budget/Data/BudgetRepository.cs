@@ -208,7 +208,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId, ct);
+        var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId && !y.IsDeleted, ct);
         if (year is null)
             return false;
 
@@ -895,15 +895,15 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
                 $"Week of {week.WeekLabel}",
                 week.Revenue, week.Monday, projectionVatRate, false, $"{week.TicketCount} tickets", now);
 
-            if (week.StripeFees > 0)
+            if (week.StripeFees >= 0)
                 lineItemsChanged += UpsertTicketingLineItem(ctx, feesCategory,
                     $"Stripe fees: {week.WeekLabel}",
-                    -week.StripeFees, week.Monday, TicketingFeeVatRate, false, null, now);
+                    -week.StripeFees, week.Monday, TicketingFeeVatRate, false, null, now, omitNewZero: true);
 
-            if (week.TicketTailorFees > 0)
+            if (week.TicketTailorFees >= 0)
                 lineItemsChanged += UpsertTicketingLineItem(ctx, feesCategory,
                     $"TT fees: {week.WeekLabel}",
-                    -week.TicketTailorFees, week.Monday, TicketingFeeVatRate, false, null, now);
+                    -week.TicketTailorFees, week.Monday, TicketingFeeVatRate, false, null, now, omitNewZero: true);
         }
 
         // Refresh the projection's learned parameters from the new actuals
@@ -1106,82 +1106,31 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         RemoveProjectedItems(ctx, revenueCategory);
         RemoveProjectedItems(ctx, feesCategory);
 
-        if (projection is null
-            || projection.StartDate is null
-            || projection.EventDate is null
-            || projection.AverageTicketPrice == 0)
-        {
-            return 0;
-        }
+        if (projection is null) return 0;
 
-        var currentWeekMonday = GetTicketingIsoMonday(today);
-        var eventDate = projection.EventDate.Value;
-
-        var projectionStart = currentWeekMonday > projection.StartDate.Value
-            ? currentWeekMonday
-            : GetTicketingIsoMonday(projection.StartDate.Value);
-
-        if (projectionStart >= eventDate)
-            return 0;
-
-        var dailyRate = projection.DailySalesRate;
-        var initialBurst = projection.InitialSalesCount;
-        var isFirstWeek = true;
+        // Persist canonical English descriptions independently of the operator's UI language.
+        using var culture = new CultureScope("en");
         var created = 0;
-        var weekStart = projectionStart;
-
-        while (weekStart < eventDate)
+        foreach (var week in projection.CalculateWeeks(today))
         {
-            var weekEnd = weekStart.PlusDays(6);
-            if (weekEnd > eventDate) weekEnd = eventDate;
-
-            var daysInWeek = Period.Between(weekStart, weekEnd.PlusDays(1), PeriodUnits.Days).Days;
-
-            var weekTickets = (int)Math.Round(dailyRate * daysInWeek);
-            if (isFirstWeek)
-            {
-                if (projectionStart <= projection.StartDate.Value)
-                    weekTickets += initialBurst;
-                isFirstWeek = false;
-            }
-
-            if (weekTickets <= 0) weekTickets = 1;
-
-            var weekRevenue = weekTickets * projection.AverageTicketPrice;
-            var stripeFees = weekRevenue * projection.StripeFeePercent / 100m
-                + weekTickets * projection.StripeFeeFixed;
-            var ttFees = weekRevenue * projection.TicketTailorFeePercent / 100m;
-
-            var weekLabel = $"{weekStart.ToWeekdayDayMonth()}–{weekEnd.ToWeekdayDayMonth()}";
-
+            var weekLabel = $"{week.Start.ToWeekdayDayMonth()}–{week.End.ToWeekdayDayMonth()}";
             created += UpsertTicketingLineItem(ctx, revenueCategory,
                 $"{TicketingProjectedPrefix}Week of {weekLabel}",
-                Math.Round(weekRevenue, 2), weekStart, projection.VatRate, false,
-                $"~{weekTickets} tickets", now);
+                Math.Round(week.Revenue, 2), week.Start, projection.VatRate, false,
+                $"~{week.Tickets} tickets", now);
 
-            if (stripeFees > 0)
+            if (week.StripeFees > 0)
                 created += UpsertTicketingLineItem(ctx, feesCategory,
                     $"{TicketingProjectedPrefix}Stripe fees: {weekLabel}",
-                    -Math.Round(stripeFees, 2), weekStart, TicketingFeeVatRate, false, null, now);
+                    -Math.Round(week.StripeFees, 2), week.Start, TicketingFeeVatRate, false, null, now);
 
-            if (ttFees > 0)
+            if (week.TicketTailorFees > 0)
                 created += UpsertTicketingLineItem(ctx, feesCategory,
                     $"{TicketingProjectedPrefix}TT fees: {weekLabel}",
-                    -Math.Round(ttFees, 2), weekStart, TicketingFeeVatRate, false, null, now);
-
-            weekStart = weekEnd.PlusDays(1);
-            weekStart = GetTicketingIsoMonday(weekStart);
-            if (weekStart <= weekEnd) weekStart = weekEnd.PlusDays(1);
+                    -Math.Round(week.TicketTailorFees, 2), week.Start, TicketingFeeVatRate, false, null, now);
         }
 
         return created;
-    }
-
-    private static LocalDate GetTicketingIsoMonday(LocalDate date)
-    {
-        // NodaTime IsoDayOfWeek: Monday=1, Sunday=7.
-        var dayOfWeek = (int)date.DayOfWeek;
-        return date.PlusDays(-(dayOfWeek - 1));
     }
 
     private static void RemoveProjectedItems(BudgetDbContext ctx, BudgetCategory category)
@@ -1211,7 +1160,8 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         int vatRate,
         bool isCashflowOnly,
         string? notes,
-        Instant now)
+        Instant now,
+        bool omitNewZero = false)
     {
         var existing = category.LineItems.FirstOrDefault(li =>
             li.IsAutoGenerated
@@ -1233,6 +1183,9 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             existing.UpdatedAt = now;
             return 1;
         }
+
+        // A corrected zero clears an existing fee, without materializing empty fee rows.
+        if (omitNewZero && amount == 0) return 0;
 
         var maxSort = category.LineItems.Any() ? category.LineItems.Max(li => li.SortOrder) : -1;
         var lineItem = new BudgetLineItem

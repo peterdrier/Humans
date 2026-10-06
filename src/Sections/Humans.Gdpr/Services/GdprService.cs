@@ -35,6 +35,14 @@ internal sealed class GdprService(
             {
                 slices = await contributor.ContributeForUserAsync(userId, ct);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                logger.LogWarning(
+                    "GDPR export cancelled during contributor {Contributor} for user {UserId}",
+                    contributor.GetType().Name,
+                    userId);
+                throw;
+            }
             catch (Exception ex)
             {
                 // Never swallow: omitting a category silently is worse than failing.

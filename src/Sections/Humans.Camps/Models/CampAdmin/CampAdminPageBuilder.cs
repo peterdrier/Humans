@@ -4,10 +4,10 @@ internal sealed class CampAdminPageBuilder(
     ICampServiceRead campService,
     ICampRoleService campRoleService)
 {
-    public async Task<CampAdminViewModel> BuildAsync()
+    public async Task<CampAdminViewModel> BuildAsync(CancellationToken ct = default)
     {
-        var settings = await campService.GetSettingsAsync();
-        var allCamps = await campService.GetCampsForYearAsync(settings.PublicYear);
+        var settings = await campService.GetSettingsAsync(ct);
+        var allCamps = await campService.GetCampsForYearAsync(settings.PublicYear, ct);
         var openSeasons = settings.OpenSeasons.ToList();
 
         var withdrawnSeasons = BuildCampCards(allCamps, settings.PublicYear, CampSeasonStatus.Withdrawn);
@@ -18,7 +18,7 @@ internal sealed class CampAdminPageBuilder(
             .ToList();
         var summaries = BuildSummaries(campsWithLeads);
 
-        var missingSpecialRoles = await campRoleService.GetMissingSpecialRolesAsync();
+        var missingSpecialRoles = await campRoleService.GetMissingSpecialRolesAsync(ct);
 
         return new CampAdminViewModel
         {

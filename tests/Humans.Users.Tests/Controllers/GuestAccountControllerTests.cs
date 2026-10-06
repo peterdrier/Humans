@@ -84,6 +84,87 @@ public class GuestAccountControllerTests
         return ctrl;
     }
 
+    [HumansTheory]
+    [InlineData("emailEnabled", true)]
+    [InlineData("alertEnabled", true)]
+    [InlineData("emailEnabled", false)]
+    [InlineData("alertEnabled", false)]
+    public async Task UpdatePreference_InvalidBinding_DoesNotChangeChannels(string field, bool viewerExists)
+    {
+        var user = new User { Id = Guid.NewGuid(), DisplayName = "Human" };
+        var controller = BuildSut(user);
+        if (!viewerExists)
+            _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>((UserInfo?)null));
+        controller.ModelState.AddModelError(field, "Not a boolean.");
+        var result = await controller.UpdatePreference(MessageCategory.Marketing,
+            !string.Equals(field, "emailEnabled", StringComparison.Ordinal),
+            !string.Equals(field, "alertEnabled", StringComparison.Ordinal), null);
+
+        if (viewerExists) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<UnauthorizedResult>(result);
+        Assert.Empty(_commPrefService.ReceivedCalls());
+    }
+
+    [HumansFact]
+    public async Task UpdatePreference_ExplicitFalseFlags_RemainValid()
+    {
+        var user = new User { Id = Guid.NewGuid(), DisplayName = "Human" };
+        var controller = BuildSut(user);
+        Assert.IsType<OkResult>(await controller.UpdatePreference(MessageCategory.Marketing, false, false, null));
+        await _commPrefService.Received(1).UpdatePreferenceAsync(user.Id, MessageCategory.Marketing,
+            true, false, "Guest", Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("Viewer")]
+    [InlineData("TokenViewer")]
+    [InlineData("Preferences")]
+    [InlineData("Tickets")]
+    public async Task CommunicationPreferences_StopLoadingAfterRequestCancellation(string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var user = new User { Id = Guid.NewGuid(), DisplayName = "Human" };
+        var ctrl = BuildSut(user);
+        ctrl.HttpContext.RequestAborted = request.Token;
+        var abandon = false;
+        var tokenMode = string.Equals(boundary, "TokenViewer", StringComparison.Ordinal);
+        if (tokenMode)
+        {
+            ctrl.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+            _commPrefService.ValidateUnsubscribeToken("valid-token")
+                .Returns((TokenValidationStatus.Valid, user.Id, MessageCategory.Marketing));
+        }
+        async ValueTask<UserInfo?> ReadUser(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (abandon && string.Equals(boundary, "Preferences", StringComparison.Ordinal))
+                await request.CancelAsync();
+            return UserInfo.Create(user, [], [], [], null, []);
+        }
+        _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(call => ReadUser(call.Arg<CancellationToken>()));
+        async Task<IReadOnlyList<CommunicationPreferenceSnapshot>> ReadPreferences(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (abandon && string.Equals(boundary, "Tickets", StringComparison.Ordinal))
+                await request.CancelAsync();
+            return [];
+        }
+        _commPrefService.GetPreferencesReadOnlyAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(call => ReadPreferences(call.Arg<CancellationToken>()));
+        _ticketQueryService.GetUserTicketHoldingsAsync(user.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new UserTicketHoldings(0, []);
+        });
+        Func<Task<IActionResult>> load = () => ctrl.CommunicationPreferences(tokenMode ? "valid-token" : null);
+        Assert.IsType<ViewResult>(await load());
+        abandon = true;
+        if (string.Equals(boundary, "Viewer", StringComparison.Ordinal) || tokenMode)
+            await request.CancelAsync();
+        await Assert.ThrowsAsync<OperationCanceledException>(load);
+    }
+
     [HumansFact]
     public async Task RequestDeletion_AlreadyPending_RedirectsWithSpecificError()
     {

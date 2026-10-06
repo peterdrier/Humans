@@ -8,8 +8,10 @@ using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
 using NodaTime.Testing;
+using Xunit;
 
 #pragma warning disable CS0618
 
@@ -22,6 +24,65 @@ namespace Humans.Teams.Tests.Data;
 /// </summary>
 public sealed class TeamRepositoryTests : IDisposable
 {
+    [HumansTheory]
+    [InlineData("23505", "IX_team_members_active_unique", true, false)]
+    [InlineData("23505", "PK_team_members", false, false)]
+    [InlineData("23503", "IX_team_members_active_unique", false, false)]
+    [InlineData("23505", "IX_team_members_active_unique", true, true)]
+    [InlineData("23505", "PK_team_members", false, true)]
+    [InlineData("23503", "IX_team_members_active_unique", false, true)]
+    public async Task Insert_OnlyTreatsExpectedConstraintAsDuplicate(
+        string sqlState, string constraint, bool duplicate, bool approveRequest)
+    {
+        var failure = new DbUpdateException("Save failed", new Npgsql.PostgresException(
+            "Constraint violation", "ERROR", "ERROR", sqlState, constraintName: constraint));
+        var options = new DbContextOptionsBuilder<TeamsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(new FailedInsert(failure)).Options;
+        var repo = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));
+        var member = new TeamMember { Id = Guid.NewGuid(), TeamId = Guid.NewGuid(), UserId = Guid.NewGuid() };
+        var request = new TeamJoinRequest { Id = Guid.NewGuid(), TeamId = member.TeamId, UserId = member.UserId };
+        Func<Task<bool>> insert = () => approveRequest
+            ? repo.ApproveRequestWithMemberAsync(request, member, Xunit.TestContext.Current.CancellationToken)
+            : repo.TryAddMemberAsync(member, Xunit.TestContext.Current.CancellationToken);
+
+        if (duplicate)
+            (await insert()).Should().BeFalse();
+        else
+            (await insert.Should().ThrowAsync<DbUpdateException>()).Which.Should().BeSameAs(failure);
+    }
+
+    [HumansTheory]
+    [InlineData("23505", "IX_teams_Slug", true)]
+    [InlineData("23505", "IX_teams_CustomSlug", true)]
+    [InlineData("23505", "IX_teams_GoogleGroupPrefix", false)]
+    [InlineData("23505", "PK_teams", false)]
+    [InlineData("23503", "IX_teams_Slug", false)]
+    public async Task AddTeam_OnlyRetriesSlugConstraintCollisions(string sqlState, string constraint, bool retry)
+    {
+        var failure = new DbUpdateException("Save failed", new Npgsql.PostgresException(
+            "Constraint violation", "ERROR", "ERROR", sqlState, constraintName: constraint));
+        var options = new DbContextOptionsBuilder<TeamsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(new FailedInsert(failure)).Options;
+        var repo = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));
+        var team = new Team { Id = Guid.NewGuid(), Name = "Design", Slug = "design" };
+        Func<Task<bool>> insert = () => repo.AddTeamWithRequiresApprovalOverrideAsync(
+            team, requiresApproval: true, Xunit.TestContext.Current.CancellationToken);
+
+        if (retry)
+            (await insert()).Should().BeFalse();
+        else
+            (await insert.Should().ThrowAsync<DbUpdateException>()).Which.Should().BeSameAs(failure);
+    }
+
+    private sealed class FailedInsert(DbUpdateException failure) : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default) => throw failure;
+    }
+
     private readonly TeamsDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly TeamRepository _repo;
@@ -44,6 +105,75 @@ public sealed class TeamRepositoryTests : IDisposable
     // ==========================================================================
     // Team reads
     // ==========================================================================
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AddTeam_PersistsApprovalModeInOneSave(bool requiresApproval)
+    {
+        var counter = new SaveCounter();
+        var options = new DbContextOptionsBuilder<TeamsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(counter)
+            .Options;
+        var repo = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));
+        var team = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "Design",
+            Slug = "design",
+            RequiresApproval = requiresApproval,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+
+        (await repo.AddTeamWithRequiresApprovalOverrideAsync(
+            team, requiresApproval, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+
+        var stored = await repo.GetByIdAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+        stored!.RequiresApproval.Should().Be(requiresApproval);
+        counter.Saves.Should().Be(1);
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(CallToAction.Text))]
+    [InlineData(nameof(CallToAction.Url))]
+    [InlineData(nameof(CallToAction.Style))]
+    public async Task CallsToActionChangeTracking_OnlyMarksChangedValues(string changedField)
+    {
+        var team = await SeedTeamAsync("Page");
+        var action = new CallToAction { Text = "Join", Url = "/join", Style = CallToActionStyle.Secondary };
+        team.CallsToAction = [action];
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _dbContext.ChangeTracker.DetectChanges();
+        _dbContext.Entry(team).Property(t => t.CallsToAction).IsModified.Should().BeFalse();
+        (await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+
+        switch (changedField)
+        {
+            case nameof(CallToAction.Text): action.Text = "Volunteer"; break;
+            case nameof(CallToAction.Url): action.Url = "/volunteer"; break;
+            case nameof(CallToAction.Style): action.Style = CallToActionStyle.Primary; break;
+        }
+
+        _dbContext.ChangeTracker.DetectChanges();
+        _dbContext.Entry(team).Property(t => t.CallsToAction).IsModified.Should().BeTrue();
+        (await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        var stored = await _repo.GetByIdAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+        stored!.CallsToAction.Should().ContainSingle().Which.Should().BeEquivalentTo(action);
+    }
+
+    [HumansFact]
+    public async Task GetAllForAdminAsync_LargePageDoesNotWrapToEarlierTeams()
+    {
+        await SeedTeamAsync("Team");
+        var first = await _repo.GetAllForAdminAsync(1, 50, Xunit.TestContext.Current.CancellationToken);
+        first.Items.Should().ContainSingle();
+        var result = await _repo.GetAllForAdminAsync(int.MaxValue, 50, Xunit.TestContext.Current.CancellationToken);
+        result.Items.Should().BeEmpty();
+        result.TotalCount.Should().Be(1);
+    }
 
     [HumansFact]
     public async Task GetByIdAsync_ReturnsTeam_WhenPresent()
@@ -169,6 +299,70 @@ public sealed class TeamRepositoryTests : IDisposable
 
         memberships.Should().ContainSingle()
             .Which.Should().Be((activeMember.Id, team.Id));
+    }
+
+    [HumansTheory]
+    [InlineData(TeamJoinRequestStatus.Pending, true)]
+    [InlineData(TeamJoinRequestStatus.Approved, false)]
+    [InlineData(TeamJoinRequestStatus.Rejected, false)]
+    [InlineData(TeamJoinRequestStatus.Withdrawn, false)]
+    public async Task ReassignActiveJoinRequestsAsync_CollapsesOnlyPendingSourceRequests(
+        TeamJoinRequestStatus sourceStatus, bool shouldCollapse)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var team = await SeedTeamAsync("Merge requests");
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var sourceRequest = new TeamJoinRequest
+        {
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = source,
+            Status = sourceStatus,
+            RequestedAt = _clock.GetCurrentInstant(),
+            Message = "Source request"
+        };
+        sourceRequest.StateHistory.Add(new TeamJoinRequestStateHistory
+        {
+            Id = Guid.NewGuid(),
+            TeamJoinRequestId = sourceRequest.Id,
+            Status = sourceStatus,
+            ChangedAt = _clock.GetCurrentInstant(),
+            ChangedByUserId = source,
+            Notes = "Recorded transition"
+        });
+        var targetRequest = new TeamJoinRequest
+        {
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = target,
+            Status = TeamJoinRequestStatus.Pending,
+            RequestedAt = _clock.GetCurrentInstant()
+        };
+        await _dbContext.TeamJoinRequests.AddRangeAsync([sourceRequest, targetRequest], ct);
+        await _dbContext.SaveChangesAsync(ct);
+
+        await _repo.ReassignActiveJoinRequestsAsync(source, target, ct);
+
+        var requests = await _dbContext.TeamJoinRequests.AsNoTracking().ToListAsync(ct);
+        requests.Should().ContainSingle(r => r.Id == targetRequest.Id
+            && r.UserId == target && r.Status == TeamJoinRequestStatus.Pending);
+        requests.Should().NotContain(r => r.UserId == source);
+        if (shouldCollapse)
+        {
+            requests.Should().ContainSingle();
+        }
+        else
+        {
+            requests.Should().HaveCount(2);
+            requests.Should().ContainSingle(r => r.Id == sourceRequest.Id
+                && r.UserId == target && r.Status == sourceStatus && r.Message == "Source request");
+            var history = await _dbContext.TeamJoinRequestStateHistories.AsNoTracking()
+                .SingleAsync(h => h.TeamJoinRequestId == sourceRequest.Id, ct);
+            history.Status.Should().Be(sourceStatus);
+            history.ChangedByUserId.Should().Be(source);
+            history.Notes.Should().Be("Recorded transition");
+        }
     }
 
     [HumansFact]
@@ -331,6 +525,18 @@ public sealed class TeamRepositoryTests : IDisposable
         _dbContext.Set<TeamRoleDefinition>().Add(def);
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return def;
+    }
+
+    private sealed class SaveCounter : SaveChangesInterceptor
+    {
+        public int Saves { get; private set; }
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            Saves++;
+            return ValueTask.FromResult(result);
+        }
     }
 
     private async Task SeedRoleAssignmentAsync(TeamRoleDefinition def, TeamMember member)

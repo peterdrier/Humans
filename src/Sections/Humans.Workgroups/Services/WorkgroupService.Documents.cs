@@ -81,6 +81,8 @@ internal sealed partial class WorkgroupService
         document.UpdatedByUserId = actorUserId;
         document.UpdatedAt = now;
         await repository.UpdateDocumentAsync(document, ct);
+        // The write committed; finish its system log and notices after browser cancellation.
+        ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.DocumentPublished, now,
             document.Title, ct, authorUserId: actorUserId, documentId: document.Id);
@@ -121,6 +123,8 @@ internal sealed partial class WorkgroupService
         document.UpdatedByUserId = actorUserId;
         document.UpdatedAt = now;
         await repository.UpdateDocumentAsync(document, ct);
+        // The write committed; finish its system log and notices after browser cancellation.
+        ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CommentPeriodOpened, now,
             document.Title, ct, authorUserId: actorUserId, documentId: document.Id);
@@ -143,6 +147,8 @@ internal sealed partial class WorkgroupService
         document.UpdatedByUserId = actorUserId;
         document.UpdatedAt = now;
         await repository.UpdateDocumentAsync(document, ct);
+        // The write committed; finish its system log and notices after browser cancellation.
+        ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CommentPeriodClosed, now,
             document.Title, ct, authorUserId: actorUserId, documentId: document.Id);
@@ -167,6 +173,8 @@ internal sealed partial class WorkgroupService
         document.UpdatedByUserId = actorUserId;
         document.UpdatedAt = now;
         await repository.UpdateDocumentAsync(document, ct);
+        // The write committed; finish its system log and notices after browser cancellation.
+        ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Delivered, now,
             document.Title, ct, authorUserId: actorUserId, documentId: document.Id);
@@ -232,6 +240,8 @@ internal sealed partial class WorkgroupService
         var now = clock.GetCurrentInstant();
         Respond(comment, disposition, response, actorUserId, now);
         await repository.UpdateCommentsAsync([comment], ct);
+        // The write committed; finish its system log and notices after browser cancellation.
+        ct = CancellationToken.None;
 
         if (comment.AuthorUserId is { } author)
         {
@@ -270,6 +280,8 @@ internal sealed partial class WorkgroupService
         foreach (var comment in pending)
             Respond(comment, disposition, response, actorUserId, now);
         await repository.UpdateCommentsAsync(pending, ct);
+        // The write committed; finish its system log and notices after browser cancellation.
+        ct = CancellationToken.None;
 
         var info = ToInfo(workgroup);
         var authors = pending.Select(c => c.AuthorUserId).OfType<Guid>().Distinct().ToList();

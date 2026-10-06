@@ -43,38 +43,11 @@ internal sealed class CalendarService(
         return ev is null ? null : CalendarOccurrenceExpander.ToInfo(ev);
     }
 
-    private async Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
+    private async Task<CalendarEventMutationResult> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
     {
-        ValidateRecurrenceRule(dto.RecurrenceRule);
-        ValidateTimezone(dto.RecurrenceTimezone);
-
-        var now = clock.GetCurrentInstant();
-
-        var ev = new CalendarEvent
-        {
-            Id = Guid.NewGuid(),
-            Title = dto.Title,
-            Description = dto.Description,
-            Location = dto.Location,
-            LocationUrl = dto.LocationUrl,
-            OwningTeamId = dto.OwningTeamId,
-            StartUtc = dto.StartUtc,
-            EndUtc = dto.EndUtc,
-            StartDate = dto.StartDate,
-            EndDateExclusive = dto.EndDateExclusive,
-            IsAllDay = dto.IsAllDay,
-            RecurrenceRule = dto.RecurrenceRule,
-            RecurrenceTimezone = dto.RecurrenceTimezone,
-            RecurrenceUntilUtc = dto.IsAllDay ? null : ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc),
-            RecurrenceUntilDate = dto.IsAllDay ? ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null,
-            CreatedByUserId = createdByUserId,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
-
-        var errors = ev.Validate();
-        if (errors.Count > 0)
-            throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
+        var prepared = PrepareEvent(dto, createdByUserId);
+        if (!prepared.Succeeded) return prepared;
+        var ev = prepared.Event!;
 
         await repo.AddAsync(ev, ct);
 
@@ -95,7 +68,71 @@ internal sealed class CalendarService(
                 ev.Id, ev.Title, createdByUserId);
         }
 
-        return ev;
+        return CalendarEventMutationResult.Success(ev);
+    }
+
+    private CalendarEventMutationResult PrepareEvent(CreateCalendarEventDto dto, Guid createdByUserId)
+    {
+        try
+        {
+            ValidateRecurrenceRule(dto.RecurrenceRule);
+        }
+        catch (ValidationException ex)
+        {
+            logger.LogWarning("Calendar recurrence rejected: {Reason}", ex.Message);
+            return CalendarEventMutationResult.ValidationFailed(nameof(CreateCalendarEventDto.RecurrenceRule),
+                dto.IsAllDay ? "Calendar_InvalidAllDayRecurrence" : "Calendar_InvalidTimedRecurrence");
+        }
+        try
+        {
+            ValidateTimezone(dto.RecurrenceTimezone);
+        }
+        catch (ValidationException ex)
+        {
+            logger.LogWarning("Calendar recurrence timezone rejected: {Reason}", ex.Message);
+            return CalendarEventMutationResult.ValidationFailed(nameof(CreateCalendarEventDto.RecurrenceTimezone),
+                dto.IsAllDay ? "Calendar_InvalidAllDayRecurrence" : "Calendar_UnknownTimezone");
+        }
+        if (dto.IsAllDay && !IsDateOnlyRecurrence(dto.RecurrenceRule))
+        {
+            logger.LogWarning("All-day recurrence rejected: rule contains time components");
+            return CalendarEventMutationResult.ValidationFailed(nameof(CreateCalendarEventDto.RecurrenceRule),
+                "Calendar_InvalidAllDayRecurrence");
+        }
+
+        var now = clock.GetCurrentInstant();
+
+        var ev = new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            Title = dto.Title,
+            Description = dto.Description,
+            Location = dto.Location,
+            LocationUrl = dto.LocationUrl,
+            OwningTeamId = dto.OwningTeamId,
+            StartUtc = dto.StartUtc,
+            EndUtc = dto.EndUtc,
+            StartDate = dto.StartDate,
+            EndDateExclusive = dto.EndDateExclusive,
+            IsAllDay = dto.IsAllDay,
+            RecurrenceRule = dto.RecurrenceRule,
+            RecurrenceTimezone = dto.RecurrenceTimezone,
+            CreatedByUserId = createdByUserId,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var errors = ev.Validate();
+        if (errors.Count > 0)
+        {
+            logger.LogWarning("Calendar event rejected: {Reason}", string.Join("; ", errors));
+            return CalendarEventMutationResult.Failed(dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : "Calendar_InvalidTimedEvent");
+        }
+
+        ev.RecurrenceUntilUtc = dto.IsAllDay ? null : ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
+        ev.RecurrenceUntilDate = dto.IsAllDay ? ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null;
+
+        return CalendarEventMutationResult.Success(ev);
     }
 
     public async Task<CalendarEventMutationResult> CreateEventWithResultAsync(
@@ -105,20 +142,7 @@ internal sealed class CalendarService(
     {
         try
         {
-            var ev = await CreateEventAsync(dto, createdByUserId, ct);
-            return CalendarEventMutationResult.Success(ev);
-        }
-        catch (ValidationException ex)
-        {
-            logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
-            return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex),
-                CalendarValidationErrorKey(ex, dto.IsAllDay));
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
-            return CalendarEventMutationResult.Failed(ex.Message.StartsWith("Calendar_", StringComparison.Ordinal)
-                ? ex.Message : dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : "Calendar_InvalidTimedEvent");
+            return await CreateEventAsync(dto, createdByUserId, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -137,7 +161,9 @@ internal sealed class CalendarService(
         if (string.IsNullOrWhiteSpace(rrule)) return;
         try
         {
-            _ = new RecurrencePattern(rrule);
+            var pattern = new RecurrencePattern(rrule);
+            if (pattern.ByDay.Any(day => day.Offset is < -53 or 0 or > 53))
+                throw new FormatException("BYDAY ordinal offsets must be between -53 and 53, excluding zero.");
         }
         catch (Exception ex)
         {
@@ -153,21 +179,8 @@ internal sealed class CalendarService(
             throw new ValidationException($"Recurrence timezone is unknown: '{tz}'.");
     }
 
-    private static string CalendarValidationErrorKey(ValidationException ex, bool isAllDay) =>
-        isAllDay ? "Calendar_InvalidAllDayRecurrence" : CalendarValidationMemberName(ex) switch
-        {
-            nameof(CreateCalendarEventDto.RecurrenceTimezone) => "Calendar_UnknownTimezone",
-            _ => "Calendar_InvalidTimedRecurrence"
-        };
-
-    private static string CalendarValidationMemberName(ValidationException ex) =>
-        ex.Message.Contains("timezone", StringComparison.OrdinalIgnoreCase)
-            ? nameof(CreateCalendarEventDto.RecurrenceTimezone)
-            : nameof(CreateCalendarEventDto.RecurrenceRule);
-
-    // Denormalised RRULE end (UNTIL or COUNT-bounded last-occurrence). The SQL window query it
-    // was written for is gone; the value now feeds CalendarOccurrenceExpander.FilterForWindow,
-    // which prefilters the cache snapshot in memory. Null only for truly open-ended rules.
+    // Denormalised RRULE end (UNTIL or COUNT-bounded last occurrence), read by
+    // CalendarOccurrenceExpander.FilterForWindow's in-memory prefilter. Null only for open-ended rules.
     private static Instant? ComputeRecurrenceUntilUtc(string? rrule, string? tz, Instant? dtStart, Instant? dtEnd)
     {
         if (dtStart is null || string.IsNullOrWhiteSpace(rrule) || string.IsNullOrWhiteSpace(tz)) return null;
@@ -182,24 +195,25 @@ internal sealed class CalendarService(
 
             if (string.Equals(key, "UNTIL", StringComparison.OrdinalIgnoreCase))
             {
+                // Match the recurrence library's case-insensitive DATE-TIME parsing.
+                val = val.ToUpperInvariant();
                 // RFC 5545 allows UNTIL as either DATE-TIME (YYYYMMDDTHHMMSS[Z]) or DATE (YYYYMMDD).
-                var invariant = System.Globalization.CultureInfo.InvariantCulture;
                 var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
                 if (zone is null) return null;
 
                 if (val.EndsWith('Z'))
                 {
-                    var dt = DateTimeOffset.ParseExact(val, "yyyyMMdd'T'HHmmss'Z'", invariant);
-                    return Instant.FromDateTimeOffset(dt);
+                    return DateFormattingExtensions.IcalBasicDateTimePattern.Parse(val[..^1]).Value
+                        .InUtc().ToInstant();
                 }
                 if (val.Contains('T'))
                 {
                     var local = DateFormattingExtensions.IcalBasicDateTimePattern.Parse(val).Value;
-                    return local.InZoneStrictly(zone).ToInstant();
+                    return local.InZoneLeniently(zone).ToInstant();
                 }
                 // DATE form — treat UNTIL as end-of-day in the rule's timezone.
                 var date = DateFormattingExtensions.IcalBasicDatePattern.Parse(val).Value;
-                return (date.PlusDays(1).AtMidnight()).InZoneStrictly(zone).ToInstant();
+                return date.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
             }
             else if (string.Equals(key, "COUNT", StringComparison.OrdinalIgnoreCase))
             {
@@ -240,18 +254,6 @@ internal sealed class CalendarService(
     private static LocalDate? ComputeRecurrenceUntilDate(string? rule, LocalDate? start, LocalDate? end)
     {
         if (string.IsNullOrWhiteSpace(rule) || start is null || end is null) return null;
-        // A DATE recurrence cannot introduce a time through RRULE either.
-        foreach (var part in rule.Split(';'))
-        {
-            if (part.StartsWith("BYHOUR=", StringComparison.OrdinalIgnoreCase) ||
-                part.StartsWith("BYMINUTE=", StringComparison.OrdinalIgnoreCase) ||
-                part.StartsWith("BYSECOND=", StringComparison.OrdinalIgnoreCase) ||
-                part.Equals("FREQ=HOURLY", StringComparison.OrdinalIgnoreCase) ||
-                part.Equals("FREQ=MINUTELY", StringComparison.OrdinalIgnoreCase) ||
-                part.Equals("FREQ=SECONDLY", StringComparison.OrdinalIgnoreCase) ||
-                (part.StartsWith("UNTIL=", StringComparison.OrdinalIgnoreCase) && part.Length != 14))
-                throw new ValidationException("All-day recurrence rules must use dates without times.");
-        }
         var pattern = new RecurrencePattern(rule);
         var days = NodaTime.Period.Between(start.Value, end.Value, PeriodUnits.Days).Days;
         if (pattern.Until is not null)
@@ -266,18 +268,38 @@ internal sealed class CalendarService(
         return last is null ? null : LocalDate.FromDateTime(last.Period.StartTime.Value).PlusDays(days);
     }
 
-    private async Task<CalendarEvent> UpdateEventAsync(Guid id, CreateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
+    private static bool IsDateOnlyRecurrence(string? rule)
     {
-        ValidateRecurrenceRule(dto.RecurrenceRule);
-        ValidateTimezone(dto.RecurrenceTimezone);
+        if (string.IsNullOrWhiteSpace(rule)) return true;
+        foreach (var part in rule.Split(';'))
+        {
+            if (part.StartsWith("BYHOUR=", StringComparison.OrdinalIgnoreCase) ||
+                part.StartsWith("BYMINUTE=", StringComparison.OrdinalIgnoreCase) ||
+                part.StartsWith("BYSECOND=", StringComparison.OrdinalIgnoreCase) ||
+                part.Equals("FREQ=HOURLY", StringComparison.OrdinalIgnoreCase) ||
+                part.Equals("FREQ=MINUTELY", StringComparison.OrdinalIgnoreCase) ||
+                part.Equals("FREQ=SECONDLY", StringComparison.OrdinalIgnoreCase) ||
+                (part.StartsWith("UNTIL=", StringComparison.OrdinalIgnoreCase) && part.Length != 14))
+                return false;
+        }
+        return true;
+    }
 
-        var now = clock.GetCurrentInstant();
+    private async Task<CalendarEventMutationResult> UpdateEventAsync(Guid id, CreateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
+    {
+        var prepared = PrepareEvent(dto, updatedByUserId);
+        if (!prepared.Succeeded) return prepared;
+        var candidate = prepared.Event!;
         CalendarEvent? mutated = null;
+        CalendarEventMutationResult? rejection = null;
 
         var found = await repo.UpdateAsync(id, ev =>
         {
             if (ev.IsAllDay != dto.IsAllDay && ev.Exceptions.Count > 0)
-                throw new InvalidOperationException("Calendar_CannotChangeEventType");
+            {
+                rejection = CalendarEventMutationResult.Failed("Calendar_CannotChangeEventType");
+                return;
+            }
             if (ev.IsAllDay)
             {
                 var previous = CalendarOccurrenceExpander.ToInfo(ev);
@@ -292,31 +314,31 @@ internal sealed class CalendarService(
                     exception.OverrideEndUtc = null;
                 }
             }
-            ev.Title = dto.Title;
-            ev.Description = dto.Description;
-            ev.Location = dto.Location;
-            ev.LocationUrl = dto.LocationUrl;
-            ev.OwningTeamId = dto.OwningTeamId;
-            ev.StartUtc = dto.StartUtc;
-            ev.EndUtc = dto.EndUtc;
-            ev.StartDate = dto.StartDate;
-            ev.EndDateExclusive = dto.EndDateExclusive;
-            ev.IsAllDay = dto.IsAllDay;
-            ev.RecurrenceRule = dto.RecurrenceRule;
-            ev.RecurrenceTimezone = dto.RecurrenceTimezone;
-            ev.RecurrenceUntilUtc = dto.IsAllDay ? null : ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
-            ev.RecurrenceUntilDate = dto.IsAllDay ? ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null;
-            ev.UpdatedAt = now;
-
-            var errors = ev.Validate();
-            if (errors.Count > 0)
-                throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
+            ev.Title = candidate.Title;
+            ev.Description = candidate.Description;
+            ev.Location = candidate.Location;
+            ev.LocationUrl = candidate.LocationUrl;
+            ev.OwningTeamId = candidate.OwningTeamId;
+            ev.StartUtc = candidate.StartUtc;
+            ev.EndUtc = candidate.EndUtc;
+            ev.StartDate = candidate.StartDate;
+            ev.EndDateExclusive = candidate.EndDateExclusive;
+            ev.IsAllDay = candidate.IsAllDay;
+            ev.RecurrenceRule = candidate.RecurrenceRule;
+            ev.RecurrenceTimezone = candidate.RecurrenceTimezone;
+            ev.UpdatedAt = candidate.UpdatedAt;
+            ev.RecurrenceUntilUtc = candidate.RecurrenceUntilUtc;
+            ev.RecurrenceUntilDate = candidate.RecurrenceUntilDate;
 
             mutated = ev;
         }, ct);
 
+        if (rejection is not null) return rejection;
         if (!found || mutated is null)
-            throw new InvalidOperationException($"CalendarEvent {id} not found.");
+        {
+            logger.LogWarning("Calendar event {EventId} not found during update", id);
+            return CalendarEventMutationResult.Missing("Calendar event not found.");
+        }
 
         // Audit best-effort: DB write already committed. See CreateEventAsync.
         try
@@ -334,7 +356,7 @@ internal sealed class CalendarService(
                 mutated.Id, mutated.Title, updatedByUserId);
         }
 
-        return mutated;
+        return CalendarEventMutationResult.Success(mutated);
     }
 
     public async Task<CalendarEventMutationResult> UpdateEventWithResultAsync(
@@ -345,25 +367,7 @@ internal sealed class CalendarService(
     {
         try
         {
-            var ev = await UpdateEventAsync(id, dto, updatedByUserId, ct);
-            return CalendarEventMutationResult.Success(ev);
-        }
-        catch (ValidationException ex)
-        {
-            logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
-            return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex),
-                CalendarValidationErrorKey(ex, dto.IsAllDay));
-        }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-        {
-            logger.LogWarning(ex, "Calendar event {EventId} not found during update", id);
-            return CalendarEventMutationResult.Missing("Calendar event not found.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
-            return CalendarEventMutationResult.Failed(ex.Message.StartsWith("Calendar_", StringComparison.Ordinal)
-                ? ex.Message : dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : "Calendar_InvalidTimedEvent");
+            return await UpdateEventAsync(id, dto, updatedByUserId, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -467,8 +471,16 @@ internal sealed class CalendarService(
                     if (x.OverrideStartUtc is not null || x.OverrideEndUtc is not null)
                         throw new InvalidOperationException("An all-day occurrence cannot have a time.");
                     var start = x.OverrideStartDate ?? originalDate!.Value;
-                    var end = x.OverrideEndDateExclusive ?? start.PlusDays(
-                        NodaTime.Period.Between(info.StartDate!.Value, info.EndDateExclusive!.Value, PeriodUnits.Days).Days);
+                    LocalDate end;
+                    try
+                    {
+                        end = x.OverrideEndDateExclusive ?? start.PlusDays(
+                            NodaTime.Period.Between(info.StartDate!.Value, info.EndDateExclusive!.Value, PeriodUnits.Days).Days);
+                    }
+                    catch (OverflowException ex)
+                    {
+                        throw new InvalidOperationException("An all-day occurrence requires a representable date range.", ex);
+                    }
                     if (end <= start) throw new InvalidOperationException("An all-day occurrence requires a non-empty date range.");
                 }
                 else

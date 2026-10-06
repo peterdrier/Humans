@@ -67,11 +67,33 @@ internal sealed class Service(
             }
         }
 
+        // Team counterparties — top-level departments only. The viewer's own
+        // coordinated departments, or every department when a privileged reader.
+        // Order is the controller / view's concern (memory/architecture/display-sort-in-controllers.md).
+        var teams = (await teamService.GetTeamsAsync(ct)).Values
+            .Where(t => t.ParentTeamId is null
+                        && (allCounterparties
+                            || (t.ManagementRoleHolderUserIds is not null
+                                && t.ManagementRoleHolderUserIds.Contains(userId))))
+            .ToList();
+        var campOrders = await repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+            campSeasons.Select(s => s.Id).ToList(), ct);
+        var teamOrders = await repo.GetOrdersForTeamsWithLinesAsync(
+            teams.Select(t => t.Id).ToList(), year, ct);
+        var productIds = campOrders.Concat(teamOrders)
+            .SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
+        var productNames = await LoadProductNamesAsync(productIds, ct);
+        var currentPrices = await LoadCurrentPricesAsync(ct);
+        var campOrdersBySeason = campOrders.ToLookup(o => o.CampSeasonId);
+        var teamOrdersByTeam = teamOrders.ToLookup(o => o.TeamId);
+
         foreach (var season in campSeasons)
         {
             // One order per camp-season; if legacy data has multiple, surface
             // only the highest-balance one and let the admin delete the rest.
-            var allOrders = await GetOrdersForCampSeasonAsync(season.Id, ct);
+            var allOrders = new List<OrderDto>();
+            foreach (var order in campOrdersBySeason[season.Id])
+                allOrders.Add(await MapOrderAsync(order, productNames, currentPrices, ct, season.Name));
             var primary = allOrders
                 .OrderByDescending(o => o.BalanceEur)
                 .FirstOrDefault();
@@ -84,29 +106,12 @@ internal sealed class Service(
                 orders));
         }
 
-        // Team counterparties — top-level departments only. The viewer's own
-        // coordinated departments, or every department when a privileged reader.
-        // Order is the controller / view's concern (memory/architecture/display-sort-in-controllers.md).
-        var teams = await teamService.GetTeamsAsync(ct);
-        var teamOrderPrices = await LoadCurrentPricesAsync(ct);
-        foreach (var team in teams.Values
-            .Where(t => t.ParentTeamId is null
-                        && (allCounterparties
-                            || (t.ManagementRoleHolderUserIds is not null
-                                && t.ManagementRoleHolderUserIds.Contains(userId)))))
+        foreach (var team in teams)
         {
-            var existing = await repo.GetOrderForTeamAsync(team.Id, year, ct);
-            IReadOnlyList<OrderDto> orders;
-            if (existing is null)
-            {
-                orders = [];
-            }
-            else
-            {
-                var productIds = existing.Lines.Select(l => l.ProductId).Distinct().ToList();
-                var productNames = await LoadProductNamesAsync(productIds, ct);
-                orders = [await MapOrderAsync(existing, productNames, teamOrderPrices, ct)];
-            }
+            var existing = teamOrdersByTeam[team.Id].FirstOrDefault();
+            IReadOnlyList<OrderDto> orders = existing is null
+                ? []
+                : [await MapOrderAsync(existing, productNames, currentPrices, ct, team.Name)];
             counterparties.Add(new CounterpartyOrders(
                 OrderCounterpartyType.Team,
                 team.Id,
@@ -205,7 +210,7 @@ internal sealed class Service(
         ValidateProductDraft(draft);
 
         var product = await repo.GetProductByIdAsync(draft.Id, ct)
-            ?? throw new InvalidOperationException($"Product {draft.Id} not found");
+            ?? throw new StoreRuleException($"Product {draft.Id} not found");
 
         var oldPrice = product.UnitPriceEur;
 
@@ -266,15 +271,20 @@ internal sealed class Service(
             await UpdateProductAsync(dto, actorUserId, ct);
             return CatalogSaveResult.Success(created: false);
         }
-        catch (ArgumentException ex)
+        catch (StoreValidationException ex)
         {
             logger.LogWarning("Store catalog Save validation failed: {Reason}", ex.Message);
             return CatalogSaveResult.Failure(null, ex.Message);
         }
-        catch (InvalidOperationException ex)
+        catch (StoreRuleException ex)
         {
             logger.LogWarning("Store catalog Save rejected: {Reason}", ex.Message);
             return CatalogSaveResult.Failure(null, ex.Message);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to save Store product {ProductId}", request.Id);
+            return new CatalogSaveResult(false, false, null, null);
         }
     }
 
@@ -296,15 +306,15 @@ internal sealed class Service(
     private static void ValidateProductDraft(ProductDto draft)
     {
         if (string.IsNullOrWhiteSpace(draft.Name))
-            throw new ArgumentException("Product name is required", nameof(draft));
+            throw new StoreValidationException("Product name is required", nameof(draft));
         if (draft.UnitPriceEur < 0m)
-            throw new ArgumentException("Unit price cannot be negative", nameof(draft));
+            throw new StoreValidationException("Unit price cannot be negative", nameof(draft));
         if (draft.VatRatePercent < 0m)
-            throw new ArgumentException("VAT rate cannot be negative", nameof(draft));
+            throw new StoreValidationException("VAT rate cannot be negative", nameof(draft));
         if (draft.DepositAmountEur is < 0m)
-            throw new ArgumentException("Deposit cannot be negative", nameof(draft));
+            throw new StoreValidationException("Deposit cannot be negative", nameof(draft));
         if (draft.HoldedRevenueAccountNum is { } account and (< 10_000_000 or > 99_999_999))
-            throw new ArgumentException("Holded revenue account must be an 8-digit chart number", nameof(draft));
+            throw new StoreValidationException("Holded revenue account must be an 8-digit chart number", nameof(draft));
     }
 
     public async Task<IReadOnlyList<OrderDto>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default)
@@ -516,19 +526,19 @@ internal sealed class Service(
     public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
     {
         if (qty <= 0)
-            throw new ArgumentException("Qty must be positive", nameof(qty));
+            throw new StoreValidationException("Qty must be positive", nameof(qty));
 
         var order = await repo.GetOrderByIdAsync(orderId, ct)
-            ?? throw new InvalidOperationException($"Order {orderId} not found");
+            ?? throw new StoreRuleException($"Order {orderId} not found");
 
         if (order.State != OrderState.Open)
-            throw new InvalidOperationException("Cannot add lines to an issued order");
+            throw new StoreRuleException("Cannot add lines to an issued order");
 
         var product = await repo.GetProductByIdAsync(productId, ct)
-            ?? throw new InvalidOperationException($"Product {productId} not found");
+            ?? throw new StoreRuleException($"Product {productId} not found");
 
         if (!product.IsActive)
-            throw new InvalidOperationException(
+            throw new StoreRuleException(
                 $"Product '{product.Name}' has been deactivated and is no longer orderable");
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
@@ -571,28 +581,33 @@ internal sealed class Service(
             await AddLineAsync(orderId, productId, qty, actorUserId, ct);
             return MutationResult.Success;
         }
-        catch (ArgumentException ex)
+        catch (StoreValidationException ex)
         {
             logger.LogWarning("AddLine validation failed for order {OrderId}: {Reason}", orderId, ex.Message);
             return MutationResult.Failure(ex.Message);
         }
-        catch (InvalidOperationException ex)
+        catch (StoreRuleException ex)
         {
             logger.LogWarning("AddLine rejected for order {OrderId}: {Reason}", orderId, ex.Message);
             return MutationResult.Failure(ex.Message);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to add line to Store order {OrderId}", orderId);
+            return new MutationResult(false, null);
         }
     }
 
     public async Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
     {
         var ctx = await repo.GetLineWithOrderAndProductAsync(lineId, ct)
-            ?? throw new InvalidOperationException($"Line {lineId} not found");
+            ?? throw new StoreRuleException($"Line {lineId} not found");
 
         if (ctx.OrderId != orderId)
-            throw new InvalidOperationException($"Line {lineId} does not belong to order {orderId}");
+            throw new StoreRuleException($"Line {lineId} does not belong to order {orderId}");
 
         if (ctx.OrderState != OrderState.Open)
-            throw new InvalidOperationException("Cannot remove lines from an issued order");
+            throw new StoreRuleException("Cannot remove lines from an issued order");
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
@@ -618,17 +633,22 @@ internal sealed class Service(
             await RemoveLineAsync(orderId, lineId, actorUserId, ct);
             return MutationResult.Success;
         }
-        catch (InvalidOperationException ex)
+        catch (StoreRuleException ex)
         {
             logger.LogWarning("RemoveLine rejected for line {LineId}: {Reason}", lineId, ex.Message);
             return MutationResult.Failure(ex.Message);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to remove Store line {LineId}", lineId);
+            return new MutationResult(false, null);
         }
     }
 
     public async Task UpdateCounterpartyAsync(Guid orderId, OrderCounterpartyInput input, Guid actorUserId, CancellationToken ct = default)
     {
         var order = await repo.GetOrderByIdAsync(orderId, ct)
-            ?? throw new InvalidOperationException($"Order {orderId} not found");
+            ?? throw new StoreRuleException($"Order {orderId} not found");
 
         EnsureBillable(order);
 
@@ -657,10 +677,15 @@ internal sealed class Service(
             await UpdateCounterpartyAsync(orderId, input, actorUserId, ct);
             return MutationResult.Success;
         }
-        catch (InvalidOperationException ex)
+        catch (StoreRuleException ex)
         {
             logger.LogWarning("UpdateCounterparty rejected for order {OrderId}: {Reason}", orderId, ex.Message);
             return MutationResult.Failure(ex.Message);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to update counterparty on Store order {OrderId}", orderId);
+            return new MutationResult(false, null);
         }
     }
 
@@ -680,6 +705,7 @@ internal sealed class Service(
         return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
     }
 
+    [ExternalWrite]
     public Task<string> CreateStripeCheckoutSessionAsync(
         OrderDto order,
         decimal amountEur,
@@ -746,9 +772,12 @@ internal sealed class Service(
             RecordedByUserId = null,
         };
         await repo.AddPaymentAsync(payment, ct);
-        var settlement = status == PaymentStatus.Pending
-            ? "Pending Stripe payment (mandate captured, not yet cleared)"
-            : "Recorded Stripe payment";
+        var settlement = status switch
+        {
+            PaymentStatus.Pending => "Pending Stripe payment (mandate captured, not yet cleared)",
+            PaymentStatus.Failed => "Failed Stripe payment (settlement rejected)",
+            _ => "Recorded Stripe payment",
+        };
         await audit.LogAsync(
             AuditAction.StorePaymentRecorded, AuditEntityTypes.Payment, payment.Id,
             $"{settlement} of EUR {amountEur:0.00} on order {orderId} (PI {paymentIntentId})",
@@ -903,9 +932,12 @@ internal sealed class Service(
         if (s.PaymentIntentId is { } pi && recordedByPi.TryGetValue(pi, out var paymentStatus))
             // Stripe says paid but the local row hasn't settled — the amount is not in the
             // balance yet, so it must not present as plain "Recorded".
-            return paymentStatus == PaymentStatus.Pending
-                ? StripeReconciliationStatus.RecordedPending
-                : StripeReconciliationStatus.Recorded;
+            return paymentStatus switch
+            {
+                PaymentStatus.Paid => StripeReconciliationStatus.Recorded,
+                PaymentStatus.Pending => StripeReconciliationStatus.RecordedPending,
+                _ => StripeReconciliationStatus.RecordedFailed,
+            };
         if (order is null || s.PaymentIntentId is null || order.CounterpartyType == OrderCounterpartyType.Team)
             return StripeReconciliationStatus.Unmatched;
         return StripeReconciliationStatus.Missing;
@@ -1034,9 +1066,9 @@ internal sealed class Service(
     /// event to its settled state — <see cref="PaymentStatus.Paid"/> on
     /// <c>async_payment_succeeded</c>, <see cref="PaymentStatus.Failed"/> on
     /// <c>async_payment_failed</c>. Idempotent: a re-delivered event that finds the row already in
-    /// the target state is a no-op. Out-of-order tolerance: if the success event arrives before
-    /// <c>completed</c> (no row yet), the payment is recorded directly as Paid so settled money is
-    /// never lost; a failure with no row is a no-op (no money was ever pending here).
+    /// the target state is a no-op. Out-of-order tolerance: if a terminal event arrives before
+    /// <c>completed</c> (no row yet), the payment is recorded directly in its terminal state so
+    /// a later completed event cannot lose settlement or recreate a failed payment as Pending.
     /// </summary>
     private async Task TransitionAsyncPaymentAsync(StoreCheckoutWebhookEvent evt, PaymentStatus target, CancellationToken ct)
     {
@@ -1055,17 +1087,15 @@ internal sealed class Service(
         var existing = await repo.GetPaymentByStripePaymentIntentIdAsync(paymentIntentId, ct);
         if (existing is null)
         {
-            // Out-of-order: the settlement event beat checkout.session.completed. Record the money
-            // now (Paid) so it isn't lost; the later completed event no-ops on the unique PI. A
-            // failure with no pending row means nothing was ever owed here — ignore it.
-            if (target == PaymentStatus.Paid
-                && session.OrderId is { } orderId
+            // Preserve either terminal outcome before completed; its later delivery no-ops on
+            // the unique PI instead of recreating a failed payment as Pending.
+            if (session.OrderId is { } orderId
                 && session.AmountEur is { } amountEur && amountEur > 0)
             {
-                await RecordStripePaymentAsync(orderId, paymentIntentId, amountEur, PaymentStatus.Paid, ct);
+                await RecordStripePaymentAsync(orderId, paymentIntentId, amountEur, target, ct);
                 logger.LogInformation(
-                    "Async {Kind} arrived before completed for order {OrderId} (PI {PaymentIntentId}); recorded settled payment directly.",
-                    evt.Kind, orderId, paymentIntentId);
+                    "Async {Kind} arrived before completed for order {OrderId} (PI {PaymentIntentId}); recorded {Status} payment directly.",
+                    evt.Kind, orderId, paymentIntentId, target);
             }
             else
             {
@@ -1783,7 +1813,8 @@ internal sealed class Service(
         Order o,
         IReadOnlyDictionary<Guid, string> productNames,
         IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice> currentPrices,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? displayName = null)
     {
         var balance = BalanceCalculator.Compute(o, currentPrices);
         var totalsByLine = balance.Lines.ToDictionary(t => t.LineId);
@@ -1806,7 +1837,7 @@ internal sealed class Service(
             ? OrderCounterpartyType.Team
             : OrderCounterpartyType.Camp;
 
-        var displayName = await ResolveCounterpartyDisplayNameAsync(o, ct);
+        displayName ??= await ResolveCounterpartyDisplayNameAsync(o, ct);
 
         return new OrderDto(
             o.Id,
@@ -1843,6 +1874,23 @@ internal sealed class Service(
     private static void EnsureBillable(Order order)
     {
         if (order.TeamId is not null)
-            throw new InvalidOperationException("Team orders are non-billable.");
+            throw new StoreRuleException("Team orders are non-billable.");
+    }
+
+    private sealed class StoreRuleException : InvalidOperationException
+    {
+        public StoreRuleException() { }
+        public StoreRuleException(string message) : base(message) { }
+        public StoreRuleException(string message, Exception innerException) : base(message, innerException) { }
+    }
+
+    private sealed class StoreValidationException : ArgumentException
+    {
+        public StoreValidationException() { }
+        public StoreValidationException(string message) : base(message) { }
+        public StoreValidationException(string message, Exception innerException) : base(message, innerException) { }
+        public StoreValidationException(string message, string paramName) : base(message, paramName) { }
+        public StoreValidationException(string message, string paramName, Exception innerException)
+            : base(message, paramName, innerException) { }
     }
 }

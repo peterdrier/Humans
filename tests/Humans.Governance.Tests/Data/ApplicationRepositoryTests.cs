@@ -3,6 +3,7 @@ using Humans.Governance.Domain;
 using Humans.Governance.Contracts;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
 using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.Governance.Data;
@@ -13,12 +14,14 @@ public sealed class ApplicationRepositoryTests : IDisposable
 {
     private readonly GovernanceDbContext _dbContext;
     private readonly ApplicationRepository _repo;
+    private readonly DbContextOptions<GovernanceDbContext> _options;
 
     public ApplicationRepositoryTests()
     {
         var options = new DbContextOptionsBuilder<GovernanceDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
+        _options = options;
         _dbContext = new GovernanceDbContext(options);
         _repo = new ApplicationRepository(new TestDbContextFactory<GovernanceDbContext>(options));
     }
@@ -26,6 +29,17 @@ public sealed class ApplicationRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
+    }
+
+    [HumansFact]
+    public async Task GetFilteredAsync_LargePageDoesNotWrapToEarlierApplications()
+    {
+        SeedApp();
+        var first = await _repo.GetFilteredAsync(null, null, 1, 50, Xunit.TestContext.Current.CancellationToken);
+        first.Items.Should().ContainSingle();
+        var result = await _repo.GetFilteredAsync(null, null, int.MaxValue, 50, Xunit.TestContext.Current.CancellationToken);
+        result.Items.Should().BeEmpty();
+        result.TotalCount.Should().Be(1);
     }
 
     [HumansFact]
@@ -206,6 +220,56 @@ public sealed class ApplicationRepositoryTests : IDisposable
         remaining.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ApplicationMutation_PreservesExistingChildrenAndAppendsTransitionHistory(bool finalize)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var app = SeedApp();
+        app.StateHistory.Add(new ApplicationStateHistory
+        {
+            ApplicationId = app.Id,
+            Status = ApplicationStatus.Submitted,
+            ChangedByUserId = app.UserId,
+            ChangedAt = app.SubmittedAt,
+            Notes = "Original submission"
+        });
+        app.BoardVotes.Add(new BoardVote
+        {
+            ApplicationId = app.Id,
+            BoardMemberUserId = Guid.NewGuid(),
+            Vote = VoteChoice.Yay,
+            VotedAt = app.SubmittedAt
+        });
+        await _dbContext.SaveChangesAsync(ct);
+
+        var recorder = new ChildWriteRecorder();
+        var options = new DbContextOptionsBuilder<GovernanceDbContext>(_options)
+            .AddInterceptors(recorder).Options;
+        var repo = new ApplicationRepository(new TestDbContextFactory<GovernanceDbContext>(options));
+        var detached = (await repo.GetByIdAsync(app.Id, ct))!;
+        var clock = new NodaTime.Testing.FakeClock(app.SubmittedAt + Duration.FromHours(1));
+        if (finalize)
+        {
+            detached.Approve(Guid.NewGuid(), "Approved", clock);
+            await repo.FinalizeAsync(detached, ct);
+        }
+        else
+        {
+            detached.Withdraw(clock);
+            await repo.UpdateAsync(detached, ct);
+        }
+
+        var stored = (await repo.GetByIdAsync(app.Id, ct))!;
+        stored.Status.Should().Be(finalize ? ApplicationStatus.Approved : ApplicationStatus.Withdrawn);
+        stored.StateHistory.Should().HaveCount(2);
+        stored.StateHistory.Should().ContainSingle(h => h.Notes == "Original submission");
+        stored.StateHistory.Should().ContainSingle(h => h.ChangedAt == clock.GetCurrentInstant());
+        stored.BoardVotes.Should().HaveCount(finalize ? 0 : 1);
+        recorder.ModifiedChildren.Should().Be(0);
+    }
+
     [HumansFact]
     public async Task FinalizeAsync_DoesNotDeleteVotesOnOtherApplications()
     {
@@ -271,7 +335,17 @@ public sealed class ApplicationRepositoryTests : IDisposable
         ownApplication.SignificantContribution = "private contribution";
         ownApplication.RoleUnderstanding = "private understanding";
         ownApplication.DecisionNote = "private decision";
-        ownApplication.RequestMoreInfo(erasedUserId, "private state note", clock);
+        // Seed legacy review prose directly; the former information-request workflow is gone.
+        _dbContext.Entry(ownApplication).Property(application => application.ReviewNotes)
+            .CurrentValue = "private state note";
+        ownApplication.StateHistory.Add(new ApplicationStateHistory
+        {
+            ApplicationId = ownApplication.Id,
+            Status = ApplicationStatus.Submitted,
+            ChangedByUserId = erasedUserId,
+            ChangedAt = clock.GetCurrentInstant(),
+            Notes = "private state note"
+        });
 
         var reviewedApplication = SeedApp(otherUserId);
         reviewedApplication.DecisionNote = "private reviewer decision";
@@ -314,6 +388,19 @@ public sealed class ApplicationRepositoryTests : IDisposable
             Xunit.TestContext.Current.CancellationToken);
         vote.Note.Should().BeNull();
         vote.UpdatedAt.Should().Be(scrubbedAt);
+    }
+
+    private sealed class ChildWriteRecorder : SaveChangesInterceptor
+    {
+        public int ModifiedChildren { get; private set; }
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            ModifiedChildren += eventData.Context!.ChangeTracker.Entries().Count(e =>
+                e.State == EntityState.Modified && e.Entity is ApplicationStateHistory or BoardVote);
+            return ValueTask.FromResult(result);
+        }
     }
 
     private MemberApplication SeedApp(

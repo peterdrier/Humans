@@ -678,7 +678,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.TicketOrders.AsNoTracking().Include(o => o.Attendees).AsQueryable();
 
-        if (HasSearchTerm(search, 1))
+        if (search.HasSearchTerm(1))
         {
             var normalizedSearch = search.ToLowerInvariant();
 #pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
@@ -706,7 +706,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         query = ApplyOrderSorting(query, sortBy, sortDesc);
 
         var rows = await query
-            .Skip((page - 1) * pageSize)
+            .Skip((int)Math.Clamp(((long)page - 1) * pageSize, 0, int.MaxValue))
             .Take(pageSize)
             .Select(o => new OrderRow
             {
@@ -758,7 +758,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         if (!string.IsNullOrEmpty(filterOrderId))
             query = query.Where(a => a.TicketOrder.VendorOrderId == filterOrderId);
 
-        if (HasSearchTerm(search, 1))
+        if (search.HasSearchTerm(1))
         {
             var normalizedSearch = search.ToLowerInvariant();
 #pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
@@ -806,7 +806,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         query = ApplyAttendeeSorting(query, sortBy, sortDesc);
 
         var rows = await query
-            .Skip((page - 1) * pageSize)
+            .Skip((int)Math.Clamp(((long)page - 1) * pageSize, 0, int.MaxValue))
             .Take(pageSize)
             .Select(a => new AttendeeRow
             {
@@ -973,7 +973,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         return await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<int> ReassignToUserAsync(
+    public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -1003,14 +1003,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        return await ctx.TicketAttendees
-            .CountAsync(a => a.MatchedUserId == targetUserId, ct);
     }
-
-    private static bool HasSearchTerm(
-        [NotNullWhen(true)] string? value, int minLength = 2) =>
-        !string.IsNullOrWhiteSpace(value) && value.Trim().Length >= minLength;
 
     private static IQueryable<TicketOrder> ApplyOrderSorting(
         IQueryable<TicketOrder> query, string? sortBy, bool sortDesc)

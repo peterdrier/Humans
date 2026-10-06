@@ -6,7 +6,7 @@
 
 <div class="row">
     <div class="col-12" style="max-width: 900px;">
-        <nav aria-label="breadcrumb">
+        <nav aria-label="@Localizer["Users_BreadcrumbNavigation"]">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
                 <li class="breadcrumb-item active" aria-current="page">@Localizer["CommPrefs_Title"]</li>
@@ -39,7 +39,7 @@
             var body = new URLSearchParams();
             body.append('category', category);
             body.append('emailEnabled', emailCb ? emailCb.checked : true);
-            body.append('alertEnabled', alertCb ? alertCb.checked : true);
+            body.append('alertEnabled', alertCb ? alertCb.checked : row.dataset.alertEnabled === 'true');
             body.append('__RequestVerificationToken',
                 document.querySelector('input[name="__RequestVerificationToken"]').value);
 
@@ -48,6 +48,7 @@
 
             fetch('@Url.Action("UpdatePreference")', {
                 method: 'POST',
+                redirect: 'error',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: body.toString()
             }).then(function (resp) {

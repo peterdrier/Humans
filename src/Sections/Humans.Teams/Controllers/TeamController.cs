@@ -221,7 +221,7 @@ internal sealed class TeamController(
     [HttpGet("Birthdays")]
     public async Task<IActionResult> Birthdays(int? month, CancellationToken ct)
     {
-        var (currentUserError, _) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, _) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
         if (currentUserError is not null)
         {
             return currentUserError;
@@ -343,7 +343,7 @@ internal sealed class TeamController(
     [HttpGet("My")]
     public async Task<IActionResult> MyTeams(CancellationToken ct)
     {
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
         if (currentUserError is not null)
         {
             return currentUserError;
@@ -375,14 +375,15 @@ internal sealed class TeamController(
     [HttpGet("{slug}/Join")]
     public async Task<IActionResult> Join(string slug)
     {
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var ct = HttpContext.RequestAborted;
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
         if (currentUserError is not null)
         {
             return currentUserError;
         }
 
-        var team = await teamService.GetTeamEntityBySlugAsync(slug);
-        if (team is null)
+        var team = await teamService.GetTeamEntityBySlugAsync(slug, ct);
+        if (team is null || !team.IsActive)
         {
             return NotFound();
         }
@@ -398,7 +399,7 @@ internal sealed class TeamController(
             return NotFound();
         }
 
-        var teamInfo = await teamService.GetTeamAsync(team.Id);
+        var teamInfo = await teamService.GetTeamAsync(team.Id, ct);
         var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == user.Id);
         if (isMember)
         {
@@ -406,7 +407,7 @@ internal sealed class TeamController(
             return RedirectToAction(nameof(Details), new { slug });
         }
 
-        var pendingRequest = await teamService.GetUserPendingRequestAsync(team.Id, user.Id);
+        var pendingRequest = await teamService.GetUserPendingRequestAsync(team.Id, user.Id, ct);
         if (pendingRequest is not null)
         {
             SetError(localizer["Team_AlreadyPendingRequest"].Value);
@@ -435,7 +436,7 @@ internal sealed class TeamController(
         }
 
         var team = await teamService.GetTeamEntityBySlugAsync(slug);
-        if (team is null)
+        if (team is null || !team.IsActive)
         {
             return NotFound();
         }
@@ -448,6 +449,20 @@ internal sealed class TeamController(
         if (team.IsHidden && !RoleChecks.IsTeamsAdminBoardOrAdmin(User))
         {
             return NotFound();
+        }
+
+        if (team.IsSystemTeam)
+        {
+            SetError(localizer["Team_CannotJoinSystem"].Value);
+            return RedirectToAction(nameof(Details), new { slug });
+        }
+
+        if (!ModelState.IsValid)
+        {
+            model.TeamName = team.Name;
+            model.TeamSlug = team.Slug;
+            model.RequiresApproval = team.RequiresApproval;
+            return View(model);
         }
 
         try
@@ -607,7 +622,7 @@ internal sealed class TeamController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to create team: {Message}", ex.Message);
+            logger.LogWarning("Failed to create team: {Reason}", ex.Message);
             SetError(ex.Message);
             await PopulateEligibleParentsAsync(model, excludeTeamId: null);
             return View(model);
@@ -699,7 +714,7 @@ internal sealed class TeamController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to update team {TeamId}", id);
+            logger.LogWarning("Failed to update team {TeamId}: {Reason}", id, ex.Message);
             ModelState.AddModelError("", ex.Message);
             await PopulateEligibleParentsAsync(model, id);
             return View(model);
@@ -736,7 +751,7 @@ internal sealed class TeamController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to deactivate team {TeamId}", id);
+            logger.LogWarning("Failed to deactivate team {TeamId}: {Reason}", id, ex.Message);
             SetError(ex.Message);
         }
 

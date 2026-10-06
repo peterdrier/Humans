@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Hangfire;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -100,12 +101,13 @@ internal sealed class SendReConsentReminderJob(
                 {
                     try
                     {
+                        var language = user.PreferredLanguage;
                         await emailService.SendAsync(emailMessages.ReConsentReminder(
                             effectiveEmail,
                             user.BurnerName,
                             requiredDocNames,
                             daysBeforeSuspension,
-                            user.PreferredLanguage),
+                            language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode),
                             cancellationToken);
 
                         await userService.SetLastConsentReminderSentAsync(user.Id, now, cancellationToken);

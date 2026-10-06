@@ -49,7 +49,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 **So that** I can immediately participate
 
 **Acceptance Criteria:**
-- One-click join for open teams
+- One-click join for active open teams; deactivated teams cannot be joined, including through a stale form.
 - Immediately added as Member role
 - Redirected to team page
 - Google resources access granted
@@ -60,8 +60,8 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 **So that** the coordinators can review my request
 
 **Acceptance Criteria:**
-- Can submit request with optional message
-- Request enters Pending status
+- Can submit request with optional message (up to 2,000 characters); invalid input redisplays the form with a localized error and creates no request.
+- Request enters Pending status; inactive teams reject new requests.
 - Cannot submit if already have pending request
 - Can withdraw pending request
 - Join, leave, and request-withdrawal failures use the selected UI language, with a translated fallback for unknown errors.
@@ -108,7 +108,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Specify team name and description
 - Choose if approval is required
 - Optionally assign a parent team (department)
-- System generates URL-friendly slug
+- System generates URL-friendly slug; non-ASCII names get a non-empty base, and collision suffixes fit the stored length bound
 - Team is immediately active
 
 ### US-6.9: View Public Team Page (Anonymous)
@@ -118,6 +118,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 
 **Acceptance Criteria:**
 - Anonymous visitors can access `/Teams/{slug}` for public teams
+- Team renames and custom URL edits cannot shadow reserved global Teams routes
 - Shows team description, page content (markdown), and call-to-action buttons
 - Shows coordinators with display name and avatar (no email or contact info)
 - Regular members are hidden from anonymous visitors

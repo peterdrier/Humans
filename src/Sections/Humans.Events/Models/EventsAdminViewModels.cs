@@ -24,7 +24,7 @@ internal sealed class GuideSettingsViewModel
     public DateTime GuidePublishAt { get; set; }
 
     [Required]
-    [Range(1, 10000)]
+    [Range(0, 10000)]
     [Display(Name = "Max Print Slots")]
     public int MaxPrintSlots { get; set; } = 100;
 

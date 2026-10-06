@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Holded/**
-  src/Sections/Humans.Holded.Contracts/**
+  src/Sections/Humans.Holded/Contracts/**
   src/Sections/Humans.Expenses/Jobs/HoldedExpenseOutboxJob.cs
 -->
 

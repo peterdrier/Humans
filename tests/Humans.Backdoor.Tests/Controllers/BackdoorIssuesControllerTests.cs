@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Backdoor.Controllers;
@@ -29,6 +31,25 @@ public class BackdoorIssuesControllerTests
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly BackdoorIssuesController _sut;
 
+    [HumansTheory]
+    [InlineData(-1, false)]
+    [InlineData(999, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    public void Json_triage_models_validate_defined_enum_values(int value, bool valid)
+    {
+        var status = JsonSerializer.Deserialize<UpdateIssueStatusModel>("{\"Status\":" + value + "}")!;
+        var create = JsonSerializer.Deserialize<ApiCreateIssueModel>("{\"Category\":" + value + "}")!;
+        var feedback = JsonSerializer.Deserialize<UpdateFeedbackStatusModel>("{\"Status\":" + value + "}")!;
+        create.ReporterUserId = KeyOwnerId;
+        create.Title = "Title";
+        create.Description = "Description";
+
+        Validator.TryValidateObject(status, new ValidationContext(status), [], validateAllProperties: true).Should().Be(valid);
+        Validator.TryValidateObject(create, new ValidationContext(create), [], validateAllProperties: true).Should().Be(valid);
+        Validator.TryValidateObject(feedback, new ValidationContext(feedback), [], validateAllProperties: true).Should().Be(valid);
+    }
+
     public BackdoorIssuesControllerTests()
     {
         // GetUserInfosAsync never returns null; an unstubbed ValueTask would.
@@ -47,6 +68,42 @@ public class BackdoorIssuesControllerTests
                 },
             },
         };
+    }
+
+    [HumansFact]
+    public async Task AbandonedReadRequests_CancelIssueLoads()
+    {
+        var id = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        _sut.HttpContext.RequestAborted = request.Token;
+        _issues.GetIssueListAsync(Arg.Any<IssueListFilter>(), Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]);
+            });
+        _issues.GetIssueByIdAsync(id, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult<IssueDetail?>(MakeDetail(id, KeyOwnerId));
+            });
+        _issues.GetThreadAsync(id, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult<IReadOnlyList<IssueThreadEvent>>([]);
+            });
+        Func<Task<IActionResult>>[] reads =
+        [() => _sut.List(null, null, null, null), () => _sut.Get(id), () => _sut.GetComments(id)];
+        foreach (var read in reads)
+            (await read()).Should().BeOfType<OkObjectResult>();
+        await request.CancelAsync();
+        foreach (var read in reads)
+        {
+            Func<Task> operation = async () => await read();
+            await operation.Should().ThrowAsync<OperationCanceledException>();
+        }
     }
 
     private static IssueListSnapshot MakeSnapshot(Guid? id = null) => new(

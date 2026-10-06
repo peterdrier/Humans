@@ -1,4 +1,7 @@
 using Humans.AuditLog.Data;
+using Humans.AuditLog.Controllers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Humans.AuditLog.Domain;
 using AwesomeAssertions;
 using Humans.Base.Enums;
@@ -40,6 +43,23 @@ public class AuditLogServiceTests : IDisposable
     {
         _dbContext.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    [HumansFact]
+    public async Task AbandonedAuditPage_CancelsRepositoryReads()
+    {
+        using var request = new CancellationTokenSource();
+        var controller = new AuditLogController(_userService, new AuditViewerService(_service, []))
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { RequestAborted = request.Token }
+            }
+        };
+        (await controller.Index(null)).Should().BeOfType<ViewResult>();
+        await request.CancelAsync();
+        Func<Task> read = async () => await controller.Index(null);
+        await read.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]

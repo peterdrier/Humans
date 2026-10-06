@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Events/**
-  src/Sections/Humans.Events.Contracts/**
+  src/Sections/Humans.Events/Contracts/**
 -->
 <!-- freshness:flag-on-change
   Submission/moderation workflow, GuideEvent state machine, bulk CSV upload rules, public /api/events surface, and email triggers. Review when Event Guide controllers, service, or entities change.
@@ -122,6 +122,7 @@ Both kinds of submission are managed from a single page — **My Event Submissio
 **Acceptance Criteria:**
 - Sensitive categories (is_sensitive = true) visible by default
 - Attendee can toggle off any category; preference persists across sessions
+- The authenticated preference API accepts category slugs case-insensitively; reads and saves normalize exclusions to lowercase so mixed-case input hides the same category. Reads leave older stored rows unchanged.
 - If logged in to Humans: preference stored in UserGuidePreference (server-side)
 - If not logged in: preference stored in localStorage on the PWA
 
@@ -185,7 +186,7 @@ Id,Barrio,Status,Title,Description,Category,Date,StartTime,DurationMinutes,Locat
 | `LocationNote` | Optional. Max 120 chars. |
 | `Host` | Optional. Max 40 chars. |
 | `IsRecurring` | `true` or `false`. |
-| `RecurrenceDays` | Only used when `IsRecurring` is true. Space-separated day names: `Mon Tue Wed Thu Fri Sat Sun`. Converted to day offsets from gate-opening date on import. |
+| `RecurrenceDays` | Only used when `IsRecurring` is true. Space-separated day names: `Mon Tue Wed Thu Fri Sat Sun`. Converted to day offsets from gate-opening date for new or changed recurrence selections. An existing event retains its authored offsets when the weekday selection is unchanged, including during edits to other fields. |
 | `PriorityRank` | Optional. Integer 1–100 when present; blank = unranked (sorted last in the print guide) and round-trips as blank. |
 
 **Encoding:** comma-separated, UTF-8, RFC 4180 quoting — fields containing commas are wrapped in `"double quotes"`. `RecurrenceDays` uses spaces as the day separator (`Mon Tue Fri`) so it never needs quoting.

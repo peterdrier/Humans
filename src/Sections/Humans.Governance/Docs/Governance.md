@@ -248,7 +248,14 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Invariants
 
-- Application status follows: Submitted then Approved, Rejected, or Withdrawn. The state machine also defines a `RequestMoreInfo` self-transition on Submitted, but no controller path currently invokes it.
+- Member tier-application and assembly-vote pages localize breadcrumb navigation labels in all six supported cultures.
+
+- Application-admin paging computes offsets without integer overflow; extreme pages cannot wrap into earlier applications.
+
+- Application list, create-form, detail, admin list/detail and term-expiry review GETs propagate request cancellation through viewer and application reads. Submission, withdrawal and expiry correction keep their mutation boundaries. The admin list bounds motivation previews to 100 UTF-16 units plus an ellipsis without splitting surrogate pairs; stored motivations remain complete.
+- Governance overview GETs propagate request cancellation to user and index-data reads; Board-voting detail GETs retain it when resolving the viewer after loading the application.
+
+- Application status follows: Submitted then Approved, Rejected, or Withdrawn. Member-visible history uses the same six-culture status captions as application details.
 - Each Board member gets exactly one vote per application (DB-enforced via unique index on `(ApplicationId, BoardMemberUserId)`).
 - Board-voting rows carry voter IDs; the pages render voter identities through the Human component. Detail reads do not perform an unused bulk voter-name lookup.
 - On approval, the term expiry is set to December 31 of the current cycle's odd year (the approval year if odd, otherwise the following year); from 1 October of an odd year it is the next cycle's, so a renewal approved in the reminder window is not born expired.
@@ -265,6 +272,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 - **A ballot** can be cast or changed only while `Status = Open` and `now < ClosesAt`, by the roster member it belongs to. One ballot per roster row; changes bump `Revision`, preserve `CastAt`, and append a history row. Nothing is ever deleted.
 - **Content** (`Title`, `OfficialText`, options, `Kind`, `RequiredMajority`, audiences, disclosure) is immutable once Open. The one permitted change is extending `ClosesAt`.
 - **The embargo:** no read path returns per-option counts, rankings, or any ballot content for an Open vote except `Peek`, which writes its audit entry and peek row in the same unit of work as the read. Structurally, only `GetResultsAsync`, `PeekAsync` and `GetBallotsForBoardAsync` on `IAssemblyVoteService` can return ballot-derived content; a fourth such path is a change to the association's voting guarantees, not a refactor.
+- Bounded assembly notice/email titles and cancellation audit descriptions retain their UTF-16 limits without splitting a Unicode surrogate pair.
+- Ranked ballot forms reject binding errors before projecting ranks or casting: the existing localized invalid-ballot message redisplays the submitted choice and leaves the stored ballot, revision and ballot history unchanged, without writing a ballot audit. Redisplay skips missing option keys and refuses non-roster POSTs. Intentional blank ranks remain valid, and Abstain ignores inactive rank fields, including their binding errors.
 - **A ballot audit entry** names the actor and the vote, never the choice. The choice lives only in `assembly_ballots` / `assembly_ballot_history`.
 - **The result** is computed once, at close, and stored in `ResultJson`; the results page renders the stored result rather than recounting. Closure persists the closed status before it reads the ballots, and `UpsertBallotAsync` re-reads the vote under its row lock, so no ballot is ever told "recorded" and then left out of the tally. Every write to a vote row — close, extend, cancel, draft edit, open, delete — names the state it read and applies under the same lock only while the row is still in it, so a transition that committed first is never undone or repeated by a request that started before it.
 - **A vote whose `ClosesAt` has passed is Closed for every purpose**, whether or not the hourly lapse job has run: every service read and write settles the state first, so the job is a backstop rather than the thing that makes closing correct. Such a vote's `ClosedAt` is its announced `ClosesAt`, not the instant the lapse was noticed — the acta prints `ClosedAt`, so a late sweep must not make the record claim the vote ran long. An Admin `Stop` stamps the moment it was stopped.
@@ -290,17 +299,23 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Triggers
 
+- The member's tier-application GDPR export includes saved update and renewal-reminder timestamps as UTC ISO-8601 text; an unsent reminder stays null. Existing application and history fields remain present, and other applicants' records are excluded.
+
 - When an application is submitted: nav badge and notification meter caches are invalidated so the Board's pending-application count updates. `NotificationSource.ApplicationSubmitted` is retired — no new rows emit it (historical rows only); submission no longer dispatches an in-app notification.
 - When an application is approved: the human's tier is updated on their profile (`IUserService.SetMembershipTierAsync`), they are added to the Colaboradors or Asociados system team via `ISystemTeamSync`, an audit-log entry is written (`AuditAction.TierApplicationApproved`), an approval email is sent (`GovernanceEmails.ApplicationApproved` via `IEmailService.SendAsync`), and an in-app notification is dispatched (`NotificationSource.ApplicationApproved`). Email + notification are best-effort.
 - When an application is rejected: an audit-log entry is written (`AuditAction.TierApplicationRejected`), a rejection email is sent (`GovernanceEmails.ApplicationRejected` via `IEmailService.SendAsync`), and an in-app notification is dispatched (`NotificationSource.ApplicationRejected`). Email + notification are best-effort.
-- Approval and rejection in-app notices use the applicant’s supported saved language in all six cultures, with English fallback for missing/unsupported languages or failed profile lookup. The language read for the decision email is reused even if email preparation or delivery fails.
+- Approval and rejection emails and in-app notices use the applicant’s supported saved language in all six cultures, with English fallback for missing/unsupported languages or failed profile lookup. The language read for the decision email is reused even if email preparation or delivery fails.
 - When an application is approved or rejected: all Board vote records for that application are deleted (atomic inside `IApplicationRepository.FinalizeAsync`).
+- Board vote and finalization forms require an explicit valid choice. Missing or malformed vote/approval values return HTTP 400 with a Warning before any vote, decision, audit or notification is written. Explicit `Yay`/zero and rejection/false remain valid; BoardOnly and AdminOnly gates are unchanged.
 - Renewal in-app notices use the applicant’s supported saved language (English fallback), including the shared culture-aware expiry-date display; the recipient culture scope is restored afterward.
+- Renewal reminder email and in-app notice share the recipient’s supported preferred language, with English fallback for blank, malformed or unsupported preferences. Email expiry-date formatting, reminder stamps and best-effort notice handling are unchanged.
 - A renewal reminder email + in-app notification is dispatched 90 days before term expiry (`TermRenewalReminderJob`, `NotificationSource.TermRenewalReminder`). The job is `Humans.Governance/Jobs/TermRenewalReminderJob.cs`; it reads and stamps Applications only through `IApplicationDecisionService`.
 - On term expiry without renewal: the next `SystemTeamSyncJob` removes the human from the Colaboradors / Asociados system team (driven by `HasActiveApprovedTierAsync`) and calls `IUserService.DowngradeMembershipTierForExpiredAsync`, which **resets the profile's `MembershipTier`** — to another still-active tier the human holds, otherwise to `Volunteer` — and writes an `AuditAction.TierDowngraded` entry per downgrade.
 - The member-dashboard term card passes `HttpContext.RequestAborted` through its profile, membership, and application reads, so a disconnected browser cancels all of its advisory rendering work.
+- The Board voting grid links row content to the application detail. Applicant profile links retain their own destination, including modified clicks that open another tab without navigating the grid.
 - After an application is submitted, withdrawn, approved, or rejected, `ApplicationDecisionService` invalidates every current Board member's `IVotingBadgeCacheInvalidator` entry because each unvoted count changes. It also invalidates `INavBadgeCacheInvalidator` and `INotificationMeterCacheInvalidator`; a Board-vote upsert invalidates only that voter's voting badge.
 - When an account merge accepts, `AccountMergeService.AcceptAsync` fans out to all `IUserMerge` implementations; `ApplicationDecisionService.ReassignAsync` re-FKs `Application.UserId` (the applicant) from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd — votes are transient, deleted on finalization.
+- Assembly opening, reminder and cancellation emails use the recipient's supported saved language, falling back to English for blank, invalid or unsupported preferences. Titles still fall back to the vote's official culture when that language has no translation.
 - **Assembly vote opened:** the roster is snapshotted; each roster member is emailed in their preferred language (`GovernanceEmails.AssemblyVoteOpened`, `MessageCategory.System`, per-recipient try/catch) and stamped `NotifiedAt`; one in-app notification goes out via `INotificationEmitter.SendAsync` with `sourceKey` = the vote id; audit `AssemblyVoteOpened` carries the official and indicative roster counts.
 - **Ballot cast or changed:** a history row is appended and audit `AssemblyBallotCast` / `AssemblyBallotChanged` is written naming the voter and the vote but **not** the choice. The audit entity is the **vote**, never the ballot row: an audit entry keeps its actor for good, so naming the ballot id would leave a permanent join from an erased person to their recorded choice.
 - **Stop / Extend / Cancel:** audited with before/after values or the required reason. Cancel emails the roster (`GovernanceEmails.AssemblyVoteCancelled`) and computes no result.
@@ -335,6 +350,7 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 - `MembershipCalculator` owns no tables — it computes status by orchestrating reads through `IMembershipQuery` (a thin pass-through over `ITeamServiceRead` + `IRoleAssignmentService`, used to break the DI cycle with `ISystemTeamSync`), `IUserServiceRead`, `ILegalDocumentSyncServiceRead`, and `IConsentServiceRead` (resolved lazily via `IServiceProvider` to break a second cycle).
 - `IApplicationRepository` (impl `src/Sections/Humans.Governance/Data/ApplicationRepository.cs`) is the only non-test file that touches `DbContext.Applications` / `BoardVotes` / `ApplicationStateHistories`. Aggregate loads include `Application` + `ApplicationStateHistory` + `BoardVote`.
 - `FinalizeAsync(app, ct)` is the atomic approve/reject commit: application update + board-vote bulk delete in one `SaveChangesAsync`.
+- Application writes update only the root and append new transition history; existing history and Board votes are not rewritten. Finalization still deletes the application's votes in that save.
 - **Decorator decision — no caching decorator.** At this section's traffic level (a handful of Board-driven writes per week and a few admin reads per day) a caching layer isn't worth the complexity.
 - **Cross-domain navs stripped:** `Application.User`, `Application.ReviewedByUser`, `ApplicationStateHistory.ChangedByUser`, `BoardVote.BoardMemberUser`. Display data resolves via `IUserServiceRead.GetUserInfosAsync` and is stitched into DTOs (`ApplicationAdminDetailDto`, `ApplicationUserDetailDto`, `ApplicationAdminRowDto`, `ApplicationStateHistoryDto`).
 - `AssemblyVoteService` is the only caller of `IAssemblyVoteRepository`, which is the only non-test code that touches the `assembly_*` DbSets. The counting itself is `AssemblyVoteCounting`, a pure static with no clock and no repository, so the verdict logic is testable in isolation and the stored `ResultJson` is reproducible from ballots alone. `AssemblyVoteLapseJob` calls the service, never the repository. No caching decorator: one vote at a time, ~120 voters.
@@ -347,8 +363,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Issue queue
 
-Governance owns the `Governance` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
-leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+Governance owns the `Governance` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
+folder) on its `Section` entry point, declaring the queue key and the roles that handle
 issues filed against it — `Board`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.

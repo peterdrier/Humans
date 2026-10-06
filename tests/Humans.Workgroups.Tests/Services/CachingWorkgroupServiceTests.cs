@@ -39,6 +39,28 @@ public sealed class CachingWorkgroupServiceTests
         await _inner.Received(1).GetRegisterAsync(Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task GetRegister_LoadStartedBeforeWrite_DoesNotRepopulateCache(bool returnsId)
+    {
+        var pending = new TaskCompletionSource<IReadOnlyList<WorkgroupInfo>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        _inner.GetRegisterAsync(Ct).Returns(pending.Task, Task.FromResult<IReadOnlyList<WorkgroupInfo>>([]));
+        var read = _service.GetRegisterAsync(Ct);
+
+        if (returnsId)
+            await _service.AddCommentAsync(Guid.NewGuid(), Guid.NewGuid(), "Clarification", "Comment", Ct);
+        else
+            await _service.JoinAsync(Guid.NewGuid(), Guid.NewGuid(), Ct);
+
+        pending.SetResult([]);
+        await read;
+        await _service.GetRegisterAsync(Ct);
+
+        await _inner.Received(2).GetRegisterAsync(Ct);
+    }
+
     [HumansFact]
     public async Task Join_ClearsTheRegisterCache()
     {

@@ -94,17 +94,13 @@ internal sealed class CachingTicketVendorService : ITicketVendorService, ITicket
     {
         internal async ValueTask<VendorEventSummaryDto?> GetSummaryAsync(string eventId, CancellationToken ct)
         {
-            if (TryGet(eventId, out var cached))
+            var cached = await GetAsync(eventId, ct).ConfigureAwait(false);
+            if (cached is not null && cached.ExpiresAt <= clock.GetCurrentInstant())
             {
-                if (cached.ExpiresAt > clock.GetCurrentInstant())
-                    return cached.Value;
-
                 DeleteKey(eventId);
+                cached = await GetAsync(eventId, ct).ConfigureAwait(false);
             }
-
-            var loaded = await LoadRowAsync(eventId, ct).ConfigureAwait(false);
-            if (loaded is not null) Set(eventId, loaded);
-            return loaded?.Value;
+            return cached?.Value;
         }
 
         protected override async ValueTask<CachedVendorEventSummary?> LoadRowAsync(string eventId, CancellationToken ct)

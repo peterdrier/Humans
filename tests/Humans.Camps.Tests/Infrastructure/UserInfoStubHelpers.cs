@@ -8,7 +8,7 @@ using Humans.Users.Services;
 namespace Humans.Camps.Tests.Infrastructure;
 
 /// <summary>
-/// Helpers for stubbing the <see cref="IUserService.GetUserInfosAsync"/> reader on
+/// Helpers for stubbing the <see cref="IUserServiceRead.GetUserInfosAsync"/> reader on
 /// NSubstitute test doubles, reading from whatever in-memory DB the test
 /// owns. Builds a minimal UserInfo
 /// (the User + its UserEmails) — empty collections for the rest, which

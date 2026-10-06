@@ -4,8 +4,8 @@ namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Status of a CommunicationPreference token validation attempt.
-/// Distinct from <see cref="UnsubscribeTokenResult"/> which is the high-level
-/// result returned by <see cref="IUnsubscribeService"/>.
+/// Distinct from <c>UnsubscribeTokenResult</c> which is the high-level
+/// result returned by <c>IUnsubscribeService</c>.
 /// </summary>
 public enum TokenValidationStatus
 {
@@ -25,12 +25,6 @@ public enum TokenValidationStatus
 // No marker interface — see Humans.Users.Contracts.csproj.
 public interface ICommunicationPreferenceService
 {
-    /// <summary>
-    /// Returns all preferences for a user, creating defaults for any missing categories.
-    /// </summary>
-    Task<IReadOnlyList<CommunicationPreferenceSnapshot>> GetPreferencesAsync(
-        Guid userId, CancellationToken cancellationToken = default);
-
     /// <summary>
     /// Returns the existing preference row for a user+category, or null if none.
     /// Read-only — does NOT lazy-create defaults. Use this when the caller
@@ -116,12 +110,6 @@ public interface ICommunicationPreferenceService
     Task<IReadOnlySet<Guid>> GetUsersWithInboxDisabledAsync(
         IReadOnlyList<Guid> userIds, MessageCategory category,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns whether any communication preferences exist for the given user.
-    /// </summary>
-    Task<bool> HasAnyPreferencesAsync(
-        Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns the set of user IDs (from the input list) that have any communication preferences.

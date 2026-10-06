@@ -28,7 +28,8 @@ public sealed class ServiceTests
 
     public ServiceTests() => _clock.GetCurrentInstant().Returns(Now);
 
-    private Service BuildSut() => new(_repository, _auditLog, [_listenerOne, _listenerTwo], _clock);
+    private Service BuildSut() => new(_repository, _auditLog, [_listenerOne, _listenerTwo], _clock,
+        Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
 
     private static EventSettings MakeEntity(Guid id, bool isActive = true) => new()
     {
@@ -237,6 +238,36 @@ public sealed class ServiceTests
         EarlyEntryClose: null,
         Status: status,
         EarlyEntryStartOffset: earlyEntryStartOffset);
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task EventWrites_RejectCalendarOverflowBeforeChangingRows(bool seed, bool endOverflow)
+    {
+        var current = MakeEntity(Guid.NewGuid());
+        _repository.GetActiveEventSettingsAsync(TestContext.Current.CancellationToken).Returns(current);
+        var settings = MakeDto(Guid.NewGuid(), EventSettingsStatus.Inactive) with
+        {
+            BuildStartOffset = endOverflow ? -25 : int.MinValue,
+            FirstCrewStartOffset = endOverflow ? -25 : int.MinValue,
+            StrikeEndOffset = endOverflow ? int.MaxValue : 9,
+        };
+        var sut = BuildSut();
+        var act = () => seed
+            ? sut.CreateActiveEventAsync(settings, TestContext.Current.CancellationToken)
+            : sut.SaveEventSettingsAsync(settings, Actor, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Event dates must stay within the supported calendar range.");
+        _repository.ReceivedCalls().Where(c => string.Equals(c.GetMethodInfo().Name, nameof(ISettingsRepository.UpsertEventSettingsAsync), StringComparison.Ordinal))
+            .Should().BeEmpty();
+        current.Status.Should().Be(EventSettingsStatus.Active);
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+        _listenerOne.ReceivedCalls().Should().BeEmpty();
+        _listenerTwo.ReceivedCalls().Should().BeEmpty();
+    }
 
     // ── The EarlyEntryStartOffset invariant: BuildStartOffset ≤ offset < 0.
 

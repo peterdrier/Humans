@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Auth/**
-  src/Sections/Humans.Auth.Contracts/**
+  src/Sections/Humans.Auth/Contracts/**
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
   src/Humans.Web/Controllers/AccountController.cs
 -->

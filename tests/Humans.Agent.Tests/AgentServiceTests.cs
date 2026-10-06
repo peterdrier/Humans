@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using AwesomeAssertions.Execution;
+using System.Text.Json;
 using Humans.Agent.Services.Stores;
 using Humans.Agent.Services;
 using Humans.Agent.Data;
@@ -17,6 +19,36 @@ namespace Humans.Agent.Tests;
 
 public class AgentServiceTests
 {
+    [HumansFact]
+    public async Task Export_formats_conversation_and_message_dates_and_excludes_other_users()
+    {
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var (service, client) = await BuildService(settings => settings.Enabled = true);
+        foreach (var ownerId in new[] { userId, otherUserId })
+        {
+            client.EnqueueTurn(new AgentTurnToken("Answer", null, null),
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            await foreach (var _ in service.AskAsync(new AgentTurnRequest(
+                Guid.Empty, ownerId, ownerId == userId ? "My question" : "Other person's secret", "es"),
+                Xunit.TestContext.Current.CancellationToken)) { }
+        }
+
+        var slices = await service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var payload = JsonSerializer.Serialize(slices.Single().Data);
+        payload.Should().Contain("My question").And.NotContain("Other person's secret");
+        using var document = JsonDocument.Parse(payload);
+        document.RootElement.GetArrayLength().Should().Be(1);
+        var conversation = document.RootElement[0];
+        var messages = conversation.GetProperty("Messages");
+        messages.GetArrayLength().Should().Be(2);
+        using var scope = new AssertionScope();
+        conversation.GetProperty("StartedAt").GetRawText().Should().Be("\"2026-04-21T12:00:00Z\"");
+        conversation.GetProperty("LastMessageAt").GetRawText().Should().Be("\"2026-04-21T12:00:00Z\"");
+        foreach (var message in messages.EnumerateArray())
+            message.GetProperty("CreatedAt").GetRawText().Should().Be("\"2026-04-21T12:00:00Z\"");
+    }
+
     [HumansTheory]
     [Xunit.InlineData("en")]
     [Xunit.InlineData("es")]
@@ -260,6 +292,26 @@ public class AgentServiceTests
     }
 
     [HumansFact]
+    public async Task PromptPreview_propagates_cancellation_during_token_counting()
+    {
+        var logger = Substitute.For<ILogger<AgentService>>();
+        var (service, client) = await BuildService(settings => settings.Enabled = true, logger: logger);
+        var conversationId = await StartConversation(service, client, Guid.NewGuid());
+        using var cancellation = new CancellationTokenSource();
+        client.CountTokensStarted = token =>
+        {
+            token.Should().Be(cancellation.Token);
+            cancellation.Cancel();
+        };
+
+        var preview = () => service.GetPromptPreviewForAdminAsync(conversationId, cancellation.Token);
+        var failure = await preview.Should().ThrowAsync<OperationCanceledException>();
+        failure.Which.CancellationToken.Should().Be(cancellation.Token);
+        logger.DidNotReceive().Log(LogLevel.Warning, Arg.Any<EventId>(), Arg.Any<object>(),
+            Arg.Any<Exception?>(), Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [HumansFact]
     public async Task Ask_synthesizes_a_final_answer_when_the_tool_call_cap_is_reached()
     {
         var userId = Guid.NewGuid();
@@ -317,12 +369,12 @@ public class AgentServiceTests
         var transcript = await svc.GetConversationForUserAsync(
             userId, finalizer.ConversationId, Xunit.TestContext.Current.CancellationToken);
         var assistantMessage = transcript!.Messages.Single(m => m.Role == AgentRole.Assistant);
-        assistantMessage.PromptTokens.Should().Be(140);
+        assistantMessage.PromptTokens.Should().Be(145);
         assistantMessage.OutputTokens.Should().Be(50);
         assistantMessage.CachedTokens.Should().Be(12);
 
-        rateLimitStore.Get(userId, new LocalDate(2026, 4, 21), hour: 12).TokensToday.Should().Be(190,
-            "the daily token cap must count prompt+output tokens from every request in the turn");
+        rateLimitStore.Get(userId, new LocalDate(2026, 4, 21), hour: 12).TokensToday.Should().Be(195,
+            "the daily token cap must count fresh input, cache writes and output from every request in the turn");
     }
 
     [HumansFact]
@@ -465,8 +517,16 @@ public class AgentServiceTests
             Arg.Any<Func<object, Exception?, string>>());
     }
 
-    [HumansFact]
-    public async Task Ask_stores_a_one_liner_when_route_to_issue_produces_no_preamble_text()
+    [HumansTheory]
+    [Xunit.InlineData(false, "x", "x", "Bug", "Bug")]
+    [Xunit.InlineData(true, "x", "x", "Bug", "Bug")]
+    [Xunit.InlineData(true, "😀", "", "Bug", "Bug")]
+    [Xunit.InlineData(false, "x", "x", "99", "Question")]
+    [Xunit.InlineData(false, "x", "x", "-1", "Question")]
+    [Xunit.InlineData(false, "x", "x", "unknown", "Question")]
+    [Xunit.InlineData(false, "x", "x", "question", "Question")]
+    public async Task Ask_stores_a_one_liner_when_route_to_issue_produces_no_preamble_text(
+        bool oversized, string boundary, string expectedBoundary, string category, string expectedCategory)
     {
         // nobodies-collective/Humans#952 — route_to_issue's proposal frame is the terminal
         // output for the client, but a blank stored Content makes the admin transcript
@@ -478,10 +538,14 @@ public class AgentServiceTests
                 call.Arg<AnthropicToolCall>().Id, "Proposal queued.", IsError: false)));
         var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher);
 
+        var titlePrefix = new string('t', 199);
+        var descriptionPrefix = new string('d', 4999);
+        var title = oversized ? titlePrefix + boundary + "extra" : "Broken link";
+        var description = oversized ? descriptionPrefix + boundary + "extra" : "The camps page 404s.";
+        var arguments = JsonSerializer.Serialize(new { title, category, description });
         client.EnqueueTurn(
             new AgentTurnToken(null, new AnthropicToolCall(
-                "tc1", AgentToolNames.RouteToIssue,
-                """{"title":"Broken link","category":"Bug","description":"The camps page 404s."}"""), null),
+                "tc1", AgentToolNames.RouteToIssue, arguments), null),
             new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "tool_use")));
 
         var tokens = new List<AgentTurnToken>();
@@ -497,7 +561,10 @@ public class AgentServiceTests
         // would override that localization for non-English users.
         tokens.Should().NotContain(t => t.TextDelta != null,
             "a proposal-only turn streams no prose so the widget's localized fallback applies");
-        tokens.Should().Contain(t => t.IssueProposal != null);
+        var proposal = tokens.Single(t => t.IssueProposal != null).IssueProposal!;
+        proposal.Title.Should().Be(oversized ? titlePrefix + expectedBoundary : title);
+        proposal.Description.Should().Be(oversized ? descriptionPrefix + expectedBoundary : description);
+        proposal.Category.ToString().Should().Be(expectedCategory);
 
         var finalizer = tokens.Last().Finalizer!;
         var transcript = await svc.GetConversationForUserAsync(
@@ -604,6 +671,58 @@ public class AgentServiceTests
             .Should().BeEmpty("a failed tool dispatch is not a fetched doc");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Ask_marks_provider_eof_without_a_finalizer_as_an_error(bool afterToolIteration)
+    {
+        var userId = Guid.NewGuid();
+        var dispatcher = Substitute.For<IAgentToolDispatcher>();
+        dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => new AnthropicToolResult(call.Arg<AnthropicToolCall>().Id, "guide", IsError: false));
+        var logger = Substitute.For<ILogger<AgentService>>();
+        var store = new AgentRateLimitStore();
+        var (service, client) = await BuildService(settings => settings.Enabled = true,
+            rateLimitStore: store, toolDispatcher: dispatcher, logger: logger);
+        if (afterToolIteration)
+        {
+            client.EnqueueTurn(
+                new AgentTurnToken(null, new AnthropicToolCall("complete", "fetch_section_guide", """{"section":"teams"}"""), null),
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "claude-sonnet-4-6", "tool_use")));
+        }
+        client.EnqueueTurn(
+            new AgentTurnToken("Partial answer", null, null),
+            new AgentTurnToken(null, new AnthropicToolCall("interrupted", "fetch_section_guide", """{"section":"camps"}"""), null));
+
+        var tokens = new List<AgentTurnToken>();
+        await foreach (var token in service.AskAsync(new AgentTurnRequest(
+            Guid.Empty, userId, "What are teams?", "es"), Xunit.TestContext.Current.CancellationToken))
+            tokens.Add(token);
+
+        var finalizer = tokens.Last().Finalizer!;
+        finalizer.StopReason.Should().Be("error");
+        finalizer.InputTokens.Should().Be(afterToolIteration ? 100 : 0);
+        finalizer.OutputTokens.Should().Be(afterToolIteration ? 20 : 0);
+        finalizer.CacheReadTokens.Should().Be(afterToolIteration ? 5 : 0);
+        finalizer.CacheCreationTokens.Should().Be(afterToolIteration ? 3 : 0);
+        string.Concat(tokens.Select(token => token.TextDelta)).Should().Be("Partial answer");
+        await dispatcher.DidNotReceive().DispatchAsync(
+            Arg.Is<AnthropicToolCall>(call => call.Id == "interrupted"), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await dispatcher.Received(afterToolIteration ? 1 : 0).DispatchAsync(
+            Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        var transcript = await service.GetConversationForUserAsync(
+            userId, finalizer.ConversationId, Xunit.TestContext.Current.CancellationToken);
+        var assistant = transcript!.Messages.Should().ContainSingle(message => message.Role == AgentRole.Assistant).Subject;
+        assistant.Content.Should().Be("Partial answer");
+        assistant.PromptTokens.Should().Be(finalizer.InputTokens + finalizer.CacheCreationTokens);
+        assistant.OutputTokens.Should().Be(finalizer.OutputTokens);
+        var usage = store.Get(userId, new LocalDate(2026, 4, 21), hour: 12);
+        usage.MessagesToday.Should().Be(1);
+        usage.TokensToday.Should().Be(afterToolIteration ? 123 : 0);
+        logger.Received(1).Log(LogLevel.Error, Arg.Any<EventId>(), Arg.Any<object>(),
+            Arg.Any<Exception?>(), Arg.Any<Func<object, Exception?, string>>());
+    }
+
     [HumansFact]
     public async Task Ask_persists_an_assistant_message_when_an_exception_escapes_the_turn()
     {
@@ -621,7 +740,7 @@ public class AgentServiceTests
 
         client.EnqueueTurn(
             new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"teams"}"""), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 0, "claude-sonnet-4-6", "tool_use")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 3, "claude-sonnet-4-6", "tool_use")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -641,6 +760,7 @@ public class AgentServiceTests
         // between three surfaces (SSE finalizer, AgentMessage row, rate-limit billing).
         finalizer.InputTokens.Should().Be(100);
         finalizer.OutputTokens.Should().Be(20);
+        finalizer.CacheCreationTokens.Should().Be(3);
 
         var transcript = await svc.GetConversationForUserAsync(
             userId, finalizer.ConversationId, Xunit.TestContext.Current.CancellationToken);
@@ -650,7 +770,7 @@ public class AgentServiceTests
         failureMessage.RefusalReason.Should().Be("error");
         // AgentAdminStatusService prices spend straight off these fields, so a zeroed trace
         // would hide a turn the provider actually billed us for.
-        failureMessage.PromptTokens.Should().Be(100);
+        failureMessage.PromptTokens.Should().Be(103);
         failureMessage.OutputTokens.Should().Be(20);
 
         logger.Received(1).Log(
@@ -660,13 +780,13 @@ public class AgentServiceTests
             Arg.Is<Exception>(e => e is InvalidOperationException),
             Arg.Any<Func<object, Exception?, string>>());
 
-        // A failed turn is still a billed turn: the provider charged us for the 100/20 the
+        // A failed turn is still a billed turn: the provider charged us for the 100/3/20 the
         // first request consumed before the dispatcher threw, and leaving the message cap
         // untouched would make a deterministic backend error an unmetered send loop.
         var usage = store.Get(userId, new LocalDate(2026, 4, 21), hour: 12);
         usage.MessagesToday.Should().Be(1);
         usage.MessagesThisHour.Should().Be(1);
-        usage.TokensToday.Should().Be(120,
+        usage.TokensToday.Should().Be(123,
             "tokens the provider already billed before the failure must reach DailyTokenCap and admin spend");
     }
 

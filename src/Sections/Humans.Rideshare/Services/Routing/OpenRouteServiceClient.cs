@@ -34,7 +34,10 @@ internal sealed class OpenRouteServiceClient(
             if (features.GetArrayLength() == 0) return null;
 
             // GeoJSON order: [longitude, latitude].
-            var coordinates = features[0].GetProperty("geometry").GetProperty("coordinates");
+            var geometry = features[0].GetProperty("geometry");
+            if (!RoutingGeometry.IsPoint(geometry))
+                throw new JsonException("Geocode geometry must be a Point with finite coordinates within latitude/longitude bounds.");
+            var coordinates = geometry.GetProperty("coordinates");
             return new GeoPoint(coordinates[1].GetDouble(), coordinates[0].GetDouble());
         }
         catch (Exception ex) when (IsProviderFailure(ex, ct))
@@ -63,7 +66,10 @@ internal sealed class OpenRouteServiceClient(
             var features = doc.RootElement.GetProperty("features");
             if (features.GetArrayLength() == 0) return null;
 
-            return features[0].GetProperty("geometry").GetRawText();
+            var geometry = features[0].GetProperty("geometry");
+            if (!RoutingGeometry.IsLineString(geometry))
+                throw new JsonException("Directions geometry must be a LineString with at least two valid positions.");
+            return geometry.GetRawText();
         }
         catch (Exception ex) when (IsProviderFailure(ex, ct))
         {

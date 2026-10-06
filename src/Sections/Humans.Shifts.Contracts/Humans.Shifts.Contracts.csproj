@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Stays a leaf: folding into Humans.Shifts would close a project cycle: Humans.Shifts -> Humans.Teams -> Humans.Shifts (also via Humans.Onboarding). -->
+
   <!--
     Shifts' cross-section surface, carved into its own leaf project because its consumers
     include sections that Humans.Shifts itself references (Teams, Users, Onboarding,
@@ -22,7 +24,7 @@
     section), and the review surface stays internal.
 
     References Humans.Base (IApplicationService, IInvalidator, SurfaceBudget,
-    Grandfathered) and Humans.Settings.Contracts (BurnSettingsInfo also implements
+    Grandfathered) and Humans.Settings (BurnSettingsInfo also implements
     IEventSettingsInfo, nobodies-collective/Humans#1630 — the calendar-only twin every
     Shifts-internal day-offset helper now takes, so this leaf's DTO satisfies both
     without a second copy). The section's persisted-string enums (SignupStatus,
@@ -39,7 +41,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
   </ItemGroup>
 
   <ItemGroup>

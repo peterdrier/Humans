@@ -60,7 +60,7 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
 
         var items = await query
             .OrderBy(a => a.SubmittedAt) // arch:db-sort-ok pagination ordering for Skip/Take
-            .Skip((page - 1) * pageSize)
+            .Skip((int)Math.Clamp(((long)page - 1) * pageSize, 0, int.MaxValue))
             .Take(pageSize)
             .ToListAsync(ct);
 
@@ -77,17 +77,16 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
     public async Task UpdateAsync(MemberApplication application, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.Applications.Update(application);
+        ctx.Applications.Attach(application).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task FinalizeAsync(MemberApplication application, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Attach-or-update the mutated application. The caller has already
-        // fired app.Approve()/app.Reject() which appended a StateHistory row
-        // through the aggregate-local collection — EF will cascade-insert it.
-        ctx.Applications.Update(application);
+        // Existing history and votes stay unchanged; new history rows have no key
+        // yet, so Attach marks them Added alongside the modified application root.
+        ctx.Applications.Attach(application).State = EntityState.Modified;
 
         // Remove BoardVotes for this application through the change tracker
         // so they commit in the same SaveChangesAsync transaction as the
@@ -351,7 +350,7 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
         return await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<int> ReassignApplicationsToUserAsync(
+    public async Task ReassignApplicationsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -371,9 +370,6 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        return await ctx.Applications
-            .CountAsync(a => a.UserId == targetUserId, ct);
     }
 
     private async Task<T> WithContextAsync<T>(

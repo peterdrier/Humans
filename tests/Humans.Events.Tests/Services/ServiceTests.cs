@@ -1,3 +1,10 @@
+using Humans.Base.Extensions;
+using System.Security.Claims;
+using Humans.Camps.Contracts;
+using Humans.Events.Controllers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
@@ -230,6 +237,64 @@ public sealed class EventServiceTests
         _repo.SaveChangesCount.Should().Be(0);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CategoryPreferences_AcceptedMixedCaseSlugsExcludeEvents(bool previouslyStored)
+    {
+        var userId = Guid.NewGuid();
+        var music = new EventCategory { Id = Guid.NewGuid(), Name = "Music", Slug = "music", IsActive = true };
+        var workshop = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.AddRange([music, workshop]);
+        var hidden = ExistingEvent(Guid.NewGuid(), music.Id, EventStatus.Approved);
+        hidden.Category = music;
+        var visible = ExistingEvent(Guid.NewGuid(), workshop.Id, EventStatus.Approved);
+        visible.Category = workshop;
+        _repo.Events.AddRange([hidden, visible]);
+        var registrations = new ServiceCollection();
+        registrations.AddKeyedScoped<IEventService>(CachingEventService.InnerServiceKey, (_, _) => _service);
+        using var provider = registrations.BuildServiceProvider();
+        var cached = new CachingEventService(provider.GetRequiredService<IServiceScopeFactory>(), NullLogger<CachingEventService>.Instance);
+        if (previouslyStored)
+        {
+            _repo.Preference = new EventPreference
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ExcludedCategorySlugs = "[\"MuSiC\"]",
+                UpdatedAt = _clock.GetCurrentInstant()
+            };
+        }
+        else
+        {
+            var controller = new EventsApiController(cached, Substitute.For<ICampServiceRead>(), _userService,
+                NullLogger<EventsApiController>.Instance)
+            {
+                ControllerContext = new()
+                {
+                    HttpContext = new DefaultHttpContext
+                    {
+                        User = new ClaimsPrincipal(new ClaimsIdentity(
+                            [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+                    }
+                }
+            };
+            var response = await controller.UpdatePreferences(new EventsApiController.UpdatePreferencesRequest
+            {
+                ExcludedCategorySlugs = ["MuSiC"]
+            });
+            response.Should().BeOfType<OkObjectResult>();
+        }
+
+        var exclusions = await cached.GetExcludedCategorySlugsAsync(userId, TestContext.Current.CancellationToken);
+        var events = await cached.GetApprovedEventsAsync(null, null, null, null, exclusions, TestContext.Current.CancellationToken);
+
+        events.Should().ContainSingle().Which.Id.Should().Be(visible.Id);
+        exclusions.Should().Equal("music");
+        _repo.Preference!.ExcludedCategorySlugs.Should().Be(previouslyStored ? "[\"MuSiC\"]" : "[\"music\"]");
+        _repo.SaveChangesCount.Should().Be(previouslyStored ? 0 : 1);
+    }
+
     [HumansFact]
     public async Task SavePreferenceAsync_UpdatesExistingPreferenceJsonAndTimestamp()
     {
@@ -278,10 +343,16 @@ public sealed class EventServiceTests
         _repo.SaveChangesCount.Should().Be(1);
     }
 
-    [HumansFact]
-    public async Task SubmitEventAsync_WithActionUrl_EmailsSubmitterConfirmation()
+    [HumansTheory]
+    [InlineData("es", "Hemos recibido el envío de tu evento")]
+    [InlineData("", "Your event submission has been received")]
+    [InlineData(" ", "Your event submission has been received")]
+    [InlineData("not a culture!", "Your event submission has been received")]
+    [InlineData("fr-FR", "Your event submission has been received")]
+    public async Task SubmitEventAsync_WithActionUrl_EmailsSubmitterConfirmation(string language, string subject)
     {
-        var submitterId = StubSubmitterWithEmail("sub@example.com", "Burner");
+        using var actorCulture = new CultureScope("fr");
+        var submitterId = StubSubmitterWithEmail("sub@example.com", "Burner", language);
         var guideEvent = new Event
         {
             Id = Guid.NewGuid(),
@@ -297,6 +368,7 @@ public sealed class EventServiceTests
             Arg.Is<EmailMessage>(m => m.TemplateName == "event_submitted"
                 && m.RecipientEmail == "sub@example.com"
                 && m.RecipientName == "Burner"
+                && m.Subject == subject
                 && m.HtmlBody.Contains("Fire show")
                 && m.HtmlBody.Contains("https://x/Events/MySubmissions")));
     }
@@ -409,12 +481,12 @@ public sealed class EventServiceTests
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
-    private Guid StubSubmitterWithEmail(string email, string burnerName)
+    private Guid StubSubmitterWithEmail(string email, string burnerName, string language = "en")
     {
         var userId = Guid.NewGuid();
         // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
         // UserInfo.BurnerName reads User.BurnerName only (#1098).
-        var user = new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = "en" };
+        var user = new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = language };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             // UserInfoStubHelpers.ToUserInfo lives in Humans.Application.Tests and is not
             // visible across the section boundary; UserInfo.Create is the public builder.
@@ -537,6 +609,61 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
+    public async Task ContributeForUserAsync_IncludesOwnPersonalAndCampSubmissionsAcrossStatuses()
+    {
+        var userId = Guid.NewGuid();
+        var submitted = Instant.FromUtc(2026, 5, 1, 12, 0);
+        var personal = new Event
+        {
+            Id = Guid.NewGuid(),
+            SubmitterUserId = userId,
+            Title = "My draft",
+            Description = "Personal description",
+            Host = "My host name",
+            LocationNote = "Near the fire",
+            StartAt = submitted,
+            DurationMinutes = 60,
+            SubmittedAt = submitted,
+            LastUpdatedAt = submitted,
+            Status = EventStatus.Draft,
+            AdminNotes = "Internal moderator note"
+        };
+        var camp = new Event
+        {
+            Id = Guid.NewGuid(),
+            SubmitterUserId = userId,
+            CampId = Guid.NewGuid(),
+            Title = "My camp event",
+            Status = EventStatus.Withdrawn,
+            StartAt = submitted,
+            SubmittedAt = submitted,
+            LastUpdatedAt = submitted,
+            IsRecurring = true,
+            RecurrenceDays = "0,2",
+            PriorityRank = 1
+        };
+        _repo.Events.AddRange([personal, camp,
+            new Event { Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(), Title = "Someone else's event" }]);
+
+        var slice = (await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken)).Single();
+        var json = System.Text.Json.JsonSerializer.SerializeToElement(slice.Data);
+        var events = json.GetProperty("SubmittedEvents").EnumerateArray().ToList();
+        events.Should().HaveCount(2);
+        var own = events.Single(e => e.GetProperty("Id").GetGuid() == personal.Id);
+        own.GetProperty("Title").GetString().Should().Be(personal.Title);
+        own.GetProperty("Description").GetString().Should().Be(personal.Description);
+        own.GetProperty("Host").GetString().Should().Be(personal.Host);
+        own.GetProperty("LocationNote").GetString().Should().Be(personal.LocationNote);
+        own.GetProperty("SubmittedAt").GetString().Should().Be("2026-05-01T12:00:00Z");
+        own.TryGetProperty("AdminNotes", out _).Should().BeFalse();
+        var campExport = events.Single(e => e.GetProperty("Id").GetGuid() == camp.Id);
+        campExport.GetProperty("CampId").GetGuid().Should().Be(camp.CampId!.Value);
+        campExport.GetProperty("RecurrenceDays").GetString().Should().Be("0,2");
+        json.GetProperty("Favourites").GetArrayLength().Should().Be(0);
+        json.GetProperty("Preference").ValueKind.Should().Be(System.Text.Json.JsonValueKind.Null);
+    }
+
+    [HumansFact]
     public async Task ContributeForUserAsync_ReturnsEmptySliceWhenUserHasNoData()
     {
         var slices = await _service.ContributeForUserAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
@@ -634,26 +761,43 @@ public sealed class EventServiceTests
         _repo.SaveChangesCount.Should().Be(0);
     }
 
-    [HumansFact]
-    public async Task BulkImportAsync_NewRow_CreatesPendingEvent()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BulkImportAsync_CreatesOrEditsColumnsWithoutReplacingExistingIdentity(bool update)
     {
         var campId = Guid.NewGuid();
         var submitter = Guid.NewGuid();
         var cat = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
         _repo.Categories.Add(cat);
+        var existing = ExistingEvent(campId, Guid.NewGuid(), EventStatus.Approved);
+        var existingSubmitter = existing.SubmitterUserId;
+        if (update) _repo.Events.Add(existing);
 
         var result = await _service.BulkImportAsync(
-            campId, submitter, [Row()],
+            campId, submitter, [Row(id: update ? existing.Id : null, title: "Fire workshop",
+                description: "Bring gloves", startTime: "14:00", duration: 90, location: "North tent",
+                host: "Spark", isRecurring: true, recurrenceDays: "Wed Fri", priority: 2)],
             new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
 
         result.HasErrors.Should().BeFalse();
-        result.CreatedCount.Should().Be(1);
-        result.UpdatedCount.Should().Be(0);
-        var created = _repo.Events.Should().ContainSingle().Subject;
-        created.Status.Should().Be(EventStatus.Pending);
-        created.CampId.Should().Be(campId);
-        created.SubmitterUserId.Should().Be(submitter);
-        created.CategoryId.Should().Be(cat.Id);
+        result.CreatedCount.Should().Be(update ? 0 : 1);
+        result.UpdatedCount.Should().Be(update ? 1 : 0);
+        var persisted = _repo.Events.Should().ContainSingle().Subject;
+        persisted.Status.Should().Be(EventStatus.Pending);
+        persisted.CampId.Should().Be(campId);
+        persisted.SubmitterUserId.Should().Be(update ? existingSubmitter : submitter);
+        if (update) persisted.Id.Should().Be(existing.Id);
+        persisted.CategoryId.Should().Be(cat.Id);
+        persisted.Title.Should().Be("Fire workshop");
+        persisted.Description.Should().Be("Bring gloves");
+        persisted.StartAt.Should().Be(Instant.FromUtc(2026, 7, 8, 14, 0));
+        persisted.DurationMinutes.Should().Be(90);
+        persisted.LocationNote.Should().Be("North tent");
+        persisted.Host.Should().Be("Spark");
+        persisted.IsRecurring.Should().BeTrue();
+        persisted.RecurrenceDays.Should().Be("0,2");
+        persisted.PriorityRank.Should().Be(2);
     }
 
     [HumansFact]
@@ -745,6 +889,31 @@ public sealed class EventServiceTests
         result.UpdatedCount.Should().Be(1);
         existing.Status.Should().Be(EventStatus.Pending);
         _repo.Events.Count.Should().Be(countBefore); // no INSERT of the existing event
+    }
+
+    [HumansTheory]
+    [InlineData("Wed", "0")]
+    [InlineData("Thu", "1,8")]
+    public async Task BulkImportAsync_TitleEditPreservesRecurrenceUnlessWeekdaysChange(string days, string expectedOffsets)
+    {
+        var gate = new LocalDate(2026, 7, 8);
+        var campId = Guid.NewGuid();
+        var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.Add(category);
+        var existing = ExistingEvent(campId, category.Id, EventStatus.Approved);
+        existing.IsRecurring = true;
+        existing.RecurrenceDays = "0";
+        _repo.Events.Add(existing);
+
+        var result = await _service.BulkImportAsync(
+            campId, Guid.NewGuid(), [Row(id: existing.Id, title: "Renamed", isRecurring: true, recurrenceDays: days)],
+            gate, 8, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeFalse();
+        result.UpdatedCount.Should().Be(1);
+        existing.Title.Should().Be("Renamed");
+        existing.RecurrenceDays.Should().Be(expectedOffsets);
+        existing.Status.Should().Be(EventStatus.Pending);
     }
 
     [HumansFact]

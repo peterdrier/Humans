@@ -1,4 +1,13 @@
 using AwesomeAssertions;
+using System.Security.Claims;
+using Humans.Budget.Controllers;
+using Humans.Finance.Contracts;
+using Humans.Tickets.Contracts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Localization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime.Testing;
 using Humans.Teams.Contracts;
@@ -54,6 +63,145 @@ public sealed class BudgetServiceTests
             userService,
             Clock,
             NullLogger<BudgetServiceImpl>.Instance);
+    }
+
+    [HumansTheory]
+    [InlineData(false, "isRestricted", true)]
+    [InlineData(true, "isRestricted", true)]
+    [InlineData(true, "sortOrder", true)]
+    [InlineData(false, "isRestricted", false)]
+    [InlineData(true, "isRestricted", false)]
+    [InlineData(true, "sortOrder", false)]
+    [InlineData(false, null, true)]
+    [InlineData(true, null, true)]
+    public async Task GroupForm_InvalidBinding_DoesNotMutate(bool update, string? invalidField, bool viewerExists)
+    {
+        var (controller, budget, viewerId) = CreateAdminController(viewerExists);
+        if (invalidField is not null) controller.ModelState.AddModelError(invalidField, "Invalid value.");
+
+        var result = update
+            ? await controller.UpdateGroup(_yearId, "Existing", 0, false)
+            : await controller.CreateGroup(_yearId, "New", false);
+
+        if (!viewerExists) Assert.IsType<NotFoundResult>(result);
+        else if (invalidField is not null) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<RedirectToActionResult>(result);
+        if (!viewerExists || invalidField is not null) Assert.Empty(budget.ReceivedCalls());
+        else if (update) await budget.Received(1).UpdateGroupAsync(_yearId, "Existing", 0, false, viewerId);
+        else await budget.Received(1).CreateGroupAsync(_yearId, "New", false, viewerId);
+    }
+
+    private (BudgetAdminController Controller, IBudgetService Budget, Guid ViewerId) CreateAdminController(bool viewerExists)
+    {
+        var viewerId = Guid.NewGuid();
+        var budget = Substitute.For<IBudgetService>();
+        var users = Substitute.For<IUserServiceRead>();
+        if (viewerExists)
+            users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
+                UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
+        var tickets = Substitute.For<ITicketServiceRead>();
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "test"))
+        };
+        var controller = new BudgetAdminController(budget, _teamService,
+            new TicketingBudgetService(tickets, budget, Clock, NullLogger<TicketingBudgetService>.Instance),
+            tickets, Clock, users, Substitute.For<IHoldedFinanceServiceRead>(),
+            NullLogger<BudgetAdminController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        return (controller, budget, viewerId);
+    }
+
+    [HumansTheory]
+    [InlineData(0, "amount", true)]
+    [InlineData(0, "amount", false)]
+    [InlineData(0, null, true)]
+    [InlineData(1, "amount", true)]
+    [InlineData(1, "amount", false)]
+    [InlineData(1, null, true)]
+    [InlineData(2, "amount", true)]
+    [InlineData(2, "amount", false)]
+    [InlineData(2, null, true)]
+    [InlineData(3, "amount", true)]
+    [InlineData(3, "amount", false)]
+    [InlineData(3, null, true)]
+    public async Task FinancialForm_InvalidBinding_DoesNotMutate(int action, string? invalidField, bool viewerExists)
+    {
+        var (controller, budget, viewerId) = CreateAdminController(viewerExists);
+        if (invalidField is not null)
+            controller.ModelState.AddModelError(action < 2 ? "allocatedAmount" : invalidField, "Invalid number.");
+
+        var result = action switch
+        {
+            0 => await controller.CreateCategory(_yearId, "Category", 0m, default, null, _yearId),
+            1 => await controller.UpdateCategory(_yearId, "Category", 0m, default),
+            2 => await controller.CreateLineItem(_yearId, "Item", 0m, null, null, null, 0),
+            _ => await controller.UpdateLineItem(_yearId, "Item", 0m, null, null, null, 0, _yearId)
+        };
+        if (!viewerExists) Assert.IsType<NotFoundResult>(result);
+        else if (invalidField is not null) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<RedirectToActionResult>(result);
+        if (!viewerExists || invalidField is not null) Assert.Empty(budget.ReceivedCalls());
+        else switch (action)
+            {
+                case 0: await budget.Received(1).CreateCategoryAsync(_yearId, "Category", 0m, default, null, viewerId); break;
+                case 1: await budget.Received(1).UpdateCategoryAsync(_yearId, "Category", 0m, default, viewerId); break;
+                case 2: await budget.Received(1).CreateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId); break;
+                default: await budget.Received(1).UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId); break;
+            }
+    }
+
+    [HumansTheory]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    public async Task CoordinatorLineForm_ValidatesAfterAuthorization(bool update, bool malformed, bool allowed)
+    {
+        var (admin, budget, viewerId) = CreateAdminController(true);
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
+        var category = new BudgetCategorySnapshot(_yearId, _yearId, "Category", 0m, default, null, 0, null, []);
+        budget.GetCategoryByIdAsync(_yearId).Returns(category);
+        budget.GetLineItemByIdAsync(_yearId).Returns(new BudgetLineItemSnapshot(
+            _yearId, _yearId, "Item", 0m, null, null, null, 0, false, false, 0));
+        var auth = Substitute.For<IAuthorizationService>();
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), category, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var localizer = Substitute.For<IStringLocalizer<Humans.Budget.BudgetResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = new BudgetController(budget, auth, users, localizer, NullLogger<BudgetController>.Instance)
+        {
+            ControllerContext = admin.ControllerContext,
+            TempData = admin.TempData,
+            Url = admin.Url
+        };
+        if (malformed) controller.ModelState.AddModelError("amount", "Invalid number.");
+        budget.ClearReceivedCalls();
+        var result = update
+            ? await controller.UpdateLineItem(_yearId, "Item", 0m, null, null, null, 0, _yearId)
+            : await controller.CreateLineItem(_yearId, "Item", 0m, null, null, null, 0);
+        if (allowed && malformed) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<RedirectToActionResult>(result);
+        if (allowed && !malformed)
+        {
+            if (update) await budget.Received(1).UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId);
+            else await budget.Received(1).CreateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId);
+        }
+        else
+        {
+            await budget.DidNotReceiveWithAnyArgs().CreateLineItemAsync(default, default!, default, default, default, default, default, default);
+            await budget.DidNotReceiveWithAnyArgs().UpdateLineItemAsync(default, default!, default, default, default, default, default, default);
+        }
     }
 
     // ─── VAT rate validation ─────────────────────────────────────────────────
@@ -413,8 +561,10 @@ public sealed class BudgetServiceTests
 
     // ─── UpdateYearStatusAsync auto-closes previously active years ──────────
 
-    [HumansFact]
-    public async Task UpdateYearStatusAsync_activating_closes_other_active_years()
+    [HumansTheory]
+    [InlineData(BudgetYearStatus.Draft)]
+    [InlineData(BudgetYearStatus.Closed)]
+    public async Task UpdateYearStatusAsync_activating_closes_other_active_years(BudgetYearStatus initialStatus)
     {
         await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
@@ -430,7 +580,7 @@ public sealed class BudgetServiceTests
                 Id = _yearId,
                 Year = "2026",
                 Name = "Budget 2026",
-                Status = BudgetYearStatus.Draft
+                Status = initialStatus
             });
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
@@ -449,6 +599,47 @@ public sealed class BudgetServiceTests
             .Where(a => a.FieldName == nameof(BudgetYear.Status))
             .ToListAsync(TestContext.Current.CancellationToken);
         auditEntries.Should().HaveCount(2);
+    }
+
+    [HumansFact]
+    public async Task UpdateYearStatusAsync_archived_year_cannot_replace_the_active_year()
+    {
+        var activeYearId = Guid.NewGuid();
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        {
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = activeYearId,
+                Year = "2026",
+                Name = "Current budget",
+                Status = BudgetYearStatus.Active
+            });
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = _yearId,
+                Year = "2025",
+                Name = "Old budget",
+                Status = BudgetYearStatus.Closed
+            });
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+        await _service.DeleteYearAsync(_yearId, Guid.NewGuid());
+        var existingAudit = await _repository.GetAuditLogAsync(_yearId);
+
+        // A Reactivate form opened while Closed may be submitted after archiving.
+        var reactivate = () => _service.UpdateYearStatusAsync(_yearId, BudgetYearStatus.Active, Guid.NewGuid());
+        await reactivate.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+
+        var active = await _service.GetActiveYearAsync();
+        active.Should().NotBeNull();
+        active!.Id.Should().Be(activeYearId);
+        await using var verify = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var archived = await verify.BudgetYears.SingleAsync(y => y.Id == _yearId, TestContext.Current.CancellationToken);
+        archived.IsDeleted.Should().BeTrue();
+        archived.Status.Should().Be(BudgetYearStatus.Closed);
+        (await _repository.GetAuditLogAsync(_yearId)).Should().BeEquivalentTo(existingAudit);
+        (await verify.BudgetAuditLogs.CountAsync(a => a.BudgetYearId == activeYearId, TestContext.Current.CancellationToken))
+            .Should().Be(0);
     }
 
     [HumansFact]
@@ -597,6 +788,33 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
+    public async Task SyncTicketingActualsAsync_clears_existing_fees_when_actuals_become_zero()
+    {
+        var (_, _, _, feesCatId) = await SeedTicketingYearAsync();
+        var ct = TestContext.Current.CancellationToken;
+        var week = new TicketingWeeklyActuals(
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 10, 500m, 15m, 5m);
+        await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
+
+        var corrected = week with { StripeFees = 0m, TicketTailorFees = 0m };
+        var nextWeek = corrected with
+        {
+            Monday = new LocalDate(2026, 3, 9),
+            Sunday = new LocalDate(2026, 3, 15),
+            WeekLabel = "Mar 9–Mar 15"
+        };
+        await _service.SyncTicketingActualsAsync(_yearId, [corrected, nextWeek], actorUserId: null, ct);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(ct);
+        var actualFees = await ctx.BudgetLineItems.Where(li => li.BudgetCategoryId == feesCatId
+            && !li.Description.StartsWith("Projected: ")).ToListAsync(ct);
+        actualFees.Should().HaveCount(2);
+        actualFees.Should().OnlyContain(li => li.Amount == 0m);
+        (await ctx.BudgetAuditLogs.CountAsync(a => a.BudgetYearId == _yearId
+            && a.Description.StartsWith("Ticketing sync:"), ct)).Should().Be(2);
+    }
+
+    [HumansFact]
     public async Task SyncTicketingActualsAsync_writes_audit_entry_with_null_actor_for_automation()
     {
         await SeedTicketingYearAsync();
@@ -661,9 +879,17 @@ public sealed class BudgetServiceTests
         result.Should().Be(0);
     }
 
-    [HumansFact]
-    public async Task RefreshTicketingProjectionsAsync_materializes_projected_weeks_when_projection_is_valid()
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task RefreshTicketingProjectionsAsync_materializes_projected_weeks_when_projection_is_valid(string culture)
     {
+        using var scope = new Humans.Base.Extensions.CultureScope(culture);
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en");
         var (groupId, _, revenueCatId, _) = await SeedTicketingYearAsync();
         await ConfigureProjectionAsync(groupId,
             startDate: new LocalDate(2026, 3, 15),
@@ -681,6 +907,74 @@ public sealed class BudgetServiceTests
                 && li.Description.StartsWith("Projected:"))
             .ToListAsync(TestContext.Current.CancellationToken);
         projectedRevenueItems.Should().NotBeEmpty();
+        projectedRevenueItems.Should().AllSatisfy(item => item.Description.Should().MatchRegex(
+            "^Projected: Week of (Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Mar|Apr) [0-9]+–(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Mar|Apr) [0-9]+$"));
+        System.Globalization.CultureInfo.CurrentCulture.Name.Should().Be("en");
+        System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be(culture);
+    }
+
+    [HumansTheory]
+    [InlineData(22, 5, 47, 15, 5, 15)]
+    [InlineData(1, 5, 35, 15, 5, 15)]
+    [InlineData(22, 0, 12, 15, 5, 1)]
+    [InlineData(22, 5, 47, 13, 5, 5)]
+    [InlineData(22, 0, 12, 13, 5, 1)]
+    [InlineData(22, 5, 47, 12, 4, 35)]
+    public async Task Ticketing_projection_preview_matches_materialized_weeks(
+        int startDay, int dailyRate, int firstWeekTickets, int eventDay, int weeks, int lastWeekTickets)
+    {
+        Clock.Reset(Instant.FromUtc(2026, 3, 17, 12, 0));
+        var (groupId, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
+        await ConfigureProjectionAsync(groupId, new LocalDate(2026, 3, startDay),
+            new LocalDate(2026, 4, eventDay), 19.99m, dailyRate);
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        {
+            var projection = await ctx.TicketingProjections.SingleAsync(
+                p => p.BudgetGroupId == groupId, TestContext.Current.CancellationToken);
+            projection.InitialSalesCount = 12;
+            projection.StripeFeePercent = 1.5m;
+            projection.StripeFeeFixed = 0.25m;
+            projection.TicketTailorFeePercent = 3m;
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var preview = await _service.GetTicketingProjectionEntriesAsync(
+            groupId, TestContext.Current.CancellationToken);
+        preview.Should().HaveCount(weeks);
+        preview[0].WeekStart.Should().Be(new LocalDate(2026, 3, 16));
+        preview[0].ProjectedTickets.Should().Be(firstWeekTickets);
+        preview[^1].WeekEnd.Should().Be(new LocalDate(2026, 4, eventDay));
+        preview[^1].ProjectedTickets.Should().Be(lastWeekTickets);
+
+        await _service.RefreshTicketingProjectionsAsync(_yearId, null, TestContext.Current.CancellationToken);
+
+        await using var stored = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var lines = await stored.BudgetLineItems.Where(li => li.IsAutoGenerated)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        foreach (var week in preview)
+        {
+            var revenue = lines.Single(li => li.BudgetCategoryId == revenueCatId && li.ExpectedDate == week.WeekStart);
+            revenue.Amount.Should().Be(week.ProjectedRevenue);
+            revenue.Notes.Should().Be($"~{week.ProjectedTickets} tickets");
+            lines.Single(li => li.BudgetCategoryId == feesCatId && li.ExpectedDate == week.WeekStart
+                && li.Description.Contains("Stripe fees:", StringComparison.Ordinal)).Amount.Should().Be(-week.ProjectedStripeFees);
+            lines.Single(li => li.BudgetCategoryId == feesCatId && li.ExpectedDate == week.WeekStart
+                && li.Description.Contains("TT fees:", StringComparison.Ordinal)).Amount.Should().Be(-week.ProjectedTtFees);
+        }
+    }
+
+    [HumansFact]
+    public async Task Ticketing_projection_stops_once_a_Monday_event_has_passed()
+    {
+        Clock.Reset(Instant.FromUtc(2026, 4, 15, 12, 0));
+        var (groupId, _, _, _) = await SeedTicketingYearAsync();
+        await ConfigureProjectionAsync(groupId, new LocalDate(2026, 3, 22),
+            new LocalDate(2026, 4, 13), 19.99m, 5);
+
+        var preview = await _service.GetTicketingProjectionEntriesAsync(
+            groupId, TestContext.Current.CancellationToken);
+
+        preview.Should().BeEmpty();
     }
 
     // Guards the ordering invariant: materialization runs in the repo AFTER

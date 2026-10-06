@@ -121,6 +121,10 @@ internal sealed class ConsentService(
         Guid userId, Guid documentVersionId, bool explicitConsent,
         string ipAddress, string userAgent, CancellationToken ct = default)
     {
+        // Refuse before any write: a false append-only record would block a later valid signature.
+        if (!explicitConsent)
+            return new ConsentSubmitResult(false, ErrorKey: "ExplicitConsentRequired");
+
         // Defense-in-depth Stub gate: never write a ConsentRecord for a profile without verified legal name.
         var info = await userService.GetUserInfoAsync(userId, ct);
         if (info is null || !info.HasRequiredNameFields)
@@ -140,6 +144,11 @@ internal sealed class ConsentService(
         var canonicalContent = version.Content.GetValueOrDefault("es", string.Empty);
         var contentHash = ComputeContentHash(canonicalContent);
 
+        var userAgentLength = Math.Min(500, userAgent.Length);
+        if (userAgentLength < userAgent.Length && char.IsHighSurrogate(userAgent[userAgentLength - 1])
+            && char.IsLowSurrogate(userAgent[userAgentLength]))
+            userAgentLength--;
+
         var consentRecord = new ConsentRecord
         {
             Id = Guid.NewGuid(),
@@ -147,7 +156,7 @@ internal sealed class ConsentService(
             DocumentVersionId = documentVersionId,
             ConsentedAt = clock.GetCurrentInstant(),
             IpAddress = ipAddress,
-            UserAgent = userAgent.Length > 500 ? userAgent[..500] : userAgent,
+            UserAgent = userAgent[..userAgentLength],
             ContentHash = contentHash,
             ExplicitConsent = explicitConsent
         };
@@ -163,14 +172,15 @@ internal sealed class ConsentService(
         // SystemTeamSyncJob reconciles Volunteers/Coordinators on name + consents, decoupled from
         // the consent write (access never depended on it).
 
+        // Consent is committed; finish suspension cleanup even if the signing request ends.
         // Auto-resolve AccessSuspended notifications only after ALL required consents complete.
         try
         {
             var membershipCalc = serviceProvider.GetRequiredService<IMembershipCalculatorRead>();
-            if (await membershipCalc.HasAllRequiredConsentsAsync(userId, ct))
+            if (await membershipCalc.HasAllRequiredConsentsAsync(userId, CancellationToken.None))
             {
-                await notificationAutoResolve.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
-                await humanLifecycleService.RestoreConsentSuspensionAsync(userId, ct);
+                await notificationAutoResolve.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, CancellationToken.None);
+                await humanLifecycleService.RestoreConsentSuspensionAsync(userId, CancellationToken.None);
             }
         }
         catch (Exception ex)

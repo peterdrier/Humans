@@ -38,14 +38,14 @@ internal sealed class BackdoorFeedbackController(
         [FromQuery] int limit = 50)
     {
         var reports = await feedback.GetFeedbackListAsync(
-            status, category, limit: limit.ClampPageSize(max: MaxLimit));
+            status, category, limit: limit.ClampPageSize(max: MaxLimit), cancellationToken: HttpContext.RequestAborted);
         return Ok(reports.Select(MapSummary));
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(Guid id)
     {
-        var report = await feedback.GetFeedbackByIdAsync(id);
+        var report = await feedback.GetFeedbackByIdAsync(id, HttpContext.RequestAborted);
         if (report is null) return NotFound();
 
         return Ok(new
@@ -80,7 +80,7 @@ internal sealed class BackdoorFeedbackController(
     [HttpGet("{id}/messages")]
     public async Task<IActionResult> GetMessages(Guid id)
     {
-        var report = await feedback.GetFeedbackByIdAsync(id);
+        var report = await feedback.GetFeedbackByIdAsync(id, HttpContext.RequestAborted);
         if (report is null) return NotFound();
 
         return Ok(report.Messages.Select(m => MapMessage(m, report.UserId)));
@@ -207,6 +207,7 @@ internal sealed class PostFeedbackMessageModel
 internal sealed class UpdateFeedbackStatusModel
 {
     [Required]
+    [EnumDataType(typeof(FeedbackStatus), ErrorMessage = "Validation_InvalidValue")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public FeedbackStatus Status { get; set; }
 }

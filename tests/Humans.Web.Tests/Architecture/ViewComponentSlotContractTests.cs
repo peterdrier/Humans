@@ -172,6 +172,11 @@ public class ViewComponentSlotContractTests
         public IViewComponentResult Invoke(Guid userId) => Content(string.Empty);
     }
 
+    /// <summary>A view-component slot and its declared contribution.</summary>
+    /// <param name="Seam">The interface declaring the slot.</param>
+    /// <param name="OwnProperty">The slot property, or null for a fanout.</param>
+    /// <param name="Component">The contributed view-component type.</param>
+    /// <param name="Location">The slot’s diagnostic location.</param>
     /// <param name="IsSingleContributor">True for a <c>Type</c> property declared directly on the
     /// seam interface (one contributor per slot, e.g. <c>IOnboardingShiftsStep.ShiftsList</c>) —
     /// where a dropped args property is drift. False for an element of a fanout's

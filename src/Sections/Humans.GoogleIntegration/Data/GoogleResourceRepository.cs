@@ -346,6 +346,14 @@ internal sealed class GoogleResourceRepository(IDbContextFactory<GoogleIntegrati
             return;
         }
 
+        if (errorMessage.Length > 2000)
+        {
+            var length = 2000;
+            if (char.IsHighSurrogate(errorMessage[length - 1]) && char.IsLowSurrogate(errorMessage[length]))
+                length--;
+            errorMessage = errorMessage[..length];
+        }
+
         foreach (var row in rows)
         {
             row.ErrorMessage = errorMessage;

@@ -39,7 +39,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
             await ctx.SaveChangesAsync(ct);
             return GateRecordOutcome.Recorded;
         }
-        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        catch (DbUpdateException ex) when (IsDuplicateAdmit(ex))
         {
             return GateRecordOutcome.DuplicateAdmitRejected;
         }
@@ -211,6 +211,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
         await ctx.SaveChangesAsync(ct);
     }
 
-    private static bool IsUniqueViolation(DbUpdateException ex) =>
-        ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+    private static bool IsDuplicateAdmit(DbUpdateException ex) =>
+        ex.InnerException is PostgresException
+        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "ix_gate_scan_events_admit_dedupe_key" };
 }

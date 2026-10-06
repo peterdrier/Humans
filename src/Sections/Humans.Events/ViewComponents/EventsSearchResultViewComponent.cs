@@ -23,7 +23,7 @@ public sealed class EventsSearchResultViewComponent(IEventServiceRead events) : 
     public async Task<IViewComponentResult> InvokeAsync(Guid eventId)
     {
         // O(1) on the approved-only cache: no query, and no per-row scan either.
-        var match = await events.GetApprovedEventByIdAsync(eventId);
+        var match = await events.GetApprovedEventByIdAsync(eventId, HttpContext.RequestAborted);
         return match is null
             ? Content(string.Empty)
             : View(new EventsSearchResultViewModel(match.Title, match.CategoryName));

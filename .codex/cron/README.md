@@ -27,9 +27,11 @@ suite once at the end. Test-only changes do not qualify a run for publication.
 `TIME_BUDGET` (default `90m`) is the minimum active work window. The runner
 sets a native goal; the agent completes independently validated fixes and
 stops only after the deadline **and** finishing its current task. Time is
-the only target; there is no fix-count target. Ledger cleanup and
-documentation do not count as substantive fixes. Report the actual work after
-completion. One branch and one PR contain the whole run.
+the only stopping rule; there is no fix-count target. The target is the debt
+ledger: the agent works existing rows first, before searching for new debt,
+and the wrapper reports open rows before and after in the PR body. Fixing a row's code counts as a fix; stale-row deletion and
+documentation do not. Report the actual work after completion. One branch and
+one PR contain the whole run.
 
 The wrapper starts one `codex app-server --stdio` process, creates one thread
 and its native goal, and submits one initial turn. It stays attached while

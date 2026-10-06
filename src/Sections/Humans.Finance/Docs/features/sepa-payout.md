@@ -75,12 +75,12 @@ longer needs a redeploy.
    their preferred language, `MessageCategory.System` (peterdrier/Humans#1820). Both come after the
    save so a rolled-back file leaves neither a ghost audit row nor a promise of money in the outbox.
    Notification failures are logged and do not block download of the saved file; a failed email
-   does not suppress later recipients. Request cancellation still propagates.
+   does not suppress later recipients. After the save, notifications finish independently of request cancellation.
 7. The XML streams back as `<org-slug>-<yyyy-MM-dd-HHmm>-<first 8 hex of the file id>.xml`. The
    stamp is minute-resolution, so the id suffix is what keeps two batches in one minute apart — the
    filename is the treasurer's handle on a downloaded copy and is quoted in the audit line.
 
-Any failure at any step refuses the **whole** batch with a message and persists nothing.
+Validation or file-construction failure refuses the **whole** batch and persists nothing. Post-save notification failures leave the saved file available.
 
 ## Booking a transfer into Holded
 
@@ -290,7 +290,7 @@ Server-side, all-or-nothing:
 | Account unbound, or bound to more than one member | service |
 | Amount above the balance | service |
 | Amount below €0.01, more than 2 decimals, or above the cap | builder |
-| IBAN absent, or failing its check digits | service / builder |
+| IBAN absent, containing non-ASCII account characters or non-digit check characters, or failing its checksum | service / builder |
 | Duplicate or over-long `MsgId` / `PmtInfId` / `EndToEndId` | builder |
 | Generated XML fails the XSD | builder |
 

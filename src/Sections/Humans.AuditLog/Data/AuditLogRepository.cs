@@ -51,7 +51,7 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
         var items = await query
             // arch:db-sort-ok admin page window over append-only audit log
             .OrderByDescending(e => e.OccurredAt)
-            .Skip((page - 1) * pageSize)
+            .Skip((int)Math.Clamp(((long)page - 1) * pageSize, 0, int.MaxValue))
             .Take(pageSize)
             .ToListAsync(ct);
 

@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Campaigns/**
-  src/Sections/Humans.Campaigns.Contracts/**
+  src/Sections/Humans.Campaigns/Contracts/**
   src/Sections/Humans.Email/Services/OutboxEmailService.cs
   src/Sections/Humans.Tickets/Services/TicketSyncService.cs
   src/Sections/Humans.Users/Services/UnsubscribeService.cs
@@ -97,8 +97,13 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 ## Invariants
 
+- Create/edit validate trimmed title (200), description (2000), email subject (1000) and Reply-To (320) lengths before persistence. Nonblank Reply-To must be an email address; blank stays optional. Invalid forms redisplay field errors and preserve existing campaign data.
+
+- Index, edit, detail and Send Wave GETs pass request cancellation to their read-only service/repository calls, so abandoned pages stop loading data. Mutating requests retain their existing cancellation boundaries.
+
 - Campaign status follows: Draft then Active then Completed. `ActivateAsync` requires Draft + at least one code; `CompleteAsync` requires Active; `SendWaveAsync` requires Active. Wrong-state attempts (double-clicks, stale forms, the Send Wave GET on a non-Active campaign) return error results the controller surfaces as an error toast + redirect, never a 500.
 - Vendor-generated codes can only be created while the campaign is in Draft status (service enforces). CSV code import has no service-side status guard — the Campaign Detail view exposes the import form in both Draft and Active. The admin CSV upload is capped at 1 MB and its in-memory read observes request cancellation.
+- Undefined discount kinds, including numeric enum values, return InvalidDiscountType before vendor generation or code import.
 - Each code is unique per campaign (DB-enforced via unique `(CampaignId, Code)` index) and can be assigned to at most one human (DB-enforced via unique `CampaignCodeId` on grants).
 - Each human can hold at most one grant per campaign (DB-enforced via unique `(CampaignId, UserId)` on grants).
 - Wave allocation pulls available codes ordered by `CampaignCode.ImportOrder` so batch order is stable and reproducible.
@@ -133,7 +138,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 **Owning services:** `CampaignService`
 **Owned tables:** `campaigns`, `campaign_codes`, `campaign_grants`
-**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#546, 2026-04-22); own project since G5 (nobodies-collective/Humans#866). Everything but `Section` is `internal` (HUM0034); the cross-section surface is the leaf project `Humans.Campaigns.Contracts` — `ICampaignService`, `ICampaignServiceRead` and the code-tracking DTOs `TicketQueryService` reads.
+**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#546, 2026-04-22); own project since G5 (nobodies-collective/Humans#866). Everything but `Section` is `internal` (HUM0034); the cross-section surface is the `Contracts/` folder (namespace `Humans.Campaigns.Contracts`) — `ICampaignService`, `ICampaignServiceRead` and the code-tracking DTOs `TicketQueryService` reads.
 
 - `CampaignService` lives in `Humans.Campaigns.Services` and depends only on Application-layer abstractions.
 - `ICampaignRepository` (interface `src/Sections/Humans.Campaigns/Data/ICampaignRepository.cs`, impl `src/Sections/Humans.Campaigns/Data/CampaignRepository.cs`) is the only file that touches this section's tables via `DbContext`.

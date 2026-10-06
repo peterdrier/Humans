@@ -74,6 +74,9 @@ internal sealed class FeedbackService(
         var report = await repository.FindForMutationAsync(id, cancellationToken)
             ?? throw new InvalidOperationException($"Feedback report {id} not found");
 
+        if (!Enum.IsDefined(status))
+            throw new ArgumentOutOfRangeException(nameof(status), status, "Unknown feedback status.");
+
         var now = clock.GetCurrentInstant();
         report.Status = status;
         report.UpdatedAt = now;
@@ -186,7 +189,8 @@ internal sealed class FeedbackService(
             await emailService.SendAsync(emailMessages.FeedbackResponse(
                 recipientEmail, reporter.BurnerName,
                 report.Description, content,
-                reporter.PreferredLanguage), ct);
+                reporter.PreferredLanguage.IsSupportedCultureCode()
+                    ? reporter.PreferredLanguage : CultureCatalog.DefaultCultureCode), ct);
         }
         else
         {
@@ -202,7 +206,9 @@ internal sealed class FeedbackService(
         try
         {
             var reporter = await userService.GetUserInfoAsync(report.UserId, ct);
-            var notification = emailMessages.FeedbackResponseNotification(reporter?.PreferredLanguage);
+            var language = reporter?.PreferredLanguage;
+            var notification = emailMessages.FeedbackResponseNotification(
+                language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode);
 
             // No action link: /Feedback/{id} is Admin-only now, so the reporter would land on a 403.
             // The response text itself reaches them in the FeedbackResponse email.
@@ -354,6 +360,8 @@ internal sealed class FeedbackService(
                 fr.Category,
                 fr.Description,
                 fr.PageUrl,
+                fr.UserAgent,
+                fr.AdditionalContext,
                 fr.Status,
                 CreatedAt = fr.CreatedAt.ToIso8601(),
                 ResolvedAt = fr.ResolvedAt.ToIso8601(),
@@ -383,12 +391,16 @@ internal sealed class FeedbackService(
     /// <summary>Own reports and their free text are hard-deleted; triage links elsewhere are detached.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
+        var screenshotKeys = await repository.EraseForUserAsync(userId, ct);
+        navBadge.Invalidate();
+
         // The screenshots are the reporter's own uploads — they go with the rows.
-        foreach (var key in await repository.EraseForUserAsync(userId, ct))
+        foreach (var key in screenshotKeys)
         {
             try
             {
-                await fileStorage.DeleteAsync(key, ct);
+                // The rows have committed; cancellation must not strand their screenshots.
+                await fileStorage.DeleteAsync(key, CancellationToken.None);
             }
             catch (Exception ex)
             {

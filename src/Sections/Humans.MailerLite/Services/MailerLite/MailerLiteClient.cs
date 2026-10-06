@@ -73,11 +73,12 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         using var body = JsonContent.Create(new { name }, options: Json);
         using var resp = await SendAsync(HttpMethod.Post, "/api/groups", body, ct);
         resp.EnsureSuccessStatusCode();
-        var env = await resp.Content.ReadFromJsonAsync<GroupSingleEnvelope>(Json, ct)
-            ?? throw new InvalidOperationException("MailerLite returned empty body on CreateGroup.");
+        var env = await resp.Content.ReadFromJsonAsync<GroupSingleEnvelope>(Json, ct);
+        var group = env?.Data
+            ?? throw new InvalidOperationException("MailerLite returned no group on CreateGroup.");
 
-        await AppendToGroupsCacheAsync(env.Data, ct);
-        return env.Data;
+        await AppendToGroupsCacheAsync(group, ct);
+        return group;
     }
 
     // Assign/Unassign/BulkImport deliberately don't invalidate — the sync service holds its
@@ -242,7 +243,12 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
             var body = await resp.Content.ReadFromJsonAsync<SubscriberListEnvelope>(Json, ct);
             if (body?.Data is null || body.Meta is null)
                 throw new HttpRequestException("MailerLite returned an incomplete subscriber page.");
-            foreach (var s in body.Data) yield return s;
+            foreach (var s in body.Data)
+            {
+                if (s is null)
+                    throw new HttpRequestException("MailerLite returned a null subscriber page item.");
+                yield return s;
+            }
             if (string.IsNullOrEmpty(body.Meta.NextCursor)) yield break;
             if (!seenCursors.Add(body.Meta.NextCursor))
                 throw new HttpRequestException("MailerLite repeated a subscriber pagination cursor.");
@@ -262,6 +268,8 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
             if (body?.Data is null || body.Meta is null ||
                 body.Meta.CurrentPage != page || body.Meta.LastPage < page)
                 throw new HttpRequestException("MailerLite returned invalid group pagination metadata.");
+            if (body.Data.Any(group => group is null))
+                throw new HttpRequestException("MailerLite returned a null group page item.");
             results.AddRange(body.Data);
             if (body.Meta.CurrentPage >= body.Meta.LastPage) break;
             page++;

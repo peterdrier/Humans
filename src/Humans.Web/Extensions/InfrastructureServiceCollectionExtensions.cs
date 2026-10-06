@@ -1,4 +1,7 @@
+using Humans.Base;
 using Humans.Base.Configuration;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Caching;
@@ -17,6 +20,24 @@ public static class InfrastructureServiceCollectionExtensions
         IHostEnvironment environment,
         ConfigurationRegistry? configRegistry = null)
     {
+        // MVC caches metadata across requests; defer resource lookups until binding
+        // or rendering so each request's UI culture selects the message.
+        services.AddOptions<MvcOptions>().Configure<IStringLocalizer<SharedResource>>((options, localizer) =>
+        {
+            var messages = options.ModelBindingMessageProvider;
+            messages.SetMissingBindRequiredValueAccessor(_ => localizer["Validation_Required"]);
+            messages.SetMissingKeyOrValueAccessor(() => localizer["Validation_Required"]);
+            messages.SetMissingRequestBodyRequiredValueAccessor(() => localizer["Validation_Required"]);
+            messages.SetValueMustNotBeNullAccessor(_ => localizer["Validation_Required"]);
+            messages.SetAttemptedValueIsInvalidAccessor((_, _) => localizer["Validation_InvalidValue"]);
+            messages.SetNonPropertyAttemptedValueIsInvalidAccessor(_ => localizer["Validation_InvalidValue"]);
+            messages.SetUnknownValueIsInvalidAccessor(_ => localizer["Validation_InvalidValue"]);
+            messages.SetNonPropertyUnknownValueIsInvalidAccessor(() => localizer["Validation_InvalidValue"]);
+            messages.SetValueIsInvalidAccessor(_ => localizer["Validation_InvalidValue"]);
+            messages.SetValueMustBeANumberAccessor(_ => localizer["Validation_Number"]);
+            messages.SetNonPropertyValueMustBeANumberAccessor(() => localizer["Validation_Number"]);
+        });
+
         // Cross-cutting infrastructure — options bindings, integrations, config metadata.
         services.AddConfigurationMetadata(configuration, configRegistry);
         services.AddTelemetryInfrastructure(configuration);

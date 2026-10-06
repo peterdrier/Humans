@@ -36,6 +36,7 @@
   <!-- Common / Shared          -->
   <!-- ======================== -->
   <data name="Governance_Title" xml:space="preserve"><value>Governance</value></data>
+  <data name="Governance_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
   <data name="GovernanceApplication_Title" xml:space="preserve"><value>Governance Application</value></data>
   <data name="ApplicationDetail_Title" xml:space="preserve"><value>Application Details</value></data>
   <data name="Governance_NotYetApplied" xml:space="preserve"><value>Not Yet Applied</value></data>

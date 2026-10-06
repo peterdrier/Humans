@@ -1,3 +1,5 @@
+using NSubstitute;
+using Octokit;
 using AwesomeAssertions;
 using Humans.Base.Configuration;
 using Humans.Stripe.Services;
@@ -26,6 +28,21 @@ public class StripeBootJobTests
     /// yet, and the test would pass without the code having had a chance to speak.
     /// </summary>
     private static readonly TimeSpan SilenceWindow = TimeSpan.FromMilliseconds(500);
+
+    [HumansFact]
+    public async Task Registrar_open_pr_read_observes_deadline_while_github_is_pending()
+    {
+        var pending = new TaskCompletionSource<IReadOnlyList<PullRequest>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var github = Substitute.For<IPullRequestsClient>();
+        github.GetAllForRepository("owner", "repo", Arg.Any<PullRequestRequest>()).Returns(pending.Task);
+        using var deadline = new CancellationTokenSource();
+        var read = StoreWebhookRegistrationService.ListOpenPullRequestsAsync("owner", "repo", github, deadline.Token);
+        read.IsCompleted.Should().BeFalse();
+
+        await deadline.CancelAsync();
+
+        await Xunit.Assert.ThrowsAnyAsync<OperationCanceledException>(() => read.WaitAsync(Settle));
+    }
 
     [HumansFact]
     public async Task Smoke_probe_does_not_block_startup_and_warns_per_unconfigured_key()

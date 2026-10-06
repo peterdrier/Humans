@@ -19,7 +19,7 @@ public static class AuthorizationPolicyExtensions
     {
         // TeamAuthorizationHandler is registered by Humans.Teams' Section.Register: the handler
         // moved into the section at its G5 and is internal there, while the policies it backs
-        // stay here (design §15 step 6's asymmetry). CampComplianceAccessHandler and
+        // stay here as shared platform policies. CampComplianceAccessHandler and
         // IsAnyTeamManagerOrCoordinatorHandler are registered the same way by Humans.Shifts'
         // Section.Register, and HumanAdminOnlyHandler by Humans.Users'.
         //

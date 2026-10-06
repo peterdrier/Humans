@@ -27,7 +27,7 @@
             <div class="card h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Tickets Sold</h6>
-                    <h3 class="card-title">@Model.TicketsSold.ToString("N0")</h3>
+                    <h3 class="card-title">@Model.TicketsSold.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</h3>
                     @if (Model.TotalCapacity > 0)
                     {
                         var soldPct = (int)(Model.TicketsSold * 100.0 / Model.TotalCapacity);
@@ -40,9 +40,9 @@
                             {
                                 <span class="@(Model.TicketsSold >= Model.BreakEvenTarget ? "text-success fw-bold" : "text-warning")"
                                       title="@Model.BreakEvenDetail"
-                                      aria-label="@Model.BreakEvenDetail">@Model.BreakEvenTarget.ToString("N0") break-even</span>
+                                      aria-label="@Model.BreakEvenDetail">@Model.BreakEvenTarget.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture) break-even</span>
                             }
-                            <span class="text-muted">@Model.TotalCapacity.ToString("N0") capacity</span>
+                            <span class="text-muted">@Model.TotalCapacity.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture) capacity</span>
                         </div>
                     }
                 </div>
@@ -52,12 +52,12 @@
             <div class="card h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Gross Revenue</h6>
-                    <h3 class="card-title">@Model.Currency @Model.Revenue.ToString("N0")</h3>
+                    <h3 class="card-title">@Model.Currency @Model.Revenue.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</h3>
                     @if (Model.TotalStripeFees > 0 || Model.TotalApplicationFees > 0)
                     {
                         var totalFees = Model.TotalStripeFees + Model.TotalApplicationFees;
                         var feePct = Model.Revenue > 0 ? Math.Round(totalFees / Model.Revenue * 100, 1) : 0;
-                        <small class="text-muted">@feePct% in fees</small>
+                        <small class="text-muted">@feePct.ToString(System.Globalization.CultureInfo.CurrentUICulture)% in fees</small>
                     }
                 </div>
             </div>
@@ -66,14 +66,14 @@
             <div class="card h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Net Revenue</h6>
-                    <h3 class="card-title">@Model.Currency @Model.NetRevenue.ToString("N0")</h3>
+                    <h3 class="card-title">@Model.Currency @Model.NetRevenue.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</h3>
                     @if (Model.TotalStripeFees > 0)
                     {
                         <small class="text-muted">
-                            Stripe: @Model.Currency @Model.TotalStripeFees.ToString("N0")
+                            Stripe: @Model.Currency @Model.TotalStripeFees.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)
                             @if (Model.TotalApplicationFees > 0)
                             {
-                                <text> / TT: @Model.Currency @Model.TotalApplicationFees.ToString("N0")</text>
+                                <text> / TT: @Model.Currency @Model.TotalApplicationFees.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</text>
                             }
                         </small>
                     }
@@ -84,7 +84,7 @@
             <div class="card h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Avg. Gross Price</h6>
-                    <h3 class="card-title">@Model.Currency @Model.AveragePrice.ToString("N2")</h3>
+                    <h3 class="card-title">@Model.Currency @Model.AveragePrice.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</h3>
                 </div>
             </div>
         </div>
@@ -92,7 +92,7 @@
             <div class="card h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Remaining</h6>
-                    <h3 class="card-title">@Model.TicketsRemaining.ToString("N0") tickets left</h3>
+                    <h3 class="card-title">@Model.TicketsRemaining.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture) tickets left</h3>
                 </div>
             </div>
         </div>
@@ -116,13 +116,13 @@
     {
         var currency = Model.Currency;
         Func<PaymentMethodFeeBreakdown, IHtmlContent> grossAmountCell =
-            @<text>@currency @item.TotalAmount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)</text>;
+            @<text>@currency @item.TotalAmount.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</text>;
         Func<PaymentMethodFeeBreakdown, IHtmlContent> stripeFeeCell =
-            @<text>@currency @item.TotalStripeFees.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</text>;
+            @<text>@currency @item.TotalStripeFees.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</text>;
         Func<PaymentMethodFeeBreakdown, IHtmlContent> ttFeeCell =
-            @<text>@currency @item.TotalApplicationFees.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</text>;
+            @<text>@currency @item.TotalApplicationFees.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</text>;
         Func<PaymentMethodFeeBreakdown, IHtmlContent> effectiveRateCell =
-            @<text>@item.EffectiveRate%</text>;
+            @<text>@item.EffectiveRate.ToString(System.Globalization.CultureInfo.CurrentUICulture)%</text>;
         var feesTable = TableModel.For(Model.FeesByPaymentMethod.ToList())
             .Column("Payment Method", pm => pm.PaymentMethod)
             .Column("Orders", pm => pm.OrderCount, c => c.Number().End())
@@ -191,7 +191,7 @@
                 <div class="card-body p-0">
                     @{
                         Func<TicketOrderSummary, IHtmlContent> recentAmountCell =
-                            @<text>@item.Currency @item.Amount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)</text>;
+                            @<text>@item.Currency @item.Amount.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</text>;
                         Func<TicketOrderSummary, IHtmlContent> recentMatchedCell = @<text>
                             @if (item.IsMatched)
                             {

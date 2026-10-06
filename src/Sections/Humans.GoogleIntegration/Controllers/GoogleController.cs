@@ -26,7 +26,7 @@ internal sealed class GoogleController(
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> Resource(Guid id)
     {
-        var resource = await teamResourceService.GetResourceByIdAsync(id);
+        var resource = await teamResourceService.GetResourceByIdAsync(id, HttpContext.RequestAborted);
         if (resource is null)
             return NotFound();
 
@@ -42,7 +42,7 @@ internal sealed class GoogleController(
     [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
     public async Task<IActionResult> Human(Guid id)
     {
-        var user = await FindUserInfoByIdAsync(id);
+        var user = await FindUserInfoByIdAsync(id, HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
@@ -215,14 +215,20 @@ internal sealed class GoogleController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> AllGroups()
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
-            var result = await googleSyncService.GetAllDomainGroupsAsync();
-            var teams = (await googleAdminService.GetActiveTeamsAsync())
+            var result = await googleSyncService.GetAllDomainGroupsAsync(ct);
+            var teams = (await googleAdminService.GetActiveTeamsAsync(ct))
                 .OrderBy(t => t.Name, StringComparer.Ordinal)
                 .ToList();
             ViewBag.Teams = teams;
             return View(result);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Domain group listing cancelled by caller");
+            throw;
         }
         catch (Exception ex)
         {
@@ -383,7 +389,7 @@ internal sealed class GoogleController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Accounts()
     {
-        var result = await googleAdminService.GetWorkspaceAccountListAsync();
+        var result = await googleAdminService.GetWorkspaceAccountListAsync(HttpContext.RequestAborted);
 
         if (result.ErrorMessage is not null)
         {
@@ -392,20 +398,7 @@ internal sealed class GoogleController(
 
         var model = new WorkspaceEmailListViewModel
         {
-            Accounts = result.Accounts.Select(a => new WorkspaceEmailAccountViewModel
-            {
-                PrimaryEmail = a.PrimaryEmail,
-                FirstName = a.FirstName,
-                LastName = a.LastName,
-                IsSuspended = a.IsSuspended,
-                CreationTime = a.CreationTime,
-                LastLoginTime = a.LastLoginTime,
-                MatchedUserId = a.MatchedUserId,
-                MatchedDisplayName = a.MatchedDisplayName,
-                IsUsedAsPrimary = a.IsUsedAsPrimary,
-                IsEnrolledIn2Sv = a.IsEnrolledIn2Sv,
-                RecoveryEmail = a.RecoveryEmail
-            }).ToList(),
+            Accounts = result.Accounts,
             TotalAccounts = result.TotalAccounts,
             ActiveAccounts = result.ActiveAccounts,
             SuspendedAccounts = result.SuspendedAccounts,
@@ -602,25 +595,25 @@ internal sealed class GoogleController(
         [FromServices] ITeamServiceRead teamService,
         [FromServices] IGoogleDriveActivityClient googleClient)
     {
+        var ct = HttpContext.RequestAborted;
         ViewData["GoogleNotConfigured"] = !googleClient.IsConfigured;
-        var events = (await googleSyncService.GetRecentOutboxEventsAsync(200)).ToList();
+        var events = (await googleSyncService.GetRecentOutboxEventsAsync(200, ct)).ToList();
 
-        // Display info via UserInfo cache (one lookup/user). GoogleEmail from IsGoogle row, else primary. BurnerName per burnername-is-the-display-name.
+        // Display info via the UserInfo batch lookup. GoogleEmail from IsGoogle row, else primary. BurnerName per burnername-is-the-display-name.
         var userIds = events.Select(e => e.UserId).Distinct().ToList();
         var teamIds = events.Select(e => e.TeamId).Distinct().ToList();
-        var googleEmailLookup = new Dictionary<Guid, string>(userIds.Count);
-        var displayNameLookup = new Dictionary<Guid, string>(userIds.Count);
-        foreach (var userId in userIds)
-        {
-            var info = await UserService.GetUserInfoAsync(userId);
-            googleEmailLookup[userId] = info?.GoogleEmail ?? info?.Email ?? "unknown";
-            displayNameLookup[userId] = info?.BurnerName ?? "(unknown)";
-        }
-        var teamsById = await teamService.GetTeamsAsync();
+        IReadOnlyDictionary<Guid, UserInfo> infos = userIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await UserService.GetUserInfosAsync(userIds, ct);
+        var googleEmailLookup = userIds.ToDictionary(userId => userId,
+            userId => infos.GetValueOrDefault(userId)?.GoogleEmail ?? infos.GetValueOrDefault(userId)?.Email ?? "unknown");
+        var displayNameLookup = userIds.ToDictionary(userId => userId,
+            userId => infos.GetValueOrDefault(userId)?.BurnerName ?? "(unknown)");
+        var teamsById = await teamService.GetTeamsAsync(ct);
         var teamLookup = teamIds
             .Where(teamsById.ContainsKey)
             .ToDictionary(id => id, id => teamsById[id].Name);
-        var resourcesByTeam = await teamResourceService.GetResourcesByTeamIdsAsync(teamIds);
+        var resourcesByTeam = await teamResourceService.GetResourcesByTeamIdsAsync(teamIds, ct);
         var resourceLookup = resourcesByTeam.ToDictionary(
             kvp => kvp.Key,
             kvp => kvp.Value.OrderBy(r => r.ProvisionedAt).Select(r => $"{r.Name} ({r.ResourceType})").ToList());

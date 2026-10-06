@@ -1,3 +1,7 @@
+using Humans.Base.Extensions;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Logging;
+using Xunit;
 using Humans.Users.Services;
 using Humans.Users.Models;
 using Humans.Users.Controllers;
@@ -43,6 +47,7 @@ namespace Humans.Users.Tests.Controllers;
 /// </summary>
 public class ProfileEmailsControllerGridTests
 {
+    private readonly ILogger<ProfileEmailsController> _logger = Substitute.For<ILogger<ProfileEmailsController>>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
@@ -83,7 +88,7 @@ public class ProfileEmailsControllerGridTests
             _emailMessages,
             _userEmailService,
             _auditLogService,
-            NullLogger<ProfileEmailsController>.Instance,
+            _logger,
             localizer,
             Substitute.For<ITicketServiceRead>(),
             _authorizationService,
@@ -127,6 +132,85 @@ public class ProfileEmailsControllerGridTests
             Arg.Any<object?>(),
             Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
+    }
+
+    [HumansTheory]
+    [InlineData("SetPrimary", true)]
+    [InlineData("SetEmailVisibility", true)]
+    [InlineData("DeleteEmail", true)]
+    [InlineData("SetGoogle", true)]
+    [InlineData("ClearGoogle", true)]
+    [InlineData("ClearPrimary", true)]
+    [InlineData("Unlink", true)]
+    [InlineData("AdminSetPrimary", false)]
+    [InlineData("AdminSetVisibility", false)]
+    [InlineData("AdminDeleteEmail", false)]
+    [InlineData("AdminSetGoogle", false)]
+    [InlineData("AdminClearGoogle", false)]
+    [InlineData("AdminClearPrimary", false)]
+    [InlineData("AdminUnlink", false)]
+    public async Task EmailMutation_RejectionLogsWarningWithReasonWithoutException(string action, bool validationFailure)
+    {
+        const string reason = "Email mutation rejected by a guardrail";
+        Exception rejection = validationFailure ? new ValidationException(reason) : new InvalidOperationException(reason);
+        _userEmailService.SetPrimaryAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(rejection));
+        _userEmailService.SetVisibilityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<ContactFieldVisibility?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(rejection));
+        _userEmailService.DeleteEmailAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(rejection));
+        _userEmailService.SetGoogleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(rejection));
+        _userEmailService.ClearGoogleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(rejection));
+        _userEmailService.ClearPrimaryAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(rejection));
+        _userEmailService.UnlinkAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(rejection));
+        var emailId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var result = action switch
+        {
+            "SetPrimary" => await _controller.SetPrimary(emailId, ct),
+            "SetEmailVisibility" => await _controller.SetEmailVisibility(emailId, null),
+            "DeleteEmail" => await _controller.DeleteEmail(emailId),
+            "SetGoogle" => await _controller.SetGoogle(emailId, ct),
+            "ClearGoogle" => await _controller.ClearGoogle(emailId, ct),
+            "ClearPrimary" => await _controller.ClearPrimary(emailId, ct),
+            "Unlink" => await _controller.Unlink(emailId, ct),
+            "AdminSetPrimary" => await _controller.AdminSetPrimary(targetId, emailId, ct),
+            "AdminSetVisibility" => await _controller.AdminSetVisibility(targetId, emailId, null, ct),
+            "AdminDeleteEmail" => await _controller.AdminDeleteEmail(targetId, emailId, ct),
+            "AdminSetGoogle" => await _controller.AdminSetGoogle(targetId, emailId, ct),
+            "AdminClearGoogle" => await _controller.AdminClearGoogle(targetId, emailId, ct),
+            "AdminClearPrimary" => await _controller.AdminClearPrimary(targetId, emailId, ct),
+            "AdminUnlink" => await _controller.AdminUnlink(targetId, emailId, ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
+        };
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        _controller.TempData["ErrorMessage"].Should().Be(reason);
+        var arguments = _logger.ReceivedCalls().Should().ContainSingle(call =>
+            string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
+        arguments[0].Should().Be(LogLevel.Warning);
+        arguments[3].Should().BeNull();
+        arguments[2]!.ToString().Should().Contain(reason).And.Contain(emailId.ToString());
+    }
+
+    [HumansFact]
+    public async Task SetPrimary_UnexpectedDependencyFailure_Propagates()
+    {
+        var emailId = Guid.NewGuid();
+        _userEmailService.SetPrimaryAsync(_userId, emailId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new IOException("email store unavailable")));
+
+        var action = () => _controller.SetPrimary(emailId, Xunit.TestContext.Current.CancellationToken);
+
+        await action.Should().ThrowAsync<IOException>().WithMessage("email store unavailable");
+        _logger.ReceivedCalls().Should().NotContain(call =>
+            string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal));
     }
 
     [HumansFact]
@@ -322,9 +406,16 @@ public class ProfileEmailsControllerGridTests
             .Which.ActionName.Should().Be("AdminEmails");
     }
 
-    [HumansFact]
-    public async Task AdminAddEmail_SendsVerificationEmail_ToTargetUser_WithReturnedToken()
+    [HumansTheory]
+    [InlineData("en", "en")]
+    [InlineData("es", "es")]
+    [InlineData("", "en")]
+    [InlineData(" ", "en")]
+    [InlineData("not a culture!", "en")]
+    [InlineData("fr-FR", "en")]
+    public async Task AdminAddEmail_SendsVerificationEmail_ToTargetUser_WithReturnedToken(string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var targetUserId = Guid.NewGuid();
         const string newEmail = "added@example.com";
         const string token = "verification-token-abc";
@@ -339,7 +430,7 @@ public class ProfileEmailsControllerGridTests
                 return $"/Profile/Me/Emails/Verify?userId={routeValues["userId"]}&token={routeValues["token"]}";
             });
 
-        var targetUser = new User { Id = targetUserId, BurnerName = "Target User", DisplayName = "Target User", PreferredLanguage = "es" };
+        var targetUser = new User { Id = targetUserId, BurnerName = "Target User", DisplayName = "Target User", PreferredLanguage = language };
         _userManager.FindByIdAsync(targetUserId.ToString())
             .Returns(targetUser);
         _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>())
@@ -357,15 +448,24 @@ public class ProfileEmailsControllerGridTests
             Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.EmailVerification
                 && m.RecipientEmail == newEmail && m.RecipientName == "Target User"
                 && m.HtmlBody.Contains(token, StringComparison.Ordinal)
-                && m.Subject.EndsWith("#es", StringComparison.Ordinal)),
+                && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be("AdminEmails");
     }
 
-    [HumansFact]
-    public async Task AddEmail_SendsVerificationLink_RoutedToThisController()
+    [HumansTheory]
+    [InlineData("en", "en")]
+    [InlineData("es", "es")]
+    [InlineData("", "en")]
+    [InlineData(" ", "en")]
+    [InlineData("not a culture!", "en")]
+    [InlineData("fr-FR", "en")]
+    public async Task AddEmail_SendsVerificationLink_RoutedToThisController(string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
+        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>())
+            .Returns(new User { Id = _userId, PreferredLanguage = language });
         const string newEmail = "mine@example.com";
         const string token = "verification-token-self";
 
@@ -385,7 +485,8 @@ public class ProfileEmailsControllerGridTests
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.EmailVerification
                 && m.RecipientEmail == newEmail
-                && m.HtmlBody.Contains(token, StringComparison.Ordinal)),
+                && m.HtmlBody.Contains(token, StringComparison.Ordinal)
+                && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be("Emails");
@@ -533,6 +634,26 @@ public class ProfileEmailsControllerGridTests
             relatedEntityType: nameof(UserEmail));
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be("Emails");
+    }
+
+    [HumansTheory]
+    [InlineData("99", null)]
+    [InlineData("-1", null)]
+    [InlineData("BoardOnly", ContactFieldVisibility.BoardOnly)]
+    [InlineData("allactiveprofiles", ContactFieldVisibility.AllActiveProfiles)]
+    [InlineData("0", ContactFieldVisibility.BoardOnly)]
+    [InlineData("3", ContactFieldVisibility.AllActiveProfiles)]
+    [InlineData("", null)]
+    [InlineData("unsupported", null)]
+    public async Task SetEmailVisibility_UsesDefinedVisibilityOrHidden(string input, ContactFieldVisibility? expected)
+    {
+        var emailId = Guid.NewGuid();
+
+        var result = await _controller.SetEmailVisibility(emailId, input);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        await _userEmailService.Received(1).SetVisibilityAsync(
+            _userId, emailId, expected, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

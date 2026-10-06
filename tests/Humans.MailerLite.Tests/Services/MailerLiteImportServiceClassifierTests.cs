@@ -161,13 +161,50 @@ public class MailerLiteImportServiceClassifierTests
         var unverifiedEmailId = Guid.NewGuid();
         var unverifiedUserId = Guid.NewGuid();
         harness.MlReturns(Active("pending@x.com"));
-        harness.AnyEmailRows["pending@x.com"] = (unverifiedUserId, unverifiedEmailId);
+        harness.AnyEmailRows["pending@x.com"] =
+            [UserEmailFixtures.Row(unverifiedUserId, "pending@x.com", verified: false, id: unverifiedEmailId)];
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         var d = plan.Decisions.Single();
         d.Outcome.Should().Be(SubscriberOutcome.ReplaceUnverifiedEmail);
         d.UnverifiedEmailIdToDelete.Should().Be(unverifiedEmailId);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task MultipleUnverifiedMatches_SkipWithoutDeletingOrProvisioning(bool sameOwner)
+    {
+        var harness = new ClassifierHarness();
+        var owner = Guid.NewGuid();
+        var otherOwner = sameOwner ? owner : Guid.NewGuid();
+        const string address = "shared@gmail.com";
+        harness.MlReturns(Active(address));
+        harness.AnyEmailRows[address] =
+        [
+            UserEmailFixtures.Row(owner, address, verified: false),
+            UserEmailFixtures.Row(otherOwner, "shared@googlemail.com", verified: false),
+        ];
+
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
+        var decision = plan.Decisions.Should().ContainSingle().Subject;
+        decision.Outcome.Should().Be(SubscriberOutcome.AmbiguousEmailMatches);
+        decision.TargetUserId.Should().BeNull();
+        decision.UnverifiedEmailIdToDelete.Should().BeNull();
+        decision.AmbiguousUserIds.Should().BeEquivalentTo(new[] { owner, otherOwner }.Distinct());
+        plan.Counts.AmbiguousMultipleVerified.Should().Be(1);
+
+        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: 1,
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.AmbiguousSkipped.Should().Be(1);
+        result.Errors.Should().Be(0);
+        result.UnverifiedEmailsReplaced.Should().Be(0);
+        await harness.UserEmails.DidNotReceive().DeleteEmailAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await harness.Provisioning.DidNotReceive().FindOrCreateUserByEmailAsync(
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<ContactSource>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -193,7 +230,7 @@ public class MailerLiteImportServiceClassifierTests
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         var d = plan.Decisions.Single();
-        d.Outcome.Should().Be(SubscriberOutcome.AmbiguousMultipleVerified);
+        d.Outcome.Should().Be(SubscriberOutcome.AmbiguousEmailMatches);
         d.TargetUserId.Should().BeNull();
         d.AmbiguousUserIds.Should().BeEquivalentTo([userA, userB]);
     }
@@ -207,7 +244,8 @@ internal sealed class ClassifierHarness
     public const string WebsiteGroupId = "grp-website";
 
     private readonly IMailerLiteService _ml = Substitute.For<IMailerLiteService>();
-    private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
+    public IUserEmailService UserEmails { get; } = Substitute.For<IUserEmailService>();
+    public IAccountProvisioningService Provisioning { get; } = Substitute.For<IAccountProvisioningService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _prefs = Substitute.For<ICommunicationPreferenceService>();
 
@@ -225,8 +263,8 @@ internal sealed class ClassifierHarness
     /// <summary>userId → merged-to userId; the user read resolves the chain forward.</summary>
     public Dictionary<Guid, Guid> MergedToTargets { get; } = [];
 
-    /// <summary>email → (userId, emailId) for unverified-row matches.</summary>
-    public Dictionary<string, (Guid UserId, Guid EmailId)> AnyEmailRows { get; } = [];
+    /// <summary>email → unverified-row matches.</summary>
+    public Dictionary<string, IReadOnlyList<UserEmailRowSnapshot>> AnyEmailRows { get; } = [];
 
     public MailerLiteImportService Service { get; }
 
@@ -235,7 +273,7 @@ internal sealed class ClassifierHarness
         // IUserEmailService.FindByAddressAsync: verified owners come from VerifiedOwners
         // (multi wins over the single VerifiedMatches entry); the unverified pass returns
         // the AnyEmailRows row for the address.
-        _userEmails
+        UserEmails
             .FindByAddressAsync(Arg.Any<string>(), true, Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
@@ -251,8 +289,7 @@ internal sealed class ClassifierHarness
                     return Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>([]);
                 }
                 if (AnyEmailRows.TryGetValue(email, out var row))
-                    return Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>(
-                        [UserEmailFixtures.Row(row.Item1, email, verified: false, id: row.Item2)]);
+                    return Task.FromResult(row);
                 return Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>([]);
             });
 
@@ -284,9 +321,9 @@ internal sealed class ClassifierHarness
 
         Service = new MailerLiteImportService(
             _ml,
-            _userEmails,
+            UserEmails,
             _users,
-            Substitute.For<IAccountProvisioningService>(),
+            Provisioning,
             _prefs,
             Substitute.For<IAuditLogService>(),
             InMemoryMailerLiteRepository.New(),

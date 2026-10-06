@@ -38,13 +38,14 @@ public abstract class HumansCampControllerBase(
 
     protected async Task<(IActionResult? ErrorResult, UserInfo User, CampInfo Camp)> ResolveCampManagementAsync(string slug)
     {
-        var camp = await GetCampBySlugAsync(slug);
+        var ct = HttpContext.RequestAborted;
+        var camp = await GetCampBySlugAsync(slug, ct);
         if (camp is null)
         {
             return (NotFound(), null!, null!);
         }
 
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
         if (currentUserError is not null)
         {
             return (currentUserError, null!, camp);
@@ -68,13 +69,14 @@ public abstract class HumansCampControllerBase(
     /// </summary>
     protected async Task<(IActionResult? ErrorResult, UserInfo User, CampInfo Camp)> ResolveCampEventManagementAsync(string slug)
     {
-        var camp = await GetCampBySlugAsync(slug);
+        var ct = HttpContext.RequestAborted;
+        var camp = await GetCampBySlugAsync(slug, ct);
         if (camp is null)
         {
             return (NotFound(), null!, null!);
         }
 
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
         if (currentUserError is not null)
         {
             return (currentUserError, null!, camp);

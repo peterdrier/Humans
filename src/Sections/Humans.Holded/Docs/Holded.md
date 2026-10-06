@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Holded/**
-  src/Sections/Humans.Holded.Contracts/**
+  src/Sections/Humans.Holded/Contracts/**
   src/Sections/Humans.Expenses/Jobs/HoldedExpenseOutboxJob.cs
 -->
 
@@ -20,13 +20,22 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
   bug (deleted/reclassified lines lingering forever).
 - **Account identities are required**: expense-account numbers must be present so provisioning can avoid remote collisions; chart account IDs must be nonblank so invoicing never sends an empty account reference. Incomplete pages fail at the connector.
 - **Integer identities stay exact**: fractional chart/account numbers and ledger entry/line numbers fail the connector read rather than being truncated onto a different cached identity.
-- **Write responses stay typed**: unreadable purchase-create, contact-upsert and sales-create success bodies fail as permanent connector errors, so callers can record failure rather than losing queue bookkeeping to a raw JSON exception.
+- **Rate-limit retries are read-only**: the connector retries a content-free GET once after 429; writes, including bodyless sales-approval POSTs, surface the transient failure without an automatic retry.
+- **Page rows are required**: null items fail the complete connector read as a permanent error; silently dropping malformed rows must never turn a page into an incomplete or empty reconciliation input.
+- **Cursor walks must progress**: a repeated cursor fails the complete read immediately, before refetching that page. Distinct cursors retain each endpoint's page cap; incomplete lists never reach replace-semantics reconciliation.
+- **Creation identities are required**: accepted purchase/contact/sales/expense-account creates must return a nonblank ID. Null bodies or missing/blank IDs fail permanently, so callers cannot automatically repeat an already accepted create or persist an unusable account reference. A contact update may reuse its known ID when the parsed response omits or blanks it.
+- **Write responses stay typed**: unreadable purchase-create, contact-upsert, sales-create and expense-account-create success bodies fail as permanent connector errors, including text-decoding failures, so callers can record failure rather than losing queue bookkeeping to a raw parsing exception. Accepted payments and ledger postings retain their operation-specific `unconfirmed:` reference when the success body cannot be decoded or parsed; callers must not repeat a posting because its response was unreadable.
 - **Purchase document identity is required**: purchase documents need a nonblank ID; a missing or blank ID rejects the page. An absent `payments_pending` reads as 0 (nothing owed), which refuses a booking rather than over-paying.
+- Sales-document totals are required: a missing or null `total` fails as a permanent connector error before Store can finish issuance or compare a recovered invoice. Explicit zero remains valid.
 - **Chart totals are required**: missing or null debit, credit or balance fails the account page as a permanent connector error before replacing cached totals. Explicit zero totals remain valid.
 - **Reconciliation**: after every sweep, each non-archived account's chart balance is compared
   to the local ledger sum; drifted accounts get one targeted full-history re-pull (capped at 10
   per run, logged when capped). Residual mismatches are **reportable state** on the sync row,
   never a failure — Holded's own chart totals can exclude unconfirmed entries.
+
+- Saved ledger error text stays within 2000 UTF-16 code units without splitting a Unicode surrogate pair. The original exception still propagates in full, and the sync gate is released.
+
+- **Interrupted manual syncs** remain recorded as `Error` and propagate caller cancellation. Caller-aborted document/ledger syncs and their controller log stack-free warnings; dependency failures remain errors with exceptions.
 
 ## Data Model (`HoldedDbContext`, history `__EFMigrationsHistory_Holded`)
 
@@ -103,6 +112,7 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 - Sweeps are serialized by a non-blocking in-process gate; a second caller is skipped and told
   so, never queued (single-server deployment).
 - Reads (`GetLedgerLinesAsync`, `GetAccountBalancesAsync`) never call Holded.
+- API-call metering drains honour cancellation before consuming the buffer, then persist consumed records independently of request cancellation. Overview reads remain cancellable afterward.
 - The treasury bank feed (`IHoldedClient.ListBankMovementsAsync` /
   `ReconcileBankMovementAsync`, `GET`/`POST /treasury/accounts/{id}/bank-movements[/…/reconcile]`)
   is **not** mirrored here — Finance's SEPA booking flow (nobodies-collective/Humans#1185) reads

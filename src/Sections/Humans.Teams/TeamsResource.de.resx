@@ -43,6 +43,7 @@
     <data name="MyTeams_Title" xml:space="preserve">
     <value>Meine Teams</value>
   </data>
+  <data name="Teams_BreadcrumbNavigation" xml:space="preserve"><value>Navigationspfad</value></data>
   <data name="JoinTeam_Title" xml:space="preserve">
     <value>{0} beitreten</value>
     <comment>{0} = team name</comment>
@@ -577,4 +578,5 @@
   <data name="Teams_Notification_ViewTeam" xml:space="preserve"><value>Team ansehen</value></data>
   <data name="Teams_Notification_JoinRejected" xml:space="preserve"><value>Deine Anfrage, {0} beizutreten, wurde nicht genehmigt</value></data>
   <data name="Teams_Notification_MemberRemoved" xml:space="preserve"><value>Du wurdest aus {0} entfernt</value></data>
+  <data name="Teams_TeamDetail_Calendar" xml:space="preserve"><value>Teamkalender</value></data>
 </root>

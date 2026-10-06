@@ -1,6 +1,9 @@
 <!-- freshness:triggers
   src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs
   src/Sections/Humans.Monitor/Jobs/DriveActivityMonitorJob.cs
+  src/Sections/Humans.Monitor/Section.cs
+  src/Sections/Humans.Monitor/Controllers/MonitorController.cs
+  src/Sections/Humans.GoogleIntegration/Services/Workspace/TeamResourceGoogleClient.cs
   src/Sections/Humans.AuditLog/Controllers/AuditLogController.cs
   src/Sections/Humans.AuditLog/Views/AuditLog/Index.cshtml
   src/Sections/Humans.AuditLog/Domain/AuditLogEntry.cs
@@ -93,19 +96,19 @@ POST https://driveactivity.googleapis.com/v2/activity:query
 For each active Drive folder resource:
 1. Query Drive Activity API for activities since the last successful run (`SettingKeys.DriveActivityMonitorLastRunAt`), falling back to 24 hours ago if no marker is stored yet
 2. Filter to permission change activities (`PrimaryActionDetail.PermissionChange != null`)
-3. Check if any actor is the system's service account (by `KnownUser.PersonName` email match)
+3. Check if any actor is the system's service account by email or `people/{client_id}` identity
 4. If NOT initiated by the service account, log as anomalous
 
 ### Actor Identification
 
 The Drive Activity API identifies actors as:
-- `User.KnownUser.PersonName` - user email address
+- `User.KnownUser.PersonName` - email address or `people/{id}`; the per-scan resolver tries Admin Directory, then the Users external-login read model, retaining the raw id if unresolved
 - `Administrator` - Google Workspace admin
 - `System` - Google system action
 
 ### Service Account Email Extraction
 
-Parsed from the service account JSON key file's `client_email` field, matching the pattern used by `TeamResourceService`.
+Monitor asks `IGoogleDriveActivityClient` for the service account email and client id. The GoogleIntegration connector delegates key parsing to `TeamResourceGoogleClient`, which reads `client_email` and `client_id`. Monitor seeds its resolver with `people/{client_id}` so service-account actors resolve to the account email.
 
 ## Data Model
 
@@ -161,7 +164,7 @@ Time-window dedup: each run queries only activity since the last successful run'
 ## Limitations
 
 - **Drive folders only:** Google Groups do not support the Drive Activity API. Group membership changes are detected by the existing drift detection in `PreviewSyncAllAsync`.
-- **24-hour lookback:** Activities older than 24 hours from the last check may be missed if the job fails to run. The hourly schedule with 24-hour lookback provides significant overlap.
+- **Lookback marker:** Each run covers activity since the last successful run (`DriveActivityMonitor:LastRunAt`); the 24-hour window applies only before a marker exists. Activity from before the first successful run may be missed.
 - **Actor identification:** The Drive Activity API may not always provide the actor's email (e.g., for external users). In such cases, the actor is logged as "unknown".
 
 ## Related Features

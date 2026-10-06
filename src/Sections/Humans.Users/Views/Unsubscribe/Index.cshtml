@@ -1,7 +1,7 @@
 @{
     ViewData["Title"] = Localizer["Unsub_Title"].Value;
     var displayName = ViewData["DisplayName"] as string;
-    var categoryName = ViewData["CategoryName"] as string ?? "these";
+    var categoryName = Localizer["CommPrefs_Name_Marketing"].Value;
 }
 
 <h1>@Html.Raw(string.Format(Localizer["Unsub_Heading"].Value, Html.Encode(categoryName)))</h1>

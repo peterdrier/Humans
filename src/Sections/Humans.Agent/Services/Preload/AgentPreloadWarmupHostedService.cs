@@ -29,8 +29,12 @@ internal sealed class AgentPreloadWarmupHostedService(
         try
         {
             using var scope = scopes.CreateScope();
-            await WarmCachesAsync(scope.ServiceProvider, CancellationToken.None);
+            await WarmCachesAsync(scope.ServiceProvider, lifetime.ApplicationStopping);
             logger.LogInformation("Agent preload caches warmed");
+        }
+        catch (OperationCanceledException) when (lifetime.ApplicationStopping.IsCancellationRequested)
+        {
+            logger.LogInformation("Agent preload warm-up cancelled during shutdown");
         }
         catch (Exception ex)
         {

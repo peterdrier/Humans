@@ -361,9 +361,19 @@ internal sealed class Service(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Service.SyncAsync failed");
+            if (ex is OperationCanceledException && ct.IsCancellationRequested)
+                logger.LogWarning("Holded document sync cancelled by the caller");
+            else
+                logger.LogError(ex, "Service.SyncAsync failed");
             state.Status = "Error";
             state.LastError = ex.Message;
+            if (state.LastError.Length > 2000)
+            {
+                var length = 2000;
+                if (char.IsHighSurrogate(state.LastError[length - 1]) && char.IsLowSurrogate(state.LastError[length]))
+                    length--;
+                state.LastError = state.LastError[..length];
+            }
             state.StatusChangedAt = now;
             try { await repo.SaveDocSyncStateAsync(state, CancellationToken.None); }
             catch (Exception saveEx) { logger.LogError(saveEx, "Failed to persist error sync state"); }
@@ -642,17 +652,10 @@ internal sealed class Service(
         // Which 400000xx a contact holds is Holded's fact, so it — not the number cached on the binding
         // — decides the row: a binding whose number never resolved still reaches its account, and two
         // bindings on one contact land together as the collision they are. Stored number is the fallback.
-        var accountByContactId = contacts
-            .GroupBy(kv => kv.Value.Id, StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => g.First().Key, StringComparer.Ordinal);
-
         // Resolved once and split, not filtered twice: one partition of one snapshot, so no binding can
         // appear both on an account row and on the unresolved card.
         var resolved = (await repo.GetCreditorContactsAsync(ct))
-            .Select(b => (Account: accountByContactId.TryGetValue(b.HoldedContactId, out var viaContact)
-                              ? viaContact
-                              : b.SupplierAccountNum,
-                          Binding: b))
+            .Select(b => (Account: ResolveCreditorAccount(b, contactById), Binding: b))
             .ToList();
 
         // Every binding on an account, not just the first: only UserId is unique in the DB and the two
@@ -717,6 +720,13 @@ internal sealed class Service(
                 "/Finance/Creditors will show bare account numbers.", rows.Count);
 
         return (rows, unresolved);
+    }
+
+    private static int? ResolveCreditorAccount(
+        HoldedCreditorContact binding, IReadOnlyDictionary<string, HoldedContactDto> contacts)
+    {
+        var account = contacts.GetValueOrDefault(binding.HoldedContactId)?.SupplierAccountNum;
+        return account is >= CreditorAccountMin and <= CreditorAccountMax ? account : binding.SupplierAccountNum;
     }
 
     /// <summary>Holded's contact list keyed by contact id — the identity a creditor binding stores.
@@ -888,8 +898,20 @@ internal sealed class Service(
         if (lines.Count == 0)
             return null;
 
-        var contact = (await ListContactsOrEmptyAsync(ct))
-            .FirstOrDefault(c => c.SupplierAccountNum == supplierAccountNum);
+        var contacts = await ContactsByIdAsync(ct);
+        var bindings = (await repo.GetCreditorContactsAsync(ct))
+            .Where(b => ResolveCreditorAccount(b, contacts) == supplierAccountNum)
+            .ToList();
+        HoldedContactDto? contact = null;
+        if (bindings.Count == 1)
+        {
+            contact = contacts.GetValueOrDefault(bindings[0].HoldedContactId);
+        }
+        else if (bindings.Count == 0)
+        {
+            var candidates = contacts.Values.Where(c => c.SupplierAccountNum == supplierAccountNum).ToList();
+            if (candidates.Count == 1) contact = candidates[0];
+        }
 
         var balance = LedgerBalance(lines);
         return new HoldedCreditorLedger(
@@ -1195,7 +1217,8 @@ internal sealed class Service(
                 + $"{t.SupplierAccountNum} (file {fileName}).",
                 actorUserId, t.UserId, nameof(User));
 
-        await SendPayoutEmailsAsync(transfers, ct);
+        // The payout is committed: abandoning the download must not suppress its notifications.
+        await SendPayoutEmailsAsync(transfers);
 
         return new SepaPayoutResult(fileName, xml, null);
     }
@@ -1207,8 +1230,9 @@ internal sealed class Service(
     /// the treasurer hands the file to the bank; booking only records that the money moved.
     /// Notification failures must not prevent downloading the already-saved file.
     /// </summary>
-    private async Task SendPayoutEmailsAsync(IReadOnlyList<SepaPayoutTransfer> transfers, CancellationToken ct)
+    private async Task SendPayoutEmailsAsync(IReadOnlyList<SepaPayoutTransfer> transfers)
     {
+        var ct = CancellationToken.None;
         var userIds = transfers.Select(t => t.UserId).Distinct().ToList();
         IReadOnlyDictionary<Guid, UserInfo> infos;
         IReadOnlyDictionary<Guid, string> targets;
@@ -1216,10 +1240,6 @@ internal sealed class Service(
         {
             infos = await users.GetUserInfosAsync(userIds, ct);
             targets = await userEmails.GetNotificationTargetEmailsAsync(userIds, ct);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
         }
         catch (Exception ex)
         {
@@ -1240,12 +1260,10 @@ internal sealed class Service(
 
             try
             {
+                var language = member.PreferredLanguage;
                 await emailService.SendAsync(emails.SepaPayoutGenerated(
-                    recipient, member.BurnerName, t.Amount, t.IbanMasked, member.PreferredLanguage), ct);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
+                    recipient, member.BurnerName, t.Amount, t.IbanMasked,
+                    language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);
             }
             catch (Exception ex)
             {
@@ -1563,8 +1581,15 @@ internal sealed class Service(
         }
     }
 
-    public async Task<SepaBookingResult> BookSepaTransferAsync(
-        Guid transferId, string bankMovementId, Guid? actorUserId)
+    public Task<SepaBookingResult> BookSepaTransferAsync(
+        Guid transferId, string bankMovementId, Guid? actorUserId) =>
+        RunBookingAsync(() => BookOneTransferAsync(transferId, bankMovementId, actorUserId));
+
+    public Task<SepaBookingResult> BookSepaFileAsync(
+        Guid fileId, string bankMovementId, Guid actorUserId) =>
+        RunBookingAsync(() => BookOneFileAsync(fileId, bankMovementId, actorUserId));
+
+    private async Task<SepaBookingResult> RunBookingAsync(Func<Task<SepaBookingResult>> booking)
     {
         if (BookingUnavailableReason() is { } unavailable)
             return new SepaBookingResult(false, unavailable);
@@ -1572,28 +1597,11 @@ internal sealed class Service(
         // The "is it already booked?" read and the stamp that answers it sit either side of several
         // Holded round-trips, so two callers inside that window — a Book click while the sweep runs,
         // or a double-submitted form — would both read "not booked" and both post the whole amount.
-        // One server, and a booking takes seconds: serialise them outright.
+        // One server, and a booking takes seconds: serialise both entry points outright.
         await BookingGate.WaitAsync(CancellationToken.None);
         try
         {
-            return await BookOneTransferAsync(transferId, bankMovementId, actorUserId);
-        }
-        finally
-        {
-            BookingGate.Release();
-        }
-    }
-
-    public async Task<SepaBookingResult> BookSepaFileAsync(
-        Guid fileId, string bankMovementId, Guid actorUserId)
-    {
-        if (BookingUnavailableReason() is { } unavailable)
-            return new SepaBookingResult(false, unavailable);
-
-        await BookingGate.WaitAsync(CancellationToken.None);
-        try
-        {
-            return await BookOneFileAsync(fileId, bankMovementId, actorUserId);
+            return await booking();
         }
         finally
         {
@@ -2343,16 +2351,16 @@ internal sealed class Service(
             // outside the file and the payout row itself.
             new UserDataSlice(SepaPayouts, payouts.Select(p => new
             {
-                p.GeneratedAt,
+                GeneratedAt = p.GeneratedAt.ToIso8601(),
                 p.FileName,
                 p.SupplierAccountNum,
                 p.HoldedContactId,
                 p.CreditorName,
                 Iban = p.IbanMasked,
                 p.Amount,
-                p.BookedAt,
+                BookedAt = p.BookedAt?.ToIso8601(),
                 p.HoldedBankMovementId,
-                p.ReconciledAt,
+                ReconciledAt = p.ReconciledAt?.ToIso8601(),
             })),
         ];
     }

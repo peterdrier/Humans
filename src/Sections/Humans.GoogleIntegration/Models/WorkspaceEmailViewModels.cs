@@ -1,3 +1,5 @@
+using Humans.GoogleIntegration.Services;
+
 namespace Humans.GoogleIntegration.Models;
 
 /// <summary>
@@ -5,7 +7,7 @@ namespace Humans.GoogleIntegration.Models;
 /// </summary>
 internal sealed class WorkspaceEmailListViewModel
 {
-    public List<WorkspaceEmailAccountViewModel> Accounts { get; set; } = [];
+    public IReadOnlyList<WorkspaceAccountInfo> Accounts { get; set; } = [];
     public int TotalAccounts { get; set; }
     public int ActiveAccounts { get; set; }
     public int SuspendedAccounts { get; set; }
@@ -18,43 +20,6 @@ internal sealed class WorkspaceEmailListViewModel
     /// These accounts cannot sign in and need attention.
     /// </summary>
     public int MissingTwoFactorCount { get; set; }
-}
-
-/// <summary>
-/// Individual @nobodies.team account with matched human info.
-/// </summary>
-internal sealed class WorkspaceEmailAccountViewModel
-{
-    public string PrimaryEmail { get; set; } = string.Empty;
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public bool IsSuspended { get; set; }
-    public DateTime CreationTime { get; set; }
-    public DateTime? LastLoginTime { get; set; }
-
-    /// <summary>
-    /// The matched human in the system (if any).
-    /// </summary>
-    public Guid? MatchedUserId { get; set; }
-    public string? MatchedDisplayName { get; set; }
-
-    /// <summary>
-    /// Whether the @nobodies.team email is being used as the notification target.
-    /// </summary>
-    public bool IsUsedAsPrimary { get; set; }
-
-    /// <summary>
-    /// Whether this account has completed 2-Step Verification enrollment.
-    /// Unenrolled accounts cannot sign in (2FA is enforced org-wide).
-    /// </summary>
-    public bool IsEnrolledIn2Sv { get; set; }
-
-    /// <summary>
-    /// Personal recovery email Google has on file. Surfaced as a sanity
-    /// check so the recovery channel can be validated before lockout.
-    /// <c>null</c> when no recovery email is set.
-    /// </summary>
-    public string? RecoveryEmail { get; set; }
 }
 
 /// <summary>

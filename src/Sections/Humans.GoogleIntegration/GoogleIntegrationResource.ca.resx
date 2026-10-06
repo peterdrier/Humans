@@ -91,4 +91,6 @@
     <comment>{0} = user name, {1} = removed email, {2} = current Google email</comment>
   </data>
   <data name="GoogleIntegration_MyResourcesTitle" xml:space="preserve"><value>Els teus recursos de Google</value></data>
+  <data name="GoogleIntegration_Notification_WorkspaceReadyBody" xml:space="preserve"><value>S’ha creat el teu correu de Workspace {0}. Revisa el teu correu personal per obtenir les credencials d’accés.</value></data>
+  <data name="GoogleIntegration_Notification_ViewProfile" xml:space="preserve"><value>Mostra el perfil</value></data>
 </root>

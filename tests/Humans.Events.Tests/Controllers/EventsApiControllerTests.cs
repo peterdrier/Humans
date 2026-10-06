@@ -6,6 +6,8 @@ using Humans.Events.Contracts;
 using Humans.Events.Controllers;
 using Humans.Events.Models;
 using Humans.Events.Services;
+using Humans.Events.Services.Dtos;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -35,12 +37,89 @@ public class EventsApiControllerTests
             .Returns((EventGuideSettingsView?)null);
     }
 
+    [HumansTheory]
+    [InlineData("Events", "Guide")]
+    [InlineData("Events", "Burn")]
+    [InlineData("Events", "Excluded")]
+    [InlineData("Events", "Approved")]
+    [InlineData("Events", "Camps")]
+    [InlineData("Events", "Submitter")]
+    [InlineData("Event", "Guide")]
+    [InlineData("Event", "Event")]
+    [InlineData("Event", "Submitter")]
+    [InlineData("Barrios", "Guide")]
+    [InlineData("Barrios", "Approved")]
+    [InlineData("Barrio", "Guide")]
+    [InlineData("Barrio", "Approved")]
+    [InlineData("Categories", "Categories")]
+    [InlineData("Preferences", "Excluded")]
+    [InlineData("Favourites", "Guide")]
+    [InlineData("Favourites", "Favourites")]
+    [InlineData("Favourites", "Camps")]
+    public async Task Read_AbandonedRequest_CancelsAtLookup(string route, string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        async Task<T> Read<T>(T value, string current, CancellationToken ct)
+        {
+            if (string.Equals(current, boundary, StringComparison.Ordinal))
+                await request.CancelAsync();
+            ct.ThrowIfCancellationRequested();
+            return value;
+        }
+        var controller = BuildController();
+        controller.HttpContext.RequestAborted = request.Token;
+        var userId = Guid.NewGuid();
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
+        var burn = BurnFixtures.Burn(year: 2026);
+        var settings = new EventGuideSettingsView(Guid.NewGuid(), burn.Id, Instant.MinValue,
+            Instant.MaxValue, Instant.MaxValue, 100, "Europe/Madrid", Instant.MinValue, Instant.MinValue);
+        var approved = MakeEvent(null, Guid.NewGuid(), null);
+        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+            Read<EventGuideSettingsView?>(settings, "Guide", call.Arg<CancellationToken>()));
+        _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<EventSettingsInfo?>(burn, "Burn", call.Arg<CancellationToken>()));
+        _guide.GetExcludedCategorySlugsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<List<string>>([], "Excluded", call.Arg<CancellationToken>()));
+        _guide.GetApprovedEventsAsync(Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
+            Arg.Any<string?>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>()).Returns(call =>
+            Read<IReadOnlyList<ApprovedEventView>>([approved], "Approved", call.Arg<CancellationToken>()));
+        _guide.GetApprovedEventByIdAsync(approved.Id, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<ApprovedEventView?>(approved, "Event", call.Arg<CancellationToken>()));
+        _camps.GetCampsForYearAsync(burn.GateOpeningDate.Year, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<IReadOnlyList<CampInfo>>([], "Camps", call.Arg<CancellationToken>()));
+        _users.GetUserInfoAsync(approved.SubmitterUserId, Arg.Any<CancellationToken>()).Returns(call =>
+            new ValueTask<UserInfo?>(Read<UserInfo?>(MakeUserInfo(approved.SubmitterUserId, "Host"),
+                "Submitter", call.Arg<CancellationToken>())));
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+            new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(Read<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [approved.SubmitterUserId] = MakeUserInfo(approved.SubmitterUserId, "Host") },
+                "Submitter", call.Arg<CancellationToken>())));
+        _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns(call =>
+            Read<IReadOnlyList<EventCategoryView>>([], "Categories", call.Arg<CancellationToken>()));
+        _guide.GetFavouritesWithEventsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+            Read<IReadOnlyList<EventFavouriteInfo>>([], "Favourites", call.Arg<CancellationToken>()));
+        Func<Task<IActionResult>> act = route switch
+        {
+            "Events" => () => controller.GetEvents(null, null, null, null),
+            "Event" => () => controller.GetEvent(approved.Id),
+            "Barrios" => controller.GetBarrios,
+            "Barrio" => () => controller.GetBarrio(Guid.NewGuid()),
+            "Categories" => controller.GetCategories,
+            "Preferences" => controller.GetPreferences,
+            "Favourites" => controller.GetFavourites,
+            _ => throw new ArgumentOutOfRangeException(nameof(route)),
+        };
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [HumansFact]
     public async Task GetEvents_IndividualEventWithoutHost_FallsBackToSubmitterBurnerName()
     {
         var submitterId = Guid.NewGuid();
-        _users.GetUserInfoAsync(submitterId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(submitterId, "Fire Dancer")));
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [submitterId] = MakeUserInfo(submitterId, "Fire Dancer") });
         StubApprovedEvents(MakeEvent(campId: null, submitterId, host: null));
 
         var dto = await SingleResultAsync();
@@ -52,8 +131,8 @@ public class EventsApiControllerTests
     public async Task GetEvents_IndividualEventWithHost_UsesHost()
     {
         var submitterId = Guid.NewGuid();
-        _users.GetUserInfoAsync(submitterId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(submitterId, "Fire Dancer")));
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [submitterId] = MakeUserInfo(submitterId, "Fire Dancer") });
         StubApprovedEvents(MakeEvent(campId: null, submitterId, host: "Explicit Host"));
 
         var dto = await SingleResultAsync();

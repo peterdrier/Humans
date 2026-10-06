@@ -1,8 +1,12 @@
 # Section debt ledger for Humans.Users. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 9
+next_id: 12
 inbox:
+  - added: 2026-10-04
+    id: USERS-11
+    what: "UserService.SaveProfileAsync overwrites the deterministic profile-picture key before saving metadata. Replacing with the same content type therefore destroys the previous bytes if the subsequent repository write fails or is canceled, contrary to file-metadata-commit-order. Existing upload-failure tests cover storage failure only. A proper correction needs independently staged/versioned references rather than overwrite-and-compensate; agree the storage-reference design and its schema/public-surface implications before changing it. Found during the daily debt sweep."
+    review: panel
   - added: 2026-08-24
     id: USERS-1
     what: "Admin_SortBy in Views/UsersAdmin/AdminList.cshtml:78 has no shared resource and renders raw. The call is correctly through SharedLocalizer, but adding a new Admin_* resource key conflicts with memory/code/localization-admin-exempt.md, which forbids new localization keys for admin pages. Peter must decide whether this existing admin localizer call should gain a resource or become an unlocalized literal."

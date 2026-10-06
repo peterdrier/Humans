@@ -91,8 +91,6 @@ Specified or known, not built; reserved, not ranked:
 - **Role fan-out takes no `sourceKey`**, so `ResolveBySourceKeyAsync` can never clear it.
 - **Dispatch is described as fire-and-forget but is not wrapped**; an emit failure reaches the
   caller.
-- **Meter titles are English literals** on a page the admin localization exemption does not
-  cover.
 
 ## 6. Deliberately not done
 

@@ -32,19 +32,19 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
-            var reports = await service.GetForSubmitterAsync(user.Id);
+            var reports = await service.GetForSubmitterAsync(user.Id, HttpContext.RequestAborted);
             var activeYear = await budgetService.GetActiveYearAsync();
-            var info = await _userService.GetUserInfoAsync(user.Id);
+            var info = await _userService.GetUserInfoAsync(user.Id, HttpContext.RequestAborted);
 
             var categoryNames = activeYear?.Groups
                 .SelectMany(g => g.Categories.Select(c => (c.Id, Display: $"{g.Name} / {c.Name}")))
                 .ToDictionary(x => x.Id, x => x.Display)
                 ?? new Dictionary<Guid, string>();
 
-            var coordinatorQueue = await service.GetCoordinatorQueueAsync(user.Id);
+            var coordinatorQueue = await service.GetCoordinatorQueueAsync(user.Id, HttpContext.RequestAborted);
             var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
 
             // The member's own Holded creditor-account statement (read-only, real ledger lines). Own
@@ -52,11 +52,11 @@ internal sealed class ExpensesController(
             // returns null both for "not bound" and for "bound, but no journal activity cached yet",
             // and telling a correctly-bound member to go get bound again is worse than saying nothing.
             HoldedCreditorLedger? accountLedger = null;
-            var binding = await holdedFinance.GetCreditorContactByUserAsync(user.Id);
+            var binding = await holdedFinance.GetCreditorContactByUserAsync(user.Id, HttpContext.RequestAborted);
             var boundAccountNum = binding?.SupplierAccountNum;
             if (boundAccountNum is { } accNum)
             {
-                var led = await holdedFinance.GetCreditorLedgerAsync(accNum);
+                var led = await holdedFinance.GetCreditorLedgerAsync(accNum, HttpContext.RequestAborted);
                 if (led is not null)
                     accountLedger = led with
                     {
@@ -81,7 +81,7 @@ internal sealed class ExpensesController(
             };
             return View(model);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading expense reports index for user");
             SetError(localizer["Expenses_Flash_LoadIndexFailed"]);
@@ -99,7 +99,7 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
             var categories = await BuildCategoryOptionsAsync();
@@ -115,7 +115,7 @@ internal sealed class ExpensesController(
                 SubmitterUserId = user.Id,
             });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading new expense report form");
             SetError(localizer["Expenses_Flash_LoadFormFailed"]);
@@ -164,7 +164,7 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.View);
+            var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.View, HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
             var category = await budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
@@ -172,14 +172,11 @@ internal sealed class ExpensesController(
                 ? $"{category.BudgetGroup?.Name} / {category.Name}"
                 : localizer["Expenses_Detail_UnknownCategory"].Value;
             var isSubmitter = report.SubmitterUserId == user.Id;
-            var canWithdraw = report.Status is ExpenseReportStatus.Submitted
-                or ExpenseReportStatus.CoordinatorEndorsed
-                or ExpenseReportStatus.Approved;
             var canEdit = await AllowsAsync(report, ExpenseReportOperation.Edit);
             // Always the *report's* IBAN state, never the viewer's — an admin setting it up for a
             // member needs the member's answer.
             var iban = isSubmitter || canEdit
-                ? await GetIbanViewAsync(report.SubmitterUserId)
+                ? await GetIbanViewAsync(report.SubmitterUserId, HttpContext.RequestAborted)
                 : (HasIban: false, MaskedIban: null);
 
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
@@ -187,9 +184,9 @@ internal sealed class ExpensesController(
             // The submitter reads the payment half of the timeline; the finance admin reads the push
             // half and is the only one who can act on a failed push.
             var timeline = isSubmitter || isFinanceAdmin
-                ? await service.GetHoldedTimelineAsync(report)
+                ? await service.GetHoldedTimelineAsync(report, HttpContext.RequestAborted)
                 : null;
-            var creditor = await GetCreditorBindingViewAsync(report.SubmitterUserId, isFinanceAdmin);
+            var creditor = await GetCreditorBindingViewAsync(report.SubmitterUserId, isFinanceAdmin, HttpContext.RequestAborted);
 
             var model = new ExpenseDetailViewModel
             {
@@ -197,7 +194,7 @@ internal sealed class ExpensesController(
                 CategoryDisplayName = categoryName,
                 CanEdit = canEdit,
                 CanSubmit = await AllowsAsync(report, ExpenseReportOperation.Submit),
-                CanWithdraw = isSubmitter && canWithdraw,
+                CanWithdraw = await AllowsAsync(report, ExpenseReportOperation.Withdraw),
                 IsSubmitter = isSubmitter,
                 HasIban = iban.HasIban,
                 MaskedIban = iban.MaskedIban,
@@ -217,7 +214,7 @@ internal sealed class ExpensesController(
             };
             return View(model);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading expense report {ReportId}", id);
             SetError(localizer["Expenses_Flash_LoadReportFailed"]);
@@ -230,7 +227,7 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user, report) = await RequireReportAsync(id);
+            var (errorResult, user, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
             if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
             {
@@ -249,7 +246,7 @@ internal sealed class ExpensesController(
             await PopulateEditModelAsync(model, report);
             return View(model);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading edit form for report {ReportId}", id);
             SetError(localizer["Expenses_Flash_LoadEditFailed"]);
@@ -288,7 +285,7 @@ internal sealed class ExpensesController(
     [HttpGet("{id:guid}/Lines/New")]
     public async Task<IActionResult> NewLine(Guid id, ExpenseLineType? type = null)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id);
+        var (errorResult, user, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
         if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
         {
@@ -358,7 +355,7 @@ internal sealed class ExpensesController(
     [HttpGet("{id:guid}/Lines/{lineId:guid}")]
     public async Task<IActionResult> LineEdit(Guid id, Guid lineId)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id);
+        var (errorResult, user, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
         var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user.Id);
         if (!allowed) return Forbid();
@@ -377,7 +374,7 @@ internal sealed class ExpensesController(
     [HttpGet("{id:guid}/Lines/{lineId:guid}/Proofs")]
     public async Task<IActionResult> LineProofs(Guid id, Guid lineId)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id);
+        var (errorResult, user, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
         var (allowed, canEditLines) = await ResolveLinePageAccessAsync(report, user.Id);
         if (!allowed) return Forbid();
@@ -497,9 +494,8 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid id)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id);
+        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Withdraw);
         if (errorResult is not null) return errorResult;
-        if (report.SubmitterUserId != user.Id) return Forbid();
 
         var result = await service.WithdrawWithResultAsync(id, user.Id);
         SetMutationResult(result, localizer["Expenses_Flash_ReportWithdrawn"], localizer["Expenses_Flash_WithdrawFailed"]);
@@ -511,13 +507,13 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user, report) = await RequireReportAsync(id);
+            var (errorResult, user, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
             if (!await CanSetReportIbanAsync(report, user.Id)) return Forbid();
 
             // The IBAN on this page is always the report submitter's — the page sets who gets paid
             // for this report, and that is never the viewer when an admin opens it.
-            var iban = await GetIbanViewAsync(report.SubmitterUserId);
+            var iban = await GetIbanViewAsync(report.SubmitterUserId, HttpContext.RequestAborted);
             var model = new ExpenseIbanViewModel
             {
                 ReportId = id,
@@ -526,11 +522,11 @@ internal sealed class ExpensesController(
                 ReportStatus = report.Status,
                 MemberName = report.SubmitterUserId == user.Id
                     ? null
-                    : (await _userService.GetUserInfoAsync(report.SubmitterUserId))?.BurnerName,
+                    : (await _userService.GetUserInfoAsync(report.SubmitterUserId, HttpContext.RequestAborted))?.BurnerName,
             };
             return View(model);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading IBAN modal for report {ReportId}", id);
             SetError(localizer["Expenses_Flash_LoadIbanFailed"]);
@@ -584,18 +580,18 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, _) = await RequireCurrentUserAsync();
+            var (errorResult, _) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
             // Visibility = report's View handler grant. NotFound on both miss + denial (no leak).
-            var owningReport = await service.GetReportOwningAttachmentAsync(attachmentId);
+            var owningReport = await service.GetReportOwningAttachmentAsync(attachmentId, HttpContext.RequestAborted);
             if (owningReport is null) return NotFound();
 
             var authResult = await authService.AuthorizeAsync(User, owningReport,
                 new ExpenseReportOperationRequirement(ExpenseReportOperation.View));
             if (!authResult.Succeeded) return NotFound();
 
-            var attachment = await service.TryReadAttachmentAsync(owningReport, attachmentId);
+            var attachment = await service.TryReadAttachmentAsync(owningReport, attachmentId, HttpContext.RequestAborted);
             if (attachment is null) return NotFound();
 
             // Inline only for the browser-renderable subset of the upload whitelist — no filename
@@ -605,7 +601,7 @@ internal sealed class ExpensesController(
 
             return File(attachment.Bytes, attachment.ContentType, attachment.OriginalFileName);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error streaming attachment {AttachmentId}", attachmentId);
             return NotFound();
@@ -661,12 +657,12 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
-            var reports = await service.GetReviewQueueAsync(user.Id, isFinanceAdmin);
-            var submitterNames = await ResolveSubmitterNamesAsync(reports);
+            var reports = await service.GetReviewQueueAsync(user.Id, isFinanceAdmin, HttpContext.RequestAborted);
+            var submitterNames = await ResolveSubmitterNamesAsync(reports, HttpContext.RequestAborted);
             return View(new ExpenseReviewViewModel
             {
                 Reports = reports,
@@ -675,11 +671,11 @@ internal sealed class ExpensesController(
                 // Finance admins are the only ones who can act on a written-off push, and the
                 // list is queue-wide rather than scoped, so it stays with them.
                 FailedHoldedPushReportIds = isFinanceAdmin
-                    ? (await service.GetFailedHoldedPushReportIdsAsync()).ToHashSet()
+                    ? (await service.GetFailedHoldedPushReportIdsAsync(HttpContext.RequestAborted)).ToHashSet()
                     : [],
             });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error loading expense review queue");
             SetError(localizer["Expenses_Flash_LoadReviewQueueFailed"]);
@@ -751,12 +747,12 @@ internal sealed class ExpensesController(
     /// </summary>
     private async Task<(int? BoundAccountNum, string? BoundAccountName, bool HasContact,
         IReadOnlyList<HoldedCreditorAccountRow> Accounts)> GetCreditorBindingViewAsync(
-        Guid submitterUserId, bool isFinanceAdmin)
+        Guid submitterUserId, bool isFinanceAdmin, CancellationToken ct)
     {
         if (!isFinanceAdmin) return (null, null, false, []);
 
-        var binding = await holdedFinance.GetCreditorContactByUserAsync(submitterUserId);
-        var accounts = (await holdedFinance.ListCreditorAccountsAsync()).Accounts
+        var binding = await holdedFinance.GetCreditorContactByUserAsync(submitterUserId, ct);
+        var accounts = (await holdedFinance.ListCreditorAccountsAsync(ct)).Accounts
             .OrderBy(a => a.SupplierAccountNum)
             .ToList();
 
@@ -789,12 +785,12 @@ internal sealed class ExpensesController(
     /// action must return ErrorResult; User and Report are valid only on success, matching
     /// RequireCurrentUserAsync's contract. Special access rules stay with their actions.</summary>
     private async Task<(IActionResult? ErrorResult, UserInfo User, ExpenseReportDto Report)>
-        RequireReportAsync(Guid id, ExpenseReportOperation? operation = null)
+        RequireReportAsync(Guid id, ExpenseReportOperation? operation = null, CancellationToken ct = default)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return (errorResult, null!, null!);
 
-        var report = await service.GetAsync(id);
+        var report = await service.GetAsync(id, ct);
         if (report is null) return (NotFound(), null!, null!);
         if (operation is { } required && !await AllowsAsync(report, required))
             return (Forbid(), null!, null!);
@@ -832,17 +828,15 @@ internal sealed class ExpensesController(
         report.SubmitterUserId == userId || await AllowsAsync(report, ExpenseReportOperation.Edit);
 
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveSubmitterNamesAsync(
-        IReadOnlyCollection<ExpenseReportDto> reports)
+        IReadOnlyCollection<ExpenseReportDto> reports, CancellationToken ct)
     {
         var ids = reports.Select(r => r.SubmitterUserId).Distinct().ToList();
         if (ids.Count == 0) return new Dictionary<Guid, string>();
 
-        var users = await _userService.GetUserInfosAsync(ids);
-        return ids.ToDictionary(
-            id => id,
-            id => users.TryGetValue(id, out var u) && !string.IsNullOrWhiteSpace(u.BurnerName)
-                ? u.BurnerName
-                : "(unknown)");
+        var users = await _userService.GetUserInfosAsync(ids, ct);
+        return ids
+            .Where(id => users.TryGetValue(id, out var user) && !string.IsNullOrWhiteSpace(user.BurnerName))
+            .ToDictionary(id => id, id => users[id].BurnerName);
     }
 
     /// <summary>Active-year budget category id → department label. Categories in the department
@@ -865,6 +859,7 @@ internal sealed class ExpensesController(
         model.Categories = await BuildCategoryOptionsAsync(report);
     }
 
+    /// <summary>Category options from the report’s accounting year or the active year.</summary>
     /// <param name="report">
     /// When given and already submitted, the options come from the budget year that report is
     /// booked to rather than the active one — offering this year's categories on last year's
@@ -907,9 +902,9 @@ internal sealed class ExpensesController(
             SetError(result.ErrorMessage is null ? errorPrefix : $"{errorPrefix}: {result.ErrorMessage}");
     }
 
-    private async Task<(bool HasIban, string? MaskedIban)> GetIbanViewAsync(Guid userId)
+    private async Task<(bool HasIban, string? MaskedIban)> GetIbanViewAsync(Guid userId, CancellationToken ct = default)
     {
-        var iban = (await _userService.GetUserInfoAsync(userId))?.Profile?.Iban;
+        var iban = (await _userService.GetUserInfoAsync(userId, ct))?.Profile?.Iban;
         var hasIban = !string.IsNullOrEmpty(iban);
         return (hasIban, hasIban ? IbanFormatter.Mask(iban!) : null);
     }

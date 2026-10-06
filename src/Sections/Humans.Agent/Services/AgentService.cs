@@ -230,7 +230,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                 // DailyTokenCap; and a turn that fails deterministically must still cost a
                 // message, or a repeatable backend error becomes an unmetered send loop.
                 _rateLimit.Record(request.UserId, today, hour,
-                    messagesDelta: 1, tokensDelta: turnUsage.PromptTokens + turnUsage.OutputTokens);
+                    messagesDelta: 1, tokensDelta: turnUsage.InputTokensIncludingCacheWrites + turnUsage.OutputTokens);
             }
         }
     }
@@ -244,6 +244,9 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         public int OutputTokens;
         public int CacheReadTokens;
         public int CacheCreationTokens;
+
+        // Cache writes are input too; stream finalizers retain the separate provider counters.
+        public int InputTokensIncludingCacheWrites => PromptTokens + CacheCreationTokens;
     }
 
     /// <summary>The tool-call loop and finalizer for one turn, run after the user message is
@@ -301,6 +304,8 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
 
         while (true)
         {
+            // A stop reason belongs to this provider request, never the preceding tool iteration.
+            finalFinalizer = null;
             var iterationAssistantText = new StringBuilder();
             var pendingToolCalls = new List<AnthropicToolCall>();
 
@@ -327,6 +332,13 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                     usage.CacheReadTokens += f.CacheReadTokens;
                     usage.CacheCreationTokens += f.CacheCreationTokens;
                 }
+            }
+
+            if (finalFinalizer is null)
+            {
+                _logger.LogError(
+                    "Agent provider stream ended without a finalizer for conversation {ConversationId}", conversation.Id);
+                finalFinalizer = new AgentTurnFinalizer(0, 0, 0, 0, settings.Model, "error");
             }
 
             // A max_tokens cutoff mid tool-call JSON still yields a (possibly truncated)
@@ -446,7 +458,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             Role = AgentRole.Assistant,
             Content = assistantText,
             CreatedAt = turnEnd,
-            PromptTokens = usage.PromptTokens,
+            PromptTokens = usage.InputTokensIncludingCacheWrites,
             OutputTokens = usage.OutputTokens,
             CachedTokens = usage.CacheReadTokens,
             Model = settings.Model,
@@ -605,13 +617,13 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             .ToList();
 
         // Measure the system prompt with the real tokenizer (count_tokens). This is a diagnostic
-        // nicety — a failed/rate-limited count must never break the admin page, so null on error.
+        // nicety — a failed/rate-limited count renders as null; request cancellation propagates.
         int? systemPromptTokens = null;
         try
         {
             systemPromptTokens = await _client.CountTokensAsync(settings.Model, systemPrompt, ct);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             // Expected/transient (rate limit, network) — log the reason at Warning, drop the
             // stack trace per memory/code/always-log-problems.md.
@@ -634,15 +646,15 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         var shaped = conversations.Select(c => new
         {
             c.Id,
-            c.StartedAt,
-            c.LastMessageAt,
+            StartedAt = c.StartedAt.ToIso8601(),
+            LastMessageAt = c.LastMessageAt.ToIso8601(),
             c.Locale,
             c.MessageCount,
             Messages = c.Messages.Select(m => new
             {
                 m.Role,
                 m.Content,
-                m.CreatedAt,
+                CreatedAt = m.CreatedAt.ToIso8601(),
                 m.Model,
                 m.RefusalReason,
                 m.HandedOffToFeedbackId
@@ -750,13 +762,14 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             var description = root.TryGetProperty("description", out var d) ? d.GetString() ?? "" : "";
             var categoryRaw = root.TryGetProperty("category", out var c) ? c.GetString() : null;
             var category = Enum.TryParse<IssueCategory>(categoryRaw, ignoreCase: true, out var parsed)
+                && Enum.IsDefined(parsed)
                 ? parsed
                 : IssueCategory.Question;
 
             // Trim to the same caps the issues form enforces; the agent's
             // suggestion sometimes runs over.
-            if (title.Length > 200) title = title[..200];
-            if (description.Length > 5000) description = description[..5000];
+            title = BoundProposalText(title, 200);
+            description = BoundProposalText(description, 5000);
 
             return new AgentIssueProposal(title, category, description);
         }
@@ -769,8 +782,17 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         }
     }
 
-    /// <param name="existing">The caller's own conversation, already ownership-checked by
-    /// <see cref="AskAsync"/>; null starts a fresh one.</param>
+    private static string BoundProposalText(string text, int maxLength)
+    {
+        if (text.Length <= maxLength) return text;
+        var length = maxLength;
+        if (char.IsHighSurrogate(text[length - 1]) && char.IsLowSurrogate(text[length]))
+            length--;
+        return text[..length];
+    }
+
+    // existing: the caller's own conversation, already ownership-checked by AskAsync;
+    // null starts a fresh one.
     private async Task PersistRefusal(
         AgentTurnRequest req, AgentConversation? existing, string reason, CancellationToken ct)
     {
@@ -786,6 +808,10 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
     /// already writes for rate-limit/abuse turns (Agent.md invariant 6). Reused for the
     /// turn-exception path (nobodies-collective/Humans#963) so a failed turn shows up through the
     /// same admin refusals filter and "top refusal reasons" panel instead of a new surface.</summary>
+    /// <param name="conversationId">The conversation receiving the failure message.</param>
+    /// <param name="reason">The machine-readable refusal or failure reason.</param>
+    /// <param name="model">The model attributed to this turn.</param>
+    /// <param name="ct">Cancellation token for persisting the message.</param>
     /// <param name="usage">Provider usage to stamp on the row, or null for a turn that never
     /// reached the provider (rate_limited / abuse_flag). A turn that failed mid-flight did spend
     /// tokens, and <see cref="AgentAdminStatusService"/> prices spend straight off
@@ -802,7 +828,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             Role = AgentRole.Assistant,
             Content = "",
             CreatedAt = _clock.GetCurrentInstant(),
-            PromptTokens = usage?.PromptTokens ?? 0,
+            PromptTokens = usage?.InputTokensIncludingCacheWrites ?? 0,
             OutputTokens = usage?.OutputTokens ?? 0,
             CachedTokens = usage?.CacheReadTokens ?? 0,
             Model = model,

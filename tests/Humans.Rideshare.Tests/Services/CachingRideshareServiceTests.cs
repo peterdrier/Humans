@@ -46,6 +46,34 @@ public sealed class CachingRideshareServiceTests
         await _inner.Received(1).GetSnapshotAsync(2026, Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetSnapshot_LoadStartedBeforeWrite_DoesNotRepopulateCache(bool returnsId)
+    {
+        var old = new RideshareSnapshot(2026, null, [], [], []);
+        var current = new RideshareSnapshot(2026, null, [], [], []);
+        var pending = new TaskCompletionSource<RideshareSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _inner.GetSnapshotAsync(2026, Ct).Returns(pending.Task, Task.FromResult(current));
+        var read = _service.GetSnapshotAsync(2026, Ct);
+
+        if (returnsId)
+        {
+            var save = new RequestSave(RideshareDirection.Inbound, "Lyon", 45.76, 4.84, July3, 1,
+                LuggageSize.Minimal, true, null);
+            await _service.CreateRequestAsync(Guid.NewGuid(), 2026, save, Ct);
+        }
+        else
+        {
+            await _service.CancelOfferAsync(Guid.NewGuid(), Guid.NewGuid(), Ct);
+        }
+
+        pending.SetResult(old);
+        (await read).Should().BeSameAs(old);
+        (await _service.GetSnapshotAsync(2026, Ct)).Should().BeSameAs(current);
+        await _inner.Received(2).GetSnapshotAsync(2026, Ct);
+    }
+
     [HumansFact]
     public async Task GetSnapshot_CachesEachYearSeparately()
     {

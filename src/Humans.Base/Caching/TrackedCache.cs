@@ -13,6 +13,8 @@ namespace Humans.Base.Caching;
 public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey : notnull
 {
     private readonly ConcurrentDictionary<TKey, TValue> _dict = new();
+    private readonly Lock _mutationGate = new();
+    private long _mutationGeneration;
     private readonly bool _warmOnStartup;
     private readonly TrackedLock _warmLock;
     private readonly ILogger _logger;
@@ -91,8 +93,12 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// </summary>
     public void Set(TKey key, TValue value)
     {
-        _dict[key] = value;
-        OnMutated();
+        lock (_mutationGate)
+        {
+            _mutationGeneration++;
+            _dict[key] = value;
+            OnMutated();
+        }
     }
 
     /// <summary>
@@ -118,14 +124,18 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// </summary>
     public bool Invalidate(TKey key)
     {
-        if (_dict.TryRemove(key, out _))
+        lock (_mutationGate)
         {
-            Interlocked.Increment(ref _keyRemovals);
-            if (_warmOnStartup) _warmedUp = false;
-            OnMutated();
-            return true;
+            _mutationGeneration++;
+            if (_dict.TryRemove(key, out _))
+            {
+                Interlocked.Increment(ref _keyRemovals);
+                if (_warmOnStartup) _warmedUp = false;
+                OnMutated();
+                return true;
+            }
+            return false;
         }
-        return false;
     }
 
     /// <summary>
@@ -137,13 +147,17 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// </summary>
     public bool DeleteKey(TKey key)
     {
-        if (_dict.TryRemove(key, out _))
+        lock (_mutationGate)
         {
-            Interlocked.Increment(ref _keyRemovals);
-            OnMutated();
-            return true;
+            _mutationGeneration++;
+            if (_dict.TryRemove(key, out _))
+            {
+                Interlocked.Increment(ref _keyRemovals);
+                OnMutated();
+                return true;
+            }
+            return false;
         }
-        return false;
     }
 
     /// <summary>
@@ -192,10 +206,14 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// </summary>
     public void Clear()
     {
-        _warmedUp = false;
-        _dict.Clear();
-        Interlocked.Increment(ref _bulkInvalidations);
-        OnMutated();
+        lock (_mutationGate)
+        {
+            _mutationGeneration++;
+            _warmedUp = false;
+            _dict.Clear();
+            Interlocked.Increment(ref _bulkInvalidations);
+            OnMutated();
+        }
     }
 
     public void ResetCounters()
@@ -288,9 +306,19 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// </summary>
     public async ValueTask<TValue?> GetAsync(TKey key, CancellationToken ct = default)
     {
-        if (TryGet(key, out var hit)) return hit;
+        long generation;
+        lock (_mutationGate)
+        {
+            if (TryGet(key, out var hit)) return hit;
+            generation = _mutationGeneration;
+        }
         var loaded = await LoadRowAsync(key, ct).ConfigureAwait(false);
-        if (loaded is not null) Set(key, loaded);
+        lock (_mutationGate)
+        {
+            // Eviction or refresh may have completed while this miss was loading.
+            if (loaded is not null && generation == _mutationGeneration)
+                Set(key, loaded);
+        }
         return loaded;
     }
 

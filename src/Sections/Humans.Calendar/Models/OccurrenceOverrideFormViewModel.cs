@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using NodaTime;
 using NodaTime.Text;
 
@@ -7,7 +8,10 @@ internal sealed class OccurrenceOverrideFormViewModel
 {
     public Guid EventId { get; set; }
 
-    /// <summary>ISO-8601 UTC string used as the URL segment.</summary>
+    /// <summary>
+    /// The occurrence's identity as the URL segment: an ISO date for an all-day series, an ISO
+    /// instant for a timed one.
+    /// </summary>
     public string OriginalOccurrenceStartUtc { get; set; } = string.Empty;
 
     public bool IsAllDay { get; set; }
@@ -16,27 +20,36 @@ internal sealed class OccurrenceOverrideFormViewModel
 
     public DateTime? OverrideStartLocal { get; set; }
     public DateTime? OverrideEndLocal { get; set; }
+    [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string? OverrideTitle { get; set; }
+    [StringLength(4000, ErrorMessage = "Validation_MaxLength")]
     public string? OverrideDescription { get; set; }
+    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? OverrideLocation { get; set; }
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength"), Url(ErrorMessage = "Validation_InvalidValue")]
     public string? OverrideLocationUrl { get; set; }
 
     public string RecurrenceTimezone { get; set; } = "Europe/Madrid";
 
     /// <summary>
     /// Builds the override DTO from the posted form. Returns <c>false</c> when an all-day
-    /// field carries a time of day — the form offers dates there, so a non-zero time means
+    /// field carries a time of day or its inclusive end cannot advance to an exclusive date.
+    /// The form offers dates there, so a non-zero time means
     /// the post did not come from the form and the caller re-renders rather than saving.
     /// </summary>
     public bool TryBuildOverride(DateTimeZone zone, out Humans.Calendar.Services.Dtos.OverrideOccurrenceDto dto)
     {
+        dto = null!;
+        if (OverrideStartDateLocal?.TimeOfDay > TimeSpan.Zero || OverrideEndDateLocal?.TimeOfDay > TimeSpan.Zero
+            || (OverrideEndDateLocal is { } inclusiveEnd && LocalDate.FromDateTime(inclusiveEnd) == LocalDate.MaxIsoValue))
+            return false;
         dto = new(
             OverrideStartLocal is { } start ? LocalDateTime.FromDateTime(start).InZoneLeniently(zone).ToInstant() : null,
             OverrideEndLocal is { } end ? LocalDateTime.FromDateTime(end).InZoneLeniently(zone).ToInstant() : null,
             OverrideTitle, OverrideDescription, OverrideLocation, OverrideLocationUrl,
             OverrideStartDateLocal is { } date ? LocalDate.FromDateTime(date) : null,
             OverrideEndDateLocal is { } last ? LocalDate.FromDateTime(last).PlusDays(1) : null);
-        return !(OverrideStartDateLocal?.TimeOfDay > TimeSpan.Zero || OverrideEndDateLocal?.TimeOfDay > TimeSpan.Zero);
+        return true;
     }
 
     public static LocalDate? TryParseOriginalDate(string s)

@@ -19,7 +19,7 @@
   <ItemGroup>
     <!-- No Humans.Infrastructure and no EF Core: Search owns no tables. -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Events\Humans.Events.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
@@ -34,7 +34,6 @@
     <ProjectReference Include="..\Humans.Teams\Humans.Teams.csproj" />
     <ProjectReference Include="..\Humans.Camps\Humans.Camps.csproj" />
     <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
-    <ProjectReference Include="..\Humans.Events\Humans.Events.csproj" />
   </ItemGroup>
 
   <ItemGroup>

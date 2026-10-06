@@ -305,6 +305,22 @@ public class HoldedClientContactTests
         capturedBody.Should().Contain("\"type\":\"creditor\"");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("{}")]
+    [Xunit.InlineData("{\"id\":null}")]
+    [Xunit.InlineData("{\"id\":\"\"}")]
+    [Xunit.InlineData("{\"id\":\"  \"}")]
+    public async Task UpsertContact_update_reuses_known_identity_when_response_id_is_missing(string response)
+    {
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, response)));
+
+        var id = await client.UpsertContactAsync(
+            new HoldedContactInput { Name = "Legal", ExistingContactId = "c-exist" },
+            Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("c-exist");
+    }
+
     [HumansFact]
     public async Task UpsertContact_update_omits_type()
     {

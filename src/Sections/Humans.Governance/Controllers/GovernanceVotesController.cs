@@ -25,7 +25,8 @@ namespace Humans.Governance.Controllers;
 internal sealed class GovernanceVotesController(
     IUserServiceRead userService,
     IAssemblyVoteService voteService,
-    IStringLocalizer<GovernanceResource> localizer) : HumansControllerBase(userService)
+    IStringLocalizer<GovernanceResource> localizer,
+    ILogger<GovernanceVotesController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -66,6 +67,13 @@ internal sealed class GovernanceVotesController(
     {
         if (GetCurrentUserId() is not { } userId) return Challenge();
         if (voteId != model.VoteId) return NotFound();
+
+        if (model.Choice == AssemblyBallotChoice.Ranked && !ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed ballot form for vote {VoteId} by {UserId}", voteId, userId);
+            SetError(localizer["Votes_BallotInvalid"].Value);
+            return await RedisplayBallotAsync(voteId, userId, model, ct);
+        }
 
         // Two options at the same rank is an ambiguous ballot, and it stops here: projecting
         // to keys would hide it from the service's duplicate-key check.
@@ -151,6 +159,12 @@ internal sealed class GovernanceVotesController(
         var vote = await voteService.GetVoteForMemberAsync(voteId, userId, ct);
         if (vote is null) return NotFound();
 
+        if (!vote.IsOnRoster)
+        {
+            logger.LogWarning("Rejected ballot form outside vote {VoteId} roster for {UserId}", voteId, userId);
+            return Forbid();
+        }
+
         var rows = BuildRankedOptionRows(vote);
 
         // Last row wins for a key posted twice: the form never does that, and a hand-built
@@ -158,7 +172,8 @@ internal sealed class GovernanceVotesController(
         var posted = new Dictionary<string, int?>(StringComparer.Ordinal);
         foreach (var row in model.RankedOptions)
         {
-            posted[row.OptionKey] = row.Selection;
+            if (!string.IsNullOrWhiteSpace(row.OptionKey))
+                posted[row.OptionKey] = row.Selection;
         }
 
         foreach (var row in rows)

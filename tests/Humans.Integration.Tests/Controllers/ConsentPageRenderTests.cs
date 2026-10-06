@@ -36,7 +36,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// <item><description>
 /// <c>_ConsentReviewBody</c> moved into the section's <c>Views/Shared/</c> and is still
 /// rendered from Shell's onboarding widget by name across application parts, with
-/// <c>ConsentReviewFormViewModel</c> on the contracts leaf so Shell can construct it.
+/// <c>ConsentReviewFormViewModel</c> in the section's <c>Contracts/</c> folder so Shell can construct it.
 /// </description></item>
 /// </list>
 /// <para>
@@ -169,7 +169,7 @@ public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTe
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var html = await response.Content.ReadAsStringAsync(ct);
-        // Shell's widget view constructs ConsentReviewFormViewModel off the contracts leaf and
+        // Shell's widget view constructs ConsentReviewFormViewModel from Consent's Contracts/ folder and
         // renders the section's _ConsentReviewBody by name; a partial that fails to resolve
         // throws, so a 200 with the checkbox copy is the proof both halves landed.
         AssertRenderedCleanly(html, "GET /OnboardingWidget/Consents");

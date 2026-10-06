@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Users.Services;
 using Humans.Base.Attributes;
 using Humans.Auth.Contracts;
@@ -56,43 +57,49 @@ internal sealed class AccountDeletionService(
             eligibleAfter = ticketHoldings.PostEventHoldDate;
         }
 
-        await userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct);
-
-        // User loses access during grace period.
-        var endedMemberships = await teamService.RevokeAllMembershipsAsync(userId, ct);
-
-        var endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
-
-        await auditLogService.LogAsync(
-            AuditAction.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
-            $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
-            userId);
-
-        logger.LogWarning(
-            "User {UserId} requested account deletion. Scheduled for {DeletionDate} (eligibleAfter {EligibleAfter}). " +
-            "Revoked {MembershipCount} memberships and {RoleCount} roles immediately",
-            userId, deletionDate, eligibleAfter, endedMemberships, endedRoles);
-
-        var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
-        var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
-        if (notificationEmail is not null)
+        try
         {
-            await emailService.SendAsync(emailMessages.AccountDeletionRequested(
-                notificationEmail,
-                user.BurnerName,
-                deletionDate,
-                user.PreferredLanguage),
-                ct);
+            await userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct);
+
+            // User loses access during grace period.
+            var endedMemberships = await teamService.RevokeAllMembershipsAsync(userId, ct);
+
+            var endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
+
+            await auditLogService.LogAsync(
+                AuditAction.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
+                $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
+                userId);
+
+            logger.LogWarning(
+                "User {UserId} requested account deletion. Scheduled for {DeletionDate} (eligibleAfter {EligibleAfter}). " +
+                "Revoked {MembershipCount} memberships and {RoleCount} roles immediately",
+                userId, deletionDate, eligibleAfter, endedMemberships, endedRoles);
+
+            var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
+            var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
+            if (notificationEmail is not null)
+            {
+                await emailService.SendAsync(emailMessages.AccountDeletionRequested(
+                    notificationEmail,
+                    user.BurnerName,
+                    deletionDate,
+                    user.PreferredLanguage.IsSupportedCultureCode()
+                        ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode),
+                    ct);
+            }
+
+            return new DeletionRequestResult(
+                Success: true,
+                EffectiveDeletionDate: eligibleAfter ?? deletionDate,
+                IsHeldForTicket: eligibleAfter is not null);
         }
-
-        // Drop shift-authorization cache so coordinator privilege reverts immediately (parity with Purge/AnonymizeExpired).
-        shiftAuthorizationInvalidator.Invalidate(userId);
-        shiftViewInvalidator.InvalidateUser(userId);
-
-        return new DeletionRequestResult(
-            Success: true,
-            EffectiveDeletionDate: eligibleAfter ?? deletionDate,
-            IsHeldForTicket: eligibleAfter is not null);
+        finally
+        {
+            // Deletion/revocation may commit before a later step fails; stale shift access must still clear.
+            shiftAuthorizationInvalidator.Invalidate(userId);
+            shiftViewInvalidator.InvalidateUser(userId);
+        }
     }
 
     public async Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default)

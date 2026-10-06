@@ -55,6 +55,13 @@
   <data name="Common_Close" xml:space="preserve">
     <value>Schließen</value>
   </data>
+  <data name="Common_FilterColumn" xml:space="preserve"><value>{0} filtern</value></data>
+  <data name="Common_All" xml:space="preserve"><value>Alle</value></data>
+  <data name="SectionHelp_Title" xml:space="preserve"><value>Bereichshilfe</value></data>
+  <data name="SectionHelp_Guide" xml:space="preserve"><value>Leitfaden</value></data>
+  <data name="SectionHelp_Glossary" xml:space="preserve"><value>Glossar</value></data>
+  <data name="SectionHelp_AccessMatrix" xml:space="preserve"><value>Zugriffsmatrix</value></data>
+  <data name="SectionHelp_Feature" xml:space="preserve"><value>Funktion</value></data>
   <data name="EmailComposer_Preview" xml:space="preserve">
     <value>Vorschau</value>
   </data>
@@ -163,6 +170,7 @@
   <data name="Login_SignInFailed" xml:space="preserve">
     <value>Anmeldung fehlgeschlagen. Dies kann passieren, wenn du zu lange gewartet hast oder dein Browser Cookies blockiert hat. Bitte versuche es erneut.</value>
   </data>
+  <data name="Login_LockedOut" xml:space="preserve"><value>Dieses Konto ist gesperrt. Wende dich an einen Administrator, wenn du Hilfe bei der Anmeldung benötigst.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve">
     <value>Zugriff verweigert</value>
   </data>
@@ -478,38 +486,8 @@
   <data name="MyTeams_View" xml:space="preserve">
     <value>Anzeigen</value>
   </data>
-  <data name="Admin_CannotStartReview" xml:space="preserve">
-    <value>Prüfung kann nicht gestartet werden. Der Antrag befindet sich nicht im Status „Eingereicht".</value>
-  </data>
-  <data name="Admin_ReviewStarted" xml:space="preserve">
-    <value>Prüfung für diesen Antrag gestartet.</value>
-  </data>
-  <data name="Admin_CannotApprove" xml:space="preserve">
-    <value>Genehmigung nicht möglich. Der Antrag muss in Prüfung sein.</value>
-  </data>
-  <data name="Admin_ApplicationApproved" xml:space="preserve">
-    <value>Antrag genehmigt.</value>
-  </data>
-  <data name="Admin_CannotReject" xml:space="preserve">
-    <value>Ablehnung nicht möglich. Der Antrag muss in Prüfung sein.</value>
-  </data>
   <data name="Admin_ProvideRejectionReason" xml:space="preserve">
     <value>Bitte geben Sie einen Ablehnungsgrund an.</value>
-  </data>
-  <data name="Admin_ApplicationRejected" xml:space="preserve">
-    <value>Antrag abgelehnt.</value>
-  </data>
-  <data name="Admin_CannotRequestInfo" xml:space="preserve">
-    <value>Weitere Informationen können nicht angefordert werden. Der Antrag muss in Prüfung sein.</value>
-  </data>
-  <data name="Admin_SpecifyInfoNeeded" xml:space="preserve">
-    <value>Bitte geben Sie an, welche Informationen benötigt werden.</value>
-  </data>
-  <data name="Admin_MoreInfoRequested" xml:space="preserve">
-    <value>Weitere Informationen wurden vom Antragsteller angefordert.</value>
-  </data>
-  <data name="Admin_UnknownAction" xml:space="preserve">
-    <value>Unbekannte Aktion.</value>
   </data>
   <data name="Admin_MemberSuspended" xml:space="preserve">
     <value>Human wurde gesperrt.</value>
@@ -1312,4 +1290,17 @@
   <data name="EmailComposer_SendToMeError" xml:space="preserve"><value>Die Test-E-Mail konnte nicht gesendet werden. Bitte erneut versuchen.</value></data>
   <data name="EmailComposer_SendToMeRateLimited" xml:space="preserve"><value>Zu viele Test-E-Mails. Bitte eine Minute warten und erneut versuchen.</value></data>
   <data name="EmailComposer_SendToMeNoAddress" xml:space="preserve"><value>Dein Konto hat keine E-Mail-Adresse, an die gesendet werden kann.</value></data>
+  <data name="Validation_Required" xml:space="preserve"><value>Dieses Feld ist erforderlich.</value></data>
+  <data name="Validation_MaxLength" xml:space="preserve"><value>Gib höchstens {1} Zeichen ein.</value></data>
+  <data name="Validation_Range" xml:space="preserve"><value>Gib einen Wert zwischen {1} und {2} ein.</value></data>
+  <data name="Validation_InvalidCharacters" xml:space="preserve"><value>Dieses Feld enthält ungültige Zeichen.</value></data>
+  <data name="Validation_EmailAddress" xml:space="preserve"><value>Gib eine gültige E-Mail-Adresse ein.</value></data>
+  <data name="Validation_InvalidValue" xml:space="preserve"><value>Gib einen gültigen Wert ein.</value></data>
+  <data name="Validation_Number" xml:space="preserve"><value>Gib eine Zahl ein.</value></data>
+  <data name="Enum_SystemTeamType_Volunteers" xml:space="preserve"><value>Freiwillige</value></data>
+  <data name="Enum_SystemTeamType_Coordinators" xml:space="preserve"><value>Koordinatoren</value></data>
+  <data name="Enum_SystemTeamType_Board" xml:space="preserve"><value>Vorstand</value></data>
+  <data name="Enum_SystemTeamType_Asociados" xml:space="preserve"><value>Asociados</value></data>
+  <data name="Enum_SystemTeamType_Colaboradors" xml:space="preserve"><value>Colaboradores</value></data>
+  <data name="Enum_SystemTeamType_BarrioLeads" xml:space="preserve"><value>Camp-Leitungen</value></data>
 </root>

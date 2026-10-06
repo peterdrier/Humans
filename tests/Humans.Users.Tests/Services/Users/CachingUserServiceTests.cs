@@ -8,6 +8,12 @@ using NSubstitute;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Humans.AuditLog.Contracts;
+using Humans.Users.Data.Repositories;
+using Humans.Users.Tests.Infrastructure;
+using NodaTime.Testing;
 
 namespace Humans.Users.Tests.Services.Users;
 
@@ -60,6 +66,73 @@ public class CachingUserServiceTests
         UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         IsApproved = true,
     };
+
+    [HumansFact]
+    public async Task CommittedPreferenceChange_FinishesCacheRefreshAndAuditDespiteRequestCancellation()
+    {
+        var testCt = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var preference = new CommunicationPreference
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Category = MessageCategory.Marketing,
+            OptedOut = false,
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdateSource = "Profile"
+        };
+        var options = new DbContextOptionsBuilder<UsersDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString(), new InMemoryDatabaseRoot()).Options;
+        await using (var seed = new UsersDbContext(options))
+        {
+            seed.CommunicationPreferences.Add(preference);
+            await seed.SaveChangesAsync(testCt);
+        }
+        var original = SampleUserInfo(userId) with
+        {
+            CommunicationPreferences =
+            [new CommunicationPreferenceInfo(preference.Id, preference.Category, false, true,
+                preference.UpdatedAt, preference.UpdateSource, null)]
+        };
+        var cached = CreateSut();
+        await PrimeAsync(cached, original);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(testCt);
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<UserInfo?>(ReloadAsync(call.ArgAt<CancellationToken>(1))));
+        async Task<UserInfo?> ReloadAsync(CancellationToken readCt)
+        {
+            // This reload runs only after the preference has committed.
+            await cancellation.CancelAsync();
+            readCt.ThrowIfCancellationRequested();
+            await using var read = new UsersDbContext(options);
+            var saved = await read.CommunicationPreferences.AsNoTracking().SingleAsync(readCt);
+            return original with
+            {
+                CommunicationPreferences =
+                [new CommunicationPreferenceInfo(saved.Id, saved.Category, saved.OptedOut, saved.InboxEnabled,
+                    saved.UpdatedAt, saved.UpdateSource, saved.SubscribedAt)]
+            };
+        }
+        var services = new ServiceCollection();
+        services.AddSingleton<IUserInfoSliceRefresher>(cached);
+        await using var provider = services.BuildServiceProvider();
+        var interceptor = new UserInfoSaveChangesInterceptor(provider, NullLogger<UserInfoSaveChangesInterceptor>.Instance);
+        var interceptedOptions = new DbContextOptionsBuilder<UsersDbContext>(options).AddInterceptors(interceptor).Options;
+        var audit = Substitute.For<IAuditLogService>();
+        var preferences = new CommunicationPreferenceService(
+            new CommunicationPreferenceRepository(new TestDbContextFactory(interceptedOptions)),
+            cached, Substitute.For<IUnsubscribeTokenProvider>(), new FakeClock(preference.UpdatedAt),
+            audit, NullLogger<CommunicationPreferenceService>.Instance);
+
+        await preferences.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: true,
+            source: "Profile", cancellation.Token);
+
+        var refreshed = await cached.GetUserInfoAsync(userId, testCt);
+        refreshed!.CommunicationPreferences.Should().ContainSingle().Which.OptedOut.Should().BeTrue();
+        original.CommunicationPreferences.Single().OptedOut.Should().BeFalse();
+        await audit.Received(1).LogAsync(AuditAction.CommunicationPreferenceChanged, "User", userId,
+            Arg.Any<string>(), "CommunicationPreferenceService");
+    }
 
     [HumansFact]
     public async Task GetUserInfoAsync_DictMiss_DelegatesToInnerAndCaches()
@@ -955,12 +1028,14 @@ public class CachingUserServiceTests
     {
         var userId = Guid.NewGuid();
         var profileId = Guid.NewGuid();
+        var pictureData = new byte[] { 1, 2, 3 };
         var sut = CreateSut();
         await PrimeAsync(sut, SampleUserInfo(userId, "Before"));
 
         _inner.SaveProfileAsync(
                 userId,
                 Arg.Any<UserProfileSaveCommand>(),
+                Arg.Any<byte[]?>(),
                 Arg.Any<CancellationToken>())
             .Returns(new UserProfileSaveResult(profileId, null, "image/png"));
 
@@ -999,47 +1074,17 @@ public class CachingUserServiceTests
                 EmergencyContactRelationship: null,
                 NoPriorBurnExperience: false,
                 PictureMutation: UserProfilePictureMutation.Set,
-                ProfilePictureContentType: "image/png"), Xunit.TestContext.Current.CancellationToken);
+                ProfilePictureContentType: "image/png"), pictureData, Xunit.TestContext.Current.CancellationToken);
 
         result.ProfileId.Should().Be(profileId);
         await _inner.Received(1).SaveProfileAsync(
-            userId, Arg.Any<UserProfileSaveCommand>(), Arg.Any<CancellationToken>());
+            userId, Arg.Any<UserProfileSaveCommand>(), pictureData, Arg.Any<CancellationToken>());
         var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
         refreshed.Should().NotBeNull();
         refreshed.BurnerName.Should().Be("New Burner");
         refreshed.Profile.Should().NotBeNull();
         refreshed.Profile!.BurnerName.Should().Be("New Burner");
         refreshed.Profile.ProfilePictureContentType.Should().Be("image/png");
-    }
-
-    [HumansFact]
-    public async Task SetProfilePictureContentTypeAsync_RefreshesProfilePictureSlice()
-    {
-        var userId = Guid.NewGuid();
-        var profileId = Guid.NewGuid();
-        var sut = CreateSut();
-        await PrimeAsync(sut, SampleUserInfo(userId));
-
-        _inner.SetProfilePictureContentTypeAsync(userId, "image/webp", Arg.Any<CancellationToken>())
-            .Returns(new UserProfilePictureContentTypeResult(true, profileId, "image/png", "image/webp"));
-
-        StubRefreshEntry(userId, new Profile
-        {
-            Id = profileId,
-            UserId = userId,
-            BurnerName = "Alice",
-            ProfilePictureContentType = "image/webp",
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
-        });
-
-        var result = await sut.SetProfilePictureContentTypeAsync(userId, "image/webp", Xunit.TestContext.Current.CancellationToken);
-
-        result.Saved.Should().BeTrue();
-        result.PreviousProfilePictureContentType.Should().Be("image/png");
-        var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        refreshed!.Profile.Should().NotBeNull();
-        refreshed.Profile!.ProfilePictureContentType.Should().Be("image/webp");
     }
 
     [HumansFact]

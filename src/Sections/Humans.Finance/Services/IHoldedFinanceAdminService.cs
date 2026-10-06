@@ -18,6 +18,7 @@ internal interface IHoldedFinanceAdminService : IApplicationService
     Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(int blockStart, CancellationToken ct = default);
 
     /// <summary>Creates the plan's missing accounts in Holded and maps them; additive only.</summary>
+    [ExternalWrite]
     Task<int> ProvisionAsync(int blockStart, bool addAll, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Manually binds a member to an existing Holded creditor account by 400000xx number.

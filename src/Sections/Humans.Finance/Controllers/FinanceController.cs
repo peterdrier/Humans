@@ -34,7 +34,7 @@ internal sealed class FinanceController(
     [HttpGet("HoldedAccounts")]
     public async Task<IActionResult> HoldedAccounts(int blockStart = 62900100)
     {
-        var plan = await holdedConnector.GetProvisioningPlanAsync(blockStart);
+        var plan = await holdedConnector.GetProvisioningPlanAsync(blockStart, HttpContext.RequestAborted);
         ViewBag.BlockStart = blockStart;
         return View(plan);
     }
@@ -44,6 +44,11 @@ internal sealed class FinanceController(
     public async Task<IActionResult> ProvisionHoldedAccounts(int blockStart, bool addAll)
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed Holded provisioning form for actor {ActorUserId}", actorUserId);
+            return BadRequest(ModelState);
+        }
         try
         {
             var n = await holdedConnector.ProvisionAsync(blockStart, addAll, actorUserId);
@@ -59,19 +64,19 @@ internal sealed class FinanceController(
 
     [HttpGet("HoldedUnmatched")]
     public async Task<IActionResult> HoldedUnmatched()
-        => View(await holdedFinance.GetUnmatchedAsync());
+        => View(await holdedFinance.GetUnmatchedAsync(HttpContext.RequestAborted));
 
     [HttpGet("Creditors")]
     public async Task<IActionResult> Creditors(string? sort, string? dir)
     {
-        var (rows, unresolved) = await holdedFinance.ListCreditorAccountsAsync();
+        var (rows, unresolved) = await holdedFinance.ListCreditorAccountsAsync(HttpContext.RequestAborted);
 
         var names = new Dictionary<Guid, string>();
         var boundIds = rows.SelectMany(r => r.Bindings).Select(b => b.UserId)
             .Concat(unresolved.Select(b => b.UserId))
             .Distinct().ToList();
         if (boundIds.Count > 0)
-            foreach (var kv in await UserService.GetUserInfosAsync(boundIds))
+            foreach (var kv in await UserService.GetUserInfosAsync(boundIds, HttpContext.RequestAborted))
                 names[kv.Key] = kv.Value.BurnerName;
 
         // The page shows one balance, inverted so a positive figure is money owed to the member.
@@ -154,7 +159,7 @@ internal sealed class FinanceController(
             .Concat(rows.Where(r => r.BookedByUserId is not null).Select(r => r.BookedByUserId!.Value))
             .Distinct().ToList();
         if (ids.Count > 0)
-            foreach (var kv in await UserService.GetUserInfosAsync(ids))
+            foreach (var kv in await UserService.GetUserInfosAsync(ids, ct))
                 names[kv.Key] = kv.Value.BurnerName;
 
         string Name(Guid? id) =>
@@ -229,7 +234,7 @@ internal sealed class FinanceController(
     [HttpGet("Creditors/{accountNum:int}")]
     public async Task<IActionResult> CreditorStatement(int accountNum)
     {
-        var ledger = await holdedFinance.GetCreditorLedgerAsync(accountNum);
+        var ledger = await holdedFinance.GetCreditorLedgerAsync(accountNum, HttpContext.RequestAborted);
         if (ledger is null) return NotFound();
 
         // Controllers assemble and sort the presentation model: newest activity first.

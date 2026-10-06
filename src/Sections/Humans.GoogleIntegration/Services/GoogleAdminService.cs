@@ -116,6 +116,11 @@ internal sealed class GoogleAdminService(
                 NotPrimaryCount: notPrimaryCount,
                 MissingTwoFactorCount: missingTwoFactorCount);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Loading @nobodies.team accounts cancelled by caller");
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load @nobodies.team accounts");

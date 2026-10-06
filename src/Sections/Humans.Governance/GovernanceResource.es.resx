@@ -43,6 +43,7 @@
   <data name="Governance_Title" xml:space="preserve">
     <value>Gobernanza</value>
   </data>
+  <data name="Governance_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegación</value></data>
   <data name="GovernanceApplication_Title" xml:space="preserve">
     <value>Solicitud de gobernanza</value>
   </data>

@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Issues/**
-  src/Sections/Humans.Issues.Contracts/**
+  src/Sections/Humans.Issues/Contracts/**
 -->
 <!-- freshness:flag-on-change
   Issues entities, controller routes, API surface, status transitions, section routing, or handler-vs-reporter auth rules may have changed; verify the auth matrix and routes table.
@@ -23,6 +23,7 @@ Issues is the only in-app reporting path. Feedback (`src/Sections/Humans.Feedbac
 **Acceptance Criteria:**
 - Floating help widget on every page, authenticated users only — its "Create issue" action opens `_IssueWidgetModal.cshtml`, a partial that lives in the Issues section but is rendered from `Humans.Agent`'s `HelpWidgetViewComponent` (so `Issue_*` copy resolves against `IssuesResource`)
 - `/Issues/New` page with full form (title, type, optional section override, description, optional screenshot)
+- Form and widget validation errors use the current culture in all six supported languages; required fields and length limits are unchanged.
 - `Section` defaults to auto-detected from `PageUrl` via `IssueSectionInference.FromPath` when the widget is used; the `/Issues/New` form lets the reporter pick or leave blank for auto-detection
 - Page URL, user agent, and the reporter's roles captured automatically into `AdditionalContext`
 - Screenshot upload limited to JPEG/PNG/WebP, max 10 MB

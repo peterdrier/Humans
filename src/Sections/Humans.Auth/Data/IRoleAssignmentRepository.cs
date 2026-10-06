@@ -154,10 +154,9 @@ internal interface IRoleAssignmentRepository : IRepository
     /// has active at the same instant, the source row is dropped (target's
     /// existing row wins). All other source rows (inactive / historical, or
     /// active but no conflicting active target row) are re-FK'd to target so
-    /// history is preserved. Single SaveChanges. Returns the count of rows
-    /// attributed to target after the move.
+    /// history is preserved. Single SaveChanges.
     /// </summary>
-    Task<int> ReassignToUserAsync(
+    Task ReassignToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,

@@ -54,10 +54,9 @@ internal partial interface IUserRepository
     /// with <c>IsPrimary</c> and <c>IsGoogle</c> cleared so the target's
     /// existing primary / Google selections remain authoritative.
     /// <c>UpdatedAt</c> is stamped to <paramref name="updatedAt"/> on every
-    /// row touched. Returns the count of <c>user_emails</c> rows ultimately
-    /// attributed to <paramref name="targetUserId"/>.
+    /// row touched.
     /// </summary>
-    Task<int> ReassignUserEmailsToUserAsync(
+    Task ReassignUserEmailsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default);
 
@@ -131,7 +130,7 @@ internal partial interface IUserRepository
 
     /// <summary>
     /// Issue nobodies-collective/Humans#697. Applies a single OAuth-reconcile
-    /// data change inside one <see cref="DbContext"/> + one
+    /// data change inside one <see cref="Microsoft.EntityFrameworkCore.DbContext"/> + one
     /// <see cref="Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction"/>.
     /// Atomicity guarantee: when the plan includes a cross-user displaced
     /// row alongside the signing user's mutation, either every operation

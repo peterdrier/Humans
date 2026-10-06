@@ -1,3 +1,11 @@
+using Humans.Tickets.Contracts;
+using Humans.Tickets.Models;
+using Humans.Tickets.Services;
+using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using NSubstitute;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
@@ -14,6 +22,31 @@ namespace Humans.Tickets.Tests.Controllers;
 /// </summary>
 public class TicketControllerTests
 {
+    [HumansFact]
+    public async Task ParticipationBackfill_RequestAborted_CancelsDefaultYearRead()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        var backfill = Substitute.For<IUserParticipationBackfillService>();
+        backfill.GetDefaultYearAsync(aborted.Token)
+            .Returns(Task.FromException<int>(new OperationCanceledException(aborted.Token)));
+        var queries = Substitute.For<ITicketService>();
+        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
+            Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
+        var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
+            backfill, dashboard, Substitute.For<IUserServiceRead>(), NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token },
+            },
+        };
+
+        var act = () => controller.ParticipationBackfill();
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [HumansFact]
     public void Class_admits_TicketAdmin_Board_and_Admin()
     {

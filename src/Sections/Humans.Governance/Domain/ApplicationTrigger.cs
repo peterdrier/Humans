@@ -9,10 +9,5 @@ internal enum ApplicationTrigger
 
     Reject,
 
-    Withdraw,
-
-    /// <summary>
-    /// Request more information (returns to submitted).
-    /// </summary>
-    RequestMoreInfo
+    Withdraw
 }

@@ -23,8 +23,8 @@ internal interface IVolunteerTrackingService : IApplicationService, IVolunteerTr
     /// <summary>
     /// Add (available=true) or remove (available=false) one build-day offset from
     /// the user's declared availability. Read-modify-write; preserves other
-    /// offsets; invalidates the user's shift view cache. No-op for positive
-    /// (event-day) offsets.
+    /// offsets; invalidates the user's shift view cache. Additions require a known
+    /// calendar and an offset inside its build period; removals can clear old offsets.
     /// </summary>
     Task<bool> SetDayAvailabilityAsync(
         Guid userId, Guid eventSettingsId, int dayOffset, bool available,

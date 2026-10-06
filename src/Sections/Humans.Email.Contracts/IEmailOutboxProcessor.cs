@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 namespace Humans.Email.Contracts;
 
 /// <summary>
@@ -17,5 +18,6 @@ public interface IEmailOutboxProcessor
     /// Never throws for a single message's delivery failure — that row is marked failed
     /// and retried on a later tick.
     /// </summary>
+    [ExternalWrite]
     Task ProcessQueuedAsync(CancellationToken cancellationToken = default);
 }

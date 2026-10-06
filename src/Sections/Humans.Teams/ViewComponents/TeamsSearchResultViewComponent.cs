@@ -22,7 +22,7 @@ public sealed class TeamsSearchResultViewComponent(ITeamServiceRead teams) : Vie
     public async Task<IViewComponentResult> InvokeAsync(Guid teamId)
     {
         // Served from the cached TeamInfo snapshot — one row costs no query.
-        var team = await teams.GetTeamAsync(teamId);
+        var team = await teams.GetTeamAsync(teamId, HttpContext.RequestAborted);
         return team is null
             ? Content(string.Empty)
             : View(new TeamsSearchResultViewModel(team.Name, team.Slug));

@@ -22,23 +22,22 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
       The sections whose machine surface Backdoor serves. Each is reached only through
-      the public interface in its Contracts/ folder (Agent, Feedback, Notifications, Store,
-      Surveys, Expenses) or its contracts leaf (Issues, Finance) — HUM0034 keeps everything
+      the public interface in its Contracts/ folder (Agent, Feedback, Issues, Notifications,
+      Store, Surveys, Expenses) or its contracts leaf (Finance) — HUM0034 keeps everything
       else in those assemblies internal, so the reference cannot widen past the published
       surface. Acyclic by construction:
       nothing references Backdoor. Debug is absent — /api/backdoor/logs reads
-      InMemoryLogSink, which is Base's; so is Humans.Issues itself, since every Issues type
-      named here resolves from the contracts leaf.
+      InMemoryLogSink, which is Base's.
     -->
     <ProjectReference Include="..\Humans.Agent\Humans.Agent.csproj" />
     <ProjectReference Include="..\Humans.Feedback\Humans.Feedback.csproj" />
-    <ProjectReference Include="..\Humans.Issues.Contracts\Humans.Issues.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Issues\Humans.Issues.csproj" />
     <ProjectReference Include="..\Humans.Notifications\Humans.Notifications.csproj" />
     <ProjectReference Include="..\Humans.Store\Humans.Store.csproj" />
     <ProjectReference Include="..\Humans.Surveys\Humans.Surveys.csproj" />
@@ -53,7 +52,7 @@
          Humans.Finance itself (memory/architecture/section-project-cycle-fix.md). -->
     <ProjectReference Include="..\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
     <!-- The budget year label (e.g. "2026") a report is booked to, for the year filter/field. -->
-    <ProjectReference Include="..\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Budget\Humans.Budget.csproj" />
   </ItemGroup>
 
   <ItemGroup>

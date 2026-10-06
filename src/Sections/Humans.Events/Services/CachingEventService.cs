@@ -70,6 +70,7 @@ internal sealed class CachingEventService(
     private volatile bool _settingsStale;
 
     private readonly TrackedLock _loadLock = new("CachingEventService.Load");
+    private readonly TrackedLock _settingsLock = new("CachingEventService.Settings");
     private volatile bool _isLoaded;
 
     /// <summary>Diagnostics surface for <c>/Debug/CacheStats</c>.</summary>
@@ -312,6 +313,7 @@ internal sealed class CachingEventService(
             ? new HashSet<string>(excludedSlugs, StringComparer.Ordinal)
             : null;
 
+        var trimmed = q?.Trim();
         var results = new List<ApprovedEventView>();
         foreach (var view in _eventCache.Values)
         {
@@ -319,7 +321,7 @@ internal sealed class CachingEventService(
             if (categoryId.HasValue && view.CategoryId != categoryId.Value) continue;
             if (venueId.HasValue && view.GuideSharedVenueId != venueId.Value) continue;
             if (campId.HasValue && view.CampId != campId.Value) continue;
-            if (!string.IsNullOrWhiteSpace(q) && !MatchesQuery(view, q)) continue;
+            if (!string.IsNullOrEmpty(trimmed) && !MatchesQuery(view, trimmed)) continue;
 
             results.Add(view);
         }
@@ -518,12 +520,11 @@ internal sealed class CachingEventService(
         // GetActiveCategoriesAsync / GetActiveVenuesAsync.
         var categories = await WithInner(inner => inner.GetAllCategoriesAsync(ct));
         var venues = await WithInner(inner => inner.GetAllVenuesAsync(ct));
-        var settings = await WithInner(inner => inner.GetGuideSettingsAsync(ct));
         var approved = await WithInner(inner => inner.GetApprovedEventsAsync(null, null, null, null, [], ct));
 
         _categories = categories.Select(ManageInfoToCategoryView).ToList();
         _venues = venues.Select(ManageInfoToVenueView).ToList();
-        _settings = settings;
+        await RefreshSettingsAsync(ct);
 
         _eventCache.Clear();
         foreach (var ev in approved)
@@ -543,30 +544,27 @@ internal sealed class CachingEventService(
     private async Task<EventGuideSettingsView?> GetSettingsViewAsync(CancellationToken ct)
     {
         await EnsureLoadedAsync(ct);
-        if (_settingsStale)
-        {
-            // Clear before the read so a change that lands mid-refresh is not lost;
-            // restore on failure so the old projection is not served until restart.
-            _settingsStale = false;
-            try
-            {
-                await RefreshSettingsAsync(ct);
-            }
-            catch
-            {
-                _settingsStale = true;
-                throw;
-            }
-        }
+        await RefreshSettingsAsync(ct, onlyIfStale: true);
         return _settings;
     }
 
-    private async Task RefreshSettingsAsync(CancellationToken ct)
+    private async Task RefreshSettingsAsync(CancellationToken ct, bool onlyIfStale = false)
     {
-        // The inner service stitches TimeZoneId from the Settings-owned
-        // settings_event row via ISettingsService (nobodies-collective/Humans#719) and returns the
-        // ready EventGuideSettingsView; cache it directly.
-        _settings = await WithInner(inner => inner.GetGuideSettingsAsync(ct));
+        using var gate = await _settingsLock.AcquireAsync(logger, ct);
+        if (onlyIfStale && !_settingsStale) return;
+
+        // Consume the flag before fetching so changes during the read still trigger
+        // another reload. Serialize all settings loads so an older one cannot finish last.
+        _settingsStale = false;
+        try
+        {
+            _settings = await WithInner(inner => inner.GetGuideSettingsAsync(ct));
+        }
+        catch
+        {
+            _settingsStale = true;
+            throw;
+        }
     }
 
     private async Task RefreshCategoriesAsync(CancellationToken ct)

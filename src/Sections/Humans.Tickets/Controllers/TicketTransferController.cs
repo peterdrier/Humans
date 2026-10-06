@@ -22,7 +22,7 @@ internal sealed class TicketTransferController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var mine = await service.GetMyAttendeesAsync(user.Id, ct);

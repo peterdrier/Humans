@@ -170,7 +170,8 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
             _ => rows.OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.Email, StringComparer.OrdinalIgnoreCase),
         }).ToList();
         if (state.Descending) sorted.Reverse();
-        return new DebugSection<DebugExpectedRow>(SlicePage(sorted, state, opts), sorted.Count, Normalize(state, opts));
+        state = Normalize(state, opts, sorted.Count);
+        return new DebugSection<DebugExpectedRow>(SlicePage(sorted, state), sorted.Count, state);
     }
 
     public static DebugSection<DebugMlRow> PageMl(
@@ -183,7 +184,8 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
             _ => rows.OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.Email, StringComparer.OrdinalIgnoreCase),
         }).ToList();
         if (state.Descending) sorted.Reverse();
-        return new DebugSection<DebugMlRow>(SlicePage(sorted, state, opts), sorted.Count, Normalize(state, opts));
+        state = Normalize(state, opts, sorted.Count);
+        return new DebugSection<DebugMlRow>(SlicePage(sorted, state), sorted.Count, state);
     }
 
     public static DebugSection<DebugNonPrimaryRow> PageNonPrimary(
@@ -195,24 +197,18 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
             _ => rows.OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.SubscribedEmail, StringComparer.OrdinalIgnoreCase),
         }).ToList();
         if (state.Descending) sorted.Reverse();
-        return new DebugSection<DebugNonPrimaryRow>(SlicePage(sorted, state, opts), sorted.Count, Normalize(state, opts));
+        state = Normalize(state, opts, sorted.Count);
+        return new DebugSection<DebugNonPrimaryRow>(SlicePage(sorted, state), sorted.Count, state);
     }
 
-    private static IReadOnlyList<TRow> SlicePage<TRow>(IReadOnlyList<TRow> rows, DebugTableState state, DebugTableOptions opts)
-    {
-        var size = opts.PageSizes.Contains(state.PageSize) ? state.PageSize : opts.DefaultPageSize;
-        var page = state.Page < 1 ? 1 : state.Page;
-        var skip = (page - 1) * size;
-        if (skip >= rows.Count && rows.Count > 0)
-            skip = ((rows.Count - 1) / size) * size;
-        if (skip < 0) skip = 0;
-        return rows.Skip(skip).Take(size).ToList();
-    }
+    private static IReadOnlyList<TRow> SlicePage<TRow>(IReadOnlyList<TRow> rows, DebugTableState state) =>
+        rows.Skip((state.Page - 1) * state.PageSize).Take(state.PageSize).ToList();
 
-    private static DebugTableState Normalize(DebugTableState state, DebugTableOptions opts)
+    private static DebugTableState Normalize(DebugTableState state, DebugTableOptions opts, int rowCount)
     {
         var size = opts.PageSizes.Contains(state.PageSize) ? state.PageSize : opts.DefaultPageSize;
-        var page = state.Page < 1 ? 1 : state.Page;
+        var lastPage = rowCount == 0 ? 1 : (rowCount - 1) / size + 1;
+        var page = Math.Clamp(state.Page, 1, lastPage);
         return state with { Page = page, PageSize = size };
     }
 

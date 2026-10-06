@@ -22,11 +22,11 @@ public sealed class CampsSearchResultViewComponent(ICampServiceRead camps) : Vie
     public async Task<IViewComponentResult> InvokeAsync(Guid campId)
     {
         // Both reads are served from the cached CampInfo snapshot — one row costs no query.
-        var camp = await camps.GetCampByIdAsync(campId);
+        var camp = await camps.GetCampByIdAsync(campId, HttpContext.RequestAborted);
         if (camp is null)
             return Content(string.Empty);
 
-        var settings = await camps.GetSettingsAsync();
+        var settings = await camps.GetSettingsAsync(HttpContext.RequestAborted);
         var season = camp.GetSeasonForYear(settings.PublicYear);
         return View(new CampsSearchResultViewModel(season?.Name ?? camp.Slug, camp.Slug));
     }

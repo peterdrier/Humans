@@ -7,7 +7,7 @@ namespace Humans.Analyzers;
 
 /// <summary>
 /// HUM0026 / HUM0027 — role-marker analyzer pair for
-/// <see cref="Humans.Base.Interfaces.IOrchestrator"/>.
+/// <c>Humans.Base.Interfaces.IOrchestrator</c>.
 /// <list type="bullet">
 /// <item><b>HUM0026</b> — an <c>IOrchestrator</c> implementer must not inject
 /// any <c>I*Repository</c>, an application DbContext, or

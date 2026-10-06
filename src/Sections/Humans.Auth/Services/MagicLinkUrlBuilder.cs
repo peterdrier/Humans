@@ -35,6 +35,8 @@ internal sealed class MagicLinkUrlBuilder(
 
     public string? UnprotectLoginToken(string token)
     {
+        if (string.IsNullOrEmpty(token)) return null;
+
         try
         {
             return _loginProtector.Unprotect(token);
@@ -57,6 +59,8 @@ internal sealed class MagicLinkUrlBuilder(
 
     public string? UnprotectSignupToken(string token)
     {
+        if (string.IsNullOrEmpty(token)) return null;
+
         try
         {
             return _signupProtector.Unprotect(token);

@@ -7,6 +7,10 @@ namespace Humans.Finance.Models;
 /// organisation owes the member. The mirror and every derivation elsewhere keep Holded's own sign
 /// (Σdebit − Σcredit); the flip happens here and nowhere else. /Holded/Accounts/{num} shows the
 /// same account unflipped.</param>
+/// <param name="SupplierAccountNum">The creditor's Holded supplier account number.</param>
+/// <param name="Name">The Holded account name.</param>
+/// <param name="Bindings">Members bound to this creditor account.</param>
+/// <param name="IbanMasked">The linked Holded contact's masked IBAN, if available.</param>
 internal sealed record CreditorAccountRowVm(
     int SupplierAccountNum,
     string Name,
@@ -48,6 +52,7 @@ internal sealed record CreditorBindingVm(Guid UserId, string MemberName, string 
 /// <param name="SortBy">Active column — "account" (default), "name", "balance" or "member".</param>
 /// <param name="SortDir">"asc" or "desc"; the headers link to the opposite of whatever is active.</param>
 /// <param name="Sepa">Whether the payout column renders at all, and the per-transfer ceiling.</param>
+/// <param name="Accounts">Creditor accounts shown on the page.</param>
 internal sealed record CreditorsPageVm(
     IReadOnlyList<CreditorAccountRowVm> Accounts,
     IReadOnlyList<CreditorBindingVm> Unresolved,

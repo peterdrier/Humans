@@ -47,6 +47,8 @@ document.addEventListener('change', function (e) {
 
 // Clickable table rows via [data-href]
 document.addEventListener('click', function (e) {
+    if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    if (e.target.closest('a, button, input, select, textarea, label, summary, [role="button"], [role="link"], [contenteditable]')) return;
     var row = e.target.closest('tr[data-href]');
     if (row) {
         window.location = row.getAttribute('data-href');
@@ -63,8 +65,8 @@ document.addEventListener('click', function (e) {
 
     function numberForSort(value) {
         var normalized = textForSort(value).replace(/[,%\s€]/g, '');
-        var parsed = parseFloat(normalized);
-        return isNaN(parsed) ? null : parsed;
+        var parsed = normalized === '' ? NaN : Number(normalized);
+        return Number.isFinite(parsed) ? parsed : null;
     }
 
     function valueFromRow(row, columnIndex, key) {
@@ -80,7 +82,7 @@ document.addEventListener('click', function (e) {
     function compareValues(a, b, sortType) {
         var aNumber = numberForSort(a);
         var bNumber = numberForSort(b);
-        var numeric = sortType === 'number' || (sortType !== 'text' && aNumber !== null && bNumber !== null);
+        var numeric = sortType === 'number';
 
         if (numeric) {
             return (aNumber || 0) - (bNumber || 0);
@@ -124,11 +126,16 @@ document.addEventListener('click', function (e) {
                 var activeIndicator = th.querySelector('.sort-indicator');
                 if (activeIndicator) activeIndicator.textContent = nextDirection === 'asc' ? ' ▲' : ' ▼';
 
-                var rows = Array.from(tbody.querySelectorAll('tr'));
+                var rows = Array.from(tbody.rows);
+                var comparisonType = sortType === 'auto'
+                    ? (rows.every(function (row) {
+                        return numberForSort(valueFromRow(row, columnIndex, key)) !== null;
+                    }) ? 'number' : 'text')
+                    : sortType;
                 rows.sort(function (a, b) {
                     var aValue = valueFromRow(a, columnIndex, key);
                     var bValue = valueFromRow(b, columnIndex, key);
-                    return compareValues(aValue, bValue, sortType) * directionMultiplier;
+                    return compareValues(aValue, bValue, comparisonType) * directionMultiplier;
                 });
 
                 rows.forEach(function (row) { tbody.appendChild(row); });
@@ -184,11 +191,11 @@ document.addEventListener('click', function (e) {
             var exact = input.tagName === 'SELECT';
 
             if (exact && input.options.length <= 1) {
-                var seen = {};
+                var seen = new Set();
                 Array.from(table.tBodies[0].rows).forEach(function (row) {
                     var text = (row.cells[col] ? row.cells[col].textContent : '').trim();
-                    if (text && text !== '—' && !seen[text]) {
-                        seen[text] = true;
+                    if (text && text !== '—' && !seen.has(text)) {
+                        seen.add(text);
                         var option = document.createElement('option');
                         option.value = text;
                         option.textContent = text;
@@ -236,8 +243,10 @@ document.addEventListener('click', function (e) {
     if (!wrapper || !btn || !popup) return;
 
     var isOpen = false;
+    var popupRequestVersion = 0;
 
     function openPopup() {
+        var requestVersion = ++popupRequestVersion;
         popup.style.display = 'block';
         btn.setAttribute('aria-expanded', 'true');
         isOpen = true;
@@ -249,13 +258,18 @@ document.addEventListener('click', function (e) {
                 return r.text();
             })
             .then(function (html) {
+                if (!isOpen || requestVersion !== popupRequestVersion) return;
                 if (content) content.innerHTML = html;
                 bindPopupClose();
                 bindPopupMarkAllRead();
                 trapFocus();
             })
             .catch(function () {
-                if (content) content.innerHTML = '<div class="text-center py-3 text-muted"><i class="fa-solid fa-bell text-muted mb-2" style="font-size:1.5rem"></i><p class="mb-0 small">Could not load notifications.</p></div>';
+                if (!isOpen || requestVersion !== popupRequestVersion) return;
+                if (content) {
+                    content.innerHTML = '<div class="text-center py-3 text-muted"><i class="fa-solid fa-bell text-muted mb-2" style="font-size:1.5rem"></i><p class="mb-0 small"></p></div>';
+                    content.querySelector('p').textContent = btn.getAttribute('data-load-error') || '';
+                }
             });
     }
 
@@ -358,7 +372,7 @@ function showToast(message, type) {
     closeBtn.type = 'button';
     closeBtn.className = 'btn-close me-2 m-auto';
     closeBtn.setAttribute('data-bs-dismiss', 'toast');
-    closeBtn.setAttribute('aria-label', 'Close');
+    closeBtn.setAttribute('aria-label', container.dataset.closeLabel);
     wrapper.appendChild(closeBtn);
     toastEl.appendChild(wrapper);
     container.appendChild(toastEl);
@@ -412,7 +426,7 @@ function showToast(message, type) {
         if (cache[cacheKey]) {
             popover.setContent({ '.popover-body': cache[cacheKey] });
         } else {
-            fetch(endpoint)
+            fetch(endpoint, { redirect: 'error' })
                 .then(function (r) {
                     // 404 from PublicPopover means "no public role" — suppress
                     // the spinner tooltip instead of showing an error.
@@ -420,13 +434,19 @@ function showToast(message, type) {
                         popover.dispose();
                         return null;
                     }
-                    return r.ok ? r.text() : '';
+                    if (!r.ok) throw new Error(r.status);
+                    return r.text();
                 })
                 .then(function (html) {
                     if (html) {
                         cache[cacheKey] = html;
                         popover.setContent({ '.popover-body': html });
                     }
+                })
+                .catch(function () {
+                    // A failed load must not leave a permanent spinner or block a later hover.
+                    popover.dispose();
+                    el._popoverInit = false;
                 });
         }
     }, true);

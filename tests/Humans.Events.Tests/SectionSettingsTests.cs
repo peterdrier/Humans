@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations;
+using Xunit;
+using Humans.Events.Models;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
 
@@ -11,6 +14,20 @@ namespace Humans.Events.Tests;
 /// </summary>
 public sealed class SectionSettingsTests
 {
+    [HumansTheory]
+    [InlineData(-1, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    [InlineData(10000, true)]
+    [InlineData(10001, false)]
+    public void PrintSlotLimit_AcceptsUnlimitedAndRejectsOutOfRangeValues(int limit, bool expectedValid)
+    {
+        var model = new GuideSettingsViewModel { MaxPrintSlots = limit };
+        var context = new ValidationContext(model) { MemberName = nameof(model.MaxPrintSlots) };
+
+        Validator.TryValidateProperty(model.MaxPrintSlots, context, []).Should().Be(expectedValid);
+    }
+
     [HumansFact]
     public void Tabs_ReturnsTheEventGuideTabGatedOnEventsAdminOrAdmin()
     {

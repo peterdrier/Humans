@@ -1,4 +1,9 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
+using Humans.Calendar.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using NodaTime.Testing;
 using Humans.Calendar.Contracts;
 using Humans.Calendar.Models;
 using Humans.Calendar.Services.Dtos;
@@ -11,11 +16,84 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Calendar.Tests.Services;
 
 public sealed class CachingCalendarServiceTests
 {
+    [HumansTheory]
+    [InlineData("create")]
+    [InlineData("update")]
+    [InlineData("delete")]
+    [InlineData("cancel")]
+    [InlineData("override")]
+    public async Task Mutation_SaveAcknowledgementFails_ReloadsCommittedCalendar(string operation)
+    {
+        var acknowledgement = new FailedSaveAcknowledgement();
+        var options = new DbContextOptionsBuilder<CalendarDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(acknowledgement).Options;
+        var repo = new CalendarRepository(new TestDbContextFactory<CalendarDbContext>(options));
+        var before = BuildInfo(title: "Before");
+        var ev = new CalendarEvent
+        {
+            Id = before.Id,
+            Title = before.Title,
+            OwningTeamId = before.OwningTeamId,
+            StartUtc = before.StartUtc,
+            EndUtc = before.EndUtc,
+            CreatedAt = before.CreatedAt,
+            UpdatedAt = before.UpdatedAt,
+            CreatedByUserId = before.CreatedByUserId,
+            RecurrenceRule = "FREQ=DAILY;COUNT=3",
+            RecurrenceTimezone = "UTC",
+        };
+        var ct = TestContext.Current.CancellationToken;
+        await repo.AddAsync(ev, ct);
+        var inner = new CalendarService(repo, new FakeClock(before.UpdatedAt),
+            Substitute.For<IAuditLogService>(), NullLogger<CalendarService>.Instance);
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<ICalendarService>(CachingCalendarService.InnerServiceKey, (_, _) => inner);
+        await using var provider = services.BuildServiceProvider();
+        var sut = new CachingCalendarService(provider.GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<CachingCalendarService>.Instance);
+        await WarmAsync(sut);
+        acknowledgement.Fail = true;
+        var dto = new CreateCalendarEventDto("After", null, null, null, before.OwningTeamId,
+            before.StartUtc, before.EndUtc, false, ev.RecurrenceRule, ev.RecurrenceTimezone);
+
+        if (string.Equals(operation, "create", StringComparison.Ordinal))
+            (await sut.CreateEventWithResultAsync(dto, Guid.NewGuid(), ct)).Succeeded.Should().BeFalse();
+        else if (string.Equals(operation, "update", StringComparison.Ordinal))
+            (await sut.UpdateEventWithResultAsync(ev.Id, dto, Guid.NewGuid(), ct)).Succeeded.Should().BeFalse();
+        else
+        {
+            Func<Task> mutate = operation switch
+            {
+                "delete" => () => sut.DeleteEventAsync(ev.Id, Guid.NewGuid(), ct),
+                "cancel" => () => sut.CancelOccurrenceAsync(ev.Id, before.StartUtc, Guid.NewGuid(), ct),
+                _ => () => sut.OverrideOccurrenceAsync(ev.Id, before.StartUtc,
+                    new OverrideOccurrenceDto(before.StartUtc, before.EndUtc, "Override", null, null, null),
+                    Guid.NewGuid(), ct),
+            };
+            (await mutate.Should().ThrowAsync<DbUpdateException>()).Which.Should().BeSameAs(acknowledgement.Failure);
+        }
+
+        var stored = await inner.GetAllEventInfosAsync(ct);
+        (await sut.GetAllEventInfosAsync(ct)).Should().BeEquivalentTo(stored,
+            "a save can commit before its acknowledgement fails");
+    }
+
+    private sealed class FailedSaveAcknowledgement : SaveChangesInterceptor
+    {
+        public bool Fail { get; set; }
+        public DbUpdateException Failure { get; } = new("Save acknowledgement lost");
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData,
+            int result, CancellationToken cancellationToken = default) =>
+            Fail ? throw Failure : ValueTask.FromResult(result);
+    }
+
     private readonly ICalendarService _inner = Substitute.For<ICalendarService>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly ILogger<CachingCalendarService> _logger = Substitute.For<ILogger<CachingCalendarService>>();
@@ -283,9 +361,12 @@ public sealed class CachingCalendarServiceTests
         }
     }
 
-    [HumansFact]
-    public async Task CreateEventWithResultAsync_DelegatesToInnerAndRefreshesEntry()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CreateEventWithResultAsync_DelegatesToInnerAndRefreshesEntry(bool abortAfterCommit)
     {
+        using var cancellation = new CancellationTokenSource();
         var created = new CalendarEvent
         {
             Id = Guid.NewGuid(),
@@ -305,46 +386,90 @@ public sealed class CachingCalendarServiceTests
         _inner.CreateEventWithResultAsync(dto, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(CalendarEventMutationResult.Success(created));
         _inner.GetEventInfoAsync(created.Id, Arg.Any<CancellationToken>())
-            .Returns(CalendarOccurrenceExpander.ToInfo(created));
+            .Returns(call => { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return CalendarOccurrenceExpander.ToInfo(created); });
 
         var sut = CreateSut();
         await WarmAsync(sut);
 
-        await sut.CreateEventWithResultAsync(dto, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        _inner.When(inner => inner.CreateEventWithResultAsync(dto, Arg.Any<Guid>(), cancellation.Token))
+            .Do(_ => { if (abortAfterCommit) cancellation.Cancel(); });
+        await sut.CreateEventWithResultAsync(dto, Guid.NewGuid(), cancellation.Token);
+        sut.IsWarmedUp.Should().BeTrue();
 
         sut.ContainsKey(created.Id).Should().BeTrue();
+        await _inner.Received(1).CreateEventWithResultAsync(dto, Arg.Any<Guid>(), cancellation.Token);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UpdateEventWithResultAsync_RefreshesCommittedEntry(bool abortAfterCommit)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var before = BuildInfo(title: "Before edit");
+        var after = before with { Title = "After edit" };
+        var updated = new CalendarEvent { Id = before.Id, Title = after.Title };
+        var dto = new CreateCalendarEventDto(after.Title, null, null, null, before.OwningTeamId,
+            before.StartUtc, before.EndUtc, false, null, null);
+        _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([before]);
+        _inner.GetEventInfoAsync(before.Id, Arg.Any<CancellationToken>())
+            .Returns(call => { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return after; });
+        _inner.UpdateEventWithResultAsync(before.Id, dto, Arg.Any<Guid>(), cancellation.Token)
+            .Returns(_ =>
+            {
+                if (abortAfterCommit) cancellation.Cancel();
+                return CalendarEventMutationResult.Success(updated);
+            });
+        var sut = CreateSut();
+        await WarmAsync(sut);
+
+        var result = await sut.UpdateEventWithResultAsync(before.Id, dto, Guid.NewGuid(), cancellation.Token);
+
+        result.Succeeded.Should().BeTrue();
+        sut.IsWarmedUp.Should().BeTrue();
+        (await sut.GetEventInfoAsync(before.Id, TestContext.Current.CancellationToken))!.Title.Should().Be(after.Title);
+        await _inner.Received(1).UpdateEventWithResultAsync(before.Id, dto, Arg.Any<Guid>(), cancellation.Token);
     }
 
     // Invariant: a per-occurrence write has no cache row of its own, so it must evict and
     // reload the PARENT event. Without the ReplaceAsync(eventId) in the decorator, every
     // read serves the pre-cancel series until the process restarts.
-    [HumansFact]
-    public async Task CancelOccurrenceAsync_RefreshesTheParentEventEntry()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancelOccurrenceAsync_RefreshesTheParentEventEntry(bool abortAfterCommit)
     {
+        using var cancellation = new CancellationTokenSource();
         var before = BuildInfo(title: "Weekly standup");
         var after = before with { Title = "Weekly standup (one cancelled)" };
         _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([before]);
-        _inner.GetEventInfoAsync(before.Id, Arg.Any<CancellationToken>()).Returns(after);
+        _inner.GetEventInfoAsync(before.Id, Arg.Any<CancellationToken>()).Returns(call => { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return after; });
 
         var sut = CreateSut();
         await WarmAsync(sut);
 
         var occurrence = Instant.FromUtc(2026, 6, 8, 10, 0);
-        await sut.CancelOccurrenceAsync(before.Id, occurrence, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        _inner.When(inner => inner.CancelOccurrenceAsync(before.Id, occurrence, Arg.Any<Guid>(), cancellation.Token))
+            .Do(_ => { if (abortAfterCommit) cancellation.Cancel(); });
+        await sut.CancelOccurrenceAsync(before.Id, occurrence, Guid.NewGuid(), cancellation.Token);
+        sut.IsWarmedUp.Should().BeTrue();
 
         await _inner.Received(1).CancelOccurrenceAsync(
-            before.Id, occurrence, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+            before.Id, occurrence, Arg.Any<Guid>(), cancellation.Token);
         var reloaded = await sut.GetEventByIdAsync(before.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded!.Title.Should().Be(after.Title, because: "the parent entry is reloaded after a per-occurrence write");
     }
 
-    [HumansFact]
-    public async Task OverrideOccurrenceAsync_RefreshesTheParentEventEntry()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OverrideOccurrenceAsync_RefreshesTheParentEventEntry(bool abortAfterCommit)
     {
+        using var cancellation = new CancellationTokenSource();
         var before = BuildInfo(title: "Weekly standup");
         var after = before with { Title = "Weekly standup (one moved)" };
         _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([before]);
-        _inner.GetEventInfoAsync(before.Id, Arg.Any<CancellationToken>()).Returns(after);
+        _inner.GetEventInfoAsync(before.Id, Arg.Any<CancellationToken>()).Returns(call => { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return after; });
 
         var sut = CreateSut();
         await WarmAsync(sut);
@@ -353,30 +478,39 @@ public sealed class CachingCalendarServiceTests
         var dto = new OverrideOccurrenceDto(
             Instant.FromUtc(2026, 6, 8, 14, 0), Instant.FromUtc(2026, 6, 8, 15, 0),
             null, null, null, null);
-        await sut.OverrideOccurrenceAsync(before.Id, occurrence, dto, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        _inner.When(inner => inner.OverrideOccurrenceAsync(before.Id, occurrence, dto, Arg.Any<Guid>(), cancellation.Token))
+            .Do(_ => { if (abortAfterCommit) cancellation.Cancel(); });
+        await sut.OverrideOccurrenceAsync(before.Id, occurrence, dto, Guid.NewGuid(), cancellation.Token);
+        sut.IsWarmedUp.Should().BeTrue();
 
         await _inner.Received(1).OverrideOccurrenceAsync(
-            before.Id, occurrence, dto, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+            before.Id, occurrence, dto, Arg.Any<Guid>(), cancellation.Token);
         var reloaded = await sut.GetEventByIdAsync(before.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded!.Title.Should().Be(after.Title, because: "the parent entry is reloaded after a per-occurrence write");
     }
 
-    [HumansFact]
-    public async Task DeleteEventAsync_TombstonesMissingEntry()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DeleteEventAsync_TombstonesMissingEntry(bool abortAfterCommit)
     {
+        using var cancellation = new CancellationTokenSource();
         var info = BuildInfo(title: "Deleted");
         _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>())
             .Returns([info]);
         _inner.GetEventInfoAsync(info.Id, Arg.Any<CancellationToken>())
-            .Returns((CalendarEventInfo?)null);
+            .Returns(call => { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return (CalendarEventInfo?)null; });
 
         var sut = CreateSut();
         await WarmAsync(sut);
 
-        await sut.DeleteEventAsync(info.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        _inner.When(inner => inner.DeleteEventAsync(info.Id, Arg.Any<Guid>(), cancellation.Token))
+            .Do(_ => { if (abortAfterCommit) cancellation.Cancel(); });
+        await sut.DeleteEventAsync(info.Id, Guid.NewGuid(), cancellation.Token);
+        sut.IsWarmedUp.Should().BeTrue();
 
         sut.ContainsKey(info.Id).Should().BeFalse();
-        await _inner.Received(1).DeleteEventAsync(info.Id, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _inner.Received(1).DeleteEventAsync(info.Id, Arg.Any<Guid>(), cancellation.Token);
     }
 
     private static CalendarEventInfo BuildInfo(

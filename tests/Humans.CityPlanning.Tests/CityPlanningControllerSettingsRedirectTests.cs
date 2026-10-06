@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.CityPlanning.Tests;
 
@@ -97,4 +98,37 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#city-planning");
         (await _service.GetRegistrationInfoAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be("Bring water.");
     }
+
+    [HumansTheory]
+    [InlineData("Index")]
+    [InlineData("BarrioMap")]
+    [InlineData("ContainerMap")]
+    public async Task MemberMapReads_CancelTheInitialUserLookup(string page)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var user = await _userService.GetUserInfoAsync(_userId, TestContext.Current.CancellationToken);
+        var canceledAtUserLookup = false;
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var token = call.Arg<CancellationToken>();
+            canceledAtUserLookup = token.IsCancellationRequested;
+            token.ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(user);
+        });
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
+
+        Task<IActionResult> ReadPage() => page switch
+        {
+            "Index" => _controller.Index(cancellation.Token),
+            "BarrioMap" => _controller.BarrioMap(cancellation.Token),
+            "ContainerMap" => _controller.ContainerMap(2026, cancellation.Token),
+            _ => throw new ArgumentOutOfRangeException(nameof(page)),
+        };
+
+        (await ReadPage()).Should().BeOfType<ViewResult>();
+        await cancellation.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPage);
+        canceledAtUserLookup.Should().BeTrue("an abandoned page must stop its initial member read");
+    }
+
 }

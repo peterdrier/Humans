@@ -34,7 +34,7 @@ internal sealed class UsersAdminDebugController(IUserService userService) : Huma
 
         var sorted = ApplySort(allRows, sort, dir);
         var total = sorted.Count;
-        var paged = sorted.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+        var paged = sorted.Skip((int)Math.Min(((long)page - 1) * pageSize, total)).Take(pageSize).ToList();
 
         return View(new UsersDebugViewModel(paged, total, page, pageSize, sort, dir));
     }

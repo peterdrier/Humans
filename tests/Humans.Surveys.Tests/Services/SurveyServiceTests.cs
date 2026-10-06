@@ -686,9 +686,11 @@ public class SurveyServiceTests
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Reserved_slug_is_rejected_before_uploading_information_images(bool existing)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Invalid_slug_is_rejected_before_uploading_information_images(bool existing, bool tooLong)
     {
         var ct = TestContext.Current.CancellationToken;
         var survey = SurveyWith(SurveyStatus.Draft, null, null);
@@ -701,7 +703,7 @@ public class SurveyServiceTests
             InformationImages:
             [new InformationImageInput(null, L("Forecast"), L("Forecast table"),
                 Upload: new SurveyImageUpload(content, "image/png", "forecast.png", 3))]);
-        var input = Input(information) with { PublicSlug = " Admin " };
+        var input = Input(information) with { PublicSlug = tooLong ? new string('a', 81) : " Admin " };
         var service = CreateService();
         var act = async () =>
         {
@@ -711,23 +713,34 @@ public class SurveyServiceTests
                 await service.CreateAsync(input, Guid.NewGuid(), ct);
         };
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Slug 'admin' is reserved.");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(tooLong
+            ? "The public link slug must be no longer than 80 characters."
+            : "Slug 'admin' is reserved.");
         await _fileStorage.DidNotReceive().SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task CreateAsync_accepts_non_reserved_slug_and_normalises_it()
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task CreateAsync_accepts_non_reserved_slug_and_normalises_it(int example)
     {
         Survey? captured = null;
         _repo.When(r => r.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
              .Do(ci => captured = ci.Arg<Survey>());
 
-        await CreateService().CreateAsync(InputWithSlug(" Summer-Feedback "), Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var slug = example switch
+        {
+            1 => new string('A', 80),
+            2 => string.Concat(Enumerable.Repeat("🔥", 80)),
+            _ => "Summer-Feedback"
+        };
+        await CreateService().CreateAsync(InputWithSlug($" {slug} "), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         captured.Should().NotBeNull();
-        captured!.PublicSlug.Should().Be("summer-feedback");
+        captured!.PublicSlug.Should().Be(slug.ToLowerInvariant());
     }
 
     [HumansFact]
@@ -1404,8 +1417,57 @@ public class SurveyServiceTests
             AuditAction.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SendInvitesAsync_finishes_batch_when_request_is_cancelled_after_first_invitation_save(bool upgradePublicParticipation)
+    {
+        var teamId = Guid.NewGuid();
+        Guid first = Guid.NewGuid(), second = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(TeamWith(teamId, first, second));
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [first] = "first@example.org", [second] = "second@example.org" });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        using var request = new CancellationTokenSource();
+        _repo.AddInvitationAndSaveAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                await request.CancelAsync();
+            });
+        if (upgradePublicParticipation)
+        {
+            var participation = new SurveyInvitation { Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = first };
+            _repo.GetInvitationsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns([participation]);
+            _repo.UpdateInvitationStatusAsync(participation.Id, EmailOutboxStatus.Queued, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+                .Returns(async call =>
+                {
+                    call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                    await request.CancelAsync();
+                });
+        }
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        });
+
+        var result = await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), request.Token);
+
+        result.InvitationsCreated.Should().Be(2);
+        result.EmailsQueued.Should().Be(2);
+        result.Failed.Should().Be(0);
+        await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == "first@example.org"), CancellationToken.None);
+        await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == "second@example.org"), CancellationToken.None);
+        await _audit.Received(1).LogAsync(AuditAction.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
+    }
+
     [HumansFact]
-    public async Task SendInvitesAsync_propagates_cancellation_without_marking_the_invitation_failed()
+    public async Task SendInvitesAsync_cancellation_before_batch_creates_no_invitation()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -1419,12 +1481,12 @@ public class SurveyServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
-        _emailService.SendAsync(Arg.Any<EmailMessage>(), aborted.Token)
-            .Returns(Task.FromCanceled(aborted.Token));
 
         var act = () => CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), aborted.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
+        await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
+        await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpdateInvitationStatusAsync(
             Arg.Any<Guid>(), EmailOutboxStatus.Failed, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
@@ -1917,25 +1979,36 @@ public class SurveyServiceTests
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ResolvePublicContextAsync_returns_null_for_unknown_slug()
+    [HumansTheory]
+    [InlineData("MISSING", 0)]
+    [InlineData("a", 80)]
+    [InlineData("😀", 80)]
+    public async Task ResolvePublicContextAsync_returns_null_for_unknown_slug(string text, int repeat)
     {
-        _repo.GetIdByPublicSlugAsync("missing", Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        var slug = repeat == 0 ? text : string.Concat(Enumerable.Repeat(text, repeat));
+        var normalized = slug.ToLowerInvariant();
+        _repo.GetIdByPublicSlugAsync(normalized, Arg.Any<CancellationToken>()).Returns((Guid?)null);
 
         var ctx = await CreateService().ResolvePublicContextAsync(
-            "MISSING", null, TestContext.Current.CancellationToken);
+            slug, null, TestContext.Current.CancellationToken);
 
         ctx.Should().BeNull();
         // Lookup uses the normalised (lower-cased/trimmed) slug.
-        await _repo.Received(1).GetIdByPublicSlugAsync("missing", Arg.Any<CancellationToken>());
+        await _repo.Received(1).GetIdByPublicSlugAsync(normalized, Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ResolvePublicContextAsync_returns_null_for_blank_slug()
+    [HumansTheory]
+    [InlineData("   ", 0)]
+    [InlineData(" Admin ", 0)]
+    [InlineData(" ANSWER ", 0)]
+    [InlineData("a", 81)]
+    [InlineData("😀", 81)]
+    public async Task ResolvePublicContextAsync_returns_null_for_invalid_slug(string text, int repeat)
     {
+        var slug = repeat == 0 ? text : string.Concat(Enumerable.Repeat(text, repeat));
         var ctx = await CreateService().ResolvePublicContextAsync(
-            "   ", null, TestContext.Current.CancellationToken);
+            slug, null, TestContext.Current.CancellationToken);
 
         ctx.Should().BeNull();
         await _repo.DidNotReceive().GetIdByPublicSlugAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -2700,6 +2773,41 @@ public class SurveyServiceTests
         result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
         result.MissingRequired.Should().BeEquivalentTo(new[] { q1Id });
         state.CurrentPage.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task AdvanceWizardAsync_rejects_duplicate_question_entries_before_advancing()
+    {
+        var survey = SurveyForWizard(out var questionId, out _);
+        var state = WizardState(survey.Id, Guid.NewGuid());
+        state.Answers[questionId.ToString()] = new SurveyWizardAnswer { SelectedOptionValues = ["yes"] };
+
+        var result = await CreateService().AdvanceWizardAsync(state, 1, back: false,
+            [Ans(questionId, "yes"), Ans(questionId, "no")], ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+        result.InvalidAnswers.Should().ContainSingle().Which.Should().Be(questionId);
+        state.Answers.Should().NotContainKey(questionId.ToString());
+        state.CurrentPage.Should().Be(1);
+        state.Started.Should().BeFalse();
+        await _repo.DidNotReceive().MarkInvitationStartedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AdvanceWizardAsync_ignores_duplicate_entries_outside_the_visible_page()
+    {
+        var survey = SurveyForWizard(out var questionId, out var laterQuestionId);
+        var unknownId = Guid.NewGuid();
+        var state = WizardState(survey.Id);
+
+        var result = await CreateService().AdvanceWizardAsync(state, 1, back: false,
+            [Ans(questionId, "yes"), TextAns(laterQuestionId, "first"), TextAns(laterQuestionId, "second"),
+             TextAns(unknownId, "first"), TextAns(unknownId, "second")], ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Navigated);
+        state.CurrentPage.Should().Be(2);
+        state.Answers.Should().ContainSingle().Which.Key.Should().Be(questionId.ToString());
     }
 
     [HumansFact]
@@ -4230,7 +4338,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task Closed_asociado_vote_exposes_unattributed_ballots_without_identified_respondents()
+    public async Task Closed_asociado_vote_exposes_unattributed_ballots_and_exports_without_identity_or_timing()
     {
         var survey = SurveyWith(SurveyStatus.Closed, SurveyAudienceType.Asociados, null);
         survey.IsAsociadoVote = true;
@@ -4254,6 +4362,9 @@ public class SurveyServiceTests
                 Guid.NewGuid(),
                 TextAnswer(questionId, "legacy")),
         };
+        Array.Sort(responses, (a, b) => a.Id.CompareTo(b.Id));
+        responses[0].SubmittedAt = now;
+        responses[1].SubmittedAt = now - Duration.FromDays(1);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _repo.GetResponsesForResultsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(responses);
         _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
@@ -4261,6 +4372,7 @@ public class SurveyServiceTests
 
         var scoped = await CreateService().GetScopedResultsAsync(
             survey.Id, SurveyResultsScope.Combined, TestContext.Current.CancellationToken);
+        var export = await CreateService().GetResponseExportAsync(survey.Id, TestContext.Current.CancellationToken);
 
         scoped!.IsAsociadoVote.Should().BeTrue();
         scoped.Results.IdentifiedRespondents.Should().BeEmpty();
@@ -4269,6 +4381,9 @@ public class SurveyServiceTests
             .SelectMany(ballot => ballot.Answers)
             .Select(answer => answer.TextValue)
             .Should().BeEquivalentTo("unlinkable", "legacy");
+        export!.Rows.Should().HaveCount(2).And.OnlyContain(row =>
+            row.UserId == null && row.UserName == null && row.SubmittedAt == null);
+        export.Rows.Select(row => row.ResponseId).Should().Equal(responses[0].Id, responses[1].Id);
         await _userService.DidNotReceive().GetUserInfosAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }

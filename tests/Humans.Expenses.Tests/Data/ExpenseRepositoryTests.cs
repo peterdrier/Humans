@@ -80,6 +80,34 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
+    public async Task AddLineAsync_AfterRemovingMiddleLine_AppendsAfterSurvivors()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var report = MakeReport();
+        await _sut.AddDraftAsync(report, ct);
+        var firstId = Guid.NewGuid();
+        var middleId = Guid.NewGuid();
+        var lastId = Guid.NewGuid();
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = firstId, Description = "first", Amount = 10m }, ct);
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = middleId, Description = "middle", Amount = 20m }, ct);
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = lastId, Description = "last", Amount = 30m }, ct);
+        await _sut.RemoveLineAsync(report.Id, middleId, ct);
+
+        var appendedId = Guid.NewGuid();
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = appendedId, Description = "appended", Amount = 40m }, ct);
+
+        var loaded = await _sut.GetByIdAsync(report.Id, ct);
+        loaded!.Lines.Single(l => l.Id == firstId).SortOrder.Should().Be(0);
+        loaded.Lines.Single(l => l.Id == lastId).SortOrder.Should().Be(2);
+        loaded.Lines.Single(l => l.Id == appendedId).SortOrder.Should().Be(3);
+        loaded.Total.Should().Be(80m);
+    }
+
+    [HumansFact]
     public async Task RemoveLineAsync_RemovesAndRecomputesTotal()
     {
         var report = MakeReport();

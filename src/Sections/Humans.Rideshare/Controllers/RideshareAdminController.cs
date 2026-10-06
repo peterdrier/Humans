@@ -50,7 +50,7 @@ internal sealed class RideshareAdminController(
         }
         catch (RideshareRuleException ex)
         {
-            logger.LogInformation(ex, "Rideshare settings save for {Year} rejected: rule {Rule}", year, ex.Key);
+            logger.LogWarning("Rideshare settings save for {Year} rejected: rule {Rule}", year, ex.Key);
             ModelState.AddModelError(string.Empty, localizer[ex.Key, ex.Args]);
             model.Stats = (await rideshare.GetSnapshotAsync(year, ct)).Stats();
             return View(model);

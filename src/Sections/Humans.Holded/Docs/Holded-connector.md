@@ -1,6 +1,6 @@
 <!-- freshness:triggers
-  src/Sections/Humans.Holded.Contracts/IHoldedClient.cs
-  src/Sections/Humans.Holded.Contracts/Holded*.cs
+  src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
+  src/Sections/Humans.Holded/Contracts/Holded*.cs
   src/Sections/Humans.Holded/Services/HoldedClient.cs
   src/Sections/Humans.Holded/Services/HoldedCallLog.cs
 -->
@@ -39,13 +39,15 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 - All HTTP calls go through one typed `HttpClient` (`HoldedClient`); Bearer auth via
   `Authorization` header.
 - 429 with `Retry-After` is honored (wait capped at 60 s) and retried once for content-free
-  requests; content-bearing requests surface it as transient immediately.
+  GETs. Every write, including a bodyless sales-approval POST, surfaces it as transient immediately.
 - Cursor pagination (`{items, cursor, has_more}`, `limit` ≤ 200) runs to completion or
   **throws** — a truncated list is never returned, because list results feed replace-semantics
   reconciliation where a short fetch would delete live rows.
+  Repeated cursors fail immediately instead of refetching pages until the endpoint's cap.
 - Expense-account `account_num` and chart account `id` are required. Missing numbers or missing/null/blank IDs fail the complete read with `HoldedPermanentException` before callers can provision or invoice from an incomplete account map.
 - Account numbers, supplier account numbers, ledger entry numbers and ledger line numbers must be integral. Numeric forms such as `40000001.0` are accepted; fractions are rejected instead of truncated. Contact-list parsing retains its existing skip-and-log behavior for unreadable contacts.
 - Purchase-document IDs must be nonblank; a missing/blank ID fails the complete read with `HoldedPermanentException`, so Finance never syncs an empty document identity. An absent `payments_pending` reads as 0, the safe direction (refuses a booking rather than over-paying).
+- Sales-document totals are required: a missing or null `total` fails as a permanent connector error before Store can finish issuance or compare a recovered invoice. Explicit zero remains valid.
 - Accounting-account debit, credit and balance are required decimal strings. Missing or null totals reject the complete page with `HoldedPermanentException`; they never become fabricated zero balances.
 - `ledger-entries` dates arrive as `DD/MM/YYYY` (parsed via `HoldedLedgerDatePattern` in
   `DateFormattingExtensions`); purchases/contacts dates are ISO. Decimals arrive as strings.
@@ -70,14 +72,13 @@ Inbound: Expenses (doc push via outbox), Finance (provisioning, contacts, doc sy
 ## Architecture
 
 **Owning surface:** `IHoldedClient`, its DTOs, its typed exceptions and `HoldedClientOptions`
-are public on `Humans.Holded.Contracts`; the impl `HoldedClient` and the `IHoldedCallLog`
+are public in `Humans.Holded/Contracts/` (namespace `Humans.Holded.Contracts`); the impl `HoldedClient` and the `IHoldedCallLog`
 singleton are `internal` in `Humans.Holded/Services/`. All of it is registered by this
 section's `Section.cs`.
 
-**Why the leaf and not a `Contracts/` folder:** two consumers are outside the section —
-Expenses (`ExpenseReportService`, via `IHoldedClient.IsConfigured`) and Finance (`Service`).
-A folder inside `Humans.Holded` would make those sections reach into a section-internal
-folder and cycle.
+**Consumers outside the section:** Expenses (`ExpenseReportService`, via
+`IHoldedClient.IsConfigured`) and Finance (`Service`) reach it through the public `Contracts/`
+folder.
 
 **The jobs live with their sections.** `HoldedSyncJob` is in `Humans.Holded/Jobs/`, a shim over
 this section's own `IHoldedNightlySync`; `HoldedExpenseOutboxJob` is in `Humans.Expenses/Jobs/`,

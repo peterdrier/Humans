@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 68
+next_id: 81
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
@@ -318,19 +318,50 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-09-20
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
+  - added: 2026-10-05
+    id: CENTRAL-76
+    what: "Consent's SendReConsentReminderJob selects recipients through Governance's GetUsersRequiringStatusUpdateAsync, which returns active-assignment users only after required consent grace periods have expired. The same audience feeds Users' suspension job 30 minutes later (04:00 reminder, 04:30 suspension), while the reminder email promises the configured ConsentReminderDaysBeforeSuspension (30) days remain. That setting affects wording only, not eligibility. Found during the daily debt sweep."
+    review: panel
+    status: needs-detail
+    blocked_on: "Agree a pre-expiry reminder audience and per-recipient deadline/document selection through section contracts; preserve the expired-consent suspension audience and cooldown semantics. New public surface needs approval."
+  - added: 2026-10-04
+    id: CENTRAL-74
+    what: "FeedbackController's four triage mutations map arbitrary InvalidOperationException dependency failures to 404, while BackdoorFeedbackController also classifies missing reports from exception message text. FeedbackService's throwing interface provides no structured missing/rule result. Persistence faults can therefore masquerade as missing reports without their error diagnostics. Agree an owner-defined error/result contract before repairing both callers; new public surface needs approval. Found during the daily debt sweep."
+    review: panel
+  - added: 2026-10-04
+    id: CENTRAL-73
+    what: "Backdoor IssuesController classifies every InvalidOperationException from PostComment as missing, and PatchField selects 404 versus 422 from Message containing 'not found'. Persistence faults can masquerade as missing/rule refusals and expose diagnostics. Browser Issues mutation wrappers now distinguish private known exceptions, but IIssueTriage exposes only throwing methods; agree a public error/result contract before repairing the machine path. Found during the daily debt sweep."
+    review: panel
+  - added: 2026-10-04
+    id: CENTRAL-72
+    what: "MailerLiteImportService.ApplyAsync (ReplaceUnverifiedEmail) and AttendeeContactImportService.ApplyDecisionAsync (DeleteUnverifiedThenCreate) delete the sole unverified UserEmail before account provisioning. If provisioning fails, the address stays removed while the batch reports an error. Reordering alone reuses the unverified owner; compensation can overwrite concurrent user changes. Needs a Users-owned coordinated replacement operation and agreed failure semantics through public contracts; deferred in the daily sweep."
+    review: panel
+  - added: 2026-10-04
+    id: CENTRAL-71
+    what: "TrackedCache.EnsureWarmedAsync awaits owner WarmAllAsync and then marks the cache warm without checking intervening eviction. Owner warmup loaders publish fetched rows through Set, so a load begun before Clear or a post-write refresh can republish old rows and overwrite fresher entries. GetAsync miss publication is now guarded separately. A complete warmup correction needs consistent snapshot publication across inherited/composed caches; the current Set seam does not distinguish bulk warmup from post-write replacement. Agree that design before wider cache changes; new public surface requires approval. Found during the daily sweep."
+    review: panel
+  - added: 2026-10-04
+    id: CENTRAL-70
+    what: "Program.cs AddHangfire carries a UseTypeResolver remap from the removed Humans.GoogleIntegration.Contracts assembly to Humans.GoogleIntegration, so scoped Google sync jobs persisted before nobodies-collective/Humans#1066 still load. Transitional: delete it once production has run that build and no Enqueued/Scheduled/Failed Hangfire job names the old assembly. Found in review of peterdrier/Humans#1902."
+    review: light
+    status: needs-detail
+    blocked_on: "nobodies-collective/Humans#1066's fold deployed to production and Hangfire storage holding no job that names Humans.GoogleIntegration.Contracts as an assembly."
+  - added: 2026-10-04
+    id: CENTRAL-69
+    what: "Humans.Base HumanViewComponent substitutes the literal Unknown for unresolved or nameless humans on member-visible layouts. Common_Unknown already exists in all six SharedResource cultures, but the component constructor has no localizer and its public model does not distinguish a fallback from a person named Unknown. Localize at the resolution boundary without string-based name detection; constructor/model public-surface changes need approval. Found during the daily production sweep."
+    review: panel
+    status: needs-detail
+    blocked_on: "Approve the smallest localization dependency or fallback-state surface for the shared component."
+  - added: 2026-10-04
+    id: CENTRAL-68
+    what: "MailerLiteSubscriberConverter.ParseDate hardcodes yyyy-MM-dd HH:mm:ss in DateTime.ParseExact outside DateFormattingExtensions, violating datetime-format-single-home (the analyzer does not cover ParseExact). Its UTC/null/exact parsing has coverage. Reuse audit found only a timestamp formatter, no matching parse pattern; moving this pattern into Base adds public surface and requires approval. Found during the daily production sweep."
+    review: light
+    status: needs-detail
+    blocked_on: "Approve a matching parse pattern in DateFormattingExtensions; preserve exact UTC parsing and invalid-input failure semantics."
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-09-10
     id: CENTRAL-35
     what: "GoogleIntegration's Drive sync knows about Teams directly: google_resources rows are keyed by TeamId and expected Drive access is derived from team membership inside the connector. The Workgroups design (src/Sections/Humans.Workgroups/Docs/2026-09-10-workgroups-section-design.md §9) introduces IGoogleDriveAccessSource, the Drive analogue of IGoogleGroupMembershipSource, with Workgroups as its first source. Migrate Teams' Drive path onto the same fan-out so the connector stops referencing team membership at all (Teams becomes a source that claims its google_resources folder ids); then the connector owns only clients, diffing, mutation and the sync log. Peter's call 2026-09-10: 'should google-drive have a fanout then, instead of knowing about teams directly?' — yes, as follow-up after Workgroups lands."
-    review: panel
-  - added: 2026-09-12
-    id: CENTRAL-47
-    what: "docs/sections/G5-SECTION-TEMPLATE.md:1037 step 6 still tells a new section that authorization policies stay in Shell's AuthorizationPolicyExtensions; ISectionPolicies superseded that (nobodies-collective/Humans#1076) and the sections with their own policies now register them themselves. Shell's own AuthorizationPolicyExtensions class doc says the new rule while :22 still cites \"design §15 step 6's asymmetry\" for the old one. The template is what new sections are built from, so it manufactures the drift. These Section.cs files also cite \"design §8\" for this, which is design-rules.md's Table Ownership Map — the intended source is the G5 split-design spec §8: Humans.Debug:20, Humans.Issues:42, Humans.Expenses:51, Humans.Containers:27, Humans.Budget:54. Checked and NOT stale: Humans.Camps:78 and Humans.Users:136 (/section-doctor on Cantina 2026-09-12)."
-    review: panel
-    root: CENTRAL-57
-  - added: 2026-09-03
-    id: CENTRAL-34
-    what: "The Holded ledger mirror holds member-identifiable data that no GDPR export reaches. Finance binds a member to a 400000xx creditor account (HoldedCreditorContact.UserId -> SupplierAccountNum); Humans.Holded then mirrors that account's HoldedAccount.Name (Holded's contact name, i.e. the member's) and every HoldedLedgerLine on it, free-text Description included, and /Holded/Accounts/{n} renders both. Finance's ContributeForUserAsync exports only the binding itself and SEPA payouts, so an Article 15 export omits the member's mirrored reimbursement history. Deciding the fix means deciding what belongs in the slice, whether Holded gains a contributor (it holds no UserId, so Gdpr or Finance must pass the account number) and the retention basis for refusing erasure — the mirror is re-derivable from Holded, so the Codigo de Comercio Art. 30 argument Finance uses for payout files may not transfer. Spans Holded, Finance and Gdpr and adds public surface whichever way it goes, so it is Peter's call. Found by /section-doctor on Holded 2026-09-03, from a Codex review finding on peterdrier/Humans#1583; the docs there previously asserted 'no user-scoped data -> no GDPR contributor' and have been corrected to state the gap."
     review: panel
   - added: 2026-08-27
     id: CENTRAL-27
@@ -377,10 +408,6 @@ inbox:
     what: "nobodies-collective/Humans#1631 decoupled Shifts from the app-wide event calendar (Settings mints ids, Shifts creates its own knobs row on demand) but left event_settings' app-wide columns (EventName, Year, TimeZoneId, GateOpeningDate, all offsets, EarlyEntryCapacity, BarriosEarlyEntryAllocation, EarlyEntryClose) and IsActive in place, per memory/architecture/no-column-drops-for-decoupling.md and no-drops-until-prod-verified.md — the columns are fully dead (no Shifts code reads or writes them beyond satisfying NOT NULL on insert) but not dropped. A follow-up migration to drop them needs Peter's per-case approval and prod verification that no reader regressed first."
     review: panel
   - added: 2026-08-05
-    id: CENTRAL-9
-    what: "Extend [ExternalWrite] marking to the Holded surface (ExpenseReportService transitions reaching holdedClient.CreatePurchaseDocumentAsync / ApprovePurchaseDocumentAsync / UploadAttachmentAsync via RunMutationAsync; HoldedFinanceService.EnsureCreditorContactAsync, CreateExpenseAccountAsync) so HUM0033 guards it. No defect exists today — ExpensesController and FinanceController declare no CancellationToken parameter — so this is future-proofing per memory/architecture/cancellation-token-propagation.md (found while auditing nobodies-collective/Humans#950)"
-    review: panel
-  - added: 2026-08-05
     id: CENTRAL-10
     what: "GoogleController.SyncExecute / SyncExecuteAll run a full Workspace reconcile inline on the request thread. Moving them to Hangfire (the TicketController.Sync pattern) is blocked on UI: Views/Google/Sync.cshtml:142,163 calls loadTab() in the fetch continuation, so the tab refresh depends on the POST having completed the reconcile — fire-and-forget would re-render stale diffs. Needs a progress/polling affordance (deferred from nobodies-collective/Humans#950)"
     review: panel
@@ -390,10 +417,6 @@ inbox:
     review: panel
     status: needs-detail
     blocked_on: "A measured failure rate under parallel load plus one captured timeout; Integration.Tests is local-only, so the claim needs Peter's machine to reproduce."
-  - added: 2026-06-12
-    id: CENTRAL-1
-    what: "HumansMetricsService migration out of Infrastructure (touches 6+ sections)"
-    review: panel
   - added: 2026-06-12
     id: CENTRAL-2
     what: "GoogleWorkspaceHealthCheck direct Google.Apis imports — extract IHealthCheckGoogleClient"
@@ -432,35 +455,6 @@ inbox:
     id: CENTRAL-24
     what: "HumansControllerBase.SetError service-locates ILoggerFactory off HttpContext.RequestServices while SetSuccess and SetInfo resolve nothing. The original symptom is gone — the lookup is null-conditional (HttpContext?.RequestServices?.GetService), so it no longer throws in a controller unit test — but the asymmetry and the service-location remain, and injecting the logger would remove both. No test scaffolding rides on it: Onboarding's controller tests set ControllerContext and ctrl.Url because RedirectToAction resolves IUrlHelperFactory, which injection here would not change. Base's, so it has no section ledger. Found by /section-doctor on Onboarding 2026-08-23; symptom re-verified and corrected, test-scaffolding claim struck, 2026-09-13."
     review: panel
-  - added: 2026-08-27
-    id: CENTRAL-28
-    what: ".claude/skills/section-align/SKILL.md:51 claims Humans.Gdpr has no Controllers/; it has had one since nobodies-collective/Humans#1091, and the line drives a shell path filter (finding 14, /section-doctor on Gdpr 2026-08-27)."
-    review: panel
-    root: CENTRAL-57
-  - added: 2026-08-27
-    id: CENTRAL-29
-    what: "docs/architecture/design-rules.md:308 names only /Profile/Me/DownloadData as the GDPR export download; /Guest/DownloadData is the other, and §8a's rule gates both (finding 15, /section-doctor on Gdpr 2026-08-27)."
-    review: panel
-    root: CENTRAL-57
-  - added: 2026-08-27
-    id: CENTRAL-30
-    what: "docs/architecture/service-data-access-map.md:312 states EF DbContext/IDbContextFactory usage is \"not thread-safe within a single async flow\" as the reason the Calendar/Gdpr/EarlyEntry contributor fan-outs are sequential. Independent factory-created contexts are safe concurrently; §8a of design-rules.md says so (finding 22, /section-doctor on Gdpr 2026-08-27)."
-    review: panel
-    root: CENTRAL-57
-  - added: 2026-08-27
-    id: CENTRAL-31
-    what: "docs/architecture/design-rules.md:340 says contributors \"read through their own IDbContextFactory<TContext>\" and names AgentService as an example; AgentRepository takes a scoped AgentDbContext by injection. The conclusion (sequential is no longer a correctness requirement) is right; the stated mechanism is not — the accurate invariant is that no two contributors share a context instance (finding 25, /section-doctor on Gdpr 2026-08-27)."
-    review: panel
-    root: CENTRAL-57
-  - added: 2026-09-10
-    id: CENTRAL-39
-    what: "docs/architecture/dependency-graph.md classes Backdoor as a crosscut and omits its edges to the sections it serves (Agent, Feedback, Issues.Contracts, Surveys). It is a leaf, not a crosscut: nothing references it back (finding 16, /section-doctor on Backdoor 2026-09-03; swept in by /section-doctor on Rideshare 2026-09-10)."
-    review: light
-    root: CENTRAL-57
-  - added: 2026-09-11
-    id: CENTRAL-42
-    what: "GenerateDocumentationFile is set in no project in this repo, so CS1574 never fires and a broken <see cref> target never fails a build; Calendar alone was carrying a batch of them. Repo-wide (finding 5, /section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Guide 2026-09-11)."
-    review: light
   - added: 2026-09-11
     id: CENTRAL-43
     what: "Calendar's authorization posture ([Authorize] on the controller, one anonymous feed action) is enforced by nothing. It cannot be a per-section test (memory/architecture/no-tests-for-absences.md) and the behavioural alternative needs a WebApplicationFactory, which lives only in the never-CI integration project (finding 17, /section-doctor on Calendar 2026-09-01; swept in by /section-doctor on Guide 2026-09-11)."
@@ -502,3 +496,27 @@ inbox:
     id: CENTRAL-67
     what: "The erasure-coverage and DI-coverage tests find contributors by reflecting over IUserDataContributor implementers, so a new user-scoped section whose service never implements the contract leaves nothing to enumerate and both suites pass. The only guardrail is prose in docs/architecture/design-rules.md. nobodies-collective/Humans#1116 described exactly this and asked for an independent inventory (reflection over entities carrying a user foreign key), but it was closed when the section-name registry was removed, which fixed a different problem, and the gap is now tracked nowhere open. The fix is a cross-section test beside the existing coverage tests in tests/Humans.Web.Tests/Services/Gdpr/, plus a per-section export/erasure decision for whatever it surfaces (Calendar's CreatedByUserId is nobodies-collective/Humans#1199). Found by /section-doctor on Gdpr 2026-09-23."
     review: panel
+  - added: 2026-10-04
+    id: CENTRAL-75
+    what: "Containers Service validators throw localized InvalidOperationException messages for names, images and placement geometry. CityPlanningApiController.SaveContainerPlacement identifies validation failure by comparing ex.Message to a localized ContainersResource value. This violates no-localized-exception-messages and couples failure classification to translated wording. A structured owner validation result should preserve existing localized form/API feedback while leaving exception messages developer-facing; public result/contract changes need approval. Found during the daily production sweep."
+    review: panel
+
+  - added: 2026-10-05
+    id: CENTRAL-77
+    what: "DoNotPersist account-deletion mail bypasses the outbox but still reaches SmtpEmailTransport/StubEmailTransport Recipient and Subject logs, and ProcessAccountDeletionsJob logs transport exceptions. Base recipient redaction masks only part of the address and does not scrub subjects or exceptions, so the no-stored-recipient erasure guarantee is not met. Found during the daily debt sweep. Agree an approved privacy signal through the internal transport boundary and diagnostic/error handling before changing the public surface; preserve normal delivery diagnostics and deletion confirmation."
+    review: panel
+  - added: 2026-10-06
+    id: CENTRAL-78
+    what: "tests/Humans.Integration.Tests/Controllers/AdminLayoutRenderTests.cs AdminPages labels each admin page's layout site as a section `Views/<X>/_ViewStart`, but peterdrier/Humans#1809 deleted those files and the Shell's Views/_ViewStart.cshtml now picks _AdminLayout; the labels, and the test summary's \"every assembly that names the layout\", describe a shape that no longer exists (/section-doctor on EarlyEntry 2026-10-06)."
+    review: light
+    root: CENTRAL-57
+  - added: 2026-10-06
+    id: CENTRAL-79
+    what: "docs/sections/SECTION-TEMPLATE.md still names Humans.Application, Humans.Infrastructure and tests/Humans.Application.Tests/Architecture/ in its architecture-test line and (A) Migrated block, none of which exist, so every new section doc starts from stale text (/section-doctor on EarlyEntry 2026-09-05, re-verified 2026-10-06)."
+    review: light
+    root: CENTRAL-57
+  - added: 2026-10-06
+    id: CENTRAL-80
+    what: "docs/architecture/design-rules.md's early-entry wheat marker cites docs/superpowers/plans/2026-05-25-early-entry-roster.md, which is not in the tree (/section-doctor on EarlyEntry 2026-09-05, re-verified 2026-10-06)."
+    review: light
+    root: CENTRAL-57

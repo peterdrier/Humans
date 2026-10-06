@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Budget/**
-  src/Sections/Humans.Budget.Contracts/**
+  src/Sections/Humans.Budget/Contracts/**
 -->
 <!-- freshness:flag-on-change
   Budget lifecycle, restricted/ticketing-group rules, append-only audit log, and resource-based authorization — review when Budget services/entities/controllers/auth handlers change.
@@ -193,11 +193,26 @@ Stored as string via `HasConversion<string>()`.
 
 ## Invariants
 
-- A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).
+- Category and line-item create/update forms reject binding errors with HTTP 400 and a Warning before writing amounts, VAT, team assignments or expected dates. Current-user resolution and coordinator category authorization retain precedence; explicit zero amounts and empty optional fields remain valid.
+
+- Budget group create/update forms reject binding errors with HTTP 400 and a Warning after current-user resolution, before changing restrictions or sort order. Missing users retain HTTP 404; explicit false restriction flags remain valid.
+
+- The member overview’s income and expense percentage labels use the selected UI culture. Their one-decimal precision, percentage calculations and invariant chart JSON values are unchanged. Member and finance chart money tooltips follow the document’s selected UI language rather than the browser’s default locale.
+
+- Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant. Coordinator category utilization percentages use the same UI culture; the capped progress-bar width retains machine formatting.
+
+- Public summary and finance overview render the same service slice DTOs directly; they do not copy name, amount and percentage into duplicate view rows.
+
+- A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft or reactivating a non-archived Closed year auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).
 - A Closed year is read-only: every repository mutation — the ticketing sync pair and the year-metadata rename included — refuses with `InvalidOperationException`. Only `UpdateYearStatusAsync` (Reactivate) and `DeleteYearAsync` (archive) act on a Closed year.
+- Archived years cannot change status. A stale activation request fails before changing the current Active year or writing status audit entries; archived audit history remains available.
 - A coordinator can only create, edit, or delete line items in categories linked to a department they coordinate.
 - Restricted groups are editable only by FinanceAdmin and Admin. Coordinators see the group header and category names in `/Budget` (with a "Restricted" badge in place of the drill-in link) and the group's totals roll up into `/Budget/Summary` aggregates, but `/Budget/Category/{id}` returns `Forbid` for non-finance users.
 - Ticketing groups are hidden from the `/Budget` index for non-finance users (`Index.cshtml` filters `IsTicketingGroup` unless `IsFinanceAdmin`); their aggregates still appear in `/Budget/Summary`, and `/Budget/Category/{id}` returns `Forbid` for non-finance users on any ticketing category.
+- Ticketing actuals sync updates existing weekly Stripe/TicketTailor fee rows when their source amount becomes zero, retaining their identity and recording the sync audit. A new zero fee produces no line item.
+- The ticketing projection parameter editor counts remaining UTC calendar days, matching the controller’s day-count basis. Browser time zones and daylight-saving transitions do not change the rate/target calculation.
+- Ticketing projection previews and persisted projected line items use `TicketingProjection.CalculateWeeks`: the same ISO-week bounds, initial burst, ticket minimum, revenue and fee calculations. Materialization runs after actuals update the projection parameters. Persisted generated week descriptions remain canonical English regardless of the operator’s UI language; preview date labels follow the UI language.
+- The ticketing projection includes the event date in its final week, including when that date is a Monday and forms a one-day final week. Once the event date has passed, it emits no projected weeks.
 - Every create, update, or delete on a group, category, or line item generates a `BudgetAuditLog` entry recording old value, new value, actor, and timestamp; the ticketing sync paths write one summary entry per run that changed anything, with a null actor for the nightly job.
 - "Sync Departments" creates a category for each department that does not already have one in the selected year.
 - `/Finance` index shows a consolidated accordion view: groups, categories with budget vs actual comparison, and inline line items. FinanceAdmin sees all summary data inline.
@@ -232,7 +247,7 @@ Stored as string via `HasConversion<string>()`.
 **Owned tables:** `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections`
 **Status:** (A) Migrated.
 
-- Everything but `Section`, `BudgetResource`, `TicketingBudgetSyncJob` (public with an internal constructor — the Shell names the type for Hangfire registration) and the migrations is `internal` — HUM0034 enforces it. The cross-section surface is the leaf project `Humans.Budget.Contracts`: `IBudgetServiceRead` (incl. `GetYearByIdAsync` so Expenses can offer the categories of the year a pending report is already booked to), `IBudgetDemoSeeder`, the DTOs those name, and the `BudgetYearStatus` / `ExpenditureType` enums. `ITicketingBudgetService` is internal (ruling 43). The leaf is a project rather than a `Contracts/` folder because one consumer is still in Base — `TicketQueryService`.
+- Everything but `Section`, `BudgetResource`, `TicketingBudgetSyncJob` (public with an internal constructor — the Shell names the type for Hangfire registration) and the migrations is `internal` — HUM0034 enforces it. The cross-section surface is the `Contracts/` folder (namespace `Humans.Budget.Contracts`): `IBudgetServiceRead` (incl. `GetYearByIdAsync` so Expenses can offer the categories of the year a pending report is already booked to), `IBudgetDemoSeeder`, the DTOs those name, and the `BudgetYearStatus` / `ExpenditureType` enums. `ITicketingBudgetService` is internal (ruling 43).
 - `BudgetService` lives in `Humans.Budget.Services` and depends only on Application-layer abstractions. `IBudgetService` (internal) is the full surface on top of the read interface; it stays an interface because the ticketing bridge's unit tests substitute it.
 - `BudgetRepository` (impl `src/Sections/Humans.Budget/Data/BudgetRepository.cs`, §15b Singleton + `IDbContextFactory<BudgetDbContext>`) is the only file that touches budget tables via `DbContext`. `IBudgetRepository` exposes atomic per-method operations — multi-entity mutations (e.g. creating a year with its default groups / categories / projection row, or syncing ticketing actuals + re-materializing projected line items) are single repository methods that do all their work inside one short-lived `DbContext`.
 - **Decorator decision — no caching decorator.** Budget is admin-only, low-traffic. Same rationale as Governance / User / Feedback.
@@ -249,8 +264,8 @@ Stored as string via `HasConversion<string>()`.
 
 ## Issue queue
 
-Budget owns the `Budget` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
-leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+Budget owns the `Budget` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
+folder) on its `Section` entry point, declaring the queue key and the roles that handle
 issues filed against it — `FinanceAdmin`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.

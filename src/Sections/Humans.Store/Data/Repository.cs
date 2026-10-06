@@ -141,6 +141,7 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
         return await ctx.Orders.AsNoTracking()
             .Where(o => o.TeamId.HasValue && teamIds.Contains(o.TeamId.Value) && o.Year == year)
             .Include(o => o.Lines)
+            .Include(o => o.Payments)
             .ToListAsync(ct);
     }
 

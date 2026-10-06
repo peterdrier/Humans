@@ -22,15 +22,18 @@
                 @for (var i = 0; i < Model.Categories.Count; i++)
                 {
                     var item = Model.Categories[i];
+                    var categoryName = item.Category == MessageCategory.Ticketing
+                        ? Localizer["CommPrefs_TicketingYear", Model.TicketingYear].Value
+                        : Localizer[$"CommPrefs_Name_{item.Category}"].Value;
 
-                    <tr class="@(!item.EmailEditable ? "table-light" : "")">
+                    <tr class="@(!item.EmailEditable ? "table-light" : "")" data-alert-enabled="@(item.AlertEnabled ? "true" : "false")">
                         <td>
-                            <div class="fw-semibold">@item.DisplayName</div>
-                            <div class="form-text mb-0">@item.Description</div>
+                            <div class="fw-semibold">@categoryName</div>
+                            <div class="form-text mb-0">@Localizer[$"CommPrefs_Description_{item.Category}"]</div>
                             @if (item.Note is not null)
                             {
                                 <div class="form-text text-warning-emphasis mb-0">
-                                    <i class="fa-solid fa-lock fa-xs me-1"></i>@item.Note
+                                    <i class="fa-solid fa-lock fa-xs me-1"></i>@Localizer["CommPrefs_TicketingLocked"]
                                 </div>
                             }
                         </td>
@@ -39,16 +42,16 @@
                             {
                                 if (item.EmailEnabled)
                                 {
-                                    <input type="checkbox" class="form-check-input" checked disabled />
+                                    <input type="checkbox" aria-label="@Localizer["CommPrefs_Email"] — @categoryName" class="form-check-input" checked disabled />
                                 }
                                 else
                                 {
-                                    <input type="checkbox" class="form-check-input" disabled />
+                                    <input type="checkbox" aria-label="@Localizer["CommPrefs_Email"] — @categoryName" class="form-check-input" disabled />
                                 }
                             }
                             else if (item.EmailEditable)
                             {
-                                <input type="checkbox"
+                                <input type="checkbox" aria-label="@Localizer["CommPrefs_Email"] — @categoryName"
                                        class="form-check-input pref-toggle"
                                        data-category="@item.Category"
                                        data-channel="email"
@@ -56,7 +59,7 @@
                             }
                             else
                             {
-                                <input type="checkbox"
+                                <input type="checkbox" aria-label="@Localizer["CommPrefs_Email"] — @categoryName"
                                        class="form-check-input"
                                        checked
                                        disabled />

@@ -112,7 +112,7 @@ internal sealed partial class UserRepository
             .ExecuteDeleteAsync(ct);
     }
 
-    public async Task<int> ReassignUserEmailsToUserAsync(
+    public async Task ReassignUserEmailsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -157,9 +157,6 @@ internal sealed partial class UserRepository
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        return await ctx.UserEmails
-            .CountAsync(e => e.UserId == targetUserId, ct);
     }
 
     public async Task<bool> MarkUserEmailVerifiedAsync(
@@ -375,7 +372,8 @@ internal sealed partial class UserRepository
             await tx.CommitAsync(ct);
         }
         catch (DbUpdateException dbex)
-            when (dbex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+            when (dbex.InnerException is Npgsql.PostgresException
+            { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_user_emails_Email" })
         {
             // The verified-email partial unique index caught a concurrent
             // cross-user insert that beat the in-service pre-check. Translate

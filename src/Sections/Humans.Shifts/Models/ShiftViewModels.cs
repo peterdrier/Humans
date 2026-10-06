@@ -306,10 +306,12 @@ internal sealed class ShiftAdminViewModel
 internal sealed class ShiftInfoViewModel
 {
     public List<string> SelectedSkills { get; set; } = [];
+    [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string? SkillOtherText { get; set; }
     public List<string> SelectedQuirks { get; set; } = [];
     public string? TimePreference { get; set; } // Mutually exclusive; persisted as a quirk value.
     public List<string> SelectedLanguages { get; set; } = [];
+    [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string? LanguageOtherText { get; set; }
 
     internal static readonly string[] SkillOptions = ["Bartending", "First Aid", "Driving", "Sound", "Electrical", "Construction", "Cooking", "Art", "DJ", "Other"];
@@ -354,14 +356,6 @@ internal sealed class ShiftInfoViewModel
         ["Night Owl"] = "\U0001f319",
         ["All Day"] = "\u2600\ufe0f",
         ["No Preference"] = "\U0001f937"
-    };
-
-    internal static readonly Dictionary<string, string> TimePreferenceDesc = new(StringComparer.Ordinal)
-    {
-        ["Early Bird"] = "Morning shifts, set up and prep",
-        ["Night Owl"] = "Evening and late-night shifts",
-        ["All Day"] = "Flexible, morning through evening",
-        ["No Preference"] = "I'll take whatever's needed"
     };
 
     internal static ShiftInfoViewModel FromProfile(ShiftVolunteerProfileInfo? profile)

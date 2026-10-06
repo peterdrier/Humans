@@ -45,7 +45,7 @@ internal sealed class IssuesController(
         string? search,
         Guid? selected)
     {
-        var (userMissing, user) = await RequireCurrentUserAsync();
+        var (userMissing, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (userMissing is not null) return userMissing;
 
         var viewer = ViewerFor(user.Id);
@@ -74,7 +74,7 @@ internal sealed class IssuesController(
             SearchText: !string.IsNullOrWhiteSpace(search) ? search : null,
             Limit: 200);
 
-        var matches = await issues.GetIssueListAsync(filter, viewer);
+        var matches = await issues.GetIssueListAsync(filter, viewer, HttpContext.RequestAborted);
 
         // Section dropdown: Admin sees all known sections; non-admins see the
         // sections their roles own (so they only filter inside their own queue).
@@ -90,7 +90,7 @@ internal sealed class IssuesController(
         var reporterOptions = new List<ReporterDropdownItem>();
         if (viewer.IsAdmin)
         {
-            var distinct = await issues.GetDistinctReportersAsync();
+            var distinct = await issues.GetDistinctReportersAsync(HttpContext.RequestAborted);
             reporterOptions = distinct
                 .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .Select(r => new ReporterDropdownItem
@@ -188,12 +188,12 @@ internal sealed class IssuesController(
     [HttpGet("{id}")]
     public async Task<IActionResult> Detail(Guid id, bool partial = false)
     {
-        var (userMissing, user) = await RequireCurrentUserAsync();
+        var (userMissing, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (userMissing is not null) return userMissing;
 
         var isPartial = partial || Request.Headers.XRequestedWith == "XMLHttpRequest";
         var viewer = ViewerFor(user.Id);
-        var issue = await issues.GetIssueByIdAsync(id, viewer);
+        var issue = await issues.GetIssueByIdAsync(id, viewer, HttpContext.RequestAborted);
 
         // "Not found" and "no access" indistinguishable. Partial → inline notice; full nav → redirect to Index.
         var canHandle = issue is not null
@@ -207,13 +207,13 @@ internal sealed class IssuesController(
                 : RedirectToAction(nameof(Index));
         }
 
-        var thread = await issues.GetThreadAsync(id, viewer);
-        var displayUsers = await GetIssueDisplayUsersAsync(issue);
+        var thread = await issues.GetThreadAsync(id, viewer, HttpContext.RequestAborted);
+        var displayUsers = await GetIssueDisplayUsersAsync(issue, HttpContext.RequestAborted);
         var vm = MapDetailViewModel(issue, thread, displayUsers, isHandler: canHandle, isReporter: isReporter);
 
         if (canHandle)
         {
-            await PopulateAssigneeOptionsAsync(vm);
+            await PopulateAssigneeOptionsAsync(vm, HttpContext.RequestAborted);
         }
 
         if (isPartial)
@@ -224,9 +224,9 @@ internal sealed class IssuesController(
         return RedirectToAction(nameof(Index), new { selected = id });
     }
 
-    private async Task PopulateAssigneeOptionsAsync(IssueDetailViewModel vm)
+    private async Task PopulateAssigneeOptionsAsync(IssueDetailViewModel vm, CancellationToken ct)
     {
-        var activeIds = (await UserService.GetAllUserInfosAsync().ConfigureAwait(false))
+        var activeIds = (await UserService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.IsActive)
             .Select(u => u.Id)
             .ToList();
@@ -236,7 +236,7 @@ internal sealed class IssuesController(
         }
         else
         {
-            var active = await UserService.GetUserInfosAsync(activeIds);
+            var active = await UserService.GetUserInfosAsync(activeIds, ct);
             vm.AssigneeOptions = active.Values
                 .OrderBy(u => u.BurnerName, StringComparer.OrdinalIgnoreCase)
                 .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.BurnerName })
@@ -249,7 +249,7 @@ internal sealed class IssuesController(
         if (vm.AssigneeUserId.HasValue &&
             vm.AssigneeOptions.All(a => a.Id != vm.AssigneeUserId.Value))
         {
-            var inactiveInfo = await UserService.GetUserInfoAsync(vm.AssigneeUserId.Value);
+            var inactiveInfo = await UserService.GetUserInfoAsync(vm.AssigneeUserId.Value, ct);
             if (inactiveInfo is not null && inactiveInfo.Id != vm.AssigneeUserId.Value)
                 vm.AssigneeUserId = inactiveInfo.Id;
             if (vm.AssigneeOptions.All(a => a.Id != vm.AssigneeUserId.Value))
@@ -323,6 +323,11 @@ internal sealed class IssuesController(
         if (issue is null) return NotFound();
         var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid issue triage form for {IssueId}", id);
+            return BadRequest(ModelState);
+        }
 
         var result = await issues.UpdateStatusWithResultAsync(id, viewer, model.Status, user.Id);
         if (result.NotFound) return NotFound();
@@ -351,6 +356,11 @@ internal sealed class IssuesController(
         if (issue is null) return NotFound();
         var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid issue triage form for {IssueId}", id);
+            return BadRequest(ModelState);
+        }
 
         var result = await issues.UpdateAssigneeWithResultAsync(id, viewer, model.AssigneeUserId, user.Id);
         if (result.NotFound) return NotFound();
@@ -379,8 +389,14 @@ internal sealed class IssuesController(
         if (issue is null) return NotFound();
         var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid issue triage form for {IssueId}", id);
+            return BadRequest(ModelState);
+        }
 
         var result = await issues.UpdateSectionWithResultAsync(id, viewer, model.Section, user.Id);
+        if (result.NotFound) return NotFound();
         if (result.Succeeded)
         {
             SetSuccess(localizer["Issue_Section_Updated"].Value);
@@ -411,6 +427,11 @@ internal sealed class IssuesController(
         if (issue is null) return NotFound();
         var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid issue triage form for {IssueId}", id);
+            return BadRequest(ModelState);
+        }
 
         var result = await issues.SetGitHubIssueNumberWithResultAsync(id, viewer, model.GitHubIssueNumber, user.Id);
         if (result.NotFound) return NotFound();
@@ -497,12 +518,12 @@ internal sealed class IssuesController(
         };
     }
 
-    private async Task<IReadOnlyDictionary<Guid, UserInfo>> GetIssueDisplayUsersAsync(IssueDetail issue)
+    private async Task<IReadOnlyDictionary<Guid, UserInfo>> GetIssueDisplayUsersAsync(IssueDetail issue, CancellationToken ct)
     {
         var ids = new HashSet<Guid> { issue.ReporterUserId };
         if (issue.AssigneeUserId is { } assigneeId) ids.Add(assigneeId);
         if (issue.ResolvedByUserId is { } resolvedById) ids.Add(resolvedById);
 
-        return await UserService.GetUserInfosAsync(ids);
+        return await UserService.GetUserInfosAsync(ids, ct);
     }
 }

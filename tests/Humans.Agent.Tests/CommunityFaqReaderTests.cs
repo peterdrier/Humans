@@ -81,6 +81,21 @@ public class CommunityFaqReaderTests
         e.Summary.Should().Be("What the NCA is and how to join.");
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Long_unbroken_overview_preserves_whole_surrogate_pairs(bool fits)
+    {
+        var prefix = new string('a', fits ? 198 : 199);
+        var overview = prefix + "😀tail";
+        var source = new FakeSource { Files = { ["topic"] = "# Topic\n\n## Overview\n" + overview } };
+        var reader = MakeReader(source);
+
+        var (entries, _) = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+
+        entries.Should().ContainSingle().Which.Summary.Should().Be(prefix + (fits ? "😀" : "") + "…");
+    }
+
     [HumansFact]
     public async Task ListTopicsAsync_falls_back_to_title_when_no_overview()
     {
@@ -261,6 +276,66 @@ public class CommunityFaqReaderTests
         source.FailingStem = null;
         await reader.ReloadAsync(TestContext.Current.CancellationToken);
         (await reader.ReadAsync("a", TestContext.Current.CancellationToken)).Should().Be("# Updated A");
+    }
+
+    [HumansFact]
+    public async Task Pending_listing_cannot_replace_a_reloaded_topic_index()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pending = new TaskCompletionSource<IReadOnlyList<string>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var source = Substitute.For<IGuideContentSource>();
+        var listings = 0;
+        source.ListMarkdownStemsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            if (++listings != 1) return Task.FromResult<IReadOnlyList<string>>(["fresh"]);
+            started.SetResult();
+            return pending.Task.WaitAsync(token);
+        });
+        source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult($"# {call.ArgAt<string>(1)}"));
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var reader = new CommunityFaqReader(source, cache, NullLogger<CommunityFaqReader>.Instance);
+
+        var oldRead = reader.ListTopicsAsync(token);
+        await started.Task.WaitAsync(token);
+        (await reader.ReloadAsync(token)).Should().BeTrue();
+        pending.SetResult(["old"]);
+        await oldRead.WaitAsync(token);
+
+        var (entries, complete) = await reader.ListTopicsAsync(token);
+        complete.Should().BeTrue();
+        entries.Should().ContainSingle().Which.Topic.Should().Be("fresh");
+    }
+
+    [HumansFact]
+    public async Task Pending_document_cannot_replace_a_reloaded_body_or_index()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pending = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var source = Substitute.For<IGuideContentSource>();
+        source.ListMarkdownStemsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<string>>(["topic"]));
+        var fetches = 0;
+        source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            if (++fetches != 1) return Task.FromResult("# Fresh");
+            started.SetResult();
+            return pending.Task.WaitAsync(token);
+        });
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var reader = new CommunityFaqReader(source, cache, NullLogger<CommunityFaqReader>.Instance);
+
+        var oldRead = reader.ListTopicsAsync(token);
+        await started.Task.WaitAsync(token);
+        (await reader.ReloadAsync(token)).Should().BeTrue();
+        pending.SetResult("# Old");
+        await oldRead.WaitAsync(token);
+
+        var (entries, _) = await reader.ListTopicsAsync(token);
+        entries.Should().ContainSingle().Which.Title.Should().Be("Fresh");
+        (await reader.ReadAsync("topic", token)).Should().Be("# Fresh");
     }
 
     private static CommunityFaqReader MakeReader(FakeSource source) =>

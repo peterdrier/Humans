@@ -54,6 +54,8 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 
 ## Invariants
 
+- Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
+
 - Every page requires `PolicyNames.AdminOnly` (class-level `[Authorize]` on every controller in the section) except the deliberate anonymous surfaces: `/Debug/DbVersion`, which returns only migration names and counts, and `/ColorPalette`, which renders static markup. Pinned by `DebugArchitectureTests`, which discovers the controllers from the assembly rather than listing them.
 - Sensitive configuration values never render in full on `/Debug/Configuration`: at most the first four characters, and values of four characters or fewer are fully masked. Pinned by `DebugControllerTests`.
 - Debug owns no domain data; its in-memory telemetry is process-local and resets on restart/redeploy.
@@ -87,6 +89,6 @@ The widget gallery and the dashboard card read other sections through their cont
 - Root-level seams contribute by name: `SectionAdminNav` (`ISectionAdminNav`) supplies the Debug sidebar group (diagnostics plus the design references), merged into the Shell nav by `AdminNavComposition`; `SectionChrome` (`ISectionChrome`) contributes the `UserSetMembershipCard` view component to the admin dashboard's chrome slot.
 - `/Debug/WidgetGallery` itself is a chrome-slot *consumer*: Base-hosted widgets render through `<vc:chrome-slot>`, `<vc:admin-breadcrumb>`, `<vc:section-nav>`, `<vc:things-to-do>`, and Users' and Shifts' own gallery samples render through one `<vc:chrome-slot name="@ChromeSlots.WidgetGallery">` call, fed by their `ISectionChrome` contributions (`UsersGalleryViewComponent`, `ShiftsGalleryViewComponent`) — the page holds no per-section state for those cards and needs no reference to the sections that contribute nothing else it uses.
 - The section references `Humans.Base` despite owning no tables: it names `QueryStatistics` (`Humans.Base.Data`) and the host-local `InMemoryLogSink` (`Humans.Base.Logging`; Shell configures it from `Program.cs`, and Backdoor's `BackdoorLogsController` reads the same DI instance at `/api/backdoor/logs`). Cache-entry counts come from `ICacheStatsProvider.GetActiveEntryCounts()`; Debug never names `TrackingMemoryCache`.
-- `TranslationsGalleryModelBuilder` lives in Base (`src/Humans.Base/Models/TranslationsGalleryViewModel.cs`): it enumerates `SharedResource` and `CultureCatalog`, and `SharedResourceParityTests` asserts translation parity through it. `FormatGalleryModelBuilder` lives here - its only consumer is `/Debug/FormatGallery`.
+- `TranslationsGalleryModelBuilder` lives in Base (`src/Humans.Base/Models/TranslationsGalleryViewModel.cs`): it enumerates `SharedResource` and `CultureCatalog`, and `SharedResourceParityTests` asserts translation parity through it. `FormatGalleryModelBuilder` lives here - its only consumer is `/Debug/FormatGallery`. Its language comparison scopes both formatting and UI cultures for each example, restoring the caller’s cultures afterward.
 - **Decorator decision - no caching decorator.** Owns no data; the trackers are already in-memory singletons.
 - **Cross-domain navs:** N/A - owns no entities.

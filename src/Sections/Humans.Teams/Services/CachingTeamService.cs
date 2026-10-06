@@ -268,7 +268,7 @@ internal sealed class CachingTeamService(
             IsAuthenticated: true,
             IsCurrentUserMember: isCurrentUserMember,
             IsCurrentUserCoordinator: isCurrentUserCoordinator,
-            CanCurrentUserJoin: !isCurrentUserMember && !team.IsSystemTeam && pendingRequest is null,
+            CanCurrentUserJoin: team.IsActive && !isCurrentUserMember && !team.IsSystemTeam && pendingRequest is null,
             CanCurrentUserLeave: isCurrentUserMember && !team.IsSystemTeam,
             CanCurrentUserManage: canManage,
             CanCurrentUserEditTeam: isBoardMember || isAdmin || isTeamsAdmin,
@@ -586,7 +586,7 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.UpdateTeamPageContentAsync(
             teamId, pageContent, callsToAction, isPublicPage,
-            showCoordinatorsOnPublicPage, updatedByUserId, cancellationToken), static result => result.Succeeded);
+            showCoordinatorsOnPublicPage, updatedByUserId, cancellationToken));
 
     public Task<TeamRoleDefinition> CreateRoleDefinitionAsync(
         Guid teamId,

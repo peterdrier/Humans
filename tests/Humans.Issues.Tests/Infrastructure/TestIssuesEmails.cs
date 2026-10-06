@@ -26,12 +26,14 @@ internal static class TestIssuesEmails
             "<p>Hi {0},</p><h2>{1}</h2>{2}<p><a href=\"{3}\">Open the issue</a></p>",
     };
 
-    public static IssuesEmails Create()
+    // The optional observer verifies the culture active when a dispatched message is rendered.
+    public static IssuesEmails Create(Action<string>? observeCulture = null)
     {
         var localizer = Substitute.For<IStringLocalizer<IssuesResource>>();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();
+            observeCulture?.Invoke(CultureInfo.CurrentUICulture.Name);
             return new LocalizedString(key,
                 Formats.GetValueOrDefault(key, $"{key}#{CultureInfo.CurrentUICulture.Name}"));
         });

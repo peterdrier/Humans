@@ -5,7 +5,7 @@
     var devAuthEnabled = !HostEnv.IsProduction() && Config.GetValue<bool>("DevAuth:Enabled");
     var loginError = Context.Request.Query["error"].ToString();
     var loginErrorMessage = string.Equals(loginError, "lockedout", StringComparison.Ordinal)
-        ? "This account is locked. Contact an admin if you need help signing in."
+        ? Localizer["Login_LockedOut"].Value
         : Localizer["Login_SignInFailed"].Value;
 }
 
@@ -16,7 +16,7 @@
             <div class="alert alert-warning alert-dismissible fade show mt-5 mb-0" role="alert">
                 <i class="fa-solid fa-triangle-exclamation me-1"></i>
                 @loginErrorMessage
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@Localizer["Common_Close"]"></button>
             </div>
         </div>
     }

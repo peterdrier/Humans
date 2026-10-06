@@ -19,7 +19,7 @@ internal sealed class GuestController(
 {
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(cancellationToken);
         if (user is null)
         {
             return Challenge();

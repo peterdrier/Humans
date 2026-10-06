@@ -8,19 +8,19 @@
     <partial name="_TicketNav" />
 
     @{
-        Func<TicketAttendeeRow, IHtmlContent> priceCell = @<text>
-            @item.Price.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)
-            @if (item.IsVip)
+        Func<AttendeeRow, IHtmlContent> priceCell = @<text>
+            @item.Price.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)
+            @if (item.Price > TicketConstants.VipThresholdEuros)
             {
                 <span class="badge bg-warning text-dark" title="VIP ticket">VIP</span>
             }
         </text>;
-        Func<TicketAttendeeRow, IHtmlContent> vipSplitCell = @<text>
-            @if (item.IsVip)
+        Func<AttendeeRow, IHtmlContent> vipSplitCell = @<text>
+            @if (item.Price > TicketConstants.VipThresholdEuros)
             {
                 <small>
-                    <span title="Taxable portion">@item.TaxableAmount.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span>
-                    + <span class="text-muted" title="VIP donation (VAT-free)">@item.VipDonation.ToString("N2", System.Globalization.CultureInfo.CurrentCulture) donation</span>
+                    <span title="Taxable portion">@TicketConstants.VipThresholdEuros.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</span>
+                    + <span class="text-muted" title="VIP donation (VAT-free)">@((item.Price - TicketConstants.VipThresholdEuros).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)) donation</span>
                 </small>
             }
             else
@@ -28,7 +28,7 @@
                 <span class="text-muted">&mdash;</span>
             }
         </text>;
-        Func<TicketAttendeeRow, IHtmlContent> matchedCell = @<text>
+        Func<AttendeeRow, IHtmlContent> matchedCell = @<text>
             @if (item.MatchedUserId.HasValue)
             {
                 <vc:human user-id="@item.MatchedUserId.Value" link="Admin" />
@@ -38,7 +38,7 @@
                 <span class="text-muted">&mdash;</span>
             }
         </text>;
-        Func<TicketAttendeeRow, IHtmlContent> orderCell = @<text>
+        Func<AttendeeRow, IHtmlContent> orderCell = @<text>
             <small><a asp-action="Orders" asp-route-search="@item.VendorOrderId"><code>@item.VendorOrderId</code></a></small>
         </text>;
         Func<object?, IHtmlContent> extraFilters = @<text>

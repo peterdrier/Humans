@@ -34,14 +34,26 @@ internal sealed class AgentPreloadCorpusBuilder(
     private static readonly MemoryCacheEntryOptions HoldForever =
         new() { Priority = CacheItemPriority.NeverRemove };
 
+    private readonly Lock _cacheGate = new();
+    private long _cacheGeneration;
+
     public async Task<string> BuildAsync(AgentPreloadConfig config, CancellationToken cancellationToken = default)
     {
         var cacheKey = $"agent:preload:{config}";
-        if (cache.TryGetValue<string>(cacheKey, out var cached) && cached is not null)
-            return cached;
+        long generation;
+        lock (_cacheGate)
+        {
+            if (cache.TryGetValue<string>(cacheKey, out var cached) && cached is not null)
+                return cached;
+            generation = _cacheGeneration;
+        }
 
         var (result, isComplete) = await BuildCorpusAsync(config, cancellationToken);
-        if (isComplete) cache.Set(cacheKey, result, HoldForever);
+        lock (_cacheGate)
+        {
+            if (isComplete && generation == _cacheGeneration)
+                cache.Set(cacheKey, result, HoldForever);
+        }
         return result;
     }
 
@@ -57,8 +69,12 @@ internal sealed class AgentPreloadCorpusBuilder(
             if (!isComplete) return false;
             corpora.Add(config, fresh);
         }
-        foreach (var (config, fresh) in corpora)
-            cache.Set($"agent:preload:{config}", fresh, HoldForever);
+        lock (_cacheGate)
+        {
+            _cacheGeneration++;
+            foreach (var (config, fresh) in corpora)
+                cache.Set($"agent:preload:{config}", fresh, HoldForever);
+        }
         return true;
     }
 

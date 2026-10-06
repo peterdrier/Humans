@@ -5,6 +5,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Calendar.Data;
 using Humans.Teams.Contracts;
 using Humans.Calendar.Services;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NodaTime;
@@ -32,10 +33,107 @@ namespace Humans.Calendar.Tests.Services;
 public class CalendarServiceValidationTests
 {
     [HumansTheory]
+    [InlineData("FREQ=WEEKLY;BYDAY=0MO", false, false)]
+    [InlineData("FREQ=MONTHLY;BYDAY=-0WE", true, false)]
+    [InlineData("FREQ=YEARLY;BYDAY=+0FR", false, true)]
+    [InlineData("FREQ=YEARLY;BYDAY=54MO", true, true)]
+    [InlineData("FREQ=YEARLY;BYDAY=-54TU", false, false)]
+    [InlineData("FREQ=MONTHLY;BYDAY=MO,0SA", true, true)]
+    public async Task EventWithResultAsync_InvalidWeekdayOrdinal_is_rejected_before_persistence(
+        string rule, bool allDay, bool update)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var audit = Substitute.For<IAuditLogService>();
+        var service = BuildService(repo, audit);
+        var id = Guid.NewGuid();
+        repo.UpdateAsync(id, Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.ArgAt<Action<Humans.Calendar.Domain.CalendarEvent>>(1)(new() { Id = id });
+                return true;
+            });
+        var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+        var dto = new CreateCalendarEventDto("Planning", null, null, null, Guid.NewGuid(),
+            allDay ? null : start, allDay ? null : start + Duration.FromHours(1),
+            allDay, rule, allDay ? null : "UTC",
+            allDay ? new LocalDate(2026, 6, 1) : null, allDay ? new LocalDate(2026, 6, 2) : null);
+
+        var result = update
+            ? await service.UpdateEventWithResultAsync(id, dto, Guid.NewGuid(), TestContext.Current.CancellationToken)
+            : await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceRule));
+        result.ErrorMessage.Should().Be(allDay ? "Calendar_InvalidAllDayRecurrence" : "Calendar_InvalidTimedRecurrence");
+        repo.ReceivedCalls().Should().BeEmpty();
+        audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("FREQ=DAILY;COUNT=3", false)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", false)]
+    [InlineData("FREQ=DAILY;COUNT=3", true)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", true)]
+    public async Task EventWithResultAsync_InvalidDuration_is_a_validation_failure(string rule, bool update)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo);
+        var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+
+        var eventId = Guid.NewGuid();
+        repo.UpdateAsync(eventId, Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.ArgAt<Action<Humans.Calendar.Domain.CalendarEvent>>(1)(new() { Id = eventId });
+                return true;
+            });
+        var dto = new CreateCalendarEventDto(
+            "Invalid duration", null, null, null, Guid.NewGuid(),
+            start, start.Minus(Duration.FromHours(1)), false, rule, "UTC");
+        var result = update
+            ? await service.UpdateEventWithResultAsync(eventId, dto, Guid.NewGuid(), TestContext.Current.CancellationToken)
+            : await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Calendar_InvalidTimedEvent");
+        await repo.DidNotReceive().AddAsync(
+            Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UpdateEventWithResultAsync_UsesTheRepositoryMissingOutcome(bool dependencyFailure)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var audit = Substitute.For<IAuditLogService>();
+        var service = BuildService(repo, audit);
+        var id = Guid.NewGuid();
+        repo.UpdateAsync(id, Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
+            .Returns(_ => dependencyFailure
+                ? Task.FromException<bool>(new InvalidOperationException("Required property not found in persistence metadata."))
+                : Task.FromResult(false));
+        var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+        var dto = new CreateCalendarEventDto("Event", null, null, null, Guid.NewGuid(),
+            start, start + Duration.FromHours(1), false, null, null);
+
+        var result = await service.UpdateEventWithResultAsync(id, dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.NotFound.Should().Be(!dependencyFailure, "only a missing event row warrants the missing result");
+        result.ErrorMessage.Should().Be(dependencyFailure ? "Calendar_SaveFailed" : "Calendar event not found.");
+        audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("  ")]
     [InlineData("FREQ=DAILY")]
+    [InlineData("FREQ=MONTHLY;BYDAY=1MO")]
+    [InlineData("FREQ=MONTHLY;BYDAY=-1FR")]
+    [InlineData("FREQ=YEARLY;BYDAY=53WE")]
+    [InlineData("FREQ=YEARLY;BYDAY=-53SU")]
     [InlineData("FREQ=WEEKLY;BYDAY=TU;COUNT=4")]
     [InlineData("FREQ=WEEKLY;UNTIL=20240201T000000Z")]
     public void ValidateRecurrenceRule_valid_input_does_not_throw(string? rrule)
@@ -112,7 +210,10 @@ public class CalendarServiceValidationTests
     public async Task CreateEventWithResultAsync_returns_validation_member_for_malformed_recurrence()
     {
         var repo = Substitute.For<ICalendarRepository>();
-        var service = BuildService(repo);
+        var logger = Substitute.For<ILogger<CalendarService>>();
+        var service = new CalendarService(repo,
+            new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
+            Substitute.For<IAuditLogService>(), logger);
         var dto = new CreateCalendarEventDto(
             "Planning",
             Description: null,
@@ -128,6 +229,9 @@ public class CalendarServiceValidationTests
         var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
+        var log = logger.ReceivedCalls().Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).GetArguments();
+        log[0].Should().Be(LogLevel.Warning);
+        log[3].Should().BeNull("invalid user input should not log an exception stack");
         result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceRule));
         result.ErrorMessage.Should().Be("Calendar_InvalidTimedRecurrence");
         await repo.DidNotReceive().AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>());
@@ -136,7 +240,11 @@ public class CalendarServiceValidationTests
     [HumansFact]
     public async Task UpdateEventWithResultAsync_returns_validation_member_for_unknown_timezone()
     {
-        var service = BuildService(Substitute.For<ICalendarRepository>());
+        var repo = Substitute.For<ICalendarRepository>();
+        var logger = Substitute.For<ILogger<CalendarService>>();
+        var service = new CalendarService(repo,
+            new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
+            Substitute.For<IAuditLogService>(), logger);
         var dto = new CreateCalendarEventDto(
             "Planning",
             Description: null,
@@ -152,6 +260,9 @@ public class CalendarServiceValidationTests
         var result = await service.UpdateEventWithResultAsync(Guid.NewGuid(), dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
+        var log = logger.ReceivedCalls().Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).GetArguments();
+        log[0].Should().Be(LogLevel.Warning);
+        log[3].Should().BeNull("invalid user input should not log an exception stack");
         result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceTimezone));
         result.ErrorMessage.Should().Be("Calendar_UnknownTimezone");
     }
@@ -170,8 +281,7 @@ public class CalendarServiceValidationTests
                 "FREQ=DAILY;COUNT=3", "UTC"),
             Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        // Assert success explicitly: the result form swallows the exception the throwing
-        // form used to surface, so a rejected create would otherwise reach the AddAsync
+        // Assert success explicitly: the result form swallows exceptions, so a rejected create would otherwise reach the AddAsync
         // assertion below as a silent zero-call.
         result.Succeeded.Should().BeTrue(result.ErrorMessage);
 
@@ -179,6 +289,45 @@ public class CalendarServiceValidationTests
             Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e =>
                 e.RecurrenceUntilUtc == Instant.FromUtc(2026, 6, 3, 11, 0)),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", false)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000z", false)]
+    [InlineData("freq=daily;until=20260603t100000z", false)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", true)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000z", true)]
+    [InlineData("freq=daily;until=20260603t100000z", true)]
+    public async Task EventWithResultAsync_UTC_until_is_independent_of_case_and_server_timezone(string rule, bool update)
+    {
+        var validate = () => CalendarService.ValidateRecurrenceRule(rule);
+        validate.Should().NotThrow();
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo);
+        var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+        var ev = new Humans.Calendar.Domain.CalendarEvent { Id = Guid.NewGuid() };
+        repo.UpdateAsync(ev.Id, Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.ArgAt<Action<Humans.Calendar.Domain.CalendarEvent>>(1)(ev);
+                return true;
+            });
+        var dto = new CreateCalendarEventDto(
+            "UTC-bounded daily events", null, null, null, Guid.NewGuid(),
+            start, start + Duration.FromHours(1), false, rule, "Europe/Madrid");
+
+        var result = update
+            ? await service.UpdateEventWithResultAsync(ev.Id, dto, Guid.NewGuid(), TestContext.Current.CancellationToken)
+            : await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
+        var expected = Instant.FromUtc(2026, 6, 3, 10, 0);
+        if (update)
+            ev.RecurrenceUntilUtc.Should().Be(expected);
+        else
+            await repo.Received(1).AddAsync(
+                Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e => e.RecurrenceUntilUtc == expected),
+                Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -203,6 +352,31 @@ public class CalendarServiceValidationTests
             Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData("20260329T023000", "Europe/Madrid", 2026, 3, 29, 1, 30)]
+    [InlineData("20261025T023000", "Europe/Madrid", 2026, 10, 25, 0, 30)]
+    [InlineData("20111229", "Pacific/Apia", 2011, 12, 30, 10, 0)]
+    public async Task CreateEventWithResultAsync_LocalUntil_uses_occurrence_timezone_resolution(
+        string until, string timezone, int year, int month, int day, int hour, int minute)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo);
+        var expectedUntil = Instant.FromUtc(year, month, day, hour, minute);
+        var start = expectedUntil.Minus(Duration.FromDays(3));
+
+        var result = await service.CreateEventWithResultAsync(
+            new CreateCalendarEventDto(
+                "Timezone-transition recurrence", null, null, null, Guid.NewGuid(),
+                start, start + Duration.FromHours(1), false,
+                $"FREQ=DAILY;UNTIL={until}", timezone),
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
+        await repo.Received(1).AddAsync(
+            Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e => e.RecurrenceUntilUtc == expectedUntil),
+            Arg.Any<CancellationToken>());
+    }
+
     // ==========================================================================
     // Audit-best-effort invariant
     // ==========================================================================
@@ -223,7 +397,8 @@ public class CalendarServiceValidationTests
                 Arg.Any<Guid?>(), Arg.Any<string?>())
             .Returns(Task.FromException(new InvalidOperationException("audit log connection lost")));
 
-        var service = BuildService(repo, audit);
+        var logger = Substitute.For<ILogger<CalendarService>>();
+        var service = BuildService(repo, audit, logger);
         var dto = new CreateCalendarEventDto(
             "Audit-fails-after-create", null, null, null,
             OwningTeamId: Guid.NewGuid(),
@@ -240,6 +415,7 @@ public class CalendarServiceValidationTests
         result.Event.Should().NotBeNull();
         result.Event!.Title.Should().Be("Audit-fails-after-create");
         await repo.Received(1).AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>());
+        AssertLoggedCritical(logger);
     }
 
     [HumansFact]
@@ -365,23 +541,30 @@ public class CalendarServiceValidationTests
                 Arg.Any<Guid?>(), Arg.Any<string?>())
             .Returns(Task.FromException(new InvalidOperationException("audit log connection lost")));
 
-        var service = BuildService(repo, audit);
+        var logger = Substitute.For<ILogger<CalendarService>>();
+        var service = BuildService(repo, audit, logger);
 
         var act = async () => await service.CancelOccurrenceAsync(
             Guid.NewGuid(), Instant.FromUtc(2026, 6, 1, 10, 0), Guid.NewGuid(), TestContext.Current.CancellationToken);
         await act.Should().NotThrowAsync();
+        AssertLoggedCritical(logger);
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task EventMutation_UnexpectedWriteFailureReturnsLocalizedSaveKey(bool update)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task EventMutation_UnexpectedWriteFailureReturnsLocalizedSaveKey(bool update, bool invalidOperation)
     {
         var repo = Substitute.For<ICalendarRepository>();
+        Exception failure = invalidOperation
+            ? new InvalidOperationException("Calendar_CannotChangeEventType")
+            : new IOException("database unavailable");
         repo.AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new IOException("database unavailable")));
+            .Returns(Task.FromException(failure));
         repo.UpdateAsync(Arg.Any<Guid>(), Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(new IOException("database unavailable")));
+            .Returns(Task.FromException<bool>(failure));
         var service = BuildService(repo);
         var dto = new CreateCalendarEventDto(
             "Event", null, null, null, Guid.NewGuid(),
@@ -429,12 +612,24 @@ public class CalendarServiceValidationTests
         return BuildService(repo, Substitute.For<IAuditLogService>());
     }
 
-    private static CalendarService BuildService(ICalendarRepository repo, IAuditLogService audit)
+    private static CalendarService BuildService(
+        ICalendarRepository repo, IAuditLogService audit, ILogger<CalendarService>? logger = null)
     {
         return new CalendarService(
             repo,
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
             audit,
-            NullLogger<CalendarService>.Instance);
+            logger ?? NullLogger<CalendarService>.Instance);
+    }
+
+    // The failure is swallowed, so the Critical log carrying the audit exception is the only
+    // trace it leaves (health.md invariant 5: never passes silently).
+    private static void AssertLoggedCritical(ILogger<CalendarService> logger)
+    {
+        var log = logger.ReceivedCalls()
+            .Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal))
+            .GetArguments();
+        log[0].Should().Be(LogLevel.Critical);
+        log[3].Should().BeOfType<InvalidOperationException>();
     }
 }

@@ -175,7 +175,7 @@ internal interface ITicketRepository : IRepository
     /// <summary>
     /// Returns every <see cref="TicketAttendee"/> for the given vendor event
     /// that is currently unmatched (<c>MatchedUserId is null</c>) and whose
-    /// <see cref="Humans.Base.Enums.TicketAttendeeStatus"/> is
+    /// <see cref="TicketAttendeeStatus"/> is
     /// <c>Valid</c> or <c>CheckedIn</c>, AND whose
     /// <see cref="TicketAttendee.AttendeeEmail"/> is non-empty.
     ///
@@ -315,11 +315,9 @@ internal interface ITicketRepository : IRepository
     /// <c>Reassign…ToUserAsync</c> methods across the merge fold but is
     /// <b>unused</b> — neither <c>TicketOrder</c> nor <c>TicketAttendee</c>
     /// carries a generic <c>UpdatedAt</c> column (only <c>SyncedAt</c>,
-    /// owned by the vendor-sync pipeline). Returns the count of
-    /// <c>ticket_attendees</c> rows ultimately attributed to
-    /// <paramref name="targetUserId"/>.
+    /// owned by the vendor-sync pipeline).
     /// </summary>
-    Task<int> ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default);
+    Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default);
 
     /// <summary>
     /// GDPR Art. 17: overwrites buyer and attendee name/email on the rows matched

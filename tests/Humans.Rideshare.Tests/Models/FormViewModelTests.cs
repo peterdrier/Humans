@@ -1,4 +1,11 @@
 using AwesomeAssertions;
+using Humans.Base;
+using Humans.Base.Extensions;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Models;
 using Humans.Rideshare.Services;
@@ -11,6 +18,54 @@ namespace Humans.Rideshare.Tests.Models;
 /// <summary>The offer and request forms: ISO date round-trip, waypoint lines, profile prefill.</summary>
 public sealed class FormViewModelTests
 {
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void MemberForms_LocalizeValidationMessages(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+        var cases = new (object Model, string Field, string Key, object[] Arguments)[]
+        {
+            (new OfferFormViewModel(), "MemberPlaceLabel", "Validation_Required", ["MemberPlaceLabel"]),
+            (new OfferFormViewModel { MemberPlaceLabel = "Town" }, "DepartureDate", "Validation_Required", ["DepartureDate"]),
+            (new OfferFormViewModel { MemberPlaceLabel = new string('x', 201) }, "MemberPlaceLabel", "Validation_MaxLength", ["MemberPlaceLabel", 200]),
+            (new OfferFormViewModel { WaypointLabels = new string('x', 2001) }, "WaypointLabels", "Validation_MaxLength", ["WaypointLabels", 2000]),
+            (new OfferFormViewModel { OvernightPlan = new string('x', 1001) }, "OvernightPlan", "Validation_MaxLength", ["OvernightPlan", 1000]),
+            (new OfferFormViewModel { CapacityNote = new string('x', 501) }, "CapacityNote", "Validation_MaxLength", ["CapacityNote", 500]),
+            (new OfferFormViewModel { Restrictions = new string('x', 501) }, "Restrictions", "Validation_MaxLength", ["Restrictions", 500]),
+            (new OfferFormViewModel { CostNote = new string('x', 501) }, "CostNote", "Validation_MaxLength", ["CostNote", 500]),
+            (new OfferFormViewModel { Latitude = 91 }, "Latitude", "Validation_Range", ["Latitude", -90, 90]),
+            (new OfferFormViewModel { Longitude = 181 }, "Longitude", "Validation_Range", ["Longitude", -180, 180]),
+            (new OfferFormViewModel { ExpectedDurationDays = 0 }, "ExpectedDurationDays", "Validation_Range", ["ExpectedDurationDays", 1, 30]),
+            (new OfferFormViewModel { SeatsOffered = 21 }, "SeatsOffered", "Validation_Range", ["SeatsOffered", 1, 20]),
+            (new RequestFormViewModel(), "PickupPlaceLabel", "Validation_Required", ["PickupPlaceLabel"]),
+            (new RequestFormViewModel { PickupPlaceLabel = "Town" }, "DesiredDate", "Validation_Required", ["DesiredDate"]),
+            (new RequestFormViewModel { PickupPlaceLabel = new string('x', 201) }, "PickupPlaceLabel", "Validation_MaxLength", ["PickupPlaceLabel", 200]),
+            (new RequestFormViewModel { Notes = new string('x', 1001) }, "Notes", "Validation_MaxLength", ["Notes", 1000]),
+            (new RequestFormViewModel { Latitude = 91 }, "Latitude", "Validation_Range", ["Latitude", -90, 90]),
+            (new RequestFormViewModel { Longitude = 181 }, "Longitude", "Validation_Range", ["Longitude", -180, 180]),
+            (new RequestFormViewModel { PartySize = 21 }, "PartySize", "Validation_Range", ["PartySize", 1, 20]),
+        };
+        foreach (var (model, field, key, arguments) in cases)
+        {
+            var context = new ActionContext { HttpContext = new DefaultHttpContext { RequestServices = services } };
+            validator.Validate(context, null, "", model);
+            var expected = localizer[key, arguments];
+            expected.ResourceNotFound.Should().BeFalse();
+            context.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
+        }
+    }
+
     private static readonly LocalDate July3 = new(2026, 7, 3);
     private static readonly LocalDate Today = new(2026, 3, 1);
     private static readonly Instant Now = Instant.FromUtc(2026, 3, 1, 12, 0);

@@ -205,10 +205,10 @@ internal sealed class AttendeeContactImportService(
             case AttendeeImportOutcome.SkipVoided:
                 return;
 
-            case AttendeeImportOutcome.AmbiguousMultipleVerified:
+            case AttendeeImportOutcome.AmbiguousEmailMatches:
                 state.Ambiguous++;
                 logger.LogWarning(
-                    "Attendee {AttendeeId} email {Email} verified by multiple users {UserIds}",
+                    "Attendee {AttendeeId} email {Email} has ambiguous matching rows owned by {UserIds}",
                     decision.AttendeeId, decision.Email, decision.AmbiguousUserIds);
                 return;
 
@@ -284,7 +284,7 @@ internal sealed class AttendeeContactImportService(
         {
             return new AttendeeImportDecision(
                 a.Id, a.AttendeeEmail, name, a.VendorTicketId,
-                AttendeeImportOutcome.AmbiguousMultipleVerified,
+                AttendeeImportOutcome.AmbiguousEmailMatches,
                 TargetUserId: null,
                 UnverifiedEmailIdToDelete: null,
                 UnverifiedRowUserId: null,
@@ -307,8 +307,23 @@ internal sealed class AttendeeContactImportService(
                 ObservedNames: names);
         }
 
-        var existingRow = (await userEmails.FindByAddressAsync(a.AttendeeEmail, aliased: true, verifiedOnly: false, ct))
-            .FirstOrDefault();
+        var existingRows = await userEmails.FindByAddressAsync(a.AttendeeEmail, aliased: true, verifiedOnly: false, ct);
+        if (existingRows.Count > 1)
+        {
+            // Deleting one row would leave another for provisioning to select,
+            // attaching the ticket to an unverified account instead of creating one.
+            return new AttendeeImportDecision(
+                a.Id, a.AttendeeEmail, name, a.VendorTicketId,
+                AttendeeImportOutcome.AmbiguousEmailMatches,
+                TargetUserId: null,
+                UnverifiedEmailIdToDelete: null,
+                UnverifiedRowUserId: null,
+                AmbiguousUserIds: existingRows.Select(r => r.UserId).Distinct().ToList(),
+                AdditionalAttendeeIds: addl,
+                ObservedNames: names);
+        }
+
+        var existingRow = existingRows.FirstOrDefault();
         if (existingRow is not null)
         {
             return new AttendeeImportDecision(

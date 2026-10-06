@@ -18,7 +18,8 @@ internal sealed class Service(
     ISettingsRepository repository,
     IAuditLogService auditLog,
     IEnumerable<IEventSettingsChangeListener> changeListeners,
-    IClock clock) : ISettingsWriteService, IEventSettingsSeeding
+    IClock clock,
+    ILogger<Service> logger) : ISettingsWriteService, IEventSettingsSeeding
 {
     public Task<string?> GetValueAsync(string key, CancellationToken cancellationToken = default) =>
         repository.GetValueAsync(key, cancellationToken);
@@ -40,6 +41,7 @@ internal sealed class Service(
     public async Task SaveEventSettingsAsync(
         EventSettingsInfo settings, Guid actorUserId, CancellationToken cancellationToken = default)
     {
+        ValidateCalendarDates(settings);
         if (settings.Status == EventSettingsStatus.Active
             && await repository.AnyOtherActiveEventSettingsAsync(settings.Id, cancellationToken))
         {
@@ -78,6 +80,7 @@ internal sealed class Service(
     public async Task CreateActiveEventAsync(
         EventSettingsInfo settings, CancellationToken cancellationToken = default)
     {
+        ValidateCalendarDates(settings);
         var current = await repository.GetActiveEventSettingsAsync(cancellationToken);
         if (current is not null && current.Id != settings.Id)
         {
@@ -91,6 +94,30 @@ internal sealed class Service(
             cancellationToken);
 
         NotifyChangeListeners(settings.Id);
+    }
+
+    private void ValidateCalendarDates(EventSettingsInfo settings)
+    {
+        int[] offsets = [0, settings.BuildStartOffset, settings.EventEndOffset, settings.StrikeEndOffset,
+            settings.FirstCrewStartOffset, settings.SetupWeekStartOffset,
+            settings.PreEventWeekStartOffset, settings.FinishingWeekendStartOffset,
+            settings.EarlyEntryStartOffset ?? 0];
+        foreach (var offset in offsets)
+        {
+            try
+            {
+                var date = settings.GateOpeningDate.PlusDays(offset);
+                _ = date.ToDateTimeUnspecified();
+                // Period readers also need the midnight after their inclusive last day.
+                _ = date.PlusDays(1).ToDateTimeUnspecified();
+            }
+            catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException or InvalidOperationException)
+            {
+                logger.LogWarning("Rejected event settings {EventId}: gate date {GateDate} and offset {Offset} exceed the supported calendar range",
+                    settings.Id, LocalDatePattern.Iso.Format(settings.GateOpeningDate), offset);
+                throw new InvalidOperationException("Event dates must stay within the supported calendar range.", ex);
+            }
+        }
     }
 
     /// <inheritdoc />

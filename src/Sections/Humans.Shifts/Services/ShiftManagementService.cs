@@ -225,19 +225,31 @@ internal sealed class ShiftManagementService(
         await EnsureKnobsRowAsync(rota.EventSettingsId);
 
         rota.UpdatedAt = clock.GetCurrentInstant();
-        await repo.SaveRotaAsync(rota, EntityMutationMode.Add);
-        if (tagIds is { Count: > 0 })
-            await repo.SetRotaTagsAsync(rota.Id, tagIds);
-        viewInvalidator.InvalidateRota(rota.Id);
+        try
+        {
+            await repo.SaveRotaAsync(rota, EntityMutationMode.Add);
+            if (tagIds is { Count: > 0 })
+                await repo.SetRotaTagsAsync(rota.Id, tagIds);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateRota(rota.Id);
+        }
     }
 
     public async Task UpdateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null)
     {
         rota.UpdatedAt = clock.GetCurrentInstant();
-        await repo.SaveRotaAsync(rota, EntityMutationMode.Update);
-        if (tagIds is not null)
-            await repo.SetRotaTagsAsync(rota.Id, tagIds);
-        viewInvalidator.InvalidateRota(rota.Id);
+        try
+        {
+            await repo.SaveRotaAsync(rota, EntityMutationMode.Update);
+            if (tagIds is not null)
+                await repo.SetRotaTagsAsync(rota.Id, tagIds);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateRota(rota.Id);
+        }
     }
 
     public async Task<RotaMoveResult> MoveRotaToTeamAsync(MoveRotaInput input)

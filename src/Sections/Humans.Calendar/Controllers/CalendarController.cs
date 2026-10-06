@@ -23,6 +23,7 @@ internal sealed class CalendarController : HumansControllerBase
     private readonly ITeamServiceRead _teams;
     private readonly ICalendarFeedTokenService _feedTokens;
     private readonly IClock _clock;
+    private readonly ILogger<CalendarController> _logger;
     private readonly Microsoft.Extensions.Localization.IStringLocalizer<CalendarResource> _localizer;
 
     public CalendarController(
@@ -32,7 +33,8 @@ internal sealed class CalendarController : HumansControllerBase
         ICalendarService calendar,
         ITeamServiceRead teams,
         IClock clock,
-        Microsoft.Extensions.Localization.IStringLocalizer<CalendarResource> localizer)
+        Microsoft.Extensions.Localization.IStringLocalizer<CalendarResource> localizer,
+        ILogger<CalendarController> logger)
         : base(userService)
     {
         _feedTokens = feedTokens;
@@ -41,6 +43,7 @@ internal sealed class CalendarController : HumansControllerBase
         _teams = teams;
         _clock = clock;
         _localizer = localizer;
+        _logger = logger;
     }
 
     [HttpGet("")]
@@ -51,6 +54,7 @@ internal sealed class CalendarController : HumansControllerBase
         CancellationToken ct)
     {
         var model = await BuildMonthViewAsync(year, month, teamId, ct);
+        if (model is null) return BadRequest();
 
         // The personal iCal feed card renders below the grid, on this page only.
         // A viewer with no UserInfo row (merged away) simply gets no card rather
@@ -86,19 +90,23 @@ internal sealed class CalendarController : HumansControllerBase
         [FromQuery] int? year,
         [FromQuery] int? month,
         [FromQuery] Guid? teamId,
-        CancellationToken ct) =>
-        View(await BuildMonthViewAsync(year, month, teamId, ct));
+        CancellationToken ct)
+    {
+        var model = await BuildMonthViewAsync(year, month, teamId, ct);
+        return model is null ? BadRequest() : View(model);
+    }
 
     /// <summary>
     /// The month window Index and List both render — same query, same view model,
     /// differing only in which view renders it (grid vs one row per day).
     /// </summary>
-    private async Task<CalendarMonthViewModel> BuildMonthViewAsync(
+    private async Task<CalendarMonthViewModel?> BuildMonthViewAsync(
         int? year, int? month, Guid? teamId, CancellationToken ct)
     {
         var zone = GetViewerZone();
-        var today = _clock.GetCurrentInstant().InZone(zone).Date;
-        var ym = new YearMonth(year ?? today.Year, month ?? today.Month);
+        var resolvedMonth = ResolveMonth(year, month, zone);
+        if (resolvedMonth is null) return null;
+        var ym = resolvedMonth.Value;
 
         // The whole rendered grid, not just the month: Index pads the first and last weeks
         // with adjacent-month days, and querying only [1st, 1st of next month) left those
@@ -116,6 +124,34 @@ internal sealed class CalendarController : HumansControllerBase
             ViewerTimezoneLabel: zone.Id);
     }
 
+    private YearMonth? ResolveMonth(int? year, int? month, DateTimeZone zone)
+    {
+        if (!ModelState.IsValid) return null;
+        var today = _clock.GetCurrentInstant().InZone(zone).Date;
+        try
+        {
+            var resolved = new YearMonth(year ?? today.Year, month ?? today.Month);
+            _ = resolved.PlusMonths(-1);
+            _ = resolved.PlusMonths(1);
+            var (start, end) = CalendarGridLayout.MonthGridBounds(resolved);
+            ValidateWindowBounds(start.AtMidnight().InZoneLeniently(zone).ToInstant(),
+                end.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant());
+            return resolved;
+        }
+        catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Rejected calendar month query year={Year} month={Month}", year, month);
+            return null;
+        }
+    }
+
+    private static void ValidateWindowBounds(Instant from, Instant to)
+    {
+        // Date display and recurrence expansion require BCL dates in any event zone.
+        _ = from.WithOffset(Offset.MinValue).LocalDateTime.ToDateTimeUnspecified();
+        _ = to.WithOffset(Offset.MaxValue).LocalDateTime.ToDateTimeUnspecified();
+    }
+
     [HttpGet("Agenda")]
     public async Task<IActionResult> Agenda(
         [FromQuery] DateTime? from,
@@ -123,13 +159,32 @@ internal sealed class CalendarController : HumansControllerBase
         [FromQuery] Guid? teamId,
         CancellationToken ct)
     {
+        if (!ModelState.IsValid)
+        {
+            _logger.LogWarning("Rejected malformed calendar agenda date query");
+            return BadRequest();
+        }
         var zone = GetViewerZone();
-        var today = _clock.GetCurrentInstant().InZone(zone).Date;
-        var start = from is null ? today : LocalDate.FromDateTime(from.Value);
-        var end = to is null ? today.PlusDays(60) : LocalDate.FromDateTime(to.Value);
-
-        var fromUtc = start.AtMidnight().InZoneLeniently(zone).ToInstant();
-        var toUtc = end.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
+        Instant fromUtc, toUtc;
+        try
+        {
+            var today = _clock.GetCurrentInstant().InZone(zone).Date;
+            var start = from is null ? today : LocalDate.FromDateTime(from.Value);
+            var end = to is null ? today.PlusDays(60) : LocalDate.FromDateTime(to.Value);
+            if (end < start)
+            {
+                _logger.LogWarning("Rejected reversed calendar agenda range from {From} to {To}", from, to);
+                return BadRequest();
+            }
+            fromUtc = start.AtMidnight().InZoneLeniently(zone).ToInstant();
+            toUtc = end.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
+            ValidateWindowBounds(fromUtc, toUtc);
+        }
+        catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Rejected unrepresentable calendar agenda range from {From} to {To}", from, to);
+            return BadRequest();
+        }
 
         var occ = await _calendarRead.GetOccurrencesInWindowAsync(fromUtc, toUtc, teamId, ct);
         return View(new CalendarAgendaViewModel(fromUtc, toUtc, occ, teamId, zone.Id));
@@ -146,8 +201,9 @@ internal sealed class CalendarController : HumansControllerBase
         if (team is null) return NotFound();
 
         var zone = GetViewerZone();
-        var today = _clock.GetCurrentInstant().InZone(zone).Date;
-        var ym = new YearMonth(year ?? today.Year, month ?? today.Month);
+        var resolvedMonth = ResolveMonth(year, month, zone);
+        if (resolvedMonth is null) return BadRequest();
+        var ym = resolvedMonth.Value;
 
         var firstOfMonth = new LocalDate(ym.Year, ym.Month, 1);
         var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(ym.Year, ym.Month);
@@ -322,6 +378,12 @@ internal sealed class CalendarController : HumansControllerBase
                 ModelState.AddModelError(nameof(form.EndDateLocal), _localizer["Calendar_EndDateBeforeStart"]);
                 return;
             }
+            if (inclusiveEnd == LocalDate.MaxIsoValue)
+            {
+                _logger.LogWarning("Rejected all-day end date {EndDate}: exclusive end exceeds calendar bounds", inclusiveEnd);
+                ModelState.AddModelError(nameof(form.EndDateLocal), _localizer["Calendar_InvalidAllDayEvent"]);
+                return;
+            }
             (startDate, endDate) = CalendarService.AllDayWindow(firstDate, inclusiveEnd);
             return;
         }
@@ -408,6 +470,7 @@ internal sealed class CalendarController : HumansControllerBase
         if (!ModelState.IsValid) return View("OccurrenceEdit", form);
         if (zone is null || !form.TryBuildOverride(zone, out var dto))
         {
+            _logger.LogWarning("Rejected calendar occurrence override for event {EventId}", id);
             ModelState.AddModelError(string.Empty, _localizer["Calendar_InvalidOccurrenceOverride"]);
             return View("OccurrenceEdit", form);
         }
@@ -418,6 +481,7 @@ internal sealed class CalendarController : HumansControllerBase
         }
         catch (InvalidOperationException)
         {
+            _logger.LogWarning("Rejected calendar occurrence override for event {EventId}", id);
             ModelState.AddModelError(string.Empty, _localizer["Calendar_InvalidOccurrenceOverride"]);
             return View("OccurrenceEdit", form);
         }

@@ -67,9 +67,11 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 **Acceptance Criteria:**
 - Only available when a season is open for registration
 - Captures camp details: name, contact info, Swiss camp flag, times at Nowhere
+- Registration and editing enforce required text, email syntax and persisted text-length bounds server-side, with localized validation errors before writes
 - Captures season-specific data: description, vibes, kids policy, sound zone, etc.
 - Optional historical names (comma-separated)
 - Creates camp with Pending status
+- Generated slugs remain non-empty and fit their stored length bound, including non-ASCII names and duplicate maximum-length names; the display name is preserved
 - Registering user becomes a Camp Lead (a `CampRoleAssignment` against the `SpecialRole = Lead` role definition, not a separate entity)
 - Redirects to detail page with success message
 
@@ -194,7 +196,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Authenticated humans who are already a **lead** of the camp see a "You are a lead for {year}" info alert instead of the request button — leads are part of the camp by definition and shouldn't be prompted to request membership.
 - The Actions card on a camp lead's detail view localizes its labels and season withdrawal/full confirmations in every supported culture. Its edit link reads "Edit Barrio / Assign roles" in English so leads understand role management is one click away (the link goes to `/Edit`, which links through to `/Edit/Members` for role assignments and pending-request review); non-leads still see the plain "Edit Barrio" label.
 - Copy on the request card explicitly states that this does NOT join you to the camp — do that through the camp's own process first.
-- A pending request can be withdrawn by the requester; an active membership can be left by the member.
+- A pending request can be withdrawn by the requester; an active membership can be left by the member. Missing-membership and invalid-status failures are localized in all six cultures.
 - Membership state (Pending / Active) is never rendered on anonymous views.
 - Leads and CampAdmin see pending requests on the camp Members page (`/Camps/{slug}/Edit/Members`) with Approve / Reject buttons, and active members with a Remove button. The active-members header carries an `EE: {granted}/{slots}` badge (issue nobodies-collective/Humans#858) showing Early Entry slots granted vs. the camp's `EeSlotCount` allocation for the season. Each active member row also shows a shift-signup count badge (sourced from `IShiftView.GetUsersAsync`) — the number of active (pending or confirmed) shift signups for the current event — colour-coded by count.
 - Approve / Reject mutations are scoped to the authorizing camp — a lead of camp A cannot mutate camp B's memberships by submitting a crafted member id.

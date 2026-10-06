@@ -28,6 +28,20 @@ public sealed class RepositoryTests : IDisposable
         _seedContext.Dispose();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(nameof(EventSettings.EarlyEntryCapacity))]
+    [Xunit.InlineData(nameof(EventSettings.BarriosEarlyEntryAllocation))]
+    public void EventDictionaryComparer_EqualMapsHaveEqualHashesRegardlessOfInsertionOrder(string propertyName)
+    {
+        var comparer = _seedContext.Model.FindEntityType(typeof(EventSettings))!
+            .FindProperty(propertyName)!.GetValueComparer()!;
+        var original = new Dictionary<int, int> { [-1] = 100, [0] = 400 };
+        var reordered = new Dictionary<int, int> { [0] = 400, [-1] = 100 };
+
+        comparer.Equals(original, reordered).Should().BeTrue();
+        comparer.GetHashCode(original).Should().Be(comparer.GetHashCode(reordered));
+    }
+
     [HumansFact]
     public async Task GetValueAsync_ReturnsNullWhenRowDoesNotExist()
     {

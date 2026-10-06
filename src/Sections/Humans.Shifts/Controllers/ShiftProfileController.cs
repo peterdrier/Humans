@@ -51,6 +51,9 @@ internal sealed class ShiftProfileController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ShiftInfo(ShiftInfoViewModel model)
     {
+        if (!ModelState.IsValid)
+            return View(model);
+
         try
         {
             var user = await GetCurrentUserInfoAsync();

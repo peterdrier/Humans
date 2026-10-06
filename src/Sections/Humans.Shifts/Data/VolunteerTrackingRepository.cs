@@ -110,7 +110,7 @@ internal sealed class VolunteerTrackingRepository(ShiftsDbContext db) : IVolunte
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<int> ReassignAvailabilityToUserAsync(
+    public async Task ReassignAvailabilityToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -138,9 +138,6 @@ internal sealed class VolunteerTrackingRepository(ShiftsDbContext db) : IVolunte
         }
 
         await db.SaveChangesAsync(ct);
-
-        return await db.GeneralAvailability
-            .CountAsync(g => g.UserId == targetUserId, ct);
     }
 
     public async Task<IReadOnlyList<int>> UpsertCampSetupAsync(

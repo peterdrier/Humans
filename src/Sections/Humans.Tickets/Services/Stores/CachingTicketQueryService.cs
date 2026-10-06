@@ -173,17 +173,13 @@ internal sealed class CachingTicketQueryService : ITicketService, ITicketCacheIn
     {
         internal async ValueTask<UserTicketHoldings?> GetHoldingsAsync(Guid userId, CancellationToken ct)
         {
-            if (TryGet(userId, out var cached))
+            var cached = await GetAsync(userId, ct).ConfigureAwait(false);
+            if (cached is not null && cached.ExpiresAt <= clock.GetCurrentInstant())
             {
-                if (cached.ExpiresAt > clock.GetCurrentInstant())
-                    return cached.Value;
-
                 DeleteKey(userId);
+                cached = await GetAsync(userId, ct).ConfigureAwait(false);
             }
-
-            var loaded = await LoadRowAsync(userId, ct).ConfigureAwait(false);
-            if (loaded is not null) Set(userId, loaded);
-            return loaded?.Value;
+            return cached?.Value;
         }
 
         protected override async ValueTask<CachedUserTicketHoldings?> LoadRowAsync(Guid userId, CancellationToken ct)

@@ -42,13 +42,25 @@ public class FormatGalleryModelBuilderTests
         toTime.SameOutputAs.Should().Contain("ToInvariantTime");
     }
 
-    [HumansFact]
-    public void Build_classifies_a_localized_formatter_as_culture_sensitive()
+    [HumansTheory]
+    [Xunit.InlineData("en")]
+    [Xunit.InlineData("es")]
+    [Xunit.InlineData("de")]
+    [Xunit.InlineData("it")]
+    [Xunit.InlineData("fr")]
+    [Xunit.InlineData("ca")]
+    public void Build_classifies_a_localized_formatter_as_culture_sensitive(string culture)
     {
+        using var scope = new Humans.Base.Extensions.CultureScope(culture);
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en");
+        var before = System.Globalization.CultureInfo.CurrentCulture;
+        var beforeUi = System.Globalization.CultureInfo.CurrentUICulture;
         var vm = FormatGalleryModelBuilder.Build();
 
         // ToDate follows culture order: es "25 ago 2026" (day-first) vs en "Aug 25, 2026".
         var toDate = vm.CultureSensitive.Single(c => string.Equals(c.Name, "ToDate", StringComparison.Ordinal));
         toDate.EsOutput.Should().NotBe(toDate.EnOutput);
+        System.Globalization.CultureInfo.CurrentCulture.Should().BeSameAs(before);
+        System.Globalization.CultureInfo.CurrentUICulture.Should().BeSameAs(beforeUi);
     }
 }

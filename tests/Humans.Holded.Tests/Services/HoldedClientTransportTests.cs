@@ -61,6 +61,29 @@ public class HoldedClientTransportTests
         requestCount.Should().Be(2);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(HoldedSalesDocumentKind.Invoice)]
+    [Xunit.InlineData(HoldedSalesDocumentKind.SalesReceipt)]
+    public async Task Does_not_retry_bodyless_approval_posts_on_429(HoldedSalesDocumentKind kind)
+    {
+        var requestCount = 0;
+        var handler = new StubHandler(req =>
+        {
+            req.Method.Should().Be(HttpMethod.Post);
+            requestCount++;
+            if (requestCount > 1) return Respond(HttpStatusCode.OK, "{}");
+            var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+            response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.Zero);
+            return response;
+        });
+        var client = Make(handler);
+
+        var act = () => client.ApproveSalesDocumentAsync(kind, "document", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedTransientException>();
+        requestCount.Should().Be(1, "an empty request body does not make a remote write safe to retry");
+    }
+
     [HumansFact]
     public async Task Throws_transient_when_429_persists()
     {

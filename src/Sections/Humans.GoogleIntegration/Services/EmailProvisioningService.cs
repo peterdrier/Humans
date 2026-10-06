@@ -1,5 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
 using System.Globalization;
+using System.Resources;
+using Humans.Base.Extensions;
 using System.Text;
 using Humans.Base.Helpers;
 using Humans.AuditLog.Contracts;
@@ -22,6 +24,8 @@ internal sealed class EmailProvisioningService(
     IAuditLogService auditLogService,
     ILogger<EmailProvisioningService> logger) : IEmailProvisioningService
 {
+    private static readonly ResourceManager NoticeResources = new(typeof(GoogleIntegrationResource));
+
     public async Task<EmailProvisioningResult> ProvisionNobodiesEmailAsync(
         Guid userId,
         string emailPrefix,
@@ -117,24 +121,29 @@ internal sealed class EmailProvisioningService(
                 $"Provisioned and linked @nobodies.team account: {fullEmail}",
                 provisionedByUserId);
 
+            var language = user.PreferredLanguage.IsSupportedCultureCode()
+                ? user.PreferredLanguage
+                : CultureCatalog.DefaultCultureCode;
             if (!string.IsNullOrEmpty(recoveryEmail))
             {
                 await emailService.SendAsync(emailMessages.WorkspaceCredentials(
                     recoveryEmail, user.BurnerName, fullEmail, tempPassword,
-                    user.PreferredLanguage));
+                    language));
             }
 
             try
             {
+                var culture = CultureInfo.GetCultureInfo(language);
                 await notificationService.SendAsync(
                     NotificationSource.WorkspaceCredentialsReady,
                     NotificationClass.Informational,
                     NotificationPriority.Normal,
-                    "Your @nobodies.team account is ready",
+                    NoticeResources.GetString("GoogleIntegration_Email_WorkspaceCredentials_Subject", culture)!,
                     [userId],
-                    body: $"Your workspace email {fullEmail} has been provisioned. Check your personal email for login credentials.",
+                    body: string.Format(culture,
+                        NoticeResources.GetString("GoogleIntegration_Notification_WorkspaceReadyBody", culture)!, fullEmail),
                     actionUrl: "/Profile",
-                    actionLabel: "View profile");
+                    actionLabel: NoticeResources.GetString("GoogleIntegration_Notification_ViewProfile", culture));
             }
             catch (Exception ex)
             {

@@ -462,7 +462,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
         return await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<int> ReassignRecipientsToUserAsync(
+    public async Task ReassignRecipientsToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -510,8 +510,5 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        return await ctx.NotificationRecipients
-            .CountAsync(nr => nr.UserId == targetUserId, ct);
     }
 }

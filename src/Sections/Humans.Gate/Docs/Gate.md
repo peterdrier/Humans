@@ -4,9 +4,9 @@
   src/Sections/Humans.Tickets.Contracts/**
   src/Sections/Humans.EarlyEntry/**
   src/Sections/Humans.Shifts.Contracts/**
-  src/Sections/Humans.Settings.Contracts/**
+  src/Sections/Humans.Settings/Contracts/**
   src/Sections/Humans.Users.Contracts/**
-  src/Sections/Humans.Auth.Contracts/**
+  src/Sections/Humans.Auth/Contracts/**
   tests/Humans.Integration.Tests/Controllers/GatePageRenderTests.cs
 -->
 <!-- freshness:flag-on-change
@@ -71,6 +71,7 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
   _Known test gap:_ the concurrent index-collision path isn't covered by unit tests (the EF in-memory
   provider can't enforce unique indexes) — a Postgres-backed race test is tracked in the debt-ledger
   inbox (2026-06-29).
+- Only a violation of `ix_gate_scan_events_admit_dedupe_key` becomes a duplicate-admit outcome; unrelated persistence failures propagate.
 - **Vendor check-in mirror** — on an admit the controller enqueues `GateVendorCheckInJob`
   (fire-and-forget) which calls Tickets' `ITicketVendorMirror.CreateCheckInAsync` (TicketTailor
   `POST /v1/check_ins`, reached through Tickets rather than the vendor port directly — Tickets is
@@ -120,7 +121,7 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
 | `/Gate/Decision` | POST | `GateAdmit` | Record the agent's Yes/No decision (incl. supervisor override); enqueue vendor mirror on admit |
 | `/Gate/Claim` | GET (`ScannerAccess`) / POST (`GateAdmit`) | — | Pick who is scanning → hands off to the PIN keypad |
 | `/Gate/ClaimPin` | POST | `GateAdmit` | Set/verify the staffer's PIN, then stamp the scanning session. Both POSTs require the posted id to be an active member and the id the user read resolves to: a merged-away id fails closed rather than claiming the session as its survivor |
-| `/Gate/Leaderboard` | GET | `ScannerAccess` | Per-staffer scan tallies |
+| `/Gate/Leaderboard` | GET | `ScannerAccess` | Service tally DTOs rendered directly, ordered by admitted then total scans (descending); names resolved by the Human component |
 | `/Gate/Admin` | GET/POST | `TicketAdminOrAdmin` | Staff PIN admin — settings (cutoff, minor age threshold) moved to `/Settings#gate` (peterdrier/Humans#1634) |
 | `/Gate/Admin/SetPin` | POST | `TicketAdminOrAdmin` | Admin enrol/change any staffer's PIN (incl. supervisors) |
 | `/Gate/Admin/ResetPin` | POST | `TicketAdminOrAdmin` | Admin clear a staffer's PIN (they re-enrol on next claim) |
@@ -138,6 +139,9 @@ unreachable since peterdrier#1075 — nothing links to them. Deletion is planned
 nobodies-collective/Humans#933.)
 
 ## Invariants
+
+- Verdict-card requests reject redirects and display the request-failure card; login or access-denied pages cannot become admission verdicts.
+- Resetting the shared PIN keypad cancels its pending delayed completion. Closing the supervisor override with Cancel cannot submit the PIN afterward; a reopened panel submits only its new entry.
 
 - The cutoff is evaluated against the server clock; `ClientScanAt` never influences it.
 - A barcode can be admitted at most once (atomic unique index + pre-check); re-entry is governed

@@ -54,11 +54,41 @@ public class TrackedCacheReplacementTests
         sut.IsWarmedUp.Should().BeFalse();
     }
 
+    [HumansTheory]
+    [InlineData("invalidate")]
+    [InlineData("delete")]
+    [InlineData("clear")]
+    [InlineData("replace")]
+    [InlineData("reload")]
+    public async Task DelayedMiss_DoesNotUndoEvictionOrReplacement(string mutation)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var sut = new ReplacementCache(warmOnStartup: false) { SourceValue = "fresh" };
+        var pending = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        sut.PendingLoad = pending.Task;
+        var read = sut.GetAsync(1, ct).AsTask();
+        sut.PendingLoad = null;
+
+        switch (mutation)
+        {
+            case "invalidate": sut.Invalidate(1); break;
+            case "delete": sut.DeleteKey(1); break;
+            case "clear": sut.Clear(); break;
+            case "replace": sut.Replace(1, "fresh"); break;
+            default: await sut.ReplaceAsync(1, ct); break;
+        }
+        pending.SetResult("old");
+        (await read).Should().Be("old");
+
+        (await sut.GetAsync(1, ct)).Should().Be("fresh");
+    }
+
     private sealed class ReplacementCache(bool warmOnStartup)
         : TrackedCache<int, string>("replacement-test", warmOnStartup, NullLogger.Instance)
     {
         public string? SourceValue { get; set; }
         public Exception? LoadFailure { get; set; }
+        public Task<string?>? PendingLoad { get; set; }
 
         public Task WarmAsync(CancellationToken ct) => EnsureWarmedAsync(ct);
 
@@ -72,7 +102,9 @@ public class TrackedCacheReplacementTests
         {
             ct.ThrowIfCancellationRequested();
             if (LoadFailure is not null) throw LoadFailure;
-            return ValueTask.FromResult(SourceValue);
+            return PendingLoad is { } pending
+                ? new ValueTask<string?>(pending)
+                : ValueTask.FromResult(SourceValue);
         }
     }
 }

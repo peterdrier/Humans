@@ -16,9 +16,9 @@
     <span class="badge text-bg-success me-1">Attach existing: @c.AttachVerified</span>
     <span class="badge text-bg-primary me-1">Create new user: @c.CreateNewUser</span>
     <span class="badge text-bg-warning me-1">Delete unverified + create: @c.DeleteUnverifiedThenCreate</span>
-    @if (c.AmbiguousMultipleVerified > 0)
+    @if (c.AmbiguousEmailMatches > 0)
     {
-        <span class="badge text-bg-danger me-1">Ambiguous (skipped): @c.AmbiguousMultipleVerified</span>
+        <span class="badge text-bg-danger me-1">Ambiguous (skipped): @c.AmbiguousEmailMatches</span>
     }
     @if (c.SkipNoEmail > 0)
     {
@@ -53,7 +53,7 @@
         {
             <tr>
                 <td>
-                    @if (row.Outcome is AttendeeImportOutcome.AmbiguousMultipleVerified
+                    @if (row.Outcome is AttendeeImportOutcome.AmbiguousEmailMatches
                                       or AttendeeImportOutcome.SkipNoEmail
                                       or AttendeeImportOutcome.SkipVoided)
                     {
@@ -105,7 +105,7 @@
                         case AttendeeImportOutcome.DeleteUnverifiedThenCreate:
                             <span class="badge text-bg-warning">Delete unverified + create</span>
                             break;
-                        case AttendeeImportOutcome.AmbiguousMultipleVerified:
+                        case AttendeeImportOutcome.AmbiguousEmailMatches:
                             <span class="badge text-bg-danger">Ambiguous</span>
                             break;
                         case AttendeeImportOutcome.SkipNoEmail:
@@ -128,10 +128,10 @@
                         <text>Will delete unverified email row owned by </text>
                         <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@squatterId">user</a>
                     }
-                    else if (row.Outcome == AttendeeImportOutcome.AmbiguousMultipleVerified
+                    else if (row.Outcome == AttendeeImportOutcome.AmbiguousEmailMatches
                              && row.AmbiguousUserIds is { Count: > 0 } ids)
                     {
-                        <text>Multiple verified owners: @string.Join(", ", ids)</text>
+                        <text>Ambiguous matching email rows owned by: @string.Join(", ", ids)</text>
                     }
                 </td>
                 <td><code>@row.VendorTicketId</code></td>

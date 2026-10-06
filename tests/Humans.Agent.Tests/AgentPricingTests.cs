@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Xunit;
 using Humans.Agent.Services;
 using Humans.Agent.Contracts;
 
@@ -6,13 +7,22 @@ namespace Humans.Agent.Tests;
 
 public class AgentPricingTests
 {
-    [HumansFact]
-    public void Sonnet_prefix_resolves_to_sonnet_rates()
+    [HumansTheory]
+    [InlineData("claude-sonnet-4-6", 3, 15, 0.30)]
+    [InlineData("claude-haiku-4-5-20251001", 1, 5, 0.10)]
+    [InlineData("claude-opus-4-5-20251101", 5, 25, 0.50)]
+    [InlineData("CLAUDE-OPUS-4-6", 5, 25, 0.50)]
+    [InlineData("claude-opus-4-7", 5, 25, 0.50)]
+    [InlineData("claude-opus-4-8", 5, 25, 0.50)]
+    [InlineData("claude-opus-4-1-20250805", 15, 75, 1.50)]
+    [InlineData("claude-opus-4-20250514", 15, 75, 1.50)]
+    public void Model_prefix_resolves_to_published_rates(
+        string model, decimal input, decimal output, decimal cacheRead)
     {
-        var row = AgentPricing.GetPriceRow("claude-sonnet-4-6");
-        row.Input.Should().Be(3.00m);
-        row.Output.Should().Be(15.00m);
-        row.CacheRead.Should().Be(0.30m);
+        var row = AgentPricing.GetPriceRow(model);
+        row.Input.Should().Be(input);
+        row.Output.Should().Be(output);
+        row.CacheRead.Should().Be(cacheRead);
     }
 
     [HumansFact]

@@ -36,6 +36,7 @@
   <!-- Common / Shared          -->
   <!-- ======================== -->
   <data name="ConsentIndex_Title" xml:space="preserve"><value>Agreements</value></data>
+  <data name="Consent_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
   <data name="ConsentReview_Title" xml:space="preserve"><value>Review: {0}</value><comment>{0} = document name</comment></data>
   <data name="ConsentReview_Progress" xml:space="preserve"><value>Document {0} of {1}</value><comment>{0} = current document index, {1} = total required documents</comment></data>
   <data name="Consent_NoDocumentsRequired" xml:space="preserve"><value>No documents require consent at this time.</value></data>

@@ -1,3 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Humans.Base.Extensions;
 using Humans.Users.Controllers;
 using Humans.Users.Services;
 using Humans.Users.Models;
@@ -46,6 +49,7 @@ namespace Humans.Users.Tests.Controllers;
 public class ProfileControllerEditTests
 {
     private readonly IProfileEditorService _profileEditorService = Substitute.For<IProfileEditorService>();
+    private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly IApplicationDecisionService _applicationDecisionService =
         Substitute.For<IApplicationDecisionService>();
@@ -55,6 +59,9 @@ public class ProfileControllerEditTests
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly IShiftVolunteerProfiles _shiftMgmt = Substitute.For<IShiftVolunteerProfiles>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
+    private readonly IEmailOutboxServiceRead _emailOutbox = Substitute.For<IEmailOutboxServiceRead>();
+    private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
+    private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _profileId = Guid.NewGuid();
@@ -84,10 +91,10 @@ public class ProfileControllerEditTests
             userManager,
             _profileEditorService,
             Substitute.For<IContactFieldService>(),
-            Substitute.For<ICommunicationPreferenceService>(),
+            _commPrefService,
             _onboardingService,
             Substitute.For<IShiftSignups>(),
-            Substitute.For<ISettingsService>(),
+            _settings,
             _shiftMgmt,
             _shiftView,
             _gdprService,
@@ -97,11 +104,11 @@ public class ProfileControllerEditTests
             localizer,
             sharedLocalizer,
             Substitute.For<ICampaignService>(),
-            Substitute.For<IEmailOutboxServiceRead>(),
+            _emailOutbox,
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             _applicationDecisionService,
             _accountDeletionService,
-            Substitute.For<IMembershipCalculatorRead>());
+            _membershipCalculator);
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString())
@@ -156,6 +163,160 @@ public class ProfileControllerEditTests
         // when the controller sets fields on it.
     }
 
+    [HumansTheory]
+    [InlineData("emailEnabled", true)]
+    [InlineData("alertEnabled", true)]
+    [InlineData("emailEnabled", false)]
+    [InlineData("alertEnabled", false)]
+    public async Task UpdatePreference_InvalidBinding_DoesNotChangeChannels(string field, bool viewerExists)
+    {
+        if (!viewerExists)
+            _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>((UserInfo?)null));
+        _controller.ModelState.AddModelError(field, "Not a boolean.");
+        var result = await _controller.UpdatePreference(MessageCategory.Marketing,
+            !string.Equals(field, "emailEnabled", StringComparison.Ordinal),
+            !string.Equals(field, "alertEnabled", StringComparison.Ordinal));
+
+        if (viewerExists) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<UnauthorizedResult>(result);
+        Assert.Empty(_commPrefService.ReceivedCalls());
+    }
+
+    [HumansFact]
+    public async Task UpdatePreference_ExplicitFalseFlags_RemainValid()
+    {
+        Assert.IsType<OkResult>(await _controller.UpdatePreference(MessageCategory.Marketing, false, false));
+        await _commPrefService.Received(1).UpdatePreferenceAsync(_userId, MessageCategory.Marketing,
+            true, false, "Profile", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Me_AbandonedRequest_CancelsOnsiteYearRead()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        _membershipCalculator.GetMembershipSnapshotAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(new MembershipSnapshot(MembershipStatus.Active, true, 0, 0, []));
+        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns((EventSettingsInfo?)null);
+        _settings.GetActiveEventSettingsAsync(aborted.Token)
+            .Returns(Task.FromCanceled<EventSettingsInfo?>(aborted.Token));
+
+        var act = () => _controller.Me(aborted.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void MemberProfileForms_LocalizeValidationMessages(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+
+        void AssertErrors(object model, params (string Field, string Key, object[] Arguments)[] errors)
+        {
+            var context = new ActionContext { HttpContext = new DefaultHttpContext { RequestServices = services } };
+            validator.Validate(context, null, "", model);
+            foreach (var (field, key, arguments) in errors)
+            {
+                var expected = localizer[key, arguments];
+                expected.ResourceNotFound.Should().BeFalse();
+                context.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
+            }
+        }
+
+        AssertErrors(new ProfileViewModel(),
+            ("BurnerName", "Validation_Required", []),
+            ("FirstName", "Validation_Required", []),
+            ("LastName", "Validation_Required", []));
+        AssertErrors(new ProfileViewModel
+        {
+            BurnerName = new string('x', 101),
+            FirstName = new string('x', 101),
+            LastName = new string('x', 101),
+            City = new string('x', 257),
+            CountryCode = new string('x', 3),
+            PlaceId = new string('x', 513),
+            Bio = new string('x', 1001),
+            Pronouns = new string('x', 101),
+            ContributionInterests = new string('x', 2001),
+            BoardNotes = new string('x', 2001),
+            EmergencyContactName = new string('x', 257),
+            EmergencyContactPhone = new string('x', 51),
+            EmergencyContactRelationship = new string('x', 101),
+            ApplicationMotivation = new string('x', 2001),
+            ApplicationAdditionalInfo = new string('x', 1001),
+            ApplicationSignificantContribution = new string('x', 2001),
+            ApplicationRoleUnderstanding = new string('x', 2001),
+            AllergyOtherText = new string('x', 501),
+            BirthdayMonth = 13,
+            BirthdayDay = 32,
+        },
+            ("BurnerName", "Validation_MaxLength", ["", 100]),
+            ("FirstName", "Validation_MaxLength", ["", 100]),
+            ("LastName", "Validation_MaxLength", ["", 100]),
+            ("City", "Validation_MaxLength", ["", 256]),
+            ("CountryCode", "Validation_MaxLength", ["", 2]),
+            ("PlaceId", "Validation_MaxLength", ["", 512]),
+            ("Bio", "Validation_MaxLength", ["", 1000]),
+            ("Pronouns", "Validation_MaxLength", ["", 100]),
+            ("ContributionInterests", "Validation_MaxLength", ["", 2000]),
+            ("BoardNotes", "Validation_MaxLength", ["", 2000]),
+            ("EmergencyContactName", "Validation_MaxLength", ["", 256]),
+            ("EmergencyContactPhone", "Validation_MaxLength", ["", 50]),
+            ("EmergencyContactRelationship", "Validation_MaxLength", ["", 100]),
+            ("ApplicationMotivation", "Validation_MaxLength", ["", 2000]),
+            ("ApplicationAdditionalInfo", "Validation_MaxLength", ["", 1000]),
+            ("ApplicationSignificantContribution", "Validation_MaxLength", ["", 2000]),
+            ("ApplicationRoleUnderstanding", "Validation_MaxLength", ["", 2000]),
+            ("AllergyOtherText", "Validation_MaxLength", ["", 500]),
+            ("BirthdayMonth", "Validation_Range", ["", 1, 12]),
+            ("BirthdayDay", "Validation_Range", ["", 1, 31]));
+        AssertErrors(new DietaryMedicalViewModel
+        {
+            AllergyOtherText = new string('x', 501),
+            IntoleranceOtherText = new string('x', 501),
+            MedicalConditions = new string('x', 4001),
+        },
+            ("DietaryPreference", "Validation_Required", []),
+            ("AllergyOtherText", "Validation_MaxLength", ["", 500]),
+            ("IntoleranceOtherText", "Validation_MaxLength", ["", 500]),
+            ("MedicalConditions", "Validation_MaxLength", ["", 4000]));
+        AssertErrors(new ProfileViewModel
+        {
+            EditableContactFields = [new() { CustomLabel = new string('x', 101) }, new() { Value = new string('x', 501) }],
+            EditableVolunteerHistory = [new(), new() { DateString = "2026-01", EventName = new string('x', 257), Description = new string('x', 2001) }],
+            EditableLanguages = [new(), new() { LanguageCode = new string('x', 11) }],
+        },
+            ("EditableContactFields[0].CustomLabel", "Validation_MaxLength", ["", 100]),
+            ("EditableContactFields[0].Value", "Validation_Required", []),
+            ("EditableContactFields[1].Value", "Validation_MaxLength", ["", 500]),
+            ("EditableVolunteerHistory[0].DateString", "Validation_Required", []),
+            ("EditableVolunteerHistory[0].EventName", "Validation_Required", []),
+            ("EditableVolunteerHistory[1].EventName", "Validation_MaxLength", ["", 256]),
+            ("EditableVolunteerHistory[1].Description", "Validation_MaxLength", ["", 2000]),
+            ("EditableLanguages[0].LanguageCode", "Validation_Required", []),
+            ("EditableLanguages[1].LanguageCode", "Validation_MaxLength", ["", 10]));
+        AssertErrors(new EmailsViewModel { NewEmail = "invalid" },
+            ("NewEmail", "Validation_EmailAddress", []));
+        AssertErrors(new EmailsViewModel { NewEmail = new string('x', 245) + "@example.com" },
+            ("NewEmail", "Validation_MaxLength", ["", 256]));
+        AssertErrors(new SendMessageViewModel(), ("Message", "Validation_Required", []));
+        AssertErrors(new SendMessageViewModel { Message = new string('x', 2001) },
+            ("Message", "Validation_MaxLength", ["", 2000]));
+    }
+
     [HumansFact]
     public void Edit_caps_the_profile_picture_request_before_multipart_binding()
     {
@@ -169,6 +330,76 @@ public class ProfileControllerEditTests
             .GetField("_bytes", BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(limit)
             .Should().Be(21L * 1024 * 1024);
+    }
+
+    [HumansTheory]
+    [InlineData("Outbox")]
+    [InlineData("Privacy")]
+    [InlineData("DietaryMedical")]
+    [InlineData("OutboxAfterViewer")]
+    [InlineData("CommunicationPreferences")]
+    public async Task ProfileReadPages_StopLoadingAfterRequestCancellation(string page)
+    {
+        using var request = new CancellationTokenSource();
+        _controller.HttpContext.RequestAborted = request.Token;
+        var abandon = false;
+        async ValueTask<UserInfo?> ReadViewer(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (abandon && string.Equals(page, "OutboxAfterViewer", StringComparison.Ordinal))
+                await request.CancelAsync();
+            return new User { Id = _userId, PreferredLanguage = "en" }.ToUserInfo();
+        }
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(call => ReadViewer(call.Arg<CancellationToken>()));
+        _emailOutbox.GetMessagesForUserAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Array.Empty<EmailOutboxMessageDto>();
+        });
+        Func<Task<IActionResult>> load = page switch
+        {
+            "Privacy" => () => _controller.Privacy(),
+            "DietaryMedical" => () => _controller.DietaryMedical(),
+            "CommunicationPreferences" => () => _controller.CommunicationPreferences(),
+            _ => () => _controller.MyOutbox(),
+        };
+        (await load()).Should().BeOfType<ViewResult>();
+        abandon = true;
+        if (!string.Equals(page, "OutboxAfterViewer", StringComparison.Ordinal))
+            await request.CancelAsync();
+        await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AccountWallPages_StopLoadingAfterRequestCancellation(bool deletion)
+    {
+        using var request = new CancellationTokenSource();
+        _controller.HttpContext.RequestAborted = request.Token;
+        ((ClaimsIdentity)_controller.User.Identity!).AddClaim(
+            new Claim(Humans.Base.Authorization.RoleChecks.UserStateClaimType, nameof(UserState.Suspended)));
+        var now = Instant.FromUtc(2026, 10, 3, 0, 0);
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(new User
+            {
+                Id = _userId,
+                PreferredLanguage = "en",
+                DeletionRequestedAt = now,
+                DeletionScheduledFor = now + Duration.FromDays(30),
+            }.ToUserInfo());
+        });
+        var wall = new UserController(_userService, _accountDeletionService, Substitute.For<IStringLocalizer<UsersResource>>())
+        {
+            ControllerContext = _controller.ControllerContext,
+        };
+        Func<Task<IActionResult>> load = deletion ? wall.Deletion : wall.Status;
+        (await load()).Should().BeOfType<ViewResult>();
+        await request.CancelAsync();
+        await load.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]

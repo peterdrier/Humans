@@ -1,6 +1,8 @@
 using System.Globalization;
 using Microsoft.Extensions.Localization;
 using CsvHelper;
+using CsvHelper.Configuration;
+using CsvHelper.Delegates;
 using Humans.Base.Csv;
 using Humans.Events.Services.Dtos;
 
@@ -27,7 +29,8 @@ internal static class BulkEventCsvParser
         // comma-rich prose outvotes semicolon data rows (the Spanish-Excel
         // re-save). Sniff the header line instead.
         config.DetectDelimiter = false;
-        config.Delimiter = SniffDelimiter(csvText);
+        config.DetectDelimiterValues = [",", ";"];
+        config.Delimiter = SniffDelimiter(csvText, config);
         // Ragged rows read missing trailing cells as empty instead of throwing;
         // genuinely absent columns are caught by header validation below.
         config.MissingFieldFound = null;
@@ -91,13 +94,13 @@ internal static class BulkEventCsvParser
     }
 
     /// <summary>Delimiter of the header line — the first non-comment, non-blank line.</summary>
-    private static string SniffDelimiter(string csvText)
+    private static string SniffDelimiter(string csvText, CsvConfiguration config)
     {
         foreach (var rawLine in csvText.Split('\n'))
         {
             var line = rawLine.TrimEnd('\r');
             if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith('#')) continue;
-            return line.Count(c => c == ';') > line.Count(c => c == ',') ? ";" : ",";
+            return config.GetDelimiter(new GetDelimiterArgs(line, config));
         }
         return ",";
     }

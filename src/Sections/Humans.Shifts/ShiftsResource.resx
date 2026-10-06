@@ -36,6 +36,7 @@
   <!-- Common / Shared          -->
   <!-- ======================== -->
   <data name="Shifts_SignedUp" xml:space="preserve"><value>Signed Up</value></data>
+  <data name="Shifts_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
   <data name="Shifts_Pending" xml:space="preserve"><value>(pending)</value></data>
   <data name="ShiftInfo_Title" xml:space="preserve"><value>Shift Preferences</value></data>
   <data name="ShiftInfo_StepOf" xml:space="preserve"><value>Step {0} of {1}</value><comment>{0} = current step, {1} = total steps</comment></data>
@@ -438,4 +439,35 @@
   <data name="Shifts_Notification_AssignedDay" xml:space="preserve"><value>You were assigned to {0} on day {1}</value></data>
   <data name="Shifts_Notification_AssignedRange" xml:space="preserve"><value>You were assigned to {0} ({1} shifts)</value></data>
   <data name="Shifts_Notification_AssignedRangeSingular" xml:space="preserve"><value>You were assigned to {0} (1 shift)</value></data>
+  <data name="ShiftInfo_Skill_Bartending" xml:space="preserve"><value>Bartending</value></data>
+  <data name="ShiftInfo_Skill_FirstAid" xml:space="preserve"><value>First Aid</value></data>
+  <data name="ShiftInfo_Skill_Driving" xml:space="preserve"><value>Driving</value></data>
+  <data name="ShiftInfo_Skill_Sound" xml:space="preserve"><value>Sound</value></data>
+  <data name="ShiftInfo_Skill_Electrical" xml:space="preserve"><value>Electrical</value></data>
+  <data name="ShiftInfo_Skill_Construction" xml:space="preserve"><value>Construction</value></data>
+  <data name="ShiftInfo_Skill_Cooking" xml:space="preserve"><value>Cooking</value></data>
+  <data name="ShiftInfo_Skill_Art" xml:space="preserve"><value>Art</value></data>
+  <data name="ShiftInfo_Skill_DJ" xml:space="preserve"><value>DJ</value></data>
+  <data name="ShiftInfo_Time_EarlyBird" xml:space="preserve"><value>Early Bird</value></data>
+  <data name="ShiftInfo_Time_NightOwl" xml:space="preserve"><value>Night Owl</value></data>
+  <data name="ShiftInfo_Time_AllDay" xml:space="preserve"><value>All Day</value></data>
+  <data name="ShiftInfo_Time_NoPreference" xml:space="preserve"><value>No Preference</value></data>
+  <data name="ShiftInfo_Time_EarlyBird_Description" xml:space="preserve"><value>Morning shifts, set up and prep</value></data>
+  <data name="ShiftInfo_Time_NightOwl_Description" xml:space="preserve"><value>Evening and late-night shifts</value></data>
+  <data name="ShiftInfo_Time_AllDay_Description" xml:space="preserve"><value>Flexible, morning through evening</value></data>
+  <data name="ShiftInfo_Time_NoPreference_Description" xml:space="preserve"><value>I'll take whatever's needed</value></data>
+  <data name="ShiftInfo_Quirk_SoberShift" xml:space="preserve"><value>Sober Shift</value></data>
+  <data name="ShiftInfo_Quirk_WorkInShade" xml:space="preserve"><value>Work In Shade</value></data>
+  <data name="ShiftInfo_Quirk_QuietWork" xml:space="preserve"><value>Quiet Work</value></data>
+  <data name="ShiftInfo_Quirk_PhysicalWorkOK" xml:space="preserve"><value>Physical Work OK</value></data>
+  <data name="ShiftInfo_Quirk_NoHeights" xml:space="preserve"><value>No Heights</value></data>
+  <data name="Enum_SignupStatus_Pending" xml:space="preserve"><value>Pending</value></data>
+  <data name="Enum_SignupStatus_Confirmed" xml:space="preserve"><value>Confirmed</value></data>
+  <data name="Enum_SignupStatus_Refused" xml:space="preserve"><value>Refused</value></data>
+  <data name="Enum_SignupStatus_Bailed" xml:space="preserve"><value>Withdrawn</value></data>
+  <data name="Enum_SignupStatus_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="Enum_SignupStatus_NoShow" xml:space="preserve"><value>No show</value></data>
+  <data name="ShiftSignups_Title" xml:space="preserve"><value>Shift Signups</value></data>
+  <data name="ShiftSignups_ConfirmedCount" xml:space="preserve"><value>{0} confirmed</value></data>
+  <data name="ShiftSignups_MoreCount" xml:space="preserve"><value>+ {0} more</value></data>
 </root>

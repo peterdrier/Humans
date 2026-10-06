@@ -7,7 +7,7 @@
     ViewData["Title"] = string.Format(Localizer["ConsentReview_Title"].Value, Model.DocumentName);
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Consent_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Nav_Consents"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Model.DocumentName</li>

@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
@@ -124,9 +125,19 @@ public sealed class TicketTransferServiceTests
 
     // ── CreateRequestAsync ──────────────────────────────────────────────────────
 
-    [HumansFact]
-    public async Task CreateRequest_Persists_Audits_AndEmailsSenderAndTeam()
+    [HumansTheory]
+    [Xunit.InlineData("es", "Solicitud de transferencia de entrada")]
+    [Xunit.InlineData("", "Ticket transfer requested")]
+    [Xunit.InlineData(" ", "Ticket transfer requested")]
+    [Xunit.InlineData("not a culture!", "Ticket transfer requested")]
+    [Xunit.InlineData("fr-FR", "Ticket transfer requested")]
+    public async Task CreateRequest_Persists_Audits_AndEmailsSenderAndTeam(string language, string expectedSubject)
     {
+        using var actorCulture = new CultureScope("fr");
+        var sender = MakeUser(_senderId, "Bob");
+        sender.PreferredLanguage = language;
+        _userService.GetUserInfoAsync(_senderId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(sender, UserFixtures.Profile(burnerName: "Bob", firstName: "Bob", lastName: "Jones")));
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
 
         await _service.CreateRequestAsync(
@@ -145,6 +156,7 @@ public sealed class TicketTransferServiceTests
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_requested"
                 && m.RecipientEmail == "bob@example.com"
+                && m.Subject == expectedSubject
                 && m.HtmlBody.Contains("Alice Smith", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
         await _emailService.Received(1).SendAsync(
@@ -332,15 +344,24 @@ public sealed class TicketTransferServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task Approve_EmailsEachPartyInTheirOwnLanguage()
+    [HumansTheory]
+    [Xunit.InlineData("es", "de", "Transferencia de entrada completada", "Ticketübertragung abgeschlossen")]
+    [Xunit.InlineData("", "es", "Ticket transfer complete", "Transferencia de entrada completada")]
+    [Xunit.InlineData(" ", "de", "Ticket transfer complete", "Ticketübertragung abgeschlossen")]
+    [Xunit.InlineData("not a culture!", "fr-FR", "Ticket transfer complete", "Ticket transfer complete")]
+    [Xunit.InlineData("fr-FR", "", "Ticket transfer complete", "Ticket transfer complete")]
+    [Xunit.InlineData("es", " ", "Transferencia de entrada completada", "Ticket transfer complete")]
+    [Xunit.InlineData("es", "not a culture!", "Transferencia de entrada completada", "Ticket transfer complete")]
+    public async Task Approve_EmailsEachPartyInTheirOwnLanguage(
+        string senderLanguage, string receiverLanguage, string expectedSenderSubject, string expectedReceiverSubject)
     {
+        using var actorCulture = new CultureScope("fr");
         var sender = MakeUser(_senderId, "Bob");
-        sender.PreferredLanguage = "es";
+        sender.PreferredLanguage = senderLanguage;
         _userService.GetUserInfoAsync(_senderId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(sender, UserFixtures.Profile(burnerName: "Bob", firstName: "Bob", lastName: "Jones")));
         var receiver = MakeUser(_receiverId, "Alice");
-        receiver.PreferredLanguage = "de";
+        receiver.PreferredLanguage = receiverLanguage;
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(receiver, UserFixtures.Profile(burnerName: "Alice", firstName: "Alice", lastName: "Smith")));
         var req = MakePending(Guid.NewGuid());
@@ -351,11 +372,11 @@ public sealed class TicketTransferServiceTests
 
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == "bob@example.com"
-                && m.Subject == "Transferencia de entrada completada"),
+                && m.Subject == expectedSenderSubject),
             Arg.Any<CancellationToken>());
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == req.ReceiverEmail
-                && m.Subject == "Ticketübertragung abgeschlossen"),
+                && m.Subject == expectedReceiverSubject),
             Arg.Any<CancellationToken>());
     }
 
@@ -662,11 +683,17 @@ public sealed class TicketTransferServiceTests
         req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed); // not overwritten
     }
 
-    [HumansFact]
-    public async Task Process_BoundsVendorMessage_WhenVendorErrorBodyIsHuge()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Process_BoundsVendorMessage_WhenVendorErrorBodyIsHuge(bool splitPair)
     {
         // VendorMessage is capped at 2000 chars; a huge TT error body must not blow the column
         // (which would make the diagnostic UpdateAsync throw and lose the partial record).
+        const string detailPrefix = "Validation: ";
+        var padding = new string('x', 1499 - detailPrefix.Length);
+        var vendorError = padding + (splitPair ? "😀" : "x") + new string('y', 4000);
+        var expectedDetail = detailPrefix + padding + (splitPair ? "" : "x") + "…";
         var svc = CreateService();
         var req = MakePending(Guid.NewGuid());
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
@@ -675,13 +702,14 @@ public sealed class TicketTransferServiceTests
         _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
             .Returns(new VoidIssuedTicketResult("tkt_original", "hold_123"));
         _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new TicketVendorWriteException(new string('x', 5000), TicketVendorFailureKind.Validation));
+            .ThrowsAsync(new TicketVendorWriteException(vendorError, TicketVendorFailureKind.Validation));
 
         var act = () => svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
 
         req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
         req.VendorMessage!.Length.Should().BeLessThanOrEqualTo(2000);
+        req.VendorMessage.Should().Contain(expectedDetail);
     }
 
     // ── RejectAsync (cancel with reason) ────────────────────────────────────────

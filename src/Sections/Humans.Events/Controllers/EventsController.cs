@@ -33,28 +33,29 @@ internal sealed class EventsController(
     [HttpGet("MySubmissions")]
     public async Task<IActionResult> MySubmissions()
     {
-        var user = await GetCurrentUserInfoAsync();
+        var ct = HttpContext.RequestAborted;
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings);
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
         var isSubmissionOpen = IsSubmissionOpen(guideSettings);
 
         var tz = GetTimeZone(eventSettings);
 
         // Personal block
-        var individualEvents = await guide.GetUserSubmissionsAsync(user.Id);
+        var individualEvents = await guide.GetUserSubmissionsAsync(user.Id, ct);
 
         // Barrio blocks — camps the user leads/workshops
-        var campSettings = await CampService.GetSettingsAsync();
-        var managedCamps = (await CampService.GetCampsForYearAsync(campSettings.PublicYear))
+        var campSettings = await CampService.GetSettingsAsync(ct);
+        var managedCamps = (await CampService.GetCampsForYearAsync(campSettings.PublicYear, ct))
             .Where(camp => camp.IsEventManager(user.Id))
             .ToList();
 
         var barrioBlocks = new List<BarrioSubmissionsBlock>();
         foreach (var camp in managedCamps)
         {
-            var summary = await guide.GetCampSubmissionsSummaryAsync(camp.Id);
+            var summary = await guide.GetCampSubmissionsSummaryAsync(camp.Id, ct);
             var campName = ResolveCampDisplayName(camp);
             barrioBlocks.Add(new BarrioSubmissionsBlock
             {
@@ -119,16 +120,17 @@ internal sealed class EventsController(
     [HttpGet("Submit")]
     public async Task<IActionResult> Submit()
     {
-        var guideSettings = await guide.GetGuideSettingsAsync();
+        var ct = HttpContext.RequestAborted;
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
         if (!IsSubmissionOpen(guideSettings))
         {
             SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
-        var model = await BuildFormAsync(eventSettings);
+        var model = await BuildFormAsync(eventSettings, ct);
         return View("IndividualEventForm", model);
     }
 
@@ -189,10 +191,11 @@ internal sealed class EventsController(
     [HttpGet("Submit/{eventId:guid}/Edit")]
     public async Task<IActionResult> Edit(Guid eventId)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var ct = HttpContext.RequestAborted;
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var guideEvent = await guide.GetEventForModerationAsync(eventId);
+        var guideEvent = await guide.GetEventForModerationAsync(eventId, ct);
         if (guideEvent is null || guideEvent.CampId != null) return NotFound();
         if (guideEvent.SubmitterUserId != user.Id && !RoleChecks.IsEventsAdmin(User))
             return Forbid();
@@ -203,19 +206,19 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
         if (guideSettings == null)
         {
             SetError(localizer["Events_GuideSettingsUnavailable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var tz = GetTimeZone(eventSettings);
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
 
-        var model = await BuildFormAsync(eventSettings);
+        var model = await BuildFormAsync(eventSettings, ct);
         model.Id = guideEvent.Id;
         model.Title = guideEvent.Title;
         model.Description = guideEvent.Description;
@@ -278,17 +281,7 @@ internal sealed class EventsController(
             ToInstant(model.StartDate.Add(startTime), tz), durationMinutes,
             model.LocationNote, model.Host, model.IsRecurring, model.RecurrenceDays);
 
-        try
-        {
-            await guide.UpdateAndResubmitAsync(guideEvent);
-        }
-        catch (InvalidOperationException ex) when (IsSubmitStateException(ex))
-        {
-            ModelState.AddModelError(string.Empty, ex.Message);
-            model.Id = eventId;
-            await PopulateDropdownsAsync(model, eventSettings);
-            return View("IndividualEventForm", model);
-        }
+        await guide.UpdateAndResubmitAsync(guideEvent);
 
         logger.LogInformation("User {UserId} updated event '{Title}' ({EventId})", user.Id, model.Title, eventId);
 
@@ -322,16 +315,17 @@ internal sealed class EventsController(
     [HttpGet("Schedule")]
     public async Task<IActionResult> Schedule()
     {
-        var user = await GetCurrentUserInfoAsync();
+        var ct = HttpContext.RequestAborted;
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings);
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
         var tz = GetTimeZone(eventSettings);
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
-        var favourites = await guide.GetFavouritesWithEventsAsync(user.Id);
-        var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year);
+        var favourites = await guide.GetFavouritesWithEventsAsync(user.Id, ct);
+        var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year, ct);
 
         var scheduleItems = favourites.SelectMany(f =>
         {
@@ -406,24 +400,25 @@ internal sealed class EventsController(
     public async Task<IActionResult> Browse(
         [FromQuery(Name = "days")] int[]? days, Guid? categoryId, Guid? venueId, string? q, bool favouritesOnly = false)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var ct = HttpContext.RequestAborted;
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings);
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
         var tz = GetTimeZone(eventSettings);
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
         var filterDays = days != null && days.Length > 0 ? days.ToHashSet() : null;
 
-        var excludedSlugs = await guide.GetExcludedCategorySlugsAsync(user.Id);
-        var favouriteDaysByEventId = (await guide.GetFavouritesWithEventsAsync(user.Id))
+        var excludedSlugs = await guide.GetExcludedCategorySlugsAsync(user.Id, ct);
+        var favouriteDaysByEventId = (await guide.GetFavouritesWithEventsAsync(user.Id, ct))
             .ToLookup(f => f.GuideEventId, f => f.DayOffset);
-        var events = await guide.GetApprovedEventsAsync(null, venueId, categoryId, q, excludedSlugs);
+        var events = await guide.GetApprovedEventsAsync(null, venueId, categoryId, q, excludedSlugs, ct);
 
-        var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year);
+        var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year, ct);
         var individualSubmitterIds = events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct();
-        var submitterInfoById = await LoadSubmittersAsync(UserService, individualSubmitterIds);
+        var submitterInfoById = await LoadSubmittersAsync(UserService, individualSubmitterIds, ct);
 
         var occurrences = EventOccurrenceExpander.Expand(
             events, favouriteDaysByEventId, gateOpeningDate, tz, filterDays);
@@ -461,8 +456,8 @@ internal sealed class EventsController(
         if (favouritesOnly)
             items = items.Where(i => i.IsFavourited).ToList();
 
-        var categories = await guide.GetActiveCategoriesAsync();
-        var venues = await guide.GetActiveVenuesAsync();
+        var categories = await guide.GetActiveCategoriesAsync(ct);
+        var venues = await guide.GetActiveVenuesAsync(ct);
 
         var eventDays = eventSettings != null ? BuildEventDayOptions(eventSettings) : [];
 
@@ -496,20 +491,20 @@ internal sealed class EventsController(
     private bool IsSubmissionOpen(EventGuideSettingsView? settings) =>
         settings?.IsSubmissionOpenAt(clock.GetCurrentInstant()) ?? false;
 
-    private async Task<IndividualEventFormViewModel> BuildFormAsync(EventSettingsInfo burn)
+    private async Task<IndividualEventFormViewModel> BuildFormAsync(EventSettingsInfo burn, CancellationToken ct = default)
     {
         var model = new IndividualEventFormViewModel
         {
             TimeZoneId = burn.TimeZoneId
         };
-        await PopulateDropdownsAsync(model, burn);
+        await PopulateDropdownsAsync(model, burn, ct);
         return model;
     }
 
-    private async Task PopulateDropdownsAsync(IndividualEventFormViewModel model, EventSettingsInfo burn)
+    private async Task PopulateDropdownsAsync(IndividualEventFormViewModel model, EventSettingsInfo burn, CancellationToken ct = default)
     {
-        var categories = await guide.GetActiveCategoriesAsync();
-        var venues = await guide.GetActiveVenuesAsync();
+        var categories = await guide.GetActiveCategoriesAsync(ct);
+        var venues = await guide.GetActiveVenuesAsync(ct);
 
         model.Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
         model.Venues = venues.Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
@@ -523,19 +518,20 @@ internal sealed class EventsController(
     [HttpGet("Barrio/{slug}/Submit")]
     public async Task<IActionResult> BarrioSubmit(string slug)
     {
+        var ct = HttpContext.RequestAborted;
         var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
         if (!IsSubmissionOpen(guideSettings))
         {
             SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
-        var model = await BuildBarrioFormAsync(slug, camp, eventSettings);
+        var model = await BuildBarrioFormAsync(slug, camp, eventSettings, ct);
         return View("BarrioEventForm", model);
     }
 
@@ -595,10 +591,11 @@ internal sealed class EventsController(
     [HttpGet("Barrio/{slug}/{eventId:guid}/Edit")]
     public async Task<IActionResult> BarrioEdit(string slug, Guid eventId)
     {
+        var ct = HttpContext.RequestAborted;
         var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
-        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
+        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id, ct);
         if (guideEvent == null) return NotFound();
 
         if (!guideEvent.CanBeEditedBySubmitter)
@@ -607,14 +604,14 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var guideSettings = await guide.GetGuideSettingsAsync()
+        var guideSettings = await guide.GetGuideSettingsAsync(ct)
             ?? throw new InvalidOperationException("Guide settings not configured.");
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var tz = GetTimeZone(eventSettings);
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
 
-        var model = await BuildBarrioFormAsync(slug, camp, eventSettings);
+        var model = await BuildBarrioFormAsync(slug, camp, eventSettings, ct);
         model.Id = guideEvent.Id;
         model.Title = guideEvent.Title;
         model.Description = guideEvent.Description;
@@ -669,20 +666,7 @@ internal sealed class EventsController(
             ToInstant(model.StartDate.Add(model.StartTime), tz), model.DurationMinutes,
             model.LocationNote, model.Host, model.IsRecurring, model.RecurrenceDays, model.PriorityRank);
 
-        try
-        {
-            await guide.UpdateAndResubmitAsync(guideEvent);
-        }
-        catch (InvalidOperationException ex) when (IsSubmitStateException(ex))
-        {
-            ModelState.AddModelError(string.Empty, ex.Message);
-            model.Id = eventId;
-            model.CampId = camp.Id;
-            model.CampName = ResolveCampDisplayName(camp);
-            model.CampSlug = slug;
-            await PopulateBarrioDropdownsAsync(model, eventSettings);
-            return View("BarrioEventForm", model);
-        }
+        await guide.UpdateAndResubmitAsync(guideEvent);
 
         logger.LogInformation("User {UserId} updated barrio event '{Title}' ({EventId})", user.Id, model.Title, eventId);
 
@@ -716,10 +700,11 @@ internal sealed class EventsController(
     [HttpGet("Barrio/{slug}/BulkUpload/Template")]
     public async Task<IActionResult> BulkUploadTemplate(string slug)
     {
+        var ct = HttpContext.RequestAborted;
         var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
-        var bytes = await guide.BuildBulkUploadTemplateAsync(camp.Id, ResolveCampDisplayName(camp));
+        var bytes = await guide.BuildBulkUploadTemplateAsync(camp.Id, ResolveCampDisplayName(camp), ct);
         return File(bytes, "text/csv", $"{slug}-events.csv");
     }
 
@@ -765,9 +750,15 @@ internal sealed class EventsController(
             SetError(localizer["Events_Upload_ParseErrorDetail", ex.Message].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
-        catch (Exception ex)
+        catch (CsvHelper.BadDataException ex)
         {
             logger.LogWarning("Bulk CSV parse failed for camp slug {Slug}: {Message}", slug, ex.Message);
+            SetError(localizer["Events_Upload_ParseFailed"].Value);
+            return RedirectToAction(nameof(MySubmissions));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Bulk CSV parse failed for camp slug {Slug}: {Message}", slug, ex.Message);
             SetError(localizer["Events_Upload_ParseFailed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
@@ -809,7 +800,7 @@ internal sealed class EventsController(
     private string FormatEventFeedback(string resourceKey, string title) =>
         string.Format(localizer[resourceKey].Value, title);
 
-    private async Task<CampEventFormViewModel> BuildBarrioFormAsync(string slug, CampInfo camp, EventSettingsInfo burn)
+    private async Task<CampEventFormViewModel> BuildBarrioFormAsync(string slug, CampInfo camp, EventSettingsInfo burn, CancellationToken ct = default)
     {
         var model = new CampEventFormViewModel
         {
@@ -818,21 +809,18 @@ internal sealed class EventsController(
             CampSlug = slug,
             TimeZoneId = burn.TimeZoneId
         };
-        await PopulateBarrioDropdownsAsync(model, burn);
+        await PopulateBarrioDropdownsAsync(model, burn, ct);
         return model;
     }
 
-    private async Task PopulateBarrioDropdownsAsync(CampEventFormViewModel model, EventSettingsInfo burn)
+    private async Task PopulateBarrioDropdownsAsync(CampEventFormViewModel model, EventSettingsInfo burn, CancellationToken ct = default)
     {
-        var categories = await guide.GetActiveCategoriesAsync();
+        var categories = await guide.GetActiveCategoriesAsync(ct);
         model.Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
         model.TimeZoneId = burn.TimeZoneId;
 
         model.EventDays = BuildEventDayOptions(burn);
     }
 
-    internal static bool IsSubmitStateException(InvalidOperationException ex) =>
-        ex.Message.StartsWith("Cannot submit event in ", StringComparison.Ordinal)
-        && ex.Message.EndsWith(" state", StringComparison.Ordinal);
 
 }

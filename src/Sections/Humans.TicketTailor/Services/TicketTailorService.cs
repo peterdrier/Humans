@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -51,37 +52,10 @@ internal sealed class TicketTailorService : ITicketVendorService
         Instant? since, string eventId, CancellationToken ct = default)
     {
         var orders = new List<VendorOrderDto>();
-        string? cursor = null;
-        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
-
-        do
+        await foreach (var page in FetchPagesAsync<TtOrder>(
+            "orders", "updated_at", since, eventId, static order => order.Id, ct))
         {
-            var url = $"{BaseUrl}/orders?event_id={eventId}";
-            if (since.HasValue)
-                url += $"&updated_at.gte={since.Value.ToUnixTimeSeconds()}";
-            if (cursor is not null)
-                url += $"&starting_after={cursor}";
-
-            // nobodies-collective/Humans#946: time each page request, not the whole paginated loop — HttpClient.Timeout
-            // applies per request, and SelectLogLevel's Error threshold is calibrated for one.
-            TtPaginatedResponse<TtOrder>? body;
-            using (_logger.TimeOperation())
-            {
-                using var response = await _httpClient.GetAsync(url, ct);
-                response.EnsureSuccessStatusCode();
-                body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtOrder>>(JsonOptions, ct);
-            }
-
-            if (body?.Data is null)
-                throw new HttpRequestException("TicketTailor pagination response is missing data.");
-            if (body.Data.Count == 0)
-            {
-                if (body.Links?.Next is not null)
-                    throw new HttpRequestException("TicketTailor pagination returned an empty nonterminal page.");
-                break;
-            }
-
-            foreach (var order in body.Data)
+            foreach (var order in page)
             {
                 var purchasedAt = Instant.FromUnixTimeSeconds(order.CreatedAt);
                 var buyer = order.BuyerDetails;
@@ -104,107 +78,82 @@ internal sealed class TicketTailorService : ITicketVendorService
                     DiscountAmount: discountAmount,
                     DonationAmount: donationAmount));
             }
-
-            cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
-            if (body.Links?.Next is not null
-                && (string.IsNullOrWhiteSpace(cursor) || !seenCursors.Add(cursor)))
-                throw new HttpRequestException("TicketTailor pagination returned a missing or repeated cursor.");
-        } while (cursor is not null);
+        }
 
         _logger.LogInformation("Fetched {Count} orders from TicketTailor for event {EventId}",
             orders.Count, eventId);
-
         return orders;
     }
 
     public async Task<IReadOnlyList<VendorTicketDto>> GetIssuedTicketsAsync(
         Instant? since, string eventId, CancellationToken ct = default)
     {
-        using var _ = _logger.TimeOperation();
         var tickets = new List<VendorTicketDto>();
-        string? cursor = null;
-        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
-
-        do
-        {
-            var url = $"{BaseUrl}/issued_tickets?event_id={eventId}";
-            if (since.HasValue)
-                url += $"&updated_at.gte={since.Value.ToUnixTimeSeconds()}";
-            if (cursor is not null)
-                url += $"&starting_after={cursor}";
-
-            using var response = await _httpClient.GetAsync(url, ct);
-            response.EnsureSuccessStatusCode();
-
-            var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtIssuedTicket>>(JsonOptions, ct);
-            if (body?.Data is null)
-                throw new HttpRequestException("TicketTailor pagination response is missing data.");
-            if (body.Data.Count == 0)
-            {
-                if (body.Links?.Next is not null)
-                    throw new HttpRequestException("TicketTailor pagination returned an empty nonterminal page.");
-                break;
-            }
-
-            tickets.AddRange(body.Data.Select(ToVendorTicket));
-
-            cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
-            if (body.Links?.Next is not null
-                && (string.IsNullOrWhiteSpace(cursor) || !seenCursors.Add(cursor)))
-                throw new HttpRequestException("TicketTailor pagination returned a missing or repeated cursor.");
-        } while (cursor is not null);
+        await foreach (var page in FetchPagesAsync<TtIssuedTicket>(
+            "issued_tickets", "updated_at", since, eventId, static ticket => ticket.Id, ct))
+            tickets.AddRange(page.Select(ToVendorTicket));
 
         _logger.LogInformation("Fetched {Count} issued tickets from TicketTailor for event {EventId}",
             tickets.Count, eventId);
-
         return tickets;
     }
 
     public async Task<IReadOnlyList<VendorCheckInDto>> GetCheckInsAsync(
         Instant? since, string eventId, CancellationToken ct = default)
     {
-        using var _ = _logger.TimeOperation();
         var records = new List<TtCheckIn>();
+        // Offline scanners upload old check_in_at values; page by upload creation time.
+        await foreach (var page in FetchPagesAsync<TtCheckIn>(
+            "check_ins", "created_at", since, eventId, static checkIn => checkIn.Id, ct))
+            records.AddRange(page);
+
+        var checkIns = NetCheckIns(records);
+        _logger.LogInformation("Fetched {Count} check-ins from TicketTailor for event {EventId}",
+            checkIns.Count, eventId);
+        return checkIns;
+    }
+
+    private async IAsyncEnumerable<IReadOnlyList<T>> FetchPagesAsync<T>(
+        string resource, string timestampField, Instant? since, string eventId,
+        Func<T, string> getId, [EnumeratorCancellation] CancellationToken ct,
+        [CallerMemberName] string operation = "")
+    {
         string? cursor = null;
         var seenCursors = new HashSet<string>(StringComparer.Ordinal);
-
         do
         {
-            var url = $"{BaseUrl}/check_ins?event_id={eventId}";
-            // Page by created_at, not check_in_at: an offline scanner uploads scans whose
-            // check_in_at predates our last sync, and a check_in_at cursor would drop them forever.
+            var url = $"{BaseUrl}/{resource}?event_id={eventId}";
             if (since.HasValue)
-                url += $"&created_at.gte={since.Value.ToUnixTimeSeconds()}";
+                url += $"&{timestampField}.gte={since.Value.ToUnixTimeSeconds()}";
             if (cursor is not null)
                 url += $"&starting_after={cursor}";
 
-            using var response = await _httpClient.GetAsync(url, ct);
-            response.EnsureSuccessStatusCode();
+            // Time each request under its public operation name, not the whole sync.
+            TtPaginatedResponse<T>? body;
+            using (_logger.TimeOperation(operation: operation))
+            {
+                using var response = await _httpClient.GetAsync(url, ct);
+                response.EnsureSuccessStatusCode();
+                body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<T>>(JsonOptions, ct);
+            }
 
-            var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtCheckIn>>(JsonOptions, ct);
             if (body?.Data is null)
                 throw new HttpRequestException("TicketTailor pagination response is missing data.");
+            if (body.Data.Any(item => item is null || string.IsNullOrWhiteSpace(getId(item))))
+                throw new HttpRequestException("TicketTailor pagination response contains an item without an identity.");
             if (body.Data.Count == 0)
             {
                 if (body.Links?.Next is not null)
                     throw new HttpRequestException("TicketTailor pagination returned an empty nonterminal page.");
-                break;
+                yield break;
             }
 
-            records.AddRange(body.Data);
-
-            cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
+            yield return body.Data;
+            cursor = body.Links?.Next is not null ? getId(body.Data[^1]) : null;
             if (body.Links?.Next is not null
                 && (string.IsNullOrWhiteSpace(cursor) || !seenCursors.Add(cursor)))
                 throw new HttpRequestException("TicketTailor pagination returned a missing or repeated cursor.");
         } while (cursor is not null);
-
-        var checkIns = NetCheckIns(records);
-
-        _logger.LogInformation("Fetched {Count} check-ins from TicketTailor for event {EventId}",
-            checkIns.Count, eventId);
-
-        return checkIns;
     }
 
     public async Task<VendorEventSummaryDto> GetEventSummaryAsync(
@@ -223,18 +172,19 @@ internal sealed class TicketTailorService : ITicketVendorService
             response.EnsureSuccessStatusCode();
         }
 
-        var evt = await response.Content.ReadFromJsonAsync<TtEvent>(JsonOptions, ct);
+        var evt = await response.Content.ReadFromJsonAsync<TtEvent>(JsonOptions, ct)
+            ?? throw new HttpRequestException("TicketTailor event response is missing data.");
 
         // Capacity comes from ticket_groups (waves share the same pool).
         // Summing ticket_types.quantity_total is wrong — waves are subdivisions, not additive.
-        var totalCapacity = evt?.TicketGroups?.Sum(g => g.MaxQuantity ?? 0) ?? 0;
+        var totalCapacity = evt.TicketGroups?.Sum(g => g.MaxQuantity ?? 0) ?? 0;
         if (totalCapacity == 0)
-            totalCapacity = evt?.TicketTypes?.Sum(tt => tt.QuantityTotal ?? 0) ?? 0;
-        var ticketsSold = evt?.TotalIssuedTickets ?? 0;
+            totalCapacity = evt.TicketTypes?.Sum(tt => tt.QuantityTotal ?? 0) ?? 0;
+        var ticketsSold = evt.TotalIssuedTickets ?? 0;
 
         var summary = new VendorEventSummaryDto(
             EventId: eventId,
-            EventName: evt?.Name ?? "Unknown",
+            EventName: evt.Name ?? "Unknown",
             TotalCapacity: totalCapacity,
             TicketsSold: ticketsSold,
             TicketsRemaining: totalCapacity - ticketsSold);
@@ -383,6 +333,11 @@ internal sealed class TicketTailorService : ITicketVendorService
             var body = await response.Content.ReadFromJsonAsync<TtIssuedTicket>(JsonOptions, ct)
                 ?? throw new TicketVendorWriteException(
                     "TicketTailor issue returned 2xx with empty body",
+                    TicketVendorFailureKind.Transient);
+
+            if (string.IsNullOrWhiteSpace(body.Id))
+                throw new TicketVendorWriteException(
+                    "TicketTailor issue returned 2xx without a ticket id",
                     TicketVendorFailureKind.Transient);
 
             return ToVendorTicket(body);

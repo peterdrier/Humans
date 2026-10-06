@@ -44,6 +44,7 @@
     // Resource type mapping: tab data-resource-type values to API enum values
     // DriveFolder = 0, Group = 2
     var resourceTypeMap = { 'DriveFolder': 0, 'Group': 2 };
+    var previewVersions = new WeakMap();
 
     function getResourceTypeValue(name) {
         return resourceTypeMap[name] ?? name;
@@ -64,18 +65,22 @@
     function loadTab(resourceType) {
         var paneId = resourceType === 'DriveFolder' ? 'drives-tab' : 'groups-tab';
         var pane = document.getElementById(paneId);
+        var version = (previewVersions.get(pane) || 0) + 1;
+        previewVersions.set(pane, version);
         pane.innerHTML = '<div class="text-center py-5"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
 
-        fetch('/Google/Sync/Preview/' + getResourceTypeValue(resourceType))
+        fetch('/Google/Sync/Preview/' + getResourceTypeValue(resourceType), { redirect: 'error' })
             .then(function (r) {
                 if (!r.ok) throw new Error('Request failed: ' + r.status);
                 return r.text();
             })
             .then(function (html) {
+                if (previewVersions.get(pane) !== version) return;
                 pane.innerHTML = html;
                 bindTabActions(pane, resourceType);
             })
             .catch(function (err) {
+                if (previewVersions.get(pane) !== version) return;
                 pane.innerHTML = '<div class="alert alert-danger">Failed to load sync data: ' + err.message + '</div>';
             });
     }

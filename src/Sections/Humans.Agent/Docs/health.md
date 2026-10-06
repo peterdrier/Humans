@@ -51,26 +51,26 @@ that enforces each:
 - Over any cap is 429 before the provider (`src/Sections/Humans.Agent/Controllers/AgentController.cs:60`),
   and the service persists the refusal (`src/Sections/Humans.Agent/Services/AgentService.cs:101`).
 - Every refused turn persists a message with `RefusalReason`
-  (`src/Sections/Humans.Agent/Services/AgentService.cs:781`, `src/Sections/Humans.Agent/Services/AgentService.cs:809`); a failed or disconnected turn
+  (`src/Sections/Humans.Agent/Services/AgentService.cs:803`, `src/Sections/Humans.Agent/Services/AgentService.cs:835`); a failed or disconnected turn
   persists an error trace and is billed for what it consumed
   (`src/Sections/Humans.Agent/Services/AgentService.cs:227`, `src/Sections/Humans.Agent/Services/AgentService.cs:232`).
 - A member reads only their own conversations; mismatch is 404
-  (`src/Sections/Humans.Agent/Services/AgentService.cs:513`, `src/Sections/Humans.Agent/Controllers/AgentController.cs:123`).
+  (`src/Sections/Humans.Agent/Services/AgentService.cs:525`, `src/Sections/Humans.Agent/Controllers/AgentController.cs:123`).
 - A member posts only to their own conversations; a foreign id is 403 before the stream opens
   and before anything is written (`src/Sections/Humans.Agent/Services/AgentService.cs:94`,
   `src/Sections/Humans.Agent/Controllers/AgentController.cs:83`).
 - The tool whitelist is closed (`src/Sections/Humans.Agent/Services/AgentToolDispatcher.cs:29`);
   doc reads cannot reach arbitrary paths (`src/Sections/Humans.Agent/Services/Preload/AgentFeatureSpecReader.cs:116`,
   `src/Sections/Humans.Agent/Services/Preload/AgentSectionDocReader.cs:37`).
-- The tool loop is bounded (`src/Sections/Humans.Agent/Services/AgentService.cs:357`); cap-hit
-  forces synthesis (`src/Sections/Humans.Agent/Services/AgentService.cs:403`).
+- The tool loop is bounded (`src/Sections/Humans.Agent/Services/AgentService.cs:369`); cap-hit
+  forces synthesis (`src/Sections/Humans.Agent/Services/AgentService.cs:415`).
 - A turn never ends with an empty assistant bubble, streamed or stored
-  (`src/Sections/Humans.Agent/Services/AgentService.cs:413`).
-- `route_to_issue` never writes server-side (`src/Sections/Humans.Agent/Services/AgentToolDispatcher.cs:84`).
+  (`src/Sections/Humans.Agent/Services/AgentService.cs:425`).
+- `route_to_issue` never writes server-side (`src/Sections/Humans.Agent/Services/AgentToolDispatcher.cs:110`).
 - An incomplete preload corpus or community index is served but never cached, and a reload
   publishes nothing unless every fetch succeeded
-  (`src/Sections/Humans.Agent/Services/Preload/AgentPreloadCorpusBuilder.cs:44`,
-  `src/Sections/Humans.Agent/Services/Preload/AgentPreloadCorpusBuilder.cs:57`).
+  (`src/Sections/Humans.Agent/Services/Preload/AgentPreloadCorpusBuilder.cs:55`,
+  `src/Sections/Humans.Agent/Services/Preload/AgentPreloadCorpusBuilder.cs:69`).
 
 ## Seams
 

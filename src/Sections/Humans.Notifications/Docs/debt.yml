@@ -1,0 +1,8 @@
+# Section debt ledger for Humans.Notifications; see memory/process/debt-ledger-additions.md.
+version: 1
+next_id: 2
+inbox:
+  - added: 2026-10-04
+    id: NOTIF-1
+    what: "NotificationInboxService.PurgeExpiredAsync deletes stale informational and retired-source notifications without invalidating their cached unread badge counts. A count warmed before cleanup survives for the two-minute TTL even after its rows are removed, contrary to the post-write invalidation invariant. Retention repository methods return counts only; an affected-recipient outcome needs approved interface surface, while group invalidation must coordinate the shared CacheKeys used by dispatch and inbox writers. Agree the owning invalidation strategy rather than deriving recipients from Users or enumerating a concrete cache implementation. Found during the daily debt sweep."
+    review: panel

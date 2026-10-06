@@ -14,6 +14,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Xunit;
 
 namespace Humans.Containers.Tests.Services;
@@ -220,6 +221,90 @@ public sealed class ServiceImageTests
 
         updated.Images.Should().HaveCount(5);
         updated.Images.Select(i => i.Id).Should().NotContain(existing.Images[0].Id);
+    }
+
+    [HumansTheory]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public async Task UpdateAsync_FailedUploadPreservesGalleryAndMetadata(bool legacy, int failedUpload)
+    {
+        var container = await SeedContainerAsync(legacy ? "uploads/containers/legacy.jpg" : null, galleryImages: 2);
+        var before = await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken);
+        var attemptedKeys = new List<string>();
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                attemptedKeys.Add(call.ArgAt<string>(0));
+                return attemptedKeys.Count == failedUpload
+                    ? Task.FromException(new IOException("Disk full")) : Task.CompletedTask;
+            });
+
+        var act = () => _sut.UpdateAsync(container.Id, new ContainerData(container.CampId, "Changed", "New description",
+            NewImages: FakeImages(2), RemoveImageIds: before!.Images.Select(i => i.Id).ToList()),
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<IOException>();
+        (await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken)).Should().BeEquivalentTo(before);
+        await _fileStorage.Received(failedUpload - 1).DeleteAsync(Arg.Any<string>(), CancellationToken.None);
+        foreach (var key in attemptedKeys.Take(failedUpload - 1))
+            await _fileStorage.Received(1).DeleteAsync(key, CancellationToken.None);
+        await _auditLog.DidNotReceive().LogAsync(AuditAction.ContainerUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(3, true)]
+    public async Task CreateAsync_FailedUploadDoesNotLeaveAnUnauditedContainer(int failedUpload, bool cleanupFails)
+    {
+        var attemptedKeys = new List<string>();
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                attemptedKeys.Add(call.ArgAt<string>(0));
+                return attemptedKeys.Count == failedUpload
+                    ? Task.FromException(new IOException("Disk full")) : Task.CompletedTask;
+            });
+        if (cleanupFails)
+            _fileStorage.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(call => string.Equals(call.ArgAt<string>(0), attemptedKeys[0], StringComparison.Ordinal)
+                    ? Task.FromException(new IOException("File locked")) : Task.CompletedTask);
+
+        var act = () => _sut.CreateAsync(new ContainerData(CampId, "New container", null, NewImages: FakeImages(Math.Max(2, failedUpload))),
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<IOException>().WithMessage("Disk full");
+        await _fileStorage.Received(failedUpload - 1).DeleteAsync(Arg.Any<string>(), CancellationToken.None);
+        foreach (var key in attemptedKeys.Take(failedUpload - 1))
+            await _fileStorage.Received(1).DeleteAsync(key, CancellationToken.None);
+        (await _sut.GetAllAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
+        await _auditLog.DidNotReceive().LogAsync(AuditAction.ContainerCreated, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task UpdateAsync_CleanupFailurePreservesCommittedGalleryAndAttemptsEveryFile()
+    {
+        var container = await SeedContainerAsync("uploads/containers/legacy.jpg", galleryImages: 2);
+        var before = await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken);
+        var paths = before!.Images.Select(i => i.Url.TrimStart('/')).ToList();
+        _fileStorage.DeleteAsync(paths[1], Arg.Any<CancellationToken>()).ThrowsAsync(new IOException("File locked"));
+
+        var updated = await _sut.UpdateAsync(container.Id, new ContainerData(container.CampId, "Changed", "New description",
+            NewImages: FakeImages(1), RemoveImageIds: before.Images.Select(i => i.Id).ToList()),
+            actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
+
+        updated.Name.Should().Be("Changed");
+        updated.Images.Should().ContainSingle();
+        updated.Images.Select(i => i.Id).Should().NotIntersectWith(before.Images.Select(i => i.Id));
+        (await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken)).Should().BeEquivalentTo(updated);
+        foreach (var path in paths)
+            await _fileStorage.Received(1).DeleteAsync(path, CancellationToken.None);
+        await _auditLog.Received(1).LogAsync(AuditAction.ContainerUpdated, Arg.Any<string>(), container.Id,
+            Arg.Any<string>(), Arg.Any<Guid>(), container.CampId, Arg.Any<string?>());
     }
 
     [HumansFact]

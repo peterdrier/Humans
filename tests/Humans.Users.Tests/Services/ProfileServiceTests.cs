@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using ProfileService = Humans.Users.Services.ProfileService;
@@ -23,6 +24,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     private readonly IUserServiceInternal _userService = Substitute.For<IUserServiceInternal>();
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
     private readonly InMemoryFileStorage _fileStorage = new();
+    private readonly IFileStorage _pictureStorage = Substitute.For<IFileStorage>();
 
     // Delegate to the production helper (made internal for test access)
     // so the test can't drift from the real key construction.
@@ -31,6 +33,14 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
     public ProfileServiceTests()
     {
+        _pictureStorage.SaveAsync(Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>())
+            .Returns(call => _fileStorage.SaveAsync(call.ArgAt<string>(0), call.ArgAt<byte[]>(1), call.ArgAt<CancellationToken>(2)));
+        _pictureStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(call => _fileStorage.SaveAsync(call.ArgAt<string>(0), call.ArgAt<Stream>(1), call.ArgAt<CancellationToken>(2)));
+        _pictureStorage.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => _fileStorage.DeleteAsync(call.ArgAt<string>(0), call.ArgAt<CancellationToken>(1)));
+        _pictureStorage.TryReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => _fileStorage.TryReadAsync(call.ArgAt<string>(0), call.ArgAt<CancellationToken>(1)));
         // Real repositories backed by an IDbContextFactory wrapping the in-memory store.
         _userRepository = new UserRepository(DbFactory, Clock);
         var storageUserService = new UserService(
@@ -38,17 +48,16 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             _communicationPreferenceRepository,
             AdminAuthorization,
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
-            Substitute.For<IFileStorage>(),
+            _pictureStorage,
             Clock,
             NullLogger<UserService>.Instance);
 
         _service = new ProfileService(
             _userRepository, _userService,
-            _fileStorage,
-            NullLogger<ProfileService>.Instance);
+            _pictureStorage);
         _editor = new ProfileEditorService(
             _userService,
-            _fileStorage,
+            _pictureStorage,
             NullLogger<ProfileEditorService>.Instance);
 
         _userService.StubGetUserInfosFromContext(Db);
@@ -56,19 +65,13 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _userService.SaveProfileAsync(
                 Arg.Any<Guid>(),
                 Arg.Any<UserProfileSaveCommand>(),
+                Arg.Any<byte[]?>(),
                 Arg.Any<CancellationToken>())
             .Returns(call => storageUserService.SaveProfileAsync(
                 call.ArgAt<Guid>(0),
                 call.ArgAt<UserProfileSaveCommand>(1),
-                call.ArgAt<CancellationToken>(2)));
-        _userService.SetProfilePictureContentTypeAsync(
-                Arg.Any<Guid>(),
-                Arg.Any<string>(),
-                Arg.Any<CancellationToken>())
-            .Returns(call => storageUserService.SetProfilePictureContentTypeAsync(
-                call.ArgAt<Guid>(0),
-                call.ArgAt<string>(1),
-                call.ArgAt<CancellationToken>(2)));
+                call.ArgAt<byte[]?>(2),
+                call.ArgAt<CancellationToken>(3)));
     }
 
     // --- Profile editor save flow ---
@@ -181,7 +184,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     public async Task SaveProfileAsync_UploadsProfilePicture_WritesToFilesystem()
     {
         var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
+        await SeedUserWithProfileAsync(userId, withPicture: true);
         var payload = new byte[] { 0x10, 0x20, 0x30 };
         var request = MakeRequest(pictureData: payload, pictureContentType: "image/jpeg");
 
@@ -194,6 +197,80 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var key = PicKey(profile.Id, "image/jpeg");
         _fileStorage.Files.Should().ContainKey(key);
         _fileStorage.Files[key].Should().BeEquivalentTo(payload);
+        _fileStorage.Files.Should().NotContainKey(PicKey(profile.Id, "image/png"));
+    }
+
+    [HumansFact]
+    public async Task SaveProfileAsync_FailedPictureReplacementPreservesThePreviousPicture()
+    {
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
+        _pictureStorage.SaveAsync(Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("Disk full"));
+
+        await _editor.SaveProfileAsync(userId, "Updated name",
+            MakeRequest(pictureData: [4, 5, 6], pictureContentType: "image/jpeg"), ct: Xunit.TestContext.Current.CancellationToken);
+
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
+        profile.ProfilePictureContentType.Should().Be("image/png");
+        (await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, Xunit.TestContext.Current.CancellationToken))
+            .DisplayName.Should().Be("Updated name");
+        _fileStorage.Files[PicKey(profileId, "image/png")].Should().Equal(1, 2, 3);
+        var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
+        picture.Should().NotBeNull();
+        picture!.Value.ContentType.Should().Be("image/png");
+        picture.Value.Data.Should().Equal(1, 2, 3);
+    }
+
+    [HumansFact]
+    public async Task SaveProfileAsync_FailedFirstPictureUploadDoesNotPublishMissingFileMetadata()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+        _pictureStorage.SaveAsync(Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("Disk full"));
+
+        await _editor.SaveProfileAsync(userId, "Updated name",
+            MakeRequest(pictureData: [4, 5, 6], pictureContentType: "image/jpeg"), ct: Xunit.TestContext.Current.CancellationToken);
+
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
+        profile.ProfilePictureContentType.Should().BeNull();
+        (await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task SaveProfileAsync_CancelledPictureWritePreservesThePreviousPicture()
+    {
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
+        _pictureStorage.SaveAsync(Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new OperationCanceledException());
+
+        var act = () => _editor.SaveProfileAsync(userId, "Updated name",
+            MakeRequest(pictureData: [4, 5, 6], pictureContentType: "image/jpeg"), ct: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
+        profile.ProfilePictureContentType.Should().Be("image/png");
+        _fileStorage.Files[PicKey(profileId, "image/png")].Should().Equal(1, 2, 3);
+    }
+
+    [HumansFact]
+    public async Task SaveProfileAsync_OldFileCleanupFailurePreservesTheNewPicture()
+    {
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
+        _pictureStorage.DeleteAsync(PicKey(profileId, "image/png"), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("File locked"));
+
+        await _editor.SaveProfileAsync(userId, "Updated name",
+            MakeRequest(pictureData: [4, 5, 6], pictureContentType: "image/jpeg"), ct: Xunit.TestContext.Current.CancellationToken);
+
+        var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
+        picture.Should().NotBeNull();
+        picture!.Value.ContentType.Should().Be("image/jpeg");
+        picture.Value.Data.Should().Equal(4, 5, 6);
+        await _pictureStorage.Received(1).DeleteAsync(PicKey(profileId, "image/png"), CancellationToken.None);
     }
 
     [HumansFact]

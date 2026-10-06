@@ -635,6 +635,34 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
+    public async Task Warmup_DoesNotRepublishSettingsChangedDuringCampLoads()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync(2026, [2026]);
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _innerSubstitute.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            started.SetResult();
+            await release.Task.WaitAsync(ct);
+            return (IReadOnlyList<CampInfo>)[];
+        });
+        var warmup = _service.GetCampsForYearAsync(2026, ct);
+        await started.Task.WaitAsync(ct);
+
+        var settings = await CampsDb.CampSettings.SingleAsync(ct);
+        settings.OpenSeasons = [2026, 2027];
+        await SaveAllAsync(ct);
+        await _service.InvalidateSettingsAsync(ct);
+        (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Contain(2027);
+        release.SetResult();
+        await warmup.WaitAsync(ct);
+
+        (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Contain(2027,
+            "finishing the older camp warmup must not restore its settings snapshot");
+    }
+
+    [HumansFact]
     public async Task CancelledSettingsInvalidation_DoesNotKeepThePreWriteSettingsSlot()
     {
         var ct = TestContext.Current.CancellationToken;

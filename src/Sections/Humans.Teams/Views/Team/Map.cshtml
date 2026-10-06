@@ -3,7 +3,7 @@
     ViewData["Title"] = Localizer["Map_Title"].Value;
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Teams_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["Map_Title"]</li>
@@ -69,7 +69,9 @@ else
                 if (m.profilePictureUrl) {
                     return '<img src="' + escapeHtml(m.profilePictureUrl) + '" alt="" style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;object-fit:cover;">';
                 }
-                const initials = (m.displayName || '?').split(' ').map(function(w){return w[0];}).join('').substring(0, 2).toUpperCase();
+                const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+                const initials = (m.displayName || '?').split(' ').filter(Boolean).slice(0, 2)
+                    .map(word => graphemes.segment(word)[Symbol.iterator]().next().value.segment).join('').toUpperCase();
                 return '<div style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;background:' + clrMutedText + ';color:' + clrTextOnDark + ';display:flex;align-items:center;justify-content:center;font-size:' + Math.round(s * 0.4) + 'px;font-weight:600;">' + escapeHtml(initials) + '</div>';
             }
 

@@ -29,7 +29,12 @@ public sealed record NotificationInboxSnapshot(
     IReadOnlyList<NotificationMeterDto> Meters);
 
 /// <summary>One unread, unresolved notification row.</summary>
+/// <param name="CreatedAt">When the notification was created.</param>
+/// <param name="Source">The event or workflow that produced the notification.</param>
+/// <param name="Title">The notification's short display title.</param>
 /// <param name="ActionUrl">Where the row points, null when it is informational only.</param>
+/// <param name="Priority">The notification's display priority.</param>
+/// <param name="Class">Whether the notification asks for action or is informational.</param>
 /// <param name="IsUnread">Always true today (the query is the unread tab); kept so a consumer need not infer it.</param>
 public sealed record UnreadNotificationDto(
     DateTime CreatedAt,

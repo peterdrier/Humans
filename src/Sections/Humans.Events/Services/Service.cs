@@ -214,6 +214,7 @@ internal sealed class EventService(
             }
 
             var submitterEmail = submitter.Email;
+            var language = submitter.PreferredLanguage;
 
             await emailService.SendAsync(emailMessages.EventLifecycle(
                 new EventLifecycleNotification(
@@ -222,7 +223,7 @@ internal sealed class EventService(
                     EventTitle: guideEvent.Title,
                     Reason: reason,
                     ActionUrl: actionUrl,
-                    Culture: submitter.PreferredLanguage),
+                    Culture: language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode),
                 submitterEmail));
         }
         catch (Exception ex)
@@ -302,70 +303,65 @@ internal sealed class EventService(
                 ? EventRecurrenceDays.DisplayDaysToOffsets(row.RecurrenceDays, gateOpeningDate, eventEndOffset)
                 : null;
 
+            var target = row.Id.HasValue
+                ? existingEvents.First(e => e.Id == row.Id.Value)
+                : new Event
+                {
+                    Id = Guid.NewGuid(),
+                    CampId = campId,
+                    SubmitterUserId = submitterUserId
+                };
+            var recurrenceChanged = true;
             if (row.Id.HasValue)
             {
-                var existing = existingEvents.First(e => e.Id == row.Id.Value);
-
                 // Compare recurrence by day-name set, not the raw offset string, so a
                 // lossless round-trip ("0" ⇄ "Mon") isn't mistaken for an edit and the
                 // event isn't needlessly re-queued for moderation.
-                var existingDays = existing.IsRecurring && !string.IsNullOrEmpty(existing.RecurrenceDays)
-                    ? EventRecurrenceDays.OffsetsToDisplayDays(existing.RecurrenceDays, gateOpeningDate)
+                var existingDays = target.IsRecurring && !string.IsNullOrEmpty(target.RecurrenceDays)
+                    ? EventRecurrenceDays.OffsetsToDisplayDays(target.RecurrenceDays, gateOpeningDate)
                     : string.Empty;
                 var rowDays = row.IsRecurring ? row.RecurrenceDays ?? string.Empty : string.Empty;
+                recurrenceChanged = target.IsRecurring != row.IsRecurring
+                    || !EventRecurrenceDays.SameDays(existingDays, rowDays);
 
                 var changed =
-                    !string.Equals(existing.Title, row.Title, StringComparison.Ordinal) ||
-                    !string.Equals(existing.Description, row.Description, StringComparison.Ordinal) ||
-                    existing.CategoryId != category.Id ||
-                    existing.StartAt != startAt ||
-                    existing.DurationMinutes != row.DurationMinutes ||
-                    !string.Equals(existing.LocationNote ?? string.Empty, row.LocationNote ?? string.Empty, StringComparison.Ordinal) ||
-                    !string.Equals(existing.Host ?? string.Empty, row.Host ?? string.Empty, StringComparison.Ordinal) ||
-                    existing.IsRecurring != row.IsRecurring ||
-                    !EventRecurrenceDays.SameDays(existingDays, rowDays) ||
-                    existing.PriorityRank != row.PriorityRank;
+                    !string.Equals(target.Title, row.Title, StringComparison.Ordinal) ||
+                    !string.Equals(target.Description, row.Description, StringComparison.Ordinal) ||
+                    target.CategoryId != category.Id ||
+                    target.StartAt != startAt ||
+                    target.DurationMinutes != row.DurationMinutes ||
+                    !string.Equals(target.LocationNote ?? string.Empty, row.LocationNote ?? string.Empty, StringComparison.Ordinal) ||
+                    !string.Equals(target.Host ?? string.Empty, row.Host ?? string.Empty, StringComparison.Ordinal) ||
+                    recurrenceChanged ||
+                    target.PriorityRank != row.PriorityRank;
 
                 if (!changed) continue;
+            }
 
-                existing.Title = row.Title;
-                existing.Description = row.Description;
-                existing.CategoryId = category.Id;
-                existing.StartAt = startAt;
-                existing.DurationMinutes = row.DurationMinutes;
-                existing.LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote;
-                existing.Host = string.IsNullOrEmpty(row.Host) ? null : row.Host;
-                existing.IsRecurring = row.IsRecurring;
-                existing.RecurrenceDays = row.IsRecurring ? recurrenceOffsets : null;
-                existing.PriorityRank = row.PriorityRank;
+            target.Title = row.Title;
+            target.Description = row.Description;
+            target.CategoryId = category.Id;
+            target.StartAt = startAt;
+            target.DurationMinutes = row.DurationMinutes;
+            target.LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote;
+            target.Host = string.IsNullOrEmpty(row.Host) ? null : row.Host;
+            target.IsRecurring = row.IsRecurring;
+            // Unchanged weekday labels cannot express a subset of repeated weekdays.
+            // Preserve existing authored offsets when another field is edited.
+            if (recurrenceChanged || !row.IsRecurring)
+                target.RecurrenceDays = row.IsRecurring ? recurrenceOffsets : null;
+            target.PriorityRank = row.PriorityRank;
 
-                // One path for every existing status: UpdateAndResubmitAsync keeps a
-                // Pending event Pending, re-queues an Approved one, and submits a
-                // Draft/Rejected/ResubmitRequested one. (Withdrawn is rejected in
-                // validation, so it never reaches here.)
-                await UpdateAndResubmitAsync(existing, ct);
+            if (row.Id.HasValue)
+            {
+                // Existing rows always update: even Draft/Rejected rows are already stored.
+                await UpdateAndResubmitAsync(target, ct);
                 updated++;
             }
             else
             {
-                var newEvent = new Event
-                {
-                    Id = Guid.NewGuid(),
-                    CampId = campId,
-                    SubmitterUserId = submitterUserId,
-                    CategoryId = category.Id,
-                    Title = row.Title,
-                    Description = row.Description,
-                    LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote,
-                    Host = string.IsNullOrEmpty(row.Host) ? null : row.Host,
-                    StartAt = startAt,
-                    DurationMinutes = row.DurationMinutes,
-                    IsRecurring = row.IsRecurring,
-                    RecurrenceDays = recurrenceOffsets,
-                    PriorityRank = row.PriorityRank
-                };
-                newEvent.Submit(clock);
-                await SubmitEventAsync(newEvent, lifecycleActionUrl: null, ct);
+                target.Submit(clock);
+                await SubmitEventAsync(target, lifecycleActionUrl: null, ct);
                 created++;
             }
         }
@@ -449,11 +445,13 @@ internal sealed class EventService(
     {
         var pref = await repo.GetPreferenceAsync(userId, ct);
         if (pref == null) return [];
-        return JsonSerializer.Deserialize<List<string>>(pref.ExcludedCategorySlugs) ?? [];
+        return (JsonSerializer.Deserialize<List<string>>(pref.ExcludedCategorySlugs) ?? [])
+            .Select(slug => slug.ToLowerInvariant()).ToList();
     }
 
     public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default)
-        => repo.UpsertPreferenceAsync(userId, JsonSerializer.Serialize(slugs), clock.GetCurrentInstant(), ct);
+        => repo.UpsertPreferenceAsync(userId,
+            JsonSerializer.Serialize(slugs.Select(slug => slug.ToLowerInvariant())), clock.GetCurrentInstant(), ct);
 
     public Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default)
         => repo.GetModerationStatusCountsAsync(ct);
@@ -645,8 +643,8 @@ internal sealed class EventService(
             var description = string.Join("\n\n", new[]
             {
                 e.Description,
-                string.IsNullOrWhiteSpace(e.Host) ? null : $"Host: {e.Host}",
-                string.IsNullOrWhiteSpace(e.Category?.Name) ? null : $"Category: {e.Category.Name}",
+                string.IsNullOrWhiteSpace(e.Host) ? null : $"{localizer["Events_Submission_FieldHost"]}: {e.Host}",
+                string.IsNullOrWhiteSpace(e.Category?.Name) ? null : $"{localizer["Events_Submission_FieldCategory"]}: {e.Category.Name}",
             }.Where(s => !string.IsNullOrWhiteSpace(s)));
 
             foreach (var start in occurrences)
@@ -672,9 +670,33 @@ internal sealed class EventService(
     {
         var favourites = await repo.GetFavouritesForContributorAsync(userId, ct);
         var preference = await repo.GetPreferenceAsync(userId, ct);
+        var submissions = (await repo.GetAllEventsForDashboardAsync(ct))
+            .Where(e => e.SubmitterUserId == userId);
 
         var shaped = new
         {
+            SubmittedEvents = submissions
+                .OrderBy(e => e.SubmittedAt)
+                .ThenBy(e => e.Id)
+                .Select(e => new
+                {
+                    e.Id,
+                    e.CampId,
+                    e.GuideSharedVenueId,
+                    e.CategoryId,
+                    e.Title,
+                    e.Description,
+                    e.LocationNote,
+                    e.Host,
+                    StartAt = e.StartAt.ToIso8601(),
+                    e.DurationMinutes,
+                    e.IsRecurring,
+                    e.RecurrenceDays,
+                    e.PriorityRank,
+                    Status = e.Status.ToString(),
+                    SubmittedAt = e.SubmittedAt.ToIso8601(),
+                    LastUpdatedAt = e.LastUpdatedAt.ToIso8601()
+                }).ToList(),
             Favourites = favourites
                 .OrderBy(f => f.CreatedAt)
                 .Select(f => new

@@ -38,11 +38,32 @@ public class TicketsOnsiteAdminControllerTests
     }
 
     [HumansFact]
+    public async Task Index_AbandonedRequest_CancelsYearReadBeforeRoster()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        var settings = Substitute.For<ISettingsService>();
+        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns((EventSettingsInfo?)null);
+        settings.GetActiveEventSettingsAsync(aborted.Token)
+            .Returns(Task.FromCanceled<EventSettingsInfo?>(aborted.Token));
+        var roster = Substitute.For<IOnsiteRosterService>();
+        roster.GetRosterAsync(0, null, null, null, Arg.Any<CancellationToken>())
+            .Returns(new OnsiteRosterResult([], [], [], []));
+        var ctrl = NewController(Substitute.For<IUserService>(), settings, roster);
+
+        var act = () => ctrl.Index(null, null, null, aborted.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await roster.DidNotReceiveWithAnyArgs().GetRosterAsync(default, default, default, default, default);
+    }
+
+    [HumansFact]
     public async Task Index_NoActiveEvent_DispatchesYearZero_AndReturnsEmpty()
     {
         var users = Substitute.For<IUserService>();
         var shifts = Substitute.For<ISettingsService>();
-        shifts.GetActiveEventSettingsAsync().Returns((EventSettingsInfo?)null);
+        shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
 
         var roster = Substitute.For<IOnsiteRosterService>();
         roster.GetRosterAsync(0, null, null, null, Arg.Any<CancellationToken>())
@@ -70,7 +91,7 @@ public class TicketsOnsiteAdminControllerTests
 
         var users = Substitute.For<IUserService>();
         var shifts = Substitute.For<ISettingsService>();
-        shifts.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026));
+        shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026));
 
         var roster = Substitute.For<IOnsiteRosterService>();
         roster.GetRosterAsync(2026, null, null, null, Arg.Any<CancellationToken>())
@@ -100,7 +121,7 @@ public class TicketsOnsiteAdminControllerTests
     {
         var users = Substitute.For<IUserService>();
         var shifts = Substitute.For<ISettingsService>();
-        shifts.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026));
+        shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026));
 
         var roster = Substitute.For<IOnsiteRosterService>();
         roster.GetRosterAsync(2026, "Cosmic Camp", "Gate", "Board", Arg.Any<CancellationToken>())

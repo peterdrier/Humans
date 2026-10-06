@@ -59,7 +59,12 @@ fi
 source "$SCRIPT_DIR/lib-editorial-docs.sh"
 
 # ─── Test 1: Catalog parses (structural smoke) ────────────────────────
-N_MECHANICAL=$(grep -cE '^\s+- id:\s+' "$CATALOG" || echo 0)
+# grep -c already prints zero for no matches; status 1 is valid empty input,
+# while read failures (including partial output) must not become a clean count.
+if ! N_MECHANICAL=$(grep -cE '^\s+- id:\s+' "$CATALOG" || [ "$?" -eq 1 ]); then
+  echo "FAIL [test 1]: could not count mechanical catalog entries"
+  exit 1
+fi
 # NB: the range must start AFTER the editorial_trees: line, because that line
 # itself matches /^[a-z]/ and would close the range immediately — which is why
 # this reported "0 editorial trees" while the catalog listed ten.
@@ -317,7 +322,7 @@ from pathlib import Path
 import tempfile, shutil, subprocess, os
 import sys
 script=Path(sys.argv[1]).resolve()
-def case(mode, failure=None):
+def case(mode, failure=None, wildcard=False):
     with tempfile.TemporaryDirectory() as tmp:
         p=Path(tmp)
         (p/'docs/architecture').mkdir(parents=True)
@@ -326,6 +331,8 @@ def case(mode, failure=None):
         (p/'src/new/Other.cs').write_text('target')
         (p/'docs/architecture/freshness-catalog.yml').write_text('editorial_trees:\n  - docs/one.md\n  - docs/two.md\nignore:\n  - ignored/**\n')
         original='<!-- freshness:triggers\n  src/old/Thing.cs\n-->\n'
+        if wildcard:
+            original = original.replace('Thing.cs', 'new/**/Thing.cs')
         (p/'docs/one.md').write_text(original)
         (p/'docs/two.md').write_text(original.replace('Thing','Other'))
         (p/'docs/empty.md').write_text('No trigger marker.\n')
@@ -333,8 +340,11 @@ def case(mode, failure=None):
             (p/'docs/architecture/freshness-catalog.yml').write_text('editorial_trees:\n  - docs/\nignore:\n')
         if failure == 'walk-find':
             (p/'docs/architecture/freshness-catalog.yml').write_text('editorial_trees:\n  - docs/\nignore:\n  - ignored/**\n')
+        if failure == 'dead-suffix':
+            original = original.replace('Thing.cs', 'new/**/Missing.cs')
+            (p/'docs/one.md').write_text(original)
         env=os.environ.copy()
-        if failure and failure != 'empty-ignore':
+        if failure and failure not in ('empty-ignore', 'dead-suffix'):
             (p/'bin').mkdir()
             command={'walk-find':'find', 'ignore-awk':'awk', 'read-awk':'awk'}.get(failure, failure)
             real=shutil.which(command)
@@ -371,9 +381,11 @@ def case(mode, failure=None):
             assert not list((p/'docs').glob('*.tmp'))
         else:
             assert 'repaired=2 unresolved=0 docs_forced_dirty=0' in result.stdout,result.stdout
-            assert (p/'docs/one.md').read_text()==(original if mode=='check' else original.replace('old','new'))
-        print('PASS',mode,failure or 'normal')
-for args in [('repair',None),('check',None),('repair','mv'),('repair','awk'),('repair','find'),('repair','walk-find'),('repair','ignore-awk'),('repair','read-awk'),('repair','empty-ignore')]:case(*args)
+            assert (p/'docs/one.md').read_text()==(original if mode=='check' else original.replace('old/new' if wildcard else 'old', 'new'))
+        print('PASS',mode,failure or ('wildcard' if wildcard else 'normal'))
+for args in [('repair',None),('check',None),('repair','mv'),('repair','awk'),('repair','find'),('repair','walk-find'),('repair','ignore-awk'),('repair','read-awk'),('repair','empty-ignore'),('repair','dead-suffix'),('check','dead-suffix')]:case(*args)
+case('repair', wildcard=True)
+case('check', wildcard=True)
 PYTEST
 then
   echo "PASS [test 9]: repair/preview and empty markers/lists work; producer failures cannot pass clean"
@@ -493,7 +505,7 @@ import os, pathlib, shutil, subprocess, sys, tempfile
 for script_path in sys.argv[1:]:
     script = pathlib.Path(script_path).resolve()
     is_stats = script.name == 'dev-stats.sh'
-    for mode in ('valid', 'empty', 'partial', 'failed'):
+    for mode in ('valid', 'empty', 'partial', 'failed', *(['short', 'long', 'unrelated', 'no-header'] if is_stats else [])):
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             (root / 'docs').mkdir()
@@ -505,8 +517,15 @@ for script_path in sys.argv[1:]:
                            + 'if [[ "$1" == log ]]; then ' + date_output + 'exit 0; fi\nexit 2\n')
             git.chmod(0o755)
             if is_stats:
-                row = '| 2026-10-01 | ' + ' | '.join(['1'] * 19) + ' |\n'
-                (root / 'docs/development-stats.md').write_text('No rows\n' if mode == 'empty' else row)
+                columns = 22 if mode == 'short' else 24 if mode == 'long' else 23
+                header = '## Codebase Growth\n\n| Date | ' + ' | '.join(f'Metric {i}' for i in range(23)) + ' |\n'
+                row = '| 2026-10-01 | ' + ' | '.join(['1'] * columns) + ' |\n'
+                text = header + ('' if mode == 'empty' else row)
+                if mode == 'unrelated':
+                    text = header + '## Other history\n' + row
+                if mode == 'no-header':
+                    text = row
+                (root / 'docs/development-stats.md').write_text(text)
                 command, match = 'grep', '[[ "$1" == -E ]]'
             else:
                 row = 'commit_date,a,b,c,d\n' + ('' if mode == 'empty' else '2026-10-01,1,2,3,4\n')
@@ -537,6 +556,223 @@ else
   FAIL=$((FAIL+1))
 fi
 
+# Service discovery follows arbitrary inheritance depth, including diamonds and
+# cycles, without counting unrelated interfaces as application services.
+if python3 - "$SCRIPT_DIR/lib-service-classes.sh" <<'PYTEST'
+import pathlib, subprocess, sys, tempfile
+helper = pathlib.Path(sys.argv[1]).resolve()
+with tempfile.TemporaryDirectory() as directory:
+    root = pathlib.Path(directory)
+    services = root / 'src/Sections/Humans.Example/Services'
+    services.mkdir(parents=True)
+    (root / 'src/Humans.Web/Services').mkdir(parents=True)
+    declarations = [
+        f'public interface ILevel{i} : ' + ('IApplicationService' if i == 0 else f'ILevel{i - 1}') + ' {}'
+        for i in range(8)
+    ]
+    declarations += [
+        'public interface IDiamond : ILevel2, ILevel7 {}',
+        'public interface ICycleA : ICycleB, IDiamond {}',
+        'public interface ICycleB : ICycleA {}',
+        'public interface IUnrelatedA : IUnrelatedB {}',
+        'public interface IUnrelatedB : IUnrelatedA {}',
+        'internal class DeepService : ILevel7 {}',
+        'internal class DiamondService : IDiamond {}',
+        'internal class CycleService : ICycleB {}',
+        'internal class UnrelatedService : IUnrelatedA {}',
+    ]
+    (services / 'Example.cs').write_text('\n'.join(declarations))
+    result = subprocess.run(
+        ['bash', '-c', 'set -euo pipefail; source "$1"; service_classes', 'fixture', str(helper)],
+        cwd=root, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result
+    names = {line.split('|')[1].split(',')[0] for line in result.stdout.splitlines()}
+    assert names == {'DeepService', 'Diamond', 'CycleB'}, result.stdout
+PYTEST
+then
+  echo "PASS [test 14]: service discovery follows deep inheritance to a fixed point"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 14]: service inheritance discovery"
+  FAIL=$((FAIL+1))
+fi
+
+# Exercise this script's actual catalog smoke-check prefix without recursively
+# running its remaining regression checks in each synthetic repository.
+if python3 - "$0" <<'PYTEST'
+import os, pathlib, subprocess, sys, tempfile
+script = pathlib.Path(sys.argv[1]).resolve()
+source = script.read_text().split('# ─── Test 2:', 1)[0]
+for mode in ('empty', 'five', 'failed', 'partial'):
+    with tempfile.TemporaryDirectory() as directory:
+        root = pathlib.Path(directory)
+        catalog = root / 'docs/architecture/freshness-catalog.yml'
+        catalog.parent.mkdir(parents=True)
+        entries = '' if mode == 'empty' else ''.join(f'  - id: fixture-{i}\n' for i in range(5))
+        catalog.write_text('mechanical:\n' + entries + 'editorial_trees:\nignore:\n')
+        env = os.environ.copy()
+        if mode in ('failed', 'partial'):
+            probes = root / 'probes'
+            probes.mkdir()
+            for command in ('grep', 'awk'):
+                probe = probes / command
+                probe.write_text('#!/bin/bash\n' + ('echo 5\n' if mode == 'partial' else '') + 'exit 42\n')
+                probe.chmod(0o755)
+            env['PATH'] = str(probes) + ':' + env['PATH']
+        result = subprocess.run(['bash', '-c', source, str(script)],
+                                cwd=root, env=env, capture_output=True, text=True, timeout=10)
+        if mode == 'five':
+            assert result.returncode == 0 and 'PASS [test 1]: catalog has 5 mechanical' in result.stdout, (result.returncode, result.stdout, result.stderr)
+        else:
+            assert 'FAIL [test 1]:' in result.stdout and 'PASS [test 1]:' not in result.stdout, (result.returncode, result.stdout, result.stderr)
+            if mode == 'empty':
+                assert 'only 0 mechanical entries' in result.stdout, (result.returncode, result.stdout, result.stderr)
+            else:
+                assert result.returncode != 0 and 'could not count' in result.stdout, (result.returncode, result.stdout, result.stderr)
+        assert 'integer expression expected' not in result.stderr, (result.returncode, result.stdout, result.stderr)
+PYTEST
+then
+  echo "PASS [test 15]: catalog counts reject zero entries and failed/partial reads"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 15]: catalog count failure handling"
+  FAIL=$((FAIL+1))
+fi
+
+# Empty inventories are valid; failed producers must still report failure.
+if python3 - "$SCRIPT_DIR/authorization-inventory.sh" "$SCRIPT_DIR/guid-reservations.sh" <<'PYTEST'
+import os, pathlib, shutil, subprocess, sys, tempfile
+for script_path in sys.argv[1:]:
+    script = pathlib.Path(script_path).resolve()
+    name = script.stem
+    for failure in (None, 'grep', 'awk'):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            (root / 'docs').mkdir()
+            if name == 'authorization-inventory':
+                for owner in ('src/Humans.Web', 'src/Sections/Humans.Example'):
+                    (root / owner / 'Controllers').mkdir(parents=True)
+                    (root / owner / 'Controllers/ExampleController.cs').write_text('class ExampleController {}')
+                (root / 'src/Sections/Humans.Example/Docs').mkdir()
+                (root / 'docs/authorization-inventory.md').write_text('ExampleController')
+                (root / 'src/Sections/Humans.Example/Docs/authorization.md').write_text('ExampleController')
+                # This verifier uses awk only to total the document row count.
+                if failure == 'awk':
+                    tool_pattern = ''
+                else:
+                    tool_pattern = '*"-hE"*'
+            else:
+                (root / 'src/Humans.Base/Constants').mkdir(parents=True)
+                (root / 'src/Sections/Humans.Example/Data').mkdir(parents=True)
+                (root / 'docs/guid-reservations.md').write_text('## Current Reservations\n| `0000` | Sentinel |\n')
+                tool_pattern = '*"-rEho"*' if failure == 'grep' else ''
+            env = os.environ.copy()
+            if failure:
+                (root / 'bin').mkdir()
+                real = shutil.which(failure)
+                condition = f'[[ "$*" == {tool_pattern} ]]' if tool_pattern else 'true'
+                tool = root / 'bin' / failure
+                tool.write_text(f'#!/bin/bash\nif {condition}; then printf partial; exit 42; fi\nexec {real} "$@"\n')
+                tool.chmod(0o755)
+                env['PATH'] = str(root / 'bin') + ':' + env['PATH']
+            result = subprocess.run(['bash', str(script)], cwd=root, env=env, text=True, capture_output=True)
+            if failure:
+                assert result.returncode != 0 and f'FAIL [{name}]' in result.stdout, result
+                assert f'PASS [{name}]' not in result.stdout, result.stdout
+            else:
+                assert result.returncode == 0 and f'PASS [{name}]' in result.stdout, result
+PYTEST
+then
+  echo "PASS [test 16]: empty authorization/GUID inventories pass and failed producers report failure"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 16]: authorization/GUID inventory input handling"
+  FAIL=$((FAIL+1))
+fi
+
+# A changed Reforge snapshot schema must never be appended below an old CSV
+# header, or mixed with earlier snapshots in a full rebuild. Git/Reforge are
+# stubbed: the fixture creates ordinary temporary folders, never worktrees.
+# Incremental snapshots must also exclude older author dates from later merges.
+if python3 - <<'PYTEST'
+import os, pathlib, subprocess, tempfile
+script = pathlib.Path('docs/scripts/generate-reforge-history.sh').resolve()
+for full, mode in ((False, 'same'), (False, 'changed'), (True, 'changed'), (True, 'mixed'),
+                   (False, 'backdated'), (False, 'backdated-only')):
+    with tempfile.TemporaryDirectory() as directory:
+        root = pathlib.Path(directory)
+        (root / 'docs').mkdir()
+        output = root / 'docs/reforge-history.csv'
+        original = 'commit_date,commit,metric\n2026-01-01,old,1\n'
+        output.write_text(original)
+        tools = root / 'bin'
+        tools.mkdir()
+        git = tools / 'git'
+        git.write_text("""#!/bin/bash
+case "$1" in
+rev-parse) echo old;;
+log)
+  first_day=2026-01-02; second_day=2026-01-03
+  case "$SCHEMA_MODE" in
+    backdated) first_day=2025-12-31;;
+    backdated-only) first_day=2025-12-30; second_day=2025-12-31;;
+  esac
+  if [ "$2" = -1 ]; then
+    if [ "${@: -1}" = first ]; then echo "$first_day"; else echo "$second_day"; fi
+  else
+    printf '%s first\n%s second\n' "$first_day" "$second_day"
+  fi;;
+worktree)
+  if [ "$2" = add ]; then mkdir -p "$5"; fi;;
+-C)
+  if [ "$3" = checkout ] && [ "$4" = --quiet ] && [ "$5" != HEAD ]; then
+    printf '%s' "$5" > "$2/selected"
+  fi;;
+*) exit 42;;
+esac
+""")
+        reforge = tools / 'reforge'
+        reforge.write_text("""#!/bin/bash
+commit=$(cat selected)
+header=metric
+if [ "$SCHEMA_MODE" = changed ] || { [ "$SCHEMA_MODE" = mixed ] && [ "$commit" = second ]; }; then header=other_metric; fi
+if [ "$commit" = first ]; then
+  day=2026-01-02
+  if [ "$SCHEMA_MODE" = backdated ]; then day=2025-12-31; fi
+else day=2026-01-03; fi
+if [ "$SCHEMA_MODE" = backdated-only ]; then day=2025-12-31; fi
+printf 'commit_date,commit,%s\n%s,%s,2\n' "$header" "$day" "$commit" > "$5"
+""")
+        git.chmod(0o755)
+        reforge.chmod(0o755)
+        env = {**os.environ, 'PATH': f'{tools}:{os.environ["PATH"]}', 'SCHEMA_MODE': mode}
+        result = subprocess.run(['bash', str(script), *(['--full'] if full else [])],
+                                cwd=root, env=env, text=True, capture_output=True)
+        if mode == 'mixed' or (not full and mode == 'changed'):
+            assert result.returncode != 0, result
+            assert output.read_text() == original, output.read_text()
+            assert 'schema' in result.stderr.lower(), result.stderr
+        else:
+            assert result.returncode == 0, result
+            rows = output.read_text().splitlines()
+            expected = 'other_metric' if mode == 'changed' else 'metric'
+            assert rows[0] == f'commit_date,commit,{expected}', rows
+            expected_rows = 2 if mode == 'backdated-only' else 3 if full or mode == 'backdated' else 4
+            assert len(rows) == expected_rows, rows
+            if mode == 'backdated-only':
+                assert output.read_text() == original, rows
+            elif mode == 'backdated':
+                assert rows[-1] == '2026-01-03,second,2', rows
+PYTEST
+then
+  echo "PASS [test 17]: history generator preserves schema and incremental date boundaries"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 17]: history generator schema/date validation"
+  FAIL=$((FAIL+1))
+fi
+
+echo ""
 echo "═══ Summary ═══"
 echo "Passed: $PASS"
 echo "Failed: $FAIL"

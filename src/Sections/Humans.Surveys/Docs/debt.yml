@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Surveys. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 3
+next_id: 5
 inbox:
   - added: 2026-08-28
     id: SURVEYS-1
@@ -13,3 +13,11 @@ inbox:
     id: SURVEYS-2
     what: "Surveys.md invariants with no test that pins them: individual submissions are never audit-logged; Close is audit-logged; eligibility is re-checked on every wizard page; a SentAt = null ledger row is excluded from invited counts, status and reminders; Article 17 erasure unlinks a response (the service call is pinned, the UserId blanking in SurveyRepository.AnonymizeResponsesForUserAsync is not); ballots in the drill-down are ordered by response id. Found by /section-doctor's Tests thread on 2026-09-07; its sibling gaps were closed in that run. Narrowed 2026-09-20: 'exactly one reminder per invitee' is now pinned at service level (SurveyServiceTests.cs:1381), leaving only the repository-side ReminderSentAt filter and stamp untested."
     review: light
+  - added: 2026-10-04
+    id: SURVEYS-3
+    what: "SurveyService.SendInvitesAsync stamps SentAt before email preparation/enqueue; a synchronous failure marks Failed but subsequent sends exclude that recipient through GetInvitedUserIdsAsync, contradicting the documented retry behavior. Moving the stamp alone permits duplicate mail after an uncertain enqueue or post-enqueue status-save failure; define invitation/outbox idempotency and retry semantics together. Found during the daily debt sweep."
+    review: panel
+  - added: 2026-10-05
+    id: SURVEYS-4
+    what: "SurveyAdminController.ExportCsv/ExportJson disclose ordinary identified response exports without an audit entry. SurveyService.GetResponseExportAsync also serves the Backdoor analysis API and takes no actor; fixing data-exports-are-audited at the row-building service needs an agreed actor/action contract covering every caller. Found during the nightly debt sweep; public contract changes need Peter’s approval."
+    review: panel

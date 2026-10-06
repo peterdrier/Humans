@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Finance.Tests;
 
@@ -31,7 +32,10 @@ public class FinanceControllerTests
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
 
     private FinanceController MakeController() =>
-        new(_users, _finance, _connector, NullLogger<FinanceController>.Instance);
+        new(_users, _finance, _connector, NullLogger<FinanceController>.Instance)
+        {
+            ControllerContext = new() { HttpContext = new DefaultHttpContext() }
+        };
 
     /// <summary>A controller wired with a real HttpContext and TempData, for actions
     /// (<see cref="FinanceController.GenerateSepa"/>) that need <c>GetCurrentUserId</c> or
@@ -58,6 +62,29 @@ public class FinanceControllerTests
         return controller;
     }
 
+    [HumansTheory]
+    [InlineData("blockStart", true)]
+    [InlineData("addAll", true)]
+    [InlineData("blockStart", false)]
+    [InlineData("addAll", false)]
+    [InlineData(null, true)]
+    public async Task ProvisionHoldedAccounts_InvalidBinding_DoesNotProvision(string? invalidField, bool hasActor)
+    {
+        var actorId = Guid.NewGuid();
+        var controller = MakeControllerWithHttpContext(actorId);
+        if (!hasActor) controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        if (invalidField is not null) controller.ModelState.AddModelError(invalidField, "Invalid value.");
+        var blockStart = string.Equals(invalidField, "blockStart", StringComparison.Ordinal) ? 0 : 62900100;
+
+        var result = await controller.ProvisionHoldedAccounts(blockStart, false);
+
+        if (!hasActor) Assert.IsType<ChallengeResult>(result);
+        else if (invalidField is not null) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<RedirectToActionResult>(result);
+        if (!hasActor || invalidField is not null) Assert.Empty(_connector.ReceivedCalls());
+        else await _connector.Received(1).ProvisionAsync(62900100, false, actorId);
+    }
+
     private static CreditorContactBinding Bound(Guid userId, int? num) =>
         new(userId, $"contact-{userId:N}"[..12], num, CreditorContactSource.Auto);
 
@@ -79,6 +106,26 @@ public class FinanceControllerTests
     private static CreditorsPageVm PageOf(IActionResult result) =>
         result.Should().BeOfType<ViewResult>().Subject.Model
             .Should().BeOfType<CreditorsPageVm>().Subject;
+
+    [HumansFact]
+    public async Task Creditors_PropagatesBrowserCancellationDuringMemberNameLookup()
+    {
+        Accounts([Row(40000001, "Ana", 0m, Bound(Ana, 40000001))]);
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return (IReadOnlyDictionary<Guid, UserInfo>)new Dictionary<Guid, UserInfo>();
+            });
+        var controller = MakeControllerWithHttpContext(Ana);
+        (await controller.Creditors(null, null)).Should().BeOfType<ViewResult>();
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        controller.HttpContext.RequestAborted = aborted.Token;
+
+        var read = () => controller.Creditors(null, null);
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
 
     // ─── Sorting ─────────────────────────────────────────────────────────────────
 
@@ -325,6 +372,26 @@ public class FinanceControllerTests
         page.Files[0].GeneratedByName.Should().Be("Treasurer");
         page.Files[0].Transfers.Select(t => t.Row.SupplierAccountNum).Should().Equal(40000002, 40000007);
         page.Files[0].Transfers[0].MemberName.Should().Be("Ada");
+    }
+
+    [HumansFact]
+    public async Task Sepa_CanceledRead_StopsMemberNameLookup()
+    {
+        using var cancellation = new CancellationTokenSource();
+        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>()).Returns((
+            new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
+            null, [], null));
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return new Dictionary<Guid, UserInfo>();
+            });
+        await cancellation.CancelAsync();
+
+        var read = () => MakeController().Sepa(cancellation.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]

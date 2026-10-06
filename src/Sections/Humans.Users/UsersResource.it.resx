@@ -46,6 +46,7 @@
   <data name="Profile_Title" xml:space="preserve">
     <value>Il mio Profilo</value>
   </data>
+  <data name="Users_BreadcrumbNavigation" xml:space="preserve"><value>Percorso di navigazione</value></data>
   <data name="Profile_ActionRequired" xml:space="preserve">
     <value>Azione richiesta:</value>
   </data>
@@ -213,23 +214,23 @@
   <data name="Profile_WhatsApp" xml:space="preserve">
     <value>WhatsApp</value>
   </data>
-  <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Dietary &amp; medical info</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Dietary preference</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Omnivore" xml:space="preserve"><value>Omnivore</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Vegetarian" xml:space="preserve"><value>Vegetarian</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Vegan" xml:space="preserve"><value>Vegan</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Pescatarian" xml:space="preserve"><value>Pescatarian</value></data>
-  <data name="Profile_DietaryMedical_Allergies_Label" xml:space="preserve"><value>Allergies</value></data>
-  <data name="Profile_DietaryMedical_AllergyOther_Label" xml:space="preserve"><value>Other allergy — please describe</value></data>
-  <data name="Profile_DietaryMedical_Intolerances_Label" xml:space="preserve"><value>Intolerances</value></data>
-  <data name="Profile_DietaryMedical_IntoleranceOther_Label" xml:space="preserve"><value>Other intolerance — please describe</value></data>
+  <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Informazioni alimentari e mediche</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Preferenza alimentare</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Omnivore" xml:space="preserve"><value>Onnivoro/a</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Vegetarian" xml:space="preserve"><value>Vegetariano/a</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Vegan" xml:space="preserve"><value>Vegano/a</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Pescatarian" xml:space="preserve"><value>Pescetariano/a</value></data>
+  <data name="Profile_DietaryMedical_Allergies_Label" xml:space="preserve"><value>Allergie</value></data>
+  <data name="Profile_DietaryMedical_AllergyOther_Label" xml:space="preserve"><value>Altra allergia — descrivila</value></data>
+  <data name="Profile_DietaryMedical_Intolerances_Label" xml:space="preserve"><value>Intolleranze</value></data>
+  <data name="Profile_DietaryMedical_IntoleranceOther_Label" xml:space="preserve"><value>Altra intolleranza — descrivila</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Only visible to you and the No-Info Admins. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc.</value></data>
-  <data name="Profile_DietaryMedical_Saved" xml:space="preserve"><value>Your dietary and medical info has been saved.</value></data>
-  <data name="Profile_DietaryMedical_AllergyOther_Required" xml:space="preserve"><value>Please describe your "Other" allergy.</value></data>
-  <data name="Profile_DietaryMedical_IntoleranceOther_Required" xml:space="preserve"><value>Please describe your "Other" intolerance.</value></data>
-  <data name="Profile_DietaryMedical_LoadFailed" xml:space="preserve"><value>Failed to load dietary and medical info.</value></data>
-  <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>Failed to save dietary and medical info.</value></data>
-  <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
+  <data name="Profile_DietaryMedical_Saved" xml:space="preserve"><value>Le tue informazioni alimentari e mediche sono state salvate.</value></data>
+  <data name="Profile_DietaryMedical_AllergyOther_Required" xml:space="preserve"><value>Descrivi l’altra allergia.</value></data>
+  <data name="Profile_DietaryMedical_IntoleranceOther_Required" xml:space="preserve"><value>Descrivi l’altra intolleranza.</value></data>
+  <data name="Profile_DietaryMedical_LoadFailed" xml:space="preserve"><value>Impossibile caricare le informazioni alimentari e mediche.</value></data>
+  <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>Impossibile salvare le informazioni alimentari e mediche.</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Condizioni di salute</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
   <data name="Profile_Assigned" xml:space="preserve"><value>Assegnato</value></data>
   <data name="Profile_Campaign" xml:space="preserve"><value>Campagna</value></data>
@@ -1078,6 +1079,7 @@
   <!-- ======================== -->
   <!-- Enum display names       -->
   <!-- ======================== -->
+  <data name="Enum_ContactFieldType_Email" xml:space="preserve"><value>E-mail</value></data>
   <data name="Enum_ContactFieldType_Discord" xml:space="preserve"><value>Discord</value></data>
   <data name="Enum_ContactFieldType_Other" xml:space="preserve"><value>Altro</value></data>
   <data name="Enum_ContactFieldType_Phone" xml:space="preserve"><value>Telefono</value></data>
@@ -1175,4 +1177,24 @@
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Il tuo accesso è stato sospeso: {0}</value></data>
   <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Visualizza profilo</value></data>
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Consenso ai documenti richiesti mancante (periodo di grazia scaduto)</value></data>
+  <data name="CommPrefs_Name_System" xml:space="preserve"><value>Sistema</value></data>
+  <data name="CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Codici delle campagne</value></data>
+  <data name="CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Messaggi tra persone</value></data>
+  <data name="CommPrefs_Name_Ticketing" xml:space="preserve"><value>Biglietti</value></data>
+  <data name="CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Novità per il volontariato</value></data>
+  <data name="CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Novità dei team</value></data>
+  <data name="CommPrefs_Name_Governance" xml:space="preserve"><value>Governance</value></data>
+  <data name="CommPrefs_Name_Marketing" xml:space="preserve"><value>Marketing</value></data>
+  <data name="CommPrefs_Description_System" xml:space="preserve"><value>Notifiche importanti su account, consenso e sicurezza. Sempre attive.</value></data>
+  <data name="CommPrefs_Description_CampaignCodes" xml:space="preserve"><value>Codici sconto, contributi e codici da riscattare per le campagne. Sempre attivi.</value></data>
+  <data name="CommPrefs_Description_FacilitatedMessages" xml:space="preserve"><value>Messaggi che altre persone ti inviano tramite Humans.</value></data>
+  <data name="CommPrefs_Description_Ticketing" xml:space="preserve"><value>Conferme di acquisto e informazioni sull’evento.</value></data>
+  <data name="CommPrefs_Description_VolunteerUpdates" xml:space="preserve"><value>Modifiche ai turni, aggiornamenti del programma e notifiche per il volontariato.</value></data>
+  <data name="CommPrefs_Description_TeamUpdates" xml:space="preserve"><value>Permessi di Drive, aggiunte e rimozioni di membri dei team.</value></data>
+  <data name="CommPrefs_Description_Governance" xml:space="preserve"><value>Votazioni del Consiglio, domande di livello associativo, assegnazioni di ruoli e verifiche di iscrizione.</value></data>
+  <data name="CommPrefs_Description_Marketing" xml:space="preserve"><value>Mailing list e promozioni.</value></data>
+  <data name="CommPrefs_TicketingYear" xml:space="preserve"><value>Biglietti — {0}</value></data>
+  <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Bloccato — hai un biglietto per quest’anno</value></data>
+  <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Operazioni dell’evento</value></data>
+  <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Novità della comunità</value></data>
 </root>

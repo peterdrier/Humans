@@ -81,7 +81,7 @@ internal interface IBudgetRepository : IRepository
     /// <see cref="BudgetYearStatus.Active"/>, every other currently-active
     /// year is closed in the same transaction. Writes a field-level audit
     /// entry for the target year's status change plus one for each
-    /// auto-closed year. Atomic. Returns <c>true</c> if the year existed.
+    /// auto-closed year. Atomic. Returns <c>false</c> if the year is missing or archived.
     /// </summary>
     Task<bool> UpdateYearStatusAsync(
         Guid yearId,

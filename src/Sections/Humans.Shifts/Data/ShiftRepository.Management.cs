@@ -99,7 +99,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         if (mode == EntityMutationMode.Add)
             ctx.Rotas.Add(rota);
         else
-            ctx.Rotas.Update(rota);
+            ctx.Entry(rota).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -222,7 +222,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         if (mode == EntityMutationMode.Add)
             ctx.Shifts.Add(shift);
         else
-            ctx.Shifts.Update(shift);
+            ctx.Entry(shift).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -646,7 +646,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return profiles.Count;
     }
 
-    public async Task<int> ReassignProfilesAndTagPrefsToUserAsync(
+    public async Task ReassignProfilesAndTagPrefsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -706,12 +706,5 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        var profileCount = await ctx.VolunteerEventProfiles
-            .CountAsync(p => p.UserId == targetUserId, ct);
-        var tagPrefCount = await ctx.VolunteerTagPreferences
-            .CountAsync(v => v.UserId == targetUserId, ct);
-
-        return profileCount + tagPrefCount;
     }
 }

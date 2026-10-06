@@ -71,6 +71,7 @@ Board voting only applies to tier applications (Colaborador and Asociado). Volun
   - No tier change — the applicant keeps whatever tier they already held
 - **Individual votes are deleted** after finalization (GDPR data minimization)
 - Cannot finalize if no Board members have voted
+- Vote and finalization posts require an explicit valid choice; missing or malformed values return HTTP 400 without changing the application or existing votes.
 
 ### US-18.4: View Application Detail for Voting
 

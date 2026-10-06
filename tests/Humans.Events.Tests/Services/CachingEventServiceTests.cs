@@ -47,6 +47,21 @@ public sealed class CachingEventServiceTests
                 null, null, null, null, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<ApprovedEventView>>(events));
 
+    [HumansTheory]
+    [InlineData(" \tSUNSET\n", false)]
+    [InlineData("\nbreathwork ", true)]
+    public async Task BrowseQuery_IgnoresSurroundingWhitespace(string query, bool descriptionMatch)
+    {
+        var expected = descriptionMatch
+            ? Approved("Movement", "Breathwork workshop")
+            : Approved("Sunset Yoga");
+        SeedApproved(expected, Approved("Fire Cooking", "Unrelated workshop"));
+
+        var results = await _service.GetApprovedEventsAsync(null, null, null, query, [], TestContext.Current.CancellationToken);
+
+        results.Should().ContainSingle().Which.Id.Should().Be(expected.Id);
+    }
+
     [HumansFact]
     public async Task SearchAsync_TitleExactMatch_ScoresTheExactTier()
     {
@@ -252,6 +267,35 @@ public sealed class CachingEventServiceTests
 
         var fresh = await _service.GetGuideSettingsAsync(TestContext.Current.CancellationToken);
         fresh!.TimeZoneId.Should().Be("Atlantic/Canary");
+    }
+
+    [HumansFact]
+    public async Task EventSettingsChanged_OverlappingRefreshesCannotRetainTheOlderProjection()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var old = GuideSettings("Europe/Madrid");
+        var fresh = GuideSettings("Atlantic/Canary");
+        _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<EventGuideSettingsView?>(old));
+        await _service.GetGuideSettingsAsync(token);
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            started.SetResult();
+            await release.Task.WaitAsync(token);
+            return (EventGuideSettingsView?)old;
+        });
+        _service.EventSettingsChanged(Guid.NewGuid());
+        var oldRead = _service.GetGuideSettingsAsync(token);
+        await started.Task.WaitAsync(token);
+
+        _inner.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<EventGuideSettingsView?>(fresh));
+        _service.EventSettingsChanged(Guid.NewGuid());
+        var freshRead = _service.GetGuideSettingsAsync(token);
+        release.SetResult();
+        await Task.WhenAll(oldRead, freshRead).WaitAsync(token);
+
+        (await _service.GetGuideSettingsAsync(token))!.TimeZoneId.Should().Be("Atlantic/Canary");
     }
 
     [HumansFact]

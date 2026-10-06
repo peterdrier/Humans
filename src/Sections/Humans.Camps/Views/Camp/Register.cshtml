@@ -3,7 +3,7 @@
     ViewData["Title"] = $"{Localizer["Camp_Register_Heading", Localizer["Camp_Singular"]]} — {ViewData["SeasonYear"]}";
 }
 
-<nav aria-label="breadcrumb">
+<nav aria-label="@Localizer["Camps_Details_Breadcrumb"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["Camp_Register_Breadcrumb"]</li>
@@ -58,7 +58,7 @@
                             {
                                 <div class="input-group mb-2 link-entry">
                                     <input type="url" name="Links" class="form-control" value="@Model.Links[i]" placeholder="https://" />
-                                    <button type="button" class="btn btn-outline-danger remove-link">
+                                    <button type="button" class="btn btn-outline-danger remove-link" aria-label="@SharedLocalizer["Common_Remove"].Value">
                                         <i class="fa-solid fa-times"></i>
                                     </button>
                                 </div>
@@ -68,7 +68,7 @@
                         {
                             <div class="input-group mb-2 link-entry">
                                 <input type="url" name="Links" class="form-control" placeholder="https://" />
-                                <button type="button" class="btn btn-outline-danger remove-link">
+                                <button type="button" class="btn btn-outline-danger remove-link" aria-label="@SharedLocalizer["Common_Remove"].Value">
                                     <i class="fa-solid fa-times"></i>
                                 </button>
                             </div>

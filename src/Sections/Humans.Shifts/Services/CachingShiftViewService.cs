@@ -44,14 +44,22 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
     private readonly TrackedCache<Guid, ShiftUserView> _userCache = new("ShiftView.UserView", warmOnStartup: false, logger);
     private readonly TrackedCache<Guid, ShiftRotaView> _rotaCache = new("ShiftView.RotaView", warmOnStartup: false, logger);
 
+    private readonly Lock _cacheGate = new();
+    private long _cacheGeneration;
+
     public ICacheStats UserCacheStats => _userCache;
     public ICacheStats RotaCacheStats => _rotaCache;
 
     public ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default)
     {
-        if (_userCache.TryGet(userId, out var hit))
-            return new ValueTask<ShiftUserView>(hit);
-        return new ValueTask<ShiftUserView>(LoadAndCacheUserAsync(userId, ct));
+        long generation;
+        lock (_cacheGate)
+        {
+            if (_userCache.TryGet(userId, out var hit))
+                return new ValueTask<ShiftUserView>(hit);
+            generation = _cacheGeneration;
+        }
+        return new ValueTask<ShiftUserView>(LoadAndCacheUserAsync(userId, generation, ct));
     }
 
     /// <summary>
@@ -70,12 +78,17 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
 
         var result = new Dictionary<Guid, ShiftUserView>(ids.Count);
         List<Guid>? misses = null;
-        foreach (var id in ids)
+        long generation;
+        lock (_cacheGate)
         {
-            if (_userCache.TryGet(id, out var hit))
-                result[id] = hit;
-            else
-                (misses ??= []).Add(id);
+            generation = _cacheGeneration;
+            foreach (var id in ids)
+            {
+                if (_userCache.TryGet(id, out var hit))
+                    result[id] = hit;
+                else
+                    (misses ??= []).Add(id);
+            }
         }
 
         if (misses is not null)
@@ -83,10 +96,14 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
             await using var scope = scopeFactory.CreateAsyncScope();
             var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftRowView>(InnerServiceKey);
             var loaded = await inner.GetUsersAsync(misses, ct).ConfigureAwait(false);
-            foreach (var (id, view) in loaded)
+            lock (_cacheGate)
             {
-                _userCache.Set(id, view);
-                result[id] = view;
+                foreach (var (id, view) in loaded)
+                {
+                    if (generation == _cacheGeneration)
+                        _userCache.Set(id, view);
+                    result[id] = view;
+                }
             }
         }
 
@@ -95,9 +112,14 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
 
     public ValueTask<ShiftRotaView> GetRotaAsync(Guid rotaId, CancellationToken ct = default)
     {
-        if (_rotaCache.TryGet(rotaId, out var hit))
-            return new ValueTask<ShiftRotaView>(hit);
-        return new ValueTask<ShiftRotaView>(LoadAndCacheRotaAsync(rotaId, ct));
+        long generation;
+        lock (_cacheGate)
+        {
+            if (_rotaCache.TryGet(rotaId, out var hit))
+                return new ValueTask<ShiftRotaView>(hit);
+            generation = _cacheGeneration;
+        }
+        return new ValueTask<ShiftRotaView>(LoadAndCacheRotaAsync(rotaId, generation, ct));
     }
 
     public async ValueTask<IReadOnlyDictionary<Guid, ShiftRotaView>> GetRotasAsync(
@@ -113,21 +135,29 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
         return result;
     }
 
-    private async Task<ShiftUserView> LoadAndCacheUserAsync(Guid userId, CancellationToken ct)
+    private async Task<ShiftUserView> LoadAndCacheUserAsync(Guid userId, long generation, CancellationToken ct)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftRowView>(InnerServiceKey);
         var view = await inner.GetUserAsync(userId, ct).ConfigureAwait(false);
-        _userCache.Set(userId, view);
+        lock (_cacheGate)
+        {
+            if (generation == _cacheGeneration)
+                _userCache.Set(userId, view);
+        }
         return view;
     }
 
-    private async Task<ShiftRotaView> LoadAndCacheRotaAsync(Guid rotaId, CancellationToken ct)
+    private async Task<ShiftRotaView> LoadAndCacheRotaAsync(Guid rotaId, long generation, CancellationToken ct)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftRowView>(InnerServiceKey);
         var view = await inner.GetRotaAsync(rotaId, ct).ConfigureAwait(false);
-        _rotaCache.Set(rotaId, view);
+        lock (_cacheGate)
+        {
+            if (generation == _cacheGeneration)
+                _rotaCache.Set(rotaId, view);
+        }
         return view;
     }
 
@@ -146,47 +176,61 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
 
     public void InvalidateUser(Guid userId)
     {
-        _userCache.Invalidate(userId);
+        lock (_cacheGate)
+        {
+            _cacheGeneration++;
+            _userCache.Invalidate(userId);
+        }
     }
 
     public void InvalidateRota(Guid rotaId)
     {
-        _rotaCache.Invalidate(rotaId);
-
-        // ShiftUserView.Signups carries Shift.Rota nav data (Name, TeamId,
-        // Period, …) — a rota metadata change (rename / team-move / period
-        // flip) makes those user entries stale even if the signup rows are
-        // unchanged. Walk the snapshot and evict every user with a signup on
-        // a shift owned by this rota.
-        foreach (var kvp in _userCache.Snapshot())
+        lock (_cacheGate)
         {
-            if (kvp.Value.Signups.Any(s => s.Shift?.RotaId == rotaId))
-                _userCache.Invalidate(kvp.Key);
+            _cacheGeneration++;
+            _rotaCache.Invalidate(rotaId);
+
+            // ShiftUserView.Signups carries Shift.Rota nav data (Name, TeamId,
+            // Period, …) — a rota metadata change (rename / team-move / period
+            // flip) makes those user entries stale even if the signup rows are
+            // unchanged. Walk the snapshot and evict every user with a signup on
+            // a shift owned by this rota.
+            foreach (var kvp in _userCache.Snapshot())
+            {
+                if (kvp.Value.Signups.Any(s => s.Shift?.RotaId == rotaId))
+                    _userCache.Invalidate(kvp.Key);
+            }
         }
     }
 
     public void InvalidateShift(Guid shiftId)
     {
-        // Resolve affected rota + users from current snapshot. A miss here is
-        // harmless: if there's no cached rota/user entry referencing the
-        // shift, there's nothing to evict, and the next read will load fresh
-        // data anyway.
-        foreach (var kvp in _rotaCache.Snapshot())
+        lock (_cacheGate)
         {
-            if (kvp.Value.Shifts.Any(s => s.Id == shiftId))
-                _rotaCache.Invalidate(kvp.Key);
-        }
-        foreach (var kvp in _userCache.Snapshot())
-        {
-            if (kvp.Value.Signups.Any(s => s.ShiftId == shiftId))
-                _userCache.Invalidate(kvp.Key);
+            _cacheGeneration++;
+            // Evict completed entries from the snapshot; the generation change
+            // above also prevents pending loads from caching pre-mutation data.
+            foreach (var kvp in _rotaCache.Snapshot())
+            {
+                if (kvp.Value.Shifts.Any(s => s.Id == shiftId))
+                    _rotaCache.Invalidate(kvp.Key);
+            }
+            foreach (var kvp in _userCache.Snapshot())
+            {
+                if (kvp.Value.Signups.Any(s => s.ShiftId == shiftId))
+                    _userCache.Invalidate(kvp.Key);
+            }
         }
     }
 
     public void InvalidateAll()
     {
-        _userCache.Clear();
-        _rotaCache.Clear();
+        lock (_cacheGate)
+        {
+            _cacheGeneration++;
+            _userCache.Clear();
+            _rotaCache.Clear();
+        }
     }
 
     /// <summary>

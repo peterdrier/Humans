@@ -17,6 +17,8 @@ export function initBarcodeScanner(refs) {
         onHit,
     } = refs;
 
+    let currentSession = 0;
+    let decoderStartup = null;
     let mediaStream = null;
     let nativeDetector = null;
     let nativeLoopHandle = null;
@@ -98,20 +100,34 @@ export function initBarcodeScanner(refs) {
     }
 
     async function start() {
+        const session = ++currentSession;
         showError(null);
         setStatus(labels.starting);
         startButton.disabled = true;
+        stopButton.disabled = false;
+
+        // ZXing controls clear the video source on stop: finish old cleanup before reusing it.
+        // Its own start session handles failures; restart only waits for cleanup to finish.
+        if (decoderStartup) await decoderStartup.catch(() => {});
+        if (session !== currentSession) return;
 
         try {
-            mediaStream = await navigator.mediaDevices.getUserMedia({
+            const stream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'environment' },
                 audio: false,
             });
+            if (session !== currentSession) {
+                stopTracks(stream);
+                return;
+            }
+            mediaStream = stream;
         } catch (err) {
+            if (session !== currentSession) return;
             console.error('Scanner: camera access failed', err);
             showError(labels.errorCamera);
             setStatus(labels.stopped);
             startButton.disabled = false;
+            stopButton.disabled = true;
             return;
         }
 
@@ -119,34 +135,35 @@ export function initBarcodeScanner(refs) {
         try {
             await video.play();
         } catch (err) {
+            if (session !== currentSession) return;
             console.warn('Scanner: video.play() rejected', err);
             showError(labels.errorCamera);
             await stop();
             return;
         }
 
-        stopButton.disabled = false;
+        if (session !== currentSession) return;
 
         if ('BarcodeDetector' in window) {
             console.info('Scanner: using native BarcodeDetector');
             setStatus(`${labels.running} (${labels.pathNative})`);
-            startNativeLoop();
+            startNativeLoop(session);
             return;
         }
 
         console.info('Scanner: falling back to @zxing/browser via CDN');
         setStatus(`${labels.running} (${labels.pathZxing})`);
         try {
-            await startZxing();
+            await startZxing(session);
         } catch (err) {
-            if (!mediaStream) return; // user pressed Stop while CDN was loading
+            if (session !== currentSession) return;
             console.error('Scanner: zxing bootstrap failed', err);
             showError(labels.errorNoDecoder);
             await stop();
         }
     }
 
-    function startNativeLoop() {
+    function startNativeLoop(session) {
         try {
             nativeDetector = new window.BarcodeDetector({
                 formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'pdf417', 'data_matrix'],
@@ -155,8 +172,8 @@ export function initBarcodeScanner(refs) {
             // Some browsers report BarcodeDetector but constructors fail for unsupported formats.
             console.warn('Scanner: BarcodeDetector constructor failed, falling back to ZXing', err);
             setStatus(`${labels.running} (${labels.pathZxing})`);
-            startZxing().catch((e) => {
-                if (!mediaStream) return; // user pressed Stop while CDN was loading
+            startZxing(session).catch((e) => {
+                if (session !== currentSession) return;
                 console.error('Scanner: zxing fallback also failed', e);
                 showError(labels.errorNoDecoder);
                 stop();
@@ -165,9 +182,10 @@ export function initBarcodeScanner(refs) {
         }
 
         const scan = async () => {
-            if (!mediaStream) return;
+            if (session !== currentSession || !mediaStream) return;
             try {
                 const codes = await nativeDetector.detect(video);
+                if (session !== currentSession) return;
                 for (const code of codes) {
                     addResult(code.rawValue, code.format?.toUpperCase?.() ?? 'UNKNOWN');
                 }
@@ -175,7 +193,7 @@ export function initBarcodeScanner(refs) {
                 // Transient detect() failures are expected while the video warms up.
                 console.debug('Scanner: detect() transient error', err);
             }
-            if (mediaStream) {
+            if (session === currentSession && mediaStream) {
                 nativeLoopHandle = requestAnimationFrame(scan);
             }
         };
@@ -183,24 +201,47 @@ export function initBarcodeScanner(refs) {
         nativeLoopHandle = requestAnimationFrame(scan);
     }
 
-    async function startZxing() {
-        const mod = await import(ZXING_CDN_URL);
-        const BrowserMultiFormatReader = mod.BrowserMultiFormatReader ?? mod.default?.BrowserMultiFormatReader;
-        if (!BrowserMultiFormatReader) {
-            throw new Error('BrowserMultiFormatReader not found in ZXing module export');
-        }
-
-        zxingReader = new BrowserMultiFormatReader();
-        zxingControls = await zxingReader.decodeFromStream(mediaStream, video, (result, err) => {
-            if (result) {
-                const format = result.getBarcodeFormat?.()?.toString?.() ?? 'UNKNOWN';
-                addResult(result.getText(), format);
+    async function startZxing(session) {
+        const stream = mediaStream;
+        const startup = (async () => {
+            const mod = await import(ZXING_CDN_URL);
+            if (session !== currentSession) return;
+            const BrowserMultiFormatReader = mod.BrowserMultiFormatReader ?? mod.default?.BrowserMultiFormatReader;
+            if (!BrowserMultiFormatReader) {
+                throw new Error('BrowserMultiFormatReader not found in ZXing module export');
             }
-            // err is a NotFoundException on every empty frame — ignore silently.
-        });
+
+            zxingReader = new BrowserMultiFormatReader();
+            const controls = await zxingReader.decodeFromStream(stream, video, (result, err) => {
+                if (session !== currentSession) return;
+                if (result) {
+                    const format = result.getBarcodeFormat?.()?.toString?.() ?? 'UNKNOWN';
+                    addResult(result.getText(), format);
+                }
+                // err is a NotFoundException on every empty frame — ignore silently.
+            });
+            if (session !== currentSession) {
+                await controls.stop();
+                return;
+            }
+            zxingControls = controls;
+        })();
+        decoderStartup = startup;
+        try {
+            await startup;
+        } finally {
+            if (decoderStartup === startup) decoderStartup = null;
+        }
+    }
+
+    function stopTracks(stream) {
+        for (const track of stream.getTracks()) {
+            try { track.stop(); } catch (err) { console.debug('Scanner: track.stop error', err); }
+        }
     }
 
     function stop() {
+        currentSession++;
         if (nativeLoopHandle) {
             cancelAnimationFrame(nativeLoopHandle);
             nativeLoopHandle = null;
@@ -222,9 +263,7 @@ export function initBarcodeScanner(refs) {
             zxingReader = null;
         }
         if (mediaStream) {
-            for (const track of mediaStream.getTracks()) {
-                try { track.stop(); } catch (err) { console.debug('Scanner: track.stop error', err); }
-            }
+            stopTracks(mediaStream);
             mediaStream = null;
         }
         video.srcObject = null;

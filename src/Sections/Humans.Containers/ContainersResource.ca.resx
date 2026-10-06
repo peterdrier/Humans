@@ -93,6 +93,10 @@
   <data name="Containers_MapPlaced" xml:space="preserve">
     <value>Col·locats</value>
   </data>
+  <data name="Containers_MapCenterOnContainer" xml:space="preserve"><value>Centra el mapa en aquest contenidor</value></data>
+  <data name="Containers_MapSaveFailed" xml:space="preserve"><value>Error en desar</value></data>
+  <data name="Containers_MapClearFailed" xml:space="preserve"><value>Error en esborrar</value></data>
+  <data name="Containers_Error_InvalidPlacementGeoJson" xml:space="preserve"><value>El GeoJSON d’ubicació del contenidor no és vàlid.</value></data>
   <data name="Containers_MapClearPlacement" xml:space="preserve">
     <value>Treure col·locació</value>
   </data>
@@ -129,6 +133,7 @@
   <data name="Containers_Carousel_Next" xml:space="preserve">
     <value>Següent</value>
   </data>
+  <data name="Containers_Error_InvalidName" xml:space="preserve"><value>El nom del contenidor no ha de contenir &lt;, &gt; ni $.</value></data>
   <data name="Containers_Error_TooManyImages" xml:space="preserve">
     <value>Un contenidor pot tenir com a màxim {0} imatges.</value>
   </data>

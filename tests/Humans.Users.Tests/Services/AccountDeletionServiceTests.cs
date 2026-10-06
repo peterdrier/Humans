@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Auth.Contracts;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
@@ -101,11 +102,18 @@ public class AccountDeletionServiceTests
             .RevokeAllMembershipsAsync(Guid.Empty, Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task RequestDeletionAsync_Valid_SetsDeletionPendingAndCascades()
+    [HumansTheory]
+    [Xunit.InlineData("en", "en")]
+    [Xunit.InlineData("es", "es")]
+    [Xunit.InlineData("", "en")]
+    [Xunit.InlineData(" ", "en")]
+    [Xunit.InlineData("not a culture!", "en")]
+    [Xunit.InlineData("fr-FR", "en")]
+    public async Task RequestDeletionAsync_Valid_SetsDeletionPendingAndCascades(string language, string expectedCulture)
     {
+        using var actorCulture = new CultureScope("fr");
         var userId = Guid.NewGuid();
-        var user = MakeUser(userId);
+        var user = MakeUser(userId, preferredLanguage: language);
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _teamService.RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(3);
         _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>()).Returns(1);
@@ -135,13 +143,42 @@ public class AccountDeletionServiceTests
         // The builder is sealed with no interface, so the sent message is the assertion surface.
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "deletion_requested"
-                && m.RecipientEmail == user.Email! && m.RecipientName == user.BurnerName),
+                && m.RecipientEmail == user.Email! && m.RecipientName == user.BurnerName
+                && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
 
         // Shift-authorization cache must drop in-orchestrator (parity with
         // PurgeAsync / AnonymizeExpiredAccountAsync) so direct callers don't
         // depend on the Profile caching decorator for correctness.
         _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RequestDeletionAsync_InvalidatesShiftAccessWhenCommittedCleanupFails(bool emailFailure)
+    {
+        var userId = Guid.NewGuid();
+        var failure = new InvalidOperationException("Deletion cleanup unavailable");
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string>());
+        if (emailFailure)
+            _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+                .Returns<Task>(_ => throw failure);
+        else
+            _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
+                .Returns<Task<int>>(_ => throw failure);
+
+        var action = () => _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var thrown = await action.Should().ThrowAsync<InvalidOperationException>();
+
+        thrown.Which.Should().BeSameAs(failure);
+        await _userService.Received(1).SetDeletionPendingAsync(userId, Arg.Any<Instant>(), Arg.Any<Instant>(),
+            Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
+        await _teamService.Received(1).RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>());
+        _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
+        _shiftViewInvalidator.Received(1).InvalidateUser(userId);
     }
 
     [HumansFact]

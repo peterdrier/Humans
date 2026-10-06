@@ -202,6 +202,7 @@ export function initGate(refs) {
             const opts = body
                 ? { method: 'POST', headers: { 'RequestVerificationToken': token }, body }
                 : { headers: { 'X-Requested-With': 'fetch' } };
+            opts.redirect = 'error';
             const resp = await fetch(url, opts);
             if (!resp.ok) { renderError(); return; }
             result.innerHTML = await resp.text();

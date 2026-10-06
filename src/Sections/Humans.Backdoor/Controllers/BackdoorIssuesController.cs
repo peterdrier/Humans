@@ -61,7 +61,7 @@ internal sealed class BackdoorIssuesController(
             SearchText: string.IsNullOrWhiteSpace(search) ? null : search,
             Limit: limit.ClampPageSize(max: MaxLimit));
 
-        var rows = await issues.GetIssueListAsync(filter, Viewer);
+        var rows = await issues.GetIssueListAsync(filter, Viewer, HttpContext.RequestAborted);
 
         return Ok(rows.Select(MapList));
     }
@@ -70,10 +70,10 @@ internal sealed class BackdoorIssuesController(
     public async Task<IActionResult> Get(Guid id)
     {
         var viewer = Viewer;
-        var issue = await issues.GetIssueByIdAsync(id, viewer);
+        var issue = await issues.GetIssueByIdAsync(id, viewer, HttpContext.RequestAborted);
         if (issue is null) return NotFound();
 
-        var thread = await issues.GetThreadAsync(id, viewer);
+        var thread = await issues.GetThreadAsync(id, viewer, HttpContext.RequestAborted);
         var displayUsers = await GetIssueDisplayUsersAsync(issue);
         return Ok(MapDetail(issue, thread, displayUsers));
     }
@@ -109,10 +109,10 @@ internal sealed class BackdoorIssuesController(
     public async Task<IActionResult> GetComments(Guid id)
     {
         var viewer = Viewer;
-        var issue = await issues.GetIssueByIdAsync(id, viewer);
+        var issue = await issues.GetIssueByIdAsync(id, viewer, HttpContext.RequestAborted);
         if (issue is null) return NotFound();
 
-        var thread = await issues.GetThreadAsync(id, viewer);
+        var thread = await issues.GetThreadAsync(id, viewer, HttpContext.RequestAborted);
         var comments = thread.OfType<IssueCommentEvent>().Select(c => new
         {
             c.CommentId,
@@ -297,7 +297,7 @@ internal sealed class BackdoorIssuesController(
         var ids = new HashSet<Guid> { issue.ReporterUserId };
         if (issue.AssigneeUserId is { } assigneeId) ids.Add(assigneeId);
 
-        return await UserService.GetUserInfosAsync(ids);
+        return await UserService.GetUserInfosAsync(ids, HttpContext.RequestAborted);
     }
 }
 
@@ -307,6 +307,7 @@ internal sealed class ApiCreateIssueModel
     public Guid ReporterUserId { get; set; }
 
     [Required]
+    [EnumDataType(typeof(IssueCategory), ErrorMessage = "Validation_InvalidValue")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public IssueCategory Category { get; set; }
 
@@ -333,6 +334,7 @@ internal sealed class PostIssueCommentModel
 internal sealed class UpdateIssueStatusModel
 {
     [Required]
+    [EnumDataType(typeof(IssueStatus), ErrorMessage = "Validation_InvalidValue")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public IssueStatus Status { get; set; }
 }

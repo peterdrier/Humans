@@ -6,7 +6,7 @@ using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Services;
 using Humans.Base.Enums;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
@@ -81,6 +81,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         Substitute.For<IGoogleDriveAccessSyncScheduler>();
 
     private readonly GoogleWorkspaceSyncService _syncService;
+    private readonly ILogger<GoogleWorkspaceSyncService> _logger = Substitute.For<ILogger<GoogleWorkspaceSyncService>>();
 
     // ── Fixed test data ────────────────────────────────────────────────────────
 
@@ -122,12 +123,74 @@ public sealed class GoogleWorkspaceSyncServiceTests
             options,
             clock,
             serviceProvider,
-            NullLogger<GoogleWorkspaceSyncService>.Instance);
+            _logger);
     }
 
     // ==========================================================================
     // CreateSubfolderAsync
     // ==========================================================================
+
+    [HumansTheory]
+    [Xunit.InlineData(null, "legacy@nobodies.team", "legacy@nobodies.team")]
+    [Xunit.InlineData("https://groups.google.com/a/other.team/g/project", "numeric-id", "project@other.team")]
+    [Xunit.InlineData("https://groups.google.com/a/nobodies.team/g/project/", "numeric-id", "project@nobodies.team")]
+    public async Task CheckGroupSettingsAsync_UsesTheSharedGroupEmailResolution(string? url, string googleId, string email)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var resource = new GoogleResource
+        {
+            Id = Guid.NewGuid(),
+            TeamId = TestTeamId,
+            ResourceType = GoogleResourceType.Group,
+            GoogleId = googleId,
+            Url = url,
+            Name = "Project",
+            IsActive = true
+        };
+        var team = new TeamInfo(
+            TestTeamId, "Test Team", null, "test-team",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue, Members: []);
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, ct).Returns(SyncMode.AddOnly);
+        _resourceRepository.GetActiveResourceCountsByTeamAsync(ct).Returns(new Dictionary<Guid, int> { [TestTeamId] = 1 });
+        _resourceRepository.GetActiveByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
+            .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResource>> { [TestTeamId] = [resource] });
+        _teamService.GetTeamsAsync(ct).Returns(new Dictionary<Guid, TeamInfo> { [TestTeamId] = team });
+        _groupProvisioning.GetGroupSettingsAsync(Arg.Any<string>(), ct)
+            .Returns(new GroupSettingsGetResult(null, new GoogleClientError(404, "Group unavailable.")));
+
+        var result = await _syncService.CheckGroupSettingsAsync(ct);
+
+        result.Reports.Should().ContainSingle().Which.GroupEmail.Should().Be(email);
+        await _groupProvisioning.Received(1).GetGroupSettingsAsync(email, ct);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task GetAllDomainGroups_CallerCancellationIsNotAGroupSettingsError(bool callerAborted)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var failure = new OperationCanceledException("Group settings cancelled", cancellation.Token);
+        _directory.ListDomainGroupsAsync(Arg.Any<CancellationToken>())
+            .Returns(new DirectoryGroupListResult([new DirectoryGroup("id", "group@nobodies.team", "Group", 1)], null));
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        _groupProvisioning.GetGroupSettingsAsync("group@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                if (callerAborted) await cancellation.CancelAsync();
+                return await Task.FromException<GroupSettingsGetResult>(failure);
+            });
+        var act = () => _syncService.GetAllDomainGroupsAsync(cancellation.Token);
+        if (callerAborted) (await act.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(failure);
+        else (await act()).Groups.Should().ContainSingle().Which.ErrorMessage.Should().Contain(failure.Message);
+
+        var args = _logger.ReceivedCalls().Should().ContainSingle(c =>
+            (LogLevel)c.GetArguments()[0]! >= LogLevel.Warning).Subject.GetArguments();
+        args[0].Should().Be(callerAborted ? LogLevel.Warning : LogLevel.Error);
+        args[3].Should().BeSameAs(callerAborted ? null : failure);
+    }
 
     [HumansFact]
     public async Task CreateSubfolderAsync_Succeeds_ReturnsNewFolderId()

@@ -67,7 +67,7 @@ None — Search owns no tables. It is a read-only fan-out over five other sectio
 - The Humans bucket has no visibility filter for the GUID path to bypass, but resolution is not unconditional: `CachingUserService.SearchUsersAsync` returns an id hit only for a human with a non-rejected `Profile`, the same eligibility gate the text loop applies per candidate. The GUID path skips only the `PersonSearchFields.PublicAll` field mask.
 - **The destination page's own scoping wins, including when it shows less than the GUID resolved.** Both known cases are settled behavior, closed as designed: `/Camps/{slug}` renders a non-public season's detail page to any viewer (nobodies-collective/Humans#993), and a rota GUID from a past event resolves to a `/Shifts?departmentId=` link that lists only the current event's rotas (nobodies-collective/Humans#998). Neither is a Search-layer change.
 - `Features:Events` gates the Events bucket end to end — the fan-out call (service), the filter chip and the results heading (view) are all skipped when the flag is off.
-- A service exception renders the page shell with the query preserved, never a 500; a cancelled request propagates.
+- A service exception, including dependency cancellation while the request is live, is logged at Error and renders the page shell with the query preserved. Cancellation of the request token propagates and is logged at Warning without an exception stack.
 
 ## Negative Access Rules
 

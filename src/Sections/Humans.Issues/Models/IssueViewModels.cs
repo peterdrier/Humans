@@ -14,15 +14,15 @@ namespace Humans.Issues.Models;
 /// </summary>
 internal sealed class SubmitIssueViewModel
 {
-    [Required]
-    [StringLength(200)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string Title { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(5000)]
+    [Required(ErrorMessage = "Validation_Required")]
+    [StringLength(5000, ErrorMessage = "Validation_MaxLength")]
     public string Description { get; set; } = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "Validation_Required")]
     public IssueCategory Category { get; set; }
 
     /// <summary>
@@ -32,16 +32,16 @@ internal sealed class SubmitIssueViewModel
     /// An unrouted value degrades to the Admin queue; the cap matches the column and is the
     /// input-layer half of the service's guard (nobodies-collective/Humans#1509).
     /// </summary>
-    [StringLength(64)]
+    [StringLength(64, ErrorMessage = "Validation_MaxLength")]
     public string? Section { get; set; }
 
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string? PageUrl { get; set; }
 
-    [StringLength(1000)]
+    [StringLength(1000, ErrorMessage = "Validation_MaxLength")]
     public string? UserAgent { get; set; }
 
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string? AdditionalContext { get; set; }
 
     public IFormFile? Screenshot { get; set; }
@@ -172,7 +172,7 @@ internal sealed class PostIssueCommentModel
 
     /// <summary>
     /// Optional: when true, also moves the issue to <see cref="IssueStatus.Resolved"/>
-    /// after posting the comment. Wired up by the "Comment & mark resolved" button.
+    /// after posting the comment. Wired up by the "Comment &amp; mark resolved" button.
     /// </summary>
     public bool ResolveOnPost { get; set; }
 }

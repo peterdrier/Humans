@@ -3,6 +3,7 @@ using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
 using NodaTime.Testing;
 
@@ -174,6 +175,37 @@ public sealed class EventRepositoryTests : IDisposable
 
         removed.Should().BeTrue();
         (await _repo.GetFavouriteEventIdsAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("23505", "IX_event_favourites_UserId_GuideEventId_DayOffset", true)]
+    [Xunit.InlineData("23505", "PK_event_favourites", false)]
+    [Xunit.InlineData("23503", "IX_event_favourites_UserId_GuideEventId_DayOffset", false)]
+    public async Task AddFavouriteIfAbsentAsync_OnlyTreatsTargetDuplicateAsAlreadyPresent(
+        string sqlState, string constraint, bool isDuplicate)
+    {
+        var failure = new DbUpdateException("Save failed", new Npgsql.PostgresException(
+            "Constraint violation", "ERROR", "ERROR", sqlState, constraintName: constraint));
+        var options = new DbContextOptionsBuilder<EventGuideDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(new FailedSave(failure))
+            .Options;
+        var repo = new EventRepository(new TestDbContextFactory<EventGuideDbContext>(options));
+        var favourite = BuildFavourite(Guid.NewGuid(), Guid.NewGuid(), dayOffset: null);
+        Func<Task<bool>> add = () => repo.AddFavouriteIfAbsentAsync(
+            favourite, Xunit.TestContext.Current.CancellationToken);
+
+        if (isDuplicate)
+            (await add()).Should().BeFalse();
+        else
+            (await add.Should().ThrowAsync<DbUpdateException>()).Which.Should().BeSameAs(failure);
+    }
+
+    private sealed class FailedSave(DbUpdateException failure) : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default) => throw failure;
     }
 
     [HumansFact]

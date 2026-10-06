@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Camps.Contracts;
@@ -26,11 +28,13 @@ public sealed class NotificationsControllerTests
         inbox.GetInboxAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(), aborted.Token)
             .Returns(Task.FromException<NotificationInboxResult>(new OperationCanceledException(aborted.Token)));
         using var cache = new MemoryCache(new MemoryCacheOptions());
+        using var localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var meterProvider = new NotificationMeterProvider(
             Substitute.For<IUserServiceRead>(), Substitute.For<IGoogleSyncServiceRead>(),
             Substitute.For<ITeamServiceRead>(), Substitute.For<ITicketSync>(),
             Substitute.For<IApplicationServiceRead>(), Substitute.For<ICampServiceRead>(), cache,
-            NullLogger<NotificationMeterProvider>.Instance);
+            NullLogger<NotificationMeterProvider>.Instance,
+            localization.GetRequiredService<IStringLocalizer<NotificationsResource>>());
         var controller = new NotificationsController(inbox, Substitute.For<IUserServiceRead>(), meterProvider)
         {
             ControllerContext = new() { HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token } }

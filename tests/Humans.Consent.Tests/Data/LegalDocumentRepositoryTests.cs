@@ -33,6 +33,18 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         _dbContext.Dispose();
     }
 
+    [HumansFact]
+    public void DocumentContentComparer_EqualMapsHaveEqualHashesRegardlessOfInsertionOrder()
+    {
+        var comparer = _dbContext.Model.FindEntityType(typeof(DocumentVersion))!
+            .FindProperty(nameof(DocumentVersion.Content))!.GetValueComparer()!;
+        var original = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "Castellano", ["en"] = "English" };
+        var reordered = new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "English", ["es"] = "Castellano" };
+
+        comparer.Equals(original, reordered).Should().BeTrue();
+        comparer.GetHashCode(original).Should().Be(comparer.GetHashCode(reordered));
+    }
+
     private async Task<LegalDocument> SeedDocumentAsync(
         string name,
         bool isActive = true,

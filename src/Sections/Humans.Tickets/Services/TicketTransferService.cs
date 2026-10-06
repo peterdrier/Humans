@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Threading;
 using Humans.Email.Contracts;
@@ -642,7 +643,8 @@ internal sealed class TicketTransferService(
     {
         try
         {
-            return (await userService.GetUserInfoAsync(request.ReceiverUserId, ct))?.PreferredLanguage ?? "en";
+            var language = (await userService.GetUserInfoAsync(request.ReceiverUserId, ct))?.PreferredLanguage;
+            return language.IsSupportedCultureCode() ? language! : CultureCatalog.DefaultCultureCode;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -679,7 +681,9 @@ internal sealed class TicketTransferService(
         var info = await userService.GetUserInfoAsync(senderUserId, ct);
         var email = await userEmailService.GetPrimaryEmailAsync(senderUserId, ct);
         var name = info?.BurnerName;
-        return (email, string.IsNullOrWhiteSpace(name) ? "there" : name, info?.PreferredLanguage ?? "en");
+        var language = info?.PreferredLanguage;
+        return (email, string.IsNullOrWhiteSpace(name) ? "there" : name,
+            language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode);
     }
 
     // VendorMessage is capped at 2000 chars and the vendor client embeds the raw TicketTailor
@@ -694,7 +698,11 @@ internal sealed class TicketTransferService(
         var detail = ex is TicketVendorWriteException w
             ? $"{w.Kind}: {w.Message}"
             : $"{ex.GetType().Name}: {ex.Message}";
-        return detail.Length <= MaxVendorDetailLength ? detail : detail[..MaxVendorDetailLength] + "…";
+        if (detail.Length <= MaxVendorDetailLength) return detail;
+        var length = MaxVendorDetailLength;
+        if (char.IsHighSurrogate(detail[length - 1]) && char.IsLowSurrogate(detail[length]))
+            length--;
+        return detail[..length] + "…";
     }
 
     // The new local attendee row for a reissued ticket: re-attached to the ORIGINAL order and

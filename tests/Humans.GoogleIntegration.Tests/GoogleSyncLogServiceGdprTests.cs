@@ -1,4 +1,10 @@
+using Xunit;
 using AwesomeAssertions;
+using AwesomeAssertions.Execution;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Humans.Base.Enums;
+using Humans.GoogleIntegration.Domain;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services;
@@ -35,6 +41,26 @@ public sealed class GoogleSyncLogServiceGdprTests
             _serviceProvider,
             new FakeClock(Instant.FromUtc(2026, 4, 21, 12, 0)),
             NullLogger<GoogleSyncLogService>.Instance);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LogAsync_PersistsBoundedDescriptionAndError(bool longError)
+    {
+        var error = longError ? new string('e', 3999) + "😀" + new string('e', 4000) : "Google unavailable";
+        GoogleSyncLogEntry? saved = null;
+        _repo.AddAsync(Arg.Do<GoogleSyncLogEntry>(entry => saved = entry), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        await _service.LogAsync(GoogleSyncLogAction.AccessRevoked, Guid.NewGuid(), error, "Sync",
+            "member@example.com", "reader", GoogleSyncSource.ScheduledSync, success: false,
+            errorMessage: error, ct: Xunit.TestContext.Current.CancellationToken);
+
+        saved.Should().NotBeNull();
+        saved!.Description.Should().Be(longError ? "Sync: " + new string('e', 3994) : "Sync: " + error);
+        saved.ErrorMessage.Should().Be(longError ? new string('e', 3999) : error);
+        saved.Success.Should().BeFalse();
     }
 
     /// <summary>Answers the resolving read the way Users does: the tombstone id reads back as the
@@ -92,11 +118,38 @@ public sealed class GoogleSyncLogServiceGdprTests
         var survivor = Guid.NewGuid();
         var archived = Guid.NewGuid();
         StubResolvesTo(survivor, survivor, archived);
+        var resourceId = Guid.NewGuid();
         _repo.GetAllByUserIdsContributorAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns([]);
+            .Returns([new GoogleSyncLogEntry
+            {
+                Id = Guid.NewGuid(), UserId = archived, ResourceId = resourceId,
+                Action = GoogleSyncLogAction.AccessRevoked,
+                OccurredAt = Instant.FromUtc(2026, 4, 21, 12, 0),
+                Description = "Sync: revoked access", UserEmail = "alice@example.com",
+                Role = "reader", Source = GoogleSyncSource.ScheduledSync,
+                Success = false, ErrorMessage = "Permission denied"
+            }]);
+        _teamResources.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [resourceId] = "Shared folder" });
 
-        await _service.ContributeForUserAsync(survivor, Xunit.TestContext.Current.CancellationToken);
+        var slices = await _service.ContributeForUserAsync(survivor, Xunit.TestContext.Current.CancellationToken);
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(slices.Single().Data,
+            new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } }));
+        json.RootElement.GetArrayLength().Should().Be(1);
+        var row = json.RootElement[0];
+        using var scope = new AssertionScope();
+        row.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo(
+            "Action", "OccurredAt", "Description", "ResourceName", "UserEmail", "Role", "Source", "Success", "ErrorMessage");
+        row.GetProperty("OccurredAt").GetRawText().Should().Be("\"2026-04-21T12:00:00Z\"");
+        row.GetProperty("Action").GetString().Should().Be("AccessRevoked");
+        row.GetProperty("Description").GetString().Should().Be("Sync: revoked access");
+        row.GetProperty("ResourceName").GetString().Should().Be("Shared folder");
+        row.GetProperty("UserEmail").GetString().Should().Be("alice@example.com");
+        row.GetProperty("Role").GetString().Should().Be("reader");
+        row.GetProperty("Source").GetString().Should().Be("ScheduledSync");
+        row.GetProperty("Success").GetBoolean().Should().BeFalse();
+        row.GetProperty("ErrorMessage").GetString().Should().Be("Permission denied");
 
         await _repo.Received(1).GetAllByUserIdsContributorAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids =>

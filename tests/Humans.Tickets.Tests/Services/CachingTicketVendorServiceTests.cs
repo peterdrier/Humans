@@ -75,6 +75,31 @@ public sealed class CachingTicketVendorServiceTests
         await _inner.Received(2).GetEventSummaryAsync("ev_test", Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task GetEventSummaryAsync_LoadStartedBeforeInvalidation_DoesNotRepopulateCache(bool expired)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var old = MakeSummary("ev_test", sold: 1);
+        var current = MakeSummary("ev_test", sold: 2);
+        var pending = new TaskCompletionSource<VendorEventSummaryDto>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (expired)
+        {
+            _inner.GetEventSummaryAsync("ev_test", ct).Returns(Task.FromResult(old));
+            await _decorator.GetEventSummaryAsync("ev_test", ct);
+            _clock.Advance(Duration.FromMinutes(16));
+        }
+        _inner.GetEventSummaryAsync("ev_test", ct).Returns(pending.Task, Task.FromResult(current));
+        var read = _decorator.GetEventSummaryAsync("ev_test", ct);
+
+        _decorator.InvalidateEventSummary("ev_test");
+        pending.SetResult(old);
+        (await read).Should().BeSameAs(old);
+
+        (await _decorator.GetEventSummaryAsync("ev_test", ct)).Should().BeSameAs(current);
+    }
+
     // Every other ITicketVendorService member forwards straight through, uncached — the
     // decorator must not silently swallow one. One test per member, matching the port's
     // exact signature, catches a member missing from WithInner as surely as a generic

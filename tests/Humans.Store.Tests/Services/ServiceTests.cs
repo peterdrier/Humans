@@ -12,6 +12,7 @@ using Humans.Stripe.Contracts;
 using Humans.Base.Enums;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
@@ -64,7 +65,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetIndexDataAsync_lists_led_camp_from_camp_info()
+    public async Task GetIndexDataAsync_selects_highest_balance_camp_order_with_live_prices()
     {
         var userId = Guid.NewGuid();
         var campId = Guid.NewGuid();
@@ -74,17 +75,43 @@ public class ServiceTests
             {
                 MakeCampInfo(campId, seasonId, "Camp Alpha", userId)
             });
-        _repo.GetOrdersForCampSeasonAsync(seasonId, Arg.Any<CancellationToken>())
-            .Returns(new List<Order>());
-        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new List<Product>());
+        var product = MakeProduct(name: "Tent", price: 50m, vat: 0m);
+        product.IsActive = false;
+        var lowerBalanceId = Guid.NewGuid();
+        var higherBalanceId = Guid.NewGuid();
+        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { seasonId })),
+                Arg.Any<CancellationToken>())
+            .Returns([
+                new Order
+                {
+                    Id = lowerBalanceId, CampSeasonId = seasonId, Year = 2026,
+                    Lines = { new() { Id = Guid.NewGuid(), ProductId = product.Id, Qty = 1, UnitPriceSnapshot = 1m } },
+                    Payments = { new() { AmountEur = 45m, Status = PaymentStatus.Paid } }
+                },
+                new Order
+                {
+                    Id = higherBalanceId, CampSeasonId = seasonId, Year = 2026,
+                    Lines = { new() { Id = Guid.NewGuid(), ProductId = product.Id, Qty = 2, UnitPriceSnapshot = 1m } },
+                    Payments = { new() { AmountEur = 20m, Status = PaymentStatus.Paid } }
+                }
+            ]);
+        _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([product]);
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([product]);
 
         var result = await _service.GetIndexDataAsync(userId, ct: TestContext.Current.CancellationToken);
 
-        result.Counterparties.Should().ContainSingle().Which.Should().Match<CounterpartyOrders>(counterparty =>
-            counterparty.CounterpartyType == OrderCounterpartyType.Camp &&
-            counterparty.CounterpartyId == seasonId &&
-            counterparty.DisplayName == "Camp Alpha");
+        var counterparty = result.Counterparties.Should().ContainSingle().Subject;
+        counterparty.CounterpartyType.Should().Be(OrderCounterpartyType.Camp);
+        counterparty.CounterpartyId.Should().Be(seasonId);
+        counterparty.DisplayName.Should().Be("Camp Alpha");
+        var order = counterparty.Orders.Should().ContainSingle().Subject;
+        order.Id.Should().Be(higherBalanceId);
+        order.CounterpartyDisplayName.Should().Be("Camp Alpha");
+        order.BalanceEur.Should().Be(80m);
+        order.Lines.Should().ContainSingle().Subject.ProductName.Should().Be("Tent");
+        await _repo.Received(1).GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -485,10 +512,14 @@ public class ServiceTests
     [HumansFact]
     public async Task AddLineAsync_rejects_non_positive_qty()
     {
-        await Assert.ThrowsAsync<ArgumentException>(
+        var rejection0 = await Assert.ThrowsAnyAsync<ArgumentException>(
             () => _service.AddLineAsync(Guid.NewGuid(), Guid.NewGuid(), 0, Guid.NewGuid(), TestContext.Current.CancellationToken));
-        await Assert.ThrowsAsync<ArgumentException>(
+        rejection0.ParamName.Should().Be("qty");
+        rejection0.Message.Should().Match("Qty must be positive*");
+        var rejection1 = await Assert.ThrowsAnyAsync<ArgumentException>(
             () => _service.AddLineAsync(Guid.NewGuid(), Guid.NewGuid(), -3, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        rejection1.ParamName.Should().Be("qty");
+        rejection1.Message.Should().Match("Qty must be positive*");
     }
 
     [HumansFact]
@@ -499,8 +530,9 @@ public class ServiceTests
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
             .Returns(new Order { Id = orderId, State = OrderState.InvoiceIssued });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        var rejection = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _service.AddLineAsync(orderId, productId, 1, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        rejection.Message.Should().Match("Cannot add lines to an issued order*");
     }
 
     [HumansFact]
@@ -559,6 +591,76 @@ public class ServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
+    [HumansTheory]
+    [InlineData("Catalog", false, false)]
+    [InlineData("Catalog", false, true)]
+    [InlineData("Catalog", true, false)]
+    [InlineData("Catalog", true, true)]
+    [InlineData("AddLine", false, false)]
+    [InlineData("AddLine", false, true)]
+    [InlineData("AddLine", true, false)]
+    [InlineData("AddLine", true, true)]
+    [InlineData("RemoveLine", false, false)]
+    [InlineData("RemoveLine", false, true)]
+    [InlineData("RemoveLine", true, false)]
+    [InlineData("RemoveLine", true, true)]
+    [InlineData("Counterparty", false, false)]
+    [InlineData("Counterparty", false, true)]
+    [InlineData("Counterparty", true, false)]
+    [InlineData("Counterparty", true, true)]
+    public async Task MutationResults_DoNotExposePersistenceFailures(string operation, bool argumentError, bool lookupFailure)
+    {
+        Exception failure = argumentError ? new ArgumentException("Private persistence diagnostic", nameof(operation))
+            : new InvalidOperationException("Private persistence diagnostic");
+        var order = new Order { Id = Guid.NewGuid(), State = OrderState.Open };
+        var product = MakeProduct();
+        var lineId = Guid.NewGuid();
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(_ => lookupFailure
+            ? Task.FromException<Order?>(failure) : Task.FromResult<Order?>(order));
+        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(_ =>
+            lookupFailure && string.Equals(operation, "Catalog", StringComparison.Ordinal)
+                ? Task.FromException<Product?>(failure) : Task.FromResult<Product?>(product));
+        _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>()).Returns(_ => lookupFailure
+            ? Task.FromException<LineContext?>(failure)
+            : Task.FromResult<LineContext?>(new LineContext(lineId, order.Id, product.Id,
+                OrderState.Open, product.OrderableUntil)));
+        _repo.UpdateProductAsync(product, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        _repo.AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        _repo.RemoveLineAsync(lineId, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        _repo.UpdateOrderAsync(order, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        var logger = Substitute.For<ILogger<Service>>();
+        var service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripeService,
+            _holded, Options.Create(_storeOptions), logger);
+        var ct = TestContext.Current.CancellationToken;
+        bool succeeded;
+        string? error;
+        if (string.Equals(operation, "Catalog", StringComparison.Ordinal))
+        {
+            var result = await service.SaveProductWithResultAsync(new ProductSaveRequest(product.Id, 2026,
+                "Tent", null, 50m, 21m, null, "2026-08-01", true, null), Guid.NewGuid(), ct);
+            succeeded = result.Succeeded;
+            error = result.ErrorMessage;
+        }
+        else
+        {
+            var result = operation switch
+            {
+                "AddLine" => await service.AddLineWithResultAsync(order.Id, product.Id, 1, Guid.NewGuid(), ct),
+                "RemoveLine" => await service.RemoveLineWithResultAsync(order.Id, lineId, Guid.NewGuid(), ct),
+                _ => await service.UpdateCounterpartyWithResultAsync(order.Id,
+                    new OrderCounterpartyInput("Acme", null, null, null, null), Guid.NewGuid(), ct)
+            };
+            succeeded = result.Succeeded;
+            error = result.ErrorMessage;
+        }
+
+        succeeded.Should().BeFalse();
+        error.Should().BeNull("the controller already owns the localized fallback");
+        logger.ReceivedCalls().Should().ContainSingle(call => call.GetMethodInfo().Name == "Log"
+            && (LogLevel)call.GetArguments()[0]! == LogLevel.Error
+            && ReferenceEquals(call.GetArguments()[3], failure));
+    }
+
     [HumansFact]
     public async Task AddLineWithResultAsync_returns_failure_for_expected_validation()
     {
@@ -599,8 +701,9 @@ public class ServiceTests
                 lineId, actualOrderId, Guid.NewGuid(),
                 OrderState.Open, new LocalDate(2026, 12, 31)));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        var rejection = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _service.RemoveLineAsync(routeOrderId, lineId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        rejection.Message.Should().Match("Line * does not belong to order **");
         await _repo.DidNotReceive().RemoveLineAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
@@ -614,8 +717,9 @@ public class ServiceTests
                 lineId, orderId, Guid.NewGuid(),
                 OrderState.InvoiceIssued, new LocalDate(2026, 12, 31)));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        var rejection = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _service.RemoveLineAsync(orderId, lineId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        rejection.Message.Should().Match("Cannot remove lines from an issued order*");
     }
 
     [HumansFact]
@@ -817,8 +921,10 @@ public class ServiceTests
             Guid.Empty, 2026, "   ", "", 10m, 21m, null,
             new LocalDate(2026, 8, 1), IsActive: true);
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        var rejection = await Assert.ThrowsAnyAsync<ArgumentException>(
             () => _service.CreateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        rejection.ParamName.Should().Be("draft");
+        rejection.Message.Should().Match("Product name is required*");
     }
 
     [HumansFact]
@@ -828,8 +934,10 @@ public class ServiceTests
             Guid.Empty, 2026, "Tent", "", -1m, 21m, null,
             new LocalDate(2026, 8, 1), IsActive: true);
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        var rejection = await Assert.ThrowsAnyAsync<ArgumentException>(
             () => _service.CreateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        rejection.ParamName.Should().Be("draft");
+        rejection.Message.Should().Match("Unit price cannot be negative*");
     }
 
     [HumansFact]
@@ -839,8 +947,10 @@ public class ServiceTests
             Guid.Empty, 2026, "Tent", "", 10m, -1m, null,
             new LocalDate(2026, 8, 1), IsActive: true);
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        var rejection = await Assert.ThrowsAnyAsync<ArgumentException>(
             () => _service.CreateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        rejection.ParamName.Should().Be("draft");
+        rejection.Message.Should().Match("VAT rate cannot be negative*");
     }
 
     [HumansFact]
@@ -929,8 +1039,9 @@ public class ServiceTests
             Guid.NewGuid(), 2026, "Tent", "", 10m, 21m, null,
             new LocalDate(2026, 8, 1), IsActive: true);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        var rejection = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _service.UpdateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken));
+        rejection.Message.Should().Match("Product * not found*");
     }
 
     [HumansFact]
@@ -1516,29 +1627,40 @@ public class ServiceTests
         await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task AsyncPaymentSucceeded_out_of_order_records_paid_when_no_row_yet()
+    [HumansTheory]
+    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded, true)]
+    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed, false)]
+    public async Task AsyncPayment_out_of_order_preserves_terminal_state_after_completed_and_redelivery(
+        StoreCheckoutEventKind kind, bool succeeded)
     {
-        // Stripe delivered async_payment_succeeded before completed: no payment row exists yet.
-        // Record the settled money directly so it isn't lost; the later completed no-ops on the PI.
+        var status = succeeded ? PaymentStatus.Paid : PaymentStatus.Failed;
         var orderId = Guid.NewGuid();
+        Payment? recorded = null;
         _repo.GetPaymentByStripePaymentIntentIdAsync("pi_ooo", Arg.Any<CancellationToken>())
-            .Returns((Payment?)null);
+            .Returns(_ => recorded);
         _repo.StripePaymentIntentExistsAsync("pi_ooo", Arg.Any<CancellationToken>())
-            .Returns(false);
+            .Returns(_ => recorded is not null);
+        await _repo.AddPaymentAsync(Arg.Do<Payment>(p => recorded = p), Arg.Any<CancellationToken>());
+        var terminal = new StoreCheckoutWebhookEvent("evt_ooo", kind,
+            new StoreCheckoutSessionData("cs_ooo", orderId, "pi_ooo", 75m));
 
+        await _service.HandleStripeCheckoutWebhookEventAsync(terminal, TestContext.Current.CancellationToken);
         await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
-            "evt_ooo",
-            StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded,
-            new StoreCheckoutSessionData("cs_ooo", orderId, "pi_ooo", 75m)), TestContext.Current.CancellationToken);
+            "evt_completed_late", StoreCheckoutEventKind.CheckoutSessionCompleted,
+            new StoreCheckoutSessionData("cs_ooo", orderId, "pi_ooo", 75m, PaymentStatus: "unpaid")),
+            TestContext.Current.CancellationToken);
+        await _service.HandleStripeCheckoutWebhookEventAsync(terminal, TestContext.Current.CancellationToken);
 
-        await _repo.Received(1).AddPaymentAsync(
-            Arg.Is<Payment>(p =>
-                p.OrderId == orderId &&
-                p.StripePaymentIntentId == "pi_ooo" &&
-                p.AmountEur == 75m &&
-                p.Status == PaymentStatus.Paid),
-            Arg.Any<CancellationToken>());
+        recorded.Should().NotBeNull();
+        recorded!.Status.Should().Be(status);
+        recorded.OrderId.Should().Be(orderId);
+        recorded.StripePaymentIntentId.Should().Be("pi_ooo");
+        recorded.AmountEur.Should().Be(75m);
+        await _repo.Received(1).AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(AuditAction.StorePaymentRecorded, AuditEntityTypes.Payment,
+            recorded.Id, Arg.Is<string>(message => status != PaymentStatus.Failed || message.Contains("Failed")),
+            "StripeWebhook", orderId, AuditEntityTypes.Order);
     }
 
     [HumansFact]
@@ -1594,16 +1716,16 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AsyncPaymentFailed_with_no_row_is_a_noop()
+    public async Task AsyncPaymentFailed_with_no_row_and_missing_order_is_a_noop()
     {
-        // A failure with nothing pending means no money was ever owed here — do not create a row.
+        // Without order metadata the terminal failure cannot be attributed to an order.
         _repo.GetPaymentByStripePaymentIntentIdAsync("pi_nothing", Arg.Any<CancellationToken>())
             .Returns((Payment?)null);
 
         await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
             "evt_failed_orphan",
             StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed,
-            new StoreCheckoutSessionData("cs_nothing", Guid.NewGuid(), "pi_nothing", 50m)), TestContext.Current.CancellationToken);
+            new StoreCheckoutSessionData("cs_nothing", null, "pi_nothing", 50m)), TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());

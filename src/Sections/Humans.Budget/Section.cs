@@ -47,13 +47,12 @@ public sealed class Section : ISection, IIssueQueueOwner
             sp.GetRequiredService<IBudgetServiceRead>(),
             sp.GetRequiredService<ILogger<TicketingBudgetSyncJob>>()));
 
-        // Development's /dev/seed/budget action drives this through the contracts leaf rather than
+        // Development's /dev/seed/budget action drives this through the Contracts/ interface rather than
         // resolving the concrete seeder, which is what keeps Budget's fifteen write methods
-        // off the leaf.
+        // off the public surface.
         services.AddScoped<IBudgetDemoSeeder, DevelopmentBudgetSeeder>();
 
-        // Resource-based handlers move into the section; the policies they satisfy stay in
-        // Shell's AuthorizationPolicyExtensions (design §8's asymmetry, §15 step 6).
+        // Resource-based handlers register here; section-owned policies register through ISectionPolicies.
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
     }
 

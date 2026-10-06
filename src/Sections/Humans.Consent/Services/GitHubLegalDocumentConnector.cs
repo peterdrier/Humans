@@ -56,6 +56,7 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
     public async Task<IReadOnlyDictionary<string, string>> DiscoverLanguageFilesAsync(
         string folderPath, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         using var _ = _logger.TimeOperation();
         var languageFiles = new Dictionary<string, string>(StringComparer.Ordinal);
 
@@ -65,7 +66,7 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
                 _settings.Owner,
                 _settings.Repository,
                 folderPath.TrimEnd('/'),
-                _settings.Branch);
+                _settings.Branch).WaitAsync(ct);
 
             string? canonicalBaseName = null;
 
@@ -102,6 +103,7 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
 
     public async Task<GitHubFileContent?> GetFileContentAsync(string path, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         using var _ = _logger.TimeOperation();
         try
         {
@@ -109,19 +111,19 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
                 _settings.Owner,
                 _settings.Repository,
                 path,
-                _settings.Branch);
+                _settings.Branch).WaitAsync(ct);
 
             var file = contents.FirstOrDefault();
             if (file is null) return null;
 
-            // Fetch raw content directly — bypasses Base64 encoding issues with non-ASCII content
-            var rawBytes = await _client.Repository.Content.GetRawContentByRef(
+            ct.ThrowIfCancellationRequested();
+            // Read the immutable blob: the branch may advance after the metadata fetch.
+            var blob = await _client.Git.Blob.Get(
                 _settings.Owner,
                 _settings.Repository,
-                path,
-                _settings.Branch);
+                file.Sha).WaitAsync(ct);
 
-            var content = System.Text.Encoding.UTF8.GetString(rawBytes);
+            var content = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(blob.Content));
             return new GitHubFileContent(content, file.Sha);
         }
         catch (NotFoundException)
@@ -136,13 +138,18 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
 
     public async Task<string?> GetCommitMessageAsync(string sha, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         using var _ = _logger.TimeOperation();
         try
         {
-            var commit = await _client.Repository.Commit.Get(_settings.Owner, _settings.Repository, sha);
+            var commit = await _client.Repository.Commit.Get(_settings.Owner, _settings.Repository, sha).WaitAsync(ct);
             var message = commit.Commit.Message;
             var firstLine = message.Split('\n', 2)[0].Trim();
-            return firstLine.Length > 500 ? firstLine[..500] : firstLine;
+            var length = Math.Min(500, firstLine.Length);
+            if (length < firstLine.Length && char.IsHighSurrogate(firstLine[length - 1])
+                && char.IsLowSurrogate(firstLine[length]))
+                length--;
+            return firstLine[..length];
         }
         catch (ApiException ex)
         {
@@ -150,7 +157,7 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
             _logger.LogDebug("GitHub API error fetching commit message for {Sha}: {StatusCode}", sha, ex.StatusCode);
             return null;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             _logger.LogDebug(ex, "Could not fetch commit message for {Sha}", sha);
             return null;
@@ -160,10 +167,11 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
     public async Task<IReadOnlyDictionary<string, string>> GetFolderContentByPrefixAsync(
         string folderPath, string filePrefix, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         using var _ = _logger.TimeOperation();
         try
         {
-            return await FetchFolderContentByPrefixAsync(folderPath, filePrefix);
+            return await FetchFolderContentByPrefixAsync(folderPath, filePrefix, ct);
         }
         catch (ApiException ex)
         {
@@ -172,13 +180,13 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
     }
 
     private async Task<IReadOnlyDictionary<string, string>> FetchFolderContentByPrefixAsync(
-        string folderPath, string filePrefix)
+        string folderPath, string filePrefix, CancellationToken ct)
     {
         var files = await _client.Repository.Content.GetAllContentsByRef(
             _settings.Owner,
             _settings.Repository,
             folderPath,
-            _settings.Branch);
+            _settings.Branch).WaitAsync(ct);
 
         var content = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var file in files.Where(f =>
@@ -192,12 +200,13 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
                 ? match.Groups["lang"].Value.ToLowerInvariant()
                 : "es";
 
+            ct.ThrowIfCancellationRequested();
             // Fetch full content (GetAllContents for a directory only returns metadata)
             var fileContent = await _client.Repository.Content.GetAllContentsByRef(
                 _settings.Owner,
                 _settings.Repository,
                 file.Path,
-                _settings.Branch);
+                _settings.Branch).WaitAsync(ct);
 
             if (fileContent.Count > 0 && fileContent[0].Content is not null)
             {

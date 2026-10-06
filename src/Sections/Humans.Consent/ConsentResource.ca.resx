@@ -43,6 +43,7 @@
   <data name="ConsentIndex_Title" xml:space="preserve">
     <value>Acords</value>
   </data>
+  <data name="Consent_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegació</value></data>
   <data name="ConsentReview_Title" xml:space="preserve">
     <value>Revisar: {0}</value>
     <comment>{0} = document name</comment>

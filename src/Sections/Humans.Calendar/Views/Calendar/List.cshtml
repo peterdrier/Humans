@@ -13,7 +13,7 @@
     <partial name="_CalendarViewPills" />
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 mb-0">@Model.Month.Year @System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(Model.Month.Month)</h1>
+        <h1 class="h3 mb-0">@Model.Month.Year @System.Globalization.CultureInfo.CurrentUICulture.DateTimeFormat.GetMonthName(Model.Month.Month)</h1>
         <div>
             <a class="btn btn-sm btn-primary" asp-action="Create">@Localizer["Calendar_NewEvent"]</a>
             <a class="btn btn-sm btn-outline-secondary" asp-action="List" asp-route-year="@prev.Year" asp-route-month="@prev.Month" asp-route-teamId="@Model.FilterTeamId">&larr; @Localizer["Calendar_Prev"]</a>

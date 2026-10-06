@@ -27,6 +27,9 @@ public class IbanValidatorTests
     [InlineData("")]
     [InlineData(null)]
     [InlineData("ES91 2100 0418 45")]
+    [InlineData("ESAA00000000000000000060")]
+    [InlineData("FR14É0000000000000000000085")]
+    [InlineData("ES91٢1000418450200051332")]
     public void IsValid_RejectsBadInputs(string? iban)
     {
         IbanValidator.IsValid(iban).Should().BeFalse();

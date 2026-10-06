@@ -143,34 +143,43 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         await act.Should().NotThrowAsync();
     }
 
-    [HumansFact]
-    public async Task MarkPermanentlyFailedAsync_SetsFlagProcessedAtAndTruncatesLastError()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task MarkPermanentlyFailedAsync_SetsFlagProcessedAtAndTruncatesLastError(bool splitPair)
     {
         var id = Seed();
         var at = Instant.FromUtc(2026, 4, 23, 14, 0);
-        var longMessage = new string('x', 5000); // exceeds 4000 cap
+        var prefix = new string('x', 3999);
+        var longMessage = prefix + (splitPair ? "😀" : "x") + new string('y', 1000);
+        var expectedMessage = prefix + (splitPair ? "" : "x");
 
         await _repository.MarkPermanentlyFailedAsync(id, at, longMessage, Xunit.TestContext.Current.CancellationToken);
 
         var stored = await _seedContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(e => e.Id == id, Xunit.TestContext.Current.CancellationToken);
         stored.FailedPermanently.Should().BeTrue();
         stored.ProcessedAt.Should().Be(at);
-        stored.LastError.Should().HaveLength(4000);
+        stored.LastError.Should().Be(expectedMessage);
     }
 
-    [HumansFact]
-    public async Task IncrementRetryAsync_BelowMax_IncrementsWithoutMarkingPermanent()
+    [HumansTheory]
+    [Xunit.InlineData(0, "flaky", "flaky")]
+    [Xunit.InlineData(3999, "xyz", "x")]
+    [Xunit.InlineData(3999, "😀tail", "")]
+    public async Task IncrementRetryAsync_BelowMax_IncrementsWithoutMarkingPermanent(int prefixLength, string tail, string expectedTail)
     {
+        var prefix = new string('x', prefixLength);
+        var message = prefix + tail;
         var id = Seed(retryCount: 1);
         var at = Instant.FromUtc(2026, 4, 23, 14, 0);
 
-        var (exhausted, retryCount) = await _repository.IncrementRetryAsync(id, at, "flaky", maxRetryCount: 5, ct: Xunit.TestContext.Current.CancellationToken);
+        var (exhausted, retryCount) = await _repository.IncrementRetryAsync(id, at, message, maxRetryCount: 5, ct: Xunit.TestContext.Current.CancellationToken);
 
         exhausted.Should().BeFalse();
         retryCount.Should().Be(2);
         var stored = await _seedContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(e => e.Id == id, Xunit.TestContext.Current.CancellationToken);
         stored.RetryCount.Should().Be(2);
-        stored.LastError.Should().Be("flaky");
+        stored.LastError.Should().Be(prefix + expectedTail);
         stored.FailedPermanently.Should().BeFalse();
         stored.ProcessedAt.Should().BeNull();
     }

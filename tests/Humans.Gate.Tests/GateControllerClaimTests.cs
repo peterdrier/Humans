@@ -100,6 +100,9 @@ public class GateControllerClaimTests
         _users.SearchUsersAsync("ann", PersonSearchFields.Name, Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new[] { new HumanSearchResult(id, Guid.NewGuid(), "Annie", "/pic.jpg", "Name", null, null, 100) });
 
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>());
+
         var result = await _controller.Search("ann", ct);
 
         var json = Assert.IsType<JsonResult>(result);

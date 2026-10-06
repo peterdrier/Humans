@@ -119,9 +119,9 @@ public static class SectionDiscoveryExtensions
     /// </summary>
     public static IReadOnlyList<Type> SectionResourceTypes() =>
         [.. ActiveSectionAssemblies()
-            .SelectMany(a => a.GetExportedTypes())
-            .Where(t => t is { IsClass: true, IsAbstract: false }
-                        && t.Name.EndsWith("Resource", StringComparison.Ordinal))
+            .SelectMany(a => a.GetExportedTypes()
+                .Where(t => t is { IsClass: true, IsAbstract: false }
+                            && string.Equals(t.Name, SectionName(a) + "Resource", StringComparison.Ordinal)))
             .OrderBy(t => t.Name, StringComparer.Ordinal)];
 
     /// <summary>Every shipped section's entry point, paired with its section name and assembly.</summary>

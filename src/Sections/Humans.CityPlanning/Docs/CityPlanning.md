@@ -12,7 +12,7 @@
 
 # City Planning — Section Invariants
 
-Interactive map surface: a read-only overview, barrio polygon editing, and container placement. Owns placement phase control and append-only polygon history. Barrio map popup and drawing warnings, history browsing, save failures and discard confirmations use the viewer’s language in all six supported cultures; map-admin-only restore controls remain operator copy. Failed save/restore requests retain the current edit and show their error message; failed history requests or JSON decoding show the history failure panel.
+Interactive map surface: a read-only overview, barrio polygon editing, and container placement. Owns placement phase control and append-only polygon history. Barrio map popup and drawing warnings, history browsing, save failures and discard confirmations use the viewer’s language in all six supported cultures; map-admin-only restore controls remain operator copy. Polygon saves cannot overlap; draw updates keep Save disabled until the request finishes. A successful save closes editing only when the active camp and polygon still match its captured snapshot, preserving subsequent edits. Restores cannot overlap and close their history panel and draft only if both still match the state at request start. Failed save/restore requests retain the current edit and show their error message; failed history requests or JSON decoding show the history failure panel. A history load started during the panel’s close transition waits for cleanup before fetching and reopening; only the latest waiting load resumes.
 
 ## Concepts
 
@@ -57,7 +57,7 @@ One polygon per CampSeason representing the camp's placed barrio area.
 |----------|------|-------|
 | Id | Guid | PK |
 | CampSeasonId | Guid | Bare reference id for the CampSeason (unique — one polygon per season). **No FK constraint and no navigation** — see the note under this table. |
-| GeoJson | text | GeoJSON Feature with Polygon geometry |
+| GeoJson | text | GeoJSON Polygon/MultiPolygon, normally wrapped in a Feature |
 | AreaSqm | double | Computed area in square meters |
 | LastModifiedByUserId | Guid | Bare reference id for the User. **No FK constraint and no navigation.** |
 | LastModifiedAt | Instant | Last modification |
@@ -114,10 +114,10 @@ Admin sub-pages hosted on `CityPlanningController` under `/CityPlanning/BarrioMa
 
 The admin page also carries a **bulk polygon import**: `barrio-map/admin-import.js` reads
 `GET /api/city-planning/state`, matches the uploaded FeatureCollection's features to camps by
-lower-cased name or slug, previews the matches, and then issues one ordinary
+lower-cased name or slug, previews the matches only while the file that started loading is still selected (obsolete previews and errors are discarded; malformed feature metadata or geometry raises an operator preview error and clears any previous pending import), and then issues one ordinary
 `PUT /api/city-planning/camp-polygons/{campSeasonId}` per match with the note
 `Imported {timestamp}`. There is no server-side import endpoint — an import is N saves and
-gets N history rows for free.
+gets one history row per successful save. HTTP failures and network exceptions are collected per camp; remaining reviewed matches are attempted, and the result reports both successes and failed camp names.
 
 The container entity CRUD for barrio leads is served by `ContainerController` at `/Camp/{slug}/Containers`. The placement API for all containers is served by `CityPlanningApiController` at `/api/city-planning/containers/*` — placement is a City Planning concern even though the container entity belongs to the Containers section.
 
@@ -153,11 +153,16 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 ## Invariants
 
 - Only one CampPolygon per CampSeason (unique constraint on `CampSeasonId`).
+- Barrio history displays only the latest requested camp season. Switching barrios clears prior preview/restore controls immediately; late success or failure cannot overwrite a newer request or reopen a dismissed panel. One panel-close handler clears history previews while preserving active edits.
 - CampPolygonHistory is append-only — edits and restores always create a new history entry (design-rules §12).
 - Camp leads can only edit their own camp's polygon when barrio placement is open. City-planning team members and CampAdmin are exempt.
 - Camp leads can only add/edit/delete their camp's containers when container placement is open. City-planning team members and CampAdmin are exempt.
 - CityPlanningSettings row is auto-created per year from `CampSettingsInfo.PublicYear`.
 - SignalR broadcasts polygon updates to all connected clients in real time.
+- Container-placement save, notes, and clear HTTP failures use localized prefixes while retaining status codes and server details; invalid-placement GeoJSON errors are localized in all six cultures. Containers validates placement geometry before writing; the API formats its localized validation failure as HTTP 422.
+- Member-facing container map centering and notes buttons have localized titles and accessible names; the notes modal close button reuses the localized shared label.
+- Container drag and rotation saves include the final pointer movement even before its animation frame. Changing or clearing the selected container discards unfinished gestures and queued movement.
+- Placement-note saves update the submitted container in local map state even if another container is opened while saving. A completed save or error cannot close or alter a newer notes-editing session.
 - The container placement map deliberately has **no SignalR channel and no MapboxDraw control** — placement saves are fire-and-forget per drop (single-user workflow is sufficient at this scale) and containers use a custom drag-to-move / drag-handle-to-rotate interaction. Only the barrio polygon map broadcasts real-time updates via `CityPlanningHub`.
 - Limit zone and official zones are stored as GeoJSON on CityPlanningSettings; out-of-bounds and overlap detection is client-side.
 - GeoJSON is stored in **`text`** columns (`CampPolygon.GeoJson`, `CampPolygonHistory.GeoJson`, `CityPlanningSettings.LimitZoneGeoJson` / `OfficialZonesGeoJson`), deliberately **not `jsonb`** — the app never queries inside the JSON structure; it round-trips whole FeatureCollections to the MapLibre client, so `jsonb`'s parse/index overhead buys nothing. (Contrast sibling Camp columns `Links` / `Vibes` / `OpenSeasons`, which use `jsonb`.)
@@ -197,14 +202,16 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - `ICityPlanningRepository` / `CityPlanningRepository` (`Humans.CityPlanning.Data`) is the only code path that touches this section's tables via `CityPlanningDbContext`.
 - **Decorator decision — no caching decorator.** Admin-facing, low-traffic (same rationale as Governance / User / Feedback).
 - **Read/write interface split.** `ICityPlanningServiceRead` (`GetSettingsAsync`, `GetRegistrationInfoAsync`, `IsCityPlanningTeamMemberAsync`) is the cross-section read surface. External sections inject `ICityPlanningServiceRead`; `ICityPlanningService : ICityPlanningServiceRead` adds writes. `ContainerAuthorizationHandler` and `ContainerController` inject `ICityPlanningServiceRead` — not `ICityPlanningService`. The service exposes no display-name read; `CityPlanningHub` resolves the burner name directly via `IUserServiceRead.GetUserInfoAsync`, and lives at `Services/CityPlanningHub.cs` in this section — `internal`, mapped by the section's own `SectionEndpoints : ISectionEndpoints` rather than by Shell's `MapHub<T>` on the concrete type. See `memory/architecture/section-read-write-split.md`.
+- **Camp geometry validation.** Save and restore reject non-area GeoJSON before writing the polygon or history. Polygon and MultiPolygon coordinates must contain nonempty polygons and closed rings of at least four positions; positions need finite numeric coordinates, latitude within −90–90 and longitude within −180–180. Feature-wrapped and bare geometry, holes and altitude coordinates round-trip unchanged. Area must be finite and non-negative; zero remains valid. Invalid geometry or area returns HTTP 400 on save and restore before any write or broadcast, and logs a warning with the reason without an exception object. The map displays its existing localized save-failure message. Overlay FeatureCollection uploads retain their separate JSON validation.
 - **Save/restore return type.** `SaveCampPolygonAsync` and `RestoreCampPolygonVersionAsync` return `CampPolygonSaveResult(GeoJson, AreaSqm)`, a DTO — keeping EF entities inside the service boundary.
 - **Upload pipeline.** `UpdateLimitZoneFromUploadAsync` / `UpdateOfficialZonesFromUploadAsync` accept `IFormFile?` directly — file read, 10 MB size limit and JSON validation all live in the service — and return `GeoJsonUploadResult`. Their routes, and the placement-image API route, allow 11 MB to cover multipart overhead without allowing the server default to buffer a larger upload. `UpdatePlacementDatesAsync` accepts raw `string?` date inputs, parses them internally, and returns `PlacementDateUpdateResult`; the `LocalDateTime` parse logic and `DateFormattingExtensions` are not the controller's.
 - **No year-keyed settings read on `ICityPlanningRepository`.** All settings access routes through `GetOrCreateSettingsAsync`, which creates the row with `IsPlacementOpen = false` when absent.
 - **`UpdatePlacementDatesAsync` is off the contract.** It lives only on the concrete `CityPlanningService`, which the controller injects; it is on neither `ICityPlanningService` nor `ICityPlanningServiceRead`.
+- Index, barrio-map, and container-map GETs propagate request cancellation from the initial member lookup through their existing data reads.
 - **Cross-section reads** route through `ICampServiceRead`, `ITeamServiceRead`, and `IUserServiceRead`. History rows carry no cross-domain navigation: `CampPolygonHistories` stores `ModifiedByUserId` only, and the service resolves names through a batched `IUserServiceRead.GetUserInfosAsync` lookup.
 - **Architecture test** — `tests/Humans.CityPlanning.Tests/CityPlanningArchitectureTests.cs` enforces one thing: the API controller's route prefix stays `api/city-planning` (the city-planning JavaScript hard-codes this URL). The non-decorator shape and append-only repository surface above are documentation, not assertions: a test that a section *lacks* something is forbidden by [`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md). The page controller's routes and the `Views/_ViewImports.cshtml` set are exercised by `CityPlanningPageRenderTests`, which lives in `tests/Humans.Integration.Tests` and therefore **does not run in CI** — `build.yml` filters that assembly out deliberately ([`integration-tests-are-not-ci-tests`](../../../../memory/process/integration-tests-are-not-ci-tests.md)). Treat it as a local check, not a gate. The gate for those routes is `tests/e2e/tests/city-planning.spec.ts`, which loads the map screens (and their deny paths) against the deployed QA site; `e2e-qa.yml` triggers it on push to main, so it catches a broken route or a missing `_ViewImports` line after the merge, not on the PR.
 - **Cross-section surface** — `Humans.CityPlanning.Contracts` is its own project, not a `Contracts/` folder, because of **Containers alone**: `Humans.Containers` needs `ICityPlanningServiceRead` while this section references `Humans.Containers`, so that pair is mutual and a folder would cycle it. `Humans.Camps` consumes the leaf too — `CampService` clears a deleted camp's polygons through `ICityPlanningService` — but is not a reason it must exist: Camps already references `Humans.CityPlanning` outright and this section references only `Humans.Camps.Contracts` back, so that pair is acyclic either way. It holds `ICityPlanningServiceRead`, `ICityPlanningService` (adds `DeleteCampPolygonsForSeasonsAsync` and `UpdateRegistrationInfoAsync`), `CityPlanningSettingsDto` and `CityPlanningOptions`. Everything else in the section is `internal`.
-- **Resources** — `CityPlanningResource`, every supported culture at key parity. `Containers_*` keys on the barrio container pages are Containers' vocabulary and are bound through `ContainersLocalizer`; `Common_*` stays in `SharedResource`.
+- **Resources** — `CityPlanningResource`, every supported culture at key parity. `Containers_*` keys on the barrio container pages are Containers' vocabulary and are bound through `ContainersLocalizer`; `Common_*` stays in `SharedResource`. Container validation failures are also localized through `ContainersResource` before returning admin flashes or placement-note API errors.
 - **Per-map screens, not generic layers.** Each map is a purpose-built screen — overview, barrio placement, container placement. There is no generic `MapFeature` entity and no toggleable-layer system; `Docs/health.md` records that alternative as declined and why.
 
 ### Repository surface
@@ -221,8 +228,8 @@ Per §12, `camp_polygon_histories` is append-only — the repository intentional
 
 ## Issue queue
 
-CityPlanning owns the `CityPlanning` issue queue: it implements `IIssueQueueOwner` (Issues' contracts
-leaf) on its `Section` entry point, declaring the queue key and the roles that handle
+CityPlanning owns the `CityPlanning` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
+folder) on its `Section` entry point, declaring the queue key and the roles that handle
 issues filed against it — `CampAdmin`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.

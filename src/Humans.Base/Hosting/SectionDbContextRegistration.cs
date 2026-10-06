@@ -2,7 +2,7 @@ namespace Humans.Base.Hosting;
 
 /// <summary>
 /// Descriptor for a per-section DbContext registered via
-/// <see cref="InfrastructureServiceCollectionExtensions.AddSectionDbContext{TContext}"/>.
+/// <see cref="SectionDbContextServiceCollectionExtensions.AddSectionDbContext{TContext}"/>.
 /// Consumed by <see cref="DatabaseMigrationHostedService"/> to migrate each section
 /// context through <see cref="SectionMigrationRunner"/> in registration order.
 /// </summary>

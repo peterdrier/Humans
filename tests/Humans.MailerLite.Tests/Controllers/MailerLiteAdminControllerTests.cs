@@ -75,6 +75,20 @@ public class MailerLiteAdminControllerTests
     // -----------------------------------------------------------------------
 
     [HumansFact]
+    public async Task Commit_InvalidLimitBinding_DoesNotBuildOrApplyAnUnlimitedPlan()
+    {
+        var plan = new ImportPlan([Decision(SubscriberOutcome.CreateNewHuman)], TotalPulled: 1);
+        _importService.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(plan);
+        _importService.ApplyAsync(Arg.Any<ImportPlan>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(StubResult());
+        var controller = BuildSut();
+        controller.ModelState.AddModelError("maxPerOutcome", "Not an integer.");
+
+        Assert.IsType<BadRequestObjectResult>(await controller.Commit(null, TestContext.Current.CancellationToken));
+        Assert.Empty(_importService.ReceivedCalls());
+    }
+
+    [HumansFact]
     public async Task Commit_RedirectsToPreview_WhenCountsDriftedMoreThan10Percent()
     {
         // Snapshot from the previous GET /Import had 10 create-new-human decisions.
@@ -212,8 +226,10 @@ public class MailerLiteAdminControllerTests
     // Commit — counts within tolerance, calls ApplyAsync and redirects to Index.
     // -----------------------------------------------------------------------
 
-    [HumansFact]
-    public async Task Commit_ExecutesApply_WhenCountsWithinTolerance()
+    [HumansTheory]
+    [InlineData(1)]
+    [InlineData(null)]
+    public async Task Commit_ExecutesApply_WhenCountsWithinTolerance(int? limit)
     {
         // Snapshot exactly matches the fresh plan counts — zero drift.
         var snapshot = new ImportPlanCounts(
@@ -241,11 +257,11 @@ public class MailerLiteAdminControllerTests
 
         var ctrl = BuildSut(snapshot);
 
-        var result = await ctrl.Commit(maxPerOutcome: 1, TestContext.Current.CancellationToken);
+        var result = await ctrl.Commit(maxPerOutcome: limit, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(MailerLiteAdminController.Index), redirect.ActionName);
-        await _importService.Received(1).ApplyAsync(freshPlan, 1, Arg.Any<CancellationToken>());
+        await _importService.Received(1).ApplyAsync(freshPlan, limit, CancellationToken.None);
     }
 
     // -----------------------------------------------------------------------

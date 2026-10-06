@@ -106,13 +106,15 @@ internal sealed class TermRenewalReminderJob(
                 try
                 {
                     var expiresFormatted = application.TermExpiresAt!.Value.ToInvariantLongDate();
+                    var language = applicant.PreferredLanguage.IsSupportedCultureCode()
+                        ? applicant.PreferredLanguage : CultureCatalog.DefaultCultureCode;
 
                     await emailService.SendAsync(emailMessages.TermRenewalReminder(
                         email,
                         applicant.BurnerName,
                         application.MembershipTier.ToString(),
                         expiresFormatted,
-                        applicant.PreferredLanguage),
+                        language),
                         cancellationToken);
 
                     await applicationDecisionService.MarkRenewalReminderSentAsync(
@@ -126,8 +128,7 @@ internal sealed class TermRenewalReminderJob(
                     // Dispatch in-app notification alongside email.
                     try
                     {
-                        var culture = CultureInfo.GetCultureInfo(applicant.PreferredLanguage.IsSupportedCultureCode()
-                            ? applicant.PreferredLanguage : "en");
+                        var culture = CultureInfo.GetCultureInfo(language);
                         using var cultureScope = new CultureScope(culture.Name);
                         var expiryDate = application.TermExpiresAt.Value.ToDate();
                         await notificationService.SendAsync(

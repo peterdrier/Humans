@@ -15,7 +15,7 @@ internal sealed class CommunicationPreferencesViewModel
 
     /// <summary>
     /// Category encoded in the unsubscribe token, when present. Drives the one-click
-    /// "Unsubscribe from <category>" banner and pre-focuses that row in the matrix.
+    /// "Unsubscribe from &lt;category&gt;" banner and pre-focuses that row in the matrix.
     /// </summary>
     public MessageCategory? HighlightCategory { get; set; }
 
@@ -25,13 +25,14 @@ internal sealed class CommunicationPreferencesViewModel
     /// for admin attribution. False on self-service.
     /// </summary>
     public bool ReadOnly { get; set; }
+
+    /// <summary>Current year, shown on the Ticketing row's label.</summary>
+    public int TicketingYear { get; set; }
 }
 
 internal sealed class CategoryPreferenceItem
 {
     public MessageCategory Category { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
 
     /// <summary>
     /// Positive framing: true = user receives email for this category.

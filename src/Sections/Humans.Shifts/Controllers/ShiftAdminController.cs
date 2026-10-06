@@ -161,7 +161,7 @@ internal sealed class ShiftAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to configure staffing for rota {RotaId} in team {TeamId}", rotaId, team.Id);
+            logger.LogWarning("Failed to configure staffing for rota {RotaId} in team {TeamId}: {Reason}", rotaId, team.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -522,7 +522,7 @@ internal sealed class ShiftAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to delete rota {RotaId} in team {Slug}", rotaId, slug);
+            logger.LogWarning("Failed to delete rota {RotaId} in team {Slug}: {Reason}", rotaId, slug, ex.Message);
             SetError(ex.Message);
         }
 
@@ -567,7 +567,7 @@ internal sealed class ShiftAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to bail signup block {SignupBlockId} in team {Slug}", signupBlockId, slug);
+            logger.LogWarning("Failed to bail signup block {SignupBlockId} in team {Slug}: {Reason}", signupBlockId, slug, ex.Message);
             SetError(ex.Message);
         }
 

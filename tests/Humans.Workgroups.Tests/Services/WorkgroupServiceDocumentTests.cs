@@ -6,6 +6,8 @@ using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Humans.Workgroups.Data;
+using Humans.Users.Contracts;
 
 namespace Humans.Workgroups.Tests.Services;
 
@@ -16,12 +18,93 @@ namespace Humans.Workgroups.Tests.Services;
 public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
 {
     [HumansTheory]
+    [InlineData("publish")]
+    [InlineData("open")]
+    [InlineData("close")]
+    [InlineData("deliver")]
+    [InlineData("comment")]
+    [InlineData("category")]
+    public async Task Document_CommittedWriteFinishesAfterRequestCancellation(string action)
+    {
+        var group = await SeedWorkgroupAsync();
+        var actor = group.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var document = await AddDocumentAsync(group.Id,
+            string.Equals(action, "publish", StringComparison.Ordinal) ? WorkgroupDocumentStatus.Draft : WorkgroupDocumentStatus.Published,
+            categories: ["Scope"], opensAt: now - Duration.FromDays(1), closesAt: now - Duration.FromHours(1));
+        var comment = await AddCommentAsync(document.Id, authorUserId: actor);
+        var people = await Users.GetUserInfosAsync([actor], Ct);
+        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(c =>
+            {
+                c.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(people);
+            });
+        Roles.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([actor]);
+        using var cancellation = new CancellationTokenSource();
+        var real = new WorkgroupRepository(DbFactory);
+        var repository = Substitute.For<IWorkgroupRepository>();
+        repository.GetWorkgroupAsync(group.Id, Arg.Any<CancellationToken>())
+            .Returns(c => real.GetWorkgroupAsync(group.Id, c.Arg<CancellationToken>()));
+        repository.GetDocumentAsync(document.Id, Arg.Any<CancellationToken>())
+            .Returns(c => real.GetDocumentAsync(document.Id, c.Arg<CancellationToken>()));
+        repository.GetCommentAsync(comment.Id, Arg.Any<CancellationToken>())
+            .Returns(c => real.GetCommentAsync(comment.Id, c.Arg<CancellationToken>()));
+        repository.UpdateDocumentAsync(Arg.Any<WorkgroupDocument>(), Arg.Any<CancellationToken>())
+            .Returns(async c =>
+            {
+                c.Arg<CancellationToken>().Should().Be(cancellation.Token);
+                await real.UpdateDocumentAsync(c.Arg<WorkgroupDocument>(), c.Arg<CancellationToken>());
+                await cancellation.CancelAsync();
+            });
+        repository.UpdateCommentsAsync(Arg.Any<IReadOnlyList<WorkgroupDocumentComment>>(), Arg.Any<CancellationToken>())
+            .Returns(async c =>
+            {
+                c.Arg<CancellationToken>().Should().Be(cancellation.Token);
+                await real.UpdateCommentsAsync(c.Arg<IReadOnlyList<WorkgroupDocumentComment>>(), c.Arg<CancellationToken>());
+                await cancellation.CancelAsync();
+            });
+        repository.AddLogEntryAsync(Arg.Any<WorkgroupLogEntry>(), Arg.Any<CancellationToken>())
+            .Returns(c => real.AddLogEntryAsync(c.Arg<WorkgroupLogEntry>(), c.Arg<CancellationToken>()));
+        var service = NewService(repository);
+        Func<Task> mutate = action switch
+        {
+            "publish" => () => service.PublishDocumentAsync(document.Id, actor, cancellation.Token),
+            "open" => () => service.OpenCommentsAsync(document.Id, actor,
+                new WorkgroupCommentWindow(now, now + Duration.FromDays(1), ["Scope"]), cancellation.Token),
+            "close" => () => service.CloseCommentsAsync(document.Id, actor, cancellation.Token),
+            "deliver" => () => service.DeliverDocumentAsync(document.Id, actor, cancellation.Token),
+            "comment" => () => service.RespondToCommentAsync(comment.Id, actor, WorkgroupCommentDisposition.Accepted, "Agreed", cancellation.Token),
+            _ => () => service.RespondToCategoryAsync(document.Id, actor, "Scope", WorkgroupCommentDisposition.Accepted, "Agreed", cancellation.Token)
+        };
+
+        await mutate.Should().NotThrowAsync();
+
+        await using var db = OpenContext();
+        var reply = action is "comment" or "category";
+        (await db.LogEntries.CountAsync(e => e.WorkgroupId == group.Id, Ct)).Should().Be(reply ? 0 : 1);
+        if (reply) (await db.Comments.FindAsync([comment.Id], Ct))!.Disposition.Should().Be(WorkgroupCommentDisposition.Accepted);
+        await repository.DidNotReceive().AddLogEntryAsync(Arg.Any<WorkgroupLogEntry>(), cancellation.Token);
+        if (!string.Equals(action, "close", StringComparison.Ordinal))
+        {
+            Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
+                .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
+        }
+        if (string.Equals(action, "deliver", StringComparison.Ordinal))
+        {
+            Email.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
+                .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
+        }
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("en", "Document published")]
     [Xunit.InlineData("es", "Documento publicado")]
     [Xunit.InlineData("de", "Dokument veröffentlicht")]
     [Xunit.InlineData("it", "Documento pubblicato")]
     [Xunit.InlineData("fr", "Document publié")]
     [Xunit.InlineData("ca", "Document publicat")]
+    [Xunit.InlineData("invalid!", "Document published")]
     public async Task PublishedNotice_UsesTheRecipientLanguage(string language, string title)
     {
         var coordinator = SeedUser(language: language);

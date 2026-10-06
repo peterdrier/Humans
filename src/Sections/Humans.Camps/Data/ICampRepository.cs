@@ -15,7 +15,7 @@ namespace Humans.Camps.Data;
 /// context so callers never have to reason about the EF context lifetime.
 /// Cross-domain user navigation is not resolved by this repository; the
 /// application service stitches display names from
-/// <see cref="Users.IUserService"/> per design-rules §6.
+/// <see cref="Humans.Users.Contracts.IUserServiceRead"/> per design-rules §6.
 /// </remarks>
 internal partial interface ICampRepository : IRepository
 {
@@ -91,12 +91,6 @@ internal partial interface ICampRepository : IRepository
         bool hideHistoricalNames,
         Instant updatedAt,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the set of distinct years any season exists for the camp.
-    /// Used for cache invalidation.
-    /// </summary>
-    Task<IReadOnlyList<int>> GetCampYearsAsync(Guid campId, CancellationToken ct = default);
 
     /// <summary>
     /// Delete a camp and all cascaded children (seasons, leads, images,
@@ -221,7 +215,7 @@ internal partial interface ICampRepository : IRepository
     Task<int> CountImagesAsync(Guid campId, CancellationToken ct = default);
 
     /// <summary>
-    /// Persist a new image record.
+    /// Persist a new image record after the camp's highest remaining display position.
     /// </summary>
     Task AddImageAsync(CampImage image, CancellationToken ct = default);
 

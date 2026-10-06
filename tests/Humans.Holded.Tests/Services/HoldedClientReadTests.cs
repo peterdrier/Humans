@@ -1,4 +1,5 @@
 using System.Net;
+using System.Globalization;
 using System.Text;
 using System.Text.Json.Nodes;
 using AwesomeAssertions;
@@ -323,16 +324,46 @@ public class HoldedClientReadTests
     {
         // A truncated fetch here would drive replace-semantics reconciliation to delete rows that
         // still exist in Holded — lossy becomes destructive, so the cap must throw, never log-and-return.
-        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """
-            {"items":[],"cursor":"c1","has_more":true}
-            """));
+        var callCount = 0;
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, new JsonObject
+        {
+            ["items"] = new JsonArray(),
+            ["cursor"] = "c" + (++callCount).ToString(CultureInfo.InvariantCulture),
+            ["has_more"] = true,
+        }.ToJsonString()));
 
         var client = Make(handler);
         var act = async () => await client.ListLedgerEntriesAsync(
             new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
             ct: Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<HoldedTransientException>();
+        (await act.Should().ThrowAsync<HoldedTransientException>()).WithMessage("*100-page safety cap*");
+        callCount.Should().Be(100);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ListLedgerEntries_rejects_repeated_cursors_before_refetching_pages(bool cycle)
+    {
+        var callCount = 0;
+        var handler = new StubHandler(_ =>
+        {
+            callCount++;
+            return Respond(HttpStatusCode.OK, new JsonObject
+            {
+                ["items"] = new JsonArray(),
+                ["cursor"] = cycle && callCount == 2 ? "c2" : "c1",
+                ["has_more"] = true,
+            }.ToJsonString());
+        });
+        var client = Make(handler);
+        var failure = await Xunit.Record.ExceptionAsync(() => client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
+            ct: Xunit.TestContext.Current.CancellationToken));
+
+        callCount.Should().Be(cycle ? 3 : 2);
+        failure.Should().BeOfType<HoldedTransientException>().Which.Message.Should().Contain("repeated cursor");
     }
 
     [HumansFact]

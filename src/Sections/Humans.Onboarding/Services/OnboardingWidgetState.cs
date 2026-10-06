@@ -33,7 +33,7 @@ internal sealed class OnboardingWidgetState(
 
         var hasSkip = session.ShiftSkipActive;
 
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
         var hasCurrentEventSignup = false;
         if (activeEvent is not null)
         {

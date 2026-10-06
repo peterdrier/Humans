@@ -77,8 +77,8 @@ public sealed class Section : ISection
             sp.GetRequiredService<CachingRoleAssignmentService>());
         services.AddHostedService(sp => sp.GetRequiredService<CachingRoleAssignmentService>());
 
-        // Resource-based handler moves into the section; the *policy* registration stays in
-        // Shell's AuthorizationPolicyExtensions (template step 6's asymmetry).
+        // Resource-based handler registers here; its policy is a shared platform policy that
+        // stays in Shell's AuthorizationPolicyExtensions.
         services.AddSingleton<IAuthorizationHandler, RoleAssignmentAuthorizationHandler>();
 
         // The magic-link sign-in path, lifted verbatim out of Shell's AuthSectionExtensions

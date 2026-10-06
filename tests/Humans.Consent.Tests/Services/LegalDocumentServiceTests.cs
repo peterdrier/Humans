@@ -1,3 +1,5 @@
+using Xunit;
+using System.Text.Json;
 using System.Net;
 using System.Reflection;
 using System.Text;
@@ -133,25 +135,142 @@ public sealed class LegalDocumentServiceTests : IDisposable
         handler.Requests.Should().OnlyContain(uri => uri.Query == "?ref=legal-preview");
     }
 
-    private sealed class LegalContentHandler : HttpMessageHandler
+    [HumansFact]
+    public async Task FileRead_PreservesUtf8ContentForTheDiscoveredSha_WhenBranchAdvances()
+    {
+        using var handler = new LegalContentHandler(branchAdvances: true);
+        var connector = new GitHubLegalDocumentConnector(
+            Options.Create(new GitHubSettings { Owner = "nobodies", Repository = "legal", Branch = "legal-preview" }),
+            NullLogger<GitHubLegalDocumentConnector>.Instance);
+        var client = new GitHubClient(new Connection(
+            new ProductHeaderValue("test"), new HttpClientAdapter(() => handler)));
+        typeof(GitHubLegalDocumentConnector)
+            .GetField("_client", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(connector, client);
+
+        var file = await connector.GetFileContentAsync("Estatutos/ESTATUTOS.md", TestContext.Current.CancellationToken);
+
+        file.Should().NotBeNull();
+        file!.Sha.Should().Be("abc");
+        file.Content.Should().Be("Consentimiento: sí 😀");
+        handler.Requests.Should().HaveCount(2);
+        handler.Requests[0].Query.Should().Be("?ref=legal-preview");
+        handler.Requests[1].AbsolutePath.Should().Be("/repos/nobodies/legal/git/blobs/abc");
+    }
+
+    [HumansTheory]
+    [InlineData(498, 500)]
+    [InlineData(499, 499)]
+    public async Task CommitSummary_TruncatesWithoutSplittingUnicode(int prefixLength, int expectedLength)
+    {
+        var message = new string('A', prefixLength) + "😀" + "remaining\nCommit body";
+        using var handler = new LegalContentHandler(message);
+        var connector = new GitHubLegalDocumentConnector(
+            Options.Create(new GitHubSettings { Owner = "nobodies", Repository = "legal" }),
+            NullLogger<GitHubLegalDocumentConnector>.Instance);
+        var client = new GitHubClient(new Connection(
+            new ProductHeaderValue("test"), new HttpClientAdapter(() => handler)));
+        typeof(GitHubLegalDocumentConnector)
+            .GetField("_client", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(connector, client);
+
+        var summary = await connector.GetCommitMessageAsync("abc", TestContext.Current.CancellationToken);
+
+        summary.Should().Be(message[..expectedLength]);
+        new UTF8Encoding(false, true).GetBytes(summary!).Should().NotBeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("discovery", 1)]
+    [InlineData("file", 1)]
+    [InlineData("file", 2)]
+    [InlineData("commit", 1)]
+    [InlineData("prefix", 1)]
+    [InlineData("prefix", 2)]
+    public async Task GitHubRead_PropagatesCancellationAtEachFetch(string operation, int pauseRequest)
+    {
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        using var handler = new LegalContentHandler(string.Equals(operation, "commit", StringComparison.Ordinal) ? "summary" : null, pauseRequest);
+        var connector = new GitHubLegalDocumentConnector(
+            Options.Create(new GitHubSettings { Owner = "nobodies", Repository = "legal" }),
+            NullLogger<GitHubLegalDocumentConnector>.Instance);
+        var client = new GitHubClient(new Connection(
+            new ProductHeaderValue("test"), new HttpClientAdapter(() => handler)));
+        typeof(GitHubLegalDocumentConnector)
+            .GetField("_client", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(connector, client);
+
+        var read = ReadAsync();
+        await handler.Started.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await cancelled.CancelAsync();
+        handler.Release.SetResult();
+
+        var act = () => read.WaitAsync(TestContext.Current.CancellationToken);
+        var thrown = await act.Should().ThrowAsync<OperationCanceledException>();
+        thrown.Which.CancellationToken.Should().Be(cancelled.Token);
+        handler.Requests.Should().HaveCount(pauseRequest);
+
+        async Task ReadAsync()
+        {
+            switch (operation)
+            {
+                case "discovery":
+                    await connector.DiscoverLanguageFilesAsync("Estatutos", cancelled.Token);
+                    break;
+                case "file":
+                    await connector.GetFileContentAsync("Estatutos/ESTATUTOS.md", cancelled.Token);
+                    break;
+                case "commit":
+                    await connector.GetCommitMessageAsync("abc", cancelled.Token);
+                    break;
+                case "prefix":
+                    await connector.GetFolderContentByPrefixAsync("Estatutos", "ESTATUTOS", cancelled.Token);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(operation));
+            }
+        }
+    }
+
+    private sealed class LegalContentHandler(string? commitMessage = null, int? pauseRequest = null, bool branchAdvances = false) : HttpMessageHandler
     {
         public List<Uri> Requests { get; } = [];
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        protected override Task<HttpResponseMessage> SendAsync(
+        protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(request.RequestUri!);
+            if (Requests.Count == pauseRequest)
+            {
+                Started.SetResult();
+                await Release.Task.WaitAsync(cancellationToken);
+            }
+            if (branchAdvances)
+            {
+                var body = Requests.Count == 1
+                    ? """{"type":"file","name":"ESTATUTOS.md","path":"Estatutos/ESTATUTOS.md","sha":"abc"}"""
+                    : request.RequestUri!.AbsolutePath.Contains("/git/blobs/", StringComparison.Ordinal)
+                        ? JsonSerializer.Serialize(new { content = Convert.ToBase64String(Encoding.UTF8.GetBytes("Consentimiento: sí 😀")), encoding = "base64", sha = "abc" })
+                        : "Changed after metadata was read";
+                var mediaType = Requests.Count == 1 || request.RequestUri!.AbsolutePath.Contains("/git/blobs/", StringComparison.Ordinal)
+                    ? "application/json" : "application/octet-stream";
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, mediaType) };
+            }
             const string directory = """
                 [{"type":"file","name":"ESTATUTOS.md","path":"Estatutos/ESTATUTOS.md","sha":"abc"}]
                 """;
             const string file = """
                 {"type":"file","name":"ESTATUTOS.md","path":"Estatutos/ESTATUTOS.md","sha":"abc","content":"aG9sYQ==","encoding":"base64"}
                 """;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(Requests.Count == 1 ? directory : file,
+                Content = new StringContent(commitMessage is not null
+                    ? JsonSerializer.Serialize(new { commit = new { message = commitMessage } })
+                    : Requests.Count == 1 ? directory : file,
                     Encoding.UTF8, "application/json")
-            });
+            };
         }
     }
 

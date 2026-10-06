@@ -52,7 +52,7 @@ else
             @if (!string.IsNullOrEmpty(item.LastError))
             {
                 <small class="text-danger" title="@item.LastError">
-                    @(item.LastError.Length > 120 ? item.LastError[..120] + "..." : item.LastError)
+                    @(item.LastError.Length > 120 ? item.LastError[..(char.IsHighSurrogate(item.LastError[119]) && char.IsLowSurrogate(item.LastError[120]) ? 119 : 120)] + "..." : item.LastError)
                 </small>
             }
         </text>;

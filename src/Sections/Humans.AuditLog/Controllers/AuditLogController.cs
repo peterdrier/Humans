@@ -31,7 +31,7 @@ internal sealed class AuditLogController(
     public async Task<IActionResult> Index(string? filter, int page = 1)
     {
         var pageSize = 50;
-        var result = await auditViewer.GetPageAsync(filter, page, pageSize);
+        var result = await auditViewer.GetPageAsync(filter, page, pageSize, HttpContext.RequestAborted);
 
         var viewModel = new AuditLogListViewModel
         {

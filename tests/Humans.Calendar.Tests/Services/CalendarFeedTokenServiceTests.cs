@@ -8,7 +8,7 @@ using NodaTime;
 namespace Humans.Calendar.Tests.Services;
 
 /// <summary>
-/// The feed credential's whole lifecycle, now that Calendar owns the table: mint on first
+/// The feed credential's whole lifecycle: mint on first
 /// ask, reuse after, rotate on demand, and the two user-lifecycle fan-outs the table obliges
 /// the section to join.
 /// </summary>
@@ -54,8 +54,8 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
         // of /Calendar, or any other writer. Ensure must adopt it: minting over a live
         // token would silently revoke a subscription the member is already using.
         // (The DbUpdateException fallback for the narrower read-then-insert window is not
-        // unit-tested, matching the repo's other racing inserts — CommunicationPreference
-        // AddDefaultsOrReloadAsync and GateRepository's unique-violation catch.)
+        // unit-tested, matching GateRepository's
+        // unique-violation catch.)
         var winner = Guid.NewGuid();
         _db.CalendarFeedTokens.Add(new CalendarFeedToken { UserId = _user, Token = winner });
         await _db.SaveChangesAsync(Ct);

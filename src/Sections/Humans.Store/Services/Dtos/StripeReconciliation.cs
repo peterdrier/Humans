@@ -8,7 +8,7 @@ namespace Humans.Store.Services.Dtos;
 /// </summary>
 internal enum StripeReconciliationStatus
 {
-    /// <summary>Paid session whose PaymentIntent is already a recorded payment.</summary>
+    /// <summary>Paid session whose PaymentIntent is already recorded as Paid locally.</summary>
     Recorded,
     /// <summary>
     /// Paid session whose PaymentIntent is recorded but still <c>Pending</c> locally — Stripe has
@@ -22,6 +22,8 @@ internal enum StripeReconciliationStatus
     Unmatched,
     /// <summary>Session not in a paid state (open / expired / async-pending) — informational.</summary>
     Unpaid,
+    /// <summary>Paid session whose local payment is Failed — a conflicting terminal outcome requiring review.</summary>
+    RecordedFailed,
 }
 
 /// <summary>One Stripe Checkout Session row in the reconciliation view.</summary>
@@ -55,6 +57,10 @@ internal sealed record StripeOrphanPayment(
 /// (key unset or missing read scope) — in which case <see cref="Orphans"/> is empty rather than
 /// false-flagging every recorded payment as an orphan.
 /// </param>
+/// <param name="WebhookConfigured">Whether the Stripe webhook is configured.</param>
+/// <param name="CheckoutConfigured">Whether Stripe Checkout is configured.</param>
+/// <param name="Rows">The Stripe sessions and their local reconciliation status.</param>
+/// <param name="Orphans">Recorded Stripe payments with no matching session, for review.</param>
 internal sealed record StripeReconciliationReport(
     bool WebhookConfigured,
     bool CheckoutConfigured,

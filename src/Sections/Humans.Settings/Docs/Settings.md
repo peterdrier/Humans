@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Settings/**
-  src/Sections/Humans.Settings.Contracts/**
+  src/Sections/Humans.Settings/Contracts/**
 -->
 <!-- freshness:flag-on-change
   The at-most-one-Active invariant, and "Settings mints event ids" — re-read both when the section's code changes.
@@ -32,7 +32,7 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
   knobs, created on demand the first time a rota or knob edit needs one.
 - **`/Settings`** (peterdrier/Humans#1628) is the member-facing settings page: it renders
   whatever tabs sections contribute through `ISectionSettings` (`Humans.Settings.Contracts`
-  — not every section has settings, so the seam lives on the `.Contracts` leaf a
+  — not every section has settings, so the seam lives in the `Contracts/` folder a
   contributor already references to opt in, not on Base). This section contributes
   the **Event** tab (`/Settings#event`), which wraps the `/Settings/Admin` form: editable
   for `PolicyNames.AdminOnly`, read-only (event name, gate date, build/event/strike
@@ -78,7 +78,7 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
 | BuildStartOffset | int | Negative; `≤ FirstCrewStartOffset` |
 | EventEndOffset / StrikeEndOffset | int | |
 | FirstCrew/SetupWeek/PreEventWeek/FinishingWeekendStartOffset | int | Strictly ascending, all negative |
-| EarlyEntryCapacity | JSON `Dictionary<int,int>` | Step function, day offset → capacity |
+| EarlyEntryCapacity | JSON `Dictionary<int,int>` | Step function, day offset → capacity; dictionary equality and hashing ignore insertion order |
 | BarriosEarlyEntryAllocation | JSON, nullable | |
 | EarlyEntryClose | Instant, nullable | |
 | EarlyEntryStartOffset | int?, nullable | Negative day offset from `GateOpeningDate`; null until configured. Validated `BuildStartOffset ≤ value < 0`. Resolved date = `GateOpeningDate.PlusDays(offset)`. Moved from Camps' `CampSettings.EeStartDate` (nobodies-collective#1633); Camps' `IEarlyEntryProvider` reads it via `ISettingsService`. No data carried across sections — an admin re-enters the value here after the cutover. |
@@ -121,6 +121,7 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
 - **Every section reads the calendar from `settings_event`.** Repointed off the
   Shifts-owned row in nobodies-collective/Humans#1629/#1630; `/Settings#event` is the
   only editor, `/Shifts/Settings` is knobs-only.
+- **Calendar dates must be representable.** Admin saves and seeded activation reject gate/offset combinations whose dates or following day fall outside BCL date support, before writing or deactivating another cycle. Rejections log Warning without an exception stack and return the existing admin failure flash.
 - **Writes to `settings_event` stay inside the section.**
   `SaveEventSettingsAsync` lives on the internal `ISettingsWriteService`, not on
   the `ISettingsService` contract.
@@ -132,9 +133,8 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
   `Service.SaveEventSettingsAsync` and `EventSettingsViewModel` (`ServiceTests`,
   `EventSettingsViewModelTests`); null (not yet configured) always passes.
 - EF entities never leave the section; the cross-section surface is the
-  `Humans.Settings.Contracts` leaf (`ISettingsService`, `EventSettingsInfo`,
-  `SettingKeys`), referenced by consuming sections without referencing
-  `Humans.Settings` itself.
+  `Contracts/` folder (`ISettingsService`, `EventSettingsInfo`,
+  `SettingKeys`; namespace `Humans.Settings.Contracts`).
 
 ## Negative Access Rules
 
@@ -156,9 +156,9 @@ that row again (no audit entry either way — seeding has no real actor).
 
 ## Cross-Section Dependencies
 
-Declared in `Humans.Settings.csproj`: `Humans.Base` and `Humans.AuditLog.Contracts`
-(`Humans.Settings.Contracts` is this section's own leaf). Everything else below is a
-section reaching *in* through this section's leaf, or a seam it implements.
+Declared in `Humans.Settings.csproj`: `Humans.Base` and `Humans.AuditLog`.
+Everything else below is a section reaching *in* through this section's
+`Contracts/` folder, or a seam it implements.
 
 The **out** rows are complete — they are this section's own dependencies. Of the **in**
 rows, the key/value ones are complete too, because `SettingKeys` bounds them. The

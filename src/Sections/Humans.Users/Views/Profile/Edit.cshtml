@@ -10,7 +10,7 @@
 
 <div class="row">
     <div class="col-12" style="max-width: 900px;">
-        <nav aria-label="breadcrumb">
+        <nav aria-label="@Localizer["Users_BreadcrumbNavigation"]">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
                 <li class="breadcrumb-item active" aria-current="page">@Localizer["ProfileEdit_Title"]</li>
@@ -107,7 +107,7 @@
                                 @Localizer["ProfileEdit_CurrentLocation"] <strong>@Model.City, @Model.CountryCode</strong>
                                 @if (Model.Latitude.HasValue && Model.Longitude.HasValue)
                                 {
-                                    <text> (@Model.Latitude.Value.ToString("F4"), @Model.Longitude.Value.ToString("F4"))</text>
+                                    <text> (@Model.Latitude.Value.ToString("F4", System.Globalization.CultureInfo.CurrentUICulture), @Model.Longitude.Value.ToString("F4", System.Globalization.CultureInfo.CurrentUICulture))</text>
                                 }
                             </small>
                         </div>
@@ -122,7 +122,7 @@
                                 <option value="">—</option>
                                 @for (var m = 1; m <= 12; m++)
                                 {
-                                    <option value="@m">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m)</option>
+                                    <option value="@m">@System.Globalization.CultureInfo.CurrentUICulture.DateTimeFormat.GetMonthName(m)</option>
                                 }
                             </select>
                         </div>
@@ -1177,7 +1177,7 @@
                 const name = burnerNameInput.value.trim();
                 if (name.length < 2) { collisionWarning.classList.add('d-none'); return; }
 
-                const seq = ++collisionSeq;
+                const seq = collisionSeq;
                 // Editing user is resolved server-side from the session; no id is sent.
                 const url = '/api/profiles/burner-name-count?name=' + encodeURIComponent(name);
                 try {
@@ -1192,6 +1192,8 @@
             }
 
             burnerNameInput?.addEventListener('input', () => {
+                ++collisionSeq; // invalidate in-flight responses before the debounce fires
+                collisionWarning?.classList.add('d-none');
                 clearTimeout(collisionTimer);
                 collisionTimer = setTimeout(checkBurnerNameCollision, 350);
             });

@@ -40,13 +40,13 @@ public class DriveActivityMonitorArchitectureTests
     [HumansFact]
     public void IGoogleDriveActivityClient_LivesOnGoogleIntegrationsLeaf()
     {
-        // Public on the contracts leaf, not internal like GoogleIntegration's other
+        // Public in the Contracts/ folder, not internal like GoogleIntegration's other
         // connectors, because Monitor consumes it across an assembly boundary. The compiler
-        // does not catch a move into Humans.GoogleIntegration itself: Monitor references
-        // that project too, for the <vc:google-sync-log> tag helper.
+        // does not catch a move out of Contracts/: Monitor references Humans.GoogleIntegration
+        // whole, for the <vc:google-sync-log> tag helper.
         typeof(IGoogleDriveActivityClient).Namespace
             .Should().Be("Humans.GoogleIntegration.Contracts",
-                because: "Monitor consumes this connector across an assembly boundary, so it must be public surface on GoogleIntegration's leaf");
+                because: "Monitor consumes this connector across an assembly boundary, so it must be public surface in GoogleIntegration's Contracts/ folder");
     }
 
     [HumansFact]

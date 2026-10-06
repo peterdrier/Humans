@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Campaigns. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 3
+next_id: 5
 inbox:
   - added: 2026-08-31
     id: CMPGN-1
@@ -10,4 +10,12 @@ inbox:
   - added: 2026-09-10
     id: CMPGN-2
     what: "tests/Humans.Campaigns.Tests has no coverage for ICampaignService.UpdateGrantEmailStatusAsync or ICampaignServiceRead.GetCodeTrackingAsync/GetActiveOrCompletedGrantsForUserAsync/GetAllGrantsForUserAsync — deferred from the 2026-08-29 doctoring (finding 26, docs/health/runs/2026-08-29-Campaigns.md) but never ledgered; surfaced by Codex review on peterdrier/Humans#1573."
+    review: panel
+  - added: 2026-10-03
+    id: CMPGN-3
+    what: "CampaignService.SendWaveAsync sends ordinary recipients hardcoded English CampaignReceived notification titles and bodies regardless of PreferredLanguage. Campaigns has no resource set; fixing all six cultures needs its first resource marker/public surface approval. Found during the daily production debt sweep."
+    review: panel
+  - added: 2026-10-04
+    id: CMPGN-4
+    what: "CampaignService.SendWaveAsync sends a CampaignReceived notice saying to check email even when enqueue failed and the grant is marked Failed. Grants remain available under My Codes in /Profile/Me, so notification wording/action should describe that persisted grant rather than promise email delivery. Coordinate with CMPGN-3: recipient-facing wording needs six cultures and Campaigns lacks the public resource marker, which needs approval. Found during the daily sweep."
     review: panel

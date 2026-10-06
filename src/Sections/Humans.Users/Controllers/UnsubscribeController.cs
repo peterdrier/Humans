@@ -28,7 +28,6 @@ internal sealed class UnsubscribeController(IUnsubscribeService unsubscribeServi
         }
 
         ViewData["DisplayName"] = result.DisplayName;
-        ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
         return View();
     }
 
@@ -54,7 +53,6 @@ internal sealed class UnsubscribeController(IUnsubscribeService unsubscribeServi
                 new { utoken = token });
         }
 
-        ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
         return View("Done");
     }
 

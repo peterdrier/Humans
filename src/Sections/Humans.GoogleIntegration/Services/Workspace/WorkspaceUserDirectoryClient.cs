@@ -181,12 +181,8 @@ internal sealed class WorkspaceUserDirectoryClient(
             FirstName: user.Name?.GivenName ?? string.Empty,
             LastName: user.Name?.FamilyName ?? string.Empty,
             IsSuspended: user.Suspended ?? false,
-            CreationTime: user.CreationTimeRaw is not null
-                ? DateTime.Parse(user.CreationTimeRaw, System.Globalization.CultureInfo.InvariantCulture)
-                : DateTime.MinValue,
-            LastLoginTime: user.LastLoginTimeRaw is not null
-                ? DateTime.Parse(user.LastLoginTimeRaw, System.Globalization.CultureInfo.InvariantCulture)
-                : null,
+            CreationTime: user.CreationTimeDateTimeOffset?.UtcDateTime ?? DateTime.MinValue,
+            LastLoginTime: user.LastLoginTimeDateTimeOffset?.UtcDateTime,
             IsEnrolledIn2Sv: user.IsEnrolledIn2Sv ?? false,
             RecoveryEmail: string.IsNullOrWhiteSpace(user.RecoveryEmail) ? null : user.RecoveryEmail);
     }

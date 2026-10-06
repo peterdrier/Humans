@@ -218,6 +218,45 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
 
         page.Rows.Should().HaveCount(10);
         page.Rows.Last().Name.Should().Be("User 29");
+        page.State.Page.Should().Be(3);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("expected", 60)]
+    [Xunit.InlineData("ml", 60)]
+    [Xunit.InlineData("non-primary", 60)]
+    [Xunit.InlineData("expected", 0)]
+    [Xunit.InlineData("ml", 0)]
+    [Xunit.InlineData("non-primary", 0)]
+    public void Paging_ExtremePage_KeepsRowsAndStateOnLastAvailablePage(string section, int count)
+    {
+        var options = new DebugTableOptions([50], 50);
+        var state = new DebugTableState(section, int.MaxValue, 50, DebugSortColumn.Name, false);
+        (IReadOnlyList<string> Names, DebugTableState State, int Total) Read(int page)
+        {
+            var requested = state with { Page = page };
+            if (string.Equals(section, "expected", StringComparison.Ordinal))
+            {
+                var rows = Enumerable.Range(0, count).Select(i => new DebugExpectedRow(Guid.NewGuid(), $"User {i:D3}", $"u{i}@x.com")).ToList();
+                var result = MailerLiteAudienceDebugSnapshotBuilder.PageExpected(rows, requested, options);
+                return (result.Rows.Select(r => r.Name).ToList(), result.State, result.Total);
+            }
+            if (string.Equals(section, "ml", StringComparison.Ordinal))
+            {
+                var rows = Enumerable.Range(0, count).Select(i => new DebugMlRow($"s{i}", null, $"User {i:D3}", $"u{i}@x.com", null)).ToList();
+                var result = MailerLiteAudienceDebugSnapshotBuilder.PageMl(rows, requested, options);
+                return (result.Rows.Select(r => r.Name).ToList(), result.State, result.Total);
+            }
+            var nonPrimary = Enumerable.Range(0, count).Select(i => new DebugNonPrimaryRow(Guid.NewGuid(), $"User {i:D3}", $"u{i}@x.com", $"p{i}@x.com")).ToList();
+            var nonPrimaryResult = MailerLiteAudienceDebugSnapshotBuilder.PageNonPrimary(nonPrimary, requested, options);
+            return (nonPrimaryResult.Rows.Select(r => r.Name).ToList(), nonPrimaryResult.State, nonPrimaryResult.Total);
+        }
+        Read(1).Names.Should().HaveCount(Math.Min(count, 50));
+        var last = Read(int.MaxValue);
+        last.Total.Should().Be(count);
+        last.State.Page.Should().Be(count == 0 ? 1 : 2);
+        last.State.PageSize.Should().Be(50);
+        last.Names.Should().Equal(Enumerable.Range(count == 0 ? 0 : 50, count == 0 ? 0 : 10).Select(i => $"User {i:D3}"));
     }
 
     // -- helpers ---------------------------------------------------------------

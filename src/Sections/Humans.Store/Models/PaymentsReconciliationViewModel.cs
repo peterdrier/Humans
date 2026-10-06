@@ -10,6 +10,6 @@ internal sealed class PaymentsReconciliationViewModel
 {
     public required StripeReconciliationReport Report { get; init; }
 
-    /// <summary>Rows ordered for display: problems (Missing / Unmatched) first, then newest.</summary>
+    /// <summary>Rows ordered for display: problems (Missing / Unmatched / Pending / Failed) first, then newest.</summary>
     public required IReadOnlyList<StripeReconciliationRow> Rows { get; init; }
 }

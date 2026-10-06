@@ -85,7 +85,8 @@ internal static class SectionCatalogBuilder
             DbContexts = [.. Named(own, t => t is { IsClass: true, IsAbstract: false } && typeof(DbContext).IsAssignableFrom(t))],
             ServiceInterfaces = [.. Named(surface, t => Marker<IApplicationService>(t))],
             Repositories = [.. Named(own, t => Marker<IRepository>(t))],
-            HasContracts = contracts is not null,
+            HasContracts = contracts is not null
+                           || own.Any(t => t.IsPublic && string.Equals(t.Namespace, $"Humans.{shipped.Name}.Contracts", StringComparison.Ordinal)),
             HasResources = own.Any(t => t is { IsClass: true, IsAbstract: false, IsPublic: true }
                                         && t.Name.EndsWith("Resource", StringComparison.Ordinal)),
             Annotations = [.. annotations[shipped.Name].OrderBy(a => a.Facet, StringComparer.Ordinal)]

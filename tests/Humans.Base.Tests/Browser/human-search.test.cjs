@@ -18,11 +18,12 @@ function picker() {
     const timers = new Map();
     const requests = [];
     let timerId = 0;
+    const documentHandlers = {};
     const document = {
         body: new Element(),
         getElementById: id => elements[id],
         createElement: () => new Element(),
-        addEventListener: () => {},
+        addEventListener: (event, handler) => { documentHandlers[event] = handler; },
     };
     let script = readFileSync(resolve(__dirname,
         '../../../src/Humans.Base/Views/Shared/Components/HumanSearch/Default.cshtml'), 'utf8')
@@ -40,6 +41,8 @@ function picker() {
     });
     return {
         ...elements, requests,
+        escape() { elements.input.handlers.keydown({ key: 'Escape' }); },
+        clickOutside() { documentHandlers.mousedown({ target: {} }); },
         type(value) { elements.input.value = value; elements.input.handlers.input(); },
         search() { for (const callback of timers.values()) callback(); timers.clear(); },
         async respond(index, name) {
@@ -70,3 +73,17 @@ test('clearing the query prevents an outstanding lookup from reopening results',
     assert.equal(p.dropdown.style.display, 'none');
     assert.equal(p.hidden.value, '');
 });
+
+for (const dismiss of ['escape', 'clickOutside']) {
+    for (const pending of [false, true]) {
+        test(`${dismiss} keeps a dismissed lookup closed (request started: ${pending})`, async () => {
+            const p = picker(); p.type('Alice');
+            if (pending) p.search();
+            p[dismiss]();
+            p.search();
+            if (p.requests.length) await p.respond(0, 'Alice');
+            assert.equal(p.dropdown.style.display, 'none');
+            assert.equal(p.hidden.value, '');
+        });
+    }
+}

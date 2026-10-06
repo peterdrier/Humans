@@ -6,6 +6,8 @@ namespace Humans.Holded.Models;
 
 /// <summary>The /Holded page: this section's overview plus the two things only Finance knows —
 /// how its purchase-doc sync is doing and how many creditor bindings exist.</summary>
+/// <param name="Overview">The Holded section's cached and live overview data.</param>
+/// <param name="DocSync">Finance's purchase-document sync status.</param>
 /// <param name="CreditorBindings">Repo-backed count from Finance — no live Holded read.</param>
 internal sealed record HoldedOverviewVm(
     HoldedAdminOverview Overview, HoldedDocSyncInfo DocSync, int? CreditorBindings);
@@ -40,6 +42,11 @@ internal sealed record HoldedSyncStateRow(
 /// <param name="HoldedHasPostings">Holded's own debit or credit total is non-zero. Not derivable
 /// from <paramref name="HoldedBalance"/>: an account with equal debits and credits — a clearing
 /// account, a bank drained to nothing — nets to zero while having been posted to all year.</param>
+/// <param name="Number">The chart-of-accounts number.</param>
+/// <param name="Name">The chart account's name.</param>
+/// <param name="HoldedBalance">The account's balance in Holded.</param>
+/// <param name="LocalLineCount">The number of cached local ledger lines for this account.</param>
+/// <param name="Reconciled">Whether the local balance matches Holded's balance.</param>
 internal sealed record HoldedAccountRow(
     int Number, string Name, string? Group,
     decimal HoldedBalance, decimal? LocalBalance, int LocalLineCount, bool Reconciled,
@@ -50,6 +57,7 @@ internal sealed record HoldedAccountRow(
 /// view: + means its money went up, − means it went down (see <see cref="HoldedStatementLine"/>).
 /// Finance inverts to the user's POV for its own pages; this one never does.
 /// </summary>
+/// <param name="Account">The account whose cached statement lines are included.</param>
 /// <param name="Lines">Date first, then entry/line — the order the daybook was written in.</param>
 internal sealed record HoldedAccountStatement(
     HoldedAccountRow Account, IReadOnlyList<HoldedStatementLine> Lines);

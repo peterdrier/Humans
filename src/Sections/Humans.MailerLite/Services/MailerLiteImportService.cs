@@ -88,7 +88,7 @@ internal sealed class MailerLiteImportService(
             if (verifiedUserIds.Count > 1)
             {
                 decisions.Add(new SubscriberDecision(s.Email, s.Status,
-                    SubscriberOutcome.AmbiguousMultipleVerified, null, null, verifiedUserIds));
+                    SubscriberOutcome.AmbiguousEmailMatches, null, null, verifiedUserIds));
                 continue;
             }
             if (verifiedUserIds.Count == 1)
@@ -101,9 +101,17 @@ internal sealed class MailerLiteImportService(
                 continue;
             }
 
-            // 3. Unverified match
-            var row = (await userEmails.FindByAddressAsync(s.Email, aliased: true, verifiedOnly: false, ct))
-                .FirstOrDefault();
+            // 3. Deleting one of several unverified matches leaves another row
+            // for provisioning to reuse, rather than creating a fresh verified contact.
+            var rows = await userEmails.FindByAddressAsync(s.Email, aliased: true, verifiedOnly: false, ct);
+            if (rows.Count > 1)
+            {
+                decisions.Add(new SubscriberDecision(s.Email, s.Status,
+                    SubscriberOutcome.AmbiguousEmailMatches, null, null,
+                    rows.Select(r => r.UserId).Distinct().ToList()));
+                continue;
+            }
+            var row = rows.SingleOrDefault();
             if (row is not null)
             {
                 decisions.Add(new SubscriberDecision(s.Email, s.Status,
@@ -211,7 +219,7 @@ internal sealed class MailerLiteImportService(
                 switch (d.Outcome)
                 {
                     case SubscriberOutcome.UnconfirmedSkipped:
-                    case SubscriberOutcome.AmbiguousMultipleVerified:
+                    case SubscriberOutcome.AmbiguousEmailMatches:
                         break;
 
                     case SubscriberOutcome.VerifiedPrefsAlreadyMatch:
@@ -309,7 +317,7 @@ internal sealed class MailerLiteImportService(
         {
             // No-write outcomes bypass the throttle to avoid double-counting against plan.Counts.
             if (d.Outcome is SubscriberOutcome.UnconfirmedSkipped
-                          or SubscriberOutcome.AmbiguousMultipleVerified
+                          or SubscriberOutcome.AmbiguousEmailMatches
                           or SubscriberOutcome.VerifiedPrefsAlreadyMatch)
             {
                 toProcess.Add(d);

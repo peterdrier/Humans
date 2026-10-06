@@ -43,6 +43,7 @@
   <data name="Shifts_SignedUp" xml:space="preserve">
     <value>Apuntats</value>
   </data>
+  <data name="Shifts_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegació</value></data>
   <data name="Shifts_Pending" xml:space="preserve">
     <value>(pendent)</value>
   </data>
@@ -1224,4 +1225,35 @@
   <data name="Shifts_Notification_AssignedDay" xml:space="preserve"><value>T’han assignat un torn a {0} per al dia {1}</value></data>
   <data name="Shifts_Notification_AssignedRange" xml:space="preserve"><value>T’han assignat {1} torns a {0}</value></data>
   <data name="Shifts_Notification_AssignedRangeSingular" xml:space="preserve"><value>T’han assignat un torn a {0}</value></data>
+  <data name="ShiftInfo_Skill_Bartending" xml:space="preserve"><value>Barra</value></data>
+  <data name="ShiftInfo_Skill_FirstAid" xml:space="preserve"><value>Primers auxilis</value></data>
+  <data name="ShiftInfo_Skill_Driving" xml:space="preserve"><value>Conducció</value></data>
+  <data name="ShiftInfo_Skill_Sound" xml:space="preserve"><value>So</value></data>
+  <data name="ShiftInfo_Skill_Electrical" xml:space="preserve"><value>Electricitat</value></data>
+  <data name="ShiftInfo_Skill_Construction" xml:space="preserve"><value>Construcció</value></data>
+  <data name="ShiftInfo_Skill_Cooking" xml:space="preserve"><value>Cuina</value></data>
+  <data name="ShiftInfo_Skill_Art" xml:space="preserve"><value>Art</value></data>
+  <data name="ShiftInfo_Skill_DJ" xml:space="preserve"><value>DJ</value></data>
+  <data name="ShiftInfo_Time_EarlyBird" xml:space="preserve"><value>Matiner/a</value></data>
+  <data name="ShiftInfo_Time_NightOwl" xml:space="preserve"><value>Noctàmbul/a</value></data>
+  <data name="ShiftInfo_Time_AllDay" xml:space="preserve"><value>Tot el dia</value></data>
+  <data name="ShiftInfo_Time_NoPreference" xml:space="preserve"><value>Sense preferència</value></data>
+  <data name="ShiftInfo_Time_EarlyBird_Description" xml:space="preserve"><value>Torns de matí, muntatge i preparació</value></data>
+  <data name="ShiftInfo_Time_NightOwl_Description" xml:space="preserve"><value>Torns de tarda i nit</value></data>
+  <data name="ShiftInfo_Time_AllDay_Description" xml:space="preserve"><value>Flexible, del matí al vespre</value></data>
+  <data name="ShiftInfo_Time_NoPreference_Description" xml:space="preserve"><value>El que faci falta</value></data>
+  <data name="ShiftInfo_Quirk_SoberShift" xml:space="preserve"><value>Torn sense alcohol ni drogues</value></data>
+  <data name="ShiftInfo_Quirk_WorkInShade" xml:space="preserve"><value>Treball a l’ombra</value></data>
+  <data name="ShiftInfo_Quirk_QuietWork" xml:space="preserve"><value>Treball tranquil</value></data>
+  <data name="ShiftInfo_Quirk_PhysicalWorkOK" xml:space="preserve"><value>Puc fer treball físic</value></data>
+  <data name="ShiftInfo_Quirk_NoHeights" xml:space="preserve"><value>Sense altures</value></data>
+  <data name="Enum_SignupStatus_Pending" xml:space="preserve"><value>Pendent</value></data>
+  <data name="Enum_SignupStatus_Confirmed" xml:space="preserve"><value>Confirmat</value></data>
+  <data name="Enum_SignupStatus_Refused" xml:space="preserve"><value>Rebutjat</value></data>
+  <data name="Enum_SignupStatus_Bailed" xml:space="preserve"><value>Retirat</value></data>
+  <data name="Enum_SignupStatus_Cancelled" xml:space="preserve"><value>Cancel·lat</value></data>
+  <data name="Enum_SignupStatus_NoShow" xml:space="preserve"><value>No s’ha presentat</value></data>
+  <data name="ShiftSignups_Title" xml:space="preserve"><value>Inscripcions als torns</value></data>
+  <data name="ShiftSignups_ConfirmedCount" xml:space="preserve"><value>{0} confirmats</value></data>
+  <data name="ShiftSignups_MoreCount" xml:space="preserve"><value>+ {0} més</value></data>
 </root>

@@ -10,13 +10,15 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+using Xunit;
 
 namespace Humans.Containers.Tests.Services;
 
 public sealed class ServicePlacementTests
 {
     private const int Year = 2026;
-    private const string GeoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":-0.137,"center_lat":41.699,"rotation_degrees":0}}""";
+    private const string GeoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[1,0.75],[1.25,0.5],[1,0.25],[1,0],[0,0]]]},"properties":{"center_lng":-0.137,"center_lat":41.699,"rotation_degrees":0}}""";
     private static readonly Guid CampId = Guid.Parse("00000000-0000-0000-0099-000000000002");
     private static readonly Guid ActorUserId = Guid.Parse("00000000-0000-0000-0099-000000000003");
 
@@ -85,6 +87,66 @@ public sealed class ServicePlacementTests
         result.Year.Should().Be(Year);
     }
 
+    [HumansTheory]
+    [InlineData("en", "Invalid container placement GeoJSON.")]
+    [InlineData("es", "El GeoJSON de ubicación del contenedor no es válido.")]
+    [InlineData("de", "Ungültiges GeoJSON für die Containerplatzierung.")]
+    [InlineData("it", "GeoJSON di posizionamento del container non valido.")]
+    [InlineData("fr", "Le GeoJSON de placement du conteneur est invalide.")]
+    [InlineData("ca", "El GeoJSON d’ubicació del contenidor no és vàlid.")]
+    public async Task SavePlacementAsync_RejectsInvalidGeometryInTheCallersCulture(string culture, string expected)
+    {
+        using var cultureScope = new Humans.Base.Extensions.CultureScope(culture);
+        var container = await SeedContainerAsync();
+
+        var act = () => _sut.SavePlacementAsync(container.Id, Year, "{}", ActorUserId, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(expected);
+        (await _sut.GetPlacementsByYearAsync(Year, TestContext.Current.CancellationToken)).Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("root", "[]")]
+    [InlineData("coordinates", "null")]
+    [InlineData("coordinates", "[]")]
+    [InlineData("coordinates", "[[]]")]
+    [InlineData("coordinates", "[[[0,0],[0,1],[1,1],[1,0]]]")]
+    [InlineData("coordinates", "[[[0,0],[0,1],[1],[0,0]]]")]
+    [InlineData("center_lng", "null")]
+    [InlineData("center_lat", "\"41.699\"")]
+    [InlineData("rotation_degrees", "1e400")]
+    [InlineData("center_lat", "90.01")]
+    [InlineData("center_lat", "-90.01")]
+    [InlineData("center_lng", "180.01")]
+    [InlineData("coordinates", "[[[0,0],[0,90.01],[1,1],[0,0]]]")]
+    [InlineData("coordinates", "[[[0,0],[180.01,1],[1,1],[0,0]]]")]
+    [InlineData("coordinates", "[[[0,0],[0,1],[\"1\",1],[0,0]]]")]
+    public async Task SavePlacementAsync_RejectsMalformedMapDataWithoutChangingPlacementOrAudit(string field, string value)
+    {
+        var container = await SeedPlacedContainerAsync();
+        var before = await GetPlacementAsync(container.Id);
+        _auditLog.ClearReceivedCalls();
+        var feature = System.Text.Json.Nodes.JsonNode.Parse(GeoJson)!;
+        string invalid;
+        if (string.Equals(field, "root", StringComparison.Ordinal))
+            invalid = value;
+        else
+        {
+            var target = string.Equals(field, "coordinates", StringComparison.Ordinal)
+                ? feature["geometry"]! : feature["properties"]!;
+            target[field] = System.Text.Json.Nodes.JsonNode.Parse(value);
+            invalid = feature.ToJsonString();
+        }
+
+        var act = () => _sut.SavePlacementAsync(container.Id, Year, invalid, ActorUserId, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Invalid container placement GeoJSON.");
+        (await GetPlacementAsync(container.Id)).Should().BeEquivalentTo(before);
+        await _auditLog.DidNotReceive().LogAsync(
+            AuditAction.ContainerPlacementSaved, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
     [HumansFact]
     public async Task SavePlacementAsync_AuditsUnderThePlacementEntityType()
     {
@@ -105,7 +167,7 @@ public sealed class ServicePlacementTests
     [HumansFact]
     public async Task SavePlacementAsync_ThrowsWhenContainerNotFound()
     {
-        var act = async () => await _sut.SavePlacementAsync(Guid.NewGuid(), Year, "{}", ActorUserId, Xunit.TestContext.Current.CancellationToken);
+        var act = async () => await _sut.SavePlacementAsync(Guid.NewGuid(), Year, GeoJson, ActorUserId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Container not found.");
@@ -165,6 +227,83 @@ public sealed class ServicePlacementTests
         second.PlacementImageUrl.Should().NotBe(first.PlacementImageUrl);
         second.PlacementImageFileName.Should().Be("second.jpg");
         await _fileStorage.Received(1).DeleteAsync(first.PlacementImageUrl!.TrimStart('/'), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdatePlacementNotesAsync_FailedReplacementSavePreservesTheOldImage()
+    {
+        var container = await SeedPlacedContainerAsync();
+        var first = await _sut.UpdatePlacementNotesAsync(container.Id, Year, "original notes", Sketch(), false, ActorUserId, TestContext.Current.CancellationToken);
+        _fileStorage.ClearReceivedCalls();
+        _auditLog.ClearReceivedCalls();
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("Disk full"));
+
+        var act = () => _sut.UpdatePlacementNotesAsync(container.Id, Year, "new notes", Sketch("replacement.jpg"), false, ActorUserId, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<IOException>();
+        var unchanged = await GetPlacementAsync(container.Id);
+        unchanged.PlacementImageUrl.Should().Be(first.PlacementImageUrl);
+        unchanged.PlacementNotes.Should().Be("original notes");
+        await _fileStorage.DidNotReceive().DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _auditLog.DidNotReceive().LogAsync(
+            AuditAction.ContainerPlacementNotesUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UpdatePlacementNotesAsync_CleanupFailureDoesNotUndoCommittedMetadata(bool removeImage)
+    {
+        var container = await SeedPlacedContainerAsync();
+        var first = await _sut.UpdatePlacementNotesAsync(container.Id, Year, null, Sketch(), false, ActorUserId, TestContext.Current.CancellationToken);
+        _auditLog.ClearReceivedCalls();
+        _fileStorage.DeleteAsync(first.PlacementImageUrl!.TrimStart('/'), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("File locked"));
+
+        var result = await _sut.UpdatePlacementNotesAsync(container.Id, Year, "updated notes",
+            removeImage ? null : Sketch("replacement.jpg"), removeImage, ActorUserId, TestContext.Current.CancellationToken);
+
+        result.PlacementNotes.Should().Be("updated notes");
+        if (removeImage)
+            result.PlacementImageUrl.Should().BeNull();
+        else
+            result.PlacementImageFileName.Should().Be("replacement.jpg");
+        (await GetPlacementAsync(container.Id)).Should().BeEquivalentTo(result);
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.ContainerPlacementNotesUpdated, Arg.Any<string>(), container.Id,
+            Arg.Any<string>(), ActorUserId, container.Id, Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UpdatePlacementNotesAsync_MetadataFailurePreservesTheOldFile(bool removeImage)
+    {
+        var id = Guid.NewGuid();
+        var repo = Substitute.For<IContainerRepository>();
+        repo.GetPlacementAsync(id, Year, Arg.Any<CancellationToken>()).Returns(new ContainerPlacement
+        {
+            ContainerId = id,
+            Year = Year,
+            PlacementImageStoragePath = "uploads/containers/original.jpg",
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
+        });
+        repo.UpsertPlacementAsync(Arg.Any<ContainerPlacement>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("Database write failed"));
+        var service = new Service(repo, _fileStorage, Substitute.For<ICampServiceRead>(), _auditLog,
+            Clock, ServiceImageTests.Localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
+
+        var act = () => service.UpdatePlacementNotesAsync(id, Year, "notes",
+            removeImage ? null : Sketch(), removeImage, ActorUserId, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<IOException>();
+        await _fileStorage.DidNotReceive().DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _auditLog.DidNotReceive().LogAsync(
+            AuditAction.ContainerPlacementNotesUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]

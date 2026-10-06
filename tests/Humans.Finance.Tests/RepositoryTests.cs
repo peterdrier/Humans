@@ -181,13 +181,15 @@ public class RepositoryTests
     // ─── Sync state ──────────────────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task DocSyncState_IsLazyCreatedOnceAndThenRead()
+    public async Task DocSyncState_ReadsArePure_AndExplicitSaveCreatesSingleton()
     {
         var (repo, factory) = Make();
 
         var first = await repo.GetOrCreateDocSyncStateAsync(Ct);
         first.Id.Should().Be(1);
         first.Status.Should().Be("Idle");
+        await using (var freshRead = await factory.CreateDbContextAsync(Ct))
+            freshRead.HoldedDocSyncStates.Should().BeEmpty();
 
         first.Status = "Running";
         first.LastSyncedDocCount = 7;

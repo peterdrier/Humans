@@ -11,6 +11,25 @@ namespace Humans.Finance.Contracts;
 /// can. The repository projects it null; <c>GetSepaPayoutsAsync</c> fills it in.</param>
 /// <param name="CandidateBankMovementId">The Sabadell line that matches this transfer, filled in by
 /// <c>GetSepaPayoutsAsync</c>; the repository always projects it null.</param>
+/// <param name="TransferId">The transfer's identifier.</param>
+/// <param name="FileId">The identifier of the SEPA file containing this transfer.</param>
+/// <param name="FileName">The name of the SEPA file containing this transfer.</param>
+/// <param name="GeneratedAt">When the SEPA file was generated.</param>
+/// <param name="GeneratedByUserId">The user who generated the SEPA file.</param>
+/// <param name="UserId">The member receiving this transfer.</param>
+/// <param name="SupplierAccountNum">The creditor's Holded supplier account number.</param>
+/// <param name="HoldedContactId">The creditor's Holded contact identifier, if linked.</param>
+/// <param name="CreditorName">The creditor name recorded for the transfer.</param>
+/// <param name="IbanMasked">The creditor's masked IBAN.</param>
+/// <param name="Amount">The transfer amount.</param>
+/// <param name="BookedAt">When the transfer was booked, or null if it has not been booked.</param>
+/// <param name="BookedByUserId">The user who booked the transfer, if booked.</param>
+/// <param name="HoldedBankMovementId">The matching Holded bank movement identifier, if reconciled.</param>
+/// <param name="ReconciledAt">When the transfer was reconciled with Holded, if reconciled.</param>
+/// <param name="CandidateBankMovementDate">The candidate bank movement's date, when matched.</param>
+/// <param name="CandidateBankMovementAmount">The candidate bank movement's amount, when matched.</param>
+/// <param name="CandidateBankMovementDescription">The candidate bank movement's description, when matched.</param>
+/// <param name="BatchLine">The candidate whole-file bank movement, when one is identified.</param>
 public sealed record SepaPayoutTransferRow(
     Guid TransferId,
     Guid FileId,
@@ -56,6 +75,10 @@ public sealed record SepaPayoutTransferRow(
 /// <c>MsgId</c>/<c>PmtInfId</c> the bank was sent — rather than matching on total and date alone.</param>
 /// <param name="NotProcessableReason">Why the file cannot be processed as it stands (a transfer in it
 /// cannot be booked), or null when it can.</param>
+/// <param name="MovementId">The bank movement identifier.</param>
+/// <param name="Date">The date of the bank movement.</param>
+/// <param name="Amount">The amount debited for the file.</param>
+/// <param name="Description">The bank movement description, if available.</param>
 public sealed record SepaBatchLineVm(
     string MovementId,
     LocalDate Date,

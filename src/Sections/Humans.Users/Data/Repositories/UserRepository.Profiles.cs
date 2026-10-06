@@ -268,7 +268,7 @@ internal sealed partial class UserRepository
         return result;
     }
 
-    public async Task<int> ReassignSubAggregatesToUserAsync(
+    public async Task ReassignSubAggregatesToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -277,12 +277,12 @@ internal sealed partial class UserRepository
         var sourceProfile = await ctx.Profiles
             .FirstOrDefaultAsync(p => p.UserId == sourceUserId, ct);
         if (sourceProfile is null)
-            return 0;
+            return;
 
         var targetProfile = await ctx.Profiles
             .FirstOrDefaultAsync(p => p.UserId == targetUserId, ct);
         if (targetProfile is null)
-            return 0;
+            return;
 
         var sourceVolunteerHistory = await ctx.VolunteerHistoryEntries
             .Where(v => v.ProfileId == sourceProfile.Id)
@@ -372,13 +372,6 @@ internal sealed partial class UserRepository
         sourceProfile.UpdatedAt = updatedAt;
 
         await ctx.SaveChangesAsync(ct);
-
-        var volunteerHistoryCount = await ctx.VolunteerHistoryEntries
-            .CountAsync(v => v.ProfileId == targetProfile.Id, ct);
-        var languageCount = await ctx.ProfileLanguages
-            .CountAsync(l => l.ProfileId == targetProfile.Id, ct);
-
-        return volunteerHistoryCount + languageCount;
     }
 
     private async Task<bool> AnonymizeProfileInternalAsync(

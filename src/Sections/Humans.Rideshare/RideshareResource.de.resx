@@ -55,6 +55,7 @@
   <data name="Enum_InterestStatus_Withdrawn" xml:space="preserve"><value>Zurückgezogen</value></data>
   <!-- Board -->
   <data name="Rideshare_Title" xml:space="preserve"><value>Mitfahren</value></data>
+  <data name="Rideshare_BreadcrumbNavigation" xml:space="preserve"><value>Navigationspfad</value></data>
   <data name="Rideshare_BoardIntro" xml:space="preserve"><value>Fahrende posten ihre Fahrt; Mitfahrende setzen einen Pin, wo sie abgeholt werden möchten. Findet euch auf der Karte und sagt hallo.</value></data>
   <data name="Rideshare_BackToBoard" xml:space="preserve"><value>Zurück zur Übersicht</value></data>
   <data name="Rideshare_OfferARide" xml:space="preserve"><value>Fahrt anbieten</value></data>
@@ -197,4 +198,5 @@
   <data name="Rideshare_NoticeDeclinedOffer" xml:space="preserve"><value>{0} konnte diesmal keinen Platz anbieten.</value></data>
   <data name="Rideshare_NoticeDeclinedRider" xml:space="preserve"><value>{0} ist diesmal mit einer anderen Fahrt gefahren.</value></data>
   <data name="Rideshare_NoticeOpen" xml:space="preserve"><value>Mitfahrgelegenheiten öffnen</value></data>
+  <data name="Rideshare_NoticeHuman" xml:space="preserve"><value>Ein human</value></data>
 </root>

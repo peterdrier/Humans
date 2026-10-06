@@ -55,6 +55,13 @@
   <data name="Common_Close" xml:space="preserve">
     <value>Tanca</value>
   </data>
+  <data name="Common_FilterColumn" xml:space="preserve"><value>Filtra {0}</value></data>
+  <data name="Common_All" xml:space="preserve"><value>Tots</value></data>
+  <data name="SectionHelp_Title" xml:space="preserve"><value>Ajuda de la secció</value></data>
+  <data name="SectionHelp_Guide" xml:space="preserve"><value>Guia</value></data>
+  <data name="SectionHelp_Glossary" xml:space="preserve"><value>Glossari</value></data>
+  <data name="SectionHelp_AccessMatrix" xml:space="preserve"><value>Matriu d’accés</value></data>
+  <data name="SectionHelp_Feature" xml:space="preserve"><value>Funcionalitat</value></data>
   <data name="EmailComposer_Preview" xml:space="preserve">
     <value>Vista prèvia</value>
   </data>
@@ -163,6 +170,7 @@
   <data name="Login_SignInFailed" xml:space="preserve">
     <value>Error d'inici de sessió. Això pot passar si has trigat massa o si el teu navegador ha bloquejat les galetes. Si us plau, torna-ho a provar.</value>
   </data>
+  <data name="Login_LockedOut" xml:space="preserve"><value>Aquest compte està bloquejat. Contacta amb un administrador si necessites ajuda per iniciar sessió.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve">
     <value>Accés denegat</value>
   </data>
@@ -478,38 +486,8 @@
   <data name="MyTeams_View" xml:space="preserve">
     <value>Veure</value>
   </data>
-  <data name="Admin_CannotStartReview" xml:space="preserve">
-    <value>No es pot iniciar la revisió. La sol·licitud no està en estat Enviada.</value>
-  </data>
-  <data name="Admin_ReviewStarted" xml:space="preserve">
-    <value>Revisió iniciada per a aquesta sol·licitud.</value>
-  </data>
-  <data name="Admin_CannotApprove" xml:space="preserve">
-    <value>No es pot aprovar. La sol·licitud ha d'estar en revisió.</value>
-  </data>
-  <data name="Admin_ApplicationApproved" xml:space="preserve">
-    <value>Sol·licitud aprovada.</value>
-  </data>
-  <data name="Admin_CannotReject" xml:space="preserve">
-    <value>No es pot rebutjar. La sol·licitud ha d'estar en revisió.</value>
-  </data>
   <data name="Admin_ProvideRejectionReason" xml:space="preserve">
     <value>Si us plau, indica un motiu per al rebuig.</value>
-  </data>
-  <data name="Admin_ApplicationRejected" xml:space="preserve">
-    <value>Sol·licitud rebutjada.</value>
-  </data>
-  <data name="Admin_CannotRequestInfo" xml:space="preserve">
-    <value>No es pot sol·licitar més informació. La sol·licitud ha d'estar en revisió.</value>
-  </data>
-  <data name="Admin_SpecifyInfoNeeded" xml:space="preserve">
-    <value>Si us plau, especifica quina informació es necessita.</value>
-  </data>
-  <data name="Admin_MoreInfoRequested" xml:space="preserve">
-    <value>S'ha sol·licitat més informació al sol·licitant.</value>
-  </data>
-  <data name="Admin_UnknownAction" xml:space="preserve">
-    <value>Acció desconeguda.</value>
   </data>
   <data name="Admin_MemberSuspended" xml:space="preserve">
     <value>Aquest human ha estat suspès.</value>
@@ -1312,4 +1290,17 @@
   <data name="EmailComposer_SendToMeError" xml:space="preserve"><value>No s'ha pogut enviar el correu de prova. Torna-ho a provar.</value></data>
   <data name="EmailComposer_SendToMeRateLimited" xml:space="preserve"><value>Massa correus de prova. Espera un minut i torna-ho a provar.</value></data>
   <data name="EmailComposer_SendToMeNoAddress" xml:space="preserve"><value>El teu compte no té cap adreça de correu on enviar.</value></data>
+  <data name="Validation_Required" xml:space="preserve"><value>Aquest camp és obligatori.</value></data>
+  <data name="Validation_MaxLength" xml:space="preserve"><value>Introdueix com a màxim {1} caràcters.</value></data>
+  <data name="Validation_Range" xml:space="preserve"><value>Introdueix un valor entre {1} i {2}.</value></data>
+  <data name="Validation_InvalidCharacters" xml:space="preserve"><value>Aquest camp conté caràcters no vàlids.</value></data>
+  <data name="Validation_EmailAddress" xml:space="preserve"><value>Introdueix una adreça de correu electrònic vàlida.</value></data>
+  <data name="Validation_InvalidValue" xml:space="preserve"><value>Introdueix un valor vàlid.</value></data>
+  <data name="Validation_Number" xml:space="preserve"><value>Introdueix un número.</value></data>
+  <data name="Enum_SystemTeamType_Volunteers" xml:space="preserve"><value>Voluntaris</value></data>
+  <data name="Enum_SystemTeamType_Coordinators" xml:space="preserve"><value>Coordinadors</value></data>
+  <data name="Enum_SystemTeamType_Board" xml:space="preserve"><value>Junta</value></data>
+  <data name="Enum_SystemTeamType_Asociados" xml:space="preserve"><value>Asociados</value></data>
+  <data name="Enum_SystemTeamType_Colaboradors" xml:space="preserve"><value>Colaboradores</value></data>
+  <data name="Enum_SystemTeamType_BarrioLeads" xml:space="preserve"><value>Responsables de campament</value></data>
 </root>

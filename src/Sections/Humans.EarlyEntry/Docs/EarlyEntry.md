@@ -9,6 +9,8 @@
   src/Sections/Humans.Shifts/Services/ShiftEarlyEntryProjection.cs
   src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
   src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
+  src/Sections/Humans.Settings/Contracts/IEventSettingsChangeListener.cs
+  src/Sections/Humans.Settings/Services/Service.cs
   src/Sections/Humans.Teams/Section.cs
   src/Sections/Humans.Teams/Services/TeamService.cs
   src/Sections/Humans.Teams/Services/TeamEarlyEntryProjection.cs
@@ -49,13 +51,13 @@ sections' own data.
 ## Routing
 
 `/Shifts/Admin/EarlyEntry` — the cross-source roster. The URL predates the section and is kept
-verbatim; the nav entry sits in the "Tickets" admin group. Neither is an ownership claim.
+verbatim; the nav entry is the section's own "Early Entry" group. The route is no ownership claim.
 
 ## Actors & Roles
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any authenticated human | Sees their own EE date on ticket-stub surfaces (homepage strip, holdings, transfer wizard) — never anyone else's. |
+| Any authenticated human | Sees their own EE date on ticket-stub surfaces (homepage strip, holdings, transfer wizard). The stub and holdings view components answer for the user they are invoked with; an admin profile view shows the profiled user's. |
 | Gate / Scanner staff | Sees the *scanned attendee's* EE on the gate card (`ScannerController`, `GateService`). |
 | `ShiftDashboardAccess` (Admin, NoInfoAdmin, VolunteerCoordinator) | Reads the full cross-source roster at `/Shifts/Admin/EarlyEntry`. |
 
@@ -66,7 +68,8 @@ verbatim; the nav entry sits in the "Tickets" admin group. Neither is an ownersh
 - The fan-out is sequential — a simplicity choice, not a thread-safety requirement
   (design-rules §8b); each provider reads through its own section.
 - `GetRosterAsync` is **never cached**. `GetForUserAsync` is cached per human, negative results
-  included; only eviction refreshes it (no warmup, no expiry).
+  included; only eviction refreshes it (no warmup, no expiry). A load begun before eviction
+  cannot repopulate the cache with its old grant or no-grant answer.
 - The Singleton decorator resolves the Scoped inner service per call through the keyed
   registration `CachingEarlyEntryService.InnerServiceKey`, never a repository.
 - Per human: earliest date wins, sources are distinct and ordinal-compared in provider order,
@@ -78,9 +81,10 @@ verbatim; the nav entry sits in the "Tickets" admin group. Neither is an ownersh
 
 ## Negative Access Rules
 
-- A holder **cannot** see another holder's EE on any holder-facing stub surface — all of them go
-  through `TicketStubInfo.From(row, holderEarlyEntry)` with the *viewer's* value. The gate card
-  is the deliberate staff-facing exception.
+- The transfer wizard asks only for the signed-in user's own EE. The stub and holdings view
+  components answer for the user they are invoked with, so who may see another member's EE
+  there is the invoking page's gate, not this section's. The gate card is the deliberate
+  staff-facing exception.
 - A human without `ShiftDashboardAccess` **cannot** reach `/Shifts/Admin/EarlyEntry`.
 - The section exposes no write path, so no write **cannot**-clause applies.
 
@@ -91,21 +95,22 @@ verbatim; the nav entry sits in the "Tickets" admin group. Neither is an ownersh
   removal, GDPR erasure and account merge; Shifts on every build-shift
   confirm/bail/remove/reassign, erasure and merge; Teams on every EE grant add/edit/remove,
   erasure and merge.
-- When a global setting moves every holder's date at once, the contributor calls
-  `InvalidateAll` — `EventSettings.EarlyEntryStartOffset` and the gate / build-offset edits
-  (all in Settings now: `CachingEarlyEntryService` implements Settings'
-  `IEventSettingsChangeListener` and calls `InvalidateAll` on every event-settings save —
-  Settings itself names no consumer). Teams also
-  calls it when a team's `EarlyEntryEnabled` flag flips, because that changes *who*
-  contributes.
+- When an event-settings save moves every holder's date at once (the gate date, the build
+  offset, `EventSettings.EarlyEntryStartOffset`), Settings fans out over
+  `IEventSettingsChangeListener` and `CachingEarlyEntryService` evicts everyone — Settings
+  names no consumer.
+- When a team's `EarlyEntryEnabled` flag flips, Teams calls `InvalidateAll`, because that
+  changes *who* contributes.
 - Eviction is pure: the next read lazy-reloads.
 
 ## Cross-Section Dependencies
 
-Outbound (the `.csproj` references `Humans.Base` and `Humans.Users.Contracts` only):
+Outbound (the `.csproj` references `Humans.Base`, `Humans.Users.Contracts` and `Humans.Settings` only):
 
 - **Users** — `IUserServiceRead` through `HumansControllerBase.FindUserInfoByIdAsync`, for the
   roster's legal-name column.
+- **Settings** — `CachingEarlyEntryService` implements `IEventSettingsChangeListener`; Settings'
+  event-settings save fans out to it and it evicts every cached answer.
 
 Inbound, all through `Contracts/`:
 
@@ -123,14 +128,13 @@ Inbound, all through `Contracts/`:
 
 **Owning services:** `EarlyEntryService` (orchestrator), `CachingEarlyEntryService` (§15 decorator)
 **Owned tables:** None — orchestrator over every registered `IEarlyEntryProvider`.
-**Status:** (A) Migrated — moved into `src/Sections/Humans.EarlyEntry` 2026-08-14
-(nobodies-collective/Humans#866).
+**Status:** (A) Migrated.
 
 ### Cross-section read interface
 
 The whole outward surface is read-only, so there is no read/write split to make. The
 contracts live in `Contracts/`, a folder rather than a leaf project — known debt with a
-queued carve-out decision (`debt-ledger.yml`, added 2026-09-14), not a settled shape: every
+queued carve-out decision (`debt-ledger.yml`), not a settled shape: every
 consumer references the whole section, and only `internal` keeps them off the internals.
 
 | Read interface | Methods | Notes |
@@ -144,7 +148,8 @@ consumer references the whole section, and only `internal` keeps them off the in
 - **Decorator decision** — caching decorator, Singleton, `TrackedCache`-backed,
   `warmOnStartup: false`; not a hosted service, there is nothing to warm. Negative results are
   cached by hand (`TryGet` / `Set`) because `TrackedCache.GetAsync` never stores a null.
-- **Cross-section calls** — `IUserServiceRead` only.
+- **Cross-section calls** — `IUserServiceRead`; Settings' `IEventSettingsChangeListener`
+  (implemented, not called).
 - **Architecture test** — `tests/Humans.EarlyEntry.Tests/EarlyEntryArchitectureTests.cs`; the
   rendered page is pinned by `tests/Humans.Integration.Tests/Controllers/EarlyEntryPageRenderTests.cs`
   (local-only, never runs in CI).

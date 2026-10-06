@@ -13,7 +13,7 @@
             {
                 <li class="mb-3 pb-3 border-bottom">
                     <div class="d-flex justify-content-between">
-                        <strong>@entry.Status</strong>
+                        <strong>@SharedLocalizer["ApplicationStatus_" + entry.Status.ToString()]</strong>
             <small class="text-muted">@entry.ChangedAt.ToDate()</small>
                     </div>
                     <small class="text-muted">@Localizer["ApplicationDetail_By"] @entry.ChangedBy</small>

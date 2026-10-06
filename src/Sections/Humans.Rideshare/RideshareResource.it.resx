@@ -55,6 +55,7 @@
   <data name="Enum_InterestStatus_Withdrawn" xml:space="preserve"><value>Ritirato</value></data>
   <!-- Board -->
   <data name="Rideshare_Title" xml:space="preserve"><value>Passaggi</value></data>
+  <data name="Rideshare_BreadcrumbNavigation" xml:space="preserve"><value>Percorso di navigazione</value></data>
   <data name="Rideshare_BoardIntro" xml:space="preserve"><value>Chi guida pubblica il viaggio che farà; chi cerca un passaggio mette un segnaposto dove vuole essere raccolto. Trovatevi sulla mappa e salutatevi.</value></data>
   <data name="Rideshare_BackToBoard" xml:space="preserve"><value>Torna alla bacheca</value></data>
   <data name="Rideshare_OfferARide" xml:space="preserve"><value>Offri un passaggio</value></data>
@@ -197,4 +198,5 @@
   <data name="Rideshare_NoticeDeclinedOffer" xml:space="preserve"><value>{0} non ha potuto offrire un posto questa volta.</value></data>
   <data name="Rideshare_NoticeDeclinedRider" xml:space="preserve"><value>{0} ha scelto un altro viaggio questa volta.</value></data>
   <data name="Rideshare_NoticeOpen" xml:space="preserve"><value>Apri viaggi condivisi</value></data>
+  <data name="Rideshare_NoticeHuman" xml:space="preserve"><value>Un human</value></data>
 </root>

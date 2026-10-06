@@ -19,18 +19,24 @@ if [ ! -f "$DOC" ]; then
 fi
 
 # Source blocks: every distinct leading-4-hex segment of `00000000-0000-0000-XXXX-...`
-SRC_BLOCKS=$(grep -rEho '"00000000-0000-0000-([0-9a-fA-F]{4})-' \
+if ! SRC_BLOCKS=$({ grep -rEho '"00000000-0000-0000-([0-9a-fA-F]{4})-' \
     src/Humans.Base/Constants/ \
-    src/Sections/*/Data/ 2>/dev/null \
+    src/Sections/*/Data/ 2>/dev/null || [ "$?" -eq 1 ]; } \
   | sed -E 's/.*-([0-9a-fA-F]{4})-$/\1/' \
-  | sort -u)
+  | sort -u); then
+  echo "FAIL [guid-reservations]: could not enumerate source GUID blocks"
+  exit 1
+fi
 
 # Doc blocks: pull from the first column of the Current Reservations table.
 # Format: `| `0001` | ... |` — extract the backticked 4-hex token.
-DOC_BLOCKS=$(awk '/^## Current Reservations/,/^## [^C]/' "$DOC" \
-  | grep -oE '`[0-9a-fA-F]{4}`' \
+if ! DOC_BLOCKS=$(awk '/^## Current Reservations/,/^## [^C]/' "$DOC" \
+  | { grep -oE '`[0-9a-fA-F]{4}`' || [ "$?" -eq 1 ]; } \
   | tr -d '`' \
-  | sort -u)
+  | sort -u); then
+  echo "FAIL [guid-reservations]: could not enumerate documented GUID blocks"
+  exit 1
+fi
 
 # The 0000 sentinel is allowed in the doc without a corresponding source
 # block — it's documented as "Migration-generated usage only".

@@ -4,8 +4,8 @@ namespace Humans.Budget.Models;
 
 /// <summary>
 /// Budget's own badge colours. Base cannot name <see cref="BudgetYearStatus"/> (the enum
-/// lives on the section's contracts leaf), and referencing that leaf from
-/// <c>Humans.UI</c> to get it back is the trap that ends with Base knowing every section's
+/// lives in the section's <c>Contracts/</c> folder), and moving it down into Base to get it
+/// back is the trap that ends with Base knowing every section's
 /// vocabulary (<c>memory/architecture/base-ui-registries-are-section-populated.md</c>).
 /// </summary>
 /// <remarks>

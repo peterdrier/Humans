@@ -35,6 +35,7 @@
   <!-- Profile (view + edit)    -->
   <!-- ======================== -->
   <data name="Profile_Title" xml:space="preserve"><value>My Profile</value></data>
+  <data name="Users_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
   <data name="Profile_ActionRequired" xml:space="preserve"><value>Action Required:</value></data>
   <data name="Profile_PendingConsents" xml:space="preserve"><value>You have {0} pending consent(s) to review.</value><comment>{0} = pending count</comment></data>
   <data name="Profile_ReviewNow" xml:space="preserve"><value>Review now</value></data>
@@ -487,6 +488,7 @@
   <!-- ======================== -->
   <!-- Enum display names       -->
   <!-- ======================== -->
+  <data name="Enum_ContactFieldType_Email" xml:space="preserve"><value>Email</value></data>
   <data name="Enum_ContactFieldType_Discord" xml:space="preserve"><value>Discord</value></data>
   <data name="Enum_ContactFieldType_Other" xml:space="preserve"><value>Other</value></data>
   <data name="Enum_ContactFieldType_Phone" xml:space="preserve"><value>Phone</value></data>
@@ -570,4 +572,24 @@
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Your access has been suspended: {0}</value></data>
   <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>View profile</value></data>
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Missing required document consent (grace period expired)</value></data>
+  <data name="CommPrefs_Name_System" xml:space="preserve"><value>System</value></data>
+  <data name="CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Campaign Codes</value></data>
+  <data name="CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Facilitated Messages</value></data>
+  <data name="CommPrefs_Name_Ticketing" xml:space="preserve"><value>Ticketing</value></data>
+  <data name="CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Volunteer Updates</value></data>
+  <data name="CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Team Updates</value></data>
+  <data name="CommPrefs_Name_Governance" xml:space="preserve"><value>Governance</value></data>
+  <data name="CommPrefs_Name_Marketing" xml:space="preserve"><value>Marketing</value></data>
+  <data name="CommPrefs_Description_System" xml:space="preserve"><value>Critical account, consent, and security notifications. Always on.</value></data>
+  <data name="CommPrefs_Description_CampaignCodes" xml:space="preserve"><value>Discount codes, grants, and campaign redemption codes. Always on.</value></data>
+  <data name="CommPrefs_Description_FacilitatedMessages" xml:space="preserve"><value>Messages sent to you by other humans via Humans.</value></data>
+  <data name="CommPrefs_Description_Ticketing" xml:space="preserve"><value>Purchase confirmations and event information.</value></data>
+  <data name="CommPrefs_Description_VolunteerUpdates" xml:space="preserve"><value>Shift changes, schedule updates, and volunteer notifications.</value></data>
+  <data name="CommPrefs_Description_TeamUpdates" xml:space="preserve"><value>Drive permissions, team member additions, and removals.</value></data>
+  <data name="CommPrefs_Description_Governance" xml:space="preserve"><value>Board voting, tier applications, role assignments, and onboarding reviews.</value></data>
+  <data name="CommPrefs_Description_Marketing" xml:space="preserve"><value>Mailing list and promotions.</value></data>
+  <data name="CommPrefs_TicketingYear" xml:space="preserve"><value>Ticketing — {0}</value></data>
+  <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Locked — you have a ticket for this year</value></data>
+  <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Event Operations</value></data>
+  <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Community Updates</value></data>
 </root>

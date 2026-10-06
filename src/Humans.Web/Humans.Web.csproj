@@ -14,14 +14,14 @@
       contracts leaves Shell had been reaching through it are declared below.
     -->
     <ProjectReference Include="..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\Sections\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Gdpr\Humans.Gdpr.csproj" />
+    <ProjectReference Include="..\Sections\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
     <ProjectReference Include="..\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Holded\Humans.Holded.csproj" />
     <ProjectReference Include="..\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
@@ -32,7 +32,6 @@
     <ProjectReference Include="..\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Sections\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\Sections\Humans.Backdoor\Humans.Backdoor.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\Sections\Humans.Calendar\Humans.Calendar.csproj" />
     <ProjectReference Include="..\Sections\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
     <ProjectReference Include="..\Sections\Humans.Camps\Humans.Camps.csproj" />
@@ -40,7 +39,6 @@
     <ProjectReference Include="..\Sections\Humans.Cantina\Humans.Cantina.csproj" />
     <ProjectReference Include="..\Sections\Humans.CityPlanning\Humans.CityPlanning.csproj" />
     <ProjectReference Include="..\Sections\Humans.Containers\Humans.Containers.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Sections\Humans.Debug\Humans.Debug.csproj" />
     <ProjectReference Include="..\Sections\Humans.Development\Humans.Development.csproj" />
     <ProjectReference Include="..\Sections\Humans.Email\Humans.Email.csproj" />
@@ -49,8 +47,6 @@
     <ProjectReference Include="..\Sections\Humans.Feedback\Humans.Feedback.csproj" />
     <ProjectReference Include="..\Sections\Humans.Finance\Humans.Finance.csproj" />
     <ProjectReference Include="..\Sections\Humans.Gate\Humans.Gate.csproj" />
-    <ProjectReference Include="..\Sections\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Sections\Humans.Onboarding\Humans.Onboarding.csproj" />
     <ProjectReference Include="..\Sections\Humans.Governance\Humans.Governance.csproj" />
     <ProjectReference Include="..\Sections\Humans.Guide\Humans.Guide.csproj" />
@@ -63,7 +59,6 @@
     <ProjectReference Include="..\Sections\Humans.Monitor\Humans.Monitor.csproj" />
     <ProjectReference Include="..\Sections\Humans.Search\Humans.Search.csproj" />
     <ProjectReference Include="..\Sections\Humans.Shifts\Humans.Shifts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Holded\Humans.Holded.csproj" />
     <ProjectReference Include="..\Sections\Humans.Store\Humans.Store.csproj" />
     <ProjectReference Include="..\Sections\Humans.Stripe\Humans.Stripe.csproj" />
     <ProjectReference Include="..\Sections\Humans.Surveys\Humans.Surveys.csproj" />
@@ -71,8 +66,6 @@
     <ProjectReference Include="..\Sections\Humans.Teams\Humans.Teams.csproj" />
     <ProjectReference Include="..\Sections\Humans.Tickets\Humans.Tickets.csproj" />
     <ProjectReference Include="..\Sections\Humans.TicketTailor\Humans.TicketTailor.csproj" />
-    <ProjectReference Include="..\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Tour\Humans.Tour.csproj" />
     <ProjectReference Include="..\Sections\Humans.Users\Humans.Users.csproj" />
   </ItemGroup>

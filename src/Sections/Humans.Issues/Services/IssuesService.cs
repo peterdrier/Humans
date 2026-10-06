@@ -94,7 +94,7 @@ internal sealed class IssuesService(
 
         if (trimmed.Length > MaxSectionLength)
         {
-            throw new InvalidOperationException(
+            throw new IssueRuleException(
                 $"Section must be {MaxSectionLength} characters or fewer.");
         }
 
@@ -127,6 +127,8 @@ internal sealed class IssuesService(
         IReadOnlyList<string>? reporterRoles = null,
         CancellationToken ct = default)
     {
+        if (!Enum.IsDefined(category))
+            throw new ArgumentOutOfRangeException(nameof(category), category, "Unknown issue category.");
         section = NormalizeSection(section);
 
         var now = clock.GetCurrentInstant();
@@ -205,7 +207,9 @@ internal sealed class IssuesService(
             return null;
 
         var result = string.Join(" | ", parts);
-        return result.Length > 2000 ? result[..2000] : result;
+        if (result.Length <= 2000) return result;
+        var length = char.IsHighSurrogate(result[1999]) && char.IsLowSurrogate(result[2000]) ? 1999 : 2000;
+        return result[..length];
     }
 
     // ─── Reads ───
@@ -240,7 +244,7 @@ internal sealed class IssuesService(
         var issue = await repo.FindForMutationAsync(issueId, ct);
         return issue is not null && CanHandle(issue, viewer)
             ? issue
-            : throw new InvalidOperationException($"Issue {issueId} not found");
+            : throw new IssueNotFoundException($"Issue {issueId} not found");
     }
 
     private static IssueDetail MapDetail(Issue issue) => new(
@@ -485,6 +489,8 @@ internal sealed class IssuesService(
         CancellationToken ct = default)
     {
         var issue = await FindHandleableAsync(issueId, viewer, ct);
+        if (!Enum.IsDefined(newStatus))
+            throw new ArgumentOutOfRangeException(nameof(newStatus), newStatus, "Unknown issue status.");
 
         var oldStatus = issue.Status;
         if (oldStatus == newStatus) return;
@@ -532,9 +538,9 @@ internal sealed class IssuesService(
             await UpdateStatusAsync(issueId, viewer, newStatus, actorUserId, ct);
             return IssueMutationResult.Success();
         }
-        catch (InvalidOperationException ex)
+        catch (IssueNotFoundException)
         {
-            logger.LogWarning(ex, "Issue {IssueId} not found during UpdateStatus", issueId);
+            logger.LogWarning("Issue {IssueId} not found during UpdateStatus", issueId);
             return IssueMutationResult.Missing("Issue not found.");
         }
         catch (Exception ex)
@@ -599,9 +605,9 @@ internal sealed class IssuesService(
             await UpdateAssigneeAsync(issueId, viewer, newAssigneeUserId, actorUserId, ct);
             return IssueMutationResult.Success();
         }
-        catch (InvalidOperationException ex)
+        catch (IssueNotFoundException)
         {
-            logger.LogWarning(ex, "Issue {IssueId} not found during UpdateAssignee", issueId);
+            logger.LogWarning("Issue {IssueId} not found during UpdateAssignee", issueId);
             return IssueMutationResult.Missing("Issue not found.");
         }
         catch (Exception ex)
@@ -625,7 +631,7 @@ internal sealed class IssuesService(
 
         if (issue.Status.IsTerminal())
         {
-            throw new InvalidOperationException(
+            throw new IssueRuleException(
                 $"Cannot change section on a terminal issue (status: {issue.Status}).");
         }
 
@@ -657,9 +663,14 @@ internal sealed class IssuesService(
             await UpdateSectionAsync(issueId, viewer, newSection, actorUserId, ct);
             return IssueMutationResult.Success();
         }
-        catch (InvalidOperationException ex)
+        catch (IssueNotFoundException)
         {
-            logger.LogWarning(ex, "Issue {IssueId} UpdateSection rejected: {Reason}", issueId, ex.Message);
+            logger.LogWarning("Issue {IssueId} not found during UpdateSection", issueId);
+            return IssueMutationResult.Missing("Issue not found.");
+        }
+        catch (IssueRuleException ex)
+        {
+            logger.LogWarning("Issue {IssueId} UpdateSection rejected: {Reason}", issueId, ex.Message);
             return IssueMutationResult.Failed(ex.Message);
         }
         catch (Exception ex)
@@ -698,9 +709,9 @@ internal sealed class IssuesService(
             await SetGitHubIssueNumberAsync(issueId, viewer, githubIssueNumber, actorUserId, ct);
             return IssueMutationResult.Success();
         }
-        catch (InvalidOperationException ex)
+        catch (IssueNotFoundException)
         {
-            logger.LogWarning(ex, "Issue {IssueId} not found during SetGitHubIssue", issueId);
+            logger.LogWarning("Issue {IssueId} not found during SetGitHubIssue", issueId);
             return IssueMutationResult.Missing("Issue not found.");
         }
         catch (Exception ex)
@@ -726,7 +737,7 @@ internal sealed class IssuesService(
         });
     }
 
-    /// <summary>Users whose badge count may shift on an issue mutation: reporter + admins + role-holders for current & previous sections.</summary>
+    /// <summary>Users whose badge count may shift on an issue mutation: reporter + admins + role-holders for current &amp; previous sections.</summary>
     private async Task<IReadOnlySet<Guid>> ResolveBadgeUserIdsAsync(
         Guid reporterUserId, string? section, string? previousSection,
         CancellationToken ct)
@@ -802,6 +813,8 @@ internal sealed class IssuesService(
             i.Section,
             i.Status,
             i.PageUrl,
+            i.UserAgent,
+            i.AdditionalContext,
             CreatedAt = i.CreatedAt.ToIso8601(),
             ResolvedAt = i.ResolvedAt.ToIso8601(),
             Comments = i.Comments.OrderBy(c => c.CreatedAt).Select(c => new
@@ -832,8 +845,18 @@ internal sealed class IssuesService(
     /// <summary>Reported issues and their free text are hard-deleted; triage links elsewhere are detached.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
+        var ownIssues = await repo.GetForUserExportAsync(userId, ct);
+        var badgeUserIds = new HashSet<Guid> { userId };
+        foreach (var section in ownIssues.Select(i => i.Section).Distinct(StringComparer.Ordinal))
+        {
+            badgeUserIds.UnionWith(await ResolveBadgeUserIdsAsync(userId, section, previousSection: null, ct));
+        }
+
+        var erasedIssueIds = await repo.EraseForUserAsync(userId, ct);
+        issuesBadge.InvalidateMany(badgeUserIds);
+
         // The screenshots are the reporter's own uploads — they go with the rows.
-        foreach (var issueId in await repo.EraseForUserAsync(userId, ct))
+        foreach (var issueId in erasedIssueIds)
         {
             DeleteScreenshotDirectory(issueId);
         }
@@ -934,13 +957,14 @@ internal sealed class IssuesService(
             emails.TryGetValue(issue.ReporterUserId, out var to) &&
             !string.IsNullOrWhiteSpace(to))
         {
+            var language = reporter.PreferredLanguage;
             await email.SendAsync(emailMessages.IssueComment(
                 to,
                 reporter.BurnerName,
                 issue.Title,
                 comment.Content,
                 $"/Issues/{issue.Id}",
-                reporter.PreferredLanguage),
+                language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode),
                 ct);
         }
         else
@@ -1096,7 +1120,11 @@ internal sealed class IssuesService(
     {
         var people = await users.GetUserInfosAsync(recipients, ct);
         foreach (var group in recipients.GroupBy(
-                     id => people.GetValueOrDefault(id)?.PreferredLanguage ?? "en",
+                     id =>
+                     {
+                         var language = people.GetValueOrDefault(id)?.PreferredLanguage;
+                         return language.IsSupportedCultureCode() ? language! : "en";
+                     },
                      StringComparer.OrdinalIgnoreCase))
         {
             try
@@ -1124,5 +1152,19 @@ internal sealed class IssuesService(
                 logger.LogError(ex, "Failed to dispatch {Source} issue notices for language {Language}", source, group.Key);
             }
         }
+    }
+
+    private sealed class IssueNotFoundException : InvalidOperationException
+    {
+        public IssueNotFoundException() { }
+        public IssueNotFoundException(string message) : base(message) { }
+        public IssueNotFoundException(string message, Exception innerException) : base(message, innerException) { }
+    }
+
+    private sealed class IssueRuleException : InvalidOperationException
+    {
+        public IssueRuleException() { }
+        public IssueRuleException(string message) : base(message) { }
+        public IssueRuleException(string message, Exception innerException) : base(message, innerException) { }
     }
 }

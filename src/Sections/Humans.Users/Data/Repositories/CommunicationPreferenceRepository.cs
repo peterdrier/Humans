@@ -14,15 +14,6 @@ namespace Humans.Users.Data.Repositories;
 internal sealed class CommunicationPreferenceRepository(IDbContextFactory<UsersDbContext> factory)
     : ICommunicationPreferenceRepository
 {
-    public async Task<List<CommunicationPreference>> GetByUserIdAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.CommunicationPreferences
-            .Where(cp => cp.UserId == userId)
-            .ToListAsync(ct);
-    }
-
     public async Task<int> DeleteAllForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -59,13 +50,6 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<UsersD
             .ToListAsync(ct);
 
         return disabledUserIds.ToHashSet();
-    }
-
-    public async Task<bool> HasAnyAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.CommunicationPreferences
-            .AnyAsync(cp => cp.UserId == userId, ct);
     }
 
     public async Task<IReadOnlySet<Guid>> GetUsersWithAnyPreferencesAsync(
@@ -117,34 +101,6 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<UsersD
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task AddRangeAsync(IReadOnlyList<CommunicationPreference> preferences,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.CommunicationPreferences.AddRange(preferences);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<List<CommunicationPreference>> AddDefaultsOrReloadAsync(
-        Guid userId, IReadOnlyList<CommunicationPreference> defaults, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        try
-        {
-            ctx.CommunicationPreferences.AddRange(defaults);
-            await ctx.SaveChangesAsync(ct);
-            return defaults.ToList();
-        }
-        catch (DbUpdateException)
-        {
-            // Another request already created the defaults — reload
-            ctx.ChangeTracker.Clear();
-            return await ctx.CommunicationPreferences
-                .Where(cp => cp.UserId == userId)
-                .ToListAsync(ct);
-        }
-    }
-
     public async Task UpdateAsync(CommunicationPreference preference, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -168,7 +124,7 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<UsersD
         return true;
     }
 
-    public async Task<int> ReassignToUserAsync(
+    public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -208,8 +164,5 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<UsersD
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        return await ctx.CommunicationPreferences
-            .CountAsync(cp => cp.UserId == targetUserId, ct);
     }
 }

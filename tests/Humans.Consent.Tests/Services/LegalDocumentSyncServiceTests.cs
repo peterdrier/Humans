@@ -72,6 +72,44 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             NullLogger<LegalDocumentSyncService>.Instance);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RequiredVersionReads_SelectLatestEffectiveVersion_AndOmitFutureOnlyDocuments(bool forTeam)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var document = await SeedDocumentAsync("Privacy");
+        var futureOnly = await SeedDocumentAsync("Future agreement");
+        var now = Clock.GetCurrentInstant();
+        var currentId = Guid.NewGuid();
+        foreach (var (documentId, id, effectiveFrom) in new[]
+        {
+            (document.Id, Guid.NewGuid(), now.Minus(Duration.FromDays(1))),
+            (document.Id, currentId, now),
+            (document.Id, Guid.NewGuid(), now.Plus(Duration.FromDays(1))),
+            (futureOnly.Id, Guid.NewGuid(), now.Plus(Duration.FromDays(1)))
+        })
+        {
+            LegalDb.DocumentVersions.Add(new DocumentVersion
+            {
+                Id = id,
+                LegalDocumentId = documentId,
+                VersionNumber = id.ToString(),
+                CommitSha = id.ToString(),
+                EffectiveFrom = effectiveFrom,
+                CreatedAt = now,
+                Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "Agreement" }
+            });
+        }
+        await SaveAllAsync(ct);
+
+        var versions = forTeam
+            ? await _service.GetRequiredDocumentVersionsForTeamAsync(_team.Id, ct)
+            : await _service.GetRequiredVersionsAsync(ct);
+
+        versions.Should().ContainSingle().Which.Id.Should().Be(currentId);
+    }
+
     // ── NormalizeGitHubFolderPath ────────────────────────────────────────────
 
     [HumansFact]
@@ -383,6 +421,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         StubActiveUser();
         var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "old-sha");
         StubGitHubFolder("privacy/", "es-content", "sha-1", "Initial commit");
+        _gitHub.GetFileContentAsync("privacy/doc.md", Arg.Any<CancellationToken>())
+            .Returns(new GitHubFileContent("es-content", "sha-1"), new GitHubFileContent("later-content", "sha-2"));
 
         var result = await _service.SyncDocumentAsync(document.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -395,6 +435,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         version.RequiresReConsent.Should().BeFalse(
             because: "the first synced version never invalidates prior consent — there is none");
         version.CommitSha.Should().Be("sha-1");
+        version.Content["es"].Should().Be("es-content");
+        await _gitHub.Received(1).GetFileContentAsync("privacy/doc.md", Arg.Any<CancellationToken>());
 
         await AssertFanout(NotificationSource.LegalDocumentPublished, received: true);
         await AssertFanout(NotificationSource.ReConsentRequired, received: false);

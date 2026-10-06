@@ -1,3 +1,6 @@
+using Humans.Consent.Services;
+using Microsoft.Extensions.Localization;
+using Humans.Base.Extensions;
 using AwesomeAssertions;
 using Humans.Base.Configuration;
 using Humans.Base.Interfaces;
@@ -19,13 +22,19 @@ namespace Humans.Consent.Tests.Services;
 public sealed class SendReConsentReminderJobTests
 {
     [HumansTheory]
-    [InlineData("send")]
-    [InlineData("stamp")]
-    [InlineData("success")]
-    public async Task RecipientFailure_DoesNotPreventLaterRemindersOrHideJobFailure(string outcome)
+    [InlineData("send", "en", "Reminder: 3 days to review updated documents")]
+    [InlineData("stamp", "en", "Reminder: 3 days to review updated documents")]
+    [InlineData("success", "en", "Reminder: 3 days to review updated documents")]
+    [InlineData("success", "es", "Recordatorio: 3 días para revisar documentos actualizados")]
+    [InlineData("success", "", "Reminder: 3 days to review updated documents")]
+    [InlineData("success", " ", "Reminder: 3 days to review updated documents")]
+    [InlineData("success", "not a culture!", "Reminder: 3 days to review updated documents")]
+    [InlineData("success", "fr-FR", "Reminder: 3 days to review updated documents")]
+    public async Task RecipientFailure_DoesNotPreventLaterRemindersOrHideJobFailure(string outcome, string language, string expectedSubject)
     {
+        using var serverCulture = new CultureScope("fr");
         var now = Instant.FromUtc(2026, 10, 2, 4, 0);
-        var first = MakeUser("first@example.com");
+        var first = MakeUser("first@example.com") with { PreferredLanguage = language };
         var next = MakeUser("next@example.com");
         var cooling = MakeUser("cooling@example.com", now);
         var membership = Substitute.For<IMembershipCalculatorRead>();
@@ -50,12 +59,20 @@ public sealed class SendReConsentReminderJobTests
             users.SetLastConsentReminderSentAsync(first.Id, now, Arg.Any<CancellationToken>())
                 .Returns(Task.FromException(failure));
         var metrics = Substitute.For<IHumansMetrics>();
+        var emailMessages = new ConsentEmails(
+            Options.Create(new EmailSettings { BaseUrl = TestConsentEmails.BaseUrl }),
+            new StringLocalizer<ConsentResource>(new ResourceManagerStringLocalizerFactory(
+                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)),
+            NullLogger<ConsentEmails>.Instance);
         var job = new SendReConsentReminderJob(membership, legal, users, email,
-            TestConsentEmails.Create(), Options.Create(new EmailSettings { ConsentReminderCooldownDays = 7 }),
+            emailMessages, Options.Create(new EmailSettings { ConsentReminderCooldownDays = 7, ConsentReminderDaysBeforeSuspension = 3 }),
             metrics, NullLogger<SendReConsentReminderJob>.Instance, new FakeClock(now));
 
         var error = await Record.ExceptionAsync(() => job.ExecuteAsync(TestContext.Current.CancellationToken));
 
+        await email.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == first.Email
+                && m.Subject == expectedSubject), Arg.Any<CancellationToken>());
         await email.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == next.Email), Arg.Any<CancellationToken>());
         await users.Received(1).SetLastConsentReminderSentAsync(next.Id, now, Arg.Any<CancellationToken>());

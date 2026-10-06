@@ -113,7 +113,7 @@
                             var incomeTable = TableModel.For(Model.IncomeSlices)
                                 .Column(Localizer["Budget_ColCategory"].Value, r => r.Name)
                                 .Column(Localizer["Budget_ColAmount"].Value, r => r.Amount, c => c.Currency().End())
-                                .Column(Localizer["Budget_ColShare"].Value, r => r.Percentage.ToString("N1", System.Globalization.CultureInfo.CurrentCulture) + "%", c => c.End())
+                                .Column(Localizer["Budget_ColShare"].Value, r => r.Percentage.ToString("N1", System.Globalization.CultureInfo.CurrentUICulture) + "%", c => c.End())
                                 .Build();
                         }
                         <partial name="_Table" model="incomeTable" />
@@ -131,7 +131,7 @@
                             var expenseTable = TableModel.For(Model.ExpenseSlices)
                                 .Column(Localizer["Budget_ColCategory"].Value, r => r.Name)
                                 .Column(Localizer["Budget_ColAmount"].Value, r => r.Amount, c => c.Currency().End())
-                                .Column(Localizer["Budget_ColShare"].Value, r => r.Percentage.ToString("N1", System.Globalization.CultureInfo.CurrentCulture) + "%", c => c.End())
+                                .Column(Localizer["Budget_ColShare"].Value, r => r.Percentage.ToString("N1", System.Globalization.CultureInfo.CurrentUICulture) + "%", c => c.End())
                                 .Build();
                         }
                         <partial name="_Table" model="expenseTable" />
@@ -150,7 +150,7 @@
         var expenseColors = window.HumansBudgetCharts.expenseColors();
         var tooltipCallback = {
             label: function(ctx) {
-                return ctx.label + ': \u20ac' + ctx.raw.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                return ctx.label + ': \u20ac' + ctx.raw.toLocaleString(document.documentElement.lang || 'en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             }
         };
         var legendOpts = {

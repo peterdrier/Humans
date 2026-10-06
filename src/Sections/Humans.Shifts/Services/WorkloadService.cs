@@ -76,6 +76,26 @@ internal sealed class WorkloadService(
     private static decimal HoursOf(Shift shift) =>
         shift.IsAllDay ? AllDayShiftHours : (decimal)shift.Duration.TotalHours;
 
+    private static (int PlannedSlots, int FilledSlots, int Pending, decimal PlannedHours, decimal FilledHours)
+        SumShiftWorkload(IEnumerable<Shift> shifts)
+    {
+        (int PlannedSlots, int FilledSlots, int Pending, decimal PlannedHours, decimal FilledHours) totals = default;
+        checked
+        {
+            foreach (var shift in shifts)
+            {
+                var hours = HoursOf(shift);
+                var filled = Math.Min(shift.ShiftSignups.Count(s => s.Status == SignupStatus.Confirmed), shift.MaxVolunteers);
+                totals.PlannedSlots += shift.MaxVolunteers;
+                totals.FilledSlots += filled;
+                totals.Pending += shift.ShiftSignups.Count(s => s.Status == SignupStatus.Pending);
+                totals.PlannedHours += hours * shift.MaxVolunteers;
+                totals.FilledHours += hours * filled;
+            }
+        }
+        return totals;
+    }
+
     // Unsorted; controller assembles display order (display-sort-in-controllers).
     private static List<WorkloadByRotaRow> BuildByRota(
         IReadOnlyList<(Rota Rota, Shift Shift)> entries,
@@ -85,15 +105,7 @@ internal sealed class WorkloadService(
             .Select(g =>
             {
                 var rota = g.First().Rota;
-                var hoursPerShift = g.ToDictionary(e => e.Shift.Id, e => HoursOf(e.Shift));
-                var plannedSlots = g.Sum(e => e.Shift.MaxVolunteers);
-                var filledSlots = g.Sum(e => Math.Min(
-                    e.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed),
-                    e.Shift.MaxVolunteers));
-                var plannedHours = g.Sum(e => hoursPerShift[e.Shift.Id] * e.Shift.MaxVolunteers);
-                var filledHours = g.Sum(e => hoursPerShift[e.Shift.Id] *
-                    Math.Min(e.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed), e.Shift.MaxVolunteers));
-                var pending = g.Sum(e => e.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Pending));
+                var totals = SumShiftWorkload(g.Select(e => e.Shift));
                 var teamName = teamLookup.TryGetValue(rota.TeamId, out var team) ? team.Name : "(unknown)";
                 return new WorkloadByRotaRow(
                     RotaId: rota.Id,
@@ -101,11 +113,11 @@ internal sealed class WorkloadService(
                     TeamId: rota.TeamId,
                     TeamName: teamName,
                     ShiftCount: g.Count(),
-                    PlannedSlots: plannedSlots,
-                    FilledSlots: filledSlots,
-                    PendingSignupCount: pending,
-                    PlannedHours: plannedHours,
-                    FilledHours: filledHours);
+                    PlannedSlots: totals.PlannedSlots,
+                    FilledSlots: totals.FilledSlots,
+                    PendingSignupCount: totals.Pending,
+                    PlannedHours: totals.PlannedHours,
+                    FilledHours: totals.FilledHours);
             })
             .ToList();
 
@@ -118,14 +130,7 @@ internal sealed class WorkloadService(
             .GroupBy(e => e.Rota.TeamId)
             .ToDictionary(g => g.Key, g =>
             {
-                var hoursPerShift = g.ToDictionary(e => e.Shift.Id, e => HoursOf(e.Shift));
-                var plannedSlots = g.Sum(e => e.Shift.MaxVolunteers);
-                var filledSlots = g.Sum(e => Math.Min(
-                    e.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed),
-                    e.Shift.MaxVolunteers));
-                var plannedHours = g.Sum(e => hoursPerShift[e.Shift.Id] * e.Shift.MaxVolunteers);
-                var filledHours = g.Sum(e => hoursPerShift[e.Shift.Id] *
-                    Math.Min(e.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed), e.Shift.MaxVolunteers));
+                var totals = SumShiftWorkload(g.Select(e => e.Shift));
                 var (teamName, teamSlug) = teamLookup.TryGetValue(g.Key, out var team)
                     ? (team.Name, team.Slug)
                     : ("(unknown)", string.Empty);
@@ -136,10 +141,10 @@ internal sealed class WorkloadService(
                     TeamSlug: teamSlug,
                     RotaCount: rotaCount,
                     ShiftCount: g.Count(),
-                    PlannedSlots: plannedSlots,
-                    FilledSlots: filledSlots,
-                    PlannedHours: plannedHours,
-                    FilledHours: filledHours);
+                    PlannedSlots: totals.PlannedSlots,
+                    FilledSlots: totals.FilledSlots,
+                    PlannedHours: totals.PlannedHours,
+                    FilledHours: totals.FilledHours);
             });
 
         // Fold role hours into the matching department; create rows for teams

@@ -37,9 +37,10 @@ internal sealed class ProfileEditorService(
             var storageResult = await userService.SaveProfileAsync(
                 userId,
                 ToUserProfileSaveCommand(displayName, request),
+                request.ProfilePictureData,
                 ct);
 
-            await ApplyProfilePictureFileMutationAsync(storageResult, request, ct);
+            await CleanupPreviousProfilePictureAsync(storageResult);
             profileId = storageResult.ProfileId;
         }
 
@@ -133,60 +134,24 @@ internal sealed class ProfileEditorService(
         return userService.SaveDietaryMedicalAsync(userId, command, ct);
     }
 
-    private async Task ApplyProfilePictureFileMutationAsync(
-        UserProfileSaveResult storageResult,
-        ProfileSaveRequest request,
-        CancellationToken ct)
+    private async Task CleanupPreviousProfilePictureAsync(UserProfileSaveResult storageResult)
     {
-        if (request.RemoveProfilePicture)
-        {
-            if (storageResult.PreviousProfilePictureContentType is not null)
-            {
-                try
-                {
-                    await fileStorage.DeleteAsync(
-                        ProfilePictureStorageKeys.ProfilePictureKey(
-                            storageResult.ProfileId,
-                            storageResult.PreviousProfilePictureContentType),
-                        ct);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    logger.LogWarning(ex,
-                        "Failed to delete profile picture from filesystem for {ProfileId}; content-type column has been cleared so the file will not be served",
-                        storageResult.ProfileId);
-                }
-            }
-
-            return;
-        }
-
-        if (request.ProfilePictureData is null || request.ProfilePictureContentType is null)
+        if (storageResult.PreviousProfilePictureContentType is null
+            || string.Equals(storageResult.PreviousProfilePictureContentType,
+                storageResult.CurrentProfilePictureContentType, StringComparison.Ordinal))
             return;
 
         try
         {
-            if (storageResult.PreviousProfilePictureContentType is not null &&
-                !string.Equals(storageResult.PreviousProfilePictureContentType, request.ProfilePictureContentType, StringComparison.Ordinal))
-            {
-                await fileStorage.DeleteAsync(
-                    ProfilePictureStorageKeys.ProfilePictureKey(
-                        storageResult.ProfileId,
-                        storageResult.PreviousProfilePictureContentType),
-                    ct);
-            }
-
-            await fileStorage.SaveAsync(
+            await fileStorage.DeleteAsync(
                 ProfilePictureStorageKeys.ProfilePictureKey(
-                    storageResult.ProfileId,
-                    request.ProfilePictureContentType),
-                request.ProfilePictureData,
-                ct);
+                    storageResult.ProfileId, storageResult.PreviousProfilePictureContentType),
+                CancellationToken.None);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
             logger.LogWarning(ex,
-                "Failed to write profile picture to filesystem for {ProfileId}; content-type column is set but the file is missing - picture will not render",
+                "Failed to delete superseded profile picture for {ProfileId}; current picture metadata is already committed",
                 storageResult.ProfileId);
         }
     }

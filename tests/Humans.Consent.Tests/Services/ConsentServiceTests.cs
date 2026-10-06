@@ -1,3 +1,4 @@
+using Xunit;
 using System.Security.Cryptography;
 using Humans.Consent.Services;
 using System.Text;
@@ -134,6 +135,28 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
+    public async Task SubmitConsentAsync_WithoutExplicitConsent_LeavesTheVersionSignable()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "Spanish text" });
+
+        var refused = await _service.SubmitConsentAsync(
+            userId, versionId, false, "127.0.0.1", "Agent", Xunit.TestContext.Current.CancellationToken);
+
+        refused.Success.Should().BeFalse();
+        refused.ErrorKey.Should().Be("ExplicitConsentRequired");
+        (await LegalDb.ConsentRecords.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        _metrics.DidNotReceive().RecordConsentGiven();
+
+        var signed = await _service.SubmitConsentAsync(
+            userId, versionId, true, "127.0.0.1", "Agent", Xunit.TestContext.Current.CancellationToken);
+        signed.Success.Should().BeTrue();
+        (await LegalDb.ConsentRecords.SingleAsync(Xunit.TestContext.Current.CancellationToken))
+            .ExplicitConsent.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task SubmitConsentAsync_ComputesCorrectSha256Hash()
     {
         var userId = Guid.NewGuid();
@@ -196,6 +219,23 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         record.UserAgent.Should().HaveLength(500);
     }
 
+    [HumansTheory]
+    [InlineData(498, 500)]
+    [InlineData(499, 499)]
+    public async Task SubmitConsentAsync_TruncatesUserAgentWithoutSplittingUnicode(int prefixLength, int expectedLength)
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+        var agent = new string('A', prefixLength) + "😀" + "remaining";
+
+        await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", agent, TestContext.Current.CancellationToken);
+
+        var record = await LegalDb.ConsentRecords.FirstAsync(TestContext.Current.CancellationToken);
+        record.UserAgent.Should().Be(agent[..expectedLength]);
+        new UTF8Encoding(false, true).GetBytes(record.UserAgent).Should().NotBeEmpty();
+    }
+
     // Threshold check (formerly SubmitConsentAsync_CallsSetConsentCheckPending)
     // moved out of ConsentService entirely — it's a director method on
     // IOnboardingService now, invoked by controllers as a peer call after
@@ -250,21 +290,37 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         result.DocumentName.Should().Be("Privacy Policy");
     }
 
-    [HumansFact]
-    public async Task SubmitConsentAsync_WhenAllRequiredConsentsComplete_RestoresConsentSuspension()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SubmitConsentAsync_WhenAllRequiredConsentsComplete_RestoresConsentSuspension(bool cancelAfterCommit)
     {
+        using var cancellation = new CancellationTokenSource();
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+        _metrics.When(metrics => metrics.RecordConsentGiven()).Do(_ =>
+        {
+            if (cancelAfterCommit)
+                cancellation.Cancel();
+        });
         _membershipCalculator.HasAllRequiredConsentsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(call =>
+            {
+                call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
+                return true;
+            });
 
-        await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", cancellation.Token);
 
+        result.Success.Should().BeTrue();
+        LegalDb.ConsentRecords.Should().Contain(record => record.UserId == userId && record.DocumentVersionId == versionId);
+        await _membershipCalculator.Received(1)
+            .HasAllRequiredConsentsAsync(userId, CancellationToken.None);
         await _notificationInboxService.Received(1)
-            .ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, Arg.Any<CancellationToken>());
+            .ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, CancellationToken.None);
         await _humanLifecycleService.Received(1)
-            .RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>());
+            .RestoreConsentSuspensionAsync(userId, CancellationToken.None);
     }
 
     [HumansFact]

@@ -7,7 +7,7 @@
     <div class="col-12" style="max-width: 900px;">
         @if (string.IsNullOrEmpty(Model.UnsubscribeToken))
         {
-            <nav aria-label="breadcrumb">
+            <nav aria-label="@Localizer["Users_BreadcrumbNavigation"]">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a asp-controller="Guest" asp-action="Index">@SharedLocalizer["Dashboard_Title"]</a></li>
                     <li class="breadcrumb-item active" aria-current="page">@Localizer["CommPrefs_Title"]</li>
@@ -21,10 +21,9 @@
 
         @if (Model.HighlightCategory is { } highlight && !highlight.IsAlwaysOn())
         {
-            // Reuse the controller-built DisplayName (sourced from IClock for Ticketing year).
-            // Avoids a raw DateTime.UtcNow in the view — see memory/code/nodatime-for-dates.md.
-            var highlightName = Model.Categories.FirstOrDefault(c => c.Category == highlight)?.DisplayName
-                ?? highlight.ToDisplayName();
+            var highlightName = highlight == MessageCategory.Ticketing
+                ? Localizer["CommPrefs_TicketingYear", Model.TicketingYear].Value
+                : Localizer[$"CommPrefs_Name_{highlight}"].Value;
             <div id="oneClickBanner"
                  class="alert alert-warning d-flex align-items-center justify-content-between gap-3 mb-4"
                  data-category="@highlight">
@@ -52,23 +51,26 @@
                         @for (var i = 0; i < Model.Categories.Count; i++)
                         {
                             var item = Model.Categories[i];
+                            var categoryName = item.Category == MessageCategory.Ticketing
+                                ? Localizer["CommPrefs_TicketingYear", Model.TicketingYear].Value
+                                : Localizer[$"CommPrefs_Name_{item.Category}"].Value;
 
                             <tr class="@(!item.EmailEditable ? "table-light" : (Model.HighlightCategory == item.Category ? "table-warning" : ""))"
                                 data-category-row="@item.Category">
                                 <td>
-                                    <div class="fw-semibold">@item.DisplayName</div>
-                                    <div class="form-text mb-0">@item.Description</div>
+                                    <div class="fw-semibold">@categoryName</div>
+                                    <div class="form-text mb-0">@Localizer[$"CommPrefs_Description_{item.Category}"]</div>
                                     @if (item.Note is not null)
                                     {
                                         <div class="form-text text-warning-emphasis mb-0">
-                                            <i class="fa-solid fa-lock fa-xs me-1"></i>@item.Note
+                                            <i class="fa-solid fa-lock fa-xs me-1"></i>@Localizer["CommPrefs_TicketingLocked"]
                                         </div>
                                     }
                                 </td>
                                 <td class="text-center">
                                     @if (item.EmailEditable)
                                     {
-                                        <input type="checkbox"
+                                        <input type="checkbox" aria-label="@Localizer["CommPrefs_Email"] — @categoryName"
                                                class="form-check-input pref-toggle"
                                                data-category="@item.Category"
                                                data-channel="email"
@@ -76,7 +78,7 @@
                                     }
                                     else
                                     {
-                                        <input type="checkbox"
+                                        <input type="checkbox" aria-label="@Localizer["CommPrefs_Email"] — @categoryName"
                                                class="form-check-input"
                                                checked
                                                disabled />
@@ -86,7 +88,7 @@
                                 <td class="text-center">
                                     @if (item.AlertEditable)
                                     {
-                                        <input type="checkbox"
+                                        <input type="checkbox" aria-label="@Localizer["CommPrefs_Alert"] — @categoryName"
                                                class="form-check-input pref-toggle"
                                                data-category="@item.Category"
                                                data-channel="alert"
@@ -94,7 +96,7 @@
                                     }
                                     else
                                     {
-                                        <input type="checkbox"
+                                        <input type="checkbox" aria-label="@Localizer["CommPrefs_Alert"] — @categoryName"
                                                class="form-check-input"
                                                checked
                                                disabled />
@@ -117,6 +119,18 @@
 
 @section Scripts {
 <script>
+    function setPreferenceSaving(row, saving) {
+        if (!row) return;
+        row.querySelectorAll('.pref-toggle').forEach(function (control) {
+            control.disabled = saving;
+        });
+        var banner = document.getElementById('oneClickBanner');
+        var button = document.getElementById('oneClickUnsubscribe');
+        if (banner && button && banner.dataset.category === row.dataset.categoryRow) {
+            button.disabled = saving;
+        }
+    }
+
     document.querySelectorAll('.pref-toggle').forEach(function (cb) {
         cb.addEventListener('change', function () {
             var row = this.closest('tr');
@@ -137,7 +151,7 @@
                 @:body.append('utoken', '@Html.Raw(Html.Encode(Model.UnsubscribeToken))');
             }
 
-            this.disabled = true;
+            setPreferenceSaving(row, true);
             var self = this;
 
             fetch('@Url.Action("UpdatePreference")', {
@@ -153,7 +167,7 @@
                 row.classList.add('table-danger');
                 setTimeout(function () { row.classList.remove('table-danger'); }, 1500);
             }).finally(function () {
-                self.disabled = false;
+                setPreferenceSaving(row, false);
             });
         });
     });
@@ -180,6 +194,7 @@
                 @:body.append('utoken', '@Html.Raw(Html.Encode(Model.UnsubscribeToken))');
             }
 
+            setPreferenceSaving(row, true);
             oneClickBtn.disabled = true;
             fetch('@Url.Action("UpdatePreference")', {
                 method: 'POST',
@@ -195,6 +210,8 @@
                 banner.classList.remove('alert-warning');
                 banner.classList.add('alert-danger');
                 oneClickBtn.disabled = false;
+            }).finally(function () {
+                setPreferenceSaving(row, false);
             });
         });
     }

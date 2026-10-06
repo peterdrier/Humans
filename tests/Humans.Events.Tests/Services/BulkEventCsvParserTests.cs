@@ -1,4 +1,6 @@
 using System.Globalization;
+using CsvHelper.Configuration;
+using Humans.Base.Csv;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
@@ -85,6 +87,37 @@ public sealed class BulkEventCsvParserTests
         rows[0].Title.Should().Be("Yoga");
         rows[0].Description.Should().Be("Morning stretch");
         rows[0].DurationMinutes.Should().Be(60);
+    }
+
+    [HumansTheory]
+    [InlineData(",", false)]
+    [InlineData(";", false)]
+    [InlineData(",", true)]
+    [InlineData(";", true)]
+    public void Parse_QuotedExtraHeader_DoesNotChangeDelimiter(string delimiter, bool comments)
+    {
+        var other = string.Equals(delimiter, ",", StringComparison.Ordinal) ? ';' : ',';
+        var bytes = HumansCsv.WriteBytes(csv =>
+        {
+            csv.WriteRow(nameof(BulkEventCsvRecord.Title), nameof(BulkEventCsvRecord.Category), nameof(BulkEventCsvRecord.Date),
+                nameof(BulkEventCsvRecord.StartTime), nameof(BulkEventCsvRecord.DurationMinutes), nameof(BulkEventCsvRecord.IsRecurring),
+                nameof(BulkEventCsvRecord.PriorityRank), nameof(BulkEventCsvRecord.Description), $"Notes \"quoted\" {new string(other, 25)}");
+            csv.WriteRow("Yoga", "Workshop", "2026-07-08", "09:30", "60", "false", "1", "Description", "working note");
+        }, config =>
+        {
+            config.Delimiter = delimiter;
+            config.InjectionOptions = InjectionOptions.None;
+        });
+        using var stream = new MemoryStream(bytes);
+        using var reader = new StreamReader(stream);
+        var text = (comments ? "# Comma-rich notes, for, the, template, and, extra, columns\n\n" : "") + reader.ReadToEnd();
+        var rows = BulkEventCsvParser.Parse(text, _localizer);
+        rows.Should().ContainSingle();
+        rows[0].Title.Should().Be("Yoga");
+        rows[0].Description.Should().Be("Description");
+        rows[0].DurationMinutes.Should().Be(60);
+        rows[0].PriorityRank.Should().Be(1);
+        rows[0].RowNumber.Should().Be(comments ? 4 : 2);
     }
 
     [HumansFact]

@@ -156,7 +156,7 @@ trap cleanup EXIT
 # Split $DOC at the first table-separator line under "## Codebase Growth"
 # (i.e. the `|------|------|...` line). Everything up to and including that
 # separator goes into PREAMBLE; everything after goes into EXISTING_ROWS.
-awk '
+if ! awk '
   BEGIN { in_table = 0; preamble_done = 0 }
   /^## Codebase Growth/ { in_table = 1 }
   in_table && /^\|.*---/ && !preamble_done {
@@ -169,9 +169,8 @@ awk '
     next
   }
   { print > preamble }
-' preamble="$PREAMBLE" rows="$EXISTING_ROWS" "$DOC"
-
-if [ ! -s "$PREAMBLE" ]; then
+  END { if (!preamble_done) exit 1 }
+' preamble="$PREAMBLE" rows="$EXISTING_ROWS" "$DOC"; then
   echo "Error: could not split $DOC at the Codebase Growth separator row." >&2
   exit 1
 fi

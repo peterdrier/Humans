@@ -10,6 +10,8 @@ namespace Humans.Guide.Services;
 /// The privilege tokens the heading's parenthetical resolved to, via
 /// <see cref="GuideRolePrivilegeMap"/>. Empty for an unscoped heading.
 /// </param>
+/// <param name="Role">The role scope for this segment, or null when the segment is public.</param>
+/// <param name="Markdown">The original markdown text for this consecutive run of lines.</param>
 internal sealed record GuideSegment(
     string? Role,
     IReadOnlyList<string> Privileges,

@@ -124,7 +124,8 @@ internal sealed class ProfileEmailsController(
             info?.BurnerName ?? string.Empty,
             verificationUrl!,
             result.IsConflict,
-            user.PreferredLanguage));
+            user.PreferredLanguage.IsSupportedCultureCode()
+                ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode));
 
         logger.LogInformation(
             "Sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
@@ -227,7 +228,7 @@ internal sealed class ProfileEmailsController(
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Failed to set primary email {EmailId} for user {UserId}", emailId, user.Id);
+            logger.LogWarning("Failed to set primary email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -256,7 +257,7 @@ internal sealed class ProfileEmailsController(
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Failed to set email visibility for email {EmailId} and user {UserId}", emailId, user.Id);
+            logger.LogWarning("Failed to set email visibility for email {EmailId} and user {UserId}: {Reason}", emailId, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -265,6 +266,7 @@ internal sealed class ProfileEmailsController(
 
     private static ContactFieldVisibility? ParseEmailVisibility(string? visibility) =>
         !string.IsNullOrEmpty(visibility) && Enum.TryParse<ContactFieldVisibility>(visibility, ignoreCase: true, out var parsed)
+            && Enum.IsDefined(parsed)
             ? parsed
             : null;
 
@@ -306,7 +308,7 @@ internal sealed class ProfileEmailsController(
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Failed to delete email {EmailId} for user {UserId}", emailId, user.Id);
+            logger.LogWarning("Failed to delete email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -340,7 +342,7 @@ internal sealed class ProfileEmailsController(
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Failed to set Google service email {EmailId} for user {UserId}", emailId, user.Id);
+            logger.LogWarning("Failed to set Google service email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -377,7 +379,7 @@ internal sealed class ProfileEmailsController(
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Failed to clear Google flag on email {EmailId} for user {UserId}", emailId, user.Id);
+            logger.LogWarning("Failed to clear Google flag on email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -414,7 +416,7 @@ internal sealed class ProfileEmailsController(
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Failed to clear primary flag on email {EmailId} for user {UserId}", emailId, user.Id);
+            logger.LogWarning("Failed to clear primary flag on email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -471,7 +473,7 @@ internal sealed class ProfileEmailsController(
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Failed to unlink email {EmailId} for user {UserId}", id, user.Id);
+            logger.LogWarning("Failed to unlink email {EmailId} for user {UserId}: {Reason}", id, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -622,7 +624,7 @@ internal sealed class ProfileEmailsController(
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Admin failed to set Google service email {EmailId} for user {UserId}", emailId, id);
+            logger.LogWarning("Admin failed to set Google service email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -655,7 +657,7 @@ internal sealed class ProfileEmailsController(
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Admin failed to set primary email {EmailId} for user {UserId}", emailId, id);
+            logger.LogWarning("Admin failed to set primary email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -681,7 +683,7 @@ internal sealed class ProfileEmailsController(
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Admin failed to clear Google flag on email {EmailId} for user {UserId}", emailId, id);
+            logger.LogWarning("Admin failed to clear Google flag on email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -707,7 +709,7 @@ internal sealed class ProfileEmailsController(
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Admin failed to clear primary flag on email {EmailId} for user {UserId}", emailId, id);
+            logger.LogWarning("Admin failed to clear primary flag on email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -774,7 +776,8 @@ internal sealed class ProfileEmailsController(
             info?.BurnerName ?? string.Empty,
             verificationUrl!,
             result.IsConflict,
-            targetUser.PreferredLanguage),
+            targetUser.PreferredLanguage.IsSupportedCultureCode()
+                ? targetUser.PreferredLanguage : CultureCatalog.DefaultCultureCode),
             ct);
 
         logger.LogInformation(
@@ -908,7 +911,7 @@ internal sealed class ProfileEmailsController(
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Admin failed to unlink email {EmailId} for user {UserId}", emailId, id);
+            logger.LogWarning("Admin failed to unlink email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -934,7 +937,7 @@ internal sealed class ProfileEmailsController(
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Admin failed to delete email {EmailId} for user {UserId}", emailId, id);
+            logger.LogWarning("Admin failed to delete email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -978,7 +981,7 @@ internal sealed class ProfileEmailsController(
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Admin failed to set email visibility for email {EmailId} and user {UserId}", emailId, id);
+            logger.LogWarning("Admin failed to set email visibility for email {EmailId} and user {UserId}: {Reason}", emailId, id, ex.Message);
             SetError(ex.Message);
         }
 

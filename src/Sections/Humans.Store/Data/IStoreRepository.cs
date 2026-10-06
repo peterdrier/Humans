@@ -64,8 +64,8 @@ internal interface IStoreRepository : IRepository
     /// <summary>
     /// Returns every <see cref="Order"/> whose <c>TeamId</c> is in
     /// <paramref name="teamIds"/> for the given <paramref name="year"/>, with
-    /// <c>Lines</c> eager-loaded. Empty input returns an empty list without a
-    /// round-trip.
+    /// <c>Lines</c> and <c>Payments</c> eager-loaded. Empty input returns an empty list
+    /// without a round-trip.
     /// </summary>
     Task<IReadOnlyList<Order>> GetOrdersForTeamsWithLinesAsync(
         IReadOnlyCollection<Guid> teamIds,

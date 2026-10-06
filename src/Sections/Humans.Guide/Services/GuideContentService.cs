@@ -54,7 +54,7 @@ internal sealed class GuideContentService(
     }
 
     public Task RefreshAllAsync(CancellationToken cancellationToken = default) =>
-        PopulateAsync(isRefresh: true, cancellationToken);
+        PopulateAsync(requestedStem: null, cancellationToken);
 
     private async Task<GuideDocument> GetDocumentAsync(string canonical, CancellationToken cancellationToken)
     {
@@ -63,7 +63,7 @@ internal sealed class GuideContentService(
             return cached;
         }
 
-        await PopulateAsync(isRefresh: false, cancellationToken);
+        await PopulateAsync(canonical, cancellationToken);
 
         if (cache.TryGetValue(CacheKey(canonical), out GuideDocument? afterPopulate) && afterPopulate is not null)
         {
@@ -74,9 +74,13 @@ internal sealed class GuideContentService(
             $"Guide content '{canonical}' is not currently available.");
     }
 
-    private async Task PopulateAsync(bool isRefresh, CancellationToken cancellationToken)
+    private async Task PopulateAsync(string? requestedStem, CancellationToken cancellationToken)
     {
         using var gate = await _refreshLock.AcquireAsync(logger, cancellationToken);
+
+        if (requestedStem is not null &&
+            cache.TryGetValue<GuideDocument>(CacheKey(requestedStem), out var loaded) && loaded is not null)
+            return;
 
         var hasStale = GuideFiles.All.Any(s => cache.TryGetValue(CacheKey(s), out GuideDocument? _));
 
@@ -119,7 +123,7 @@ internal sealed class GuideContentService(
         {
             logger.LogWarning(
                 "Guide refresh completed with failures (isRefresh={IsRefresh}); stale entries retained.",
-                isRefresh);
+                requestedStem is null);
         }
     }
 

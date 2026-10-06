@@ -234,6 +234,12 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
     private static Dictionary<string, string> Text(string value) =>
         new(StringComparer.OrdinalIgnoreCase) { ["en"] = value };
 
+    /// <summary>Adds a frozen electorate row for a test vote.</summary>
+    /// <param name="voteId">The vote receiving the roster row.</param>
+    /// <param name="userId">The member on the roster.</param>
+    /// <param name="isOfficial">Whether this row belongs to the binding electorate.</param>
+    /// <param name="tier">The member’s tier frozen on the roster.</param>
+    /// <param name="isBoardMember">Whether the member belongs to the Board.</param>
     /// <param name="notified">
     /// Whether the row already got its vote-opened email, as every row of a real open vote
     /// has. Pass false for a row the send never reached — what the sweep retries.

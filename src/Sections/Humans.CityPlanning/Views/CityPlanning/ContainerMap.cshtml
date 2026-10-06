@@ -80,6 +80,10 @@
              data-year="@Model.Year"
              data-is-map-admin="@Model.IsMapAdmin.ToString().ToLower()"
              data-user-camp-id="@Model.UserCampId"
+             data-i18n-save-failed="@ContainersLocalizer["Containers_MapSaveFailed"]"
+             data-i18n-clear-failed="@ContainersLocalizer["Containers_MapClearFailed"]"
+             data-i18n-center-on-container="@ContainersLocalizer["Containers_MapCenterOnContainer"]"
+             data-i18n-placement-notes="@ContainersLocalizer["Containers_PlacementNotes_Title"]"
              data-i18n-clear-placement="@ContainersLocalizer["Containers_MapClearPlacement"]"
              data-i18n-confirm-clear="@ContainersLocalizer["Containers_MapConfirmClear"]"></div>
         <div id="rotation-handle"><i class="fa-solid fa-rotate"></i></div>
@@ -117,7 +121,7 @@
                         <span data-role="title-prefix">@ContainersLocalizer["Containers_PlacementNotes_Title"]</span> —
                         <span data-role="container-name"></span>
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@SharedLocalizer["Common_Close"]"></button>
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-danger d-none" data-role="error"></div>

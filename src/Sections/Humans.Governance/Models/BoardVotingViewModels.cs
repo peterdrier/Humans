@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Users.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Governance.Domain;
@@ -65,6 +66,7 @@ internal sealed class BoardVoteDetailItemViewModel
 internal sealed class BoardVotingFinalizeModel
 {
     public Guid ApplicationId { get; set; }
+    [BindRequired]
     public bool Approved { get; set; }
     public string? BoardMeetingDate { get; set; }
     public string? DecisionNote { get; set; }

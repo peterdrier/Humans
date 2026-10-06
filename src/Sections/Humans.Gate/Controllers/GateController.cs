@@ -185,19 +185,17 @@ internal sealed class GateController(
 
         // Name-only search (never email — see the note above). To tell same-name staffers apart,
         // each result carries a *masked* primary email as a disambiguator — enough to recognise
-        // your own address, not enough to broadcast it. The effective email is read per result
-        // (cached) and masked here at the presentation layer, so the search itself and its
+        // your own address, not enough to broadcast it. The effective emails come from the cached batch lookup
+        // and are masked here at the presentation layer, so the search itself and its
         // response shape stay email-free.
         var matches = (await UserService.SearchUsersAsync(query, PersonSearchFields.Name, 10, ct))
             .OrderByRelevance()
             .ToList();
-        var rows = new List<HumanLookupSearchResult>(matches.Count);
-        foreach (var m in matches)
-        {
-            var info = await UserService.GetUserInfoAsync(m.UserId, ct);
-            rows.Add(new HumanLookupSearchResult(
-                m.UserId, m.BurnerName, Detail: MaskEmail(PublicEmail(info)), ProfilePictureUrl: m.ProfilePictureUrl));
-        }
+        if (matches.Count == 0) return Json(new List<HumanLookupSearchResult>());
+        var infos = await UserService.GetUserInfosAsync(matches.Select(m => m.UserId).Distinct().ToArray(), ct);
+        var rows = matches.Select(m => new HumanLookupSearchResult(
+            m.UserId, m.BurnerName, Detail: MaskEmail(PublicEmail(infos.GetValueOrDefault(m.UserId))),
+            ProfilePictureUrl: m.ProfilePictureUrl)).ToList();
         return Json(rows);
     }
 
@@ -238,7 +236,6 @@ internal sealed class GateController(
         var rows = board.Rows
             .OrderByDescending(r => r.Admitted)
             .ThenByDescending(r => r.Total)
-            .Select(r => new GateLeaderboardRowViewModel(r.ScannedByUserId, r.Admitted, r.Rejected, r.Total))
             .ToList();
 
         ViewData["TotalAdmitted"] = board.TotalAdmitted;

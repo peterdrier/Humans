@@ -21,13 +21,30 @@ public class TicketHoldingsViewComponentTests
     private readonly ITicketServiceRead _tickets = Substitute.For<ITicketServiceRead>();
     private readonly IEarlyEntryService _earlyEntry = Substitute.For<IEarlyEntryService>();
 
-    private TicketHoldingsViewComponent BuildSut() => new(_tickets, _earlyEntry)
+    private TicketHoldingsViewComponent BuildSut(CancellationToken ct = default) => new(_tickets, _earlyEntry)
     {
         ViewComponentContext = new ViewComponentContext
         {
-            ViewContext = new ViewContext { HttpContext = new DefaultHttpContext() },
+            ViewContext = new ViewContext { HttpContext = new DefaultHttpContext { RequestAborted = ct } },
         },
     };
+
+    [HumansTheory]
+    [Xunit.InlineData(ProfileCardViewMode.Self)]
+    [Xunit.InlineData(ProfileCardViewMode.Admin)]
+    public async Task AbandonedRequest_CancelsHoldingsRead(ProfileCardViewMode mode)
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        var userId = Guid.NewGuid();
+        _tickets.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, []));
+        _tickets.GetUserTicketHoldingsAsync(userId, aborted.Token)
+            .Returns(Task.FromCanceled<UserTicketHoldings>(aborted.Token));
+        var act = () => BuildSut(aborted.Token).InvokeAsync(userId, mode);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
 
     [HumansFact]
     public async Task RendersNothing_ForPublicViewer_EvenWithHoldings()

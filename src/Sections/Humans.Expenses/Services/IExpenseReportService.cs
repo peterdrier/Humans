@@ -4,13 +4,14 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Expenses.Services;
 
+/// <summary>Expense report reads and actor-aware mutations.</summary>
 /// <remarks>
 /// <para><b>Actor vs submitter.</b> A report belongs to its <c>SubmitterUserId</c>; the actor is
 /// whoever is currently changing it. They are the same person for a member working on their own
 /// report, and differ when a finance admin files or fixes one on a member's behalf. Every mutation
 /// therefore takes <c>actorUserId</c> plus <c>actorIsFinanceAdmin</c> — the caller's authority,
 /// resolved at the controller (design-rules §6), mirroring
-/// <see cref="GetReviewQueueAsync"/>. Set it and the ownership match is
+/// <see cref="IExpenseReportServiceRead.GetReviewQueueAsync"/>. Set it and the ownership match is
 /// waived and the editable window widens from Draft to Draft/Submitted/CoordinatorEndorsed; the
 /// checks are defence in depth behind the resource-based handler, not the primary gate.</para>
 /// </remarks>

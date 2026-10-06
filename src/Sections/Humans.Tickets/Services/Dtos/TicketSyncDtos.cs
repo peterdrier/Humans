@@ -20,7 +20,7 @@ internal sealed record MatchedAttendeeRow(
 
 /// <summary>
 /// A discount-code projection row used to build
-/// <see cref="DiscountCodeRedemption"/> entries that feed
+/// <see cref="Humans.Campaigns.Contracts.DiscountCodeRedemption"/> entries that feed
 /// <c>ICampaignService.MarkGrantsRedeemedAsync</c>.
 /// </summary>
 internal sealed record OrderDiscountCodeRow(string Code, Instant PurchasedAt);

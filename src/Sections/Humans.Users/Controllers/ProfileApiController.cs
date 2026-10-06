@@ -40,7 +40,7 @@ internal sealed class ProfileApiController(
             : PersonSearchFields.PublicAll;
 
         // Cover the deleted-user-but-session-still-valid race — fail-closed with 401.
-        var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
         if (authError is not null)
             return authError;
         var viewerUserId = viewer.Id;
@@ -102,7 +102,7 @@ internal sealed class ProfileApiController(
 
         // The editing user is the authenticated session identity — never a
         // caller-supplied id — so the self-exclusion below can't be spoofed.
-        var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
         if (authError is not null)
             return authError;
 
@@ -115,7 +115,7 @@ internal sealed class ProfileApiController(
     [HttpGet("by-userid/{userId:guid}")]
     public async Task<IActionResult> GetByUserId(Guid userId, CancellationToken ct = default)
     {
-        var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
         if (authError is not null)
             return authError;
         var viewerUserId = viewer.Id;

@@ -10,7 +10,7 @@ namespace Humans.Camps.Data;
 /// save changes atomically inside a single
 /// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{CampsDbContext}"/>-owned
 /// context. Cross-domain navigation is not resolved here; the application
-/// service stitches display names from <see cref="Users.IUserService"/>.
+/// service stitches display names from <see cref="Humans.Users.Contracts.IUserServiceRead"/>.
 /// </remarks>
 internal partial interface ICampRepository
 {
@@ -38,28 +38,12 @@ internal partial interface ICampRepository
     Task<IReadOnlyList<CampSpecialRole>> GetExistingSpecialRolesAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the distinct set of user ids that currently hold the given
-    /// special role on any season. Used by <c>SystemTeamSyncJob</c> to compute
-    /// Barrio Leads team membership.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetSpecialRoleHolderUserIdsAsync(
-        CampSpecialRole specialRole, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the distinct user ids holding the given special role on the
     /// specified season (non-deactivated definition). Used to source the camp
     /// detail "Contact the leads" recipient list and admin/CSV lead columns.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetSpecialRoleHolderUserIdsForSeasonAsync(
         Guid campSeasonId, CampSpecialRole specialRole, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns true if the user currently holds the given special role on any
-    /// camp/season. Used by <c>SystemTeamSyncJob</c> for the Barrio Leads team
-    /// member-check path.
-    /// </summary>
-    Task<bool> IsSpecialRoleHolderAnywhereAsync(
-        Guid userId, CampSpecialRole specialRole, CancellationToken ct = default);
 
     Task<bool> DefinitionNameExistsAsync(string name, Guid? excludingId, CancellationToken ct = default);
 
@@ -92,8 +76,8 @@ internal partial interface ICampRepository
 
     /// <summary>
     /// Hard-deletes every assignment for the given <c>CampMemberId</c>. Returns the count of rows removed.
-    /// Used by <see cref="Camps.ICampService.LeaveCampAsync"/> and
-    /// <see cref="Camps.ICampService.WithdrawCampMembershipRequestAsync"/> cascade hooks.
+    /// Used by <see cref="Humans.Camps.Services.ICampService.LeaveCampAsync"/> and
+    /// <see cref="Humans.Camps.Services.ICampService.WithdrawCampMembershipRequestAsync"/> cascade hooks.
     /// </summary>
     Task<int> DeleteAllForMemberAsync(Guid campMemberId, CancellationToken ct = default);
 
@@ -135,9 +119,9 @@ internal partial interface ICampRepository
 
     /// <summary>
     /// Returns every (CampSeason.Year, CampRoleDefinition.Slug, assigneeUserIds) tuple for
-    /// active role definitions in the given <paramref name="year"/> set. Used by
-    /// <see cref="Camps.ICampRoleService"/>'s
-    /// <see cref="GoogleIntegration.IGoogleGroupMembershipSource.GetExpectedAsync"/>.
+    /// active role definitions in the given <paramref name="years"/> set. Used by
+    /// <see cref="Humans.Camps.Contracts.ICampRoleService"/>'s
+    /// <see cref="Humans.GoogleIntegration.Contracts.IGoogleGroupMembershipSource.GetExpectedAsync"/>.
     /// </summary>
     Task<IReadOnlyList<CampRoleAssignment>> GetActiveAssignmentsForYearsAsync(
         IReadOnlyCollection<int> years, CancellationToken ct = default);
@@ -166,12 +150,10 @@ internal partial interface ICampRepository
     /// Idempotent: re-running after a partial merge finds no source members and
     /// is a no-op. <c>CampMember</c>/<c>CampRoleAssignment</c> carry no
     /// <c>UpdatedAt</c>, so <paramref name="updatedAt"/> is unused for these
-    /// tables and accepted for caller-side symmetry. Returns the count of
-    /// <c>CampMember</c> rows belonging to <paramref name="targetUserId"/> after
-    /// the fold.
+    /// tables and accepted for caller-side symmetry.
     /// </para>
     /// </summary>
-    Task<int> ReassignMembershipsToUserAsync(
+    Task ReassignMembershipsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,

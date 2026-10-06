@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.GoogleIntegration/Services/GoogleGroupSyncService.cs
-  src/Sections/Humans.GoogleIntegration.Contracts/IGoogleGroupSync.cs
-  src/Sections/Humans.GoogleIntegration.Contracts/IGoogleGroupMembershipSource.cs
+  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleGroupSync.cs
+  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleGroupMembershipSource.cs
   src/Sections/Humans.GoogleIntegration/Services/IGoogleGroupSyncScheduler.cs
   src/Sections/Humans.GoogleIntegration/Services/Workspace/IGoogleGroupMembershipClient.cs
   src/Sections/Humans.Teams/**

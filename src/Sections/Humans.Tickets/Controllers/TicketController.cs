@@ -45,29 +45,7 @@ internal sealed class TicketController(
 
         var model = new TicketOrdersViewModel
         {
-            Orders = result.Rows.Select(o => new TicketOrderRow
-            {
-                Id = o.Id,
-                VendorOrderId = o.VendorOrderId,
-                PurchasedAt = o.PurchasedAt,
-                BuyerName = o.BuyerName,
-                BuyerEmail = o.BuyerEmail,
-                AttendeeCount = o.AttendeeCount,
-                TotalAmount = o.TotalAmount,
-                Currency = o.Currency,
-                DiscountCode = o.DiscountCode,
-                DiscountAmount = o.DiscountAmount,
-                DonationAmount = o.DonationAmount,
-                VatAmount = o.VatAmount,
-                PaymentMethod = o.PaymentMethod,
-                PaymentMethodDetail = o.PaymentMethodDetail,
-                StripeFee = o.StripeFee,
-                ApplicationFee = o.ApplicationFee,
-                PaymentStatus = o.PaymentStatus,
-                VendorDashboardUrl = o.VendorDashboardUrl,
-                MatchedUserId = o.MatchedUserId,
-                MatchedUserName = o.MatchedUserName
-            }).ToList(),
+            Orders = result.Rows,
             TotalCount = result.TotalCount,
             Page = page,
             PageSize = pageSize,
@@ -101,25 +79,7 @@ internal sealed class TicketController(
 
         var model = new TicketAttendeesViewModel
         {
-            Attendees = result.Rows.Select(a => new TicketAttendeeRow
-            {
-                Id = a.Id,
-                AttendeeName = a.AttendeeName,
-                AttendeeEmail = a.AttendeeEmail,
-                TicketTypeName = a.TicketTypeName,
-                Price = a.Price,
-                IsVip = a.Price > TicketConstants.VipThresholdEuros,
-                TaxableAmount = a.Price > TicketConstants.VipThresholdEuros
-                    ? TicketConstants.VipThresholdEuros
-                    : a.Price,
-                VipDonation = a.Price > TicketConstants.VipThresholdEuros
-                    ? a.Price - TicketConstants.VipThresholdEuros
-                    : 0m,
-                Status = a.Status,
-                MatchedUserId = a.MatchedUserId,
-                MatchedUserName = a.MatchedUserName,
-                VendorOrderId = a.VendorOrderId
-            }).ToList(),
+            Attendees = result.Rows,
             TotalCount = result.TotalCount,
             Page = page,
             PageSize = pageSize,
@@ -150,27 +110,8 @@ internal sealed class TicketController(
             CodesRedeemed = data.CodesRedeemed,
             CodesUnused = data.CodesUnused,
             RedemptionRate = data.RedemptionRate,
-            Campaigns = data.Campaigns.Select(c => new CampaignCodeSummary
-            {
-                CampaignId = c.CampaignId,
-                CampaignTitle = c.CampaignTitle,
-                TotalGrants = c.TotalGrants,
-                Redeemed = c.Redeemed,
-                Unused = c.Unused,
-                RedemptionRate = c.RedemptionRate,
-            }).ToList(),
-            Codes = data.Codes.Select(c => new CodeDetailRow
-            {
-                Code = c.Code,
-                RecipientName = c.RecipientName,
-                RecipientUserId = c.RecipientUserId,
-                CampaignTitle = c.CampaignTitle,
-                Status = c.Status,
-                RedeemedAt = c.RedeemedAt,
-                RedeemedByName = c.RedeemedByName,
-                RedeemedByEmail = c.RedeemedByEmail,
-                RedeemedOrderVendorId = c.RedeemedOrderVendorId,
-            }).ToList(),
+            Campaigns = data.Campaigns,
+            Codes = data.Codes,
             Search = search,
         };
 
@@ -190,15 +131,7 @@ internal sealed class TicketController(
 
         var model = new WhoHasntBoughtViewModel
         {
-            Humans = result.Humans.Select(h => new WhoHasntBoughtRow
-            {
-                UserId = h.UserId,
-                HasTicket = h.HasTicket,
-                Name = h.Name,
-                Email = h.Email,
-                Teams = h.Teams,
-                Tier = h.Tier,
-            }).ToList(),
+            Humans = result.Humans,
             TotalCount = result.TotalCount,
             Page = page,
             PageSize = pageSize,
@@ -219,58 +152,11 @@ internal sealed class TicketController(
 
         var model = new TicketSalesAggregatesViewModel
         {
-            WeeklySales = aggregates.WeeklySales.Select(w => new WeeklySalesRow
-            {
-                WeekLabel = w.WeekLabel,
-                TicketsSold = w.TicketsSold,
-                GrossRevenue = w.GrossRevenue,
-                OrderCount = w.OrderCount,
-                Donations = w.Donations,
-                VatAmount = w.VatAmount,
-                VipDonations = w.VipDonations,
-            }).ToList(),
-            QuarterlySales = aggregates.QuarterlySales.Select(q => new QuarterlySalesRow
-            {
-                QuarterLabel = q.QuarterLabel,
-                Year = q.Year,
-                Quarter = q.Quarter,
-                TicketsSold = q.TicketsSold,
-                GrossRevenue = q.GrossRevenue,
-                OrderCount = q.OrderCount,
-                Donations = q.Donations,
-                VatAmount = q.VatAmount,
-                VipDonations = q.VipDonations,
-            }).ToList(),
-            MonthlySales = aggregates.MonthlySales.Select(m => new MonthlySalesRow
-            {
-                MonthLabel = m.MonthLabel,
-                OrderCount = m.OrderCount,
-                TicketsSold = m.TicketsSold,
-                GrossRevenue = m.GrossRevenue,
-                Donations = m.Donations,
-                VipDonations = m.VipDonations,
-                VatAmount = m.VatAmount,
-                StripeFees = m.StripeFees,
-                ApplicationFees = m.ApplicationFees,
-                RefundedGross = m.RefundedGross,
-                TicketIncomeInclVat = m.TicketIncomeInclVat,
-                TicketIncomeExVat = m.TicketIncomeExVat,
-            }).ToList(),
-            ByTicketType = aggregates.ByTicketType.Select(t => new TicketTypeSalesRow
-            {
-                TicketTypeName = t.TicketTypeName,
-                Price = t.Price,
-                TicketsSold = t.TicketsSold,
-                FaceValue = t.FaceValue,
-            }).ToList(),
-            ByDiscountCampaign = aggregates.ByDiscountCampaign.Select(d => new DiscountCampaignRow
-            {
-                CampaignTitle = d.CampaignTitle,
-                CodesGranted = d.CodesGranted,
-                CodesUsed = d.CodesUsed,
-                AverageDiscount = d.AverageDiscount,
-                TotalDiscount = d.TotalDiscount,
-            }).ToList(),
+            WeeklySales = aggregates.WeeklySales,
+            QuarterlySales = aggregates.QuarterlySales,
+            MonthlySales = aggregates.MonthlySales,
+            ByTicketType = aggregates.ByTicketType,
+            ByDiscountCampaign = aggregates.ByDiscountCampaign,
         };
 
         return View(model);
@@ -304,7 +190,7 @@ internal sealed class TicketController(
     {
         var model = new ParticipationBackfillViewModel
         {
-            Year = await participationBackfillService.GetDefaultYearAsync(),
+            Year = await participationBackfillService.GetDefaultYearAsync(HttpContext.RequestAborted),
         };
         return View(model);
     }

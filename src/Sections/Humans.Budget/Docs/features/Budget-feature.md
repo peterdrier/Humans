@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Budget/**
-  src/Sections/Humans.Budget.Contracts/**
+  src/Sections/Humans.Budget/Contracts/**
 -->
 <!-- freshness:flag-on-change
   Budget hierarchy, audit log, ticketing projection sync, finance vs coordinator vs public visibility tiers, or implementation phase status may have changed.
@@ -80,7 +80,7 @@ BudgetYear ("2026", "2027-A", ...)
 - Each line item has: description, amount, responsible team (FK → Team), optional notes
 - CapEx/OpEx flag is on `BudgetCategory`, not line items
 - No arbitrary nesting beyond four levels
-- `BudgetYear` supports soft-delete (`IsDeleted`, `DeletedAt`): "deleting" a year archives it instead of removing data, preserving all audit log history. Archived years are hidden from non-admin views but remain visible on the Finance Admin page and in the audit log year filter.
+- `BudgetYear` supports soft-delete (`IsDeleted`, `DeletedAt`): "deleting" a year archives it instead of removing data, preserving all audit log history. Archived years are hidden from non-admin views but remain visible on the Finance Admin page and in the audit log year filter. They cannot be reactivated; stale status-update submissions leave the current active year and audit history unchanged.
 
 ### Budget Audit Log
 
@@ -253,7 +253,7 @@ Outbound invoices to members/barrios:
   - (VAT is not stored as its own line item — settlement math lives in the cash-flow
     computation; no donation handling or quarter-boundary splitting exists in the sync)
 - **Projections** via `TicketingBudgetService.GetProjectionsAsync`:
-  - Virtual (non-persisted) weekly entries for future weeks from current week to event date
+  - Virtual (non-persisted) weekly entries for future weeks from current week to event date (inclusive, including a one-day final week when the event is on Monday)
   - Recalculates from latest actuals: remaining tickets / remaining days = projected daily rate
   - Fees computed on revenue; VAT on revenue at the projection's VAT rate (inclusive
     formula), while the Stripe/TicketTailor fee line items carry the fixed 21% fee VAT rate

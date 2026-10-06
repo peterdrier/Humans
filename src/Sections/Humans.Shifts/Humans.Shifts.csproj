@@ -36,7 +36,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!-- IIssueQueueOwner: this section declares the issue queue it owns. -->
-    <ProjectReference Include="..\Humans.Issues.Contracts\Humans.Issues.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Issues\Humans.Issues.csproj" />
     <!--
       Humans.Base above carries the shared enums whose persisted strings this section reads;
       the section's own persisted-string enums (SignupStatus, ShiftPriority, SignupPolicy,
@@ -47,8 +47,8 @@
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
-      Outbound section references, all through leaves and all acyclic — none of these
-      leaves names a Humans.Shifts type (they may name Humans.Shifts.Contracts, which is
+      Outbound section references, all acyclic — none of these names a Humans.Shifts
+      type (they may name Humans.Shifts.Contracts, which is
       below this project).
         Camps         — ICampServiceRead: camp labels and rosters for the summary-by-camp.
         Users         — UserInfo snapshots, IUserMerge, and the profile-side reads.
@@ -73,9 +73,9 @@
                         names no Humans.Shifts type at all.
         Tickets       — early entry gates on the volunteer holding a ticket.
     -->
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
+    <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
     <!--
       Calendar owns the personal iCal feed; ShiftSignupService implements its
       ICalendarFeedContributor. Calendar's Contracts/ is a folder, not a leaf, so the
@@ -85,7 +85,7 @@
     -->
     <ProjectReference Include="..\Humans.Calendar\Humans.Calendar.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Onboarding\Humans.Onboarding.csproj" />

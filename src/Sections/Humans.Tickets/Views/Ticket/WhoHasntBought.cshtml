@@ -46,15 +46,15 @@
     <p class="text-muted">@Model.TotalCount humans</p>
 
     @{
-        Func<WhoHasntBoughtRow, IHtmlContent> humanCell =
+        Func<WhoHasntBoughtRowDto, IHtmlContent> humanCell =
             @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
-        Func<WhoHasntBoughtRow, IHtmlContent> emailCell =
+        Func<WhoHasntBoughtRowDto, IHtmlContent> emailCell =
             @<text><small>@item.Email</small></text>;
-        Func<WhoHasntBoughtRow, IHtmlContent> teamsCell =
+        Func<WhoHasntBoughtRowDto, IHtmlContent> teamsCell =
             @<text><small>@item.Teams</small></text>;
-        Func<WhoHasntBoughtRow, IHtmlContent> tierCell =
+        Func<WhoHasntBoughtRowDto, IHtmlContent> tierCell =
             @<text><span class="badge bg-secondary">@item.Tier</span></text>;
-        Func<WhoHasntBoughtRow, IHtmlContent> ticketCell = @<text>
+        Func<WhoHasntBoughtRowDto, IHtmlContent> ticketCell = @<text>
             @if (item.HasTicket)
             {
                 <span class="badge bg-success"><i class="fa-solid fa-check"></i></span>
