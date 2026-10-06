@@ -22,9 +22,10 @@ No direct DB access, no cache.
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, UserEarlyEntry?>` (`EarlyEntry.UserEarlyEntry`, lazy, no warmup) | Per-User (caches negative result) | yes | yes | yes (`IEarlyEntryInvalidator.InvalidateUser` / `InvalidateAll`, fired from Shifts, Camps, and Teams writes) |
+| `TrackedCache<Guid, UserEarlyEntry?>` (`EarlyEntry.UserEarlyEntry`, lazy, no warmup) | Per-User (caches negative result) | yes | yes | yes (`IEarlyEntryInvalidator.InvalidateUser` / `InvalidateAll`, fired from Shifts, Camps, and Teams writes and every event-settings save (`EventSettingsChanged`)) |
 
-Implements `IEarlyEntryService`, `IEarlyEntryInvalidator`. `GetRosterAsync`
+Implements `IEarlyEntryService`, `IEarlyEntryInvalidator`, `IEventSettingsChangeListener`
+(Settings) and `ICacheStats`. `GetRosterAsync`
 always delegates to the inner service; `GetForUserAsync` is cached per user,
 negative result included. Resolves the keyed Scoped inner via
 `IServiceScopeFactory`. Surfaced on `/Debug/CacheStats`.
