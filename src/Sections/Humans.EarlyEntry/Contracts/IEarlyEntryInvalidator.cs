@@ -18,11 +18,9 @@ public interface IEarlyEntryInvalidator : IInvalidator
     void InvalidateUser(Guid userId);
 
     /// <summary>
-    /// Evict the whole cache. For global config changes that shift every holder's
-    /// EE at once — <c>EventSettings.EarlyEntryStartOffset</c> and the gate / build-offset
-    /// edits (which move every shift-derived date). Those all live in Settings now;
-    /// this section's cache subscribes to its <c>IEventSettingsChangeListener</c>
-    /// fan-out and calls this on every save.
+    /// Evict the whole cache, for a change that moves every holder at once: a team's
+    /// <c>EarlyEntryEnabled</c> flip. Event-settings saves reach the same eviction through
+    /// the cache's <c>IEventSettingsChangeListener</c>.
     /// </summary>
     void InvalidateAll();
 }

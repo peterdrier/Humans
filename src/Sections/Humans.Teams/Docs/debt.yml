@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Teams. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 9
+next_id: 11
 inbox:
   - added: 2026-09-05
     id: TEAMS-1
@@ -23,3 +23,14 @@ inbox:
     id: TEAMS-8
     what: "TeamController.EditTeam catches every DbUpdateException and classifies it by whether InnerException.Message contains CustomSlug; all other database failures become a duplicate Google Group prefix form error. Structured constraint/rule translation belongs at the data/service boundary, not provider-schema knowledge in the controller. Found during the daily debt sweep. Plan: the repository maps the unique-constraint violation to a typed outcome and the service's UpdateTeamAsync returns a result record (Success / SlugTaken / GroupPrefixTaken) the controller localizes; other database failures propagate. Throw-to-result, pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel
+  - added: 2026-10-06
+    id: TEAMS-9
+    what: "TeamService.PermanentlyDeleteTeamAsync deletes a team, and with it its TeamEarlyEntryGrant rows, without calling IEarlyEntryInvalidator, so each grantee's cached early-entry answer outlives the delete (/section-doctor on EarlyEntry 2026-09-05, re-verified 2026-10-06)."
+    review: light
+    root: CENTRAL-54
+  - added: 2026-10-06
+    id: TEAMS-10
+    what: "Deactivating a team (UpdateTeamAsync with isActive false, or DeleteTeamAsync) leaves its early-entry grants live: TeamRepository.GetEarlyEntryGrantsForEnabledTeamsAsync filters on EarlyEntryEnabled only, and neither path evicts IEarlyEntryInvalidator. Whether a deactivated team still grants early entry is a Teams decision; either filter on IsActive and evict on the flip, or record that deactivation keeps grants (/section-doctor on EarlyEntry 2026-10-06)."
+    review: panel
+    status: needs-detail
+    blocked_on: "A Teams policy call on whether a deactivated team keeps granting early entry."

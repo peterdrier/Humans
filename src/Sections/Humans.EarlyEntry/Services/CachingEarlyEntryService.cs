@@ -27,7 +27,7 @@ internal sealed class CachingEarlyEntryService(
         long generation;
         lock (_cacheGate)
         {
-            if (TryGet(userId, out var cached)) return cached; // cached may be null (negative)
+            if (TryGet(userId, out var cached)) return cached;
             generation = _cacheGeneration;
         }
 
