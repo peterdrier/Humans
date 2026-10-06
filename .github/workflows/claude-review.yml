@@ -265,10 +265,15 @@ jobs:
             That is the PR under review. Do NOT run `gh pr list` or
             `gh pr view` to work out which PR it is, and do not look up the
             head SHA — it is above, and it is the SHA the summary comment
-            must cite. Get the diff locally, both commits are fetched:
-            `git diff ${{ needs.preflight.outputs.base_sha }} ${{ needs.preflight.outputs.head_sha }}`
-            (`--stat`, `--name-only` and path filters all work). Do not use
-            `gh pr diff`: GitHub refuses it outright on a PR over 300 files.
+            must cite. Both commits are fetched, so diff them locally and
+            start with the shape, not the content:
+            `git diff --stat ${{ needs.preflight.outputs.base_sha }} ${{ needs.preflight.outputs.head_sha }}`.
+            Under ~30 files, take the full diff next. Over that, never pull
+            the whole diff into your own context: group the files by section,
+            spawn one subagent per group with a path-filtered diff of its own
+            (`git diff <base> <head> -- <paths>`), and keep your context for
+            their reports and the summary. Do not use `gh pr diff`: GitHub
+            refuses it outright on a PR over 300 files.
 
             ${{ steps.prompt.outputs.body }}
           claude_args: |
