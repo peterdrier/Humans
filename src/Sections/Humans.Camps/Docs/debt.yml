@@ -3,19 +3,15 @@
 version: 1
 next_id: 7
 inbox:
-  - added: 2026-08-28
-    id: CAMPS-2
-    what: "Test gaps from the invariant matrix (/section-doctor on Camps 2026-08-28): (a) no test asserts audit entries on ApproveCampMemberAsync, RejectCampMemberAsync, RemoveCampMemberAsync, ApproveSeasonAsync, RejectSeasonAsync, ChangeSeasonNameAsync or DeleteCampAsync — the admin-acts-on-member's-behalf verbs assert state and notifications only; (b) the (season,user) partial unique index and the 23505 race fallbacks in RequestMembershipAsync/AddAssignmentAsync have no test (EF InMemory cannot raise 23505); (c) nothing pins EE-grant behavior when CampSettings.EeStartDate is null or in the future; (d) no test ties the EE endpoint to CampOperationRequirement.Manage."
-    review: light
   - added: 2026-10-03
     id: CAMPS-4
-    what: "CampService.ContributeForUserAsync exports only CampRoleAssignments, omitting CampMember affiliation/status/requested-confirmed-removed dates and early-entry state for ordinary members without a role. GetAllAssignmentsForUserAsync is role-filtered; year/active projections cannot provide complete membership history, and no existing repository read returns all user membership rows. Add an approved Camps-owned read and export projection for every membership status/year; existing erasure already deletes these rows via DeleteCampFootprintForUserAsync. Deferred unattended because the fix needs new repository surface."
-    review: full
+    what: "CampService.ContributeForUserAsync exports only CampRoleAssignments, omitting CampMember affiliation/status/requested-confirmed-removed dates and early-entry state for ordinary members without a role. GetAllAssignmentsForUserAsync is role-filtered; year/active projections cannot provide complete membership history, and no existing repository read returns all user membership rows. Existing erasure already deletes these rows via DeleteCampFootprintForUserAsync. Plan: add an internal Camps repository read returning every CampMember row for a user (all years, all statuses) and project it into the export slice; repositories are internal, not public surface per debt-sweep-standing-policy D2, list in PR."
+    review: panel
   - added: 2026-10-04
     id: CAMPS-5
-    what: "CachingCampService.WithSettings resolves ISettingsService sideways for ActiveYearAsync and GetEarlyEntriesAsync, contrary to decorators-talk-only-to-inner. The decorator also assembles EarlyEntryGrant rows rather than delegating to its inner service. Move these calendar inputs/assembly to the Camps service through an approved existing-or-new owner contract; ICampService currently cannot supply the active event early-entry date. Deferred unattended because the complete correction needs a surface decision. Found during the daily production debt sweep."
+    what: "CachingCampService.WithSettings resolves ISettingsService sideways for ActiveYearAsync and GetEarlyEntriesAsync, contrary to decorators-talk-only-to-inner. The decorator also assembles EarlyEntryGrant rows (its IEarlyEntryProvider implementation) rather than delegating. Found during the daily production debt sweep. Plan: move the IEarlyEntryProvider assembly and the active-year read into CampService (which already has a private GetActiveYearAsync) and have the decorator delegate; uses the existing IEarlyEntryProvider contract, no new surface."
     review: panel
   - added: 2026-10-04
     id: CAMPS-6
-    what: "CampController mutation actions localize InvalidOperationException.Message through campsLocalizer; other catches expose diagnostic Message directly. This violates no-localized-exception-messages and couples member feedback to diagnostic wording. Agree a structured owner error/result shape while preserving current feedback before public contract changes. Found during the daily sweep."
+    what: "CampController mutation actions localize InvalidOperationException.Message through campsLocalizer; other catches expose diagnostic Message directly. This violates no-localized-exception-messages and couples member feedback to diagnostic wording. Found during the daily sweep. Plan: the CampService mutations return a result record carrying a refusal key the controller localizes (throw-to-result per no-localized-exception-messages); pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel

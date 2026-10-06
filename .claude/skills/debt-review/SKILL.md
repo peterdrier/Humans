@@ -69,12 +69,18 @@ reworded or moved is not a close.
 
 **Re-check Needs-Peter rows, then elevate.** Codex's **Needs Peter** list is a claim, not
 a verdict — something Codex couldn't fix may be fixable here. Take the list in order and
-verify each row against the code. Elevate it only when it truly needs Peter's decision
-(approval, new public surface, policy), never because the fix looked hard:
+verify each row against the code. Apply [`debt-sweep-standing-policy`](../../../memory/process/debt-sweep-standing-policy.md)
+(D1–D13) first: a rule-prescribed contract change is pre-approved (D1), `internal` types are
+never public surface (D2), and D5–D9/D13 rows close outright. Elevate a row only when it truly
+needs Peter's decision (a NEW interface, service or endpoint, or a policy no rule answers),
+never because the fix looked hard:
 
-- **Fixable without a decision** → fix it in the round-1 commit and delete the row.
-- **Stale** (already fixed) → delete the row.
-- **Truly needs Peter** → search for an existing issue first (cite it instead of filing),
+- **Fixable without a decision** (including D1 shapes) → fix it in the round-1 commit and
+  delete the row; list D1 changes under **Pre-approved contract changes** in the PR body.
+- **Stale** (already fixed) or **D5 close / D6–D9 not debt** → delete the row.
+- **Truly needs Peter** → write it in D3 format, answerable cold (what the code does today,
+  what would change, why it matters, a yes/no proposal with a concrete signature — never the
+  row id alone); search for an existing issue first (cite it instead of filing),
   file the rest, and delete each elevated row in the round-1 commit with the issue in the
   commit message. **At most three new issues per review, follow-ups below included** —
 everything past the cap stays in the ledger for a later night. Never bulk-file.

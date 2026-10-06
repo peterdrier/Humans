@@ -3,9 +3,11 @@
 ## Context
 
 You are running unattended, overnight, on a dedicated throwaway clone with no
-human watching. Nobody will answer a question tonight. When you are unsure
-whether something is safe, the answer is: don't do it, and say why in your
-final message instead.
+human watching. Nobody will answer a question tonight. Peter's standing
+answers are in `memory/process/debt-sweep-standing-policy.md` (D1–D13) — read
+it first; it decides what is pre-approved, what closes outright and what is
+not debt. Where it and the rules below still leave a change unsafe, don't do
+it, and say why in your final message instead.
 
 ## Required timed goal
 
@@ -48,10 +50,14 @@ test-only work and splitting one fix across commits are not substantive fixes.
 There is no fix-count quota; never use a count to decide when to stop. Do not
 manufacture work, weaken validation, or make cosmetic edits to inflate the report.
 
-Do not sleep to consume the window. If a ledger row truly cannot be fixed
-autonomously — it needs Peter's approval, new public surface or a policy
-decision — leave it, list its id under **Needs Peter** in the report with the
-one decision that would unblock it, and take the next row. The morning debt
+Do not sleep to consume the window. A rule-prescribed contract change is
+pre-approved (policy D1) and `internal` types are never public surface (D2) —
+do those. If a ledger row truly cannot be fixed autonomously — it needs a NEW
+interface, service or endpoint, or a policy decision no rule answers — leave
+it and list it under **Needs Peter** in the D3 format: what the code does
+today, what would change, why it matters, then a yes/no proposal with a
+concrete signature. The row id alone is never enough. Never write "needs
+approval" into a row's `what:`. Then take the next row. The morning debt
 review re-checks each one, fixes what it can, and elevates the rest to GitHub
 issues (at most three a night), so order the list most important first. Only when
 no ledger row is actionable tonight, run the Finds commands for new debt.
@@ -127,6 +133,10 @@ These come straight from this repo's own rules
   it's useful." Prefer reuse over adding a new file, type, interface method,
   DTO, helper, endpoint, or DI registration. If you find yourself adding
   public surface, that's a signal to reconsider scope, not a green light.
+  Rule-prescribed shapes (policy D1) are pre-approved: do them and list each
+  in the PR body under **Pre-approved contract changes**. A new interface,
+  service or endpoint still goes to Peter. "Public surface" means only what
+  D2 says — never an `internal` type, VM/builder or view-component ctor.
 - **Validate with focused tests before each commit, once per batch.** Run
   each affected section's test project with `-v quiet -clp:ErrorsOnly`; its
   build is included. Include applicable rung Done-checks and architecture
@@ -152,7 +162,13 @@ production paths, and repair executable tooling.
 **Adding a row is a cost against the ledger.** Fix what you find when it is safe
 to. Record a real defect you cannot fix tonight as a row, so the finding is
 not lost, and say in the report why it was not fixed. Do not record design
-preferences or "looked at it" notes as rows.
+preferences or "looked at it" notes as rows. Not debt, never a row (policy
+D6–D9): tests that merely pin behaviour or inventory missing tests;
+analyzer/inventory proposals for judgment calls; admin-timed operational
+races and slow-but-working admin pages; destructive schema work (column
+drops, FK removals — a GH issue). Integration-test flakiness is a GH issue.
+Just do it (D13): Hangfire jobs re-register at startup — never write a
+Hangfire compat shim, type remap or migration; delete any such shim on sight.
 
 Tests support a production-code fix; they are never the objective of this
 sweep. Do not select missing coverage, controller-policy pins, test scaffolding,
@@ -209,7 +225,8 @@ interfaces; section ownership still applies to every candidate.
 - Keep migrations, authorization changes, public-contract changes, complex
   behavior changes, and candidates needing approval or deeper investigation
   out of simple batches. Handle eligible work separately under its existing
-  rules; skip approval-dependent work in this unattended run.
+  rules, including policy-D1 pre-approved contract changes; leave only work
+  needing a NEW interface, service or endpoint for **Needs Peter**.
 - Fix failures and review the whole diff before committing. Do not shrink
   verification to one representative file or section. A substantive
   individual refactor remains a valid task; batching is for repeated simple
@@ -264,8 +281,13 @@ down it.
 3. Work the open ledger rows: oldest `added:` first, using the rungs' order
    and mechanics when several are workable. Validate and commit each fix or
    simple batch, delete the closed rows in the same commit, then take another.
-   Skip a row only when it needs approval or a decision (list it under
-   **Needs Peter**) or cannot be fixed safely unattended (say why).
+   Skip a row only when it needs a decision no rule answers (list it under
+   **Needs Peter**, D3 format) or cannot be fixed safely unattended (say why).
+   No category-bin skips (D4): every skipped row gets a one-line code check
+   tonight; a failed check routes it to rung 1 close. Close outright, no
+   question (D5): code gone; duplicate of a theme/row; the row is itself a
+   CI/check/gate proposal; perf concern with no budget at this scale;
+   Contracts-folder-vs-leaf preference. Merge symptom rows under `root:`.
 4. Only when no ledger row is actionable, work the rungs' Finds commands for
    new debt. One available item is not a reason to stop for the night.
 5. A rung's **Done-check** is the local validation gate. Run it once per
@@ -277,8 +299,9 @@ down it.
 
 **Final report:** Once the native goal is complete, write cumulative Markdown
 for the ONE PR. Lead with the ledger: open rows at start → end, the ids
-closed, the ids added (each with why it could not be fixed tonight), and the
-**Needs Peter** list. Then list each substantive fix, its ledger id (or file/symbol),
+closed, the ids added (each with why it could not be fixed tonight), the
+**Pre-approved contract changes** list (each D1 change: signature before →
+after, which rule prescribed it), and the **Needs Peter** list in D3 format. Then list each substantive fix, its ledger id (or file/symbol),
 validation, and commit. Explain what changed in production code and why;
 do not present coverage additions as debt fixes. List hygiene separately,
 excluded from the substantive fix count. Include total work time, the actual substantive fix count

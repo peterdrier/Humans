@@ -3,18 +3,11 @@
 version: 1
 next_id: 12
 inbox:
-  - added: 2026-10-04
-    id: USERS-11
-    what: "UserService.SaveProfileAsync overwrites the deterministic profile-picture key before saving metadata. Replacing with the same content type therefore destroys the previous bytes if the subsequent repository write fails or is canceled, contrary to file-metadata-commit-order. Existing upload-failure tests cover storage failure only. A proper correction needs independently staged/versioned references rather than overwrite-and-compensate; agree the storage-reference design and its schema/public-surface implications before changing it. Found during the daily debt sweep."
-    review: panel
   - added: 2026-08-24
     id: USERS-1
-    what: "Admin_SortBy in Views/UsersAdmin/AdminList.cshtml:78 has no shared resource and renders raw. The call is correctly through SharedLocalizer, but adding a new Admin_* resource key conflicts with memory/code/localization-admin-exempt.md, which forbids new localization keys for admin pages. Peter must decide whether this existing admin localizer call should gain a resource or become an unlocalized literal."
-    review: panel
-  - added: 2026-09-06
-    id: USERS-4
-    what: "PersonSearchFields.ManageAll and PersonSearchFields.LegalName have zero call sites — the user-search-overhaul follow-up that would use them was never built. Either build the caller or drop the members (public surface; /section-doctor on Users 2026-09-06)."
+    what: "Admin_SortBy in Views/UsersAdmin/AdminList.cshtml:77 has no resource anywhere and renders the raw key. Plan (prescribed by memory/code/localization-admin-exempt.md, which forbids new keys on admin pages): replace the SharedLocalizer call with the literal 'Sort by'; no public surface."
     review: light
   - added: 2026-09-06
-    id: USERS-6
-    what: "Data/Configurations/UserEmailConfiguration.cs:68-71 declares a partial unique index on user_emails.Email (IsVerified = true) — a unique index on a user-editable string, forbidden by memory/architecture/unique-constraints-ids-only.md. The cross-account check is already service-enforced (VerifyEmailAsync and AdminMarkVerifiedAsync open a merge request; the OAuth reconcile blocks or displaces), so the index is a backstop only. Dropping it is a Users migration (Codex finding on peterdrier/Humans#1603)."
+    id: USERS-4
+    what: "PersonSearchFields.ManageAll and PersonSearchFields.LegalName have zero production call sites — the user-search-overhaul follow-up that would use them was never built; only PersonSearchMatcher's includeLegal branch and two tests (PersonSearchMatcherTests, SearchServiceTests) reference them (/section-doctor on Users 2026-09-06). Plan: delete both members, the includeLegal branch and the two test references; removing unused members shrinks surface, nothing to approve."
+    review: light

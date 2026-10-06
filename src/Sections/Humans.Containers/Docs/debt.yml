@@ -3,13 +3,7 @@
 version: 1
 next_id: 4
 inbox:
-  - added: 2026-09-08
-    id: CONT-1
-    what: "No controller tests for ContainerController (finding 13, /section-doctor on Containers 2026-09-08): the 403 on /Camp/{slug}/Containers for a non-lead, the Forbid on Create/Edit/Delete, the NotFound on an unknown slug or id, and the ModelState → flash → redirect path are unpinned end to end; the handler is unit-tested by hand-built context only. Needs the controller-test scaffolding other sections use (HumansControllerBase + IAuthorizationService substitute)."
-    review: panel
-    root: CENTRAL-56
   - added: 2026-09-25
     id: CONTAINERS-3
-    what: "ContainerAuthorizationHandler decides Place for a barrio lead on CityPlanning's settings.Year (the public year) — both the container-placement-open check and the lead-of-season check — while CityPlanningApiController's placement endpoints save to the {year} in the route. A lead of the public year's season can write placements for any year while the public year's phase is open. Same year-confusion class as CITY-1. Found by /section-doctor on CityPlanning 2026-09-25."
+    what: "ContainerAuthorizationHandler decides Place for a barrio lead on CityPlanning's settings.Year (the public year) — both the container-placement-open check and the lead-of-season check — while CityPlanningApiController's placement endpoints save to the {year} in the route. A lead of the public year's season can write placements for any year while the public year's phase is open. An authorization hole, not part of CITY-1's deferred navigation work. Found by /section-doctor on CityPlanning 2026-09-25. Plan: add an optional year to ContainerAuthorizationTarget.For(container, year) and have the handler check placement-open and lead-of-season against that year (falling back to settings.Year when null); the API controller passes its route year. Optional parameter on an existing method, pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel
-    root: CITY-1

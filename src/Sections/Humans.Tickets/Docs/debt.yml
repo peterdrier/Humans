@@ -5,13 +5,9 @@ next_id: 11
 inbox:
   - added: 2026-09-30
     id: TICKETS-9
-    what: "/Tickets/Export/Orders and /Tickets/Export/Attendees hand every TicketAdmin a CSV of buyer/attendee names and emails with no audit entry — violates memory/code/data-exports-are-audited.md. Move the row building + audit call into the service (as GetDonationExportDataAsync does), tighten the policy, and ask Peter which columns are still needed."
-    review: light
-  - added: 2026-09-05
-    id: TICKETS-1
-    what: "Test gaps from the invariant matrix (finding 15, /section-doctor on Tickets 2026-09-05): (a) TicketQueryService.EraseForUserAsync has no behavior test (only the DI sweep); (b) GetUserTicketExportDataAsync is untested; (c) TicketQueryService.GetMatchedTicketUserIdsAsync and GetMatchedUserIdsForEmailsAsync have no test anywhere; (d) 'sync removes Ticketed when no valid ticket remains' is unpinned — the participation tests cover add/flip only."
+    what: "/Tickets/Export/Orders and /Tickets/Export/Attendees (TicketController.ExportOrders/ExportAttendees) hand every TicketAdmin a CSV of buyer/attendee names and emails with no audit entry — violates memory/code/data-exports-are-audited.md. Plan: move the row building plus the audit call into the service with the same shape as GetDonationExportDataAsync(actorUserId) — two methods on the internal ITicketService, keeping today's columns; internal interface, not public surface per debt-sweep-standing-policy D2, list in PR."
     review: light
   - added: 2026-10-04
     id: TICKETS-10
-    what: "TicketTransferController.Submit/Cancel localize InvalidOperationException.Message as a resource key thrown by TicketTransferService. This violates no-localized-exception-messages and couples member feedback to diagnostic wording. No existing structured transfer failure contract was found; agree the owner result/error shape before changing public surface. Found during the daily sweep."
+    what: "TicketTransferController.Submit/Cancel localize InvalidOperationException.Message as a resource key thrown by TicketTransferService. This violates no-localized-exception-messages and couples member feedback to diagnostic wording. Found during the daily sweep. Plan: TicketTransferService's submit and cancel return a result record carrying the refusal key that the controller localizes; throw-to-result, pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel

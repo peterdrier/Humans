@@ -3,19 +3,7 @@
 version: 1
 next_id: 9
 inbox:
-  - added: 2026-09-22
-    id: EMAIL-5
-    what: "No test in tests/Humans.Email.Tests proves the sanitizing half of the no-raw-HTML invariant: EmailMessageFactoryTests and EmailPreviewServiceTests assert that Markdown renders, not that a script or event-handler payload is stripped, and nothing asserts that the recipient and sender names EmailMessageFactory interpolates are HTML-encoded. The renderer's own sanitizer tests live in Base and do not cover this section's call sites. Found by /section-doctor on Email 2026-09-22."
-    review: light
-  - added: 2026-09-22
-    id: EMAIL-6
-    what: "BrandedEmailTemplate has no direct test in tests/Humans.Email.Tests: the wrapper-applied-in-exactly-one-place invariant is covered only by the EmailInlineStyler leaf tests plus mock assertions on IEmailBodyComposer, so the concrete wrapper output nobody else produces is unpinned. Proof: grep for BrandedEmailTemplate under tests/Humans.Email.Tests returns nothing. Found by /section-doctor on Email 2026-09-22."
-    review: light
-  - added: 2026-09-22
-    id: EMAIL-7
-    what: "The and-nothing-else half of the pause invariant is unpinned: EmailOutboxProcessorTests.ProcessQueuedAsync_SkipsPaused shows the pause stops the drain, but no test shows it leaves the immediate and do-not-persist paths running, which is the half that would break a magic-link login if someone widened the flag's reach. Found by /section-doctor on Email 2026-09-22."
-    review: light
   - added: 2026-10-04
     id: EMAIL-8
-    what: "BrandedEmailTemplate.Wrap hardcodes the unsubscribe footer in English for every recipient. OutboxEmailService composes the wrap after the sending section has restored its CultureScope; EmailMessage carries rendered content but no culture, so translating by the caller's ambient culture would be wrong. Found during the daily debt sweep. Agree how recipient rendering culture reaches the shared composer before implementation; changing the public message contract or adding a lookup dependency needs approval. Preserve opt-out, preview and no-persistence paths."
+    what: "BrandedEmailTemplate.Wrap hardcodes the unsubscribe footer in English for every recipient. OutboxEmailService composes the wrap after the sending section has restored its CultureScope; EmailMessage carries rendered content but no culture, so translating by the caller's ambient culture would be wrong. Preserve opt-out, preview and no-persistence paths. Found during the daily debt sweep. Plan: add an optional Culture scalar to the existing EmailMessage record, set by senders from the recipient's PreferredLanguage, and render the footer from Email's resx in that culture (English when null). Scalar on an existing DTO, pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel
