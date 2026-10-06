@@ -30,7 +30,7 @@ public sealed class Section : ISection
         services.AddScoped<Service>();
         services.AddScoped<IStoreAccountingRead>(sp => sp.GetRequiredService<Service>());
 
-        // Resource-based handler; the StoreCatalogAdmin *policy* stays in Shell (design §8).
+        // Resource-based handler; the StoreCatalogAdmin policy registers through SectionPolicies.
         services.AddScoped<IAuthorizationHandler, OrderAuthorizationHandler>();
     }
 }

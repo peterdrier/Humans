@@ -15,6 +15,7 @@ internal interface IGoogleGroupProvisioningClient
     /// <param name="groupEmail">Primary email of the new group.</param>
     /// <param name="displayName">Display name of the new group.</param>
     /// <param name="description">Description shown on the group page.</param>
+    /// <param name="ct">Token used to cancel group creation.</param>
     /// <returns>
     /// The numeric group id (the <c>{id}</c> in <c>groups/{id}</c>) on
     /// success, or a populated <see cref="GoogleClientError"/> on failure.

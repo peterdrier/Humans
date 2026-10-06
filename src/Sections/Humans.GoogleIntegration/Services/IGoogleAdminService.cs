@@ -28,12 +28,15 @@ internal interface IGoogleAdminService : IApplicationService
     /// <summary>
     /// Suspends a @nobodies.team account.
     /// </summary>
+    /// <param name="email">The Workspace account email address to suspend.</param>
+    /// <param name="actorUserId">The user initiating the suspension.</param>
     /// <param name="omitEmailFromAudit">
     /// Set by the GDPR erasure path: the audit log survives erasure, so naming the
     /// address there would re-seed the identity the cascade is removing. That path
     /// audits the suspend by actor id alone; an admin-initiated suspend keeps the
     /// readable address.
     /// </param>
+    /// <param name="ct">Token used to cancel the operation.</param>
     [ExternalWrite]
     Task<WorkspaceAccountActionResult> SuspendAccountAsync(
         string email, Guid actorUserId,
@@ -94,7 +97,7 @@ internal interface IGoogleAdminService : IApplicationService
     /// <summary>
     /// Detects @nobodies.team email renames by comparing the stored Google
     /// identity (the verified <c>UserEmail</c> row tagged
-    /// <see cref="UserEmail.IsGoogle"/>) against the current
+    /// <see cref="Humans.Users.Contracts.UserEmail.IsGoogle"/>) against the current
     /// <c>primaryEmail</c> from the Google Directory API. Read-only diagnostic
     /// surface only — there is no admin "fix" action. Renames self-heal on
     /// the user's next Google sign-in via the OAuth callback path.

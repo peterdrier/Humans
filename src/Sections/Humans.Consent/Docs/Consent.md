@@ -78,6 +78,8 @@ Append-only per design-rules §12. **DB triggers** (`prevent_consent_record_upda
 | ContentHash | string (64) | SHA-256 hex of canonical Spanish content at consent time |
 | ExplicitConsent | bool | Always true for valid records |
 
+`ConsentService.SubmitConsentAsync` refuses unchecked consent before writing any record or recording consent metrics. The document remains signable on a later explicit submission; UI checkbox guards are an additional check.
+
 **Unique index:** `(UserId, DocumentVersionId)` — prevents duplicate consents for the same version.
 
 Cross-aggregate nav `ConsentRecord.DocumentVersion` — still declared and walked by `ConsentRepository.GetAllForUserIdsAsync` (`.Include(c => c.DocumentVersion).ThenInclude(v => v.LegalDocument)`) to surface document name + version number on the user's consent-history view.

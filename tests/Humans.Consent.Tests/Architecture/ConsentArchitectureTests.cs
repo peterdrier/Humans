@@ -100,7 +100,7 @@ public sealed class ConsentArchitectureTests
 
     /// <summary>
     /// T-04 load-bearing invariant: the decorator's
-    /// <see cref="IConsentService.SubmitConsentAsync"/> override is
+    /// <see cref="Humans.Consent.Contracts.IConsentSubmission.SubmitConsentAsync"/> override is
     /// declared on the decorator type itself — it cannot be a default
     /// interface implementation or a base-class inheritance, because
     /// synchronous cache invalidation must happen <em>before</em> the

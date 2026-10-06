@@ -828,6 +828,10 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
     /// already writes for rate-limit/abuse turns (Agent.md invariant 6). Reused for the
     /// turn-exception path (nobodies-collective/Humans#963) so a failed turn shows up through the
     /// same admin refusals filter and "top refusal reasons" panel instead of a new surface.</summary>
+    /// <param name="conversationId">The conversation receiving the failure message.</param>
+    /// <param name="reason">The machine-readable refusal or failure reason.</param>
+    /// <param name="model">The model attributed to this turn.</param>
+    /// <param name="ct">Cancellation token for persisting the message.</param>
     /// <param name="usage">Provider usage to stamp on the row, or null for a turn that never
     /// reached the provider (rate_limited / abuse_flag). A turn that failed mid-flight did spend
     /// tokens, and <see cref="AgentAdminStatusService"/> prices spend straight off

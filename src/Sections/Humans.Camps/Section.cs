@@ -77,7 +77,7 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<CampCsvExportBuilder>();
 
         // Resource-based handler; the policies it backs stay in Shell's
-        // AuthorizationPolicyExtensions (design §15 step 6's asymmetry).
+        // AuthorizationPolicyExtensions.
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
 
         // Backs CampComplianceAccess, registered by this section's SectionPolicies

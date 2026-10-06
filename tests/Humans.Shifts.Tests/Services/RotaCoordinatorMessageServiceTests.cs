@@ -960,7 +960,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     }
 
     /// <summary>
-    /// Stubs <see cref="IUserService.GetUserInfosAsync"/> so the sender and all
+    /// Stubs <see cref="IUserServiceRead.GetUserInfosAsync"/> so the sender and all
     /// recipient ids resolve to UserInfo with letter-suffix emails (a@, b@, …).
     /// </summary>
     private void StubUsers(Guid sender, params Guid[] recipients)

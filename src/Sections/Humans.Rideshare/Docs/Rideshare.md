@@ -220,6 +220,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 
 ## Invariants
 
+- Map-popup avatar initials retain the first Unicode grapheme, including combining accents and joined emoji; names and initials remain HTML-escaped.
+
 - Expected missing-record, ownership and rule rejections in member action/form helpers and admin settings log at Warning without exception stacks, preserving action/year and reason/key context. Status codes and localized form/toast feedback are unchanged.
 
 - Offer, request and My Rides pages localize the breadcrumb navigation landmark in all six cultures.

@@ -6,7 +6,7 @@ namespace Humans.Web.Tests.Architecture.Rules;
 
 /// <summary>
 /// Generic rule: no concrete <see cref="IApplicationService"/> implementation
-/// takes <see cref="UsersDbContext"/> or
+/// takes <c>Humans.Users.Data.UsersDbContext</c> or
 /// <see cref="IDbContextFactory{TContext}"/> as a constructor parameter.
 ///
 /// Services reach the database exclusively through <see cref="Humans.Base.Interfaces.Repositories.IRepository"/>

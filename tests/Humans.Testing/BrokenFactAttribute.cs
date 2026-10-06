@@ -4,7 +4,7 @@ namespace Humans.Testing;
 
 /// <summary>
 /// Marks a test as permanently skipped due to a known breakage. The required
-/// <paramref name="reason"/> should explain the breakage and reference the
+/// <c>reason</c> should explain the breakage and reference the
 /// tracking issue (e.g. a URL to the relevant issue).
 ///
 /// Prefer this over commenting out a broken test — the test body stays in

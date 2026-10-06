@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 
 namespace Humans.Email.Contracts;
@@ -15,7 +16,7 @@ public interface IEmailService : IApplicationService
     /// <summary>
     /// Enqueues a rendered <paramref name="message"/> to the email outbox. For
     /// opt-outable categories (<see cref="EmailMessage.Category"/> non-null and not
-    /// <see cref="MessageCategory.System"/>) it suppresses the send when the
+    /// <see cref="Humans.Users.Contracts.MessageCategory.System"/>) it suppresses the send when the
     /// recipient has opted out and otherwise stamps List-Unsubscribe headers and a
     /// footer URL; it wraps the body, records the per-template metric, and triggers
     /// an immediate outbox drain when the message's
@@ -23,5 +24,6 @@ public interface IEmailService : IApplicationService
     /// <see cref="TimeSensitiveTemplates"/>. The recipient user id is taken from <see cref="EmailMessage.UserId"/>
     /// when supplied, otherwise resolved from the recipient address.
     /// </summary>
+    [ExternalWrite]
     Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default);
 }

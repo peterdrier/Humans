@@ -41,6 +41,9 @@ internal sealed record HoldedConnectorVm(
 /// is how old the cached data is — a run that failed refreshed nothing.</param>
 /// <param name="IsStale">True when the sync has not completed inside <see cref="StaleAfter"/> —
 /// never having run counts as stale.</param>
+/// <param name="Status">The sync's current status.</param>
+/// <param name="LastError">The most recent sync error, if one occurred.</param>
+/// <param name="LastSyncedDocCount">The number of documents processed by the last successful sync.</param>
 internal sealed record HoldedDocSyncVm(
     Instant? LastSyncAt,
     string Status,

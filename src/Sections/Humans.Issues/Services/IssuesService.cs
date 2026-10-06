@@ -737,7 +737,7 @@ internal sealed class IssuesService(
         });
     }
 
-    /// <summary>Users whose badge count may shift on an issue mutation: reporter + admins + role-holders for current & previous sections.</summary>
+    /// <summary>Users whose badge count may shift on an issue mutation: reporter + admins + role-holders for current &amp; previous sections.</summary>
     private async Task<IReadOnlySet<Guid>> ResolveBadgeUserIdsAsync(
         Guid reporterUserId, string? section, string? previousSection,
         CancellationToken ct)

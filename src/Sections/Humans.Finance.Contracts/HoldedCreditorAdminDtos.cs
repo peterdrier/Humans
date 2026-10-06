@@ -8,6 +8,10 @@ namespace Humans.Finance.Contracts;
 /// <param name="IbanMasked">The Holded contact's IBAN, masked. Masked and not raw because this row
 /// crosses a section boundary and reaches a screen; the unmasked value is read inside Finance at
 /// generation time and lives only in the payout record and the SEPA file itself.</param>
+/// <param name="SupplierAccountNum">The Holded supplier account number for this creditor.</param>
+/// <param name="Name">The Holded account name, which is the legal name for member creditors.</param>
+/// <param name="Balance">The signed account balance; a negative value means the organization owes.</param>
+/// <param name="OwedToMember">The non-negative amount owed to the member, derived from the balance.</param>
 public sealed record HoldedCreditorAccountRow(
     int SupplierAccountNum,
     string Name,                    // Holded account name (legal name for member creditors)
@@ -26,6 +30,10 @@ public sealed record CreditorContactBinding(
 /// <summary>Per-account statement: balance plus itemized journal lines (credit = owed/in, debit = paid/out).</summary>
 /// <param name="Contact">The Holded contact behind this account, for the statement header. Null when
 /// the cached list has none — including when Holded is down, which costs the header, not the statement.</param>
+/// <param name="SupplierAccountNum">The Holded supplier account number for this statement.</param>
+/// <param name="Balance">The signed account balance.</param>
+/// <param name="OwedToMember">The non-negative amount owed to the member.</param>
+/// <param name="Lines">The itemized journal lines for this account.</param>
 public sealed record HoldedCreditorLedger(
     int SupplierAccountNum,
     decimal Balance,

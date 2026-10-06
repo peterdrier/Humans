@@ -49,11 +49,18 @@ public interface IIssueTriage : IApplicationService
     /// The screenshot and browser-context fields the in-app reporter captures have no
     /// machine equivalent and are deliberately absent.
     /// </summary>
+    /// <param name="reporterUserId">The human whose issue this is and who appears as its reporter.</param>
+    /// <param name="category">The issue category.</param>
+    /// <param name="title">The issue's short title.</param>
+    /// <param name="description">The issue's detailed description.</param>
+    /// <param name="section">The owning app section, when known.</param>
+    /// <param name="dueDate">The requested due date, if any.</param>
     /// <param name="actorUserId">
     /// The human who actually filed it — the key owner, who need not be the reporter. Recorded
     /// as an <c>IssueCreated</c> audit entry, which is the only durable record of the
     /// distinction: the issue row itself carries the reporter alone.
     /// </param>
+    /// <param name="ct">Cancellation token for the operation.</param>
     Task<Guid> CreateIssueAsync(
         Guid reporterUserId,
         IssueCategory category,

@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
@@ -24,7 +26,7 @@ internal sealed class MagicLinkRateLimiter(IMemoryCache cache) : IMagicLinkRateL
     }
 
     private static string TokenKey(string token) =>
-        CacheKeys.MagicLinkUsed(token[..Math.Min(token.Length, 32)]);
+        CacheKeys.MagicLinkUsed(Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token))));
 
     public Task<bool> TryReserveSignupSendAsync(string email, TimeSpan cooldown)
     {

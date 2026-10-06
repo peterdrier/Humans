@@ -66,7 +66,8 @@ internal interface IHoldedRepository : IRepository
     Task MarkSepaTransferReconciledAsync(
         Guid transferId, Instant reconciledAt, CancellationToken ct = default);
 
-    // Purchase-doc sync state (singleton, lazy-created)
+    // Purchase-doc sync state (singleton, persisted on explicit save)
+    /// <summary>Reads the persisted singleton, or creates an unsaved Idle default. Never writes.</summary>
     Task<HoldedDocSyncState> GetOrCreateDocSyncStateAsync(CancellationToken ct = default);
     Task SaveDocSyncStateAsync(HoldedDocSyncState state, CancellationToken ct = default);
 }

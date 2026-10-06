@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 
 namespace Humans.GoogleIntegration.Contracts;
@@ -19,5 +20,6 @@ public interface IGoogleSyncOutboxProcessor : IApplicationService
     /// Processes up to one batch of queued outbox events. Never throws for an individual
     /// event — per-event failures are recorded on the row and metered.
     /// </summary>
+    [ExternalWrite]
     Task ProcessQueuedAsync(CancellationToken cancellationToken = default);
 }

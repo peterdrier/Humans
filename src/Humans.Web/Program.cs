@@ -880,12 +880,8 @@ catch (Exception ex)
     throw;
 }
 
-/// <summary>
-/// One clear FATAL line for a startup crash, naming the database when the cause is a
-/// Postgres connectivity failure (nobodies-collective/Humans#1060) — e.g. a PR preview
-/// deployed before <c>preview-db.yml</c> cloned <c>humans_pr_{N}</c>. Falls back to the
-/// generic message for anything else, so a startup failure is never silently unlabeled.
-/// </summary>
+// One clear FATAL line for a startup crash, naming the database for Postgres connectivity
+// failures (nobodies-collective/Humans#1060), with a generic message for other causes.
 static void LogStartupFailure(Exception ex, IConfiguration configuration, Microsoft.Extensions.Logging.ILogger logger)
 {
     var pgEx = FindException<NpgsqlException>(ex);
@@ -910,7 +906,7 @@ static void LogStartupFailure(Exception ex, IConfiguration configuration, Micros
     }
 }
 
-/// <summary>Walks <paramref name="ex"/>'s InnerException chain (and AggregateException branches) for the first match.</summary>
+// Walks the InnerException chain and AggregateException branches for the first match.
 static T? FindException<T>(Exception? ex) where T : Exception
 {
     for (; ex is not null; ex = ex.InnerException)

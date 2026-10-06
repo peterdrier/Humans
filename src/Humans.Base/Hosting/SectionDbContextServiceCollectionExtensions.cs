@@ -34,6 +34,7 @@ public static class SectionDbContextServiceCollectionExtensions
     /// <see cref="DatabaseMigrationHostedService"/> to run
     /// <see cref="SectionMigrationRunner"/> at startup.
     /// </summary>
+    /// <param name="services">The section’s service collection.</param>
     /// <param name="sentinelTable">See <see cref="SectionDbContextRegistration.SentinelTable"/>.</param>
     public static IServiceCollection AddSectionDbContext<TContext>(
         this IServiceCollection services,

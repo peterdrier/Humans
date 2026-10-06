@@ -18,7 +18,7 @@ namespace Humans.Camps.Data;
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// Camp leads and members are bare Guid references to users, so the Identity
-/// tables stay in <see cref="UsersDbContext"/> and are deliberately absent
+/// tables stay in <c>UsersDbContext</c> and are deliberately absent
 /// here; <c>camp_polygons</c> belongs to City Planning and is likewise absent.
 /// <c>CampSettings</c> carries a model-level <c>HasData</c> singleton that the
 /// baseline regenerates.

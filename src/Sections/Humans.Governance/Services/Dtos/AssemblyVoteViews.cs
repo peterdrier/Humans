@@ -33,6 +33,24 @@ internal sealed record AssemblyVoteListItem(
 /// controller shows the form on this alone.
 /// </param>
 /// <param name="OwnBallot">The viewer's own standing ballot and its history; null if they have not voted.</param>
+/// <param name="Id">The vote identifier.</param>
+/// <param name="Title">The vote title resolved for the viewer's culture.</param>
+/// <param name="OfficialText">The binding text in the official culture.</param>
+/// <param name="OfficialCulture">The culture of the binding official text.</param>
+/// <param name="InfoUrl">Optional information link for the vote.</param>
+/// <param name="Kind">The voting method used by the vote.</param>
+/// <param name="RequiredMajority">The threshold required for passage.</param>
+/// <param name="IndicativeAudience">The configured non-binding audience alongside the electorate.</param>
+/// <param name="BallotDisclosure">Whether individual ballots may be disclosed after close.</param>
+/// <param name="Status">The vote's current lifecycle status.</param>
+/// <param name="ClosesAt">The scheduled close time.</param>
+/// <param name="ClosedAt">When the vote closed, or null while it remains open.</param>
+/// <param name="AssemblyDate">The associated assembly date, if one is set.</param>
+/// <param name="CancelReason">The cancellation reason, if the vote was cancelled.</param>
+/// <param name="IsOnRoster">Whether the viewer is on the frozen roster for this vote.</param>
+/// <param name="IsOfficial">Whether the viewer is an official voter.</param>
+/// <param name="Options">The authored vote options resolved for the viewer's culture.</param>
+/// <param name="Participation">Roster participation counts; these do not reveal the tally.</param>
 internal sealed record AssemblyVoteDetail(
     Guid Id,
     string Title,
@@ -95,6 +113,11 @@ internal sealed record AssemblyVotePeekView(Guid AdminUserId, string AdminName, 
 /// when the vote's disclosure switch is on, by roster members.
 /// </summary>
 /// <param name="UserId">Null when the roster row has been anonymized by erasure.</param>
+/// <param name="DisplayName">The roster member's display name, if retained.</param>
+/// <param name="IsOfficial">Whether the member is an official voter.</param>
+/// <param name="Choice">The member's ballot choice, disclosed only after close under access rules.</param>
+/// <param name="Ranking">The ranked option keys for a preferential ballot, if applicable.</param>
+/// <param name="Revision">The revision number of the disclosed standing ballot.</param>
 internal sealed record AssemblyBallotDisclosureRow(
     Guid? UserId,
     string DisplayName,

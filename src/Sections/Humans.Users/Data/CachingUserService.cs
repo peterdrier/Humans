@@ -206,7 +206,7 @@ internal sealed class CachingUserService(
         return await inner.GetUserInfoAsync(userId, ct);
     }
 
-    /// <inheritdoc cref="IUserService.GetAllUserInfosAsync" />
+    /// <inheritdoc cref="IUserServiceRead.GetAllUserInfosAsync" />
     public async Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
     {
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
@@ -216,7 +216,7 @@ internal sealed class CachingUserService(
         return Values.Where(r => !r.IsTombstone).Select(Stamp).ToArray();
     }
 
-    /// <inheritdoc cref="IUserService.GetUserInfosAsync" />
+    /// <inheritdoc cref="IUserServiceRead.GetUserInfosAsync" />
     public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
@@ -279,7 +279,7 @@ internal sealed class CachingUserService(
         return result;
     }
 
-    /// <inheritdoc cref="IUserService.SearchUsersAsync" />
+    /// <inheritdoc cref="IUserServiceRead.SearchUsersAsync" />
     public async Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
         string query, PersonSearchFields fields, int limit = 10, CancellationToken ct = default)
     {

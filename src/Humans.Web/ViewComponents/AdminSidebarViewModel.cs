@@ -1,5 +1,7 @@
 namespace Humans.Web.ViewComponents;
 
+/// <summary>The dashboard entry and visible sidebar navigation groups.</summary>
+/// <param name="Groups">The navigation groups visible to the current user.</param>
 /// <param name="ShowDashboard">The pinned Dashboard row: only for admin-shaped roles, the dashboard's own gate.</param>
 public sealed record AdminSidebarViewModel(bool ShowDashboard, IReadOnlyList<AdminSidebarGroupViewModel> Groups);
 

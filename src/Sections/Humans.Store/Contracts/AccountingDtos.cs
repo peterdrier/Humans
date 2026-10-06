@@ -13,6 +13,21 @@ namespace Humans.Store.Contracts;
 /// <param name="HoldedRevenueAccountNum">The product's Holded revenue account; null until Acountax issues one.</param>
 /// <param name="UnitPrice">Effective per-unit price excluding VAT.</param>
 /// <param name="DepositAmount">Effective deposit for the whole line (qty × per-unit deposit), 0 when none.</param>
+/// <param name="Year">The event year for the order.</param>
+/// <param name="OrderId">The order identifier.</param>
+/// <param name="CounterpartyType">Whether the order's counterparty is a camp or team.</param>
+/// <param name="CounterpartyVatId">The counterparty's VAT identifier, if recorded.</param>
+/// <param name="CounterpartyCountryCode">The counterparty's country code, if recorded.</param>
+/// <param name="OrderState">The order's current state.</param>
+/// <param name="LineId">The order line identifier.</param>
+/// <param name="ProductId">The ordered product identifier.</param>
+/// <param name="ProductName">The product name recorded for the order line.</param>
+/// <param name="Qty">The quantity on the order line.</param>
+/// <param name="VatRatePercent">The VAT rate applied to the line.</param>
+/// <param name="LineGross">The line total including VAT and deposit.</param>
+/// <param name="LineNet">The line total excluding VAT.</param>
+/// <param name="LineVat">The VAT amount for the line.</param>
+/// <param name="AddedAt">When the order line was added.</param>
 public sealed record AccountingOrderLineDto(
     int Year,
     Guid OrderId,
@@ -43,6 +58,14 @@ public sealed record AccountingOrderLineDto(
 /// <param name="AmountEur">Signed — a refund is negative.</param>
 /// <param name="Method">The <c>PaymentMethod</c> name: <c>Stripe</c>, <c>BankTransfer</c>, <c>Manual</c>,
 /// <c>DepositReturn</c> (a returned deposit credited to the order — no money moved) or <c>Refund</c>.</param>
+/// <param name="Year">The event year for the order.</param>
+/// <param name="OrderId">The order identifier this payment belongs to.</param>
+/// <param name="CounterpartyType">The type of counterparty for the order.</param>
+/// <param name="CounterpartyLabel">The camp or team name shown for the counterparty.</param>
+/// <param name="PaymentId">The payment identifier.</param>
+/// <param name="StripePaymentIntentId">The Stripe PaymentIntent identifier, if present.</param>
+/// <param name="ExternalRef">An external payment reference, if present.</param>
+/// <param name="ReceivedAt">When the payment was received.</param>
 public sealed record AccountingPaymentDto(
     int Year,
     Guid OrderId,

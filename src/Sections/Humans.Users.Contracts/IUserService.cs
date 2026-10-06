@@ -104,7 +104,7 @@ public interface IUserService : IUserServiceRead, IUserMerge
     // ---- Profile storage commands ----
 
     /// <summary>
-    /// Updates <see cref="Profile.MembershipTier"/> on the user's profile.
+    /// Updates <c>Profile.MembershipTier</c> on the user's profile.
     /// Returns false when no profile exists.
     /// </summary>
     Task<bool> SetMembershipTierAsync(
@@ -164,7 +164,7 @@ public interface IUserService : IUserServiceRead, IUserMerge
 }
 
 /// <summary>
-/// Summary returned from <see cref="IAccountDeletionService.AnonymizeExpiredAccountAsync"/>
+/// Summary returned from <c>IAccountDeletionService.AnonymizeExpiredAccountAsync</c>
 /// so the caller (account deletion job) can send a confirmation email and
 /// write the corresponding audit log entries without re-loading the
 /// anonymized row.

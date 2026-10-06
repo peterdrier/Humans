@@ -479,7 +479,7 @@ internal sealed class RoleManagementViewModel
     public List<TeamMemberViewModel> TeamMembers { get; set; } = [];
 
     /// <summary>
-    /// Compact (userId, BurnerName) tuples for the role-assignment <option> dropdown.
+    /// Compact (userId, BurnerName) tuples for the role-assignment <c>&lt;option&gt;</c> dropdown.
     /// Resolved at controller-build time via <c>IUserService.GetUserInfoAsync</c>
     /// (carve-out from the "no copied display-name" rule — option text can't host
     /// a view component).

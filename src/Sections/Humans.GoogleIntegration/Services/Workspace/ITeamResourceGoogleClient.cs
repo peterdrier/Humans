@@ -22,6 +22,7 @@ internal interface ITeamResourceGoogleClient
     /// matching-type response (it cannot call Google to discover the real MIME
     /// type).
     /// </param>
+    /// <param name="ct">Token used to cancel the lookup.</param>
     /// <returns>
     /// A <see cref="DriveItem"/> on success, or a <see cref="GoogleClientError"/>
     /// describing why the lookup failed (not-found, permission-denied, or

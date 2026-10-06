@@ -74,6 +74,13 @@ internal interface IGoogleWorkspaceUserService : IApplicationService
 /// <summary>
 /// Represents a Google Workspace user account on @nobodies.team.
 /// </summary>
+/// <param name="PrimaryEmail">The Workspace account's primary email address.</param>
+/// <param name="FirstName">The account holder's given name.</param>
+/// <param name="LastName">The account holder's family name.</param>
+/// <param name="IsSuspended">Whether the Workspace account is suspended.</param>
+/// <param name="CreationTime">When the Workspace account was created.</param>
+/// <param name="LastLoginTime">When the account last logged in, or null if unavailable.</param>
+/// <param name="IsEnrolledIn2Sv">Whether the account is enrolled in 2-step verification.</param>
 /// <param name="RecoveryEmail">
 /// The personal recovery email Google has on file for the account. Surfaced
 /// to admins as a sanity check (so the recovery channel can be validated

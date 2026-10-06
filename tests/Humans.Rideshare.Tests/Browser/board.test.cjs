@@ -52,3 +52,12 @@ for (const mode of ['success', 'missing-library', 'map-failure', 'map-never-load
         assert.equal(fields.takeSeats.value, '2');
     });
 }
+
+for (const [name, expected] of [['😀 Driver', '😀'], ['e\u0301 Rider', 'E\u0301'], ['👩‍👩‍👧‍👦 Family', '👩‍👩‍👧‍👦'], ['', '?']]) {
+    test(`popup avatar preserves the first grapheme of ${JSON.stringify(name)}`, () => {
+        const context = { document: { querySelectorAll: () => [], getElementById: () => null } };
+        vm.createContext(context); vm.runInContext(source, context);
+        const html = context.personHtml(name, null, 'Driver');
+        assert.ok(html.includes(`>${expected}</span>`), html);
+    });
+}

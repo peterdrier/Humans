@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
@@ -163,6 +164,7 @@ internal interface IWorkgroupService : IApplicationService
     /// status. A folder-creation failure leaves the group <see cref="WorkgroupStatus.Applied"/>
     /// and surfaces the error, so the Secretary can retry (design §6).
     /// </summary>
+    [ExternalWrite]
     Task RegisterAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default);
 
     Task ReferAsync(Guid workgroupId, Guid actorUserId, string? note, CancellationToken ct = default);
@@ -178,6 +180,7 @@ internal interface IWorkgroupService : IApplicationService
     Task ReactivateAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Bootstrapping (design §21): applies on behalf, backdated, immediately Active.</summary>
+    [ExternalWrite]
     Task<Guid> RegisterExistingAsync(Guid actorUserId, WorkgroupBootstrap bootstrap, CancellationToken ct = default);
 
     /// <summary>Board/Admin: set, change or clear the group's budget and bind its Holded account

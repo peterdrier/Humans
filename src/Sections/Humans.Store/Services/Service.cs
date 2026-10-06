@@ -705,6 +705,7 @@ internal sealed class Service(
         return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
     }
 
+    [ExternalWrite]
     public Task<string> CreateStripeCheckoutSessionAsync(
         OrderDto order,
         decimal amountEur,

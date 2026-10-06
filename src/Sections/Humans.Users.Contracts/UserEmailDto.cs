@@ -33,7 +33,7 @@ public record UserEmailEditDto(
 /// <summary>
 /// Result of adding an email address.
 /// </summary>
-/// <param name="EmailId">The new <see cref="Domain.Entities.UserEmail"/> row's
+/// <param name="EmailId">The new <see cref="UserEmail"/> row's
 /// Id. The verification token is bound to this Id via the token's purpose
 /// suffix, so the verification URL must round-trip this Id back to
 /// <see cref="Humans.Users.Contracts.IUserEmailService.VerifyEmailAsync"/>

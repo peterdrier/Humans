@@ -1,3 +1,5 @@
+using Humans.Base.Attributes;
+
 namespace Humans.Expenses.Contracts;
 
 public interface IExpenseReportBackgroundProcessor
@@ -6,5 +8,6 @@ public interface IExpenseReportBackgroundProcessor
     /// Drains the Holded expense outbox: creates or updates purchase documents in Holded
     /// for each approved expense report.
     /// </summary>
+    [ExternalWrite]
     Task DrainHoldedOutboxAsync(int batchSize, CancellationToken ct = default);
 }

@@ -10,7 +10,7 @@ namespace Humans.Camps.Data;
 /// save changes atomically inside a single
 /// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{CampsDbContext}"/>-owned
 /// context. Cross-domain navigation is not resolved here; the application
-/// service stitches display names from <see cref="Users.IUserService"/>.
+/// service stitches display names from <see cref="Humans.Users.Contracts.IUserServiceRead"/>.
 /// </remarks>
 internal partial interface ICampRepository
 {
@@ -76,8 +76,8 @@ internal partial interface ICampRepository
 
     /// <summary>
     /// Hard-deletes every assignment for the given <c>CampMemberId</c>. Returns the count of rows removed.
-    /// Used by <see cref="Camps.ICampService.LeaveCampAsync"/> and
-    /// <see cref="Camps.ICampService.WithdrawCampMembershipRequestAsync"/> cascade hooks.
+    /// Used by <see cref="Humans.Camps.Services.ICampService.LeaveCampAsync"/> and
+    /// <see cref="Humans.Camps.Services.ICampService.WithdrawCampMembershipRequestAsync"/> cascade hooks.
     /// </summary>
     Task<int> DeleteAllForMemberAsync(Guid campMemberId, CancellationToken ct = default);
 
@@ -119,9 +119,9 @@ internal partial interface ICampRepository
 
     /// <summary>
     /// Returns every (CampSeason.Year, CampRoleDefinition.Slug, assigneeUserIds) tuple for
-    /// active role definitions in the given <paramref name="year"/> set. Used by
-    /// <see cref="Camps.ICampRoleService"/>'s
-    /// <see cref="GoogleIntegration.IGoogleGroupMembershipSource.GetExpectedAsync"/>.
+    /// active role definitions in the given <paramref name="years"/> set. Used by
+    /// <see cref="Humans.Camps.Contracts.ICampRoleService"/>'s
+    /// <see cref="Humans.GoogleIntegration.Contracts.IGoogleGroupMembershipSource.GetExpectedAsync"/>.
     /// </summary>
     Task<IReadOnlyList<CampRoleAssignment>> GetActiveAssignmentsForYearsAsync(
         IReadOnlyCollection<int> years, CancellationToken ct = default);

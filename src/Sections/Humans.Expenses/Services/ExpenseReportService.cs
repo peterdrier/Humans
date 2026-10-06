@@ -721,18 +721,6 @@ internal sealed class ExpenseReportService(
         await repo.SetLineAttachmentAsync(lineId, null, ct);
         await repo.RemoveAttachmentAsync(line.Attachment.Id, ct);
 
-        try
-        {
-            await fileStorage.DeleteAsync(
-                AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex,
-                "Could not delete attachment file {AttachmentId} for line {LineId}",
-                line.Attachment.Id, lineId);
-        }
-
         await auditLogService.LogAsync(
             AuditAction.ExpenseAttachmentRemoved,
             AuditEntityTypes.Report, reportId,
@@ -740,6 +728,20 @@ internal sealed class ExpenseReportService(
             actorUserId,
             relatedEntityId: report.SubmitterUserId,
             relatedEntityType: AuditEntityTypes.User);
+
+        // Post-commit cleanup: metadata and audit are written, so request cancellation
+        // must not strand the file.
+        try
+        {
+            await fileStorage.DeleteAsync(
+                AttachmentKey(line.Attachment.Id, line.Attachment.Extension), CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Could not delete attachment file {AttachmentId} for line {LineId}",
+                line.Attachment.Id, lineId);
+        }
     }
 
     internal async Task<bool> SubmitAsync(

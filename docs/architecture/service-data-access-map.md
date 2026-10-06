@@ -297,9 +297,9 @@ Every table is owned by exactly one repository; there are no HUM0025
     their own repositories — `ShiftsDbContext` for Shifts,
     `EventGuideDbContext` for Events. The sequential (non-parallel) fan-out
     pattern mirrors `GdprService` and `EarlyEntryService`: each
-    contributor uses its own DbContext instance, but EF
-    `DbContext`/`IDbContextFactory` usage is not thread-safe within a single
-    async flow, so contributors still run one at a time.
+    contributor uses its own DbContext instance. EF forbids concurrent
+    operations against the same instance, not independent contexts;
+    sequential iteration is a consistency and simplicity choice.
 
 14. **Gate composes cached cross-section reads and never touches a foreign
     table.** `GateService` resolves a scanned barcode by filtering
