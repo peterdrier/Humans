@@ -1177,7 +1177,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Team_CannotJoinSystem");
+            .WithMessage("Teams_Team_CannotJoinSystem");
     }
 
     [HumansFact]
@@ -1218,7 +1218,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Team_AlreadyPendingRequest");
+            .WithMessage("Teams_Team_AlreadyPendingRequest");
     }
 
     [HumansFact]
@@ -1232,7 +1232,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.RequestToJoinTeamAsync(team.Id, user.Id, null, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Team_AlreadyMember");
+            .WithMessage("Teams_Team_AlreadyMember");
     }
 
     [HumansFact]

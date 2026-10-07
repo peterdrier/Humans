@@ -49,7 +49,7 @@ internal sealed class TeamAdminController(
         try
         {
             await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
-            SetSuccess(localizer["TeamAdmin_RequestApproved"].Value);
+            SetSuccess(localizer["Teams_TeamAdmin_RequestApproved"].Value);
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
@@ -72,14 +72,14 @@ internal sealed class TeamAdminController(
 
         if (string.IsNullOrWhiteSpace(model.Notes))
         {
-            SetError(localizer["TeamAdmin_ProvideRejectionReason"].Value);
+            SetError(localizer["Teams_TeamAdmin_ProvideRejectionReason"].Value);
             return RedirectToAction(nameof(Members), new { slug });
         }
 
         try
         {
             await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes);
-            SetSuccess(localizer["TeamAdmin_RequestRejected"].Value);
+            SetSuccess(localizer["Teams_TeamAdmin_RequestRejected"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -261,7 +261,7 @@ internal sealed class TeamAdminController(
         try
         {
             await _teamService.RemoveMemberAsync(team.Id, userId, user.Id);
-            SetSuccess(localizer["TeamAdmin_MemberRemoved"].Value);
+            SetSuccess(localizer["Teams_TeamAdmin_MemberRemoved"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -292,7 +292,7 @@ internal sealed class TeamAdminController(
         try
         {
             await _teamService.AddMemberToTeamAsync(team.Id, model.UserId, user.Id);
-            SetSuccess(localizer["TeamAdmin_MemberAdded"].Value);
+            SetSuccess(localizer["Teams_TeamAdmin_MemberAdded"].Value);
         }
         catch (InvalidOperationException ex)
         {
@@ -462,7 +462,7 @@ internal sealed class TeamAdminController(
 
         if (!ModelState.IsValid)
         {
-            SetError(localizer["TeamAdmin_InvalidDriveUrl"].Value);
+            SetError(localizer["Teams_TeamAdmin_InvalidDriveUrl"].Value);
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
@@ -498,15 +498,15 @@ internal sealed class TeamAdminController(
 
         if (!ModelState.IsValid)
         {
-            SetError(localizer["TeamAdmin_InvalidGroupEmail"].Value);
+            SetError(localizer["Teams_TeamAdmin_InvalidGroupEmail"].Value);
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
         var result = await teamResourceService.LinkGroupAsync(team.Id, model.GroupEmail);
         if (result.Success)
-            SetSuccess(string.Format(localizer["TeamAdmin_GroupLinked"].Value, result.Resource!.Name));
+            SetSuccess(string.Format(localizer["Teams_TeamAdmin_GroupLinked"].Value, result.Resource!.Name));
         else
-            SetError(BuildResourceLinkError(result, localizer["TeamAdmin_GroupLinkFailed"].Value));
+            SetError(BuildResourceLinkError(result, localizer["Teams_TeamAdmin_GroupLinkFailed"].Value));
 
         return RedirectToAction(nameof(Resources), new { slug });
     }
@@ -619,7 +619,7 @@ internal sealed class TeamAdminController(
             return NotFound();
 
         await teamResourceService.UnlinkResourceAsync(resourceId);
-        SetSuccess(localizer["TeamAdmin_ResourceUnlinked"].Value);
+        SetSuccess(localizer["Teams_TeamAdmin_ResourceUnlinked"].Value);
 
         return RedirectToAction(nameof(Resources), new { slug });
     }
@@ -659,14 +659,14 @@ internal sealed class TeamAdminController(
                 SyncAction.Execute,
                 CancellationToken.None);
             if (diff.ErrorMessage is not null)
-                SetError(string.Format(localizer["TeamAdmin_ResourceSyncFailed"].Value, diff.ErrorMessage));
+                SetError(string.Format(localizer["Teams_TeamAdmin_ResourceSyncFailed"].Value, diff.ErrorMessage));
             else
-                SetSuccess(localizer["TeamAdmin_ResourceSynced"].Value);
+                SetSuccess(localizer["Teams_TeamAdmin_ResourceSynced"].Value);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error syncing resource {ResourceId}", resourceId);
-            SetError(string.Format(localizer["TeamAdmin_ResourceSyncFailed"].Value, ex.Message));
+            SetError(string.Format(localizer["Teams_TeamAdmin_ResourceSyncFailed"].Value, ex.Message));
         }
 
         return RedirectToAction(nameof(Resources), new { slug });
@@ -677,7 +677,7 @@ internal sealed class TeamAdminController(
         var errorMessage = result.ErrorMessage ?? defaultMessage;
         if (result.ServiceAccountEmail is not null)
         {
-            errorMessage += $" {string.Format(localizer["TeamAdmin_ServiceAccount"].Value, result.ServiceAccountEmail)}";
+            errorMessage += $" {string.Format(localizer["Teams_TeamAdmin_ServiceAccount"].Value, result.ServiceAccountEmail)}";
         }
 
         return errorMessage;
@@ -978,7 +978,7 @@ internal sealed class TeamAdminController(
 
         if (result.Succeeded)
         {
-            SetSuccess(localizer["EditTeamPage_Saved"].Value);
+            SetSuccess(localizer["Teams_EditTeamPage_Saved"].Value);
             return RedirectToAction(nameof(TeamController.Details), "Team", new { slug });
         }
 
@@ -1133,7 +1133,7 @@ internal sealed class TeamAdminController(
             ? await _userService.GetUserInfoAsync(id, ct)
             : null;
 
-        var detailLabel = localizer["TeamAdmin_TicketLabel", hit?.Barcode ?? string.Empty].Value;
+        var detailLabel = localizer["Teams_TeamAdmin_TicketLabel", hit?.Barcode ?? string.Empty].Value;
         return Json(BuildTicketLookupRows(hit, matched, detailLabel));
     }
 

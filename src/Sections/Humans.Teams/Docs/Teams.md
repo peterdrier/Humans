@@ -300,6 +300,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - **Shifts:** `ShiftAdminController` derives from `HumansTeamControllerBase`; shift authorization reads `GetUserCoordinatedTeamIdsAsync`.
 - **Agent, Calendar, Campaigns, CityPlanning, Consent, Debug, Feedback, Guide, Notifications, Store, Surveys, Tickets, the Shell:** read-side consumers of `ITeamServiceRead` / `TeamInfo`. Consent’s legal-document cache and sync path both stitch team display names through `ITeamServiceRead`.
 
+Teams-owned resource keys use the `Teams_` prefix in all six cultures. Shared vocabulary stays in `SharedResource`; enum reflection keys retain `Enum_`.
+
 ## Architecture
 
 **Owning services:** `TeamService`, `TeamPageService` (Teams section); `TeamResourceService` (GoogleIntegration section — see note below)

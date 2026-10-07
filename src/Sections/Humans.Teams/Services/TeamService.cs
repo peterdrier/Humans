@@ -711,7 +711,7 @@ internal sealed class TeamService(
             throw new InvalidOperationException("Teams_NotFound");
 
         if (team.IsSystemTeam)
-            throw new InvalidOperationException("Team_CannotJoinSystem");
+            throw new InvalidOperationException("Teams_Team_CannotJoinSystem");
 
         if (team.IsHidden)
             throw new InvalidOperationException("Teams_CannotJoinHidden");
@@ -721,12 +721,12 @@ internal sealed class TeamService(
 
         var existingRequest = await repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
         if (existingRequest is not null)
-            throw new InvalidOperationException("Team_AlreadyPendingRequest");
+            throw new InvalidOperationException("Teams_Team_AlreadyPendingRequest");
 
         var teamInfo = await GetTeamAsync(teamId, cancellationToken);
         var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == userId);
         if (isMember)
-            throw new InvalidOperationException("Team_AlreadyMember");
+            throw new InvalidOperationException("Teams_Team_AlreadyMember");
 
         var request = new TeamJoinRequest
         {
@@ -757,7 +757,7 @@ internal sealed class TeamService(
             throw new InvalidOperationException("Teams_NotFound");
 
         if (team.IsSystemTeam)
-            throw new InvalidOperationException("Team_CannotJoinSystem");
+            throw new InvalidOperationException("Teams_Team_CannotJoinSystem");
 
         if (team.IsHidden)
             throw new InvalidOperationException("Teams_CannotJoinHidden");
@@ -767,7 +767,7 @@ internal sealed class TeamService(
 
         var existingMember = await repo.IsActiveMemberAsync(teamId, userId, cancellationToken);
         if (existingMember)
-            throw new InvalidOperationException("Team_AlreadyMember");
+            throw new InvalidOperationException("Teams_Team_AlreadyMember");
 
         var member = new TeamMember
         {
@@ -793,7 +793,7 @@ internal sealed class TeamService(
         }
 
         if (!success)
-            throw new InvalidOperationException("Team_AlreadyMember");
+            throw new InvalidOperationException("Teams_Team_AlreadyMember");
 
         await auditLogService.LogAsync(
             AuditAction.TeamJoinedDirectly, nameof(Team), teamId,
@@ -1201,7 +1201,7 @@ internal sealed class TeamService(
                 [requesterUserId],
                 body: noticeCopy.Body,
                 actionUrl: "/Teams",
-                actionLabel: NoticeResources.GetString("MyTeams_BrowseTeams", culture),
+                actionLabel: NoticeResources.GetString("Teams_MyTeams_BrowseTeams", culture),
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)

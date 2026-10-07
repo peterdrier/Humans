@@ -211,7 +211,7 @@ public class TeamControllerPageContentTests
             teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
             var key = unknown ? "untranslated provider failure" : action switch
             {
-                "Join" => "Team_AlreadyPendingRequest",
+                "Join" => "Teams_Team_AlreadyPendingRequest",
                 "Leave" => "Teams_NotMember",
                 _ => "Teams_RequestUnavailable"
             };
@@ -336,7 +336,7 @@ public class TeamControllerPageContentTests
         team.SystemTeamType = SystemTeamType.Volunteers;
         (await controller.Join(team.Slug, model)).Should().BeOfType<RedirectToActionResult>();
         controller.TempData[TempDataKeys.ErrorMessage].Should().Be(
-            services.GetRequiredService<IStringLocalizer<TeamsResource>>()["Team_CannotJoinSystem"].Value);
+            services.GetRequiredService<IStringLocalizer<TeamsResource>>()["Teams_Team_CannotJoinSystem"].Value);
         team.SystemTeamType = SystemTeamType.None;
         team.IsHidden = true;
         (await controller.Join(team.Slug, model)).Should().BeOfType<NotFoundResult>();
