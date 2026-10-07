@@ -270,6 +270,31 @@ public sealed class EventRepositoryTests : IDisposable
         result.Should().OnlyContain(e => e.CampId.HasValue);
     }
 
+    [HumansFact]
+    public async Task SaveEventAndModerationActionAsync_KeepsEarlierActions()
+    {
+        var category = SeedCategory("Workshop", "workshop", 1);
+        var guideEvent = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant());
+        await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        var moderatorId = Guid.NewGuid();
+
+        guideEvent.Status = EventStatus.ResubmitRequested;
+        await _repo.SaveEventAndModerationActionAsync(
+            guideEvent, BuildModerationAction(guideEvent.Id, moderatorId, EventModerationActionType.ResubmitRequested),
+            Xunit.TestContext.Current.CancellationToken);
+        guideEvent.Status = EventStatus.Approved;
+        await _repo.SaveEventAndModerationActionAsync(
+            guideEvent, BuildModerationAction(guideEvent.Id, moderatorId, EventModerationActionType.Approved),
+            Xunit.TestContext.Current.CancellationToken);
+
+        var actions = await _db.EventModerationActions.AsNoTracking()
+            .Where(a => a.GuideEventId == guideEvent.Id)
+            .Select(a => a.Action)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        actions.Should().BeEquivalentTo(
+            [EventModerationActionType.ResubmitRequested, EventModerationActionType.Approved]);
+    }
+
     private EventCategory SeedCategory(string name, string slug, int displayOrder, bool isActive = true)
     {
         var category = new EventCategory
@@ -332,6 +357,17 @@ public sealed class EventRepositoryTests : IDisposable
             UserId = userId,
             GuideEventId = guideEventId,
             DayOffset = dayOffset,
+            CreatedAt = _clock.GetCurrentInstant()
+        };
+
+    private EventModerationAction BuildModerationAction(Guid guideEventId, Guid actorUserId, EventModerationActionType action)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            GuideEventId = guideEventId,
+            ActorUserId = actorUserId,
+            Action = action,
+            Reason = action is EventModerationActionType.Approved ? null : "Needs detail",
             CreatedAt = _clock.GetCurrentInstant()
         };
 }
