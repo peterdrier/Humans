@@ -272,6 +272,11 @@ internal sealed class AssemblyVoteService(
                 : $"Changed their ballot on assembly vote {voteId} (revision {ballot.Revision}).",
             userId);
 
+        await AfterTransitionAsync(
+            "resolving the voter's open-vote notification", voteId,
+            token => notificationResolve.ResolveBySourceAsync(
+                userId, NotificationSource.AssemblyVoteOpened, token, sourceKey: voteId.ToString()));
+
         return BallotSubmissionOutcome.Recorded;
     }
 

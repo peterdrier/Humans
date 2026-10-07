@@ -104,7 +104,7 @@ internal interface INotificationRepository : IRepository
     /// (e.g., AccessSuspended → consents completed).
     /// </summary>
     Task<bool> ResolveBySourceAsync(
-        Guid userId, NotificationSource source, Instant now, CancellationToken ct = default);
+        Guid userId, NotificationSource source, Instant now, CancellationToken ct = default, string? sourceKey = null);
 
     /// <summary>
     /// Resolves every unresolved notification matching both <paramref name="source"/>
