@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Humans.Base.Extensions;
 using System.Text.Json.Serialization;
 using Humans.MailerLite.Services.Dtos;
 using NodaTime;
@@ -75,7 +76,7 @@ internal sealed class MailerLiteSubscriberConverter : JsonConverter<MailerLiteSu
         if (!obj.TryGetProperty(name, out var el) || el.ValueKind != JsonValueKind.String) return null;
         var raw = el.GetString();
         if (string.IsNullOrEmpty(raw)) return null;
-        var dt = DateTime.ParseExact(raw, "yyyy-MM-dd HH:mm:ss",
+        var dt = DateTime.ParseExact(raw, DateFormattingExtensions.MailerLiteTimestampPattern,
             System.Globalization.CultureInfo.InvariantCulture,
             System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal);
         return Instant.FromDateTimeUtc(DateTime.SpecifyKind(dt, DateTimeKind.Utc));
