@@ -2616,6 +2616,27 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
+    public async Task AddMemberToTeamAsync_PendingRequest_ApprovesWithMembership()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        var request = SeedJoinRequest(team.Id, target.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
+
+        TeamsDb.ChangeTracker.Clear();
+        var saved = await TeamsDb.TeamJoinRequests.SingleAsync(r => r.Id == request.Id, Xunit.TestContext.Current.CancellationToken);
+        saved.Status.Should().Be(TeamJoinRequestStatus.Approved);
+        saved.ReviewedByUserId.Should().Be(actor.Id);
+        saved.ReviewNotes.Should().Be("Added directly by team manager");
+        saved.ResolvedAt.Should().Be(Clock.GetCurrentInstant());
+        (await TeamsDb.TeamMembers.CountAsync(m => m.TeamId == team.Id && m.UserId == target.Id && m.LeftAt == null,
+            Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task AddMemberToTeamAsync_AuditsTheAdd()
     {
         var actor = SeedUser(displayName: "Actor");

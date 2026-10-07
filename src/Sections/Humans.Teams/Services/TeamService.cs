@@ -1358,21 +1358,16 @@ internal sealed class TeamService(
         {
             if (pendingRequest is not null)
             {
-                // pendingRequest is AsNoTracking — re-fetch tracked + approve via full request-path.
-                if (pendingRequest.Status == TeamJoinRequestStatus.Pending)
-                {
-                    pendingRequest.Status = TeamJoinRequestStatus.Approved;
-                    pendingRequest.ReviewedByUserId = actorUserId;
-                    pendingRequest.ReviewNotes = "Added directly by team manager";
-                    pendingRequest.ResolvedAt = clock.GetCurrentInstant();
-                }
                 var tracked = await repo.FindRequestForMutationAsync(pendingRequest.Id, cancellationToken);
                 if (tracked is not null)
                 {
-                    tracked.Status = pendingRequest.Status;
-                    tracked.ReviewedByUserId = pendingRequest.ReviewedByUserId;
-                    tracked.ReviewNotes = pendingRequest.ReviewNotes;
-                    tracked.ResolvedAt = pendingRequest.ResolvedAt;
+                    if (tracked.Status == TeamJoinRequestStatus.Pending)
+                    {
+                        tracked.Status = TeamJoinRequestStatus.Approved;
+                        tracked.ReviewedByUserId = actorUserId;
+                        tracked.ReviewNotes = "Added directly by team manager";
+                        tracked.ResolvedAt = clock.GetCurrentInstant();
+                    }
                     success = await ApproveRequestWithMemberAndOutboxAsync(
                         tracked, member, outboxEvent, cancellationToken);
                 }
