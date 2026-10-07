@@ -137,7 +137,7 @@ A section that wants to *show* audit history emits `<vc:audit-log>` with a predi
 
 - **Predicates** (first match wins): `entity-ids` (several ids of one `entity-type`, one query each, merged newest-first, capped at `limit`); otherwise `entity-type` / `entity-id` / `user-id` / `actions`. `since` drops anything older, applied after the read.
 - **Layouts** (`layout`): `line` (default) is the narrative one-line-per-entry list; `table` is When · Actor · Action · Subject · Description · Target, subsettable via `columns`; `activity` is the dashboard feed (bubble · action · description · timestamp) the admin `AdminActivityCard` renders. The Google-specific `sync` layout and its `resource-id` / `google-sync-only` predicates left with the sync wing in nobodies-collective/Humans#1083 — GoogleIntegration's own `<vc:google-sync-log>` renders that grid now.
-- **Chrome:** `title`, `empty-text`, `column-labels` and `show-card`. The section ships no resource set, so a localized host page passes every display string in. `column-labels` is **keyed, not positional** (`when:Fecha,actor:Remitente`): an unsupplied or unknown key falls back to the English column name, and reordering `columns` can never silently mis-header the table.
+- **Chrome:** `title`, `empty-text`, `column-labels` and `show-card`. A localized host page supplies the chrome; AuditLogResource supplies entry labels, action badges and narrative verbs in all six cultures. `column-labels` is **keyed, not positional** (`when:Fecha,actor:Remitente`): an unsupplied or unknown key falls back to the English column name, and reordering `columns` can never silently mis-header the table.
 - Every consuming assembly needs `@addTagHelper *, Humans.AuditLog` in its `_ViewImports.cshtml`. Missing it is silent: the element ships as inert literal markup with a green build and no runtime error. Pinned by `AuditLogPageRenderTests`.
 
 ## Negative Access Rules
@@ -189,7 +189,7 @@ No other cross-section writes from this section outward. Audit is a sink.
 - **Own DbContext (#858):** `AuditLogDbContext` (`src/Sections/Humans.AuditLog/Data/AuditLogDbContext.cs`) maps only `audit_log`, migrates under `Data/Migrations/` against `__EFMigrationsHistory_AuditLog`, and carries the immutability triggers in its baseline.
 - **Cross-domain navs on the entity:** `ActorUserId`, `EntityId` and `RelatedEntityId` are bare cross-section Guid columns — no FK constraint, no nav property (all 54 cross-section FK constraints were cut in nobodies-collective/Humans#992; the last cross-section EF navs were stripped in #996). Display names for those Guids come from the `IEntityNameContributor` fan-out, so the section names no other section to render them (nobodies-collective/Humans#1059).
 
-- **No resource set.** Neither `/AuditLog` page carries a `Localizer[…]` call — the copy is admin-only English — so the section ships no `Resources/` folder and no `AuditLogResource` (template step 3b's first question).
+- **Member-facing resources.** `AuditLogResource` localizes line/table entry labels, action badges and subject/self/no-subject verb forms in en, es, de, it, fr and ca. Stored descriptions and `AuditEventTextualizer` plain-text output stay unchanged. Admin-only `/AuditLog` pages and the dashboard activity feed retain English copy under the admin localization exemption.
 
 ### Touch-and-clean guidance
 

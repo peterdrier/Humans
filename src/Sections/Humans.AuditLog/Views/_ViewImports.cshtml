@@ -2,10 +2,8 @@
    here ships broken markup with a green build and no runtime error — see design §1/§2.
    Guarded by AuditLogPageRenderTests (step 12).
 
-   No @inject IStringLocalizer line: the section carries no resource set at all. Its two
-   pages are admin-only English (design §3b's first question), and
-   AuditLogArchitectureTests.SectionTypesTakeNoStringLocalizer pins that, so the day
-   someone adds copy the build tells them to carve a resource set first. *@
+   Member-facing line/table partials inject AuditLogResource themselves. Admin-only
+   pages and the dashboard activity feed retain their English copy. *@
 @using Humans.Base.Extensions
 @using Humans.AuditLog.Contracts
 @using Humans.AuditLog

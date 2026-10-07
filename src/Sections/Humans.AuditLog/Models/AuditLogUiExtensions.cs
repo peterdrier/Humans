@@ -1,4 +1,7 @@
 using Humans.AuditLog.Contracts;
+using Humans.AuditLog.Services;
+using Humans.Base.Extensions;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.AuditLog.Models;
 
@@ -33,8 +36,29 @@ internal static class AuditLogUiExtensions
         return action.IsAnomalousPermissionAction() ? "bg-warning text-dark" : "bg-secondary";
     }
 
-    public static string ToAuditBadgeLabel(this AuditAction action)
+    public static string ToAuditBadgeLabel(
+        this AuditAction action,
+        IStringLocalizer<AuditLogResource>? localizer = null)
     {
-        return action.IsAnomalousPermissionAction() ? "Anomaly" : action.ToString();
+        if (localizer is null)
+            return action.IsAnomalousPermissionAction() ? "Anomaly" : action.ToString();
+
+        return action.IsAnomalousPermissionAction()
+            ? localizer["AuditLog_Anomaly"]
+            : localizer.EnumDisplay(action);
+    }
+
+    public static string? ToLocalizedAuditVerb(
+        this AuditAction action,
+        bool noVisibleSubject,
+        IStringLocalizer<AuditLogResource> localizer)
+    {
+        if (AuditEventTextualizer.GetActionVerb(action) is null)
+            return null;
+
+        var form = noVisibleSubject
+            ? AuditEventTextualizer.GetActionSelfVerb(action) is not null ? "SelfVerb" : "NoSubjectVerb"
+            : "Verb";
+        return localizer[$"AuditLog_{form}_{action}"];
     }
 }
