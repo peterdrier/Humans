@@ -455,8 +455,8 @@ internal sealed class CachingTeamService(
     public Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
         => WithInner(inner => inner.RemoveEarlyEntryGrantAsync(teamId, grantId, actorUserId, ct));
 
-    public Task DeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default) =>
-        MutateAsync(inner => inner.DeleteTeamAsync(teamId, cancellationToken));
+    public Task DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.DeleteTeamAsync(teamId, actorUserId, cancellationToken));
 
     public Task<TeamJoinOutcome> JoinTeamAsync(
         Guid teamId,

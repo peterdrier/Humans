@@ -741,11 +741,16 @@ internal sealed class TeamController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteTeam(Guid id)
     {
+        var (currentUserError, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
+
         try
         {
-            await teamService.DeleteTeamAsync(id);
-            var currentUser = await GetCurrentUserInfoAsync();
-            logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser?.Id, id);
+            await teamService.DeleteTeamAsync(id, currentUser!.Id);
+            logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser.Id, id);
 
             SetSuccess(sharedLocalizer["Admin_TeamDeactivated"].Value);
         }

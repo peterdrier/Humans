@@ -3,10 +3,6 @@
 version: 1
 next_id: 11
 inbox:
-  - added: 2026-09-14
-    id: TEAMS-5
-    what: "TeamService.DeleteTeamAsync deactivates a team by closing every live membership through TeamRepository.DeactivateTeamAsync, which stamps LeftAt and saves with no audit entry — only an ILogger line. An admin action ending members' memberships is invisible to the Board, against AGENTS.md's audit rule. Found by Codex reviewing peterdrier/Humans#1594. Plan: DeactivateTeamAsync returns the closed memberships' user ids and the service writes one existing AuditAction.TeamMemberRemoved entry per member (actor = the admin); no new AuditAction, no public surface."
-    review: panel
   - added: 2026-10-04
     id: TEAMS-7
     what: "Controllers/TeamController.cs MyTeams always supplies PendingRequests = [], hiding the existing member request table and Withdraw forms. The join/withdraw workflow remains live. Repository GetAllJoinRequestsForUserAsync already owns the data but no service method returns the member's list. Found during the daily debt sweep. Plan: add GetPendingRequestsForUserAsync(Guid userId, CancellationToken ct) to the internal ITeamManagementService over that repository read and fill PendingRequests from it; internal interface, not public surface per debt-sweep-standing-policy D2, list in PR."

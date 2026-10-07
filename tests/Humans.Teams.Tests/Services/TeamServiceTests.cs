@@ -1141,7 +1141,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var team = SeedTeam("Closed Team", requiresApproval: requiresApproval);
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        await _service.DeleteTeamAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.DeleteTeamAsync(team.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         var join = () => _service.JoinTeamAsync(team.Id, user.Id, "Returning", Xunit.TestContext.Current.CancellationToken);
         await join.Should().ThrowAsync<InvalidOperationException>().WithMessage("Teams_NotFound");
@@ -2899,8 +2899,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
         SeedTeamMember(team.Id, ghost.Id, leftAt: Clock.GetCurrentInstant() - Duration.FromDays(30));
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
+        var actor = Guid.NewGuid();
         // Act
-        await _service.DeleteTeamAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.DeleteTeamAsync(team.Id, actor, Xunit.TestContext.Current.CancellationToken);
 
         // Service uses its own DbContext; detach trackers so assertions re-read
         // from the store rather than returning stale tracked entities.
@@ -2925,6 +2926,18 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == ghost.Id, Xunit.TestContext.Current.CancellationToken);
         ghostMember.LeftAt.Should().Be(Clock.GetCurrentInstant() - Duration.FromDays(30));
 
+        foreach (var userId in new[] { alice.Id, bob.Id })
+        {
+            await AuditLog.Received(1).LogAsync(
+                AuditAction.TeamMemberRemoved, nameof(Team), team.Id,
+                $"Membership ended when {team.Name} was deactivated", actor,
+                relatedEntityId: userId, relatedEntityType: nameof(User));
+        }
+        AuditLog.ReceivedCalls().Count(c => string.Equals(c.GetMethodInfo().Name, nameof(IAuditLogService.LogAsync), StringComparison.Ordinal))
+            .Should().Be(2, "already-left memberships must not receive another removal audit");
+        await _service.DeleteTeamAsync(team.Id, actor, Xunit.TestContext.Current.CancellationToken);
+        AuditLog.ReceivedCalls().Count(c => string.Equals(c.GetMethodInfo().Name, nameof(IAuditLogService.LogAsync), StringComparison.Ordinal)).Should().Be(2);
+
         // DeactivateResourcesForTeamAsync is intentionally NOT called from DeleteTeamAsync:
         // flipping GoogleResource.IsActive here would make the next reconciliation tick
         // skip the resources and leave stale Google access in place. Deactivation happens
@@ -2939,7 +2952,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var team = SeedTeam("Empty Team");
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.DeleteTeamAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.DeleteTeamAsync(team.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         ClearAllTrackers();
 

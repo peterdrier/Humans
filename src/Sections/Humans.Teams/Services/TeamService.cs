@@ -654,7 +654,7 @@ internal sealed class TeamService(
         return new TeamWithGroupResult(team, groupWarning);
     }
 
-    public async Task DeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default)
+    public async Task DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var team = await repo.GetByIdAsync(teamId, cancellationToken)
             ?? throw new InvalidOperationException($"Team {teamId} not found");
@@ -668,13 +668,20 @@ internal sealed class TeamService(
 
         var now = clock.GetCurrentInstant();
 
-        var closedCount = await repo.DeactivateTeamAsync(teamId, now, cancellationToken);
+        var closedUsers = await repo.DeactivateTeamAsync(teamId, now, cancellationToken);
+        foreach (var userId in closedUsers)
+        {
+            await auditLogService.LogAsync(
+                AuditAction.TeamMemberRemoved, nameof(Team), teamId,
+                $"Membership ended when {team.Name} was deactivated",
+                actorUserId, relatedEntityId: userId, relatedEntityType: nameof(User));
+        }
 
         // GoogleResource.IsActive flipped later by Google reconciliation tick (deferred).
 
         logger.LogInformation(
             "Deactivated team {TeamId} ({TeamName}); closed {MemberCount} memberships",
-            teamId, team.Name, closedCount);
+            teamId, team.Name, closedUsers.Count);
     }
 
     public async Task<TeamJoinOutcome> JoinTeamAsync(
