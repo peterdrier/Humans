@@ -27,9 +27,9 @@ namespace Humans.Analyzers;
 /// <c>[Grandfathered(\"HUM0028\")]</c> is gone."
 /// </summary>
 /// <remarks>
-/// Runs in section compilations. Diagnostic fires at declarations, not consumers.
-/// A leaf that cannot reference Base records its existing exception on the
-/// implementing class via an explicit HUM0028 grandfather, which is counted too.
+/// Runs in <c>Humans.Application</c> only. The Application compilation owns
+/// every invalidator interface declaration. Diagnostic fires at the
+/// interface declaration itself (not at consumers).
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class InvalidatorInterfaceRatchetAnalyzer : DiagnosticAnalyzer
@@ -42,7 +42,7 @@ public sealed class InvalidatorInterfaceRatchetAnalyzer : DiagnosticAnalyzer
         "Cache-invalidator interface count is ratcheted";
 
     private static readonly LocalizableString MessageFormat =
-        "'{0}' declares a cache-invalidator concept. The *Invalidator family is being ratcheted toward zero (existing ones carry [Grandfathered(\"HUM0028\", …)]); adding a new one usually means a cross-section write or a flush the owning section's service + caching decorator should have absorbed. Delete an existing invalidator or get Peter to sign off on a new grandfather.";
+        "'{0}' extends IInvalidator — a new cache-invalidator concept. The *Invalidator family is being ratcheted toward zero (existing ones carry [Grandfathered(\"HUM0028\", …)]); adding a new one usually means a cross-section write or a flush the owning section's service + caching decorator should have absorbed. Delete an existing invalidator or get Peter to sign off on a new grandfather.";
 
     public static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -88,12 +88,7 @@ public sealed class InvalidatorInterfaceRatchetAnalyzer : DiagnosticAnalyzer
         INamedTypeSymbol? grandfatheredAttr)
     {
         var type = (INamedTypeSymbol)context.Symbol;
-        // Some Contracts leaves sit below Base and cannot inherit its marker.
-        // Their pre-existing exception lives on the implementation instead; an
-        // explicit annotation must remain visible rather than silently ignored.
-        var annotatedImplementation = type.TypeKind == TypeKind.Class &&
-            GrandfatheredCheck.HasGrandfatherFor(type, grandfatheredAttr, DiagnosticId);
-        if (type.TypeKind != TypeKind.Interface && !annotatedImplementation)
+        if (type.TypeKind != TypeKind.Interface)
             return;
 
         // Don't flag the marker itself.
@@ -113,7 +108,7 @@ public sealed class InvalidatorInterfaceRatchetAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        if (!declaresMarker && !annotatedImplementation)
+        if (!declaresMarker)
             return;
 
         var severity = GrandfatheredCheck.EffectiveSeverity(type, grandfatheredAttr, DiagnosticId);

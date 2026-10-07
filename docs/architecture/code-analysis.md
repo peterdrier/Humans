@@ -76,7 +76,7 @@ HUM0020 | Caching decorator references a repository directly instead of the keye
 HUM0025 | A DbSet table is referenced by more than one repository (`[Grandfathered("HUM0025", scope: "<DbSet>")]` downgrades to Warning) | Error
 HUM0026 | IOrchestrator implementer injects an `I*Repository`, an application DbContext, or `IDbContextFactory<TContext>` for one | Error
 HUM0027 | Type implements both IApplicationService and IOrchestrator (the role axis is exclusive) | Error
-HUM0028 | Interface extends IInvalidator (`[Grandfathered("HUM0028")]` downgrades to Warning); explicit implementation-class grandfathers remain visible when a Contracts leaf cannot reference Base | Error
+HUM0028 | Interface extends IInvalidator (`[Grandfathered("HUM0028")]` downgrades to Warning) | Error
 HUM0030 | Date/time format-string literal (custom `.ToString` format, interpolation format clause, or NodaTime `*Pattern.Create` literal) used outside the single sanctioned home `Humans.Base.Extensions.DateFormattingExtensions` | Error
 HUM0031 | Controller method (action or private helper) exceeds the business-logic thresholds — statements > 40 or cyclomatic complexity > 15; thresholds are hardcoded in `ControllerBusinessLogicAnalyzer` and **frozen** — do not lower them, and do not burn down the grandfather list, until nobodies-collective/Humans#866 (`[Grandfathered("HUM0031")]` on the method downgrades to Warning) | Error
 HUM0032 | Cross-section injection of a write-capable `I*Service` that has an `I*ServiceRead` base — inject the read interface, or mark the class `[CrossSectionWrite("reason")]` | Error
