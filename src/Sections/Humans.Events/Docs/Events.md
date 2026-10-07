@@ -181,6 +181,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 - Global-search result rows pass browser cancellation to the approved-event lookup; approved-only visibility and missing-result behavior are unchanged.
 
+- `Event.Resubmit` owns re-queue transitions for individual edits and bulk uploads: pending events retain their submission time; approved edits become pending with a fresh submission time. The internal `EventBulkImporter` validates the entire CSV before applying changed rows; template rendering and row validation retain their existing helpers.
 - Individual and camp submitter edits check `CanBeEditedBySubmitter` before changing fields. Every permitted status is accepted by `UpdateAndResubmitAsync`; the controllers call it directly without exception-message classification.
 
 - Member personal/camp event submission forms and My Submissions localize breadcrumb navigation labels in all six supported cultures.

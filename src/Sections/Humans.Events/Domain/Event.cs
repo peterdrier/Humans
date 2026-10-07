@@ -124,6 +124,26 @@ internal sealed class Event
         LastUpdatedAt = now;
     }
 
+    /// <summary>Requeues an edited event, retaining the submission time while it is pending.</summary>
+    public void Resubmit(IClock clock)
+    {
+        if (Status is EventStatus.Pending)
+        {
+            LastUpdatedAt = clock.GetCurrentInstant();
+        }
+        else if (Status is EventStatus.Approved)
+        {
+            var now = clock.GetCurrentInstant();
+            Status = EventStatus.Pending;
+            SubmittedAt = now;
+            LastUpdatedAt = now;
+        }
+        else
+        {
+            Submit(clock);
+        }
+    }
+
     /// <summary>
     /// Withdraw the submission. Available from Pending or Approved — plus Draft
     /// for individual events (camp events have no Draft stage).

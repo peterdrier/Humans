@@ -3,10 +3,6 @@
 version: 1
 next_id: 9
 inbox:
-  - added: 2026-08-24
-    id: EVENTS-2
-    what: "EventService (Services/Service.cs) is over the section's maxClassLoc of 740 and holds the section's highest-complexity methods — ValidateBulkRows and BulkImportAsync — plus the long BuildBulkUploadTemplateAsync. The bulk-import trio is one cohesive concern (parse, validate all-or-nothing, write the template back out) and splits cleanly out of the service without touching the remaining question-shapes. Found by /section-doctor on Events 2026-08-24. Plan: extract into an internal class in this section (EventBulkImporter); pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
   - added: 2026-10-04
     id: EVENTS-8
     what: "BulkEventCsvParser.Parse embeds translated header/row errors in FormatException.Message; EventsController bulk upload logs and displays that message. This violates no-localized-exception-messages. Preserve all-row translated feedback. Found during the daily production sweep. Plan: Parse returns a result record (rows plus a list of error keys with row/column args) that the controller localizes; developer diagnostics stay in logs. Throw-to-result, pre-approved per debt-sweep-standing-policy, list in PR."
