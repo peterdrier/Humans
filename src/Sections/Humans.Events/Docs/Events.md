@@ -25,7 +25,7 @@ Event programming: submission, moderation, browsing, export, and preference mana
 - Favourite mutations are same-origin, cookie-authenticated requests protected by an antiforgery token rendered with each favourite control.
 - An **EventPreference** stores a user's excluded category slugs as a JSON list.
 - **Recurring events** have `IsRecurring = true` and a comma-separated `RecurrenceDays` field encoding integer day offsets from gate-opening date.
-- The entity, cached event projection, and approved-event contract share one occurrence-expansion implementation. It preserves stored offset order, ignores malformed tokens, applies an optional day filter only to recurring events, and resolves each occurrence at the event's local start time using lenient timezone conversion.
+- The entity, cached event projection, and approved-event contract share one occurrence-expansion implementation. It preserves stored offset order, ignores malformed tokens, applies an optional day filter only to recurring events, and resolves each occurrence at the event's local start time using lenient timezone conversion. Without a gate date or timezone, every consumer falls back to the authored start instant, even for a day-filtered recurring event.
 - Member-facing event duration labels use the shared `EventDurationFormatter` and `EventsResource` short-unit keys, so submission forms, browse results, and the dashboard card display the active culture consistently.
 - Individual and moderator forms preserve the timed duration when toggling all-day. Editing an all-day event starts with a 60-minute timed fallback; the server encodes all-day as midnight plus 1440 minutes, independently of that selection.
 

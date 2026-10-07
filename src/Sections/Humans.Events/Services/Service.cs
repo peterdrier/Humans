@@ -633,10 +633,7 @@ internal sealed class EventService(
         foreach (var favourite in approved)
         {
             var e = favourite.Event;
-            // tz non-null implies burn non-null (tz is derived from burn above).
-            IReadOnlyList<Instant> occurrences = tz is not null
-                ? e.GetOccurrenceInstants(burn!.GateOpeningDate, tz, favourite.DayOffset)
-                : [e.StartAt];
+            var occurrences = e.GetOccurrenceInstants(burn?.GateOpeningDate, tz, favourite.DayOffset);
 
             var location = string.Join(" — ", new[] { e.EventVenue?.Name, e.LocationNote }
                 .Where(s => !string.IsNullOrWhiteSpace(s)));

@@ -53,7 +53,7 @@ internal sealed class EventsDashboardController(IEventService guide, ICampServic
 
             foreach (var e in approvedEvents)
             {
-                foreach (var occ in tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
+                foreach (var occ in e.GetOccurrenceInstants(gateOpeningDate, tz))
                 {
                     var dayOffset = ComputeDayOffset(occ, gateOpeningDate.Value, tz);
                     if (dayCounts.ContainsKey(dayOffset))

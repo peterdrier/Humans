@@ -203,7 +203,7 @@ internal sealed class Event
     /// <paramref name="dayOffset"/> narrows a recurring event to the single
     /// occurrence on that day offset (non-recurring events ignore it).
     /// </summary>
-    public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate gateOpeningDate, DateTimeZone timeZone, int? dayOffset = null) =>
+    public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate? gateOpeningDate, DateTimeZone? timeZone, int? dayOffset = null) =>
         EventRecurrenceDays.GetOccurrenceInstants(
             StartAt, IsRecurring, RecurrenceDays, gateOpeningDate, timeZone, dayOffset);
 }
