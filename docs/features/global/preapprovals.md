@@ -82,6 +82,17 @@ account has nowhere to go on the report. Phase 2 ships first, on its own PR.
 
 PK `(ProgramId, UserId)`. One role; a manager is a manager.
 
+### `pre_reminders_sent`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| GrantId | Guid | FK → `pre_grants` |
+| Kind | enum `ReminderKind` | `D14` / `D3` |
+| SentAt | Instant | |
+
+PK `(GrantId, Kind)`. The reminder job's delivery log, so a retried run cannot send a reminder
+twice. Not grant state; nothing reads it but the job.
+
 ### `pre_grants`
 
 | Property | Type | Notes |
@@ -105,7 +116,7 @@ A grant and an application are the same row: an application is a grant in `Appli
 ```
 Applied ──approve──▶ Open ──report submitted──▶ Claimed ──report approved──▶ Consumed
    │                  │                            │
-   └──decline──▶ Declined                          └──report withdrawn / rejected──▶ Open
+   └──decline──▶ Declined                          └──report withdrawn before approval──▶ Open
                       │
                       └──revoke──▶ Revoked
 ```
@@ -226,7 +237,7 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
 
 | Route | Who | What |
 |-------|-----|------|
-| `/Preapprovals` | Authenticated | My grants, all statuses: program, label, amount, status, **claim by** (prominent, danger style inside 7 days, "deadline passed" after). Each `Open` row links to `/Expenses/New?grant={id}`. The open ones also appear at the top of `/Expenses`, which is where most people will file from. Programs accepting applications are listed below with an Apply button. |
+| `/Preapprovals` | Authenticated | My grants, all statuses: program, label, amount, status, **claim by** (prominent, danger style inside 7 days, "deadline passed" after). A row links to `/Expenses/New?grant={id}` only while it is **claimable** (`Open` and `ClaimBy` not passed); a "deadline passed" row has no link. The open ones also appear at the top of `/Expenses`, which is where most people will file from. Programs accepting applications are listed below with an Apply button. |
 | `/Preapprovals/{programId}` | Authenticated | Program page: description, per-person amount or "amount on request", claim deadline, "Apply for a pre-approval" form when `Status == Open` **and** `AcceptsApplications` (note; requested amount on `PerGrantAmount` programs). The GET hides the form and the POST returns 400 when either is false. One application per person per program; a second submit edits the pending one. |
 
 ### Manager side (`/Preapprovals/Admin/*`, its own `PreapprovalsAdminController`, localization-exempt, per `no-admin-url-section`)
@@ -234,7 +245,7 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
 | Route | Who | What |
 |-------|-----|------|
 | `/Preapprovals/Admin` | Board, FinanceAdmin, Admin, or a manager of ≥1 program | Programs I manage: committed / ceiling / remaining, open applications count, claim deadline. |
-| `/Preapprovals/Admin/{id}` | Program manager or above | Grants table with status filter. Approve / decline (with amount on `PerGrantAmount`) / revoke. **Issue grant:** people picker (Users search, same control the Workgroups roster uses) + amount where applicable + label. **Issue many:** paste a list of emails or names, one grant each at `PerPersonAmount` (`FixedPerPerson` only); unresolved rows are reported, nothing partial. |
+| `/Preapprovals/Admin/{id}` | Program manager or above | Grants table with status filter. Approve / decline (with amount on `PerGrantAmount`) / revoke. **Issue grant:** people picker (Users search, same control the Workgroups roster uses) + amount where applicable + label. **Issue many** (`FixedPerPerson` only): the same `<vc:human-search>` picker adds people one at a time to a pending list on the page (name, remove button), then one submit issues a grant at `PerPersonAmount` to each; all or nothing. No free-text name or email matching, per `person-search` ("don't roll a third"). |
 | `/Preapprovals/Admin/New`, `/Preapprovals/Admin/{id}/Edit` | Board, FinanceAdmin, Admin | Create / edit program: name, description, kind, per-person amount, ceiling, account picker (`ListExpenseAccountsAsync`), accepts applications, claim-by, status, managers (people picker). |
 
 ### Navigation
@@ -273,7 +284,8 @@ Through `INotificationEmitter` (in-app) and `IEmailService` (email), both to the
 | Grant issued / application approved | Actionable | Program, amount, **claim by {date}**, link to file. |
 | Application declined | Informational | Program, note from the manager if any. |
 | Application received (to each manager of the program) | Actionable | Who, requested amount, link to the manage page. |
-| Deadline reminder, 14 days and 3 days before `ClaimBy`, to every `Open` grant holder | Actionable | "File by {date}." Sent by a nightly job that sends and changes nothing else; idempotent per grant per reminder. |
+| Deadline reminder, 14 days and 3 days before `ClaimBy`, to every `Open` grant holder | Actionable | "File by {date}." Sent by the nightly job; each send is recorded in `pre_reminders_sent` so a retry never sends it twice. |
+| Report rejected (Expenses' existing rejection notification) | Actionable | For a pre-approved report it also carries "resubmit by {ClaimBy}". The grant is `Claimed` during a rejection, so the deadline job does not reach it; the rejection message is where the member learns the deadline still runs. |
 | Grant amount changed | Informational | Program, old and new amount. |
 
 Two source keys so `INotificationAutoResolve` clears the right alert: `pre-grant:{id}` on the
@@ -315,9 +327,12 @@ like Expenses' creditor binding does, so a grant issued under a since-merged id 
 
 ## Background job
 
-`PreapprovalsSectionJobs`: one nightly job, `preapprovals-reminders`, which only **sends** the
-14-day and 3-day reminders. It changes no row. No job expires, closes, zeroes or otherwise
-touches a grant or program; every state change is a person's action and is audited as such.
+`PreapprovalsSectionJobs`: one nightly job, `preapprovals-reminders`, which **sends** the
+14-day and 3-day reminders to `Open` grant holders and records each send in
+`pre_reminders_sent` (GrantId, Kind `D14` | `D3`, SentAt; PK GrantId + Kind). That delivery log
+is the only row the job writes and it is not grant state. No job expires, closes, zeroes or
+otherwise touches a grant or program; every state change is a person's action and is audited
+as such.
 Documented in [background-jobs.md](background-jobs.md) when built.
 
 ## Out of scope
@@ -350,7 +365,8 @@ Steps 2 and 3 can be built in parallel once Phase 2 is on QA; 3 merges after 2.
 - **Preapprovals**: ceiling refused at issue/approve/edit with the right headroom; `FixedPerPerson`
   refuses an amount on the grant and copies `PerPersonAmount`; apply-twice edits, never
   duplicates; claim/release/consume transitions and every refused transition; expiry job skips
-  reminders idempotent and write nothing; manager of A → 403 on B; member → 403 on admin routes;
+  reminders idempotent through `pre_reminders_sent` and write nothing else; "deadline passed"
+  rows carry no filing link; issue-many is all or nothing; manager of A → 403 on B; member → 403 on admin routes;
   closed program: apply form hidden, POST refused, `Open` grants still claimable; `Open` grant
   past `ClaimBy` not claimable, claimable again after `ClaimBy` is pushed back with no state
   change; amount edit on `Open`/`Claimed` audited with old and new and ceiling-checked, refused
