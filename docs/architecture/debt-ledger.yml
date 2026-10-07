@@ -279,10 +279,6 @@ inbox:
     what: "MailerLiteImportService.ApplyAsync (ReplaceUnverifiedEmail) and AttendeeContactImportService.ApplyDecisionAsync (DeleteUnverifiedThenCreate) delete the sole unverified UserEmail before account provisioning. If provisioning fails, the address stays removed while the batch reports an error. Reordering alone reuses the unverified owner; compensation can overwrite concurrent user changes. Deferred in the daily sweep. Plan: one Users-owned replace-and-provision operation called by both importers; if provisioning fails, nothing is deleted; pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel
   - added: 2026-10-04
-    id: CENTRAL-70
-    what: "Program.cs AddHangfire carries a UseTypeResolver remap from the removed Humans.GoogleIntegration.Contracts assembly to Humans.GoogleIntegration, left for scoped Google sync jobs persisted before nobodies-collective/Humans#1066. Hangfire jobs all register themselves at startup, so the remap is dead weight. Found in review of peterdrier/Humans#1902. Plan: delete the UseTypeResolver remap in Program.cs outright."
-    review: light
-  - added: 2026-10-04
     id: CENTRAL-69
     what: "Humans.Base HumanViewComponent substitutes the literal Unknown for unresolved or nameless humans on member-visible layouts. Common_Unknown already exists in all six SharedResource cultures, but the component constructor has no localizer and its public model does not distinguish a fallback from a person named Unknown. Localize at the resolution boundary without string-based name detection.. Found during the daily production sweep. Plan: inject `IStringLocalizer<SharedResource>` into HumanViewComponent and use the existing `Common_Unknown` at the fallback branch (the resolution boundary); a view-component constructor is not consumer surface."
     review: panel
