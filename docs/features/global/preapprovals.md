@@ -68,7 +68,7 @@ account has nowhere to go on the report. Phase 2 ships first, on its own PR.
 | HoldedAccountNumber | int | From `IHoldedFinanceServiceRead.ListExpenseAccountsAsync(activeOnly: true)` |
 | HoldedAccountId | string(64) | |
 | AcceptsApplications | bool | Public apply page open |
-| ClaimBy | LocalDate | Claim deadline. Required. Reports must be submitted on or before this date (Europe/Madrid, end of day). Editable at any time by Board / FinanceAdmin, audited with old and new value. The edit also notifies every `Open` grant holder of the new date and clears the program's `pre_reminders_sent` rows, so the reminders run again against the new date. Pushing it back needs nothing undone: an `Open` grant past the old date is simply claimable again |
+| ClaimBy | LocalDate | Claim deadline. Required. Reports must be submitted on or before this date (Europe/Madrid, end of day). Editable at any time by Board / FinanceAdmin, audited with old and new value. The edit also resolves each `Open` grant holder's `pre-grant:{id}` notification and emits a new one with the new date, so the stale prompt never sits beside the replacement. Reminder markers carry the deadline they announced (see `pre_reminders_sent`), so the reminders run again against the new date with nothing to clear. Pushing it back needs nothing undone: an `Open` grant past the old date is simply claimable again |
 | Status | enum `ProgramStatus` | `Open` / `Closed`. Closed: no new grants, no applications, the apply page and form are hidden and the POST refused whatever `AcceptsApplications` says; existing `Open` grants stay claimable until `ClaimBy`. Closing freezes the numbers: nothing is zeroed or rewritten |
 | CreatedByUserId, CreatedAt, UpdatedAt | | |
 
@@ -88,10 +88,14 @@ PK `(ProgramId, UserId)`. One role; a manager is a manager.
 |----------|------|-------|
 | GrantId | Guid | FK → `pre_grants` |
 | Kind | enum `ReminderKind` | `D14` / `D3` |
+| ClaimBy | LocalDate | The deadline the reminder announced |
 | SentAt | Instant | |
 
-PK `(GrantId, Kind)`. The reminder job's delivery log, so a retried run cannot send a reminder
-twice. Not grant state; nothing reads it but the job.
+PK `(GrantId, Kind, ClaimBy)`. The reminder job's delivery log, so a retried run cannot send a
+reminder twice for the same deadline. The job re-reads the program's `ClaimBy` inside the
+per-grant transaction and stamps that value, so a concurrent deadline edit can never leave a
+marker that suppresses the reminder for the new date. Not grant state; nothing reads it but the
+job.
 
 ### `pre_grants`
 
@@ -227,7 +231,9 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
   the endorsement; the program's managers already decided. (Matches Phase 2's rule for unmapped
   accounts.)
 - **Approve:** Finance may lower the cap, never raise it above the grant's **current** `MaxAmount`
-  (re-read at approve, so a grant raised after submit lets Finance pay the new figure); the
+  (re-read at approve, so a grant raised after submit lets Finance pay the new figure). A blank
+  cap field on a pre-approved report means the grant's current `MaxAmount`, never "no cap":
+  the cap on such a report is never null. The
   account is not overridable on a pre-approved report (the program chose it). `ConsumeAsync`
   in the same transaction as the Holded push enqueue.
 - **Reject (either decider):** nothing on the grant; the report is back in `Draft` and still
@@ -238,7 +244,8 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
   {ClaimBy}" banner for everyone who can see the report.
 - **Deadline on screen:** the New form, the Draft edit page and the detail view show `ClaimBy`
   for a pre-approved report in the page's alert style, with days remaining, and switch to the
-  danger style inside the last 7 days. The member cannot miss it.
+  danger style inside the last 7 days. The member cannot miss it. A rejected draft that
+  already holds the grant shows "filed in time, resubmit when ready" instead of the countdown.
 - `Payable`, `PayableAllocation`, the push and the creditor ledger are untouched.
 
 ## Preapprovals UI
@@ -295,7 +302,7 @@ Through `INotificationEmitter` (in-app) and `IEmailService` (email), both to the
 | Application declined | Informational | Program, note from the manager if any. |
 | Application received (to each manager of the program) | Actionable | Who, requested amount, link to the manage page. |
 | Deadline reminder, 14 days and 3 days before `ClaimBy`, to every `Open` grant holder | Actionable | "File by {date}." Sent by the nightly job; each send is recorded in `pre_reminders_sent` so a retry never sends it twice. |
-| Report rejected (Expenses' existing rejection notification) | Actionable | For a pre-approved report it also carries "resubmit by {ClaimBy}". The grant is `Claimed` during a rejection, so the deadline job does not reach it; the rejection message is where the member learns the deadline still runs. |
+| Report rejected (Expenses' existing rejection notification) | Actionable | For a pre-approved report it also says the report was filed in time and may be fixed and resubmitted; no deadline is imposed, since the holding report is exempt from `ClaimBy` (see Expenses changes). The grant is `Claimed` during a rejection, so the deadline job does not reach it. |
 | Grant amount changed | Informational | Program, old and new amount. |
 
 Two source keys so `INotificationAutoResolve` clears the right alert: `pre-grant:{id}` on the
@@ -342,11 +349,11 @@ like Expenses' creditor binding does, so a grant issued under a since-merged id 
 `PreapprovalsSectionJobs`: one nightly job, `preapprovals-reminders`, which **sends** the
 14-day and 3-day reminders to `Open` grant holders and records each send in
 `pre_reminders_sent` (GrantId, Kind `D14` | `D3`, SentAt; PK GrantId + Kind). The in-app
-notification, the email outbox row and the marker are written in one ambient
-`TransactionScope` per grant (all three contexts share the database), so a crash leaves either
-all of them or none. That delivery log and one audit entry per run
-(`PreapprovalRemindersSent`, system actor, program, kind, count, grant ids) are the only rows the
-job writes; neither is grant state. No job expires, closes, zeroes or otherwise touches a grant
+notification, the email outbox row, the marker and one audit entry
+(`PreapprovalReminderSent`, system actor, program, grant, kind, deadline) are written in one
+ambient `TransactionScope` per grant (all four contexts share the database), so a crash leaves
+either all of them or none and every committed send is visible to the Board. That delivery log
+and those audit entries are the only rows the job writes; neither is grant state. No job expires, closes, zeroes or otherwise touches a grant
 or program; every state change is a person's action and is audited as such.
 Documented in [background-jobs.md](background-jobs.md) when built.
 
@@ -380,8 +387,8 @@ Steps 2 and 3 can be built in parallel once Phase 2 is on QA; 3 merges after 2.
 
 - **Preapprovals**: ceiling refused at issue/approve/edit with the right headroom; `FixedPerPerson`
   refuses an amount on the grant and copies `PerPersonAmount`; apply-twice edits, never
-  duplicates; claim/release/consume transitions and every refused transition; expiry job skips
-  reminders idempotent through `pre_reminders_sent` and write nothing else; "deadline passed"
+  duplicates; claim/release/consume transitions and every refused transition;
+  reminders idempotent through `pre_reminders_sent` per deadline and write nothing else; "deadline passed"
   rows carry no filing link; issue-many is all or nothing; manager of A → 403 on B; member → 403 on admin routes;
   closed program: apply form hidden, POST refused, `Open` grants still claimable; `Open` grant
   past `ClaimBy` not claimable, claimable again after `ClaimBy` is pushed back with no state
@@ -389,15 +396,15 @@ Steps 2 and 3 can be built in parallel once Phase 2 is on QA; 3 merges after 2.
   on terminal states; revoke / close leave `MaxAmount` untouched; claim idempotent for
   the holding report and refused for another; resubmit of the holding report allowed after
   `ClaimBy`; revoke on `Claimed` refuses the next claim/consume and the draft can drop or swap
-  the grant; `ClaimBy` edit notifies holders and resets reminders; apply refused after `ClaimBy`;
-  reminder run writes one audit entry; merge collapses duplicate
+  the grant; `ClaimBy` edit resolves the old notification, notifies holders and reminders run again for the new date; apply refused after `ClaimBy`;
+  each reminder send commits its audit entry with its marker; merge collapses duplicate
   `Applied` rows; export (both slices), erasure keeps decided grants
   and deletes `Applied` + manager rows; merge re-keys and dedups manager rows; every state change
   audited.
 - **Expenses**: stamp written at submit from the program's current account, not the draft's
   display; resubmit after reject restamps; submit after `ClaimBy` refused;
   submit on a non-claimable grant refused; endorsement skipped; approve cannot raise the cap above the grant's current amount or
-  change the account; reject leaves the grant `Claimed`; withdraw before approval releases;
+  change the account, and a blank cap keeps the grant's current amount; reject leaves the grant `Claimed`; withdraw before approval releases;
   withdraw after approval leaves it `Consumed`; approve consumes in the same transaction as the
   push enqueue; on-behalf filing restricted to the member's own grants.
 
