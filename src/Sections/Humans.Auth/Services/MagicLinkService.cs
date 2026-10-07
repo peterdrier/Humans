@@ -151,8 +151,9 @@ internal sealed class MagicLinkService(
             await emailService.SendAsync(
                 emailMessages.MagicLinkLogin(sendToEmail, displayName, magicLinkUrl), ct);
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to send magic link login for user {UserId}", user.Id);
             rateLimiter.ReleaseUserSendReservation(user.Id);
             throw;
         }
