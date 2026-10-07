@@ -89,7 +89,7 @@ Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
 `IEarlyEntryInvalidator`, `IShiftAuthorizationInvalidator`,
 `INotificationMeterCacheInvalidator`; lazy-resolved via `IServiceProvider` for
 cycle-breaking: `IGoogleSyncOutboxService` (transactional outbox appends),
-`IGoogleSyncService`, `ITeamResourceServiceRead`, `IRoleAssignmentService`,
+`IGoogleSyncService`, `ITeamResourceServiceRead`, `IRoleAssignmentServiceRead`,
 `IEmailService`, `IUserServiceRead`, `ISystemTeamSync`. Implements `ITeamManagementService`
 (internal, `: ITeamService`), `ITeamSeeding`,
 `IGoogleGroupMembershipSource`, `IUserDataContributor`, `IUserMerge`,

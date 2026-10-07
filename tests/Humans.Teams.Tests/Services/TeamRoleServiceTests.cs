@@ -54,7 +54,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             new GoogleSyncOutboxRepository(GoogleIntegrationDbFactory));
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>()
-            .With<IRoleAssignmentService>(roleAssignmentService)
+            .With<IRoleAssignmentServiceRead>(roleAssignmentService)
             .With<IEmailService>()
             .With<ISystemTeamSync>()
             .With<IGoogleSyncOutboxService>(googleOutboxService)

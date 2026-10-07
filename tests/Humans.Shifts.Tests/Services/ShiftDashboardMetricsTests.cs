@@ -44,7 +44,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             .With<ITicketServiceRead>(fakeTicketService)
             .With<IUserService>(fakeUserService)
             .With<IUserServiceRead>(fakeUserService)
-            .With<IRoleAssignmentService>()
+            .With<IRoleAssignmentServiceRead>()
             .Build();
 
         var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);

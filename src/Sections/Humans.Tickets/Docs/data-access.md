@@ -212,7 +212,7 @@ ticket caches via `InvalidateAfterContactImport`. No `IMemoryCache` directly.
 
 No repository. "Who's onsite" roster orchestrator. Pure read
 orchestration over `IUserServiceRead`, `ICampServiceRead`, `ITeamServiceRead`,
-`IRoleAssignmentService` (the controller resolves the active year via
+`IRoleAssignmentServiceRead` (the controller resolves the active year via
 `ISettingsService`). Implements
 `IOnsiteRosterService`, `IApplicationService`. No direct DB access, no cache.
 

@@ -51,8 +51,8 @@ internal sealed class TeamService(
     private ITeamResourceServiceRead TeamResourceService
         => serviceProvider.GetRequiredService<ITeamResourceServiceRead>();
 
-    private IRoleAssignmentService RoleAssignmentService
-        => serviceProvider.GetRequiredService<IRoleAssignmentService>();
+    private IRoleAssignmentServiceRead RoleAssignmentService
+        => serviceProvider.GetRequiredService<IRoleAssignmentServiceRead>();
 
     private IEmailService EmailService
         => serviceProvider.GetRequiredService<IEmailService>();

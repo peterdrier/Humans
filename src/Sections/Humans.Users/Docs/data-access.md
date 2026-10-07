@@ -55,7 +55,7 @@ Repository: `IUserRepository` (profile and contact-field methods).
 | Profiles | R |
 
 Cross-section reads via `IUserServiceRead`, `ITeamServiceRead`,
-`IRoleAssignmentService` (visibility / coordinator-team lookups). Implements
+`IRoleAssignmentServiceRead` (visibility / coordinator-team lookups). Implements
 `IUserMerge`. Invalidates the User+Profile read-model via
 `IUserInfoInvalidator`. No `IMemoryCache`.
 
@@ -329,7 +329,7 @@ Detection-only: loads the cached `UserInfo` read-model via
 gmail/googlemail equivalence), then counts active teams / role assignments
 per involved user. Resolution is delegated to
 `AccountMergeService.MergeAsync`. **No DB access.** Cross-section calls via
-`IUserService`, `ITeamService`, `IRoleAssignmentService`. No cache.
+`IUserService`, `ITeamService`, `IRoleAssignmentServiceRead`. No cache.
 
 ### ExternalLoginService (Scoped)
 

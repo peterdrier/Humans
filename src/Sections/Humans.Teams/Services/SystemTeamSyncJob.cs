@@ -48,8 +48,8 @@ internal sealed class SystemTeamSyncJob(
     private IApplicationServiceRead ApplicationDecisionService =>
         serviceProvider.GetRequiredService<IApplicationServiceRead>();
 
-    private IRoleAssignmentService RoleAssignmentService =>
-        serviceProvider.GetRequiredService<IRoleAssignmentService>();
+    private IRoleAssignmentServiceRead RoleAssignmentService =>
+        serviceProvider.GetRequiredService<IRoleAssignmentServiceRead>();
 
     private ITeamResourceServiceRead TeamResourceService =>
         serviceProvider.GetRequiredService<ITeamResourceServiceRead>();

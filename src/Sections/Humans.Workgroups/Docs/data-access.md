@@ -36,7 +36,7 @@ Repository: `IWorkgroupRepository`.
 | workgroup_documents | R/W |
 | workgroup_document_comments | R/W |
 
-Cross-section calls: `IUserServiceRead`, `IUserEmailService`, `IRoleAssignmentService`,
+Cross-section calls: `IUserServiceRead`, `IUserEmailService`, `IRoleAssignmentServiceRead`,
 `ITeamServiceRead`, `ISettingsService`, `IGoogleSyncService`, `INotificationService`,
 `IEmailService`, the section's own `WorkgroupsEmails` builder, `IAuditLogService`,
 `ISurveyAnalysisRead`,

@@ -32,7 +32,7 @@ internal sealed class GateService(
     IEarlyEntryService earlyEntry,
     ISettingsService settingsService,
     IShiftManagementServiceRead shifts,
-    IRoleAssignmentService roles,
+    IRoleAssignmentServiceRead roles,
     IUserService users,
     IPasswordHasher<GateStaffPin> pinHasher,
     IAuditLogService auditLog,

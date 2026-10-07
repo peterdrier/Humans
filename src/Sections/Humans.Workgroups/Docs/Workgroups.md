@@ -441,7 +441,7 @@ display-name reads.
   `WorkgroupRhythm` computes rhythm badges from the snapshot against the caller's clock.
 - **Display stitching** — `IUserServiceRead.GetUserInfosAsync` for burner names and tiers.
 - **Cross-section calls** — `IUserServiceRead`, `IUserEmailService`,
-  `IRoleAssignmentService`, `ITeamServiceRead`, `ISettingsService`, `IGoogleSyncService`,
+  `IRoleAssignmentServiceRead`, `ITeamServiceRead`, `ISettingsService`, `IGoogleSyncService`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
   `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceService`, `IHoldedClient`.
 - **Email** — Workgroups owns the working-group notice: `WorkgroupsEmails` (internal)

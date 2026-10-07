@@ -7,13 +7,13 @@ namespace Humans.Governance.Services;
 
 /// <summary>
 /// Thin read-only query surface exposing ONLY the subset of
-/// <see cref="ITeamServiceRead"/> and <see cref="IRoleAssignmentService"/>
+/// <see cref="ITeamServiceRead"/> and <see cref="IRoleAssignmentServiceRead"/>
 /// methods consumed by <see cref="MembershipCalculator"/>.
 /// </summary>
 /// <remarks>
 /// <para>
 /// Exists to break a circular DI graph. Both services reach <c>ISystemTeamSync</c> —
-/// <see cref="IRoleAssignmentService"/> injects it, and <see cref="ITeamServiceRead"/>'s
+/// <see cref="IRoleAssignmentServiceRead"/> injects it, and <see cref="ITeamServiceRead"/>'s
 /// implementation resolves it lazily through <c>IServiceProvider</c> for this same reason —
 /// and its implementation (<c>SystemTeamSyncJob</c>) injects
 /// <see cref="Humans.Governance.Contracts.IMembershipCalculatorRead"/> back. Injecting the full team / role

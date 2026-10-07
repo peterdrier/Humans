@@ -36,7 +36,7 @@ internal sealed partial class WorkgroupService(
     IUserServiceRead users,
     ISurveyAnalysisRead surveys,
     IUserEmailService userEmails,
-    IRoleAssignmentService roles,
+    IRoleAssignmentServiceRead roles,
     ISettingsService settings,
     IGoogleSyncService googleSync,
     IHoldedFinanceService finance,

@@ -22,9 +22,6 @@ namespace Humans.Backdoor.Tests.Controllers;
 public class BackdoorApiKeyAuthFilterTests
 {
     private readonly IBackdoorApiKeyService _keys = Substitute.For<IBackdoorApiKeyService>();
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
-
-    public BackdoorApiKeyAuthFilterTests() => WithRoles();
 
     [HumansFact]
     public void Every_machine_controller_hangs_off_this_filter()
@@ -48,7 +45,6 @@ public class BackdoorApiKeyAuthFilterTests
 
         ctx.Result.Should().BeOfType<UnauthorizedResult>();
         await _keys.DidNotReceiveWithAnyArgs().ResolveOwnerAsync(default!, default);
-        await _roles.DidNotReceiveWithAnyArgs().GetActiveForUserAsync(default, default);
     }
 
     [HumansFact]
@@ -57,7 +53,7 @@ public class BackdoorApiKeyAuthFilterTests
         // No 503 "not configured" branch any more: keys are rows, not deploy-time config,
         // so an empty table is an unauthorized caller, not a broken server.
         _keys.ResolveOwnerAsync("wrong-key", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<Guid?>(null));
+            .Returns(Task.FromResult<BackdoorKeyOwner?>(null));
         var ctx = MakeContext(headerKey: "wrong-key");
 
         await Filter().OnAuthorizationAsync(ctx);
@@ -70,7 +66,7 @@ public class BackdoorApiKeyAuthFilterTests
     {
         var ownerId = Guid.NewGuid();
         _keys.ResolveOwnerAsync("right-key", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<Guid?>(ownerId));
+            .Returns(Task.FromResult<BackdoorKeyOwner?>(new BackdoorKeyOwner(ownerId, [])));
         var ctx = MakeContext(headerKey: "right-key");
 
         await Filter().OnAuthorizationAsync(ctx);
@@ -88,8 +84,8 @@ public class BackdoorApiKeyAuthFilterTests
         // so a key that arrived role-less read every one of them as a full admin.
         var ownerId = Guid.NewGuid();
         _keys.ResolveOwnerAsync("right-key", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<Guid?>(ownerId));
-        WithRoles(ownerId, "Board", "Admin");
+            .Returns(new BackdoorKeyOwner(ownerId,
+                [new RoleAssignmentSnapshot("Board", null), new RoleAssignmentSnapshot("Admin", null)]));
         var ctx = MakeContext(headerKey: "right-key");
 
         await Filter().OnAuthorizationAsync(ctx);
@@ -104,7 +100,7 @@ public class BackdoorApiKeyAuthFilterTests
     {
         var ownerId = Guid.NewGuid();
         _keys.ResolveOwnerAsync("right-key", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<Guid?>(ownerId));
+            .Returns(Task.FromResult<BackdoorKeyOwner?>(new BackdoorKeyOwner(ownerId, [])));
         var ctx = MakeContext(headerKey: "right-key");
 
         await Filter().OnAuthorizationAsync(ctx);
@@ -113,15 +109,7 @@ public class BackdoorApiKeyAuthFilterTests
         ctx.HttpContext.User.IsInRole("Admin").Should().BeFalse();
     }
 
-    private BackdoorApiKeyAuthFilter Filter() => new(_keys, _roles);
-
-    /// <summary>Stubs the role lookup: no arguments means "this owner holds nothing".</summary>
-    private void WithRoles(Guid? ownerId = null, params string[] roleNames) =>
-        _roles.GetActiveForUserAsync(
-                ownerId is null ? Arg.Any<Guid>() : Arg.Is(ownerId.Value),
-                Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<RoleAssignmentSnapshot>>(
-                [.. roleNames.Select(r => new RoleAssignmentSnapshot(r, null))]));
+    private BackdoorApiKeyAuthFilter Filter() => new(_keys);
 
     private static AuthorizationFilterContext MakeContext(string? headerKey)
     {
