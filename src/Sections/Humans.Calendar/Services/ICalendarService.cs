@@ -16,6 +16,7 @@ internal interface ICalendarServiceRead : IApplicationService
     Task<IReadOnlyList<CalendarOccurrence>> GetOccurrencesInWindowAsync(
         Instant from,
         Instant to,
+        DateTimeZone viewerZone,
         Guid? teamId = null,
         CancellationToken ct = default);
 
