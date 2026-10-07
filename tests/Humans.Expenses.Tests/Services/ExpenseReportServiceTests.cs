@@ -964,6 +964,41 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task RemoveAttachmentFromLineAsync_RequestDisconnectsAtCommit_RemovesMetadataAuditsAndCleansFile()
+    {
+        var (_, category) = SetupActiveYear();
+        using var request = new CancellationTokenSource();
+        var interceptor = new DisconnectAfterCommit(request);
+        var options = new DbContextOptionsBuilder<ExpensesDbContext>(_expensesOptions).AddInterceptors(interceptor).Options;
+        var factory = new TestDbContextFactory<ExpensesDbContext>(options);
+        var repo = new ExpenseRepository(factory);
+        var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
+            _userService, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
+            _holdedClient, _holdedFinance, Clock, NullLogger<ExpenseReportService>.Instance,
+            Options.Create(new TravelReimbursementConfig()));
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var actor = Guid.NewGuid();
+        var id = await service.CreateDraftAsync(actor, actor, category.Id, null, ct);
+        var lineId = (await service.AddLineWithResultAsync(id, actor, false, "Item", 10m, ct: ct)).LineId!.Value;
+        var attachment = MakeAttachment(actor);
+        await repo.AddAttachmentAsync(attachment, ct);
+        await repo.SetLineAttachmentAsync(lineId, attachment.Id, ct);
+        interceptor.Armed = true;
+
+        var result = await service.RemoveAttachmentFromLineAsync(id, actor, false, lineId, request.Token);
+
+        result.Succeeded.Should().BeTrue();
+        request.IsCancellationRequested.Should().BeTrue();
+        await using var db = await factory.CreateDbContextAsync(ct);
+        (await db.ExpenseLines.AsNoTracking().SingleAsync(l => l.Id == lineId, ct)).AttachmentId.Should().BeNull();
+        (await db.ExpenseAttachments.AsNoTracking().AnyAsync(a => a.Id == attachment.Id, ct)).Should().BeFalse();
+        await AuditLog.Received(1).LogAsync(AuditAction.ExpenseAttachmentRemoved,
+            "ExpenseReport", id, Arg.Any<string>(), actor, actor, AuditEntityTypes.User);
+        await _fileStorage.Received(1).DeleteAsync(
+            ExpenseReportService.AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
+    }
+
+    [HumansFact]
     public async Task RemoveAttachmentFromLineAsync_IsIdempotent_WhenNoAttachment()
     {
         var (_, category) = SetupActiveYear();
@@ -3268,4 +3303,15 @@ public sealed class ExpenseReportServiceTests
         UploadedByUserId = uploaderId,
         UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0)
     };
+    private sealed class DisconnectAfterCommit(CancellationTokenSource request) : SaveChangesInterceptor
+    {
+        public bool Armed { get; set; }
+
+        public override async ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result,
+            CancellationToken cancellationToken = default)
+        {
+            if (Armed) await request.CancelAsync();
+            return result;
+        }
+    }
 }

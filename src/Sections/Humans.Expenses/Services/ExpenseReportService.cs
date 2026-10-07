@@ -707,8 +707,8 @@ internal sealed class ExpenseReportService(
 
             if (line.Attachment is null) return ExpenseMutationResult.Success; // idempotent
 
-            await repo.SetLineAttachmentAsync(lineId, null, ct);
-            await repo.RemoveAttachmentAsync(line.Attachment.Id, ct);
+            var removed = await repo.RemoveLineAttachmentAsync(reportId, lineId, ct);
+            if (removed is null) return ExpenseMutationResult.Success;
 
             await auditLogService.LogAsync(
                 AuditAction.ExpenseAttachmentRemoved,
@@ -723,13 +723,13 @@ internal sealed class ExpenseReportService(
             try
             {
                 await fileStorage.DeleteAsync(
-                    AttachmentKey(line.Attachment.Id, line.Attachment.Extension), CancellationToken.None);
+                    AttachmentKey(removed.Id, removed.Extension), CancellationToken.None);
             }
             catch (Exception ex)
             {
                 logger.LogWarning(ex,
                     "Could not delete attachment file {AttachmentId} for line {LineId}",
-                    line.Attachment.Id, lineId);
+                    removed.Id, lineId);
             }
 
             return ExpenseMutationResult.Success;

@@ -203,6 +203,20 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<ExpenseAttachment?> RemoveLineAttachmentAsync(Guid reportId, Guid lineId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var line = await ctx.ExpenseLines.Include(l => l.Attachment)
+            .SingleOrDefaultAsync(l => l.Id == lineId && l.ExpenseReportId == reportId, ct);
+        if (line?.Attachment is not { } attachment) return null;
+
+        line.AttachmentId = null;
+        line.Attachment = null;
+        ctx.ExpenseAttachments.Remove(attachment);
+        await ctx.SaveChangesAsync(ct);
+        return attachment;
+    }
+
     public async Task<bool> UpdatePayeeIbanAsync(
         Guid reportId, string payeeIban, Instant updatedAt, CancellationToken ct = default)
     {
