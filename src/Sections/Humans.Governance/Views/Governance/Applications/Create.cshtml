@@ -58,7 +58,7 @@
 
                     <div class="mb-4">
                         <label asp-for="Motivation" class="form-label">@Localizer["GovernanceCreate_MotivationLabel"]</label>
-                        <textarea asp-for="Motivation" class="form-control" rows="6"
+                        <textarea asp-for="Motivation" minlength="50" maxlength="2000" class="form-control" rows="6"
                             placeholder="@Localizer["GovernanceCreate_MotivationPlaceholder"].Value"></textarea>
                         <span asp-validation-for="Motivation" class="text-danger"></span>
                         <div class="form-text">@Localizer["GovernanceCreate_MotivationHelp"]</div>
@@ -66,7 +66,7 @@
 
                     <div class="mb-4">
                         <label asp-for="AdditionalInfo" class="form-label">@Localizer["GovernanceCreate_AdditionalInfoLabel"]</label>
-                        <textarea asp-for="AdditionalInfo" class="form-control" rows="3"
+                        <textarea asp-for="AdditionalInfo" maxlength="1000" class="form-control" rows="3"
                             placeholder="@Localizer["GovernanceCreate_AdditionalInfoPlaceholder"].Value"></textarea>
                         <span asp-validation-for="AdditionalInfo" class="text-danger"></span>
                         <div class="form-text">@Localizer["GovernanceCreate_AdditionalInfoHelp"]</div>
@@ -77,14 +77,14 @@
 
                         <div class="mb-4">
                             <label asp-for="SignificantContribution" class="form-label">@SharedLocalizer["Application_SignificantContribution"]</label>
-                            <textarea asp-for="SignificantContribution" class="form-control" rows="4"
+                            <textarea asp-for="SignificantContribution" maxlength="2000" class="form-control" rows="4"
                                 placeholder="@SharedLocalizer["Application_SignificantContributionPlaceholder"].Value"></textarea>
                             <span asp-validation-for="SignificantContribution" class="text-danger"></span>
                         </div>
 
                         <div class="mb-4">
                             <label asp-for="RoleUnderstanding" class="form-label">@SharedLocalizer["Application_RoleUnderstanding"]</label>
-                            <textarea asp-for="RoleUnderstanding" class="form-control" rows="4"
+                            <textarea asp-for="RoleUnderstanding" maxlength="2000" class="form-control" rows="4"
                                 placeholder="@SharedLocalizer["Application_RoleUnderstandingPlaceholder"].Value"></textarea>
                             <span asp-validation-for="RoleUnderstanding" class="text-danger"></span>
                         </div>

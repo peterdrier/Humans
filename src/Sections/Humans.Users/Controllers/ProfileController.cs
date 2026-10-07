@@ -332,11 +332,12 @@ internal sealed class ProfileController(
 
         var result = applicationDecisionService.ValidateSubmission(
             model.SelectedTier, model.ApplicationMotivation,
-            model.ApplicationSignificantContribution, model.ApplicationRoleUnderstanding);
+            model.ApplicationSignificantContribution, model.ApplicationRoleUnderstanding, model.ApplicationAdditionalInfo);
 
         if (result.Success)
             return null;
 
+        logger.LogWarning("Profile tier application validation refused for tier {Tier}: {ErrorKey}", model.SelectedTier, result.ErrorKey);
         switch (result.ErrorKey)
         {
             case "MotivationRequired":
@@ -350,6 +351,22 @@ internal sealed class ProfileController(
             case "RoleUnderstandingRequired":
                 ModelState.AddModelError(nameof(model.ApplicationRoleUnderstanding),
                     sharedLocalizer["Application_RoleUnderstandingRequired"].Value);
+                break;
+            case "MotivationLength":
+                ModelState.AddModelError(nameof(model.ApplicationMotivation),
+                    sharedLocalizer["Application_MotivationLength"].Value);
+                break;
+            case "AdditionalInfoTooLong":
+                ModelState.AddModelError(nameof(model.ApplicationAdditionalInfo),
+                    sharedLocalizer["Application_AdditionalInfoTooLong"].Value);
+                break;
+            case "SignificantContributionTooLong":
+                ModelState.AddModelError(nameof(model.ApplicationSignificantContribution),
+                    sharedLocalizer["Application_SignificantContributionTooLong"].Value);
+                break;
+            case "RoleUnderstandingTooLong":
+                ModelState.AddModelError(nameof(model.ApplicationRoleUnderstanding),
+                    sharedLocalizer["Application_RoleUnderstandingTooLong"].Value);
                 break;
             default:
                 ModelState.AddModelError(string.Empty, sharedLocalizer["Application_InvalidTier"].Value);
