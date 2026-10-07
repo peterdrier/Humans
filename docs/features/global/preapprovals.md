@@ -68,7 +68,7 @@ account has nowhere to go on the report. Phase 2 ships first, on its own PR.
 | HoldedAccountNumber | int | From `IHoldedFinanceServiceRead.ListExpenseAccountsAsync(activeOnly: true)` |
 | HoldedAccountId | string(64) | |
 | AcceptsApplications | bool | Public apply page open |
-| ClaimBy | LocalDate | Claim deadline. Required. Reports must be submitted on or before this date (Europe/Madrid, end of day). Editable at any time by Board / FinanceAdmin, audited with old and new value. Pushing it back needs nothing undone: an `Open` grant past the old date is simply claimable again |
+| ClaimBy | LocalDate | Claim deadline. Required. Reports must be submitted on or before this date (Europe/Madrid, end of day). Editable at any time by Board / FinanceAdmin, audited with old and new value. The edit also notifies every `Open` grant holder of the new date and clears the program's `pre_reminders_sent` rows, so the reminders run again against the new date. Pushing it back needs nothing undone: an `Open` grant past the old date is simply claimable again |
 | Status | enum `ProgramStatus` | `Open` / `Closed`. Closed: no new grants, no applications, the apply page and form are hidden and the POST refused whatever `AcceptsApplications` says; existing `Open` grants stay claimable until `ClaimBy`. Closing freezes the numbers: nothing is zeroed or rewritten |
 | CreatedByUserId, CreatedAt, UpdatedAt | | |
 
@@ -134,8 +134,10 @@ Applied ──approve──▶ Open ──report submitted──▶ Claimed ─�
   passes, so pushing `ClaimBy` back makes those grants claimable again with nothing to undo.
 - Revoke is allowed on `Open` and `Claimed`. Revoking a `Claimed` grant does not touch the
   report: the next `ClaimAsync` (resubmit) and `ConsumeAsync` (approve) for it are refused with
-  "pre-approval revoked", so a draft holding it can no longer be submitted and a submitted one
-  must be rejected by Finance. `Consumed` is never revoked.
+  "pre-approval revoked", so a submitted report must be rejected by Finance and lands in
+  `Draft`. A `Draft` whose grant is revoked is not stranded: the header edit lets the member
+  drop the grant (the report becomes an ordinary one, account or category picked as usual, no
+  cap) or pick another claimable grant, then submit normally. `Consumed` is never revoked.
 - **Atomicity.** `ClaimAsync`, `ReleaseAsync` and `ConsumeAsync` run inside the ambient
   `TransactionScope` Expenses opens around its own status change, the pattern
   `AccountMergeService` and `CampService` already use across contexts. Either both commit or
@@ -246,7 +248,7 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
 | Route | Who | What |
 |-------|-----|------|
 | `/Preapprovals` | Authenticated | My grants, all statuses: program, label, amount, status, **claim by** (prominent, danger style inside 7 days, "deadline passed" after). A row links to `/Expenses/New?grant={id}` only while it is **claimable** (`Open` and `ClaimBy` not passed); a "deadline passed" row has no link. The open ones also appear at the top of `/Expenses`, which is where most people will file from. Programs accepting applications are listed below with an Apply button. |
-| `/Preapprovals/{programId}` | Authenticated | Program page: description, per-person amount or "amount on request", claim deadline, "Apply for a pre-approval" form when `Status == Open` **and** `AcceptsApplications` (note; requested amount on `PerGrantAmount` programs). The GET hides the form and the POST returns 400 when either is false. One application per person per program; a second submit edits the pending one. |
+| `/Preapprovals/{programId}` | Authenticated | Program page: description, per-person amount or "amount on request", claim deadline, "Apply for a pre-approval" form when `Status == Open` **and** `AcceptsApplications` **and** `ClaimBy` not passed (note; requested amount on `PerGrantAmount` programs). The GET hides the form and the POST returns 400 when any of the three is false. One application per person per program; a second submit edits the pending one. |
 
 ### Manager side (`/Preapprovals/Admin/*`, its own `PreapprovalsAdminController`, localization-exempt, per `no-admin-url-section`)
 
@@ -281,7 +283,7 @@ Negative cases to verify:
 - A submitter cannot change the stamped cap or account on a pre-approved report (no input, and
   the service ignores posted values).
 - Finance cannot raise the cap above the grant or change the account at approve.
-- Nobody can submit a pre-approved report after `ClaimBy`, admins on behalf included.
+- Nobody can make the **first** submit of a pre-approved report after `ClaimBy`, admins on behalf included. A rejected report that already holds the grant may resubmit (see Expenses changes).
 
 ## Notifications and email
 
@@ -342,9 +344,10 @@ like Expenses' creditor binding does, so a grant issued under a since-merged id 
 `pre_reminders_sent` (GrantId, Kind `D14` | `D3`, SentAt; PK GrantId + Kind). The in-app
 notification, the email outbox row and the marker are written in one ambient
 `TransactionScope` per grant (all three contexts share the database), so a crash leaves either
-all of them or none. That delivery log is the only row the job writes and it is not grant state. No job expires, closes, zeroes or
-otherwise touches a grant or program; every state change is a person's action and is audited
-as such.
+all of them or none. That delivery log and one audit entry per run
+(`PreapprovalRemindersSent`, system actor, program, kind, count, grant ids) are the only rows the
+job writes; neither is grant state. No job expires, closes, zeroes or otherwise touches a grant
+or program; every state change is a person's action and is audited as such.
 Documented in [background-jobs.md](background-jobs.md) when built.
 
 ## Out of scope
@@ -385,7 +388,9 @@ Steps 2 and 3 can be built in parallel once Phase 2 is on QA; 3 merges after 2.
   change; amount edit on `Open`/`Claimed` audited with old and new and ceiling-checked, refused
   on terminal states; revoke / close leave `MaxAmount` untouched; claim idempotent for
   the holding report and refused for another; resubmit of the holding report allowed after
-  `ClaimBy`; revoke on `Claimed` refuses the next claim/consume; merge collapses duplicate
+  `ClaimBy`; revoke on `Claimed` refuses the next claim/consume and the draft can drop or swap
+  the grant; `ClaimBy` edit notifies holders and resets reminders; apply refused after `ClaimBy`;
+  reminder run writes one audit entry; merge collapses duplicate
   `Applied` rows; export (both slices), erasure keeps decided grants
   and deletes `Applied` + manager rows; merge re-keys and dedups manager rows; every state change
   audited.
