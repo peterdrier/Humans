@@ -29,9 +29,6 @@ public enum PersonSearchFields
     /// <summary>Name + Bio — public endpoints.</summary>
     PublicAll = Name | Bio,
 
-    /// <summary>Name + Bio + LegalName — admin/coordinator picker endpoints (find people by real name; no private contact data).</summary>
-    ManageAll = Name | Bio | LegalName,
-
     /// <summary>Name + Bio + LegalName + Admin — admin/board endpoints only.</summary>
     AdminAll = Name | Bio | LegalName | Admin,
 }

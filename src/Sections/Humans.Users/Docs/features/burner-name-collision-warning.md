@@ -74,7 +74,7 @@ No schema changes. The count is computed in memory off the `CachingUserService`
 `UserInfo` snapshot — no new DB query.
 
 `PersonSearchFields.ExactName = 1 << 4` — a new public enum value (its own bit;
-existing `Name` / `PublicAll` / `ManageAll` / `AdminAll` are unchanged). When set,
+existing `Name` / `PublicAll` / `AdminAll` are unchanged). When set,
 `PersonSearchMatcher` matches by accent-/case-folded full-string equality on the
 resolved burner name, reusing the existing `Fold` helper.
 
