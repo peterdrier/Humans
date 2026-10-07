@@ -274,10 +274,6 @@ inbox:
     what: "FeedbackController's four triage mutations map arbitrary InvalidOperationException dependency failures to 404, while BackdoorFeedbackController also classifies missing reports from exception message text. FeedbackService's throwing interface provides no structured missing/rule result. Persistence faults can therefore masquerade as missing reports without their error diagnostics. Found during the daily debt sweep. Plan: change the four triage methods in place to return a Feedback-owned result record (`NotFound`/`Rejected`/`Ok`) that the controllers localize, per no-localized-exception-messages; pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel
   - added: 2026-10-04
-    id: CENTRAL-73
-    what: "Backdoor IssuesController classifies every InvalidOperationException from PostComment as missing, and PatchField selects 404 versus 422 from Message containing 'not found'. Persistence faults can masquerade as missing/rule refusals and expose diagnostics. Browser Issues mutation wrappers now distinguish private known exceptions, but IIssueTriage exposes only throwing methods. Found during the daily debt sweep. Plan: change `IIssueTriage` in place to return an Issues-owned result record (`NotFound`/`Rejected`/`Ok`) that the machine path maps to 404/422, per no-localized-exception-messages; pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
-  - added: 2026-10-04
     id: CENTRAL-72
     what: "MailerLiteImportService.ApplyAsync (ReplaceUnverifiedEmail) and AttendeeContactImportService.ApplyDecisionAsync (DeleteUnverifiedThenCreate) delete the sole unverified UserEmail before account provisioning. If provisioning fails, the address stays removed while the batch reports an error. Reordering alone reuses the unverified owner; compensation can overwrite concurrent user changes. Deferred in the daily sweep. Plan: one Users-owned replace-and-provision operation called by both importers; if provisioning fails, nothing is deleted; pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel

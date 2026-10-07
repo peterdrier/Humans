@@ -134,12 +134,15 @@ internal sealed class BackdoorIssuesController(
 
         try
         {
-            var comment = await issues.PostCommentAsync(
+            var result = await issues.PostCommentAsync(
                 issueId: id,
                 viewer: Viewer,
                 senderUserId: ActorUserId,
                 content: model.Content);
 
+            if (result.NotFound) return NotFound();
+            if (result.Comment is not { } comment)
+                return StatusCode(500, new { error = "Failed to post comment" });
             logger.LogInformation("Comment {CommentId} posted on issue {IssueId} via API", comment.Id, id);
             return Ok(new
             {
@@ -147,11 +150,6 @@ internal sealed class BackdoorIssuesController(
                 comment.Content,
                 CreatedAt = comment.CreatedAt.ToDateTimeUtc()
             });
-        }
-        catch (InvalidOperationException)
-        {
-            logger.LogWarning("Issue {IssueId} not found during API PostComment", id);
-            return NotFound();
         }
         catch (Exception ex)
         {
@@ -182,23 +180,16 @@ internal sealed class BackdoorIssuesController(
     /// field moved — a missing issue to 404, a rejected move to 422 carrying the service's
     /// reason, anything else to 500.
     /// </summary>
-    private async Task<IActionResult> PatchAsync(Guid id, string field, Func<Task> apply)
+    private async Task<IActionResult> PatchAsync(Guid id, string field, Func<Task<IssueMutationResult>> apply)
     {
         try
         {
-            await apply();
+            var result = await apply();
+            if (result.NotFound) return NotFound();
+            if (result.Rejected) return UnprocessableEntity(new { error = result.ErrorMessage });
+            if (!result.Succeeded) return StatusCode(500, new { error = result.ErrorMessage });
             logger.LogInformation("Issue {IssueId} {Field} updated via API", id, field);
             return Ok(new { success = true });
-        }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-        {
-            logger.LogWarning("Issue {IssueId} not found during API {Field} patch: {Reason}", id, field, ex.Message);
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Issue {IssueId} API {Field} patch rejected: {Reason}", id, field, ex.Message);
-            return UnprocessableEntity(new { error = ex.Message });
         }
         catch (Exception ex)
         {

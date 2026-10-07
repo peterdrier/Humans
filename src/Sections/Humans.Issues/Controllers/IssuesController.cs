@@ -286,21 +286,16 @@ internal sealed class IssuesController(
 
         try
         {
-            await issues.PostCommentAsync(
+            var result = await issues.PostCommentAsync(
                 id,
                 viewer,
                 user.Id,
                 model.Content,
                 resolveOnPost: model.ResolveOnPost && canHandle);
 
-            SetSuccess(localizer["Issue_Comment_Posted"].Value);
-        }
-        catch (InvalidOperationException)
-        {
-            // Race: issue existed at the null-check above but was deleted
-            // before the mutation reached the service.
-            logger.LogWarning("Issue {IssueId} not found during PostComment (deleted in race)", id);
-            return NotFound();
+            if (result.NotFound) return NotFound();
+            if (result.Comment is not null) SetSuccess(localizer["Issue_Comment_Posted"].Value);
+            else SetError(localizer["Issue_Comment_PostFailed"].Value);
         }
         catch (Exception ex)
         {
@@ -329,7 +324,7 @@ internal sealed class IssuesController(
             return BadRequest(ModelState);
         }
 
-        var result = await issues.UpdateStatusWithResultAsync(id, viewer, model.Status, user.Id);
+        var result = await issues.UpdateStatusAsync(id, viewer, model.Status, user.Id);
         if (result.NotFound) return NotFound();
 
         if (result.Succeeded)
@@ -362,7 +357,7 @@ internal sealed class IssuesController(
             return BadRequest(ModelState);
         }
 
-        var result = await issues.UpdateAssigneeWithResultAsync(id, viewer, model.AssigneeUserId, user.Id);
+        var result = await issues.UpdateAssigneeAsync(id, viewer, model.AssigneeUserId, user.Id);
         if (result.NotFound) return NotFound();
 
         if (result.Succeeded)
@@ -395,7 +390,7 @@ internal sealed class IssuesController(
             return BadRequest(ModelState);
         }
 
-        var result = await issues.UpdateSectionWithResultAsync(id, viewer, model.Section, user.Id);
+        var result = await issues.UpdateSectionAsync(id, viewer, model.Section, user.Id);
         if (result.NotFound) return NotFound();
         if (result.Succeeded)
         {
@@ -433,7 +428,7 @@ internal sealed class IssuesController(
             return BadRequest(ModelState);
         }
 
-        var result = await issues.SetGitHubIssueNumberWithResultAsync(id, viewer, model.GitHubIssueNumber, user.Id);
+        var result = await issues.SetGitHubIssueNumberAsync(id, viewer, model.GitHubIssueNumber, user.Id);
         if (result.NotFound) return NotFound();
 
         if (result.Succeeded)

@@ -96,6 +96,8 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - A key-authed principal carries the `BackdoorApiKey` authentication scheme (`BackdoorAuthentication.SchemeName`). It never passes through the Shell's claims transformation, so its role claims come from the auth filter's own lookup and it carries no state claims — and the Shell's onboarding gates (`NameRequiredFilter`, `MembershipRequiredFilter`) skip it rather than redirecting a JSON client to an HTML page.
 - Every `PATCH /api/backdoor/{issues,feedback}/{id}/*` answers the same way whichever field moved: `{success:true}`, 404 for a missing item, 422 carrying the service's reason for a rejected change.
 
+- Issues mutations map owner-section results to 404 for missing/inaccessible issues, 422 for rule refusals, and 500 for dependency failures. Comment posting uses an explicit missing result. Exceptions and their diagnostic text never select 404/422 or enter the response body.
+
 ## Negative Access Rules
 
 - A caller with no `X-Api-Key` header **cannot** reach any endpoint — 401.
