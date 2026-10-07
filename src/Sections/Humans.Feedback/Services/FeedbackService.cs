@@ -311,24 +311,9 @@ internal sealed class FeedbackService(
             return await repository.GetActionableCountAsync(cancellationToken);
         });
 
-    public async Task<IReadOnlyList<(Guid UserId, string DisplayName, int Count)>> GetDistinctReportersAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var rows = await repository.GetReporterCountsAsync(cancellationToken);
-        if (rows.Count == 0)
-            return [];
-
-        var userIds = rows.Select(r => r.UserId).ToHashSet();
-        var displayUsers = await BuildDisplayUsersAsync(userIds, cancellationToken);
-
-        return rows
-            .Select(r =>
-            {
-                var name = displayUsers.TryGetValue(r.UserId, out var displayUser) ? displayUser.Name : r.UserId.ToString();
-                return (r.UserId, name, r.Count);
-            })
-            .ToList();
-    }
+    public Task<IReadOnlyList<(Guid UserId, int Count)>> GetDistinctReportersAsync(
+        CancellationToken cancellationToken = default) =>
+        repository.GetReporterCountsAsync(cancellationToken);
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
