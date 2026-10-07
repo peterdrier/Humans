@@ -51,8 +51,8 @@ internal sealed class SystemTeamSyncJob(
     private IRoleAssignmentService RoleAssignmentService =>
         serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
-    private ITeamResourceService TeamResourceService =>
-        serviceProvider.GetRequiredService<ITeamResourceService>();
+    private ITeamResourceServiceRead TeamResourceService =>
+        serviceProvider.GetRequiredService<ITeamResourceServiceRead>();
 
     private IMembershipCalculatorRead MembershipCalculator =>
         serviceProvider.GetRequiredService<IMembershipCalculatorRead>();

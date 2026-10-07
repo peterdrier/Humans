@@ -87,7 +87,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .With(_systemTeamSync)
             .With(_googleSyncService)
             .With<IGoogleSyncOutboxService>(googleOutboxService)
-            .With(_teamResourceService)
+            .With<ITeamResourceServiceRead>(_teamResourceService)
             .With(userService)
             .With<IUserServiceRead>(userService)
             .Build();

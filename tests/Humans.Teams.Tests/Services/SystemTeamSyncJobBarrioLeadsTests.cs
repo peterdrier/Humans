@@ -49,12 +49,12 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
-    private SystemTeamSyncJob CreateJob(IMembershipCalculatorRead? membershipCalculator = null, ITeamResourceService? resources = null)
+    private SystemTeamSyncJob CreateJob(IMembershipCalculatorRead? membershipCalculator = null, ITeamResourceServiceRead? resources = null)
     {
         _googleClient.IsConfigured.Returns(true);
         var services = new ServiceCollection();
         services.AddSingleton(membershipCalculator ?? Substitute.For<IMembershipCalculatorRead>());
-        services.AddSingleton(resources ?? Substitute.For<ITeamResourceService>());
+        services.AddSingleton(resources ?? Substitute.For<ITeamResourceServiceRead>());
         var provider = services.BuildServiceProvider();
 
         return new SystemTeamSyncJob(
@@ -142,7 +142,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
         calculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(user.Id)), team.Id, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid> { user.Id });
-        var resources = Substitute.For<ITeamResourceService>();
+        var resources = Substitute.For<ITeamResourceServiceRead>();
         resources.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>()).Returns(Array.Empty<GoogleResourceSnapshot>());
 
         await CreateJob(calculator, resources).SyncVolunteersTeamAsync(cancellationToken: Xunit.TestContext.Current.CancellationToken);

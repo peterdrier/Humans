@@ -14,7 +14,7 @@ namespace Humans.Monitor.Tests;
 /// <summary>
 /// Behavioral tests for <see cref="DriveActivityMonitorService"/>. The service is a
 /// dispatcher over five collaborators — <see cref="IGoogleDriveActivityClient"/>,
-/// <see cref="ITeamResourceService"/>, <see cref="ISettingsService"/>,
+/// <see cref="ITeamResourceServiceRead"/>, <see cref="ISettingsService"/>,
 /// <see cref="IUserServiceRead"/> and
 /// <see cref="IAuditLogService"/> — so tests substitute all five and pin down:
 /// self-initiated changes get filtered, anomaly descriptions are built
@@ -24,7 +24,7 @@ namespace Humans.Monitor.Tests;
 public class DriveActivityMonitorServiceTests
 {
     private readonly IGoogleDriveActivityClient _client;
-    private readonly ITeamResourceService _teamResources;
+    private readonly ITeamResourceServiceRead _teamResources;
     private readonly ISettingsService _settingsStore;
     private readonly IUserServiceRead _userService;
     private readonly IAuditLogService _auditLog;
@@ -38,7 +38,7 @@ public class DriveActivityMonitorServiceTests
     public DriveActivityMonitorServiceTests()
     {
         _client = Substitute.For<IGoogleDriveActivityClient>();
-        _teamResources = Substitute.For<ITeamResourceService>();
+        _teamResources = Substitute.For<ITeamResourceServiceRead>();
         _settingsStore = Substitute.For<ISettingsService>();
         _userService = Substitute.For<IUserServiceRead>();
         _auditLog = Substitute.For<IAuditLogService>();

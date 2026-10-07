@@ -124,7 +124,7 @@ No repository, no cache, no direct DB access. Section-internal
 `ITeamMessageOptionsProvider`: the teams a viewer may send a facilitated message
 for — active teams the viewer coordinates whose linked Google Group is synced.
 Cross-section reads via `ITeamServiceRead.GetTeamsAsync` and
-`ITeamResourceService.GetResourcesByTeamIdsAsync` (GoogleIntegration); it touches
+`ITeamResourceServiceRead.GetResourcesByTeamIdsAsync` (GoogleIntegration); it touches
 neither section's tables.
 
 ## Human Lifecycle

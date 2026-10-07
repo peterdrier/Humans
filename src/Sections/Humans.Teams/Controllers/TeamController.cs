@@ -25,7 +25,7 @@ internal sealed class TeamController(
     ITeamManagementService teamService,
     ITeamPageService teamPageService,
     IUserServiceRead userService,
-    ITeamResourceService teamResourceService,
+    ITeamResourceServiceRead teamResourceService,
     IStringLocalizer<TeamsResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
     IConfiguration configuration,

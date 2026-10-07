@@ -48,8 +48,8 @@ internal sealed class TeamService(
     internal const string TeamEarlyEntry = "TeamEarlyEntry";
 
     // Lazy resolution — UserService injects ITeamService, closing the cycle.
-    private ITeamResourceService TeamResourceService
-        => serviceProvider.GetRequiredService<ITeamResourceService>();
+    private ITeamResourceServiceRead TeamResourceService
+        => serviceProvider.GetRequiredService<ITeamResourceServiceRead>();
 
     private IRoleAssignmentService RoleAssignmentService
         => serviceProvider.GetRequiredService<IRoleAssignmentService>();

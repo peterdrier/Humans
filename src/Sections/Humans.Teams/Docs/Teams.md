@@ -231,6 +231,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - Coordinator notifications after a saved join request or direct join are best-effort, including display-name lookup. Notification preparation failures are logged and do not fail the committed operation.
 - Coordinators can approve/reject join requests for their own department and any sub-teams within that department (enforced by `IsUserCoordinatorOfTeamAsync`).
 - All member additions and removals are audit-logged via `AuditLogEntry`. Direct addition resolves an existing pending join request on the reloaded request, saving its review fields together with the membership.
+- Team pages, membership email preparation and system-team sync read Google resources through `ITeamResourceServiceRead`; resource administration retains the full mutation interface.
 - Google resource access changes triggered by membership changes (Drive folder permissions, Group memberships) are logged in the audit trail.
 - Removing a member from a team also removes all their role assignments on that team.
 - Each team has a unique slug used for URL routing. A custom slug can override the auto-generated one. Team creation retries only slug/custom-slug constraint collisions; unrelated failures, including a duplicate Google group prefix, propagate.

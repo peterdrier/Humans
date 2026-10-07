@@ -15,7 +15,7 @@ namespace Humans.Monitor.Services;
 [CrossSectionWrite("Monitor stamps its own last-run marker into the Settings key/value store.")]
 internal sealed class DriveActivityMonitorService(
     IGoogleDriveActivityClient driveActivityClient,
-    ITeamResourceService teamResourceService,
+    ITeamResourceServiceRead teamResourceService,
     ISettingsService settingsStore,
     IUserServiceRead userService,
     IAuditLogService auditLogService,
