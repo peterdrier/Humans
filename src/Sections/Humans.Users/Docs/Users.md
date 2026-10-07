@@ -235,6 +235,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 - A failed or cancelled `UserInfo` cache reload evicts the affected user and marks the cache cold before propagating the failure; the next read reloads from source rather than retaining stale fields or omitting a newly created human.
 
+The operator-only user directory renders its sort-control label directly, without a missing resource key.
+
 ## Negative Access Rules
 
 - Controllers (other than `AccountController` / the Development section's `DevLoginController` / the ASP.NET Identity framework surface) **cannot** inject `UserManager<User>` or `SignInManager<User>`. They go through `IUserService`.
