@@ -882,6 +882,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     [HumansFact]
     public async Task GetAttendeeExportDataAsync_ReturnsAllAttendeesOrderedByName()
     {
+        var actor = Guid.NewGuid();
         var orderId = Guid.NewGuid();
         var order = new TicketOrder
         {
@@ -921,30 +922,35 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         TicketsDb.TicketOrders.Add(order);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var rows = await _service.GetAttendeeExportDataAsync();
+        var rows = await _service.GetAttendeeExportDataAsync(actor);
 
         rows.Should().HaveCount(2);
         rows[0].AttendeeName.Should().Be("Alice");
         rows[1].AttendeeName.Should().Be("Zara");
         rows[0].VendorOrderId.Should().Be("ord_export");
+        await _auditLog.Received(1).LogAsync(AuditAction.TicketAttendeesExported, "Tickets", Guid.Empty,
+            "Attendee list exported: 2 rows", actor);
     }
 
     [HumansFact]
     public async Task GetOrderExportDataAsync_ReturnsAllOrdersWithDetails()
     {
+        var actor = Guid.NewGuid();
         TicketsDb.TicketOrders.Add(MakeOrder("ord_old", TicketPaymentStatus.Paid,
             Instant.FromUtc(2026, 1, 1, 10, 0), 100m, 5m, 9.09m, 1, 0m));
         TicketsDb.TicketOrders.Add(MakeOrder("ord_new", TicketPaymentStatus.Paid,
             Instant.FromUtc(2026, 3, 1, 10, 0), 200m, 10m, 18.18m, 2, 0m));
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var rows = await _service.GetOrderExportDataAsync();
+        var rows = await _service.GetOrderExportDataAsync(actor);
 
         rows.Should().HaveCount(2);
         // Ordered by purchase date descending
         rows[0].Date.Should().Be("2026-03-01");
         rows[1].Date.Should().Be("2026-01-01");
         rows[0].AttendeeCount.Should().Be(2);
+        await _auditLog.Received(1).LogAsync(AuditAction.TicketOrdersExported, "Tickets", Guid.Empty,
+            "Order list exported: 2 rows", actor);
     }
 
     [HumansFact]
@@ -969,7 +975,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         TicketsDb.TicketOrders.Add(order);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var row = (await _service.GetOrderExportDataAsync()).Single();
+        var row = (await _service.GetOrderExportDataAsync(Guid.NewGuid())).Single();
 
         row.VendorOrderId.Should().Be("ord_vip");
         row.DonationAmount.Should().Be(100m);

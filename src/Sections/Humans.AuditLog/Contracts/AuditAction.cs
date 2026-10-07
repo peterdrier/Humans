@@ -359,4 +359,7 @@ public enum AuditAction
     CampaignCodesImported,
     CampaignWaveSent,
     CampaignGrantResent,
+
+    TicketAttendeesExported,
+    TicketOrdersExported,
 }

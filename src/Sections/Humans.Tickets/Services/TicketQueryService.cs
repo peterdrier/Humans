@@ -766,15 +766,19 @@ internal sealed class TicketQueryService(
         return filtered.ToList();
     }
 
-    public async Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync()
+    public async Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId)
     {
         var rows = await ticketRepository.GetAttendeeExportDataAsync();
+        await auditLog.LogAsync(AuditAction.TicketAttendeesExported, "Tickets", Guid.Empty,
+            $"Attendee list exported: {rows.Count} rows", actorUserId);
         return rows.ToList();
     }
 
-    public async Task<List<OrderExportRow>> GetOrderExportDataAsync()
+    public async Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId)
     {
         var rows = await ticketRepository.GetOrderExportDataAsync();
+        await auditLog.LogAsync(AuditAction.TicketOrdersExported, "Tickets", Guid.Empty,
+            $"Order list exported: {rows.Count} rows", actorUserId);
         return rows.ToList();
     }
 
