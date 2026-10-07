@@ -7,7 +7,3 @@ inbox:
     id: GOV-9
     what: "Most GovernanceResource keys carry no Governance_ prefix, and the Votes_* keys the assembly-votes lane added are new debt of the same kind (resource-key-prefix) (/section-doctor on Governance 2026-09-18). Plan: rename the keys to the Governance_ prefix across all six cultures and every call site in one PR; resource keys are section-internal, no public surface."
     review: panel
-  - added: 2026-09-18
-    id: GOV-10
-    what: "Humans.Governance.Tests aliases the Application entity as MemberApplication in some files and as Application in others, so a grep for either name misses call sites in the other half — the alias exists to dodge the Humans.Application.* namespace collision (/section-doctor on Governance 2026-09-18)."
-    review: light
