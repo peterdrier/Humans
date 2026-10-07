@@ -33,7 +33,7 @@ Design settled with Peter, 2026-10-07. Spec only; no code yet.
 | Program | One event-scoped pool of pre-approvals. "2026 Creativity", "Oct 2026 Offsite Travel". Not `Humans.Events`, which is the event guide. |
 | Grant | One person pre-approved under a program for one amount. The row the member files an expense against. |
 | Manager | A person allowed to issue, approve and revoke grants in one program. Named per program by the Board or a finance admin. |
-| Claim deadline | The program's `ClaimBy` date. Expense reports against its grants must be **submitted** by then. Prominent everywhere; no grace. |
+| Claim deadline | The program's `ClaimBy` date. Expense reports against its grants must be **submitted** by then. Prominent everywhere; no grace. A date check at submit, nothing more: nothing runs when it passes and nothing changes state. |
 | Apply for a pre-approval | A member asking to be granted under a program. Always "apply **for a pre-approval**" in UI copy and docs; the bare noun `Application` stays reserved for Colaborador/Asociado tier applications (Peter, PR 1935). |
 
 ## Ownership
@@ -68,7 +68,7 @@ account has nowhere to go on the report. Phase 2 ships first, on its own PR.
 | HoldedAccountNumber | int | From `IHoldedFinanceServiceRead.ListExpenseAccountsAsync(activeOnly: true)` |
 | HoldedAccountId | string(64) | |
 | AcceptsApplications | bool | Public apply page open |
-| ClaimBy | LocalDate | Claim deadline. Required. Reports must be submitted on or before this date (Europe/Madrid, end of day). Editable (Board / FinanceAdmin, audited) only while the current value is still in the future; once it has passed it is frozen and grants the job expired stay `Expired` |
+| ClaimBy | LocalDate | Claim deadline. Required. Reports must be submitted on or before this date (Europe/Madrid, end of day). Editable at any time by Board / FinanceAdmin, audited with old and new value. Pushing it back needs nothing undone: an `Open` grant past the old date is simply claimable again |
 | Status | enum `ProgramStatus` | `Open` / `Closed`. Closed: no new grants, no applications, the apply page and form are hidden and the POST refused whatever `AcceptsApplications` says; existing `Open` grants stay claimable until `ClaimBy`. Closing freezes the numbers: nothing is zeroed or rewritten |
 | CreatedByUserId, CreatedAt, UpdatedAt | | |
 
@@ -90,8 +90,8 @@ PK `(ProgramId, UserId)`. One role; a manager is a manager.
 | ProgramId | Guid | FK |
 | BeneficiaryUserId | Guid | Bare Guid |
 | Label | string(200)? | The art project name; null for travel |
-| MaxAmount | decimal(18,2) | Copied from `PerPersonAmount` for `FixedPerPerson`; entered for `PerGrantAmount`. **Never rewritten after issue**: an unclaimed, revoked or expired grant keeps its amount, so "6 000 of 25 000 was not claimed" is readable later |
-| Status | enum `GrantStatus` | `Applied` / `Open` / `Claimed` / `Consumed` / `Declined` / `Revoked` / `Expired` |
+| MaxAmount | decimal(18,2) | Copied from `PerPersonAmount` for `FixedPerPerson`; entered for `PerGrantAmount`. Editable by a program manager or above while the grant is `Open` or `Claimed` (1 000 becomes 1 500), audited with old and new value and checked against the ceiling. Never rewritten by the system: a revoked or unclaimed grant keeps its amount, so "6 000 of 25 000 was not claimed" is readable later |
+| Status | enum `GrantStatus` | `Applied` / `Open` / `Claimed` / `Consumed` / `Declined` / `Revoked` |
 | ApplicationNote | string(2000)? | What the applicant wrote; null when issued directly |
 | RequestedAmount | decimal(18,2)? | What the applicant asked for (`PerGrantAmount` programs); the manager may approve less |
 | DecidedByUserId, DecidedAt | | Who approved / declined / issued |
@@ -107,21 +107,20 @@ Applied ──approve──▶ Open ──report submitted──▶ Claimed ─�
    │                  │                            │
    └──decline──▶ Declined                          └──report withdrawn / rejected──▶ Open
                       │
-                      └──revoke──▶ Revoked        Open ──ClaimBy passed, no report──▶ Expired
+                      └──revoke──▶ Revoked
 ```
 
 - `Open` is the only state a member can file against. Claimable = grant `Open` and the
-  program's `ClaimBy` not passed. The program's own `Status` does not matter: closing a
+  program's `ClaimBy` not passed **today**. The program's own `Status` does not matter: closing a
   program stops new grants and applications, never an issued grant.
 - `Claimed` holds the grant while the report is in flight so it cannot be used twice. One grant,
   one report. `ClaimAsync` is idempotent for the report already holding the grant, which is what
   a rejected report (back in `Draft`) needs when it is resubmitted.
-- `Consumed` is terminal, and so are `Declined`, `Revoked`, `Expired`. Every terminal state
-  keeps the grant's amount and its report id; the state is frozen, the numbers are not touched.
-- `Expired` is set by the nightly job for `Open` grants whose program's `ClaimBy` has passed
-  (`ISectionJobs`, Preapprovals' own). A `Claimed` grant is never expired by the job: the report
-  was submitted in time and is Finance's to finish. There is no `Expired → Open`: an elapsed
-  `ClaimBy` cannot be moved (see the program table).
+- `Consumed` is terminal, and so are `Declined` and `Revoked`. Every terminal state keeps the
+  grant's amount and its report id; the state is frozen, the numbers are not touched.
+- **There is no expiry state and no job.** An `Open` grant past `ClaimBy` stays `Open`; it is
+  shown as "deadline passed" and cannot be filed against. Nothing automated runs when the date
+  passes, so pushing `ClaimBy` back makes those grants claimable again with nothing to undo.
 - Revoke is allowed on `Open` only. A `Claimed` grant is revoked by rejecting its report, then
   revoking.
 
@@ -144,7 +143,7 @@ rows do not count; a manager sees "requested" beside "committed" so they can see
 blow the ceiling before approving.
 
 The program page always shows, from the grants as they stand: **granted** (Open + Claimed +
-Consumed), **consumed**, **not claimed** (Revoked + Expired), **requested** (Applied) and the
+Consumed), **consumed**, **not claimed** (Revoked, plus `Open` past `ClaimBy`), **requested** (Applied) and the
 ceiling. These are sums over frozen rows, never stored and never adjusted when a program closes.
 
 ## Public surface (`Humans.Preapprovals.Contracts`)
@@ -154,7 +153,7 @@ Narrowest contract that serves Expenses, per the hard rules.
 ```csharp
 public interface IPreapprovalServiceRead
 {
-    // Grants the member may file against today: Open, program Open, ClaimBy not passed.
+    // Grants the member may file against today: Open and ClaimBy not passed.
     Task<IReadOnlyList<GrantOption>> ListClaimableForUserAsync(Guid userId, CancellationToken ct);
     Task<GrantOption?> GetGrantAsync(Guid grantId, CancellationToken ct);
 }
@@ -200,13 +199,14 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
 - **Submit:** `ClaimAsync` in the same transaction as the status change; its `GrantStamp` is
   written to `MaxAmount`, `HoldedAccountNumber` / `HoldedAccountId` **then**, so a program whose
   account was changed between draft and submit books to the account the program has now. If the
-  grant is no longer claimable (revoked, expired, claimed by another report, `ClaimBy` passed)
+  grant is no longer claimable (revoked, claimed by another report, `ClaimBy` passed)
   submit is refused with a message naming why. Submitting on `ClaimBy` itself is allowed; the
   day after is not. A rejected report resubmits the same way and gets a fresh stamp.
 - **Endorsement skipped:** a pre-approved report goes `Submitted → Finance review`. The grant is
   the endorsement; the program's managers already decided. (Matches Phase 2's rule for unmapped
   accounts.)
-- **Approve:** Finance may lower the cap, never raise it above the grant's `MaxAmount`; the
+- **Approve:** Finance may lower the cap, never raise it above the grant's **current** `MaxAmount`
+  (re-read at approve, so a grant raised after submit lets Finance pay the new figure); the
   account is not overridable on a pre-approved report (the program chose it). `ConsumeAsync`
   in the same transaction as the Holded push enqueue.
 - **Reject (either decider):** nothing on the grant; the report is back in `Draft` and still
@@ -226,7 +226,7 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
 
 | Route | Who | What |
 |-------|-----|------|
-| `/Preapprovals` | Authenticated | My grants, all statuses: program, label, amount, status, **claim by** (prominent, danger style inside 7 days, "expired" after). Each `Open` row links to `/Expenses/New?grant={id}`. The open ones also appear at the top of `/Expenses`, which is where most people will file from. Programs accepting applications are listed below with an Apply button. |
+| `/Preapprovals` | Authenticated | My grants, all statuses: program, label, amount, status, **claim by** (prominent, danger style inside 7 days, "deadline passed" after). Each `Open` row links to `/Expenses/New?grant={id}`. The open ones also appear at the top of `/Expenses`, which is where most people will file from. Programs accepting applications are listed below with an Apply button. |
 | `/Preapprovals/{programId}` | Authenticated | Program page: description, per-person amount or "amount on request", claim deadline, "Apply for a pre-approval" form when `Status == Open` **and** `AcceptsApplications` (note; requested amount on `PerGrantAmount` programs). The GET hides the form and the POST returns 400 when either is false. One application per person per program; a second submit edits the pending one. |
 
 ### Manager side (`/Preapprovals/Admin/*`, its own `PreapprovalsAdminController`, localization-exempt, per `no-admin-url-section`)
@@ -256,7 +256,7 @@ Negative cases to verify:
 
 - A member cannot see another member's grants, cannot apply twice, cannot apply to a `Closed`
   program or one not accepting applications, cannot file against a
-  `Claimed`/`Revoked`/`Expired`/`Declined` grant or another person's grant (403 before mutation).
+  `Claimed`/`Revoked`/`Declined` grant, a grant past `ClaimBy`, or another person's grant (403 before mutation).
 - A manager of program A gets 403 on program B's admin routes and on `Admin/New` / `Edit`.
 - A manager cannot change a program's amount, ceiling, account, deadline or managers.
 - A submitter cannot change the stamped cap or account on a pre-approved report (no input, and
@@ -273,8 +273,8 @@ Through `INotificationEmitter` (in-app) and `IEmailService` (email), both to the
 | Grant issued / application approved | Actionable | Program, amount, **claim by {date}**, link to file. |
 | Application declined | Informational | Program, note from the manager if any. |
 | Application received (to each manager of the program) | Actionable | Who, requested amount, link to the manage page. |
-| Deadline reminder, 14 days and 3 days before `ClaimBy`, to every `Open` grant holder | Actionable | "File by {date} or the pre-approval lapses." Nightly job, idempotent per grant per reminder. |
-| Expired | Informational | "Your pre-approval under {program} lapsed on {date}." |
+| Deadline reminder, 14 days and 3 days before `ClaimBy`, to every `Open` grant holder | Actionable | "File by {date}." Sent by a nightly job that sends and changes nothing else; idempotent per grant per reminder. |
+| Grant amount changed | Informational | Program, old and new amount. |
 
 Two source keys so `INotificationAutoResolve` clears the right alert: `pre-grant:{id}` on the
 beneficiary's "file by" notification, resolved when the grant leaves `Open`; `pre-request:{id}`
@@ -286,7 +286,7 @@ Every state change on a program or a grant writes an audit entry with the actor,
 program id, and the amounts: `PreapprovalProgramCreated`, `…Edited` (old and new ceiling /
 amount / deadline in the message), `…Closed`, `…ManagerAdded`, `…ManagerRemoved`,
 `PreapprovalGrantIssued`, `…Applied`, `…Approved`, `…Declined`, `…Revoked`, `…Claimed`,
-`…Released`, `…Consumed`, `…Expired`. The Expenses-triggered ones carry the report id.
+`…Released`, `…Consumed`, `PreapprovalGrantAmountChanged` (old and new). The Expenses-triggered ones carry the report id.
 
 ## GDPR
 
@@ -302,7 +302,7 @@ program and date.
 Board must be able to see what was granted and what happened to it, so `ErasureDeclaration`
 maps `Preapprovals` and `PreapprovalDecisions` to the same fiscal-retention reason as
 `ExpenseReports`: every grant that was ever decided (`Open`, `Claimed`, `Consumed`, `Declined`,
-`Revoked`, `Expired`) is retained in full, beneficiary and actor ids included, exactly as an
+`Revoked`) is retained in full, beneficiary and actor ids included, exactly as an
 expense report's submitter and approver are. `EraseForUserAsync` deletes only what was never
 decided: the person's `Applied` rows, and their `pre_program_managers` rows. A `Claimed` grant
 is never released or deleted by erasure; its report is retained by Expenses and finishes
@@ -315,9 +315,10 @@ like Expenses' creditor binding does, so a grant issued under a since-merged id 
 
 ## Background job
 
-`PreapprovalsSectionJobs`: one nightly job, `preapprovals-deadlines`. Expires `Open` grants whose
-program's `ClaimBy` has passed (Europe/Madrid), sends the 14-day and 3-day reminders, writes the
-`…Expired` audit entries. Documented in [background-jobs.md](background-jobs.md) when built.
+`PreapprovalsSectionJobs`: one nightly job, `preapprovals-reminders`, which only **sends** the
+14-day and 3-day reminders. It changes no row. No job expires, closes, zeroes or otherwise
+touches a grant or program; every state change is a person's action and is audited as such.
+Documented in [background-jobs.md](background-jobs.md) when built.
 
 ## Out of scope
 
@@ -329,14 +330,14 @@ program's `ClaimBy` has passed (Europe/Madrid), sends the 14-day and 3-day remin
   project lead, amount and label; nothing here changes for it.
 - Linking a program to a Workgroup or a Team. A program is its own thing; the label and the
   account say what it is for.
-- Per-grant deadline extensions. Everyone in a program has the same `ClaimBy`, it moves only
-  while it is still in the future, and never after it has passed.
+- Per-grant deadline extensions. Everyone in a program has the same `ClaimBy`; moving it moves
+  it for all of them.
 
 ## Delivery order
 
 1. **workgroup-budget Phase 2** in Expenses (account on the report, nullable category). Own PR.
 2. **Preapprovals section**: DbContext + migration, entities, service, repository, contracts
-   project, manager/member UI, notifications, audit, GDPR contributor, nightly job, `Docs/Preapprovals.md`
+   project, manager/member UI, notifications, audit, GDPR contributor, reminder job, `Docs/Preapprovals.md`
    per `SECTION-TEMPLATE.md`, `tests/Humans.Preapprovals.Tests`. Own PR. Usable standalone: a
    manager can already issue the 50 offsite grants and members can see their deadline.
 3. **Expenses hook**: `PreapprovalGrantId`, New-form grant picker, claim/release/consume calls,
@@ -349,15 +350,17 @@ Steps 2 and 3 can be built in parallel once Phase 2 is on QA; 3 merges after 2.
 - **Preapprovals**: ceiling refused at issue/approve/edit with the right headroom; `FixedPerPerson`
   refuses an amount on the grant and copies `PerPersonAmount`; apply-twice edits, never
   duplicates; claim/release/consume transitions and every refused transition; expiry job skips
-  `Claimed`; reminders idempotent; manager of A → 403 on B; member → 403 on admin routes;
-  closed program: apply form hidden, POST refused, `Open` grants still claimable; `ClaimBy` edit
-  refused once passed; revoke / expire / close leave `MaxAmount` untouched; claim idempotent for
+  reminders idempotent and write nothing; manager of A → 403 on B; member → 403 on admin routes;
+  closed program: apply form hidden, POST refused, `Open` grants still claimable; `Open` grant
+  past `ClaimBy` not claimable, claimable again after `ClaimBy` is pushed back with no state
+  change; amount edit on `Open`/`Claimed` audited with old and new and ceiling-checked, refused
+  on terminal states; revoke / close leave `MaxAmount` untouched; claim idempotent for
   the holding report and refused for another; export (both slices), erasure keeps decided grants
   and deletes `Applied` + manager rows; merge re-keys and dedups manager rows; every state change
   audited.
 - **Expenses**: stamp written at submit from the program's current account, not the draft's
   display; resubmit after reject restamps; submit after `ClaimBy` refused;
-  submit on a non-claimable grant refused; endorsement skipped; approve cannot raise the cap or
+  submit on a non-claimable grant refused; endorsement skipped; approve cannot raise the cap above the grant's current amount or
   change the account; reject leaves the grant `Claimed`; withdraw before approval releases;
   withdraw after approval leaves it `Consumed`; approve consumes in the same transaction as the
   push enqueue; on-behalf filing restricted to the member's own grants.
