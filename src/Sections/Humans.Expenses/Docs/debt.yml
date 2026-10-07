@@ -3,10 +3,6 @@
 version: 1
 next_id: 11
 inbox:
-  - added: 2026-08-26
-    id: EXP-3
-    what: "Services/ExpenseReportService.cs is the section's maxClassLoc and its only large class. It holds the report state machine, the Holded outbox drain and its backoff, the Holded purchase-document conversation (ProcessHoldedCreateAsync, the section's longest method), and the GDPR export contributor. The Holded conversation is a cohesive concern with its own failure model and would split out without touching the state machine. Found by /section-doctor on Expenses 2026-08-26. Plan: extract into an internal class in this section (ExpenseHoldedPublisher); pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
   - added: 2026-10-03
     id: EXP-6
     what: "ExpenseReportService.RemoveAttachmentFromLineAsync unlinks the line and deletes attachment metadata in separate repository saves. Failure or cancellation between them leaves orphan metadata without the removal audit. Found during the daily debt source audit. Plan: one internal repository method that unlinks the line and deletes the metadata in a single SaveChanges, then audit and delete the stored file after commit; repositories are internal, not public surface per debt-sweep-standing-policy D2, list in PR."
