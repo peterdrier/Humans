@@ -52,9 +52,9 @@ Nobody outside Preapprovals learns what a program is. Expenses sees a grant as
 (an expense report names its Holded account, not a budget category). Without it a grant's
 account has nowhere to go on the report. Phase 2 ships first, on its own PR.
 
-## Data model (`PreapprovalsDbContext`, all tables owned by `Humans.Preapprovals`)
+## Data model (`PreapprovalsDbContext`, all tables owned by `Humans.Preapprovals`, prefixed `pre_`)
 
-### `preapproval_programs`
+### `pre_programs`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -71,17 +71,17 @@ account has nowhere to go on the report. Phase 2 ships first, on its own PR.
 | Status | enum `ProgramStatus` | `Open` / `Closed`. Closed: no new grants, no applications; existing grants still usable until `ClaimBy` |
 | CreatedByUserId, CreatedAt, UpdatedAt | | |
 
-### `preapproval_program_managers`
+### `pre_program_managers`
 
 | Property | Type | Notes |
 |----------|------|-------|
-| ProgramId | Guid | FK → `preapproval_programs` |
+| ProgramId | Guid | FK → `pre_programs` |
 | UserId | Guid | Bare Guid (Users), no FK |
 | AddedByUserId, AddedAt | | |
 
 PK `(ProgramId, UserId)`. One role; a manager is a manager.
 
-### `preapproval_grants`
+### `pre_grants`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -161,8 +161,12 @@ Preapprovals and (later) Creativity → Preapprovals must not pull the section i
 Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
 
 - `ExpenseReport.PreapprovalGrantId` (Guid?, bare).
+- **Expenses index (`/Expenses`):** when the member has any claimable grant, an "Open
+  pre-approvals" block sits **above** the reports list: program, label, amount, **claim by** (danger
+  style inside 7 days), and a "File expense" button per grant that opens
+  `/Expenses/New?grant={id}` with the grant pre-selected. No grants, no block.
 - **New report:** the New form lists the member's claimable grants above the account/category
-  picker ("File against a pre-approval"). Picking one stamps `PreapprovalGrantId`, `MaxAmount`,
+  picker ("File against a pre-approval"), pre-selected when `?grant=` is given. Picking one stamps `PreapprovalGrantId`, `MaxAmount`,
   `HoldedAccountNumber` / `HoldedAccountId`, and locks all three for the submitter. A finance
   admin filing on a member's behalf may pick one of **that member's** grants.
 - **Submit:** `ClaimAsync` in the same transaction as the status change. If the grant is no
@@ -191,7 +195,7 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
 
 | Route | Who | What |
 |-------|-----|------|
-| `/Preapprovals` | Authenticated | My grants: program, label, amount, status, **claim by** (prominent, danger style inside 7 days, "expired" after). Each `Open` row links to `/Expenses/New?grant={id}`. Programs accepting applications are listed below with an Apply button. |
+| `/Preapprovals` | Authenticated | My grants, all statuses: program, label, amount, status, **claim by** (prominent, danger style inside 7 days, "expired" after). Each `Open` row links to `/Expenses/New?grant={id}`. The open ones also appear at the top of `/Expenses`, which is where most people will file from. Programs accepting applications are listed below with an Apply button. |
 | `/Preapprovals/{programId}` | Authenticated | Program page: description, per-person amount or "amount on request", claim deadline, Apply form when `AcceptsApplications` (note; requested amount on `PerGrantAmount` programs). One application per person per program; a second submit edits the pending one. |
 
 ### Manager side (`/Preapprovals/Manage/*`, admin-exempt from localization, per `no-admin-url-section`)
@@ -207,7 +211,7 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
 - Member: a "Pre-approvals" entry beside "Expenses" in the member menu, shown when the member
   has any grant or any program accepts applications.
 - Manager: "Manage pre-approvals" under the same menu for anyone who passes the manage policy.
-- Expenses' New form links back to `/Preapprovals` ("See my pre-approvals").
+- Expenses' index block and New form link back to `/Preapprovals` ("All my pre-approvals").
 
 ## Authorization
 
