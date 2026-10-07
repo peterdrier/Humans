@@ -1,5 +1,4 @@
 @model AdminQueueViewModel
-@using Humans.Workgroups.Controllers
 @{
     ViewData["Title"] = "Workgroups";
 }
@@ -35,6 +34,7 @@ else
             <thead>
                 <tr>
                     <th>Name</th>
+                    <th>Coordinators</th>
                     <th>Applied</th>
                     <th>Days waiting</th>
                     <th>Status</th>
@@ -47,26 +47,14 @@ else
                     var days = (Model.Now - w.AppliedAt).Days;
                     <tr class="@(w.IsRegistrationOverdue(Model.Now) ? "table-danger" : "")">
                         <td><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
+                        <td>@string.Join(", ", w.CoordinatorUserIds().Select(id => Model.DisplayName(id)))</td>
                         <td>@w.AppliedAt.ToDate()</td>
                         <td>@days</td>
                         <td>@w.Status</td>
                         <td class="text-end">
-                            <div class="d-flex gap-1 justify-content-end flex-wrap">
-                                <form method="post" asp-action="Register" asp-route-id="@w.Id">
-                                    <button type="submit" class="btn btn-sm btn-success">Register</button>
-                                </form>
-                                @if (w.Status == WorkgroupStatus.Applied)
-                                {
-                                    <form method="post" asp-action="Refer" asp-route-id="@w.Id" class="d-flex gap-1">
-                                        <input name="note" class="form-control form-control-sm" placeholder="Note (optional)" style="min-width: 10rem;" />
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary">Refer</button>
-                                    </form>
-                                }
-                                <form method="post" asp-action="Refuse" asp-route-id="@w.Id" class="d-flex gap-1">
-                                    <input name="reasons" value="@(ViewData[$"Reasons:{w.Id}:{nameof(WorkgroupsAdminController.Refuse)}"])" maxlength="4000" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Refuse</button>
-                                </form>
-                            </div>
+                            <form method="post" asp-action="Register" asp-route-id="@w.Id">
+                                <button type="submit" class="btn btn-sm btn-success">Register</button>
+                            </form>
                         </td>
                     </tr>
                 }
@@ -97,7 +85,7 @@ else
                 @foreach (var (w, doc) in awaiting)
                 {
                     <tr class="@(w.HasOverdueDisposition(Model.Now) ? "table-warning" : "")">
-                        <td>@w.Name</td>
+                        <td><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
                         <td><a asp-controller="Workgroups" asp-action="Document" asp-route-slug="@w.Slug" asp-route-id="@doc.Id">@doc.Title</a></td>
                         <td>@doc.DeliveredAt?.ToDate()</td>
                         <td class="text-end">
@@ -126,8 +114,9 @@ else
                 <tr>
                     <th>Name</th>
                     <th>Coordinators</th>
+                    <th>Budget</th>
+                    <th>Holded account</th>
                     <th>Flags</th>
-                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -136,37 +125,13 @@ else
                     <tr>
                         <td><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
                         <td>@string.Join(", ", w.CoordinatorUserIds().Select(id => Model.DisplayName(id)))</td>
+                        <td>@(w.BudgetAmount is { } budget ? budget.ToEuro() : "—")</td>
+                        <td>@(w.HoldedAccountNumber is { } acct ? acct.ToString() : "—")</td>
                         <td>
                             @if (w.IsUpdateDue(Model.Now))
                             {
                                 <span class="badge bg-warning text-dark">Update due</span>
                             }
-                        </td>
-                        <td class="text-end">
-                            <div class="d-flex gap-1 justify-content-end flex-wrap">
-                                <form method="post" asp-action="Close" asp-route-id="@w.Id" class="d-flex gap-1">
-                                    <input name="reasons" value="@(ViewData[$"Reasons:{w.Id}:{nameof(WorkgroupsAdminController.Close)}"])" maxlength="4000" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Close</button>
-                                </form>
-                                <form method="post" asp-action="Withdraw" asp-route-id="@w.Id" class="d-flex gap-1">
-                                    <input name="reasons" value="@(ViewData[$"Reasons:{w.Id}:{nameof(WorkgroupsAdminController.Withdraw)}"])" maxlength="4000" class="form-control form-control-sm" placeholder="Reasons" required style="min-width: 10rem;" />
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Withdraw</button>
-                                </form>
-                                @{ var wc = w.CoordinatorUserIds().ToList(); }
-                                <form method="post" asp-action="Coordinators" asp-route-id="@w.Id" class="d-flex gap-1" title="Override coordinators">
-                                    @for (var slot = 0; slot < 2; slot++)
-                                    {
-                                        <select name="coordinatorUserIds" class="form-select form-select-sm">
-                                            <option value="">—</option>
-                                            @foreach (var member in w.CurrentMembers())
-                                            {
-                                                <option value="@member.UserId" selected="@(wc.Count > slot && wc[slot] == member.UserId)">@(Model.People.GetValueOrDefault(member.UserId)?.BurnerName ?? "—")</option>
-                                            }
-                                        </select>
-                                    }
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Set</button>
-                                </form>
-                            </div>
                         </td>
                     </tr>
                 }
@@ -190,7 +155,6 @@ else
                     <th>Name</th>
                     <th>Reason</th>
                     <th>Ended</th>
-                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -200,11 +164,6 @@ else
                         <td><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
                         <td>@w.DormantReason</td>
                         <td>@w.EndedAt?.ToDate()</td>
-                        <td class="text-end">
-                            <form method="post" asp-action="Reactivate" asp-route-id="@w.Id">
-                                <button type="submit" class="btn btn-sm btn-outline-primary">Reactivate</button>
-                            </form>
-                        </td>
                     </tr>
                 }
             </tbody>

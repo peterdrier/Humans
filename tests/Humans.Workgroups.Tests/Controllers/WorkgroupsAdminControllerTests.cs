@@ -84,7 +84,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     [InlineData(nameof(WorkgroupsAdminController.Refuse))]
     [InlineData(nameof(WorkgroupsAdminController.Withdraw))]
     [InlineData(nameof(WorkgroupsAdminController.Close))]
-    public async Task Invalid_reasons_render_queue_with_original_text_and_error(string action)
+    public async Task Invalid_reasons_flash_error_and_redirect_to_details(string action)
     {
         var status = string.Equals(action, nameof(WorkgroupsAdminController.Refuse), StringComparison.Ordinal)
             ? WorkgroupStatus.Applied : WorkgroupStatus.Active;
@@ -94,23 +94,45 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
 
         var result = action switch
         {
-            nameof(WorkgroupsAdminController.Refuse) => await sut.Refuse(workgroup.Id, reasons, Ct),
-            nameof(WorkgroupsAdminController.Withdraw) => await sut.Withdraw(workgroup.Id, reasons, Ct),
-            _ => await sut.Close(workgroup.Id, reasons, Ct)
+            nameof(WorkgroupsAdminController.Refuse) => await sut.Refuse(workgroup.Id, reasons, workgroup.Slug, Ct),
+            nameof(WorkgroupsAdminController.Withdraw) => await sut.Withdraw(workgroup.Id, reasons, workgroup.Slug, Ct),
+            _ => await sut.Close(workgroup.Id, reasons, workgroup.Slug, Ct)
         };
 
-        var view = result.Should().BeOfType<ViewResult>().Subject;
-        view.ViewName.Should().Be(nameof(WorkgroupsAdminController.Index));
-        view.Model.Should().BeOfType<AdminQueueViewModel>().Subject.Register
-            .Should().ContainSingle().Which.Id.Should().Be(workgroup.Id);
-        view.ViewData[$"Reasons:{workgroup.Id}:{action}"].Should().Be(reasons);
-        sut.ModelState.IsValid.Should().BeFalse();
-        sut.ModelState[string.Empty]!.Errors.Should().ContainSingle()
-            .Which.ErrorMessage.Should().Contain("4000");
-        sut.TempData.Should().BeEmpty("oversized text must not enter the TempData cookie");
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ControllerName.Should().Be("Workgroups");
+        redirect.ActionName.Should().Be("Details");
+        redirect.RouteValues!["slug"].Should().Be(workgroup.Slug);
+        sut.TempData[TempDataKeys.ErrorMessage].Should().Be("Use 4000 characters or fewer.");
         AssertRuleWarning(WorkgroupErrorKeys.TextTooLong);
         await using var db = OpenContext();
         (await db.Workgroups.FindAsync([workgroup.Id], Ct))!.Status.Should().Be(status);
+    }
+
+    [HumansFact]
+    public async Task Close_WithReasons_RedirectsToDetails()
+    {
+        var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
+        var sut = MakeAdminController(nameof(WorkgroupsAdminController.Close));
+
+        var result = await sut.Close(workgroup.Id, "Finished", workgroup.Slug, Ct);
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ControllerName.Should().Be("Workgroups");
+        redirect.ActionName.Should().Be("Details");
+        await using var db = OpenContext();
+        (await db.Workgroups.FindAsync([workgroup.Id], Ct))!.Status.Should().Be(WorkgroupStatus.Dormant);
+    }
+
+    [HumansFact]
+    public async Task Refuse_WithoutSlug_RedirectsToQueue()
+    {
+        var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Applied);
+        var sut = MakeAdminController(nameof(WorkgroupsAdminController.Refuse));
+
+        var result = await sut.Refuse(workgroup.Id, "No", null, Ct);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(WorkgroupsAdminController.Index));
     }
 
     [HumansFact]
