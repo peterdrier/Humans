@@ -11,7 +11,7 @@ namespace Humans.Containers.Authorization;
 /// - Admin / CampAdmin: allow any container
 /// - City Planning team member: allow any container
 /// - Camp lead: allow only containers belonging to their camp; for
-///   <see cref="ContainerOperation.Place"/> the placement phase must also be open
+///   <see cref="ContainerOperation.Place"/> the placement phase must also be open in the target year
 /// - Everyone else: deny
 /// </summary>
 internal sealed class ContainerAuthorizationHandler(ICampServiceRead campService, ICityPlanningServiceRead cityPlanningService)
@@ -40,7 +40,7 @@ internal sealed class ContainerAuthorizationHandler(ICampServiceRead campService
             return;
         }
 
-        var settings = await cityPlanningService.GetSettingsAsync();
+        var settings = await cityPlanningService.GetSettingsAsync(year: resource.Year);
         if (requirement.Operation == ContainerOperation.Place)
         {
             if (!settings.IsContainerPlacementOpen)

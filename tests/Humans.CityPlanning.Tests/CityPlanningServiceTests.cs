@@ -696,6 +696,21 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
+    public async Task GetSettingsAsync_ExplicitYear_ReturnsThatYearsPhaseInsteadOfPublicYear()
+    {
+        SetupCampSettings(publicYear: 2026);
+        await SeedMapSettingsAsync(year: 2026, placementOpen: true);
+        var existing = await SeedMapSettingsAsync(year: 2025, placementOpen: false);
+
+        var result = await _sut.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken, 2025);
+
+        result.Id.Should().Be(existing.Id);
+        result.Year.Should().Be(2025);
+        result.IsPlacementOpen.Should().BeFalse();
+        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(2);
+    }
+
+    [HumansFact]
     public async Task OpenPlacementAsync_SetsIsPlacementOpenTrue()
     {
         await SeedMapSettingsAsync(placementOpen: false);

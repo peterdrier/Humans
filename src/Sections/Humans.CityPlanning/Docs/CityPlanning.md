@@ -18,7 +18,7 @@ Interactive map surface: a read-only overview, barrio polygon editing, and conta
 
 - **City Planning** is an interactive map for camp barrio placement. Camp leads draw polygons to claim their barrio's physical footprint on the site.
 - **CityPlanningSettings** is a per-year singleton controlling the barrio placement phase (open/closed), the container placement phase (open/closed), site boundary (limit zone), and informational overlays (official zones).
-- **Container placement phase** gates whether barrio leads can add/edit/delete containers for their camp. Toggled by map admins from the containers admin sub-page. Camp admins and city planning team members are always exempt.
+- **Container placement phase** gates whether barrio leads can add/edit/delete containers for their camp. Toggled by map admins from the containers admin sub-page. Placement writes authorize against the route year’s settings and camp leads; the container list’s edit flags use the same year. Camp admins and city planning team members are always exempt.
 - **CampPolygon** is a single polygon per CampSeason representing the camp's placed area.
 - **CampPolygonHistory** is an append-only audit trail of polygon edits and restores.
 
