@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Humans.Campaigns.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -46,6 +47,8 @@ public sealed class CampaignServiceTests
     private readonly Dictionary<Guid, UserInfo> _people = [];
     private readonly Dictionary<Guid, TeamInfo> _teams = [];
 
+    private readonly Guid _actorId = Guid.NewGuid();
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly CampaignServiceImpl _service;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly INotificationEmitter _notifications = Substitute.For<INotificationEmitter>();
@@ -100,7 +103,85 @@ public sealed class CampaignServiceTests
             _emailMessages,
             _ticketDiscountCodes,
             Clock,
+            _audit,
             NullLogger<CampaignServiceImpl>.Instance);
+    }
+
+    [HumansFact]
+    public async Task AdminMutations_record_the_actor_and_committed_changes()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _audit.LogAsync(AuditAction.CampaignCreated, "Campaign", Arg.Any<Guid>(),
+            Arg.Any<string>(), _actorId, null, null).Returns(async call =>
+            {
+                var savedId = call.ArgAt<Guid>(2);
+                (await CampaignsDb.Campaigns.AnyAsync(campaign => campaign.Id == savedId, ct)).Should().BeTrue();
+            });
+        var created = await _service.CreateAsync("Audited campaign", null, "Code", "{{Code}}", null, _actorId, ct);
+        var campaignId = created.Campaign!.Id;
+        await _service.UpdateAsync(_actorId, campaignId, "Updated campaign", null, "Code", "{{Code}}", null, ct);
+        await _service.ImportCodesAsync(_actorId, campaignId, ["AUDIT-1"], ct);
+        await _service.ActivateAsync(_actorId, campaignId, ct);
+        var user = SeedUser();
+        var team = SeedTeam("Audited team");
+        SeedTeamMember(team.Id, user.Id);
+        await _service.SendWaveAsync(_actorId, campaignId, team.Id, ct);
+        var grant = await CampaignsDb.CampaignGrants.SingleAsync(ct);
+        await _service.ResendToGrantAsync(_actorId, grant.Id, ct);
+        grant.LatestEmailStatus = EmailOutboxStatus.Failed;
+        await SaveAllAsync(ct);
+        await _service.RetryAllFailedAsync(_actorId, campaignId, ct);
+        await _service.CompleteAsync(_actorId, campaignId, ct);
+
+        var entries = _audit.ReceivedCalls().Select(call => call.GetArguments()).ToList();
+        entries.Select(args => (AuditAction)args[0]!).Should().Equal(
+            AuditAction.CampaignCreated, AuditAction.CampaignUpdated,
+            AuditAction.CampaignCodesImported, AuditAction.CampaignActivated,
+            AuditAction.CampaignWaveSent, AuditAction.CampaignGrantResent,
+            AuditAction.CampaignGrantResent, AuditAction.CampaignCompleted);
+        entries.Should().OnlyContain(args => (Guid)args[4]! == _actorId);
+        entries.Single(args => (AuditAction)args[0]! == AuditAction.CampaignWaveSent)[5].Should().Be(user.Id);
+        ClearAllTrackers();
+        (await CampaignsDb.Campaigns.SingleAsync(ct)).Status.Should().Be(CampaignStatus.Completed);
+        (await CampaignsDb.CampaignGrants.SingleAsync(ct)).LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
+    }
+
+    [HumansFact]
+    public async Task RefusedMutations_do_not_record_successful_audit_actions()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        (await _service.CreateAsync("", null, "Code", "{{Code}}", null, _actorId, ct)).Success.Should().BeFalse();
+        (await _service.ActivateAsync(_actorId, Guid.NewGuid(), ct)).Success.Should().BeFalse();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task AdminMutationActions_without_a_current_actor_do_not_change_data()
+    {
+        var controller = new CampaignController(_service, Substitute.For<IUserServiceRead>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+        var id = Guid.NewGuid();
+        Func<Task<IActionResult>>[] actions =
+        [
+            () => controller.Create("Campaign", null, "Code", "{{Code}}", null),
+            () => controller.Edit(id, "Campaign", null, "Code", "{{Code}}", null),
+            () => controller.ImportCodes(id, null),
+            () => controller.GenerateCodes(id, 1, "Percentage", 10),
+            () => controller.Activate(id),
+            () => controller.Complete(id),
+            () => controller.SendWave(id, id),
+            () => controller.Resend(id),
+            () => controller.RetryAllFailed(id)
+        ];
+
+        foreach (var action in actions)
+            (await action()).Should().BeOfType<UnauthorizedResult>();
+        (await CampaignsDb.Campaigns.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        _audit.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _ticketDiscountCodes.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -225,7 +306,7 @@ public sealed class CampaignServiceTests
             "Body", " " + replyTo + " ", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         created.Success.Should().BeTrue();
         created.Campaign!.ReplyToAddress.Should().Be(replyTo);
-        var updated = await _service.UpdateAsync(created.Campaign.Id, title, description, subject, "Body", "   ",
+        var updated = await _service.UpdateAsync(_actorId, created.Campaign.Id, title, description, subject, "Body", "   ",
             Xunit.TestContext.Current.CancellationToken);
         updated.Success.Should().BeTrue();
         (await _service.GetByIdAsync(created.Campaign.Id, Xunit.TestContext.Current.CancellationToken))!.ReplyToAddress.Should().BeNull();
@@ -249,7 +330,7 @@ public sealed class CampaignServiceTests
     {
         var campaign = await SeedCampaignAsync();
 
-        var result = await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2", "CODE1", "CODE3"], Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE1", "CODE2", "CODE1", "CODE3"], Xunit.TestContext.Current.CancellationToken);
 
         result.Imported.Should().Be(3);
         result.Skipped.Should().Be(1);
@@ -266,9 +347,9 @@ public sealed class CampaignServiceTests
         var campaign = await SeedCampaignAsync();
 
         // First import
-        await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2"], Xunit.TestContext.Current.CancellationToken);
+        await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE1", "CODE2"], Xunit.TestContext.Current.CancellationToken);
         // Second import with overlap
-        var result = await _service.ImportCodesAsync(campaign.Id, ["CODE2", "CODE3"], Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE2", "CODE3"], Xunit.TestContext.Current.CancellationToken);
 
         result.Imported.Should().Be(1);
         result.Skipped.Should().Be(1);
@@ -287,6 +368,7 @@ public sealed class CampaignServiceTests
             .Returns(["CODE-A", "CODE-B"]);
 
         var result = await _service.GenerateAndImportDiscountCodesAsync(
+            _actorId,
             campaign.Id, 2, "Fixed", 10m, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
@@ -310,6 +392,7 @@ public sealed class CampaignServiceTests
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
 
         var result = await _service.GenerateAndImportDiscountCodesAsync(
+            _actorId,
             campaign.Id, 2, "Fixed", 10m, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
@@ -327,6 +410,7 @@ public sealed class CampaignServiceTests
         var campaign = await SeedCampaignAsync();
 
         var result = await _service.GenerateAndImportDiscountCodesAsync(
+            _actorId,
             campaign.Id, 2, discountType, 10m, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
@@ -340,9 +424,9 @@ public sealed class CampaignServiceTests
     public async Task ActivateAsync_DraftWithCodes_TransitionsToActive()
     {
         var campaign = await SeedCampaignAsync();
-        await _service.ImportCodesAsync(campaign.Id, ["CODE1"], Xunit.TestContext.Current.CancellationToken);
+        await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE1"], Xunit.TestContext.Current.CancellationToken);
 
-        await _service.ActivateAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.ActivateAsync(_actorId, campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
         var updated = await CampaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
         updated!.Status.Should().Be(CampaignStatus.Active);
@@ -353,7 +437,7 @@ public sealed class CampaignServiceTests
     {
         var campaign = await SeedCampaignAsync();
 
-        var result = await _service.ActivateAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ActivateAsync(_actorId, campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NoCodes");
@@ -366,7 +450,7 @@ public sealed class CampaignServiceTests
     {
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
 
-        var result = await _service.ActivateAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ActivateAsync(_actorId, campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotDraft");
@@ -378,6 +462,7 @@ public sealed class CampaignServiceTests
         var campaign = await SeedCampaignAsync();
 
         var updated = await _service.UpdateAsync(
+            _actorId,
             campaign.Id,
             "  Updated Campaign  ",
             "  Updated description  ",
@@ -402,6 +487,7 @@ public sealed class CampaignServiceTests
         var campaign = await SeedCampaignAsync();
 
         var updated = await _service.UpdateAsync(
+            _actorId,
             campaign.Id,
             "Title",
             null,
@@ -473,7 +559,7 @@ public sealed class CampaignServiceTests
         var team = SeedTeam("Grant Team");
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
         var grant = await CampaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
 
         var campaignId = await _service.GetCampaignIdForGrantAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
@@ -486,7 +572,7 @@ public sealed class CampaignServiceTests
     {
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
 
-        await _service.CompleteAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.CompleteAsync(_actorId, campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
         var updated = await CampaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
         updated!.Status.Should().Be(CampaignStatus.Completed);
@@ -497,7 +583,7 @@ public sealed class CampaignServiceTests
     {
         var campaign = await SeedCampaignAsync();
 
-        var result = await _service.CompleteAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.CompleteAsync(_actorId, campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotActive");
@@ -517,7 +603,7 @@ public sealed class CampaignServiceTests
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.SentCount.Should().Be(1);
 
@@ -554,7 +640,7 @@ public sealed class CampaignServiceTests
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.SentCount.Should().Be(1);
         var call = _notifications.ReceivedCalls().Should().ContainSingle().Subject;
@@ -582,7 +668,7 @@ public sealed class CampaignServiceTests
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m =>
@@ -598,13 +684,13 @@ public sealed class CampaignServiceTests
     public async Task SendWaveAsync_NotActive_ReturnsNotActive()
     {
         var campaign = await SeedCampaignAsync();
-        await _service.ImportCodesAsync(campaign.Id, ["CODE-1"], Xunit.TestContext.Current.CancellationToken);
+        await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE-1"], Xunit.TestContext.Current.CancellationToken);
         var user = SeedUser(displayName: "Draft User");
         var team = SeedTeam("DraftTeam");
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotActive");
@@ -629,7 +715,7 @@ public sealed class CampaignServiceTests
                 ? Task.FromException(new InvalidOperationException("enqueue boom"))
                 : Task.CompletedTask);
 
-        var result = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         // The wave survives the throw: both grants exist, only the offending one is Failed.
         result.SentCount.Should().Be(2);
@@ -657,11 +743,14 @@ public sealed class CampaignServiceTests
                 throw new OperationCanceledException(cancellation.Token);
             });
 
-        var act = () => _service.SendWaveAsync(campaign.Id, team.Id, cancellation.Token);
+        var act = () => _service.SendWaveAsync(_actorId, campaign.Id, team.Id, cancellation.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
         var grant = await CampaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         grant.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
+        await _audit.Received(1).LogAsync(AuditAction.CampaignWaveSent, "Campaign", campaign.Id,
+            Arg.Is<string>(description => description.Contains(grant.Id.ToString(), StringComparison.Ordinal)),
+            _actorId, user.Id, "User");
     }
 
     [HumansFact]
@@ -677,11 +766,11 @@ public sealed class CampaignServiceTests
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         // First wave sends to both
-        var wave1 = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var wave1 = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
         wave1.SentCount.Should().Be(2);
 
         // Second wave should send to nobody (both already granted)
-        var wave2 = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var wave2 = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
         wave2.SentCount.Should().Be(0);
     }
 
@@ -697,7 +786,7 @@ public sealed class CampaignServiceTests
         SeedTeamMember(team.Id, user2.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotEnoughCodes");
@@ -717,14 +806,14 @@ public sealed class CampaignServiceTests
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
         _emailService.ClearReceivedCalls();
 
         var grant = await CampaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         grant.LatestEmailStatus = EmailOutboxStatus.Failed;
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.ResendToGrantAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.ResendToGrantAsync(_actorId, grant.Id, Xunit.TestContext.Current.CancellationToken);
 
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.CampaignGrantId == grant.Id && m.CampaignId == campaign.Id),
@@ -746,7 +835,7 @@ public sealed class CampaignServiceTests
         var team = SeedTeam("Resend");
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
         var grant = await CampaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         grant.LatestEmailStatus = EmailOutboxStatus.Failed;
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -759,7 +848,7 @@ public sealed class CampaignServiceTests
             _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromException(new InvalidOperationException("enqueue unavailable")));
 
-        var act = () => _service.ResendToGrantAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
+        var act = () => _service.ResendToGrantAsync(_actorId, grant.Id, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
 
         ClearAllTrackers();
@@ -779,7 +868,7 @@ public sealed class CampaignServiceTests
         SeedTeamMember(team.Id, user2.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
         _emailService.ClearReceivedCalls();
 
         // Mark one as failed
@@ -787,7 +876,7 @@ public sealed class CampaignServiceTests
         grants[0].LatestEmailStatus = EmailOutboxStatus.Failed;
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.RetryAllFailedAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.RetryAllFailedAsync(_actorId, campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
         // Only the failed grant should be re-enqueued.
         await _emailService.Received(1).SendAsync(
@@ -811,7 +900,7 @@ public sealed class CampaignServiceTests
         SeedTeamMember(team.Id, user2.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         var grants = await CampaignsDb.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
         grants[0].LatestEmailStatus = EmailOutboxStatus.Failed;
@@ -823,7 +912,7 @@ public sealed class CampaignServiceTests
                 Task.FromException(new InvalidOperationException("enqueue down")),
                 Task.CompletedTask);
 
-        await _service.RetryAllFailedAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.RetryAllFailedAsync(_actorId, campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
         // One re-enqueue threw and flipped its grant back to Failed; the other
         // grant's retry still went through.
@@ -960,7 +1049,7 @@ public sealed class CampaignServiceTests
         SeedTeamMember(team.Id, erased.Id);
         SeedTeamMember(team.Id, kept.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         await _service.EraseForUserAsync(erased.Id, Xunit.TestContext.Current.CancellationToken);
 

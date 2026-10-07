@@ -126,11 +126,19 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - When an enqueue throws during `SendWaveAsync`, `ResendToGrantAsync`, or `RetryAllFailedAsync`, the single offending grant is flipped to `Failed` so the next pass of `RetryAllFailedAsync` can pick it up. Single-grant resend also marks recipient lookup or message preparation failures as `Failed`, then propagates the error to the admin; it must not leave a queued status without an outbox entry.
 - When an account merge accepts, `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant.UserId` from source to target (collapsing duplicates where target already holds a grant for the same campaign). Called only by `IAccountMergeService.AcceptAsync` (Users section).
 
+Admin mutations write audit entries after the business save, attributed to the
+acting admin: creation, configuration edits, manual/generated code imports,
+activation, completion, wave assignments and resend/retry queueing. Each saved
+wave grant and retry is audited individually, so an interrupted batch retains
+its completed actions. Grant entries link the recipient user; no code value or
+email template is copied into audit. Refused mutations emit no success entry.
+
 ## Cross-Section Dependencies
 
 - **Tickets:** `ITicketDiscountCodes` (`Humans.Tickets.Contracts`) — TicketAdmin can generate discount codes via the ticket vendor integration; Campaigns asks Tickets for codes through this leaf rather than reaching past it into the Base vendor port. Generation is invoked from the Campaign Detail page, not from the Tickets section.
 - **Email:** transport only. Campaigns owns its one template — `CampaignsEmails` (internal) builds the `EmailMessage` from the campaign's own subject and markdown body (Campaigns has no resx set), and `CampaignsEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651). `IEmailService.SendAsync` queues the message through the outbox.
 - **Users:** `IUserEmailService.GetNotificationTargetEmailsAsync(IReadOnlyCollection<Guid>)` — resolves notification targets for grant emails; `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` — recipient `DisplayName` for the email payload and code-tracking display; `IUnsubscribeService` (Users section, `Humans.Users.Services.UnsubscribeService`) processes the public `/Unsubscribe/{token}` endpoint, validating legacy campaign-only tokens (mapped to `MessageCategory.Marketing`) before delegating opt-out to `ICommunicationPreferenceService.UpdatePreferenceAsync` — `CampaignService` itself does not call `ICommunicationPreferenceService`. Called by `IAccountMergeService` (Users section) — `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant` from source to target during account merge fold.
+- **AuditLog:** `IAuditLogService.LogAsync` records persisted admin mutations.
 - **Notifications:** `INotificationEmitter.SendAsync` — `CampaignReceived` in-app notifications for wave recipients.
 - **Teams:** `ITeamServiceRead.GetTeamsAsync` (Send Wave team picker) and `ITeamServiceRead.GetTeamAsync` (team-scoped wave targeting).
 

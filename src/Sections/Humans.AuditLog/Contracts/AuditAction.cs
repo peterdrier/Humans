@@ -351,4 +351,12 @@ public enum AuditAction
     HoldedCreditorUnbound,
     // A Finance admin provisioned a Holded expense account for a budget category from /Finance/HoldedAccounts.
     HoldedCategoryAccountProvisioned,
+
+    CampaignCreated,
+    CampaignUpdated,
+    CampaignActivated,
+    CampaignCompleted,
+    CampaignCodesImported,
+    CampaignWaveSent,
+    CampaignGrantResent,
 }
