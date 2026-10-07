@@ -132,8 +132,14 @@ Applied ──approve──▶ Open ──report submitted──▶ Claimed ─�
 - **There is no expiry state and no job.** An `Open` grant past `ClaimBy` stays `Open`; it is
   shown as "deadline passed" and cannot be filed against. Nothing automated runs when the date
   passes, so pushing `ClaimBy` back makes those grants claimable again with nothing to undo.
-- Revoke is allowed on `Open` only. A `Claimed` grant is revoked by rejecting its report, then
-  revoking.
+- Revoke is allowed on `Open` and `Claimed`. Revoking a `Claimed` grant does not touch the
+  report: the next `ClaimAsync` (resubmit) and `ConsumeAsync` (approve) for it are refused with
+  "pre-approval revoked", so a draft holding it can no longer be submitted and a submitted one
+  must be rejected by Finance. `Consumed` is never revoked.
+- **Atomicity.** `ClaimAsync`, `ReleaseAsync` and `ConsumeAsync` run inside the ambient
+  `TransactionScope` Expenses opens around its own status change, the pattern
+  `AccountMergeService` and `CampService` already use across contexts. Either both commit or
+  neither; there is no "report withdrawn, grant still claimed" state to repair.
 
 ### What Expenses' transitions do to the grant
 
@@ -212,7 +218,9 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
   account was changed between draft and submit books to the account the program has now. If the
   grant is no longer claimable (revoked, claimed by another report, `ClaimBy` passed)
   submit is refused with a message naming why. Submitting on `ClaimBy` itself is allowed; the
-  day after is not. A rejected report resubmits the same way and gets a fresh stamp.
+  day after is not. **The deadline gates the first submit only.** A report that already holds
+  the grant (rejected, back in `Draft`) may resubmit after `ClaimBy`: it was filed in time and
+  the rejection is Finance's to finish, not a second filing. It gets a fresh stamp.
 - **Endorsement skipped:** a pre-approved report goes `Submitted → Finance review`. The grant is
   the endorsement; the program's managers already decided. (Matches Phase 2's rule for unmapped
   accounts.)
@@ -322,15 +330,19 @@ normally.
 
 **Merge** (`IUserMerge`): `pre_grants.BeneficiaryUserId`, `pre_program_managers.UserId` and the
 actor columns are re-keyed from the eliminated id to the survivor. A survivor already managing
-the same program keeps one row. Until the merge has run, reads go through `UserInfo.AllUserIds`
+the same program keeps one row. Two `Applied` rows for the same program collapse to the older
+one (the other is deleted, audited as `…MergeDroppedApplication`); decided grants are never
+merged, a person can legitimately hold two. Until the merge has run, reads go through `UserInfo.AllUserIds`
 like Expenses' creditor binding does, so a grant issued under a since-merged id is still found.
 
 ## Background job
 
 `PreapprovalsSectionJobs`: one nightly job, `preapprovals-reminders`, which **sends** the
 14-day and 3-day reminders to `Open` grant holders and records each send in
-`pre_reminders_sent` (GrantId, Kind `D14` | `D3`, SentAt; PK GrantId + Kind). That delivery log
-is the only row the job writes and it is not grant state. No job expires, closes, zeroes or
+`pre_reminders_sent` (GrantId, Kind `D14` | `D3`, SentAt; PK GrantId + Kind). The in-app
+notification, the email outbox row and the marker are written in one ambient
+`TransactionScope` per grant (all three contexts share the database), so a crash leaves either
+all of them or none. That delivery log is the only row the job writes and it is not grant state. No job expires, closes, zeroes or
 otherwise touches a grant or program; every state change is a person's action and is audited
 as such.
 Documented in [background-jobs.md](background-jobs.md) when built.
@@ -341,8 +353,9 @@ Documented in [background-jobs.md](background-jobs.md) when built.
   lead who needs two reports gets two grants.
 - Spent-vs-granted from the Holded ledger on the program page. Later pull via
   `IHoldedFinanceServiceRead.GetCreditorLedgerAsync`, same posture as Workgroups.
-- A Creativity section. When it exists it calls the section-internal issue path with the
-  project lead, amount and label; nothing here changes for it.
+- A Creativity section. When it exists it gets one narrow command on the public contract
+  (`IssueAsync(programId, beneficiaryUserId, amount, label)`, added then, not now); it never
+  sees the management interface.
 - Linking a program to a Workgroup or a Team. A program is its own thing; the label and the
   account say what it is for.
 - Per-grant deadline extensions. Everyone in a program has the same `ClaimBy`; moving it moves
@@ -371,7 +384,9 @@ Steps 2 and 3 can be built in parallel once Phase 2 is on QA; 3 merges after 2.
   past `ClaimBy` not claimable, claimable again after `ClaimBy` is pushed back with no state
   change; amount edit on `Open`/`Claimed` audited with old and new and ceiling-checked, refused
   on terminal states; revoke / close leave `MaxAmount` untouched; claim idempotent for
-  the holding report and refused for another; export (both slices), erasure keeps decided grants
+  the holding report and refused for another; resubmit of the holding report allowed after
+  `ClaimBy`; revoke on `Claimed` refuses the next claim/consume; merge collapses duplicate
+  `Applied` rows; export (both slices), erasure keeps decided grants
   and deletes `Applied` + manager rows; merge re-keys and dedups manager rows; every state change
   audited.
 - **Expenses**: stamp written at submit from the program's current account, not the draft's
