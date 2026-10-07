@@ -63,7 +63,7 @@ account has nowhere to go on the report. Phase 2 ships first, on its own PR.
 | Name | string(200) | "2026 Creativity" |
 | Description | string(2000)? | Shown on the public program page and the apply form |
 | Kind | enum `ProgramKind` | `FixedPerPerson` (every grant is `PerPersonAmount`) / `PerGrantAmount` (amount set on each grant) |
-| PerPersonAmount | decimal(18,2)? | Required when `FixedPerPerson`; refused otherwise |
+| PerPersonAmount | decimal(18,2)? | Required when `FixedPerPerson`; refused otherwise. Must be greater than zero |
 | TotalCeiling | decimal(18,2)? | Null = no ceiling. Creativity: 25 000 → 50 000 → 60 000, edited in place; each edit audited so the history is in the log |
 | HoldedAccountNumber | int | From `IHoldedFinanceServiceRead.ListExpenseAccountsAsync(activeOnly: true)` |
 | HoldedAccountId | string(64) | |
@@ -105,10 +105,10 @@ job.
 | ProgramId | Guid | FK |
 | BeneficiaryUserId | Guid | Bare Guid |
 | Label | string(200)? | The art project name; null for travel |
-| MaxAmount | decimal(18,2) | Copied from `PerPersonAmount` for `FixedPerPerson`; entered for `PerGrantAmount`. Editable by a program manager or above while the grant is `Open` or `Claimed` (1 000 becomes 1 500), audited with old and new value and checked against the ceiling. Never rewritten by the system: a revoked or unclaimed grant keeps its amount, so "6 000 of 25 000 was not claimed" is readable later |
+| MaxAmount | decimal(18,2) | Copied from `PerPersonAmount` for `FixedPerPerson`; entered for `PerGrantAmount`. Must be greater than zero (service-side, every path: issue, approve, edit); the ceiling sum is only meaningful with positive rows. Editable by a program manager or above while the grant is `Open` or `Claimed` (1 000 becomes 1 500), audited with old and new value and checked against the ceiling. Never rewritten by the system: a revoked or unclaimed grant keeps its amount, so "6 000 of 25 000 was not claimed" is readable later |
 | Status | enum `GrantStatus` | `Applied` / `Open` / `Claimed` / `Consumed` / `Declined` / `Revoked` |
 | ApplicationNote | string(2000)? | What the applicant wrote; null when issued directly |
-| RequestedAmount | decimal(18,2)? | What the applicant asked for (`PerGrantAmount` programs); the manager may approve less |
+| RequestedAmount | decimal(18,2)? | What the applicant asked for (`PerGrantAmount` programs), greater than zero; the manager may approve less |
 | DecidedByUserId, DecidedAt | | Who approved / declined / issued |
 | ExpenseReportId | Guid? | Bare Guid (Expenses). Set at `Claimed`, kept at `Consumed` and after the report is withdrawn |
 | CreatedAt, UpdatedAt | | |
@@ -217,7 +217,9 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
   `/Expenses/New?grant={id}` with the grant pre-selected. No grants, no block.
 - **New report:** the New form lists the member's claimable grants above the account/category
   picker ("File against a pre-approval"), pre-selected when `?grant=` is given. Picking one sets `PreapprovalGrantId` and shows the
-  grant's cap and account read-only; the draft carries no stamp of its own yet. A finance admin
+  grant's cap and account read-only. The draft stores the program's account at that moment
+  (`HoldedAccountNumber` is non-nullable after Phase 2) and the grant's cap for display; submit
+  overwrites both from the stamp. A finance admin
   filing on a member's behalf may pick one of **that member's** grants.
 - **Submit:** `ClaimAsync` in the same transaction as the status change; its `GrantStamp` is
   written to `MaxAmount`, `HoldedAccountNumber` / `HoldedAccountId` **then**, so a program whose
@@ -294,7 +296,9 @@ Negative cases to verify:
 
 ## Notifications and email
 
-Through `INotificationEmitter` (in-app) and `IEmailService` (email), both to the beneficiary:
+Through `INotificationEmitter` (in-app) and `IEmailService` (email), both to the beneficiary.
+Every message below is member-facing: resx in all six cultures, rendered in the recipient's
+preferred culture (the English here is the key's meaning, not the copy):
 
 | Event | Priority | Content |
 |-------|----------|---------|
@@ -304,6 +308,7 @@ Through `INotificationEmitter` (in-app) and `IEmailService` (email), both to the
 | Deadline reminder, 14 days and 3 days before `ClaimBy`, to every `Open` grant holder | Actionable | "File by {date}." Sent by the nightly job; each send is recorded in `pre_reminders_sent` so a retry never sends it twice. |
 | Report rejected (Expenses' existing rejection notification) | Actionable | For a pre-approved report it also says the report was filed in time and may be fixed and resubmitted; no deadline is imposed, since the holding report is exempt from `ClaimBy` (see Expenses changes). The grant is `Claimed` during a rejection, so the deadline job does not reach it. |
 | Grant amount changed | Informational | Program, old and new amount. |
+| Grant revoked | Actionable | Program, label, amount, reason if given. For a `Claimed` grant it links the report and says what to do (drop or swap the grant on the draft, or wait for Finance to reject a submitted one). The report's detail view and Finance's review row show "pre-approval revoked" from the moment of revocation, not first at approve. |
 
 Two source keys so `INotificationAutoResolve` clears the right alert: `pre-grant:{id}` on the
 beneficiary's "file by" notification, resolved when the grant leaves `Open`; `pre-request:{id}`
@@ -386,7 +391,9 @@ Steps 2 and 3 can be built in parallel once Phase 2 is on QA; 3 merges after 2.
 ## Tests (what each PR must prove)
 
 - **Preapprovals**: ceiling refused at issue/approve/edit with the right headroom; `FixedPerPerson`
-  refuses an amount on the grant and copies `PerPersonAmount`; apply-twice edits, never
+  refuses an amount on the grant and copies `PerPersonAmount`; zero or negative
+  `PerPersonAmount`, `MaxAmount` and `RequestedAmount` refused on every path; revoke notifies the
+  holder; apply-twice edits, never
   duplicates; claim/release/consume transitions and every refused transition;
   reminders idempotent through `pre_reminders_sent` per deadline and write nothing else; "deadline passed"
   rows carry no filing link; issue-many is all or nothing; manager of A → 403 on B; member → 403 on admin routes;
@@ -401,8 +408,8 @@ Steps 2 and 3 can be built in parallel once Phase 2 is on QA; 3 merges after 2.
   `Applied` rows; export (both slices), erasure keeps decided grants
   and deletes `Applied` + manager rows; merge re-keys and dedups manager rows; every state change
   audited.
-- **Expenses**: stamp written at submit from the program's current account, not the draft's
-  display; resubmit after reject restamps; submit after `ClaimBy` refused;
+- **Expenses**: draft stores the program's account at creation; stamp written at submit from
+  the program's current account, overwriting it; resubmit after reject restamps; submit after `ClaimBy` refused;
   submit on a non-claimable grant refused; endorsement skipped; approve cannot raise the cap above the grant's current amount or
   change the account, and a blank cap keeps the grant's current amount; reject leaves the grant `Claimed`; withdraw before approval releases;
   withdraw after approval leaves it `Consumed`; approve consumes in the same transaction as the
