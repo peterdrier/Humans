@@ -222,7 +222,7 @@ If any field differs:
 
 | What | Where |
 | --- | --- |
-| `ResolveCampEventManagementAsync(slug)` | `EventsController` base helpers — auth guard |
+| `ResolveCampEventManagementAsync(slug)` | Camps' `HumansCampControllerBase` helper — auth guard |
 | `BuildBulkUploadTemplateAsync(campId, campName)` | `IEventService` — builds the full template CSV (banner + existing camp events), wrapping `GetCampSubmissionsAsync` |
 | `SubmitEventAsync(event)` | `IEventService` — submits new events |
 | `UpdateAndResubmitAsync(event)` | `IEventService` — updates + resubmits existing events |
@@ -245,7 +245,7 @@ If any field differs:
 
 | Entity | Purpose |
 |--------|---------|
-| `GuideSettings` | Singleton per edition: submission dates, guide publish date, timezone, max print slots |
+| `GuideSettings` | Singleton per edition: submission dates, guide publish date, max print slots (timezone comes from Settings' edition row) |
 | `EventCategory` | Lookup: name, slug, is_sensitive, display order, is_active |
 | `GuideCamp` | Links a `Team` to guide-specific fields: camp name, description, grid address, is_published |
 | `GuideSharedVenue` | Moderator-curated communal spaces (e.g. "The Middle of Elsewhere"): name, description, grid address, is_active |
@@ -297,7 +297,7 @@ All emails use the existing `EmailOutboxMessage` / `ProcessEmailOutboxJob` infra
 | `/Events/MySubmissions` | Any human: unified view — own individual events plus a block per led barrio |
 | `/Events/Submit` | Any human: individual event submission form |
 | `/Events/Moderate` | EventsAdmin: pending submissions queue |
-| `/Events/Admin/{Settings,Categories,Venues}` | EventsAdmin/Admin: guide settings, categories, venues |
+| `/Events/Admin/{Categories,Venues}` | EventsAdmin/Admin: categories, venues (guide settings are the `/Settings#event-guide` tab; `Settings` has no GET) |
 | `/Events/Export` | EventsAdmin/Admin: CSV and print-guide exports |
 | `/Events/Barrio/{slug}/Submit` | Lead: submit/edit a barrio event (barrio block on My Event Submissions) |
 | `/Events/Barrio/{slug}/BulkUpload` | Lead: download CSV template of existing events; upload updated CSV |
@@ -310,5 +310,5 @@ All emails use the existing `EmailOutboxMessage` / `ProcessEmailOutboxJob` infra
 - **Teams** (06): GuideCamp is anchored to a Team; Lead role gates barrio event submission
 - **Profiles** (02): SubmitterUserId links GuideEvent to a user; UserGuidePreference and UserEventFavourite extend the user record
 - **Audit Log** (12): ModerationAction provides an append-only decision trail per event
-- **Shift Management** (25): Shares EventSettings (dates, timezone) and the Team/Department hierarchy
+- **Shift Management**: The edition settings (dates, timezone) belong to the Settings section; Shifts shares the Team/Department hierarchy
 - **Email Outbox** (21): All guide email notifications route through the existing outbox infrastructure

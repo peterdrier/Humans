@@ -3,7 +3,7 @@
 **Date:** 2026-06-08
 **Branch:** `feat/camp-events-card`
 **Sections touched:** Events (new cross-section read surface + ViewComponent + favourite-toggle action), Camps (one view edit)
-**Shipped as:** `EventsCardViewComponent` (`src/Sections/Humans.Events/ViewComponents/`), tests in `tests/Humans.Events.Tests/ViewComponents/`; the `CampEventsViewComponent` name and Shell paths below are the design-time names.
+**Shipped as:** `EventsCardViewComponent` (`src/Sections/Humans.Events/ViewComponents/`), tests in `tests/Humans.Events.Tests/ViewComponents/`; the `CampEventsViewComponent` name and Shell paths below are the design-time names. The shipped card toggles hearts through the JSON favourites API (no `ToggleCampFavourite` action or `/Favourite` route), is invoked through Camps' `ICampPart` by `Type` rather than `<vc:camp-events>`, and its tests live in `tests/Humans.Events.Tests`.
 
 ## Goal
 

@@ -3,6 +3,7 @@
 **Date:** 2026-06-09
 **Section:** Events
 **Status:** Shipped — `EventsModerationController.Edit`/`Update` → `IEventService.AdminUpdateAsync`
+**Note:** the Files list uses pre-split paths; shipped code lives under `src/Sections/Humans.Events/` (e.g. `Views/EventsModeration/AdminEventForm.cshtml`).
 
 ## Problem
 
