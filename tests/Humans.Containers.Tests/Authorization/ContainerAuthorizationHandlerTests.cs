@@ -50,13 +50,14 @@ public sealed class ContainerAuthorizationHandlerTests
     {
         _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(MakeSettings(year: 2027, isContainerPlacementOpen: false));
+        _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
+            .Returns([CreateCampInfo(year: 2027, isLead: true)]);
 
         var result = await EvaluateAsync(
             CreateUserWithId(LeadUserId),
             ContainerOperationRequirement.Place);
 
         result.Should().BeFalse();
-        await _campService.DidNotReceive().GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -137,7 +138,8 @@ public sealed class ContainerAuthorizationHandlerTests
         var result = await EvaluateAsync(CreateUserWithId(LeadUserId), ContainerOperationRequirement.Place, 2026);
 
         result.Should().Be(allowed);
-        await _cityPlanningService.Received(1).GetSettingsAsync(Arg.Any<CancellationToken>(), 2026);
+        // Settings for a request-supplied year are read (and so created) only for its camp lead.
+        await _cityPlanningService.Received(lead ? 1 : 0).GetSettingsAsync(Arg.Any<CancellationToken>(), 2026);
         await _campService.DidNotReceive().GetCampsForYearAsync(2027, Arg.Any<CancellationToken>());
     }
 

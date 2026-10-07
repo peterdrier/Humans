@@ -56,7 +56,8 @@ public sealed class CachingTicketQueryServiceTests
         var hit = MakeAttendee(UserA, TicketAttendeeStatus.Void) with { Barcode = "BC-Exact" };
         var past = MakeOrder(Guid.NewGuid(), null,
             MakeAttendee(UserB, TicketAttendeeStatus.Valid) with { Barcode = "old-event" })
-            with { IsCurrentEvent = false };
+            with
+        { IsCurrentEvent = false };
         SeedOrders(past, MakeOrder(Guid.NewGuid(), null, hit));
 
         var result = await _decorator.FindCurrentEventAttendeeByBarcodeAsync(

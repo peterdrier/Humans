@@ -796,9 +796,17 @@ public sealed class ExpenseReportServiceTests
             var reports = Substitute.For<IExpenseReportService>();
             reports.GetAsync(reportId, Arg.Any<CancellationToken>()).Returns(new ExpenseReportDto
             {
-                Id = reportId, SubmitterUserId = actorId, BudgetCategoryId = Guid.NewGuid(),
-                BudgetYearId = Guid.NewGuid(), Status = ExpenseReportStatus.Draft,
-                PayeeName = "", PayeeIban = "", Total = 0, CreatedAt = default, UpdatedAt = default, Lines = []
+                Id = reportId,
+                SubmitterUserId = actorId,
+                BudgetCategoryId = Guid.NewGuid(),
+                BudgetYearId = Guid.NewGuid(),
+                Status = ExpenseReportStatus.Draft,
+                PayeeName = "",
+                PayeeIban = "",
+                Total = 0,
+                CreatedAt = default,
+                UpdatedAt = default,
+                Lines = []
             });
             reports.AddLineWithResultAsync(reportId, actorId, Arg.Any<bool>(), "Receipt", 10m,
                 ExpenseLineType.Receipt, null, Arg.Any<ExpenseFileUpload?>(), Arg.Any<CancellationToken>()).Returns(result);
@@ -820,7 +828,8 @@ public sealed class ExpenseReportServiceTests
             };
             var file = new FormFile(content, 0, 0, "File", "receipt.pdf")
             {
-                Headers = new HeaderDictionary(), ContentType = "application/pdf"
+                Headers = new HeaderDictionary(),
+                ContentType = "application/pdf"
             };
             await controller.AddLine(reportId, new AddLineInputModel { Description = "Receipt", Amount = 10m }, file);
             controller.TempData[TempDataKeys.ErrorMessage].Should().Be(

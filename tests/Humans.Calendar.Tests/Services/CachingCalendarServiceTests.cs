@@ -263,8 +263,11 @@ public sealed class CachingCalendarServiceTests
     {
         var allDay = BuildInfo(title: "All-day", start: null, end: null) with
         {
-            IsAllDay = true, StartUtc = null, EndUtc = null,
-            StartDate = new LocalDate(2026, 6, 6), EndDateExclusive = new LocalDate(2026, 6, 7)
+            IsAllDay = true,
+            StartUtc = null,
+            EndUtc = null,
+            StartDate = new LocalDate(2026, 6, 6),
+            EndDateExclusive = new LocalDate(2026, 6, 7)
         };
         _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([allDay]);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
@@ -285,8 +288,11 @@ public sealed class CachingCalendarServiceTests
         var day = new LocalDate(2026, 6, 5);
         var first = BuildInfo(title: "Today", start: null, end: null) with
         {
-            IsAllDay = true, StartUtc = null, EndUtc = null,
-            StartDate = day, EndDateExclusive = day.PlusDays(1)
+            IsAllDay = true,
+            StartUtc = null,
+            EndUtc = null,
+            StartDate = day,
+            EndDateExclusive = day.PlusDays(1)
         };
         var next = first with { Id = Guid.NewGuid(), Title = "Tomorrow", StartDate = day.PlusDays(1), EndDateExclusive = day.PlusDays(2) };
         _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([first, next]);
@@ -307,9 +313,13 @@ public sealed class CachingCalendarServiceTests
         var day = new LocalDate(2026, 6, 5);
         var last = BuildInfo(title: "Last day", start: null, end: null) with
         {
-            IsAllDay = true, StartUtc = null, EndUtc = null,
-            StartDate = day, EndDateExclusive = day.PlusDays(1),
-            RecurrenceRule = "FREQ=DAILY;COUNT=1", RecurrenceUntilDate = day
+            IsAllDay = true,
+            StartUtc = null,
+            EndUtc = null,
+            StartDate = day,
+            EndDateExclusive = day.PlusDays(1),
+            RecurrenceRule = "FREQ=DAILY;COUNT=1",
+            RecurrenceUntilDate = day
         };
         _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([last]);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());

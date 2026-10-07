@@ -340,15 +340,12 @@
   <data name="AuditLog_Verb_TierApplicationRejected" xml:space="preserve"><value>ha rifiutato la domanda di livello di</value></data>
   <data name="AuditLog_NoSubjectVerb_TierApplicationRejected" xml:space="preserve"><value>ha rifiutato la domanda di livello</value></data>
   <data name="AuditLog_Verb_ShiftSignupCreated" xml:space="preserve"><value>ha creato un’iscrizione al turno per</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupCreated" xml:space="preserve"><value>ha creato un’iscrizione al turno</value></data>
   <data name="AuditLog_Verb_ShiftSignupConfirmed" xml:space="preserve"><value>ha confermato un’iscrizione al turno per</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupConfirmed" xml:space="preserve"><value>ha confermato un’iscrizione al turno</value></data>
   <data name="AuditLog_Verb_ShiftSignupRefused" xml:space="preserve"><value>ha rifiutato un’iscrizione al turno per</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupRefused" xml:space="preserve"><value>ha rifiutato un’iscrizione al turno</value></data>
   <data name="AuditLog_Verb_ShiftSignupVoluntold" xml:space="preserve"><value>ha assegnato d’ufficio</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupVoluntold" xml:space="preserve"><value>ha assegnato d’ufficio</value></data>
   <data name="AuditLog_Verb_ShiftSignupBailed" xml:space="preserve"><value>ha ritirato l’iscrizione al turno di</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupBailed" xml:space="preserve"><value>ha ritirato l’iscrizione al turno</value></data>
   <data name="AuditLog_Verb_ShiftSignupNoShow" xml:space="preserve"><value>ha segnalato l’assenza di</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupNoShow" xml:space="preserve"><value>ha segnalato l’assenza</value></data>
   <data name="AuditLog_Verb_ShiftSignupCancelled" xml:space="preserve"><value>ha rimosso l’iscrizione al turno di</value></data>

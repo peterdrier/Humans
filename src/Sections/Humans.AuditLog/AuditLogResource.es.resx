@@ -340,15 +340,12 @@
   <data name="AuditLog_Verb_TierApplicationRejected" xml:space="preserve"><value>rechazó la solicitud de categoría de</value></data>
   <data name="AuditLog_NoSubjectVerb_TierApplicationRejected" xml:space="preserve"><value>rechazó la solicitud de categoría</value></data>
   <data name="AuditLog_Verb_ShiftSignupCreated" xml:space="preserve"><value>creó la inscripción al turno de</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupCreated" xml:space="preserve"><value>creó una inscripción al turno</value></data>
   <data name="AuditLog_Verb_ShiftSignupConfirmed" xml:space="preserve"><value>confirmó la inscripción al turno de</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupConfirmed" xml:space="preserve"><value>confirmó la inscripción al turno</value></data>
   <data name="AuditLog_Verb_ShiftSignupRefused" xml:space="preserve"><value>rechazó la inscripción al turno de</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupRefused" xml:space="preserve"><value>rechazó la inscripción al turno</value></data>
   <data name="AuditLog_Verb_ShiftSignupVoluntold" xml:space="preserve"><value>asignó un turno a</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupVoluntold" xml:space="preserve"><value>asignó un turno</value></data>
   <data name="AuditLog_Verb_ShiftSignupBailed" xml:space="preserve"><value>se dio de baja del turno de</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupBailed" xml:space="preserve"><value>se dio de baja del turno</value></data>
   <data name="AuditLog_Verb_ShiftSignupNoShow" xml:space="preserve"><value>marcó como ausencia a</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupNoShow" xml:space="preserve"><value>marcó como ausencia</value></data>
   <data name="AuditLog_Verb_ShiftSignupCancelled" xml:space="preserve"><value>retiró la inscripción al turno de</value></data>

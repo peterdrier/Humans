@@ -54,8 +54,7 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
   the four field mutations. It is the only enforcement point both doors share: `CanSee` gates
   every per-item read, `FindHandleableAsync` gates every mutation, and out-of-reach answers
   exactly what gone answers. **Target, not built:** the four mutations should be one *apply a
-  field change* pipeline they parameterise, with result-vs-throw as a single wrapper — see §2
-  shape 5 and §5.
+  field change* pipeline they parameterise — see §2 shape 5.
 - **`Controllers/` + `Models/` + `Views/`** — one controller, one page (list + inline detail),
   one submit form, one widget modal. View models carry only what a `.cshtml` renders. Every
   action builds its viewer through `ViewerFor` and reads admin-ness off it — never `User.IsInRole`

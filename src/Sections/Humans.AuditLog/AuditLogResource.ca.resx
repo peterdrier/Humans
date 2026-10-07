@@ -340,15 +340,12 @@
   <data name="AuditLog_Verb_TierApplicationRejected" xml:space="preserve"><value>ha rebutjat la sol·licitud de categoria de</value></data>
   <data name="AuditLog_NoSubjectVerb_TierApplicationRejected" xml:space="preserve"><value>ha rebutjat la sol·licitud de categoria</value></data>
   <data name="AuditLog_Verb_ShiftSignupCreated" xml:space="preserve"><value>ha creat la inscripció al torn de</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupCreated" xml:space="preserve"><value>ha creat una inscripció al torn</value></data>
   <data name="AuditLog_Verb_ShiftSignupConfirmed" xml:space="preserve"><value>ha confirmat la inscripció al torn de</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupConfirmed" xml:space="preserve"><value>ha confirmat la inscripció al torn</value></data>
   <data name="AuditLog_Verb_ShiftSignupRefused" xml:space="preserve"><value>ha rebutjat la inscripció al torn de</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupRefused" xml:space="preserve"><value>ha rebutjat la inscripció al torn</value></data>
   <data name="AuditLog_Verb_ShiftSignupVoluntold" xml:space="preserve"><value>ha assignat un torn a</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupVoluntold" xml:space="preserve"><value>ha assignat un torn</value></data>
   <data name="AuditLog_Verb_ShiftSignupBailed" xml:space="preserve"><value>s’ha donat de baixa del torn de</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupBailed" xml:space="preserve"><value>s’ha donat de baixa del torn</value></data>
   <data name="AuditLog_Verb_ShiftSignupNoShow" xml:space="preserve"><value>ha marcat l’absència de</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupNoShow" xml:space="preserve"><value>ha marcat una absència</value></data>
   <data name="AuditLog_Verb_ShiftSignupCancelled" xml:space="preserve"><value>ha retirat la inscripció al torn de</value></data>

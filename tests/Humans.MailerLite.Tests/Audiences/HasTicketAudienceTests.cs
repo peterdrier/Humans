@@ -38,7 +38,6 @@ public class HasTicketAudienceTests
         var audience = NewAudience([]);
         audience.Key.Should().Be("has-ticket");
         audience.MailerLiteGroupName.Should().Be("Humans - Has Ticket");
-        audience.MailerLiteGroupName.Should().StartWith("Humans - ");
     }
 
     private static HasTicketAudience NewAudience(HashSet<Guid> ticketHolders)

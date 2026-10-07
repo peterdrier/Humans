@@ -340,15 +340,12 @@
   <data name="AuditLog_Verb_TierApplicationRejected" xml:space="preserve"><value>rejected tier application for</value></data>
   <data name="AuditLog_NoSubjectVerb_TierApplicationRejected" xml:space="preserve"><value>rejected tier application</value></data>
   <data name="AuditLog_Verb_ShiftSignupCreated" xml:space="preserve"><value>created signup for</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupCreated" xml:space="preserve"><value>created signup</value></data>
   <data name="AuditLog_Verb_ShiftSignupConfirmed" xml:space="preserve"><value>confirmed signup for</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupConfirmed" xml:space="preserve"><value>confirmed signup</value></data>
   <data name="AuditLog_Verb_ShiftSignupRefused" xml:space="preserve"><value>refused signup for</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupRefused" xml:space="preserve"><value>refused signup</value></data>
   <data name="AuditLog_Verb_ShiftSignupVoluntold" xml:space="preserve"><value>voluntold</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupVoluntold" xml:space="preserve"><value>voluntold</value></data>
   <data name="AuditLog_Verb_ShiftSignupBailed" xml:space="preserve"><value>bailed</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupBailed" xml:space="preserve"><value>bailed</value></data>
   <data name="AuditLog_Verb_ShiftSignupNoShow" xml:space="preserve"><value>marked no-show for</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupNoShow" xml:space="preserve"><value>marked no-show</value></data>
   <data name="AuditLog_Verb_ShiftSignupCancelled" xml:space="preserve"><value>removed signup for</value></data>

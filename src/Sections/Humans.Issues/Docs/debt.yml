@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.Issues. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 10
-inbox: []
+next_id: 11
+inbox:
+  - added: 2026-10-07
+    id: ISSUES-10
+    what: "UpdateSectionAsync returns IssueMutationResult.Refused with English text (terminal-issue / length) that IssuesController.UpdateSection shows verbatim; return a resource key + args the controller localizes. Tracking moved here from health.md §5 when ISSUES-2 collapsed the result twins (debt-review of PR peterdrier/Humans#1932)."
+    review: light

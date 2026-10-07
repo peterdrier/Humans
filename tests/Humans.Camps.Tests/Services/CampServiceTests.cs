@@ -2221,13 +2221,21 @@ public sealed class CampServiceTests : CampsTestHarness
         {
             var season = new CampSeason
             {
-                Id = Guid.NewGuid(), CampId = camp.Id, Year = 2023 + index,
-                Status = CampSeasonStatus.Withdrawn, CreatedAt = now, UpdatedAt = now,
+                Id = Guid.NewGuid(),
+                CampId = camp.Id,
+                Year = 2023 + index,
+                Status = CampSeasonStatus.Withdrawn,
+                CreatedAt = now,
+                UpdatedAt = now,
             };
             return new CampMember
             {
-                Id = Guid.NewGuid(), CampSeasonId = season.Id, CampSeason = season,
-                UserId = userId, Status = status, RequestedAt = now,
+                Id = Guid.NewGuid(),
+                CampSeasonId = season.Id,
+                CampSeason = season,
+                UserId = userId,
+                Status = status,
+                RequestedAt = now,
                 ConfirmedAt = status == CampMemberStatus.Pending ? null : now,
                 ConfirmedByUserId = status == CampMemberStatus.Pending ? null : actorId,
                 RemovedAt = status == CampMemberStatus.Removed ? now : null,
@@ -2238,8 +2246,11 @@ public sealed class CampServiceTests : CampsTestHarness
         await CampsDb.CampMembers.AddRangeAsync(members, ct);
         var otherMember = new CampMember
         {
-            Id = Guid.NewGuid(), CampSeasonId = members[0].CampSeasonId,
-            UserId = otherUserId, Status = CampMemberStatus.Pending, RequestedAt = now,
+            Id = Guid.NewGuid(),
+            CampSeasonId = members[0].CampSeasonId,
+            UserId = otherUserId,
+            Status = CampMemberStatus.Pending,
+            RequestedAt = now,
         };
         CampsDb.CampMembers.Add(otherMember);
         await SaveAllAsync(ct);

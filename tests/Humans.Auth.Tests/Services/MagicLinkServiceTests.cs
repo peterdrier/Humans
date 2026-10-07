@@ -244,7 +244,9 @@ public sealed class MagicLinkServiceTests : IDisposable
         // Separate requests load separate identity entities; mutating one is not a reservation.
         _userManager.FindByIdAsync(userId.ToString()).Returns(_ => new User
         {
-            Id = userId, UserName = "first@example.com", Email = "first@example.com",
+            Id = userId,
+            UserName = "first@example.com",
+            Email = "first@example.com",
             CreatedAt = Clock.GetCurrentInstant(),
         });
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

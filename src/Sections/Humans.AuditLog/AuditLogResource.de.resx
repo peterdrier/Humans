@@ -340,15 +340,12 @@
   <data name="AuditLog_Verb_TierApplicationRejected" xml:space="preserve"><value>verwarf den Stufenantrag von</value></data>
   <data name="AuditLog_NoSubjectVerb_TierApplicationRejected" xml:space="preserve"><value>hat den Stufenantrag abgelehnt</value></data>
   <data name="AuditLog_Verb_ShiftSignupCreated" xml:space="preserve"><value>erstellte eine Schichtanmeldung für</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupCreated" xml:space="preserve"><value>hat eine Schichtanmeldung erstellt</value></data>
   <data name="AuditLog_Verb_ShiftSignupConfirmed" xml:space="preserve"><value>bestätigte eine Schichtanmeldung für</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupConfirmed" xml:space="preserve"><value>hat eine Schichtanmeldung bestätigt</value></data>
   <data name="AuditLog_Verb_ShiftSignupRefused" xml:space="preserve"><value>verweigerte eine Schichtanmeldung für</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupRefused" xml:space="preserve"><value>hat eine Schichtanmeldung abgelehnt</value></data>
   <data name="AuditLog_Verb_ShiftSignupVoluntold" xml:space="preserve"><value>besetzte eine Schicht mit</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupVoluntold" xml:space="preserve"><value>hat eine Schicht zugeteilt</value></data>
   <data name="AuditLog_Verb_ShiftSignupBailed" xml:space="preserve"><value>widerrief die Schichtanmeldung von</value></data>
-  <data name="AuditLog_NoSubjectVerb_ShiftSignupBailed" xml:space="preserve"><value>hat die Schichtanmeldung zurückgezogen</value></data>
   <data name="AuditLog_Verb_ShiftSignupNoShow" xml:space="preserve"><value>vermerkte Nichterscheinen von</value></data>
   <data name="AuditLog_NoSubjectVerb_ShiftSignupNoShow" xml:space="preserve"><value>hat Nichterscheinen vermerkt</value></data>
   <data name="AuditLog_Verb_ShiftSignupCancelled" xml:space="preserve"><value>entfernte die Schichtanmeldung von</value></data>
