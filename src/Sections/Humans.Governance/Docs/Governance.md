@@ -369,3 +369,5 @@ folder) on its `Section` entry point, declaring the queue key and the roles that
 issues filed against it — `Board`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.
+
+Governance resource keys use `Governance_` in all six cultures; reflective `Enum_` keys retain their shared naming shape. Assembly vote status, kind, choice, majority and tally-method lookups build the same section-prefixed keys.

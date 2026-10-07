@@ -101,7 +101,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             var redisplayed = result.Should().BeOfType<ViewResult>().Which.Model
                 .Should().BeOfType<AssemblyVoteDetailViewModel>().Which;
             redisplayed.SelectedChoice.Should().Be(AssemblyBallotChoice.Ranked);
-            controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Votes_BallotInvalid");
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Governance_Votes_BallotInvalid");
             (await _fx.Db.AssemblyBallotHistories.CountAsync(ct)).Should().Be(historyBefore);
             _fx.Audit.ReceivedCalls().Should().BeEmpty();
         }
