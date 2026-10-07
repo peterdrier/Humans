@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.Resources;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Extensions;
@@ -35,6 +37,8 @@ internal sealed class CampaignService(
     IAuditLogService audit,
     ILogger<CampaignService> logger) : ICampaignService, IUserDataContributor, IUserMerge
 {
+    private static readonly ResourceManager NoticeResources = new(typeof(CampaignsResource));
+
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string CampaignGrants = "CampaignGrants";
 
@@ -525,32 +529,43 @@ internal sealed class CampaignService(
         if (grantedUserIds.Count == 0)
             return new CampaignSendWaveResult(true, SentCount: 0);
 
-        try
+        foreach (var recipients in grantedUserIds.GroupBy(
+            id => users[id].PreferredLanguage.IsSupportedCultureCode()
+                ? users[id].PreferredLanguage : CultureCatalog.DefaultCultureCode,
+            StringComparer.Ordinal))
         {
-            var title = $"You received a code from campaign: {campaign.Title}";
-            var body = "Check your email for your campaign code.";
-            if (title.EnumerateRunes().Count() > 200)
+            try
             {
-                body = string.Concat(title, "\n\n", body);
-                title = string.Concat(title.EnumerateRunes().Take(199)) + "…";
-            }
+                var culture = CultureInfo.GetCultureInfo(recipients.Key);
+                var title = string.Format(culture,
+                    NoticeResources.GetString("Campaigns_Notification_ReceivedTitle", culture)!, campaign.Title);
+                var body = NoticeResources.GetString("Campaigns_Notification_ReceivedBody", culture)!;
+                if (title.EnumerateRunes().Count() > 200)
+                {
+                    body = string.Concat(title, "\n\n", body);
+                    title = string.Concat(title.EnumerateRunes().Take(199)) + "…";
+                }
 
-            await notificationService.SendAsync(
-                NotificationSource.CampaignReceived,
-                NotificationClass.Informational,
-                NotificationPriority.Normal,
-                title,
-                grantedUserIds,
-                body: body,
-                cancellationToken: ct);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to dispatch CampaignReceived notifications for campaign {CampaignId}", campaignId);
+                await notificationService.SendAsync(
+                    NotificationSource.CampaignReceived,
+                    NotificationClass.Informational,
+                    NotificationPriority.Normal,
+                    title,
+                    recipients.ToList(),
+                    body: body,
+                    actionUrl: "/Profile/Me",
+                    actionLabel: NoticeResources.GetString("Campaigns_Notification_MyCodes", culture),
+                    cancellationToken: ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to dispatch CampaignReceived notifications for campaign {CampaignId} in {Culture}",
+                    campaignId, recipients.Key);
+            }
         }
 
         return new CampaignSendWaveResult(true, SentCount: grantedUserIds.Count);

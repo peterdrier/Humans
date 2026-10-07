@@ -649,9 +649,52 @@ public sealed class CampaignServiceTests
         var title = (string)arguments[3]!;
         title.EnumerateRunes().Count().Should().Be(200);
         title.Should().Be(string.Concat(fullTitle.EnumerateRunes().Take(199)) + "…");
-        arguments[5].Should().Be(fullTitle + "\n\nCheck your email for your campaign code.");
+        arguments[5].Should().Be(fullTitle + "\n\nYour campaign code is available under My Codes in your profile.");
         ((IReadOnlyList<Guid>)arguments[4]!).Should().Equal(user.Id);
         arguments[0].Should().Be(NotificationSource.CampaignReceived);
+    }
+
+    [HumansFact]
+    public async Task SendWaveAsync_GroupsRecipientsByLanguageWithEnglishFallbackAndIsolatesDispatchFailures()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var copy = new[]
+        {
+            ("en", "You received a code from campaign: Test Campaign", "Your campaign code is available under My Codes in your profile.", "My Codes"),
+            ("es", "Has recibido un código de la campaña: Test Campaign", "Tu código de campaña está disponible en Mis códigos en tu perfil.", "Mis códigos"),
+            ("de", "Du hast einen Code aus der Kampagne erhalten: Test Campaign", "Dein Kampagnencode ist unter Meine Codes in deinem Profil verfügbar.", "Meine Codes"),
+            ("it", "Hai ricevuto un codice dalla campagna: Test Campaign", "Il tuo codice della campagna è disponibile in I miei codici nel tuo profilo.", "I miei codici"),
+            ("fr", "Tu as reçu un code de la campagne : Test Campaign", "Ton code de campagne est disponible dans Mes codes sur ton profil.", "Mes codes"),
+            ("ca", "Has rebut un codi de la campanya: Test Campaign", "El teu codi de campanya està disponible a Els meus codis del teu perfil.", "Els meus codis"),
+        };
+        var campaign = await SeedActiveCampaignWithCodesAsync(Enumerable.Range(0, 7).Select(i => $"CODE-{i}").ToArray());
+        var team = SeedTeam("Translated Notices");
+        var recipients = copy.Select(x => SeedUser(preferredLanguage: x.Item1)).ToArray();
+        var fallback = SeedUser(preferredLanguage: "unsupported");
+        foreach (var user in recipients.Append(fallback))
+            SeedTeamMember(team.Id, user.Id);
+        await SaveAllAsync(ct);
+        var attempts = 0;
+        _notifications.SendAsync(Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ++attempts == 1 ? Task.FromException(new InvalidOperationException("notification failure")) : Task.CompletedTask);
+
+        var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, ct);
+
+        result.SentCount.Should().Be(7);
+        var calls = _notifications.ReceivedCalls().ToList();
+        calls.Should().HaveCount(6, "one failed language must not prevent the others from being attempted");
+        for (var index = 0; index < recipients.Length; index++)
+        {
+            var user = recipients[index];
+            var args = calls.Single(c => ((IReadOnlyList<Guid>)c.GetArguments()[4]!).Contains(user.Id)).GetArguments();
+            args[3].Should().Be(copy[index].Item2);
+            args[5].Should().Be(copy[index].Item3);
+            args[6].Should().Be("/Profile/Me");
+            args[7].Should().Be(copy[index].Item4);
+            ((IReadOnlyList<Guid>)args[4]!).Should().BeEquivalentTo(index == 0 ? [user.Id, fallback.Id] : new[] { user.Id });
+        }
     }
 
     [HumansFact]
@@ -725,6 +768,11 @@ public sealed class CampaignServiceTests
         grants.Should().HaveCount(2);
         grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed).Should().Be(1);
         grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Queued).Should().Be(1);
+        var notice = _notifications.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        ((IReadOnlyList<Guid>)notice[4]!).Should().BeEquivalentTo(new[] { user1.Id, user2.Id });
+        notice[5].Should().Be("Your campaign code is available under My Codes in your profile.");
+        notice[6].Should().Be("/Profile/Me");
+        notice[7].Should().Be("My Codes");
     }
 
     [HumansFact]
@@ -1156,7 +1204,7 @@ public sealed class CampaignServiceTests
     // A section test project cannot see the Users section's tables, so the registry
     // holds the projections the service actually consumes: UserInfo and TeamInfo.
 
-    private UserInfo SeedUser(Guid? id = null, string displayName = "Test User")
+    private UserInfo SeedUser(Guid? id = null, string displayName = "Test User", string preferredLanguage = "en")
     {
         var userId = id ?? Guid.NewGuid();
         var user = new User
@@ -1168,7 +1216,7 @@ public sealed class CampaignServiceTests
             // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
             // UserInfo.BurnerName reads User.BurnerName only (#1098).
             BurnerName = displayName,
-            PreferredLanguage = "en",
+            PreferredLanguage = preferredLanguage,
             CreatedAt = Clock.GetCurrentInstant()
         };
         var info = UserInfo.Create(
