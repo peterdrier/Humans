@@ -126,4 +126,4 @@ Behavioural facts stated so a violation is recognisable, each with the line that
 |---|---|---|---|
 | 1 | 2026-08-24 | 258 (loc=6367, cogP95=9, cogMax=35) | first pass — peterdrier/Humans#1483 |
 | 2 | 2026-09-09 | — | docs and comments caught up to the two August fixes; one settings lookup for every controller; the moderation queue names its moderators — peterdrier/Humans#1621 |
-| 3 | 2026-10-07 | — | docs, comments and the user guide name Settings as the edition's owner; the Guide Settings link reaches its tab — PR pending |
+| 3 | 2026-10-07 | — | docs, comments and the user guide name Settings as the edition's owner; the Guide Settings link reaches its tab — peterdrier/Humans#1931 |
