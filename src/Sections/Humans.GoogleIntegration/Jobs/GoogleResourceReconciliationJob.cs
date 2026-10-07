@@ -48,34 +48,15 @@ public class GoogleResourceReconciliationJob(
         int inheritanceCorrected = 0;
         var settingsResult = new GroupSettingsDriftResult();
 
+        // One source fan-out owns all Drive access: Teams' folders/files and Workgroups.
         try
         {
-            await googleSyncService.SyncResourcesByTypeAsync(
-                GoogleResourceType.DriveFolder,
-                SyncAction.Execute,
-                cancellationToken,
-                GoogleSyncSource.ScheduledSync);
+            await googleDriveSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "Google reconciliation phase 'DriveFolder sync' failed");
-            phaseFailures.Add("DriveFolder sync");
-        }
-
-        // DriveFile is handled by the same Drive permission path as DriveFolder; omitting it
-        // meant soft-deleted teams with linked files kept Google permissions indefinitely.
-        try
-        {
-            await googleSyncService.SyncResourcesByTypeAsync(
-                GoogleResourceType.DriveFile,
-                SyncAction.Execute,
-                cancellationToken,
-                GoogleSyncSource.ScheduledSync);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Google reconciliation phase 'DriveFile sync' failed");
-            phaseFailures.Add("DriveFile sync");
+            logger.LogError(ex, "Google reconciliation phase 'Drive access source reconcile' failed");
+            phaseFailures.Add("Drive access source reconcile");
         }
 
         // Provisioning of missing Google Groups is handled inside ReconcileAllAsync — when a
@@ -89,18 +70,6 @@ public class GoogleResourceReconciliationJob(
         {
             logger.LogError(ex, "Google reconciliation phase 'Group membership reconcile' failed");
             phaseFailures.Add("Group membership reconcile");
-        }
-
-        // Reconciles the Drive access source fan-out (Workgroups etc.) — additive to and
-        // independent from the Teams-keyed google_resources Drive path reconciled above.
-        try
-        {
-            await googleDriveSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Google reconciliation phase 'Drive access source reconcile' failed");
-            phaseFailures.Add("Drive access source reconcile");
         }
 
         // Detects renames and moves.

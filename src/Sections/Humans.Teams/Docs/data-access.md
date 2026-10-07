@@ -136,3 +136,5 @@ registered in `Section.Register`) — builds one sample per template via
 ---
 
 
+
+`TeamDriveAccessSource` implements the existing Drive fan-out: cached team memberships plus GoogleIntegration resource snapshots, no foreign table reads.

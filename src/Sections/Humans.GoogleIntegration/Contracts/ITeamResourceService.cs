@@ -51,12 +51,6 @@ public record GoogleResourceSnapshot(
 public interface ITeamResourceService : IApplicationService, ITeamResourceServiceRead
 {
     /// <summary>
-    /// Returns the total active-resource count for every team that currently has any,
-    /// regardless of resource type. Used by admin aggregates (e.g. email rename impact).
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, int>> GetActiveResourceCountsByTeamAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Marks a Google resource reconciliation as successful and clears any
     /// previously recorded sync error.
     /// </summary>

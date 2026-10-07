@@ -17,6 +17,7 @@ internal sealed class GoogleController(
     IUserServiceRead userService,
     IGoogleSyncService googleSyncService,
     IGoogleGroupSync googleGroupSync,
+    ITeamServiceRead teamRead,
     ITeamResourceService teamResourceService,
     IEmailProvisioningService emailProvisioningService,
     IGoogleAdminService googleAdminService,
@@ -277,6 +278,7 @@ internal sealed class GoogleController(
             ? await googleGroupSync.ReconcileAllAsync(SyncAction.Preview, HttpContext.RequestAborted)
             : await googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview, HttpContext.RequestAborted);
 
+        await EnrichDriveDisplayAsync(result.Diffs, HttpContext.RequestAborted);
         result.Diffs.Sort((a, b) =>
             string.Compare(a.ResourceName, b.ResourceName, StringComparison.Ordinal));
 
@@ -316,6 +318,7 @@ internal sealed class GoogleController(
                 resourceId,
                 SyncAction.Execute,
                 CancellationToken.None);
+            await EnrichDriveDisplayAsync([result], CancellationToken.None);
             return Json(result);
         }
         catch (Exception ex)
@@ -339,12 +342,39 @@ internal sealed class GoogleController(
             var result = resourceType == GoogleResourceType.Group
                 ? await googleGroupSync.ReconcileAllAsync(SyncAction.Execute, CancellationToken.None)
                 : await googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Execute, CancellationToken.None);
+            await EnrichDriveDisplayAsync(result.Diffs, CancellationToken.None);
             return Json(result);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to execute sync for resource type {ResourceType}", resourceType);
             return Json(new { ErrorMessage = ex.Message });
+        }
+    }
+
+    private async Task EnrichDriveDisplayAsync(IReadOnlyList<ResourceSyncDiff> diffs, CancellationToken ct)
+    {
+        var driveDiffs = diffs.Where(d => !string.Equals(d.ResourceType, GoogleResourceType.Group.ToString(), StringComparison.Ordinal)).ToList();
+        if (driveDiffs.Count == 0) return;
+        var teamInfos = await teamRead.GetTeamsAsync(ct);
+        var resources = await teamResourceService.GetResourcesByTeamIdsAsync(teamInfos.Keys.ToList(), ct);
+        var resourcesByGoogleId = resources.Values.SelectMany(r => r).ToLookup(r => r.GoogleId, StringComparer.Ordinal);
+
+        foreach (var diff in driveDiffs)
+        {
+            var linked = resourcesByGoogleId[diff.GoogleId ?? string.Empty].ToList();
+            diff.LinkedTeams.AddRange(linked.Where(r => teamInfos.ContainsKey(r.TeamId))
+                .Select(r => new TeamLink(teamInfos[r.TeamId].Name, teamInfos[r.TeamId].Slug, r.DrivePermissionLevel.ToString()))
+                .DistinctBy(l => l.Slug, StringComparer.Ordinal));
+            foreach (var member in diff.Members.Where(m => m.UserId.HasValue))
+            {
+                var labels = linked.SelectMany(r => teamInfos.Values
+                    .Where(t => t.IsActive && (t.Id == r.TeamId || t.ParentTeamId == r.TeamId)
+                        && t.Members.Any(m => m.UserId == member.UserId))
+                    .Select(t => new TeamLink(t.Name, t.Slug, r.DrivePermissionLevel.ToString())))
+                    .DistinctBy(l => l.Slug, StringComparer.Ordinal);
+                member.TeamLinks.AddRange(labels);
+            }
         }
     }
 

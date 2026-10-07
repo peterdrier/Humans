@@ -41,6 +41,7 @@ public sealed class GoogleControllerSyncAuditTests
         _users,
         Substitute.For<IGoogleSyncService>(),
         Substitute.For<IGoogleGroupSync>(),
+        Substitute.For<Humans.Teams.Contracts.ITeamServiceRead>(),
         _resources,
         Substitute.For<IEmailProvisioningService>(),
         Substitute.For<IGoogleAdminService>(),

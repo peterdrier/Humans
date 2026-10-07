@@ -30,13 +30,10 @@ Repositories: `IGoogleResourceRepository`, `IGoogleSyncOutboxRepository`.
 | GoogleResources | R/W |
 | GoogleSyncOutboxEvents | R/W |
 
-Implements `IGoogleSyncService`. Cross-section calls via `IUserService`,
-`ITeamService`, `IUserEmailService`, `ISyncSettingsService`,
-`IAuditLogService`, `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`,
-`IGoogleGroupProvisioningClient`, `IGoogleGroupSync` (sync orchestrator),
-`ITeamResourceGoogleClient`, `IGoogleRemovalNotificationService`. Lazy
-`IServiceProvider` resolution for parallel/per-batch scope creation. No
-`IMemoryCache`.
+Implements `IGoogleSyncService`. Reads Users and Teams through their read interfaces;
+uses `IUserEmailService`, `ISyncSettingsService`, `IAuditLogService` and Google
+clients for provisioning, paths and inheritance. Access reconciliation delegates
+to `IGoogleDriveSync` and `IGoogleGroupSync`. No cache.
 
 ### GoogleGroupSyncService (Scoped)
 
@@ -51,14 +48,14 @@ direct DB access, no cache.
 
 ### GoogleDriveAccessSyncService (Scoped)
 
-No repository directly — operates over the `IGoogleDrivePermissionsClient`
-connector and the in-process `IEnumerable<IGoogleDriveAccessSource>` (empty
-until a consumer section registers one, e.g. Workgroups). Cross-section calls
-via `IUserServiceRead`, `IUserEmailService`, `ISyncSettingsService`,
-`IAuditLogService`, `IGoogleRemovalNotificationService`,
-`IGoogleDriveAccessSyncScheduler`. No direct DB access, no cache. Mirrors
-`GoogleGroupSyncService` for source-claimed Drive folders; the Teams-keyed
-`google_resources` Drive path stays on `GoogleWorkspaceSyncService`.
+Repository: `IGoogleResourceRepository` (linked-resource sync/error metadata).
+
+Consumes `IGoogleDriveAccessSource` implementations from Teams and Workgroups.
+Hydrates identities through `IUserService` / `IUserEmailService`, records target
+rejections through Users, and uses the Drive permissions client, sync settings,
+audit/sync logs and removal notifications. Team lifecycle reads use
+`ITeamServiceRead`; successful inactive-resource cleanup delegates to
+`ITeamResourceService`. Membership rules remain in the sources. No cache.
 
 ### GoogleAdminService (Scoped)
 
@@ -162,8 +159,8 @@ Repository: `IGoogleResourceRepository`.
 |-------|-----|
 | GoogleResources | R/W |
 
-Sole owner of `google_resources`. All consumers call
-`ITeamResourceService` read methods rather than touching
+Owns resource management; Drive reconciliation updates sync metadata through the same section repository. External consumers call
+`ITeamResourceServiceRead` rather than touching
 `DbSet<GoogleResource>`; ownership is enforced by the section's `internal`
 `GoogleIntegrationDbContext` and `IGoogleResourceRepository` plus
 HUM0008/HUM0009/HUM0025. Cross-section calls via
@@ -209,3 +206,5 @@ no cache.
 ---
 
 
+
+`GoogleDriveAccessSyncService` reconciles all Drive access sources, including Teams. It owns linked-resource sync/error metadata, resource-linked logs and post-reconciliation retirement via `TeamResourceService`. `GoogleWorkspaceSyncService` delegates Drive access; it retains provisioning, folder paths, inheritance settings and outbox routing. Teams supplies membership rules; controller composition supplies display labels.
