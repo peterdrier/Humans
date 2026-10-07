@@ -13,8 +13,7 @@ using NSubstitute;
 namespace Humans.Events.Tests.ViewComponents;
 
 /// <summary>
-/// The /Settings#event-guide tab (peterdrier/Humans#1634): mirrors what the old
-/// <c>EventsAdminController.Settings</c> GET used to build.
+/// The /Settings#event-guide tab (peterdrier/Humans#1634) builds the guide-settings form model.
 /// </summary>
 public sealed class EventGuideSettingsTabViewComponentTests
 {

@@ -442,7 +442,7 @@ internal sealed class CachingEventService(
     public Task<ApprovedEventsExportInfo> GetApprovedEventsForExportAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetApprovedEventsForExportAsync(ct));
 
-    // ── IEventViewInvalidator — external invalidation hooks (nobodies-collective/Humans#719) ──
+    // ── IEventViewInvalidator — in-section invalidation hook (no caller) ──
 
     public Task InvalidateGuideSettingsAsync(CancellationToken ct = default) =>
         MutateAsync(() => RefreshSettingsAsync(ct));

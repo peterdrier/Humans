@@ -7,7 +7,7 @@ namespace Humans.Events.Services;
 /// the template download (writer) and <see cref="BulkEventCsvParser"/>
 /// (reader), so the column set can never drift between the two. All columns
 /// are strings: value parsing and validation stay in the parser and
-/// <c>EventService.ValidateBulkRows</c> so per-row error messages can be
+/// <c>EventBulkImportValidator.ValidateRows</c> so per-row error messages can be
 /// collected instead of failing on the first bad cell.
 /// </summary>
 internal sealed class BulkEventCsvRecord

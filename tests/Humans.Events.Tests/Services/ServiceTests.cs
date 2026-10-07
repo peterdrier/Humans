@@ -484,8 +484,8 @@ public sealed class EventServiceTests
     private Guid StubSubmitterWithEmail(string email, string burnerName, string language = "en")
     {
         var userId = Guid.NewGuid();
-        // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-        // UserInfo.BurnerName reads User.BurnerName only (#1098).
+        // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (nobodies-collective/Humans#1097) —
+        // UserInfo.BurnerName reads User.BurnerName only (nobodies-collective/Humans#1098).
         var user = new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = language };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             // UserInfoStubHelpers.ToUserInfo lives in Humans.Application.Tests and is not
