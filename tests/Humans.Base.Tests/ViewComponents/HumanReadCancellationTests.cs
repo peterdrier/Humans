@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using NSubstitute;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.Base.Tests.ViewComponents;
 
@@ -30,7 +31,7 @@ public class HumanReadCancellationTests
         });
         ViewComponent component = picker
             ? new HumanSearchViewComponent(users)
-            : new HumanViewComponent(users, Substitute.For<IUrlHelperFactory>());
+            : new HumanViewComponent(users, Substitute.For<IUrlHelperFactory>(), Substitute.For<IStringLocalizer<SharedResource>>());
         component.ViewComponentContext = new ViewComponentContext
         {
             ViewContext = new ViewContext
