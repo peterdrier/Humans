@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 10
-inbox:
-  - added: 2026-08-25
-    id: ISSUES-3
-    what: "IssuesServiceTests's …WithResultAsync success twins re-assert stored state their direct-call counterparts already own, and four tests assert only which arguments the service handed a substitute repository while the file's own real-repository equivalents cover the same behaviour. Found by /section-doctor on Issues 2026-08-25, narrowed 2026-09-14 — the four unasserted behaviours it also named are now covered. Plan: delete the redundant twins and the four argument-only tests; deleting over-pinning tests is in line with debt-sweep-standing-policy D6."
-    review: panel
+inbox: []
