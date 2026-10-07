@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
@@ -590,9 +591,13 @@ internal sealed partial class WorkgroupService(
         if (string.IsNullOrWhiteSpace(folderId))
             throw new WorkgroupRuleException(WorkgroupErrorKeys.RootFolderNotConfigured);
 
-        await settings.SetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, folderId.Trim(), ct);
+        // Secretaries paste the folder's browser URL as often as its id; store only the id.
+        var id = DriveFolderUrlId.Match(folderId) is { Success: true } m ? m.Groups["id"].Value : folderId.Trim();
+        await settings.SetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, id, ct);
         await auditLog.LogAsync(AuditAction.WorkgroupsRootFolderUpdated,
             AuditEntityTypes.WorkgroupsSettings, Guid.Empty,
-            $"Root Drive folder set to {folderId.Trim()}", actorUserId);
+            $"Root Drive folder set to {id}", actorUserId);
     }
+
+    private static readonly Regex DriveFolderUrlId = new(@"/folders/(?<id>[A-Za-z0-9_-]+)", RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1));
 }

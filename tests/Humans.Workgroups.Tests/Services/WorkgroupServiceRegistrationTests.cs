@@ -109,6 +109,18 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
+    [Xunit.InlineData("https://drive.google.com/drive/folders/0AFLHTK5u0wymUk9PVA")]
+    [Xunit.InlineData("https://drive.google.com/drive/u/1/folders/0AFLHTK5u0wymUk9PVA?usp=sharing")]
+    [Xunit.InlineData(" 0AFLHTK5u0wymUk9PVA ")]
+    public async Task SetRootDriveFolderId_PastedUrl_StoresBareId(string input)
+    {
+        await NewService().SetRootDriveFolderIdAsync(input, SeedUser(), Ct);
+
+        await Settings.Received(1).SetValueAsync(
+            SettingKeys.WorkgroupsRootDriveFolderId, "0AFLHTK5u0wymUk9PVA", Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("role")]
     [Xunit.InlineData("address")]
     [Xunit.InlineData("member")]
