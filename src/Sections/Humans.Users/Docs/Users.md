@@ -285,6 +285,8 @@ Inbound (other sections → Users) — the typical direction:
 
 ## Architecture
 
+Identity store registration stays in the section entry point. Shell calls the contract bridge, which names no EF types; `User : IdentityUser<Guid>` remains the intentional public Identity model.
+
 A lazy per-key cache miss cannot republish its old result after an intervening cache eviction or refresh.
 
 **Owning services:** `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `AccountDeletionService`, `AccountMergeService` + `DuplicateAccountService` (the one ordered merge engine and the stateless duplicate detector; `AccountMergeService` is backed by `IAccountMergeRepository` for `account_merge_requests` and contributes the `AccountMergeRequests` GDPR slice), `ExternalLoginService` (the OAuth-callback decision ladder, kept out of `AccountController` per HUM0031; sole caller of `IUserEmailService.ReconcileOAuthIdentityAsync`) — all in `Humans.Users/Services/`.
