@@ -196,7 +196,6 @@ public class GoogleControllerSyncCancellationTests
             _users,
             _syncService,
             _groupSync,
-            Substitute.For<ITeamServiceRead>(),
             _resources,
             Substitute.For<IEmailProvisioningService>(),
             _admin,

@@ -114,7 +114,7 @@ IGoogleGroupSync group membership reconciliation
      → variant selection
      → IEmailService.SendAsync(GoogleIntegrationEmails.GoogleGroupRemovalLossOfAccess / GoogleDriveRemovalLossOfAccess / GoogleAccessRemovalSecondaryCleanup) → OutboxEmailService writes the row (MessageCategory.System)
 
-GoogleDriveAccessSyncService source-owned Drive reconciliation
+GoogleWorkspaceSyncService.RemoveUserFromDriveAsync (Drive gateway)
   → IGoogleDrivePermissionsClient delete
   → on success: same notification flow
 ```
@@ -123,7 +123,7 @@ The notification is **always** post-delete, never pre-delete — we don't tell u
 
 ## Related Features
 
-- [`google-integration.md`](google-integration.md) — sync architecture, group orchestrator, Drive reconciliation, sync modes
+- [`google-integration.md`](google-integration.md) — sync architecture, group orchestrator, Drive gateway methods, sync modes
 - [`email-outbox.md`](../../../Humans.Email/Docs/features/email-outbox.md) — outbox infrastructure, `MessageCategory`, branded-template composition
 - [`profiles.md`](../../../Humans.Users/Docs/features/profiles.md) — `UserEmail` rows, `IsGoogle` flag, email rotation flows
 - [`src/Sections/Humans.GoogleIntegration/Docs/GoogleIntegration.md`](../GoogleIntegration.md) — section invariants, cross-section dependencies

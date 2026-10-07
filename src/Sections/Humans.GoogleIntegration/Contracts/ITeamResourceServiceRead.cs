@@ -6,12 +6,6 @@ namespace Humans.GoogleIntegration.Contracts;
 public interface ITeamResourceServiceRead
 {
     /// <summary>
-    /// Returns the total active-resource count for every team that currently has any,
-    /// regardless of resource type. Used for resource discovery and admin aggregates (e.g. email rename impact).
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, int>> GetActiveResourceCountsByTeamAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Gets all active Google resources linked to a single team.
     /// </summary>
     Task<IReadOnlyList<GoogleResourceSnapshot>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default);

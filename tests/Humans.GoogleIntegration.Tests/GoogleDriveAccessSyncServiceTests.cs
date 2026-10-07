@@ -1,5 +1,3 @@
-using Humans.GoogleIntegration.Data;
-using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -17,7 +15,7 @@ namespace Humans.GoogleIntegration.Tests;
 public sealed class GoogleDriveAccessSyncServiceTests
 {
     private readonly IGoogleDrivePermissionsClient _drivePermissions = Substitute.For<IGoogleDrivePermissionsClient>();
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
@@ -135,36 +133,6 @@ public sealed class GoogleDriveAccessSyncServiceTests
             Guid.Empty,
             Arg.Is<string>(s => s.Contains("collision")),
             nameof(GoogleDriveAccessSyncService));
-    }
-
-    [HumansFact]
-    public async Task ReconcileAllAsync_CaseDistinctResourceIds_AreReconciledSeparately()
-    {
-        var service = CreateService(new StaticSource("Folder"), new StaticSource("folder"));
-        StubFolder("Folder");
-        StubFolder("folder");
-
-        var result = await service.ReconcileAllAsync(SyncAction.Preview, Xunit.TestContext.Current.CancellationToken);
-
-        result.ErrorCount.Should().Be(0);
-        result.Diffs.Select(d => d.GoogleId).Should().BeEquivalentTo(["Folder", "folder"]);
-        await _drivePermissions.Received(1).ListPermissionsAsync("Folder", Arg.Any<CancellationToken>());
-        await _drivePermissions.Received(1).ListPermissionsAsync("folder", Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ReconcileOneAsync_SharedCanonicalAddress_UsesHighestPermission()
-    {
-        var first = Guid.NewGuid();
-        var second = Guid.NewGuid();
-        var service = CreateService(new StaticSource("folder-1",
-            (first, DrivePermissionLevel.Viewer), (second, DrivePermissionLevel.Contributor)));
-        StubUsers((first, "First", "human@gmail.com"), (second, "Second", "human+tag@googlemail.com"));
-        StubFolder("folder-1");
-
-        var diff = await service.ReconcileOneAsync("folder-1", SyncAction.Preview, Xunit.TestContext.Current.CancellationToken);
-
-        diff.Members.Should().ContainSingle().Which.ExpectedRole.Should().Be("writer");
     }
 
     [HumansFact]
@@ -543,19 +511,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         _auditLogService,
         _googleSyncLog,
         _removalNotifications,
-        _logger,
-        ResourceRepository(),
-        Substitute.For<ITeamServiceRead>(),
-        new NodaTime.Testing.FakeClock(_now),
-        Substitute.For<ITeamResourceService>(),
-        Substitute.For<ITeamResourceGoogleClient>());
-
-    private static IGoogleResourceRepository ResourceRepository()
-    {
-        var repository = Substitute.For<IGoogleResourceRepository>();
-        repository.GetActiveByResourceTypeAsync(Arg.Any<GoogleResourceType>(), Arg.Any<CancellationToken>()).Returns([]);
-        return repository;
-    }
+        _logger);
 
     private readonly Dictionary<Guid, UserInfo> _usersById = new();
 

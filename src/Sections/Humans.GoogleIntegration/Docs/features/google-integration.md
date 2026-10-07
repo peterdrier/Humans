@@ -158,9 +158,9 @@ Group sync requests use Hangfire instead of in-process retry. Team membership an
 
 ## Source-Owned Drive Access
 
-`GoogleDriveAccessSyncService` reconciles folder/file claims from `IGoogleDriveAccessSource`, including Teams and Workgroups. Teams supplies the highest permission across active direct and child memberships; the connector handles identities and Google permissions. A Google permission can combine inherited access with a direct grant. This path preserves both components and updates direct role changes in place. Desired access never falls below the highest inherited role; dormancy, departure and retirement reduce excess direct access to that floor. An equal-floor permission needs no further mutation whether Google returns it as mixed or purely inherited.
+`GoogleDriveAccessSyncService` reconciles folder claims from `IGoogleDriveAccessSource`, including Workgroups. A Google permission can combine inherited access with a direct grant. This path preserves both components and updates direct role changes in place. Desired access never falls below the highest inherited role; dormancy, departure and retirement reduce excess direct access to that floor. An equal-floor permission needs no further mutation whether Google returns it as mixed or purely inherited.
 
-Pure direct extras are deleted. Mixed grants are never deleted and their role reduction does not send a total-removal notice. Role updates record success or failure in the Google sync log. Preview and `None` make no changes; `AddOnly` permits additions and elevations, while downgrades and removals require `AddAndRemove`.
+Pure direct extras are deleted. Mixed grants are never deleted and their role reduction does not send a total-removal notice. Role updates record success or failure in the Google sync log. Preview and `None` make no changes; `AddOnly` permits additions and elevations, while downgrades and removals require `AddAndRemove`. The legacy Teams Drive path retains its inherited-permission exclusion.
 
 ## Data Model
 

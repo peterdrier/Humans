@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.Users.Contracts;
@@ -78,7 +77,11 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
 
         IGoogleResourceRepository repository = new GoogleResourceRepository(GoogleIntegrationDbFactory);
 
-        // Real resource management shares the repository used by the reconciler.
+        // Real TeamResourceService, resolved through the same service-locator seam
+        // GoogleWorkspaceSyncService uses in production
+        // (serviceProvider.GetRequiredService<ITeamResourceService>()), backed by
+        // the same in-memory DbContext as the resource repository above — so
+        // deactivation writes land in the same table the test asserts against.
         var teamResourceService = new TeamResourceService(
             repository,
             googleClient: Substitute.For<ITeamResourceGoogleClient>(),
@@ -90,14 +93,9 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             clock: Clock,
             logger: NullLogger<TeamResourceService>.Instance);
 
-        var sourceServices = new ServiceCollection();
-        new Humans.Teams.Section().Register(sourceServices, new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
-        sourceServices.AddSingleton<ITeamServiceRead>(_teamService);
-        sourceServices.AddSingleton<ITeamResourceServiceRead>(teamResourceService);
-        var sources = sourceServices.BuildServiceProvider().GetServices<IGoogleDriveAccessSource>().ToList();
-        var driveSync = new GoogleDriveAccessSyncService(sources, _drivePermissions, _userService, _userEmailService,
-            _syncSettingsService, AuditLog, _syncLog, _removalNotifications,
-            NullLogger<GoogleDriveAccessSyncService>.Instance, repository, _teamService, Clock, teamResourceService, _teamResourceClient);
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With<ITeamResourceService>(teamResourceService)
+            .Build();
 
         var options = Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" });
 
@@ -105,18 +103,21 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             Substitute.For<IGoogleGroupProvisioningClient>(),
             _drivePermissions,
             Substitute.For<IGoogleDirectoryClient>(),
+            _teamResourceClient,
             repository,
             Substitute.For<IGoogleSyncOutboxRepository>(),
             _teamService,
             _userService,
             _userEmailService,
             Substitute.For<IGoogleGroupSync>(),
-            driveSync,
             AuditLog,
+            _syncLog,
             _syncSettingsService,
+            _removalNotifications,
             Substitute.For<IGoogleDriveAccessSyncScheduler>(),
             options,
             Clock,
+            serviceProvider,
             NullLogger<GoogleWorkspaceSyncService>.Instance);
     }
 

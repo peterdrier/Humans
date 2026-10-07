@@ -11,7 +11,8 @@ namespace Humans.GoogleIntegration.Contracts;
 /// Keys are Google Drive file ids. Values are a per-user
 /// <see cref="DrivePermissionLevel"/> map — user IDs only, no emails. The
 /// <see cref="IGoogleDriveSync"/> orchestrator hydrates them via
-/// <c>IUserServiceRead.GetUserInfosAsync</c> in bulk per claimed resource and applies user-state filtering (suspended, missing/rejected
+/// <c>IUserServiceRead.GetUserInfosAsync</c> in a single bulk call per sync
+/// pass and applies user-state filtering (suspended, missing/rejected
 /// <c>GoogleEmail</c>, etc.) uniformly across all sources. Sources MUST NOT
 /// call <c>IUserService</c> to satisfy this contract.
 /// </para>
@@ -22,9 +23,9 @@ namespace Humans.GoogleIntegration.Contracts;
 /// coordinate ownership among themselves.
 /// </para>
 /// <para>
-/// Teams and Workgroups use this same fan-out. Teams unions its linked resources'
-/// direct and active-child memberships, resolving shared-file permissions to the
-/// highest level for each user. The connector never derives access from team membership.
+/// This fan-out is additive to, and independent from, the Teams-keyed
+/// <c>google_resources</c> Drive path (reconciled by team membership) —
+/// that path is unaffected by this contract.
 /// </para>
 /// </remarks>
 public interface IGoogleDriveAccessSource

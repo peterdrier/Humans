@@ -143,7 +143,8 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     /// <summary>
     /// Requests an on-demand Drive access reconcile for one folder claimed
     /// through the <see cref="IGoogleDriveAccessSource"/> fan-out (e.g.
-    /// Teams or Workgroups, after a membership or status change). Deferred: returns
+    /// Workgroups, after a membership or status change) — not the
+    /// Teams-keyed <c>google_resources</c> Drive path. Deferred: returns
     /// once the reconcile is scheduled, not once it has run.
     /// </summary>
     Task RequestSyncAsync(string folderId, CancellationToken cancellationToken = default);
