@@ -18,9 +18,9 @@ namespace Humans.Users.Contracts;
 /// section-internal <c>IUserInfoSliceRefresher</c> — they are not part of the cross-section
 /// contract and must not be added here.
 /// </remarks>
-// No IInvalidator marker — see Humans.Users.Contracts.csproj. Debt
-// nobodies-collective/Humans#805: cross-section UserInfo flush; retire once CachingUserService
-// owns invalidation end-to-end.
+// This leaf cannot reference Base's IInvalidator marker: Base references Users.Contracts.
+// The existing nobodies-collective/Humans#805 debt is visible to HUM0028 via the
+// explicit grandfather on CachingUserService; retire it with this external flush surface.
 public interface IUserInfoInvalidator
 {
     Task InvalidateAsync(

@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Humans.Base.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Onboarding.Contracts;
@@ -35,6 +36,9 @@ namespace Humans.Users.Data;
 /// application service.
 /// </para>
 /// </remarks>
+[Grandfathered("HUM0028",
+    justification: "Existing cross-section UserInfo invalidator; its Contracts leaf cannot reference Base's marker without a project cycle.",
+    since: "2026-10-07", issueRef: "nobodies-collective/Humans#805")]
 internal sealed class CachingUserService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingUserService> logger) : TrackedCache<Guid, UserInfo>("User.UserInfo", warmOnStartup: true, logger),

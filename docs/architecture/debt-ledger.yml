@@ -75,7 +75,7 @@ themes:
     detect: "build:HUM0028"
     review: panel
     last_swept: 2026-06-13
-    remaining: 16
+    remaining: 17
     parked: "Peter 2026-09-20 — 'I don't think fixing all 17 in one go is possible.. it's reworking a lot of things to not need the invalidators anymore, that won't be a short fix.' Rotation skips it; re-check on the interval below, not every rotation."
     recheck_every: 6 months
     recheck_due: 2027-03-20
@@ -83,10 +83,10 @@ themes:
       PARKED 2026-09-20 (see `parked:`) — this supersedes the 2026-06-13
       'LEAVE in rotation, re-check periodically' instruction: the re-check now
       runs on `recheck_due`, so rotation stops spending a slot on it.
-      IUserInfoInvalidator omits the IInvalidator marker entirely, unlike the
-      rest of the invalidator family, so the analyzer cannot see it — filed
-      as its own inbox item 2026-09-20, because closing that hole is small
-      and separable from this rework.
+      IUserInfoInvalidator cannot inherit Base's marker without a project cycle.
+      CENTRAL-59 made its pre-existing implementation exception visible through
+      a HUM0028 grandfather on CachingUserService; the analyzer reports this
+      explicit class annotation alongside the marked interfaces.
       DESIGN-BLOCKED (audited empirically, sweep 2026-06-13): folding an
       invalidator into its owning decorator breaks correctness, it is not a
       mechanical sweep fix. Proof on the best fold candidate
@@ -112,6 +112,7 @@ themes:
       Ledger review 2026-10-06 (Peter): the standalone 'replace the invalidator
       family' row (CENTRAL-54) duplicated this theme and was deleted; 'todo for
       the winter' stands. Count re-measured: 16 [Grandfathered("HUM0028")] sites.
+      Visibility update 2026-10-07: 17 sites, including CachingUserService.
   - id: obsolete-user-displayname
     title: User.DisplayName reads (HUM_USER_DISPLAYNAME)
     detect: "build:HUM_USER_DISPLAYNAME"
@@ -290,10 +291,6 @@ inbox:
     what: "MailerLiteSubscriberConverter.ParseDate hardcodes yyyy-MM-dd HH:mm:ss in DateTime.ParseExact outside DateFormattingExtensions, violating datetime-format-single-home (the analyzer does not cover ParseExact). Its UTC/null/exact parsing has coverage. Reuse audit found only a timestamp formatter, no matching parse pattern.. Found during the daily production sweep. Plan: add `MailerLiteTimestampPattern` to DateFormattingExtensions (the home named by datetime-format-single-home) and use it in ParseDate, preserving exact UTC parsing and invalid-input failure semantics; pre-approved per debt-sweep-standing-policy, list in PR."
     review: light
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
-  - added: 2026-09-20
-    id: CENTRAL-59
-    what: "src/Sections/Humans.Users.Contracts/IUserInfoInvalidator.cs:24 deliberately omits the IInvalidator marker (its own comment says so, debt nobodies-collective/Humans#805), so HUM0028 cannot see it and it needs no [Grandfathered] marker — one invalidator dodging the ratchet by being invisible to it. Marking it (or recording the exemption where the analyzer reads it) is small and separable from the big invalidator rework the HUM0028 theme is parked on. Found by the 2026-09-20 accepted-smell audit. Plan: put `[Grandfathered(\"HUM0028\")]` on the implementing class (HUM0028 keys on implementing classes); this makes existing debt visible to the analyzer, so it is the D12 exception to the no-new-Grandfathered rule; say so in the commit."
-    review: light
   - added: 2026-10-04
     id: CENTRAL-75
     what: "Containers Service validators throw localized InvalidOperationException messages for names, images and placement geometry. CityPlanningApiController.SaveContainerPlacement identifies validation failure by comparing ex.Message to a localized ContainersResource value. This violates no-localized-exception-messages and couples failure classification to translated wording. A structured owner validation result should preserve existing localized form/API feedback while leaving exception messages developer-facing. Found during the daily production sweep. Plan: the validators return an owner-defined validation result and the controller localizes it, per no-localized-exception-messages; pre-approved per debt-sweep-standing-policy, list in PR."

@@ -110,6 +110,36 @@ public class InvalidatorInterfaceRatchetAnalyzerTests
         hits[0].Severity.Should().Be(DiagnosticSeverity.Error);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("HUM0028", true)]
+    [Xunit.InlineData("HUM0042", false)]
+    public async Task Explicit_implementation_grandfather_is_visible_without_a_marker_dependency(string ruleId, bool expected)
+    {
+        var source = Stubs + $$"""
+
+            namespace Humans.Users.Contracts { public interface IUserInfoInvalidator { } }
+            namespace Humans.Users.Data
+            {
+                [Humans.Base.Attributes.Grandfathered("{{ruleId}}", "Leaf cannot reference Base", "2026-10-07", "nobodies-collective/Humans#805")]
+                internal class CachingUserService : Humans.Users.Contracts.IUserInfoInvalidator { }
+                internal class UnannotatedImplementation : Humans.Users.Contracts.IUserInfoInvalidator { }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new InvalidatorInterfaceRatchetAnalyzer(), "Humans.Users", source);
+
+        var hits = diagnostics.Where(IsHum0028).ToList();
+        if (expected)
+        {
+            hits.Should().ContainSingle();
+            hits[0].Severity.Should().Be(DiagnosticSeverity.Warning);
+            hits[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture).Should().Contain("CachingUserService");
+        }
+        else
+            hits.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Does_not_fire_on_the_IInvalidator_marker_itself()
     {
