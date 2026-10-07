@@ -1114,6 +1114,9 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         public Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default) =>
             Task.FromResult(orders);
 
+        public Task<TicketAttendeeInfo?> FindCurrentEventAttendeeByBarcodeAsync(string? barcode, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+
         public Task<UserTicketHoldings> GetUserTicketHoldingsAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
     }
