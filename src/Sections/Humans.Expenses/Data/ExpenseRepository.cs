@@ -94,7 +94,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var tracked = await ctx.ExpenseReports
             .FirstOrDefaultAsync(r => r.Id == report.Id, ct);
         // Which statuses a header may still be edited in is the service's call
-        // (RequireEditableReportAsync) and differs by actor — a finance admin correcting a report
+        // (GetEditableReportAsync) and differs by actor — a finance admin correcting a report
         // on a member's behalf reaches past Draft. Re-deciding it here would silently no-op that.
         if (tracked is null) return;
         tracked.BudgetCategoryId = report.BudgetCategoryId;

@@ -4,10 +4,6 @@ version: 1
 next_id: 11
 inbox:
   - added: 2026-08-26
-    id: EXP-1
-    what: "Every mutation on the section exists twice: an internal XxxAsync that throws ExpenseValidationException and a public XxxWithResultAsync that catches it and returns a result object. Services/ExpenseReportService.cs carries both halves for each transition, so a caller can reach the throwing form and a reader has to check which one a call site took. The exception also carries localized text (localizer['Expenses_Validation_...']) that the wrappers surface as ex.Message, violating no-localized-exception-messages (merged from EXP-10, Peter's debt review of peterdrier/Humans#1903). Found by /section-doctor on Expenses 2026-08-26. Plan: keep only the result-returning form per transition, with refusals carried as resource keys the controller localizes, and delete the throwing twins and ExpenseValidationException. IExpenseReportService is internal (D2); throw-to-result is pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
-  - added: 2026-08-26
     id: EXP-3
     what: "Services/ExpenseReportService.cs is the section's maxClassLoc and its only large class. It holds the report state machine, the Holded outbox drain and its backoff, the Holded purchase-document conversation (ProcessHoldedCreateAsync, the section's longest method), and the GDPR export contributor. The Holded conversation is a cohesive concern with its own failure model and would split out without touching the state machine. Found by /section-doctor on Expenses 2026-08-26. Plan: extract into an internal class in this section (ExpenseHoldedPublisher); pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel

@@ -67,9 +67,10 @@ What the shapes imply, written fresh:
   a claim today, so the cross-section read interface has no reader; the section needs only
   `Section` and the background-processor seam the job calls.
 
-Where today's layout departs from that: mutations exist twice (an `internal XxxAsync` that
-throws and a `public XxxWithResultAsync` that catches), and the controller repeats a
-load-and-authorize preamble in nearly every action that takes a report id — see the run files.
+Each transition has one result-returning entry point. Member refusals carry resource keys and
+format arguments to the controller; operator actions retain their gated feedback. The shared
+line/file composition helpers return refusals, preserve rollback, and never localize exceptions.
+The controller's report preamble loads and authorizes once before action-specific work.
 
 ## 4. Invariants
 
