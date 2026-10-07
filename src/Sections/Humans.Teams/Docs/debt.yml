@@ -4,10 +4,6 @@ version: 1
 next_id: 11
 inbox:
   - added: 2026-09-05
-    id: TEAMS-1
-    what: "Controllers/TeamAdminController.cs LookupTicket holds ticket/barcode matching logic (FindCurrentEventAttendeeByBarcode, and its controller tests pin it there); controllers translate only. Scanner's ScannerController.Card repeats the identical current-event, ordinal barcode match over ITicketServiceRead.GetTicketOrdersAsync (finding 12, /section-doctor on Teams 2026-09-05). Plan: one Tickets-owned method, ITicketServiceRead.FindCurrentEventAttendeeByBarcodeAsync(string barcode, CancellationToken ct) returning TicketAttendeeInfo?, replacing both caller sequences (Teams and Scanner); one owner-section method replacing two identical cross-section sequences, pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
-  - added: 2026-09-05
     id: TEAMS-4
     what: "Most TeamsResource keys lack the Teams_ prefix (TeamDetail_*, TeamAdmin_*, MyTeams_*, AdminEditTeam_*), against resource-key-prefix (finding 12, /section-doctor on Teams 2026-09-05). Plan: rename the keys to the Teams_ prefix across all six cultures and every view binding in one PR; resource keys are section-internal, no public surface."
     review: panel

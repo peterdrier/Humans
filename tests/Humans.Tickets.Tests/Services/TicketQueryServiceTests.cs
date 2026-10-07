@@ -1014,6 +1014,26 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     // ====================================================================
 
     [HumansFact]
+    public async Task Barcode_lookup_uses_the_synced_current_event()
+    {
+        SetCurrentEvent("ev_test");
+        var now = Instant.FromUtc(2026, 6, 1, 0, 0);
+        var current = MakeOrder("current", TicketPaymentStatus.Paid, now, 100m, 0m, 0m, 1, 0m);
+        var past = MakeOrder("past", TicketPaymentStatus.Paid, now, 100m, 0m, 0m, 1, 0m);
+        past.VendorEventId = "ev_past";
+        past.Attendees.Single().VendorEventId = "ev_past";
+        current.Attendees.Single().Barcode = "same-code";
+        past.Attendees.Single().Barcode = "same-code";
+        await TicketsDb.TicketOrders.AddRangeAsync([past, current], Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var hit = await _service.FindCurrentEventAttendeeByBarcodeAsync(
+            " same-code ", Xunit.TestContext.Current.CancellationToken);
+
+        hit!.Id.Should().Be(current.Attendees.Single().Id);
+    }
+
+    [HumansFact]
     public async Task GetTicketOrdersAsync_VoidAttendeeWithApprovedTransfer_CarriesRecipientAndBarcode()
     {
         var attendeeId = Guid.NewGuid();

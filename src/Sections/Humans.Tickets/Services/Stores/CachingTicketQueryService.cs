@@ -45,6 +45,13 @@ internal sealed class CachingTicketQueryService : ITicketService, ITicketCacheIn
         return _orders.AsReadOnlyDictionary.Values.ToList();
     }
 
+    public async Task<TicketAttendeeInfo?> FindCurrentEventAttendeeByBarcodeAsync(
+        string? barcode, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(barcode)) return null;
+        return TicketQueryService.FindCurrentEventAttendeeByBarcode(await GetTicketOrdersAsync(ct), barcode);
+    }
+
     public async Task<UserTicketHoldings> GetUserTicketHoldingsAsync(
         Guid userId, CancellationToken ct = default)
     {

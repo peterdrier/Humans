@@ -1127,8 +1127,7 @@ internal sealed class TeamAdminController(
             return NotFound();
         }
 
-        var orders = await _tickets.GetTicketOrdersAsync(ct);
-        var hit = FindCurrentEventAttendeeByBarcode(orders, q);
+        var hit = await _tickets.FindCurrentEventAttendeeByBarcodeAsync(q, ct);
 
         var matched = hit?.MatchedUserId is { } id
             ? await _userService.GetUserInfoAsync(id, ct)
@@ -1163,29 +1162,6 @@ internal sealed class TeamAdminController(
             TeamName = team.Name,
             Grants = rows,
         };
-    }
-
-    /// <summary>
-    /// Resolve a ticket barcode to its issued attendee within the current event only
-    /// (the gate-scanner admissibility scope, see <c>Humans.Scanner</c>'s ScannerController
-    /// / #916 — internal to its own assembly since the section's G5 move, so this cannot be
-    /// a <c>cref</c>).
-    /// Exact, case-sensitive (<see cref="StringComparison.Ordinal"/>) — barcodes are codes,
-    /// not names. Returns null for empty/whitespace input or no match.
-    /// </summary>
-    internal static TicketAttendeeInfo? FindCurrentEventAttendeeByBarcode(
-        IReadOnlyList<TicketOrderInfo> orders, string? barcode)
-    {
-        var code = barcode?.Trim() ?? string.Empty;
-        if (code.Length == 0)
-        {
-            return null;
-        }
-
-        return orders
-            .Where(o => o.IsCurrentEvent)
-            .SelectMany(o => o.Attendees)
-            .FirstOrDefault(a => string.Equals(a.Barcode, code, StringComparison.Ordinal));
     }
 
     /// <summary>

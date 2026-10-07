@@ -64,6 +64,22 @@ internal sealed class TicketQueryService(
         return orders.Select(o => Project(o, currentEventId, transfersByAttendee)).ToList();
     }
 
+    public async Task<TicketAttendeeInfo?> FindCurrentEventAttendeeByBarcodeAsync(
+        string? barcode, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(barcode)) return null;
+        return FindCurrentEventAttendeeByBarcode(await GetTicketOrdersAsync(ct), barcode);
+    }
+
+    internal static TicketAttendeeInfo? FindCurrentEventAttendeeByBarcode(
+        IReadOnlyList<TicketOrderInfo> orders, string barcode)
+    {
+        var code = barcode.Trim();
+        return orders.Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
+            .FirstOrDefault(a => string.Equals(a.Barcode, code, StringComparison.Ordinal));
+    }
+
     public async Task<List<string>> GetAvailableTicketTypesAsync()
     {
         var types = await ticketRepository.GetDistinctTicketTypesAsync();

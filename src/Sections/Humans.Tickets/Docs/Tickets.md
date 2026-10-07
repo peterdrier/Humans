@@ -48,6 +48,8 @@ Individual ticket holder (issued ticket, multiple per order). Vendor-agnostic id
 Cross-domain nav `TicketAttendee.MatchedUser` stripped (FK `MatchedUserId` retained; nav property removed). No FK-join in `ITicketRepository`; join to User is done in-memory via `IUserServiceRead.GetUserInfosAsync`.
 Aggregate-local: `TicketAttendee.TicketOrder`.
 
+**Barcode lookup:** `ITicketServiceRead.FindCurrentEventAttendeeByBarcodeAsync` owns the shared Teams/Scanner lookup: trim input, reject blank codes, restrict to current-event orders and compare ordinally. It returns the first matching attendee regardless of status (including void transfer cards). The caching decorator uses its existing order snapshot; the inner service applies the same rule to its projection.
+
 **`TicketAttendeeInfo` read projection** (part of `TicketOrderInfo`): carries `Barcode` and `CheckedInAt` plus, for `Void` attendees, `TransferredToName` and `TransferredAt` sourced from the Approved `TicketTransferRequest` for the attendee (read via `ITicketTransferRepository` in `TicketQueryService.GetTicketOrdersAsync`). These fields are used by the Scanner ticket-lookup card (`/Scanner/Tickets`).
 
 ### TicketSyncState
@@ -191,7 +193,7 @@ Outbound (what Tickets injects; the project references are the authority — `Hu
 
 Inbound (who injects `Humans.Tickets.Contracts`):
 
-- **`ITicketServiceRead`** (`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync`; no `SurfaceBudget` pinned) — Users (profile, guest orders, account deletion hold, audiences), MailerLite audiences, Shifts, Surveys, Teams admin, Budget, Gate (`GateService` barcode admits), Scanner (`/Scanner/Tickets` lookup card), Agent. Read-only; nobody writes back.
+- **`ITicketServiceRead`** (`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync`, `FindCurrentEventAttendeeByBarcodeAsync`; no `SurfaceBudget` pinned) — Users (profile, guest orders, account deletion hold, audiences), MailerLite audiences, Shifts, Surveys, Teams admin, Budget, Gate (`GateService` barcode admits), Scanner (`/Scanner/Tickets` lookup card), Agent. Read-only; nobody writes back.
 - **`ITicketDiscountCodes`** — Campaigns' grant waves. **`ITicketVendorMirror`** — Gate's `GateVendorCheckInJob` mirrors admits to the vendor (best-effort, behind `Gate:VendorMirrorEnabled`, default off; Gate's own `gate_scan_events` remains the dedupe authority). Each vendor check-in POST creates a record, so the job always uses zero retry attempts. **`ITicketSync`** — Notifications' `NotificationMeterProvider`. The transfer-queue count behind the admin nav badge (`ITicketTransferQueue`) is internal: no cross-section caller.
 
 ## Architecture

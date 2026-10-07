@@ -289,7 +289,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - **EarlyEntry** (full section): `IEarlyEntryProvider` — `GetEarlyEntriesAsync` projects grants from `EarlyEntryEnabled` teams to the cross-section `EarlyEntryGrant` view (`"{TeamName}: {ProjectName}"`) via `TeamEarlyEntryProjection`; `IEarlyEntryInvalidator` on grant writes.
 - **Camps.Contracts:** active camp lead assignments feed the Barrio Leads system team via `ICampLeadDirectory`.
 - **Governance.Contracts:** `IMembershipCalculatorRead` decides Asociados / Colaboradors eligibility.
-- **Tickets.Contracts:** the EE page's ticket-barcode lookup.
+- **Tickets.Contracts:** the EE page delegates exact, current-event barcode matching to `ITicketServiceRead.FindCurrentEventAttendeeByBarcodeAsync`; it formats the matched active human for the picker.
 
 **Inbound** — sections that reference Teams and are not dependencies of it:
 
