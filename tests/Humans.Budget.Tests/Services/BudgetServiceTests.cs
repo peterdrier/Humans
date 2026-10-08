@@ -46,6 +46,7 @@ public sealed class BudgetServiceTests
 
     private readonly BudgetRepository _repository;
     private readonly ITeamServiceRead _teamService;
+    private readonly IUserService _userService;
     private readonly BudgetServiceImpl _service;
     private readonly Guid _yearId = Guid.NewGuid();
 
@@ -55,12 +56,12 @@ public sealed class BudgetServiceTests
         _teamService = Substitute.For<ITeamServiceRead>();
         // Nothing merged into anybody: the substitute's GetUserInfoAsync returns null and
         // the export reads the single id.
-        var userService = Substitute.For<IUserService>();
+        _userService = Substitute.For<IUserService>();
 
         _service = new BudgetServiceImpl(
             _repository,
             _teamService,
-            userService,
+            _userService,
             Clock,
             NullLogger<BudgetServiceImpl>.Instance);
     }
@@ -388,6 +389,29 @@ public sealed class BudgetServiceTests
         result.ShouldForbid.Should().BeTrue();
         result.Category!.Id.Should().Be(category.Id);
         result.Teams.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task GetCoordinatorCategoryDetailViewDataAsync_ForbidsRestrictedAndTicketingForCoordinator(
+        bool isRestricted, bool isTicketingGroup)
+    {
+        var category = await SeedCategoryAsync(isRestricted, isTicketingGroup);
+        var coordinatorId = Guid.NewGuid();
+        var deptId = Guid.NewGuid();
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
+        {
+            [deptId] = MakeTeam(deptId, "Kitchen", parentTeamId: null, isActive: true,
+                members: [MakeMember(coordinatorId, TeamMemberRole.Coordinator)]),
+        });
+
+        var denied = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, coordinatorId, isFinanceAdmin: false);
+        var allowed = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, coordinatorId, isFinanceAdmin: true);
+
+        denied.ShouldForbid.Should().BeTrue();
+        denied.Teams.Should().BeEmpty();
+        allowed.ShouldForbid.Should().BeFalse();
     }
 
     // ─── Effective budget-coordinator team set (derived over TeamInfo) ───────
@@ -1142,6 +1166,39 @@ public sealed class BudgetServiceTests
         summary.ExpenseSlices.Select(sl => sl.Name).Should().BeEquivalentTo(["Ops", "VAT Liability"]);
     }
 
+    // ─── GDPR export follows the merge chain ────────────────────────────────
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_includes_audit_rows_of_merged_accounts_only()
+    {
+        var userId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        {
+            ctx.BudgetYears.Add(new BudgetYear { Id = _yearId, Year = "2026", Name = "Budget 2026" });
+            foreach (var (actor, description) in new (Guid?, string)[]
+                     {
+                         (userId, "own"), (sourceId, "merged"), (Guid.NewGuid(), "stranger"), (null, "automation")
+                     })
+            {
+                ctx.BudgetAuditLogs.Add(new BudgetAuditLog
+                {
+                    Id = Guid.NewGuid(), BudgetYearId = _yearId, EntityType = "BudgetGroup",
+                    Description = description, ActorUserId = actor, OccurredAt = Clock.GetCurrentInstant()
+                });
+            }
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+        var info = UserInfo.Create(new User { Id = userId }, [], [], [], null, []) with { MergedUserIds = [sourceId] };
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
+
+        var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        var json = System.Text.Json.JsonSerializer.Serialize(slices.Single().Data);
+        json.Should().Contain("\"own\"").And.Contain("\"merged\"");
+        json.Should().NotContain("stranger").And.NotContain("automation");
+    }
+
     // ─── Closed year gates every tree mutation ──────────────────────────────
 
     public static TheoryData<string> ClosedYearMutations => new()
@@ -1202,7 +1259,7 @@ public sealed class BudgetServiceTests
 
     // ─── Seeding helpers ────────────────────────────────────────────────────
 
-    private async Task<BudgetCategory> SeedCategoryAsync()
+    private async Task<BudgetCategory> SeedCategoryAsync(bool isRestricted = false, bool isTicketingGroup = false)
     {
         var year = new BudgetYear
         {
@@ -1215,7 +1272,9 @@ public sealed class BudgetServiceTests
             Id = Guid.NewGuid(),
             BudgetYearId = year.Id,
             BudgetYear = year,
-            Name = "Departments"
+            Name = "Departments",
+            IsRestricted = isRestricted,
+            IsTicketingGroup = isTicketingGroup
         };
         var category = new BudgetCategory
         {
