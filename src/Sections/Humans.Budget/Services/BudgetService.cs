@@ -788,10 +788,6 @@ internal sealed class BudgetService(
     public async Task<IReadOnlyList<TicketingWeekProjection>> GetTicketingProjectionEntriesAsync(
         Guid budgetGroupId, CancellationToken ct = default)
     {
-        var group = await repository.GetGroupByIdAsync(budgetGroupId, ct);
-        if (group is null || !group.IsTicketingGroup)
-            return [];
-
         var projection = await repository.GetTicketingProjectionAsync(budgetGroupId, ct);
         if (projection is null)
             return [];
@@ -852,15 +848,7 @@ internal sealed class BudgetService(
         // id list is the resolved record's: asked with an archived id, the survivor's own
         // rows are theirs too.
         var allIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
-        IReadOnlyList<BudgetAuditLog> entries;
-        if (allIds.Count == 1)
-        {
-            entries = await repository.GetAuditLogEntriesForUserAsync(allIds[0], ct);
-        }
-        else
-        {
-            entries = await repository.GetAuditLogEntriesForUserIdsAsync(allIds, ct);
-        }
+        var entries = await repository.GetAuditLogEntriesForUserIdsAsync(allIds, ct);
 
         var shaped = entries.Select(bal => new
         {

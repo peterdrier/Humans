@@ -611,7 +611,7 @@ internal sealed class BudgetAdminController(
             var actualSold = budgetService.GetActualTicketsSold(ticketingGroup);
             ViewBag.ActualTicketsSold = actualSold;
 
-            var projections = await ticketingBudgetService.GetProjectionsAsync(ticketingGroup.Id);
+            var projections = await budgetService.GetTicketingProjectionEntriesAsync(ticketingGroup.Id);
             if (projections.Count > 0)
             {
                 var projectedRemaining = projections.Sum(p => p.ProjectedTickets);
