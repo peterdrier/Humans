@@ -135,13 +135,7 @@ internal sealed class BudgetService(
     {
         var now = clock.GetCurrentInstant();
 
-        // Resolve budgetable teams via Teams service (§2c).
-        var teams = (await teamService.GetTeamsAsync()).Values
-            .Where(t => t.IsActive && t.HasBudget)
-            .OrderBy(t => t.Name, StringComparer.Ordinal);
-        var teamRefs = teams
-            .Select(t => new BudgetableTeamRef(t.Id, t.Name))
-            .ToList();
+        var teamRefs = await GetBudgetableTeamsAsync();
 
         var draft = new BudgetYearDraft(
             Id: Guid.NewGuid(),
@@ -199,16 +193,19 @@ internal sealed class BudgetService(
         logger.LogInformation("Archived budget year {YearId}", yearId);
     }
 
+    // Resolve budgetable teams via Teams service (§2c).
+    private async Task<List<BudgetableTeamRef>> GetBudgetableTeamsAsync() =>
+        (await teamService.GetTeamsAsync()).Values
+            .Where(t => t.IsActive && t.HasBudget)
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .Select(t => new BudgetableTeamRef(t.Id, t.Name))
+            .ToList();
+
     public async Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
 
-        var teams = (await teamService.GetTeamsAsync()).Values
-            .Where(t => t.IsActive && t.HasBudget)
-            .OrderBy(t => t.Name, StringComparer.Ordinal);
-        var teamRefs = teams
-            .Select(t => new BudgetableTeamRef(t.Id, t.Name))
-            .ToList();
+        var teamRefs = await GetBudgetableTeamsAsync();
 
         var created = await repository.SyncDepartmentCategoriesAsync(
             budgetYearId, teamRefs, actorUserId, now);

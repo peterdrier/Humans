@@ -865,10 +865,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         if (ticketingGroup is null)
             return 0;
 
-        var revenueCategory = ticketingGroup.Categories.FirstOrDefault(
-            c => string.Equals(c.Name, TicketRevenueCategoryName, StringComparison.Ordinal));
-        var feesCategory = ticketingGroup.Categories.FirstOrDefault(
-            c => string.Equals(c.Name, ProcessingFeesCategoryName, StringComparison.Ordinal));
+        var (revenueCategory, feesCategory) = FindTicketingCategories(ticketingGroup);
 
         if (revenueCategory is null || feesCategory is null)
         {
@@ -942,10 +939,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         if (ticketingGroup is null)
             return 0;
 
-        var revenueCategory = ticketingGroup.Categories.FirstOrDefault(
-            c => string.Equals(c.Name, TicketRevenueCategoryName, StringComparison.Ordinal));
-        var feesCategory = ticketingGroup.Categories.FirstOrDefault(
-            c => string.Equals(c.Name, ProcessingFeesCategoryName, StringComparison.Ordinal));
+        var (revenueCategory, feesCategory) = FindTicketingCategories(ticketingGroup);
 
         if (revenueCategory is null || feesCategory is null)
             return 0;
@@ -1037,6 +1031,12 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         if (status == BudgetYearStatus.Closed)
             throw new InvalidOperationException("Cannot modify a closed budget year.");
     }
+
+    private static (BudgetCategory? Revenue, BudgetCategory? Fees) FindTicketingCategories(BudgetGroup ticketingGroup) =>
+        (ticketingGroup.Categories.FirstOrDefault(
+            c => string.Equals(c.Name, TicketRevenueCategoryName, StringComparison.Ordinal)),
+         ticketingGroup.Categories.FirstOrDefault(
+            c => string.Equals(c.Name, ProcessingFeesCategoryName, StringComparison.Ordinal)));
 
     private static async Task<BudgetGroup?> LoadTicketingGroupForMutationAsync(
         BudgetDbContext ctx, Guid budgetYearId, CancellationToken ct)
