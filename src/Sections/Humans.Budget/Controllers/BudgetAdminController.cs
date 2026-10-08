@@ -17,9 +17,7 @@ namespace Humans.Budget.Controllers;
 
 /// <summary>
 /// Budget's admin surface: years, groups, categories, line items, the ticketing projection,
-/// cash flow and the audit log. Named for what it is; the <c>/Finance</c> route prefix is
-/// unchanged, so no URL moved when the Holded half left for the Finance section
-/// (nobodies-collective/Humans#866, G5). It shares the prefix with
+/// cash flow and the audit log, under the <c>/Finance</c> route prefix it shares with
 /// <c>Humans.Finance.Controllers.FinanceController</c> — the action templates are disjoint.
 /// </summary>
 /// <remarks>

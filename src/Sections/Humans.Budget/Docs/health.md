@@ -84,7 +84,7 @@ The shapes imply the layered split that exists:
   callers actually call; the other `IBudgetService` members stay internal.
 - `ITicketingBudgetService` stays single-member (the job's test seam); the admin controller
   injects the concrete `TicketingBudgetService` for its other calls.
-- No cross-domain navs (`Team`, `ResponsibleTeam`, `ActorUser` were deleted, #1188): labels
+- No cross-domain navs (`Team`, `ResponsibleTeam`, `ActorUser`): labels
   are stitched in-memory via `ITeamServiceRead` / `IUserServiceRead`.
 - No pagination beyond the audit log's top-500.
 
