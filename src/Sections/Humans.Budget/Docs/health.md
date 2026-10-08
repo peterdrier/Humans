@@ -116,4 +116,4 @@ The shapes imply the layered split that exists:
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-08-30 | First pass: doc truth, one home for the VAT math, untested invariants pinned | peterdrier/Humans#1565 |
-| section-doctor | 2026-10-08 | Docs match the code; dead projection and GDPR plumbing gone | pending |
+| section-doctor | 2026-10-08 | Docs match the code; dead projection and GDPR plumbing gone | peterdrier/Humans#1936 |
