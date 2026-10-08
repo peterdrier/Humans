@@ -188,7 +188,7 @@ public sealed class BudgetServiceTests
         if (malformed) controller.ModelState.AddModelError("amount", "Invalid number.");
         budget.ClearReceivedCalls();
         var result = update
-            ? await controller.UpdateLineItem(_yearId, "Item", 0m, null, null, null, 0, _yearId)
+            ? await controller.UpdateLineItem(_yearId, "Item", 0m, null, null, null, 0)
             : await controller.CreateLineItem(_yearId, "Item", 0m, null, null, null, 0);
         if (allowed && malformed) Assert.IsType<BadRequestObjectResult>(result);
         else Assert.IsType<RedirectToActionResult>(result);
