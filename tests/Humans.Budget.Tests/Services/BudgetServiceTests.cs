@@ -1183,8 +1183,12 @@ public sealed class BudgetServiceTests
             {
                 ctx.BudgetAuditLogs.Add(new BudgetAuditLog
                 {
-                    Id = Guid.NewGuid(), BudgetYearId = _yearId, EntityType = "BudgetGroup",
-                    Description = description, ActorUserId = actor, OccurredAt = Clock.GetCurrentInstant()
+                    Id = Guid.NewGuid(),
+                    BudgetYearId = _yearId,
+                    EntityType = "BudgetGroup",
+                    Description = description,
+                    ActorUserId = actor,
+                    OccurredAt = Clock.GetCurrentInstant()
                 });
             }
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
