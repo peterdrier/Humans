@@ -183,7 +183,7 @@ public interface IPreapprovalServiceRead
 
 public sealed record GrantOption(
     Guid Id, string ProgramName, string? Label, decimal MaxAmount,
-    int HoldedAccountNumber, string HoldedAccountId, LocalDate ClaimBy);
+    int HoldedAccountNumber, string HoldedAccountId, LocalDate ClaimBy, GrantStatus Status);
 
 public interface IPreapprovalService : IApplicationService, IPreapprovalServiceRead
 {
@@ -353,7 +353,7 @@ like Expenses' creditor binding does, so a grant issued under a since-merged id 
 
 `PreapprovalsSectionJobs`: one nightly job, `preapprovals-reminders`, which **sends** the
 14-day and 3-day reminders to `Open` grant holders and records each send in
-`pre_reminders_sent` (GrantId, Kind `D14` | `D3`, SentAt; PK GrantId + Kind). The in-app
+`pre_reminders_sent` (GrantId, Kind `D14` | `D3`, ClaimBy, SentAt; PK GrantId + Kind + ClaimBy). The in-app
 notification, the email outbox row, the marker and one audit entry
 (`PreapprovalReminderSent`, system actor, program, grant, kind, deadline) are written in one
 ambient `TransactionScope` per grant (all four contexts share the database), so a crash leaves
