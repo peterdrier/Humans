@@ -283,24 +283,24 @@ public class MembershipCalculatorTests
         snapshot.MissingConsentVersionIds.Should().ContainSingle().Which.Should().Be(volVersionId);
     }
 
-    // --- GetRequiredTeamIdsForUserAsync: Colaboradors team ---
+    // --- GetRequiredTeamIdsForUserAsync: Colaboradores team ---
 
     [HumansFact]
-    public async Task GetRequiredTeamIdsForUserAsync_IncludesColaboradors_WhenUserIsColaborador()
+    public async Task GetRequiredTeamIdsForUserAsync_IncludesColaboradores_WhenUserIsColaborador()
     {
         var userId = Guid.NewGuid();
         SeedVolunteersTeamMember(userId);
-        var colaboradorsTeam = SeedTeam("Colaboradors", SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors);
-        SeedTeamMember(userId, colaboradorsTeam.Id, TeamMemberRole.Member);
+        var colaboradoresTeam = SeedTeam("Colaboradores", SystemTeamType.Colaboradores, SystemTeamIds.Colaboradores);
+        SeedTeamMember(userId, colaboradoresTeam.Id, TeamMemberRole.Member);
 
         var result = await _service.GetRequiredTeamIdsForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Contain(SystemTeamIds.Volunteers);
-        result.Should().Contain(SystemTeamIds.Colaboradors);
+        result.Should().Contain(SystemTeamIds.Colaboradores);
     }
 
     [HumansFact]
-    public async Task GetRequiredTeamIdsForUserAsync_ExcludesColaboradors_WhenUserIsNotColaborador()
+    public async Task GetRequiredTeamIdsForUserAsync_ExcludesColaboradores_WhenUserIsNotColaborador()
     {
         var userId = Guid.NewGuid();
         SeedVolunteersTeamMember(userId);
@@ -308,7 +308,7 @@ public class MembershipCalculatorTests
         var result = await _service.GetRequiredTeamIdsForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Contain(SystemTeamIds.Volunteers);
-        result.Should().NotContain(SystemTeamIds.Colaboradors);
+        result.Should().NotContain(SystemTeamIds.Colaboradores);
     }
 
     // --- ComputeStatusAsync (additional tests) ---

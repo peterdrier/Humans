@@ -46,7 +46,7 @@ public class EnumStringStabilityTests
     public static TheoryData<Type, string[]> StringStoredEnumData => new()
     {
         {
-            typeof(SystemTeamType), ["None", "Volunteers", "Coordinators", "Board", "Asociados", "Colaboradors"]
+            typeof(SystemTeamType), ["None", "Volunteers", "Coordinators", "Board", "Asociados", "Colaboradores"]
         },
         {
             // Guarded centrally rather than per section: three sections persist this one

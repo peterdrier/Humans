@@ -244,12 +244,12 @@ internal sealed class TeamConfiguration : IEntityTypeConfiguration<Team>
             new
             {
                 Id = Guid.Parse("00000000-0000-0000-0001-000000000005"),
-                Name = "Colaboradors",
+                Name = "Colaboradores",
                 Description = "Active contributors with approved colaborador applications",
-                Slug = "colaboradors",
+                Slug = "colaboradores",
                 IsActive = true,
                 RequiresApproval = false,
-                SystemTeamType = SystemTeamType.Colaboradors,
+                SystemTeamType = SystemTeamType.Colaboradores,
                 GoogleGroupPrefix = (string?)null,
                 ParentTeamId = (Guid?)null,
                 CreatedAt = SeedTimestamp,
@@ -259,7 +259,7 @@ internal sealed class TeamConfiguration : IEntityTypeConfiguration<Team>
                 PageContentUpdatedAt = (Instant?)null,
                 PageContentUpdatedByUserId = (Guid?)null,
                 CallsToAction = (List<CallToAction>?)null,
-                CustomSlug = (string?)null,
+                CustomSlug = "colaboradors", // legacy misspelled slug, kept as alias (#1755)
                 ShowCoordinatorsOnPublicPage = true,
                 HasBudget = false,
                 IsHidden = false,

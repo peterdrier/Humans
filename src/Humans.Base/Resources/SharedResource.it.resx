@@ -1301,6 +1301,6 @@
   <data name="Enum_SystemTeamType_Coordinators" xml:space="preserve"><value>Coordinatori</value></data>
   <data name="Enum_SystemTeamType_Board" xml:space="preserve"><value>Consiglio direttivo</value></data>
   <data name="Enum_SystemTeamType_Asociados" xml:space="preserve"><value>Asociados</value></data>
-  <data name="Enum_SystemTeamType_Colaboradors" xml:space="preserve"><value>Colaboradores</value></data>
+  <data name="Enum_SystemTeamType_Colaboradores" xml:space="preserve"><value>Colaboradores</value></data>
   <data name="Enum_SystemTeamType_BarrioLeads" xml:space="preserve"><value>Responsabili dei camp</value></data>
 </root>

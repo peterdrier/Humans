@@ -73,7 +73,7 @@ While your application is still **Submitted**, you can withdraw it from the appl
 
 ### Renew your tier
 
-About 90 days before your term expires, a renewal reminder email and in-app notification go out, and a reminder appears on your dashboard. A renewal creates a new application for the same tier and goes through the normal Board vote. Board and Admin see the same upcoming expirations on the Board voting dashboard, so renewals can be prompted or processed proactively. If you do not renew before the term ends, the next hourly system-team sync removes you from the Colaboradors or Asociados system team, so you lose the access tied to that membership. Your profile's tier label is updated at the same time — back to another tier you still hold, or to Volunteer if you hold none. Volunteer access is unaffected.
+About 90 days before your term expires, a renewal reminder email and in-app notification go out, and a reminder appears on your dashboard. A renewal creates a new application for the same tier and goes through the normal Board vote. Board and Admin see the same upcoming expirations on the Board voting dashboard, so renewals can be prompted or processed proactively. If you do not renew before the term ends, the next hourly system-team sync removes you from the Colaboradores or Asociados system team, so you lose the access tied to that membership. Your profile's tier label is updated at the same time — back to another tier you still hold, or to Volunteer if you hold none. Volunteer access is unaffected.
 
 ### Vote in an assembly vote
 
@@ -123,7 +123,7 @@ The system does not count votes for you — this is a consensus model. The Final
 
 On the detail page, fill in the **meeting date** (required) and a **decision note**, then choose **Approve** or **Reject**. The decision note is required for rejections and optional for approvals.
 
-On **Approve**, the applicant's tier is updated on their profile, their term expiry is set to December 31 of the current cycle's odd year, and they are added to the Colaboradors or Asociados system team. An approval email and an in-app notification are sent. On **Reject**, the applicant stays at their current tier and receives a rejection email plus an in-app notification with the decision note.
+On **Approve**, the applicant's tier is updated on their profile, their term expiry is set to December 31 of the current cycle's odd year, and they are added to the Colaboradores or Asociados system team. An approval email and an in-app notification are sent. On **Reject**, the applicant stays at their current tier and receives a rejection email plus an in-app notification with the decision note.
 
 Either way, finalization immediately **deletes all individual Board vote records** for that application. Only the collective decision — final status, meeting date, and decision note — is retained, per GDPR data minimization. Finalization is not reversible.
 
@@ -148,4 +148,4 @@ Application state history, past and present role assignments, and the collective
 - [Profiles](Profiles.md) — [membership tier](Glossary.md#membership-tier) lives on the profile and is updated automatically on approval, and again on term expiry (down to another still-active tier, or Volunteer).
 - [Legal and Consent](LegalAndConsent.md) — the consent signing flow, independent of Board voting.
 - [Onboarding](Onboarding.md) — how a new human becomes a Volunteer. Tier applications do not replace or block this.
-- [Teams](Teams.md) — the Colaboradors and Asociados system teams that approved applicants join.
+- [Teams](Teams.md) — the Colaboradores and Asociados system teams that approved applicants join.

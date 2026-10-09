@@ -799,6 +799,6 @@
   <data name="Enum_SystemTeamType_Coordinators" xml:space="preserve"><value>Coordinators</value></data>
   <data name="Enum_SystemTeamType_Board" xml:space="preserve"><value>Board</value></data>
   <data name="Enum_SystemTeamType_Asociados" xml:space="preserve"><value>Asociados</value></data>
-  <data name="Enum_SystemTeamType_Colaboradors" xml:space="preserve"><value>Colaboradores</value></data>
+  <data name="Enum_SystemTeamType_Colaboradores" xml:space="preserve"><value>Colaboradores</value></data>
   <data name="Enum_SystemTeamType_BarrioLeads" xml:space="preserve"><value>Camp Leads</value></data>
 </root>

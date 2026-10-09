@@ -106,7 +106,7 @@ internal sealed class ApplicationDecisionService(
 
         if (application.MembershipTier == MembershipTier.Colaborador)
             await syncJob.SyncMembershipForUserAsync(
-                application.UserId, SystemTeamType.Colaboradors, cancellationToken);
+                application.UserId, SystemTeamType.Colaboradores, cancellationToken);
         else if (application.MembershipTier == MembershipTier.Asociado)
             await syncJob.SyncMembershipForUserAsync(
                 application.UserId, SystemTeamType.Asociados, cancellationToken);

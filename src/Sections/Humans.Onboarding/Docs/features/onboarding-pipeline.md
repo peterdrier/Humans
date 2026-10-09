@@ -59,7 +59,7 @@ Two parallel tracks (either order):
     │
     └── If Colaborador/Asociado Application exists → Board Voting queue (parallel)
             │
-            ├── Board approves → Colaboradors/Asociados team (2-year term)
+            ├── Board approves → Colaboradores/Asociados team (2-year term)
             └── Board rejects → notification, stays as Volunteer
 ```
 
@@ -177,7 +177,7 @@ This gate is about Volunteer access only. It does not evaluate tier applications
 **Actions:**
 - Application appears on Board Voting dashboard
 - Board members vote, then finalize decision
-- Approve → Colaboradors/Asociados team with term
+- Approve → Colaboradores/Asociados team with term
 - Reject → notification, human remains Volunteer
 
 ## Onboarding Widget (Low-Friction Variant)
