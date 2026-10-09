@@ -60,10 +60,10 @@ internal sealed class RideshareService(
             .OrderBy(t => t.DepartureDate).ThenBy(t => t.CreatedAt)
             .Select(ToView)
             .ToList();
-        var activeTripIds = graph.Trips.Where(t => t.Status == TripStatus.Active).Select(t => t.Id).ToHashSet();
+        var activeTrips = graph.Trips.Where(t => t.Status == TripStatus.Active).ToDictionary(t => t.Id);
         var requests = graph.Requests
             .OrderBy(r => r.DesiredDate).ThenBy(r => r.CreatedAt)
-            .Select(r => ToView(r, interests, activeTripIds))
+            .Select(r => ToView(r, interests, activeTrips))
             .ToList();
 
         return new RideshareSnapshot(
@@ -296,7 +296,8 @@ internal sealed class RideshareService(
 
         await NotifyAsync(
             NotificationSource.RideshareInterestAccepted, NotificationClass.Informational, interest.FromUserId, actorUserId,
-            (culture, name) => (Notice(culture, "Rideshare_NoticeAccepted", name),
+            // The rider accepting a driver's answer to their pin tells the driver, not a rider.
+            (culture, name) => (Notice(culture, interest.RequestId is null ? "Rideshare_NoticeAccepted" : "Rideshare_NoticeOfferAccepted", name),
                 Notice(culture, "Rideshare_NoticeTripDetails", interest.Trip.MemberPlaceLabel,
                     interest.Trip.DepartureDate.ToWeekdayDayMonth(), SeatsText(interest.Seats, culture))),
             ct);
@@ -634,11 +635,15 @@ internal sealed class RideshareService(
         t.VehicleType, t.SeatsOffered, SeatsRemaining(t), t.LuggageCapacity, t.CapacityNote, t.Restrictions,
         t.WillingToDetour, t.CostSharing, t.CostNote, t.LinkedTripId, t.Status, t.CreatedAt, t.UpdatedAt);
 
-    private static RequestView ToView(RideshareRequest r, IReadOnlyList<InterestView> interests, IReadOnlySet<Guid> activeTripIds) => new(
+    // Matched only by a ride that fits the request: same direction, travelling on its date.
+    private static RequestView ToView(
+        RideshareRequest r, IReadOnlyList<InterestView> interests, IReadOnlyDictionary<Guid, RideshareTrip> activeTrips) => new(
         r.Id, r.UserId, r.Year, r.Direction, r.PickupPlaceLabel, r.PickupLatitude, r.PickupLongitude,
         r.DesiredDate, r.PartySize, r.LuggageLoad, r.CanContributeToFuel, r.Notes, r.Status,
-        IsMatched: interests.Any(i => i.Status == InterestStatus.Accepted && activeTripIds.Contains(i.TripId)
-            && (i.FromUserId == r.UserId || i.RequestId == r.Id)),
+        IsMatched: interests.Any(i => i.Status == InterestStatus.Accepted
+            && (i.FromUserId == r.UserId || i.RequestId == r.Id)
+            && activeTrips.TryGetValue(i.TripId, out var trip)
+            && trip.Direction == r.Direction && TravelsOn(trip, r.DesiredDate)),
         r.CreatedAt, r.UpdatedAt);
 
     private static InterestView ToView(RideshareInterest i) => new(

@@ -107,33 +107,33 @@ Stated so a violation is recognisable, each with where the code enforces it:
   (`Data/Configurations/RideshareInterestConfiguration.cs:28`–`29` required cascade FK, `:34`
   optional set-null FK; `Services/RideshareService.cs:257`).
 - Seats remaining and full are derived from accepted interests, never stored
-  (`Services/RideshareService.cs:606`–`609`, `Services/RideshareReadModels.cs:40`).
-  Matched on a request is derived from an accepted interest on an active trip
-  (`Services/RideshareService.cs:640`).
+  (`Services/RideshareService.cs:607`–`610`, `Services/RideshareReadModels.cs:40`).
+  Matched on a request is derived from an accepted interest on an active trip going its
+  direction on its date (`Services/RideshareService.cs:643`–`646`).
 - Expressing interest requires an active trip with enough seats, at least one seat, not
   one's own trip, and no duplicate pending interest on the same trip and request
   (`Services/RideshareService.cs:224`, `:241`–`251`). Answering a pin additionally requires being
   the trip's driver, an active request, and a trip that goes that direction on the request's
-  date (`:233`–`237`, `:526`–`532`).
+  date (`:233`–`237`, `:527`–`533`).
 - Accept requires the posting owner, a pending interest, an active trip with enough seats,
   and, for a pin answer, the pin still answerable (`Services/RideshareService.cs:283`–`291`,
-  owner gate `:593`–`604`). Decline requires owner and pending (`:307`–`309`). Withdraw is
-  open to author or posting owner from pending or accepted (`:330`–`333`).
+  owner gate `:594`–`605`). Decline requires owner and pending (`:308`–`310`). Withdraw is
+  open to author or posting owner from pending or accepted (`:331`–`334`).
 - Route geometry is computed at create, and on an edit when the point, waypoints or
   direction changed or no route was stored; it is never recomputed at view time
   (`Services/RideshareService.cs:103`–`104`, `:128`–`143`). A null route never blocks a save
-  (`:498`–`514`; `Services/Routing/OpenRouteServiceClient.cs:43`–`47`, `:74`–`78`).
+  (`:499`–`515`; `Services/Routing/OpenRouteServiceClient.cs:43`–`47`, `:74`–`78`).
 - Provider geometry is checked before it is used or stored: a geocode must be a Point and a
   route a LineString of at least two in-range positions, else the client returns null
   (`Services/Routing/OpenRouteServiceClient.cs:38`–`39`, `:70`–`71`). A stored route that
   fails the same check is drawn as the travel-order fallback, never rewritten
   (`Models/BoardFeatureCollection.cs:63`–`73`).
 - Declines carry no reason: the transition takes none and the author's notification is
-  neutral (`Services/RideshareService.cs:305`–`324`).
+  neutral (`Services/RideshareService.cs:306`–`325`).
 - Notifications are best-effort; a failed lookup, render or send is logged and never rolls
-  back the write, and only the caller's cancellation escapes (`Services/RideshareService.cs:657`–`688`).
-- Saving settings writes one audit entry (`Services/RideshareService.cs:365`–`366`) and rejects
-  a blank destination or an inverted window (`:343`–`346`).
+  back the write, and only the caller's cancellation escapes (`Services/RideshareService.cs:663`–`693`).
+- Saving settings writes one audit entry (`Services/RideshareService.cs:366`–`367`) and rejects
+  a blank destination or an inverted window (`:344`–`347`).
 - Every write through the decorator clears the whole snapshot cache, even when the inner
   call throws (`Services/CachingRideshareService.cs:142`–`151`), and a read that began before
   the clear never stores its stale snapshot (`:51`, `:58`).

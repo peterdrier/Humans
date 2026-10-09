@@ -49,6 +49,8 @@ Every open row was verified; the cap was not reached.
 - Finding 10: one Status sentence in the design record points at `Rideshare.md`.
 - Finding 16: target S4 row reworded.
 - Target re-derived (parts 3–6 and the load-bearing list), every invariant re-cited.
+- Finding 11 (Peter: yes): a request counts as matched only by an accepted ride going its direction on its date; `Snapshot_MarksARequestMatched_ByItsAuthorOrByItsId_OnActiveTripsThatFitIt` pins both refusals.
+- Finding 12 (Peter: yes): a rider accepting a driver's answer to their pin sends the driver `Rideshare_NoticeOfferAccepted` in all six cultures; `AcceptInterest_OnAnAnsweredPin_TellsTheDriverTheirOfferWasAccepted` pins it.
 
 ## Skipped
 
@@ -72,8 +74,8 @@ Every open row was verified; the cap was not reached.
 
 ## Needs Peter
 
-- [ ] 11 — should a request count as matched only by an accepted interest on a trip going its direction on its date?
-- [ ] 12 — on a pin answer the rider accepts, send the driver its own wording (new `Rideshare_Notice*` key) rather than "You're in: ride with {rider}"?
+- [x] 11 — should a request count as matched only by an accepted interest on a trip going its direction on its date?
+- [x] 12 — on a pin answer the rider accepts, send the driver its own wording (new `Rideshare_Notice*` key) rather than "You're in: ride with {rider}"?
 
 ## File coverage
 

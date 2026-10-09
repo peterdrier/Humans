@@ -640,7 +640,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task Snapshot_MarksARequestMatched_ByItsAuthorOrByItsId_OnActiveTripsOnly()
+    public async Task Snapshot_MarksARequestMatched_ByItsAuthorOrByItsId_OnActiveTripsThatFitIt()
     {
         var driver = SeedUser("Ada");
         var trip = await SeedTripAsync(driver, seatsOffered: 5);
@@ -666,8 +666,19 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var strandedRequest = await SeedRequestAsync(strandedRider);
         await SeedInterestAsync(strandedRider, cancelledTrip.Id, status: InterestStatus.Accepted);
 
+        // Accepted onto a ride, but the request goes the other way or on another day.
+        var returnTrip = await SeedTripAsync(driver, direction: RideshareDirection.Outbound);
+        var otherDay = SeedUser("Fa");
+        var otherDayRequest = await SeedRequestAsync(otherDay, desiredDate: new LocalDate(Year, 7, 10));
+        await SeedInterestAsync(otherDay, trip.Id, status: InterestStatus.Accepted);
+        var wrongWay = SeedUser("Gu");
+        var wrongWayRequest = await SeedRequestAsync(wrongWay);
+        await SeedInterestAsync(wrongWay, returnTrip.Id, status: InterestStatus.Accepted);
+
         var snapshot = await NewService().GetSnapshotAsync(Year, Ct);
 
+        snapshot.Requests.Single(r => r.Id == otherDayRequest.Id).IsMatched.Should().BeFalse();
+        snapshot.Requests.Single(r => r.Id == wrongWayRequest.Id).IsMatched.Should().BeFalse();
         snapshot.Requests.Single(r => r.Id == byAuthorRequest.Id).IsMatched.Should().BeTrue();
         snapshot.Requests.Single(r => r.Id == byIdRequest.Id).IsMatched.Should().BeTrue();
         snapshot.Requests.Single(r => r.Id == pendingRequest.Id).IsMatched.Should().BeFalse();
@@ -765,6 +776,24 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         await Notifications.Received(1).SendAsync(
             NotificationSource.RideshareInterestAccepted, NotificationClass.Informational, Arg.Any<NotificationPriority>(),
             "You're in: ride with Ada", Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == rider),
+            Arg.Any<string?>(), "/Rideshare/Mine", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AcceptInterest_OnAnAnsweredPin_TellsTheDriverTheirOfferWasAccepted()
+    {
+        var driver = SeedUser("Ada");
+        var rider = SeedUser("Bo");
+        var trip = await SeedTripAsync(driver);
+        var pin = await SeedRequestAsync(rider);
+        var answer = await SeedInterestAsync(driver, trip.Id, requestId: pin.Id);
+
+        await NewService().AcceptInterestAsync(answer.Id, rider, Ct);
+
+        await Notifications.Received(1).SendAsync(
+            NotificationSource.RideshareInterestAccepted, NotificationClass.Informational, Arg.Any<NotificationPriority>(),
+            "Bo accepted your offer of a ride", Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == driver),
             Arg.Any<string?>(), "/Rideshare/Mine", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }

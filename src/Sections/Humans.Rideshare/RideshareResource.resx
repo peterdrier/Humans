@@ -194,6 +194,7 @@
   <data name="Rideshare_NoticeSeat" xml:space="preserve"><value>1 seat</value></data>
   <data name="Rideshare_NoticeSeats" xml:space="preserve"><value>{0} seats</value></data>
   <data name="Rideshare_NoticeAccepted" xml:space="preserve"><value>You're in: ride with {0}</value></data>
+  <data name="Rideshare_NoticeOfferAccepted" xml:space="preserve"><value>{0} accepted your offer of a ride</value></data>
   <data name="Rideshare_NoticeUpdate" xml:space="preserve"><value>Ride update</value></data>
   <data name="Rideshare_NoticeDeclinedOffer" xml:space="preserve"><value>{0} wasn't able to offer a spot this time.</value></data>
   <data name="Rideshare_NoticeDeclinedRider" xml:space="preserve"><value>{0} went with another ride this time.</value></data>
