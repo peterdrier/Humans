@@ -560,6 +560,21 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
+    public async Task ExpressInterest_AnsweringAPin_RefusesAClosedPinAndTheDriversOwnPin()
+    {
+        var driver = SeedUser("Ada");
+        var trip = await SeedTripAsync(driver);
+        var closed = await SeedRequestAsync(SeedUser("Bo"), status: RequestStatus.Cancelled);
+        var own = await SeedRequestAsync(driver);
+        var service = NewService();
+
+        var answerClosed = () => service.ExpressInterestAsync(driver, trip.Id, closed.Id, 0, null, Ct);
+        (await answerClosed.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_RequestClosed");
+        var answerOwn = () => service.ExpressInterestAsync(driver, trip.Id, own.Id, 0, null, Ct);
+        (await answerOwn.Should().ThrowAsync<RideshareRuleException>()).Which.Key.Should().Be("Rideshare_Error_OwnRequest");
+    }
+
+    [HumansFact]
     public async Task ExpressInterest_AnsweringAPin_DefaultsSeatsToThePartySize_AndTellsTheRider()
     {
         var driver = SeedUser("Ada");

@@ -650,12 +650,6 @@ internal sealed class RideshareService(
 
     // ── Side effects ──────────────────────────────────────────────────────
 
-    private async Task<string?> DisplayNameAsync(Guid userId, CancellationToken ct)
-    {
-        var info = await users.GetUserInfoAsync(userId, ct);
-        return info?.BurnerName;
-    }
-
     // Notifications are best-effort: a failed send never rolls back the interest write.
     private async Task NotifyAsync(
         NotificationSource source, NotificationClass notificationClass, Guid recipientUserId, Guid actorUserId,
@@ -663,7 +657,7 @@ internal sealed class RideshareService(
     {
         try
         {
-            var name = await DisplayNameAsync(actorUserId, ct);
+            var name = (await users.GetUserInfoAsync(actorUserId, ct))?.BurnerName;
             var preferredLanguage = (await users.GetUserInfoAsync(recipientUserId, ct))?.PreferredLanguage;
             var language = preferredLanguage.IsSupportedCultureCode()
                 ? preferredLanguage!
