@@ -17,10 +17,6 @@ inbox:
     what: "BudgetRepository.RefreshTicketingProjectionsAsync removes and re-adds every projected line item each run (RemoveProjectedItems then MaterializeProjectedWeeks), so the nightly job writes a refresh audit entry and mints new line-item ids even when no projected amount changed. Found by the 2026-10-08 section-doctor run. Plan: upsert projected rows by description like actuals and delete only weeks that left the schedule."
     review: panel
   - added: 2026-10-08
-    id: BUDGET-13
-    what: "BudgetService.ComputeBudgetSummary hardcodes English slice names (VAT Credits, VAT Liability, Cash Reserves, Spanish Taxes, the group Buffer suffix) that member /Budget/Summary renders as chart legend and rows; every user-facing string must be localized in all six cultures. Found by the 2026-10-08 section-doctor run. Plan: carry a slice kind in the DTO and localize in the view, reusing Budget_VatCredit/Budget_VatLiability."
-    review: panel
-  - added: 2026-10-08
     id: BUDGET-14
     what: "Views/Budget/Index.cshtml renders Year.Status and each category's ExpenditureType as raw enum names on member /Budget, untranslated in every culture. Found by the 2026-10-08 section-doctor run. Plan: add Budget_ resx keys for the enum values in all six cultures and render through the localizer."
     review: light

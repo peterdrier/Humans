@@ -10,8 +10,8 @@ and manage the plan (years, groups, categories); department coordinators fill in
 items for their own departments; every member can see a high-level summary. Ticket-sale
 actuals flow in nightly and replace the auto-generated projections (hand-entered line
 items are never touched); projected future ticket weeks are re-forecast from those
-actuals. Every change to the plan is recorded in an append-only audit trail the Board
-can read. Cash-flow views answer "when does the money move, and do we run out?",
+actuals. Every change to the plan is recorded in an append-only audit trail FinanceAdmin
+and Admin can read. Cash-flow views answer "when does the money move, and do we run out?",
 including the VAT the association will settle each quarter.
 
 ## The shapes
