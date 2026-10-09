@@ -8,6 +8,8 @@
   src/Sections/Humans.AuditLog/Contracts/IAuditLogService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.Notifications.Contracts/INotificationEmitter.cs
+  src/Sections/Humans.Users.Contracts/IUserServiceRead.cs
+  src/Sections/Humans.Users.Contracts/UserInfo.cs
   src/Sections/Humans.Users.Contracts/IUserMerge.cs
   src/Sections/Humans.Gdpr/Contracts/IUserDataContributor.cs
 -->
