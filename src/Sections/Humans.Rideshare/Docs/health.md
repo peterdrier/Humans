@@ -131,7 +131,7 @@ Stated so a violation is recognisable, each with where the code enforces it:
 - Declines carry no reason: the transition takes none and the author's notification is
   neutral (`Services/RideshareService.cs:305`–`324`).
 - Notifications are best-effort; a failed lookup, render or send is logged and never rolls
-  back the write, and only the caller's cancellation escapes (`Services/RideshareService.cs:660`–`695`).
+  back the write, and only the caller's cancellation escapes (`Services/RideshareService.cs:657`–`688`).
 - Saving settings writes one audit entry (`Services/RideshareService.cs:365`–`366`) and rejects
   a blank destination or an inverted window (`:343`–`346`).
 - Every write through the decorator clears the whole snapshot cache, even when the inner
@@ -234,3 +234,4 @@ Essential complexity and settled decisions, so later runs stop re-litigating the
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-09-10 | A sent interest now shows when its trip was cancelled; the untested rules and projections pinned | PR: peterdrier/Humans#1647 |
+| section-doctor | 2026-10-09 | Docs now match an edit's route retry and the Settings dependency; the pin refusals on the express path pinned | PR: pending |
