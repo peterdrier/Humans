@@ -5,6 +5,11 @@
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Notifications.Contracts/NotificationSource.cs
   src/Sections/Humans.AuditLog/Contracts/AuditAction.cs
+  src/Sections/Humans.AuditLog/Contracts/IAuditLogService.cs
+  src/Sections/Humans.Settings/Contracts/ISettingsService.cs
+  src/Sections/Humans.Notifications.Contracts/INotificationEmitter.cs
+  src/Sections/Humans.Users.Contracts/IUserMerge.cs
+  src/Sections/Humans.Gdpr/Contracts/IUserDataContributor.cs
 -->
 <!-- freshness:flag-on-change
   The interest-always-anchors-to-a-trip rule, seats/matched derivation, the route-frozen-at-save
@@ -220,28 +225,23 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 
 ## Invariants
 
-- Map-popup avatar initials retain the first Unicode grapheme, including combining accents and joined emoji; names and initials remain HTML-escaped.
-
-- Expected missing-record, ownership and rule rejections in member action/form helpers and admin settings log at Warning without exception stacks, preserving action/year and reason/key context. Status codes and localized form/toast feedback are unchanged.
-
-- Offer, request and My Rides pages localize the breadcrumb navigation landmark in all six cultures.
-
 - **The list works independently of the map.** Interest forms remain usable from the server-rendered cards when the map library, WebGL, map load or board data request fails.
-
+- **Avatar initials are whole graphemes.** A map-popup initial keeps the name's first Unicode grapheme (combining accents, joined emoji); names and initials are HTML-escaped.
+- **Expected refusals log without stacks.** Not-found, forbidden and rule refusals in the member and admin controllers log at Warning with the action (or year) and the reason or rule key, never the exception.
 - **No anonymous postings.** Every trip, request, and interest is bound to a real Humans profile (`UserId`/`FromUserId`).
 - **Members-only board.** Every route requires `AppAccess` or `RideshareAdminOrAdmin`; there is no anonymous or public access.
 - **Interest always anchors to a trip.** `RideshareInterest.TripId` is required on both the rider→offer and driver→request-pin paths; `RequestId` is an optional origin pointer only, never the anchor.
 - **Seats remaining is derived, never stored.** `SeatsRemaining = SeatsOffered − Σ(Seats of Accepted interests on the trip)`; a trip is full when this is `≤ 0`.
 - **A request's Matched state is derived, never stored.** True when an `Accepted` interest on an `Active` trip exists with `FromUserId == request.UserId` or `RequestId == request.Id`; cancelling the trip un-matches the request.
-- **Route geometry is computed once at save and frozen.** Recomputed only on create, or on an update that changes the member point, waypoints, or direction — never at view time, and never invalidated by a later settings edit. The straight-line fallback the board draws when the stored route is absent or invalid is not a route: it is rendered at view time through the current destination, so it follows a later destination edit.
+- **Route geometry is computed once at save and frozen.** Recomputed only on create, on an update that changes the member point, waypoints, or direction, or on an update of a trip saved without a route (a retry after a provider outage) — never at view time, and never invalidated by a later settings edit. The straight-line fallback the board draws when the stored route is absent or invalid is not a route: it is rendered at view time through the current destination, so it follows a later destination edit.
 - **Form pins match valid coordinates.** Map clicks wrap longitude into −180…180 before filling fields and placing the marker. Invalid or incomplete initial/manual coordinates remain unpinned; clearing or invalidating either field removes the pin without discarding the entered values. Valid edits restore it.
-- **Routing geometry is validated.** Provider geocodes must be Points and directions must be LineStrings with at least two positions. Coordinates must be numeric and finite, with latitude within −90…90 and longitude within −180…180. Route altitude and geometry metadata are retained. Invalid responses warn and return null. Invalid stored routes warn without exception stacks and use the existing travel-order fallback without rewriting data; when only the origin is available, the fallback is a Point.
+- **Routing geometry is validated.** Provider geocodes must be Points and directions must be LineStrings with at least two positions. Coordinates must be numeric and finite, with latitude within −90…90 and longitude within −180…180. Route altitude and geometry metadata are retained. Invalid responses warn and return null. Invalid stored routes warn without exception stacks and use the travel-order fallback without rewriting data; when only the origin is available, the fallback is a Point.
 - **A null route never blocks a save.** When the routing provider is unavailable, `RouteGeoJson` is stored as null and a warning is logged; the save still succeeds.
 - **Declines are private.** No reason is required or stored; the declined party sees neutral language only, never a score or a broadcast reason.
 - **Driver discretion is absolute.** Accept/decline is the posting owner's call; the app never prompts for or records a justification.
 - **Coarse locations only.** Only city-level points are geocoded and sent to the routing provider; profile location is a pre-fill the user can always override.
 - **Rosters are admin-and-driver only.** A trip's accepted riders are visible to that trip's driver (via `Mine`) and to RideshareAdmin/Admin (Day roster); never on the public board. The rider on a roster row is the request's owner when the driver answered a pin, else the interest's `FromUserId`.
-- **Rule failures are localized.** Services throw `RideshareRuleException` carrying a `RideshareResource` key (plus format args); controllers localize it, never show an exception message verbatim. Offer/request form annotations use the shared required, maximum-length and numeric-range translations in all six cultures, with unchanged validation bounds.
+- **Rule failures are localized.** Services throw `RideshareRuleException` carrying a `RideshareResource` key (plus format args); controllers localize it, never show an exception message verbatim. Offer/request form annotations use the shared required, maximum-length and numeric-range translations in all six cultures.
 - **Ownership gates edits.** Only `trip.UserId` may update or cancel that trip; only `request.UserId` may update or cancel that request. A cancelled trip or request cannot be edited.
 - **ExpressInterest requires capacity and consent.** The trip must be `Active` with `SeatsRemaining ≥ seats` (seats ≥ 1); a human cannot express interest in their own trip; when `requestId` is given, the request must be `Active`, the caller must be the trip's owner (driver answering a pin), and the trip must go the request's direction and travel on its `DesiredDate`; a duplicate `Pending` interest by the same user on the same trip+request pair is rejected.
 - **Accept requires ownership, pending state, and capacity.** The actor must be the posting owner (`requestId != null ? request.UserId : trip.UserId`); the interest must be `Pending`; the trip must be `Active` with `SeatsRemaining ≥ interest.Seats`. On a pin answer the pin must still be `Active` and the trip must still go that direction on the pin's date, the same check as ExpressInterest, since either side may have edited in between.
@@ -265,8 +265,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   through the year's destination and stored as `RouteGeoJson`, and a second, inverse-direction
   offer is auto-seeded (same driver/vehicle/seats/luggage/cost fields, waypoints reversed,
   `LinkedTripId` set on both rows).
-- When an offer is edited and the member point, waypoints, or direction changed: the route is
-  recomputed and re-stored.
+- When an offer is edited and the member point, waypoints, or direction changed, or no route was
+  stored: the route is recomputed and re-stored.
 - When an interest is created: `INotificationEmitter` notifies the posting owner (`Actionable`),
   best-effort — name/recipient lookup, message preparation and delivery failures are caught and logged,
   never surfaced after the interest is saved. The same boundary applies to acceptance and decline. Caller
@@ -288,7 +288,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   then drops interests the fold made self-interest (rider on their own trip, driver answering
   their own request) and duplicate pending interests on one trip/request (earliest wins).
   Idempotent; the decorator clears the snapshot cache afterwards.
-- **Shifts**: `ISettingsService.GetActiveEventSettingsAsync()` — the active year settings anchor to
+- **Settings**: `ISettingsService.GetActiveEventSettingsAsync()` — the active year settings anchor to
   (`GetActiveYearAsync` falls back to the clock's UTC year when no active burn is set).
 - **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined
   notifications, localized to each recipient's supported preferred language (English for missing, blank, malformed or unsupported values), including trip dates, action labels and the fallback actor name when no burner name is available, `actionUrl: "/Rideshare/Mine"`.
