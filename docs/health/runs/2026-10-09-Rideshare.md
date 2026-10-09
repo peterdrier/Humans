@@ -3,7 +3,7 @@
 - Invocation: unattended daily routine (no arguments); routine prompt: skip Phase 8, PR against peterdrier/Humans main, ignore verify-migrations-apply
 - Anchor commit: `a5c17fcdd` (origin/main at branch point); branch `section-doctor/2026-10-09T011615Z`.
 - Budget: 2.5h.
-- PR: pending
+- PR: peterdrier/Humans#1940
 
 ## Assessment summary
 

@@ -234,4 +234,4 @@ Essential complexity and settled decisions, so later runs stop re-litigating the
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-09-10 | A sent interest now shows when its trip was cancelled; the untested rules and projections pinned | PR: peterdrier/Humans#1647 |
-| section-doctor | 2026-10-09 | Docs now match an edit's route retry and the Settings dependency; the pin refusals on the express path pinned | PR: pending |
+| section-doctor | 2026-10-09 | Docs now match an edit's route retry and the Settings dependency; the pin refusals on the express path pinned | PR: peterdrier/Humans#1940 |
