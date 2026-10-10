@@ -178,8 +178,8 @@ public sealed class TicketTransferServiceTests
         TicketTransferRowDto row;
         if (afterWrite)
         {
-            row = await _service.CreateRequestAsync(
-                new TicketTransferRequestDto(_attendeeId, _receiverId, "Reason"), _senderId, Xunit.TestContext.Current.CancellationToken);
+            row = (await _service.CreateRequestAsync(
+                new TicketTransferRequestDto(_attendeeId, _receiverId, "Reason"), _senderId, Xunit.TestContext.Current.CancellationToken)).Transfer!;
             await _transferRepo.Received(1).AddAsync(
                 Arg.Is<TicketTransferRequest>(r => r.Id == row.Id && r.Status == TicketTransferStatus.Pending),
                 Arg.Any<CancellationToken>());
@@ -235,45 +235,52 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansFact]
-    public async Task CreateRequest_Throws_WhenReceiverIsSender()
+    public async Task CreateRequest_Refuses_WhenReceiverIsSender()
     {
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _senderId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).RefusalKey.Should().Be("Tickets_TicketTransfer_InvalidSelection");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CreateRequest_Throws_WhenNotOwner()
+    public async Task CreateRequest_Refuses_WhenNotOwner()
     {
         StubAttendee(TicketAttendeeStatus.Valid, Guid.NewGuid());
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).RefusalKey.Should().Be("Tickets_TicketTransfer_NotCurrentHolder");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CreateRequest_Throws_WhenNotValid()
+    public async Task CreateRequest_Refuses_WhenNotValid()
     {
         StubAttendee(TicketAttendeeStatus.Void, _senderId);
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).RefusalKey.Should().Be("TicketTransfer_NotTransferable");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CreateRequest_Throws_WhenCheckedIn()
+    public async Task CreateRequest_Refuses_WhenCheckedIn()
     {
         // Status stays Valid after a gate scan (nobodies-collective/Humans#736);
         // the CheckedInAt guard must still block the transfer of a used ticket.
         StubAttendee(TicketAttendeeStatus.Valid, _senderId, checkedInAt: _now);
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("TicketTransfer_CheckedIn");
+        (await act()).RefusalKey.Should().Be("TicketTransfer_CheckedIn");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CreateRequest_Throws_WhenDuplicatePending()
+    public async Task CreateRequest_Refuses_WhenDuplicatePending()
     {
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
         _transferRepo.GetBySenderAsync(_senderId, Arg.Any<CancellationToken>())
@@ -281,7 +288,9 @@ public sealed class TicketTransferServiceTests
 
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).RefusalKey.Should().Be("TicketTransfer_AlreadyPending");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
 
     // ── CancelAsync ─────────────────────────────────────────────────────────────
@@ -300,17 +309,19 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansFact]
-    public async Task Cancel_Throws_WhenNotSender()
+    public async Task Cancel_Refuses_WhenNotSender()
     {
         var req = MakePending(Guid.NewGuid());
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
 
         var act = () => _service.CancelAsync(req.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).RefusalKey.Should().Be("Tickets_TicketTransfer_OnlySenderCanCancel");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task Cancel_Throws_WhenVoidAlreadyCommitted()
+    public async Task Cancel_Refuses_WhenVoidAlreadyCommitted()
     {
         var req = MakePending(Guid.NewGuid());
         req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
@@ -318,7 +329,9 @@ public sealed class TicketTransferServiceTests
 
         // The original ticket is already voided — the Sender must not cancel it away.
         var act = () => _service.CancelAsync(req.Id, _senderId, Xunit.TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).RefusalKey.Should().Be("Tickets_TicketTransfer_CancelFailed");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
         req.Status.Should().Be(TicketTransferStatus.Pending);
     }
 
@@ -800,10 +813,16 @@ public sealed class TicketTransferServiceTests
             await first;
         }
 
-        var decideAgain = () => second.WaitAsync(Xunit.TestContext.Current.CancellationToken);
-        await decideAgain.Should().ThrowAsync<InvalidOperationException>().WithMessage(
-            string.Equals(action, "cancel", StringComparison.Ordinal)
-                ? "Tickets_TicketTransfer_OnlyPendingCanBeCancelled" : "Only Pending transfers*");
+        if (string.Equals(action, "cancel", StringComparison.Ordinal))
+        {
+            var result = await (Task<TicketTransferMutationResult>)second;
+            result.RefusalKey.Should().Be("Tickets_TicketTransfer_OnlyPendingCanBeCancelled");
+        }
+        else
+        {
+            var decideAgain = () => second.WaitAsync(Xunit.TestContext.Current.CancellationToken);
+            await decideAgain.Should().ThrowAsync<InvalidOperationException>().WithMessage("Only Pending transfers*");
+        }
         req.Status.Should().Be(TicketTransferStatus.Approved);
         await _vendor.Received(1).VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>());
         await _vendor.Received(1).IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>());

@@ -28,15 +28,17 @@ internal interface ITicketTransferService : ITicketTransferQueue, IApplicationSe
     /// <summary>
     /// Create a Pending TicketTransferRequest and email the Sender + the ticket
     /// team. Validates: Sender owns the attendee, attendee is Valid, Receiver is
-    /// not the Sender, no existing Pending transfer for the attendee.
+    /// not the Sender, no existing Pending transfer for the attendee. Returns a
+    /// resource-key refusal for known rule failures; dependency exceptions propagate.
     /// </summary>
-    Task<TicketTransferRowDto> CreateRequestAsync(
+    Task<TicketTransferMutationResult> CreateRequestAsync(
         TicketTransferRequestDto dto, Guid senderUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Cancel a Pending request. Only the original Sender may cancel.
+    /// Cancel a Pending request. Only the original Sender may cancel. Returns a
+    /// resource-key refusal for known rule failures; dependency exceptions propagate.
     /// </summary>
-    Task CancelAsync(Guid transferRequestId, Guid senderUserId, CancellationToken ct = default);
+    Task<TicketTransferMutationResult> CancelAsync(Guid transferRequestId, Guid senderUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Mark a Pending request transferred ("transfer successful") WITHOUT calling the
@@ -89,4 +91,12 @@ internal interface ITicketTransferService : ITicketTransferQueue, IApplicationSe
     /// </summary>
     Task<TicketTransferDetailDto?> GetDetailAsync(
         Guid transferRequestId, CancellationToken ct = default);
+}
+
+/// <summary>A member-facing transfer outcome; dependency failures remain exceptions.</summary>
+internal sealed record TicketTransferMutationResult(TicketTransferRowDto? Transfer, string? RefusalKey)
+{
+    public bool Succeeded => RefusalKey is null;
+
+    public static TicketTransferMutationResult Refused(string key) => new(null, key);
 }

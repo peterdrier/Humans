@@ -90,32 +90,34 @@ internal sealed class TicketTransferService(
             ReceiverEmail: receiverEmail);
     }
 
-    public async Task<TicketTransferRowDto> CreateRequestAsync(
+    public async Task<TicketTransferMutationResult> CreateRequestAsync(
         TicketTransferRequestDto dto, Guid senderUserId, CancellationToken ct = default)
     {
         if (dto.ReceiverUserId == senderUserId)
-            throw new InvalidOperationException("Tickets_TicketTransfer_InvalidSelection");
+            return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_InvalidSelection");
 
-        var attendee = await ticketRepo.GetAttendeeByIdAsync(dto.OriginalAttendeeId, ct)
-            ?? throw new InvalidOperationException("Tickets_TicketTransfer_InvalidSelection");
+        var attendee = await ticketRepo.GetAttendeeByIdAsync(dto.OriginalAttendeeId, ct);
+        if (attendee is null)
+            return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_InvalidSelection");
 
         if (!TicketAttendeeOwnership.IsCurrentOwner(attendee, senderUserId))
-            throw new InvalidOperationException("Tickets_TicketTransfer_NotCurrentHolder");
+            return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_NotCurrentHolder");
 
         if (attendee.Status != TicketAttendeeStatus.Valid)
-            throw new InvalidOperationException("TicketTransfer_NotTransferable");
+            return TicketTransferMutationResult.Refused("TicketTransfer_NotTransferable");
 
         // A gate scan keeps Status = Valid and records the scan in CheckedInAt,
         // so the Valid check above does not catch an already-used ticket — guard
         // on CheckedInAt explicitly.
         if (attendee.CheckedInAt is not null)
-            throw new InvalidOperationException("TicketTransfer_CheckedIn");
+            return TicketTransferMutationResult.Refused("TicketTransfer_CheckedIn");
 
-        var receiverInfo = await userService.GetUserInfoAsync(dto.ReceiverUserId, ct)
-            ?? throw new InvalidOperationException("Tickets_TicketTransfer_InvalidSelection");
+        var receiverInfo = await userService.GetUserInfoAsync(dto.ReceiverUserId, ct);
+        if (receiverInfo is null)
+            return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_InvalidSelection");
         // Defense-in-depth: receiver MUST have legal name; mirror not-found message to avoid leaking why.
         if (!receiverInfo.HasRequiredNameFields)
-            throw new InvalidOperationException("Tickets_TicketTransfer_InvalidSelection");
+            return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_InvalidSelection");
         var receiverProfile = receiverInfo.Profile!;
 
         // Block duplicate pendings (UX hides Send; ToDictionary would crash on dupes).
@@ -123,11 +125,12 @@ internal sealed class TicketTransferService(
             .Any(r => r.OriginalTicketAttendeeId == dto.OriginalAttendeeId
                 && r.Status == TicketTransferStatus.Pending);
         if (existingPending)
-            throw new InvalidOperationException("TicketTransfer_AlreadyPending");
+            return TicketTransferMutationResult.Refused("TicketTransfer_AlreadyPending");
 
         var receiverLegalName = receiverProfile.FullName;
-        var receiverEmail = await userEmailService.GetPrimaryEmailAsync(dto.ReceiverUserId, ct)
-            ?? throw new InvalidOperationException("Tickets_TicketTransfer_InvalidSelection");
+        var receiverEmail = await userEmailService.GetPrimaryEmailAsync(dto.ReceiverUserId, ct);
+        if (receiverEmail is null)
+            return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_InvalidSelection");
 
         var now = clock.GetCurrentInstant();
         var request = new TicketTransferRequest
@@ -160,19 +163,21 @@ internal sealed class TicketTransferService(
 
         await NotifyRequestedAsync(request, attendee, senderUserId, ct);
 
-        return await BuildRowDtoAsync(request, ct);
+        return new TicketTransferMutationResult(await BuildRowDtoAsync(request, ct), null);
     }
 
-    public async Task CancelAsync(Guid transferRequestId, Guid senderUserId, CancellationToken ct = default)
+    public async Task<TicketTransferMutationResult> CancelAsync(Guid transferRequestId, Guid senderUserId, CancellationToken ct = default)
     {
         using var decision = await DecisionLockFor(transferRequestId).AcquireAsync(logger, ct);
-        var request = await transferRepo.GetByIdAsync(transferRequestId, ct)
-            ?? throw new InvalidOperationException("Tickets_TicketTransfer_NotFound");
+        var request = await transferRepo.GetByIdAsync(transferRequestId, ct);
+        if (request is null)
+            return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_NotFound");
         if (request.Status != TicketTransferStatus.Pending)
-            throw new InvalidOperationException("Tickets_TicketTransfer_OnlyPendingCanBeCancelled");
+            return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_OnlyPendingCanBeCancelled");
         if (request.SenderUserId != senderUserId)
-            throw new InvalidOperationException("Tickets_TicketTransfer_OnlySenderCanCancel");
-        EnsureNotMidProcessing(request);
+            return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_OnlySenderCanCancel");
+        if (request.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed)
+            return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_CancelFailed");
 
         var now = clock.GetCurrentInstant();
         request.Status = TicketTransferStatus.Cancelled;
@@ -187,6 +192,8 @@ internal sealed class TicketTransferService(
             request.Id,
             "Transfer cancelled by Sender",
             senderUserId);
+
+        return new TicketTransferMutationResult(null, null);
     }
 
     public async Task<TicketTransferRowDto> ApproveAsync(

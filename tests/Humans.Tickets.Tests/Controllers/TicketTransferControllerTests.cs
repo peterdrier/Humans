@@ -57,7 +57,7 @@ public class TicketTransferControllerTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task MemberErrors_AreLocalizedWithFallbackForUnknownFailures(bool cancel, bool unknown)
+    public async Task MemberRefusalsAreLocalized_DependencyFailuresPropagate(bool cancel, bool unknown)
     {
         var originalCulture = CultureInfo.CurrentUICulture;
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es");
@@ -76,9 +76,13 @@ public class TicketTransferControllerTests
             var key = unknown ? "untranslated provider failure" : cancel
                 ? "Tickets_TicketTransfer_NotFound" : "TicketTransfer_AlreadyPending";
             transfers.CreateRequestAsync(Arg.Any<TicketTransferRequestDto>(), userId, Arg.Any<CancellationToken>())
-                .Returns(Task.FromException<TicketTransferRowDto>(new InvalidOperationException(key)));
+                .Returns(_ => unknown
+                    ? Task.FromException<TicketTransferMutationResult>(new InvalidOperationException(key))
+                    : Task.FromResult(TicketTransferMutationResult.Refused(key)));
             transfers.CancelAsync(Arg.Any<Guid>(), userId, Arg.Any<CancellationToken>())
-                .Returns(Task.FromException(new InvalidOperationException(key)));
+                .Returns(_ => unknown
+                    ? Task.FromException<TicketTransferMutationResult>(new InvalidOperationException(key))
+                    : Task.FromResult(TicketTransferMutationResult.Refused(key)));
             var http = new DefaultHttpContext
             {
                 RequestServices = services,
@@ -93,20 +97,27 @@ public class TicketTransferControllerTests
                 Url = Substitute.For<IUrlHelper>()
             };
 
+            if (unknown)
+            {
+                Func<Task> action = cancel
+                    ? () => controller.Cancel(Guid.NewGuid(), TestContext.Current.CancellationToken)
+                    : () => controller.Submit(Guid.NewGuid(), Guid.NewGuid(), "Reason", TestContext.Current.CancellationToken);
+                await action.Should().ThrowAsync<InvalidOperationException>().WithMessage(key);
+                controller.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeFalse();
+                return;
+            }
+
             if (cancel)
             {
                 await controller.Cancel(Guid.NewGuid(), TestContext.Current.CancellationToken);
-                controller.TempData[TempDataKeys.ErrorMessage].Should().Be(unknown
-                    ? "No se pudo cancelar la transferencia. Actualiza la página o contacta con el equipo de entradas."
-                    : "Transferencia no encontrada.");
+                controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Transferencia no encontrada.");
             }
             else
             {
                 var result = await controller.Submit(Guid.NewGuid(), Guid.NewGuid(), "Reason", TestContext.Current.CancellationToken);
                 var view = result.Should().BeOfType<ViewResult>().Subject;
                 var model = view.Model.Should().BeOfType<TicketTransferWizardViewModel>().Subject;
-                model.Error.Should().Be(localizer[unknown
-                    ? "Tickets_TicketTransfer_InvalidSelection" : "TicketTransfer_AlreadyPending"].Value);
+                model.Error.Should().Be(localizer["TicketTransfer_AlreadyPending"].Value);
             }
         }
         finally

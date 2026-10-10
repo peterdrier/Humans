@@ -67,6 +67,7 @@ Member request and cancellation errors are localized in all six cultures. Unknow
 - A Cancel control appears on the Sender's pending-transfer ticket on the homepage.
 - Cancel transitions the request to `Cancelled` (audit-logged) and re-enables transferring the ticket.
 - Cancel is only permitted for `Pending` requests where the caller is the Sender.
+- Member submit/cancel rule failures return structured refusal keys for localized feedback; dependency exceptions propagate without becoming member-facing messages.
 
 ### US-42.3: Request notifications
 - On request, an email goes to the **Sender** (confirmation) and to **tickets@nobodies.team** (action

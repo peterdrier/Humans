@@ -86,7 +86,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant. Guest order totals, dashboard cards, order and attendee amounts, VIP splits, fee rates and sales aggregate totals use the same UI culture; chart JSON stays numeric.
 - Ticket vendor health probes propagate requested timeout/abort cancellation without logging a vendor timeout. A vendor timeout while the caller token remains active still returns Degraded.
-- Member transfer Submit/Cancel validation errors resolve through Tickets resources in all six cultures. Unknown failure text stays in logs; the wizard and cancellation toast use translated fallbacks.
+- Member transfer Submit/Cancel return typed rule refusals localized through Tickets resources in all six cultures. Dependency exceptions propagate to normal error handling; their messages never become resource keys or member feedback.
 - Transfer row DTOs carry sender/decider IDs; their names are rendered by the existing human components. Row assembly does not load unused user-name snapshots, so a profile lookup cannot fail a committed response or prevent a transfer list from loading. Transfer/attendee reads remain required.
 - `TicketHoldingsViewComponent` is contributed (`Humans.Tickets/SectionUserParts.cs`, `IUserPart`) to Users' `user-profile-sidebar` and `user-admin-detail-sidebar` slots. It renders nothing for `ProfileCardViewMode.Public` — its only visibility check — and shows an empty-holdings card only for `Admin`.
 - Ticket orders and attendees are synced from the external vendor — they cannot be manually created or edited from this app.
