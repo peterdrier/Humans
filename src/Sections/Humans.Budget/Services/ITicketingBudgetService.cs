@@ -7,8 +7,8 @@ namespace Humans.Budget.Services;
 /// Internal (ruling 43) — the interface's only consumer, the sync job, is section-internal too.
 /// </summary>
 /// <remarks>
-/// Projection refresh, the projection-parameter write and the virtual weekly forecast are
-/// driven only from Budget's own admin pages, so they live on the concrete
+/// Projection refresh and the projection-parameter write are driven only from Budget's own
+/// admin pages, so they live on the concrete
 /// <c>TicketingBudgetService</c> rather than here — <c>BudgetAdminController</c>
 /// deliberately injects the concrete class.
 /// </remarks>

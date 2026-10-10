@@ -7,7 +7,7 @@ namespace Humans.Budget.Jobs;
 
 /// <summary>
 /// Hangfire recurring job that materializes ticket sales actuals into budget line items.
-/// Runs daily at 04:30. Finds the active budget year's ticketing group and syncs completed weeks.
+/// Finds the active budget year's ticketing group and syncs completed weeks.
 /// </summary>
 /// <remarks>
 /// Public type with an internal constructor: Shell names the concrete type for Hangfire
