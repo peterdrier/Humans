@@ -1111,13 +1111,22 @@ internal sealed class Service(
 
     /// <summary>Issues or recovers the billable order's invoice and freezes its prices.</summary>
     [ExternalWrite]
-    public async Task IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<AdminMutationResult> IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
-            ?? throw new InvalidOperationException($"Order {orderId} not found");
-        EnsureBillable(order);
-        await new StoreInvoiceIssuer(repo, audit, clock, holdedClient, options, orderReader, logger)
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (order is null)
+            return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
+        if (order.TeamId is not null)
+            return RefuseAdminMutation(orderId, actorUserId, "Team orders are non-billable.");
+        return await new StoreInvoiceIssuer(repo, audit, clock, holdedClient, options, orderReader, logger)
             .IssueAsync(order, actorUserId, ct);
+    }
+
+    private AdminMutationResult RefuseAdminMutation(Guid orderId, Guid actorUserId, string reason)
+    {
+        logger.LogWarning("Store admin mutation rejected for order {OrderId}, actor {ActorUserId}: {Reason}",
+            orderId, actorUserId, reason);
+        return AdminMutationResult.Refused(reason);
     }
 
     /// <summary>
@@ -1445,12 +1454,6 @@ internal sealed class Service(
 
     private Task<string> ResolveCounterpartyDisplayNameAsync(Order order, CancellationToken ct) =>
         orderReader.ResolveCounterpartyDisplayNameAsync(order, ct);
-
-    private static void EnsureBillable(Order order)
-    {
-        if (order.TeamId is not null)
-            throw new StoreRuleException("Team orders are non-billable.");
-    }
 
     private sealed class StoreRuleException : InvalidOperationException
     {

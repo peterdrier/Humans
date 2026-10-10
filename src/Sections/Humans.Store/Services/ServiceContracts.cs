@@ -11,6 +11,12 @@ internal sealed record MutationResult(bool Succeeded, string? ErrorKey, Guid? Cr
     public static MutationResult Failure(string errorKey) => new(false, errorKey);
 }
 
+internal sealed record AdminMutationResult(bool Succeeded, string? Refusal)
+{
+    public static AdminMutationResult Success { get; } = new(true, null);
+    public static AdminMutationResult Refused(string reason) => new(false, reason);
+}
+
 internal sealed record CheckoutSessionResult(string? SessionUrl, string? ErrorKey, decimal? MaximumAmount = null);
 
 internal sealed record ProductSaveRequest(

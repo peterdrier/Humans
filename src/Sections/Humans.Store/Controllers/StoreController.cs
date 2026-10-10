@@ -191,15 +191,9 @@ internal sealed class StoreController(
             // No request-scoped token anywhere on this path: issuance creates and approves a
             // document in Holded, and a torn write leaves a doc we have no local record of
             // (memory/architecture/cancellation-token-propagation.md).
-            await storeService.IssueInvoiceAsync(id, user.Id, CancellationToken.None);
-            SetSuccess(localizer["Store_InvoiceIssued"].Value);
-        }
-        catch (InvalidOperationException ex)
-        {
-            // Expected refusals (already invoiced, missing account, receipt over threshold) —
-            // the message is written for the admin, so surface it and log at warning.
-            logger.LogWarning("Invoice issuance rejected for order {OrderId}: {Reason}", id, ex.Message);
-            SetError(ex.Message);
+            var result = await storeService.IssueInvoiceAsync(id, user.Id, CancellationToken.None);
+            if (result.Succeeded) SetSuccess(localizer["Store_InvoiceIssued"].Value);
+            else SetError(result.Refusal ?? localizer["Store_InvoiceFailed"].Value);
         }
         catch (Exception ex)
         {
