@@ -1,3 +1,5 @@
+using Humans.Containers;
+using Microsoft.Extensions.Localization;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Services;
@@ -17,6 +19,7 @@ internal sealed class CityPlanningController(
     CityPlanningService cityPlanningService,
     ICampServiceRead campService,
     IContainerService containerService,
+    IStringLocalizer<ContainersResource> containersLocalizer,
     IUserServiceRead userService,
     IAuthorizationService authorizationService,
     ILogger<CityPlanningController> logger) : HumansControllerBase(userService)
@@ -365,14 +368,11 @@ internal sealed class CityPlanningController(
     private async Task<IActionResult> TryCreateContainerAsync(
         ContainerFormModel model, Guid campId, int year, Guid actorUserId, CancellationToken ct)
     {
-        try
+        var result = await containerService.CreateAsync(model.ToContainerData(campId), actorUserId, ct);
+        if (result.ErrorKey is { } key)
         {
-            await containerService.CreateAsync(model.ToContainerData(campId), actorUserId, ct);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Container create failed for camp {CampId}, year {Year}: {Message}", campId, year, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Container create refused for camp {CampId}, year {Year}: {ErrorKey}", campId, year, key);
+            SetError(containersLocalizer[key, result.ErrorArgs ?? []].Value);
             return RedirectToAction(nameof(Containers), new { year });
         }
 
@@ -405,14 +405,11 @@ internal sealed class CityPlanningController(
     private async Task<IActionResult> TryUpdateContainerAsync(
         Guid id, ContainerFormModel model, Guid campId, int year, Guid actorUserId, CancellationToken ct)
     {
-        try
+        var result = await containerService.UpdateAsync(id, model.ToContainerData(campId), actorUserId, ct);
+        if (result.ErrorKey is { } key)
         {
-            await containerService.UpdateAsync(id, model.ToContainerData(campId), actorUserId, ct);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Container update failed for id {ContainerId}, camp {CampId}, year {Year}: {Message}", id, campId, year, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Container update refused for camp {CampId}, year {Year}: {ErrorKey}", campId, year, key);
+            SetError(containersLocalizer[key, result.ErrorArgs ?? []].Value);
             return RedirectToAction(nameof(Containers), new { year });
         }
 

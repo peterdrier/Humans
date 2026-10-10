@@ -45,7 +45,7 @@ public sealed class ServiceImageTests
             _fileStorage,
             Substitute.For<ICampServiceRead>(),
             _auditLog,
-            new FakeClock(StartTime), Localizer, _logger);
+            new FakeClock(StartTime), _logger);
     }
 
     private static ContainerImageUpload FakeImage(string kind = "main") =>
@@ -89,11 +89,11 @@ public sealed class ServiceImageTests
     [HumansFact]
     public async Task CreateAsync_WithImages_SavesEachUnderContainersPrefix()
     {
-        var result = await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
+        var result = (await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
             CampId: CampId,
             Name: "Test",
             Description: null,
-            NewImages: FakeImages(3)), ct: TestContext.Current.CancellationToken);
+            NewImages: FakeImages(3)), ct: TestContext.Current.CancellationToken)).Value!;
 
         result.CampId.Should().Be(CampId);
         result.Images.Should().HaveCount(3);
@@ -121,8 +121,9 @@ public sealed class ServiceImageTests
                 Description: null,
                 NewImages: FakeImages(6)), ct: TestContext.Current.CancellationToken);
 
-            await act.Should().ThrowAsync<InvalidOperationException>()
-                .WithMessage("Un contenedor puede tener como máximo 5 imágenes.");
+            var refusal = await act();
+            refusal.ErrorKey.Should().Be("Containers_Error_TooManyImages");
+            Localizer[refusal.ErrorKey!, refusal.ErrorArgs ?? []].Value.Should().Be("Un contenedor puede tener como máximo 5 imágenes.");
         }
         finally
         {
@@ -139,8 +140,7 @@ public sealed class ServiceImageTests
             Description: null,
             NewImages: FakeImages(6)), ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*at most 5 images*");
+        (await act()).ErrorKey.Should().Be("Containers_Error_TooManyImages");
     }
 
     [HumansFact]
@@ -155,8 +155,7 @@ public sealed class ServiceImageTests
             Description: null,
             NewImages: [image]), ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*256 characters or fewer*");
+        (await act()).ErrorKey.Should().Be("Containers_Error_ImageFileNameLength");
         await _fileStorage.DidNotReceive().SaveAsync(
             Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
@@ -166,11 +165,11 @@ public sealed class ServiceImageTests
     {
         var image = new ContainerImageUpload(Stream.Null, "image/jpeg", @"C:\fakepath\gallery.jpg", 1024);
 
-        var result = await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
+        var result = (await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
             CampId: CampId,
             Name: "Test",
             Description: null,
-            NewImages: [image]), ct: TestContext.Current.CancellationToken);
+            NewImages: [image]), ct: TestContext.Current.CancellationToken)).Value!;
 
         result.Images.Should().ContainSingle().Which.FileName.Should().Be("gallery.jpg");
     }
@@ -186,8 +185,7 @@ public sealed class ServiceImageTests
             Description: null,
             NewImages: FakeImages(2)), actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*at most 5 images*");
+        (await act()).ErrorKey.Should().Be("Containers_Error_TooManyImages");
     }
 
     [HumansFact]
@@ -201,8 +199,7 @@ public sealed class ServiceImageTests
             Description: null,
             NewImages: FakeImages(1)), actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*at most 5 images*");
+        (await act()).ErrorKey.Should().Be("Containers_Error_TooManyImages");
     }
 
     [HumansFact]
@@ -211,13 +208,13 @@ public sealed class ServiceImageTests
         var container = await SeedContainerAsync(galleryImages: 5);
         var existing = await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken);
 
-        var updated = await _sut.UpdateAsync(container.Id, new ContainerData(
+        var updated = (await _sut.UpdateAsync(container.Id, new ContainerData(
             CampId: container.CampId,
             Name: container.Name,
             Description: null,
             NewImages: FakeImages(2),
             RemoveImageIds: [existing!.Images[0].Id, existing.Images[1].Id]),
-            actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
+            actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken)).Value!;
 
         updated.Images.Should().HaveCount(5);
         updated.Images.Select(i => i.Id).Should().NotContain(existing.Images[0].Id);
@@ -293,9 +290,9 @@ public sealed class ServiceImageTests
         var paths = before!.Images.Select(i => i.Url.TrimStart('/')).ToList();
         _fileStorage.DeleteAsync(paths[1], Arg.Any<CancellationToken>()).ThrowsAsync(new IOException("File locked"));
 
-        var updated = await _sut.UpdateAsync(container.Id, new ContainerData(container.CampId, "Changed", "New description",
+        var updated = (await _sut.UpdateAsync(container.Id, new ContainerData(container.CampId, "Changed", "New description",
             NewImages: FakeImages(1), RemoveImageIds: before.Images.Select(i => i.Id).ToList()),
-            actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
+            actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken)).Value!;
 
         updated.Name.Should().Be("Changed");
         updated.Images.Should().ContainSingle();
@@ -314,12 +311,12 @@ public sealed class ServiceImageTests
         var existing = await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken);
         var doomed = existing!.Images[1];
 
-        var updated = await _sut.UpdateAsync(container.Id, new ContainerData(
+        var updated = (await _sut.UpdateAsync(container.Id, new ContainerData(
             CampId: container.CampId,
             Name: container.Name,
             Description: null,
             RemoveImageIds: [doomed.Id]),
-            actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
+            actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken)).Value!;
 
         await _fileStorage.Received(1).DeleteAsync(
             doomed.Url.TrimStart('/'), Arg.Any<CancellationToken>());
@@ -345,11 +342,11 @@ public sealed class ServiceImageTests
     {
         var container = await SeedContainerAsync(legacyImagePath: "uploads/containers/id/main-guid.jpg");
 
-        var updated = await _sut.UpdateAsync(container.Id, new ContainerData(
+        var updated = (await _sut.UpdateAsync(container.Id, new ContainerData(
             CampId: container.CampId,
             Name: container.Name,
             Description: null,
-            RemoveImageIds: [Guid.Empty]), actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
+            RemoveImageIds: [Guid.Empty]), actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken)).Value!;
 
         await _fileStorage.Received(1).DeleteAsync("uploads/containers/id/main-guid.jpg", Arg.Any<CancellationToken>());
         updated.Images.Should().BeEmpty();
@@ -369,7 +366,7 @@ public sealed class ServiceImageTests
             });
         var original = new IOException("Database delete failed");
         repo.DeleteAsync(container.Id, Arg.Any<CancellationToken>()).Returns(Task.FromException(original));
-        var service = new Service(repo, _fileStorage, Substitute.For<ICampServiceRead>(), _auditLog, new FakeClock(StartTime), Localizer, _logger);
+        var service = new Service(repo, _fileStorage, Substitute.For<ICampServiceRead>(), _auditLog, new FakeClock(StartTime), _logger);
 
         var act = () => service.DeleteAsync(container.Id, Guid.NewGuid(), ct);
 
@@ -441,8 +438,7 @@ public sealed class ServiceImageTests
             Name: name,
             Description: null), ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*must not contain*");
+        (await act()).ErrorKey.Should().Be("Containers_Error_InvalidName");
     }
 
     [HumansFact]
@@ -454,8 +450,7 @@ public sealed class ServiceImageTests
             Description: null,
             NewImages: [new(Stream.Null, "image/jpeg", "trojan.html", 1024)]), ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*end in .jpg*");
+        (await act()).ErrorKey.Should().Be("Containers_Error_ImageExtension");
     }
 
     [HumansFact]
@@ -467,8 +462,7 @@ public sealed class ServiceImageTests
             Description: null,
             NewImages: [new(Stream.Null, "image/jpeg", "big.jpg", 10 * 1024 * 1024 + 1)]), ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*under 10 MB*");
+        (await act()).ErrorKey.Should().Be("Containers_Error_ImageTooLarge");
         await _fileStorage.DidNotReceive().SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
 
@@ -482,7 +476,6 @@ public sealed class ServiceImageTests
             NewImages: [FakeImage(), new(Stream.Null, "image/gif", "anim.gif", 1024)]),
             ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*JPEG, PNG, and WebP*");
+        (await act()).ErrorKey.Should().Be("Containers_Error_ImageType");
     }
 }

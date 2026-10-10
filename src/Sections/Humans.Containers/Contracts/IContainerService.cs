@@ -8,20 +8,20 @@ public interface IContainerService : IApplicationService
     Task<IReadOnlyList<ContainerDto>> GetByCampAsync(Guid campId, CancellationToken ct = default);
     Task<IReadOnlyList<ContainerDto>> GetAllAsync(CancellationToken ct = default);
     Task<ContainerDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<ContainerDto> CreateAsync(ContainerData data, Guid actorUserId, CancellationToken ct = default);
-    Task<ContainerDto> UpdateAsync(Guid id, ContainerData data, Guid actorUserId, CancellationToken ct = default);
+    Task<ContainerMutationResult<ContainerDto>> CreateAsync(ContainerData data, Guid actorUserId, CancellationToken ct = default);
+    Task<ContainerMutationResult<ContainerDto>> UpdateAsync(Guid id, ContainerData data, Guid actorUserId, CancellationToken ct = default);
     Task DeleteAsync(Guid id, Guid actorUserId, CancellationToken ct = default);
 
     Task<IReadOnlyList<ContainerPlacementDto>> GetPlacementsByYearAsync(int year, CancellationToken ct = default);
-    Task<ContainerPlacementDto> SavePlacementAsync(Guid containerId, int year, string geoJson, Guid actorUserId, CancellationToken ct = default);
+    Task<ContainerMutationResult<ContainerPlacementDto>> SavePlacementAsync(Guid containerId, int year, string geoJson, Guid actorUserId, CancellationToken ct = default);
     Task ClearPlacementAsync(Guid containerId, int year, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Update a placement's notes and/or sketch image. Requires the placement row
     /// to already exist (i.e., the container has been placed for the given year).
-    /// Throws <see cref="InvalidOperationException"/> if no placement row exists.
+    /// Returns a refusal key if no placement row exists.
     /// </summary>
-    Task<ContainerPlacementDto> UpdatePlacementNotesAsync(
+    Task<ContainerMutationResult<ContainerPlacementDto>> UpdatePlacementNotesAsync(
         Guid containerId,
         int year,
         string? notes,
@@ -91,3 +91,7 @@ public record ContainerData(
     IReadOnlyList<ContainerImageUpload>? NewImages = null,
     IReadOnlyList<Guid>? RemoveImageIds = null
 );
+
+/// <summary>Successful owner DTO or a refusal key and arguments for caller localization.</summary>
+public sealed record ContainerMutationResult<T>(T? Value, string? ErrorKey = null, object[]? ErrorArgs = null)
+    where T : class;

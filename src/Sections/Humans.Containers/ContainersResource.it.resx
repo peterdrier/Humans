@@ -149,4 +149,5 @@
   <data name="Containers_Error_ImageExtension" xml:space="preserve">
     <value>Il nome del file immagine deve terminare con .jpg, .jpeg, .png o .webp.</value>
   </data>
+  <data name="Containers_Error_PlacementNotFound" xml:space="preserve"><value>Posizionamento non trovato. Posiziona prima il container sulla mappa.</value></data>
 </root>

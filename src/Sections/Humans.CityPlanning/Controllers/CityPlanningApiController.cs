@@ -286,16 +286,14 @@ internal sealed class CityPlanningApiController(
             User, ContainerAuthorizationTarget.For(container, year), ContainerOperationRequirement.Place);
         if (!authResult.Succeeded) return Forbid();
 
-        try
+        var result = await containerService.SavePlacementAsync(id, year, request.GeoJson, CurrentUserId(), cancellationToken);
+        if (result.ErrorKey is { } key)
         {
-            var updated = await containerService.SavePlacementAsync(id, year, request.GeoJson, CurrentUserId(), cancellationToken);
-            return Ok(new { id = updated.ContainerId, year = updated.Year, locationGeoJson = updated.LocationGeoJson });
+            logger.LogWarning("Container placement refused for {ContainerId}, year {Year}: {ErrorKey}", id, year, key);
+            return UnprocessableEntity(containersLocalizer[key, result.ErrorArgs ?? []].Value);
         }
-        catch (InvalidOperationException ex) when (string.Equals(
-            ex.Message, containersLocalizer["Containers_Error_InvalidPlacementGeoJson"].Value, StringComparison.Ordinal))
-        {
-            return UnprocessableEntity(ex.Message);
-        }
+        var updated = result.Value!;
+        return Ok(new { id = updated.ContainerId, year = updated.Year, locationGeoJson = updated.LocationGeoJson });
     }
 
     /// <summary>Update placement notes and/or sketch image for a placed container.</summary>
@@ -321,24 +319,23 @@ internal sealed class CityPlanningApiController(
             imageUpload = new ContainerImageUpload(f.OpenReadStream(), f.ContentType, f.FileName, f.Length);
         }
 
-        try
+        var result = await containerService.UpdatePlacementNotesAsync(
+            id, year, request.PlacementNotes, imageUpload, request.RemovePlacementImage,
+            CurrentUserId(), cancellationToken);
+        if (result.ErrorKey is { } key)
         {
-            var updated = await containerService.UpdatePlacementNotesAsync(
-                id, year, request.PlacementNotes, imageUpload, request.RemovePlacementImage,
-                CurrentUserId(), cancellationToken);
-            return Ok(new
-            {
-                id = updated.ContainerId,
-                year = updated.Year,
-                placementNotes = updated.PlacementNotes,
-                placementImageUrl = updated.PlacementImageUrl,
-                placementImageFileName = updated.PlacementImageFileName,
-            });
+            logger.LogWarning("Container placement notes refused for {ContainerId}, year {Year}: {ErrorKey}", id, year, key);
+            return UnprocessableEntity(containersLocalizer[key, result.ErrorArgs ?? []].Value);
         }
-        catch (InvalidOperationException ex)
+        var updated = result.Value!;
+        return Ok(new
         {
-            return UnprocessableEntity(ex.Message);
-        }
+            id = updated.ContainerId,
+            year = updated.Year,
+            placementNotes = updated.PlacementNotes,
+            placementImageUrl = updated.PlacementImageUrl,
+            placementImageFileName = updated.PlacementImageFileName,
+        });
     }
 
     /// <summary>Clear the placement GeoJSON for a container in the given year.</summary>
