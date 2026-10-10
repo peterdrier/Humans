@@ -148,12 +148,10 @@ internal sealed class FeedbackController(
 
         try
         {
-            await feedbackService.PostMessageAsync(id, user.Id, model.Content);
-            SetSuccess("Message posted.");
-        }
-        catch (InvalidOperationException)
-        {
-            return NotFound();
+            var result = await feedbackService.PostMessageAsync(id, user.Id, model.Content);
+            if (!result.Found) return NotFound();
+            if (!result.Succeeded) SetError(result.Rejection!);
+            else SetSuccess("Message posted.");
         }
         catch (Exception ex)
         {
@@ -179,12 +177,10 @@ internal sealed class FeedbackController(
                 return RedirectToAction(nameof(Index), new { selected = id });
             }
 
-            await feedbackService.UpdateStatusAsync(id, model.Status, user.Id);
-            SetSuccess("Status updated.");
-        }
-        catch (InvalidOperationException)
-        {
-            return NotFound();
+            var result = await feedbackService.UpdateStatusAsync(id, model.Status, user.Id);
+            if (!result.Found) return NotFound();
+            if (!result.Succeeded) SetError(result.Rejection!);
+            else SetSuccess("Status updated.");
         }
         catch (Exception ex)
         {
@@ -210,12 +206,10 @@ internal sealed class FeedbackController(
                 return RedirectToAction(nameof(Index), new { selected = id });
             }
 
-            await feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, user.Id);
-            SetSuccess("Assignment updated.");
-        }
-        catch (InvalidOperationException)
-        {
-            return NotFound();
+            var result = await feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, user.Id);
+            if (!result.Found) return NotFound();
+            if (!result.Succeeded) SetError(result.Rejection!);
+            else SetSuccess("Assignment updated.");
         }
         catch (Exception ex)
         {
@@ -241,12 +235,10 @@ internal sealed class FeedbackController(
                 return RedirectToAction(nameof(Index), new { selected = id });
             }
 
-            await feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber, user.Id);
-            SetSuccess("GitHub issue linked.");
-        }
-        catch (InvalidOperationException)
-        {
-            return NotFound();
+            var result = await feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber, user.Id);
+            if (!result.Found) return NotFound();
+            if (!result.Succeeded) SetError(result.Rejection!);
+            else SetSuccess("GitHub issue linked.");
         }
         catch (Exception ex)
         {
