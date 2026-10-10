@@ -1,12 +1,13 @@
 using Humans.Base.Enums;
 using NodaTime;
+using Humans.EarlyEntry.Contracts;
 
 namespace Humans.Camps.Services;
 
 /// <summary>
 /// Service for managing camps and camp-season state.
 /// </summary>
-internal interface ICampService : ICampServiceRead, IApplicationService
+internal interface ICampService : ICampServiceRead, IApplicationService, IEarlyEntryProvider
 {
     // Registration
     Task<Camp> CreateCampAsync(
@@ -24,6 +25,9 @@ internal interface ICampService : ICampServiceRead, IApplicationService
         CancellationToken cancellationToken = default);
 
     // Queries
+    /// <summary>The live active-event year, falling back to the clock year before an event exists.</summary>
+    Task<int> GetActiveYearAsync(CancellationToken cancellationToken = default);
+
     Task<CampEditData?> GetCampEditDataAsync(
         Guid campId,
         int? preferredYear = null,

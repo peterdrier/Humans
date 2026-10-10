@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.EarlyEntry.Contracts;
 using Humans.Base.Enums;
+using Humans.Base.Interfaces.Caching;
 using Humans.Base.Extensions;
 using Humans.Settings.Contracts;
 using Microsoft.EntityFrameworkCore;
@@ -38,6 +39,20 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         _innerRoleAccess = (ICampRoleCampAccess)_innerSubstitute;
         _settingsService = Substitute.For<ISettingsService>();
         var repo = new CampRepository(CampsDbFactory);
+        var inner = new CampService(
+            repo, AuditLog, Substitute.For<Humans.Teams.Contracts.ISystemTeamSync>(),
+            new InMemoryFileStorage(), Notifier,
+            Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
+            new Lazy<ICampRoleService>(() => Substitute.For<ICampRoleService>()),
+            new Lazy<Humans.CityPlanning.Contracts.ICityPlanningService>(() =>
+                Substitute.For<Humans.CityPlanning.Contracts.ICityPlanningService>()),
+            Substitute.For<IEarlyEntryInvalidator>(), Substitute.For<ICampInfoInvalidator>(),
+            Substitute.For<Humans.Users.Contracts.IUserServiceRead>(), _settingsService,
+            Clock, NullLogger<CampService>.Instance);
+        _innerSubstitute.GetActiveYearAsync(Arg.Any<CancellationToken>())
+            .Returns(ci => inner.GetActiveYearAsync(ci.Arg<CancellationToken>()));
+        _innerSubstitute.GetEarlyEntriesAsync(Arg.Any<CancellationToken>())
+            .Returns(ci => inner.GetEarlyEntriesAsync(ci.Arg<CancellationToken>()));
         _innerSubstitute.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(ci => LoadSettingsAsync(ci.Arg<CancellationToken>()));
         _innerSubstitute.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -58,7 +73,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         services.AddKeyedScoped<IUserMerge>(
             CachingCampService.InnerServiceKey,
             (_, _) => (IUserMerge)_innerSubstitute);
-        services.AddScoped(_ => _settingsService);
         _serviceProvider = services.BuildServiceProvider();
 
         _service = new CachingCampService(
@@ -414,7 +428,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetEarlyEntriesAsync_WarmYear_ProjectsFromCachedCampInfoMembers()
+    public async Task GetEarlyEntriesAsync_DelegatesToInnerActiveMemberProjection()
     {
         var eeStartDate = new LocalDate(2026, 7, 7);
         _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())

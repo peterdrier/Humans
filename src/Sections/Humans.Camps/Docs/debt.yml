@@ -4,10 +4,6 @@ version: 1
 next_id: 8
 inbox:
   - added: 2026-10-04
-    id: CAMPS-5
-    what: "CachingCampService.WithSettings resolves ISettingsService sideways for ActiveYearAsync and GetEarlyEntriesAsync, contrary to decorators-talk-only-to-inner. The decorator also assembles EarlyEntryGrant rows (its IEarlyEntryProvider implementation) rather than delegating. Found during the daily production debt sweep. Plan: move the IEarlyEntryProvider assembly and the active-year read into CampService (which already has a private GetActiveYearAsync) and have the decorator delegate; uses the existing IEarlyEntryProvider contract, no new surface."
-    review: panel
-  - added: 2026-10-04
     id: CAMPS-6
     what: "CampController mutation actions localize InvalidOperationException.Message through campsLocalizer; other catches expose diagnostic Message directly. This violates no-localized-exception-messages and couples member feedback to diagnostic wording. Found during the daily sweep. Plan: the CampService mutations return a result record carrying a refusal key the controller localizes (throw-to-result per no-localized-exception-messages); pre-approved per debt-sweep-standing-policy, list in PR."
     review: panel

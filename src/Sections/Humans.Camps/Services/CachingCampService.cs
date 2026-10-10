@@ -4,7 +4,6 @@ using NodaTime;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.EarlyEntry.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Camps.Services;
@@ -83,30 +82,14 @@ internal sealed class CachingCampService(
         // PublicYear is Settings-owned: activating a new event changes it, and nothing in
         // Settings signals this section's invalidator. Only the camps-owned parts of the
         // snapshot are cached; the year is resolved live on every read.
-        return snapshot with { PublicYear = await ActiveYearAsync(cancellationToken) };
+        return snapshot with { PublicYear = await GetActiveYearAsync(cancellationToken) };
     }
 
-    public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
-    {
-        var activeEvent = await WithSettings(settings => settings.GetActiveEventSettingsAsync(ct));
-        if (activeEvent?.EarlyEntryStartOffset is not { } offset)
-        {
-            return [];
-        }
+    public Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct) =>
+        WithInner(inner => inner.GetEarlyEntriesAsync(ct));
 
-        var eeStartDate = activeEvent.GateOpeningDate.PlusDays(offset);
-        var year = activeEvent.Year;
-        var camps = await GetCampsForYearAsync(year, ct);
-        return camps
-            .SelectMany(camp => camp.Seasons.Where(season => season.Year == year))
-            .SelectMany(season => season.ActiveMembers
-                .Where(member => member.HasEarlyEntry)
-                .Select(member => new EarlyEntryGrant(
-                    member.UserId,
-                    eeStartDate,
-                    $"Camp: {season.Name}")))
-            .ToList();
-    }
+    public Task<int> GetActiveYearAsync(CancellationToken cancellationToken = default) =>
+        WithInner(inner => inner.GetActiveYearAsync(cancellationToken));
 
     public async Task<CampUserInfo> GetCampUserInfoAsync(Guid userId, CancellationToken cancellationToken = default)
     {
@@ -615,28 +598,6 @@ internal sealed class CachingCampService(
         };
 
     // Scope / inner resolution
-
-    /// <summary>
-    /// <see cref="ISettingsService"/> is Scoped; this decorator is a Singleton and a hosted
-    /// service, so it may only reach Settings through a scope (ValidateScopes would reject a
-    /// constructor injection). Mirrors <see cref="WithInner{T}"/>.
-    /// </summary>
-    private async Task<T> WithSettings<T>(Func<ISettingsService, Task<T>> work)
-    {
-        await using var scope = scopeFactory.CreateAsyncScope();
-        return await work(scope.ServiceProvider.GetRequiredService<ISettingsService>());
-    }
-
-    /// <summary>
-    /// The active event's year, falling back to the clock's current year before an event
-    /// exists — same rule as <c>CampService.GetActiveYearAsync</c>, which serves the inner
-    /// (uncached) read.
-    /// </summary>
-    private async Task<int> ActiveYearAsync(CancellationToken ct)
-    {
-        var activeEvent = await WithSettings(settings => settings.GetActiveEventSettingsAsync(ct));
-        return activeEvent?.Year > 0 ? activeEvent.Year : SystemClockYear();
-    }
 
     // Writes and their invalidation can fail after committing. Clear both cache shapes
     // before propagating the original failure; cleanup must survive request cancellation.

@@ -288,8 +288,30 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         return info with { NameLockDates = nameLockDates.ToDictionary(kv => kv.Key, kv => kv.Value) };
     }
 
+    public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
+    {
+        var activeEvent = await _settingsService.GetActiveEventSettingsAsync(ct);
+        if (activeEvent?.EarlyEntryStartOffset is not { } offset)
+        {
+            return [];
+        }
+
+        var eeStartDate = activeEvent.GateOpeningDate.PlusDays(offset);
+        var year = activeEvent.Year;
+        var camps = await GetCampsForYearAsync(year, ct);
+        return camps
+            .SelectMany(camp => camp.Seasons.Where(season => season.Year == year))
+            .SelectMany(season => season.ActiveMembers
+                .Where(member => member.HasEarlyEntry)
+                .Select(member => new EarlyEntryGrant(
+                    member.UserId,
+                    eeStartDate,
+                    $"Camp: {season.Name}")))
+            .ToList();
+    }
+
     /// <summary>The active event's year, falling back to the clock's current year before an event exists.</summary>
-    private async Task<int> GetActiveYearAsync(CancellationToken cancellationToken)
+    public async Task<int> GetActiveYearAsync(CancellationToken cancellationToken = default)
     {
         var activeEvent = await _settingsService.GetActiveEventSettingsAsync(cancellationToken);
         return activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
