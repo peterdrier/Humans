@@ -109,4 +109,8 @@
   <data name="Store_ProductInactive" xml:space="preserve"><value>Dieses Produkt kann nicht mehr bestellt werden.</value></data>
   <data name="Store_LineMissing" xml:space="preserve"><value>Diese Position existiert nicht mehr.</value></data>
   <data name="Store_LineWrongOrder" xml:space="preserve"><value>Diese Position gehört nicht zu dieser Bestellung.</value></data>
+  <data name="Store_CheckoutUnconfigured" xml:space="preserve"><value>Stripe-Zahlungen sind nicht eingerichtet. Wende dich an einen Administrator.</value></data>
+  <data name="Store_PaymentPositive" xml:space="preserve"><value>Der Zahlungsbetrag muss größer als null sein.</value></data>
+  <data name="Store_PaymentAboveBalance" xml:space="preserve"><value>Der Zahlungsbetrag darf den offenen Betrag nicht überschreiten (EUR {0:0.00}).</value></data>
+  <data name="Store_PaymentPending" xml:space="preserve"><value>Eine Zahlung für diese Bestellung wird noch abgewickelt. Warte, bis sie abgeschlossen oder fehlgeschlagen ist, bevor du erneut zahlst.</value></data>
 </root>

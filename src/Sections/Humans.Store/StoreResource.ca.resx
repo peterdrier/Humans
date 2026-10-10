@@ -109,4 +109,8 @@
   <data name="Store_ProductInactive" xml:space="preserve"><value>Aquest producte ja no està disponible per demanar.</value></data>
   <data name="Store_LineMissing" xml:space="preserve"><value>Aquesta línia ja no existeix.</value></data>
   <data name="Store_LineWrongOrder" xml:space="preserve"><value>Aquesta línia no pertany a aquesta comanda.</value></data>
+  <data name="Store_CheckoutUnconfigured" xml:space="preserve"><value>El pagament amb Stripe no està configurat. Contacta amb un administrador.</value></data>
+  <data name="Store_PaymentPositive" xml:space="preserve"><value>L’import del pagament ha de ser superior a zero.</value></data>
+  <data name="Store_PaymentAboveBalance" xml:space="preserve"><value>L’import del pagament no pot superar el saldo pendent (EUR {0:0.00}).</value></data>
+  <data name="Store_PaymentPending" xml:space="preserve"><value>Un pagament d’aquesta comanda està pendent de liquidació. Espera que es completi o falli abans de tornar a pagar.</value></data>
 </root>

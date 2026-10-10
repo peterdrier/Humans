@@ -642,30 +642,36 @@ internal sealed class Service(
     public Task<int> GetCurrentEventYearAsync() => orderReader.GetCurrentEventYearAsync();
 
     [ExternalWrite]
-    public Task<string> CreateStripeCheckoutSessionAsync(
+    public async Task<CheckoutSessionResult> CreateStripeCheckoutSessionAsync(
         OrderDto order,
         decimal amountEur,
         string returnUrl,
         CancellationToken ct = default)
     {
+        string? errorKey = null;
+        decimal? maximumAmount = null;
         if (order.CounterpartyType == OrderCounterpartyType.Team)
-            throw new InvalidOperationException("Team orders are non-billable.");
+            errorKey = "Store_NonBillableText";
+        else if (!stripeService.IsStoreCheckoutConfigured)
+            errorKey = "Store_CheckoutUnconfigured";
+        else if (amountEur <= 0)
+            errorKey = "Store_PaymentPositive";
+        else if (amountEur > order.BalanceEur)
+        {
+            errorKey = "Store_PaymentAboveBalance";
+            maximumAmount = order.BalanceEur;
+        }
+        else if (order.Payments.Any(p => p.Status == PaymentStatus.Pending))
+            errorKey = "Store_PaymentPending";
 
-        if (!stripeService.IsStoreCheckoutConfigured)
-            throw new InvalidOperationException("Stripe is not configured for this environment. Contact an admin.");
-
-        if (amountEur <= 0)
-            throw new InvalidOperationException("Payment amount must be greater than zero.");
-
-        if (amountEur > order.BalanceEur)
-            throw new InvalidOperationException($"Payment amount cannot exceed the outstanding balance (EUR {order.BalanceEur:0.00}).");
-
-        if (order.Payments.Any(p => p.Status == PaymentStatus.Pending))
-            throw new InvalidOperationException("A payment on this order is pending settlement. Wait for it to clear or fail before paying again.");
+        if (errorKey is not null)
+        {
+            logger.LogWarning("Store checkout rejected for order {OrderId}: {ErrorKey}", order.Id, errorKey);
+            return new CheckoutSessionResult(null, errorKey, maximumAmount);
+        }
 
         var description = $"Nobodies Collective - {order.CounterpartyName ?? "Camp order"}";
-
-        return stripeService.CreateCheckoutSessionAsync(
+        var sessionUrl = await stripeService.CreateCheckoutSessionAsync(
             storeOrderId: order.Id,
             amountEur: amountEur,
             successUrl: returnUrl,
@@ -673,6 +679,7 @@ internal sealed class Service(
             customerEmail: order.CounterpartyEmail,
             lineItemDescription: description,
             ct: ct);
+        return new CheckoutSessionResult(sessionUrl, null);
     }
 
     public async Task RecordStripePaymentAsync(

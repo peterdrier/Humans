@@ -1,3 +1,14 @@
+using System.Security.Claims;
+using Humans.Base.Extensions;
+using Humans.Store.Controllers;
+using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
@@ -1273,7 +1284,8 @@ public class ServiceTests
             42.50m,
             "https://humans.test/Store/Order/1", TestContext.Current.CancellationToken);
 
-        url.Should().Be("https://stripe.test/session");
+        url.SessionUrl.Should().Be("https://stripe.test/session");
+        url.ErrorKey.Should().BeNull();
     }
 
     [HumansFact]
@@ -1290,10 +1302,10 @@ public class ServiceTests
         };
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
 
-        var act = () => _service.CreateStripeCheckoutSessionAsync(order, 20m, "https://humans.test/order", TestContext.Current.CancellationToken);
+        var result = await _service.CreateStripeCheckoutSessionAsync(order, 20m, "https://humans.test/order", TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("A payment on this order is pending settlement*");
+        result.ErrorKey.Should().Be("Store_PaymentPending");
+        result.SessionUrl.Should().BeNull();
         await _stripeService.DidNotReceive().CreateCheckoutSessionAsync(
             Arg.Any<Guid>(),
             Arg.Any<decimal>(),
@@ -1310,10 +1322,11 @@ public class ServiceTests
         var order = MakeOrderDto(balanceEur: 10m);
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
 
-        var act = () => _service.CreateStripeCheckoutSessionAsync(order, 10.01m, "https://humans.test/order", TestContext.Current.CancellationToken);
+        var result = await _service.CreateStripeCheckoutSessionAsync(order, 10.01m, "https://humans.test/order", TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Payment amount cannot exceed the outstanding balance*");
+        result.ErrorKey.Should().Be("Store_PaymentAboveBalance");
+        result.MaximumAmount.Should().Be(10m);
+        result.SessionUrl.Should().BeNull();
         await _stripeService.DidNotReceive().CreateCheckoutSessionAsync(
             Arg.Any<Guid>(),
             Arg.Any<decimal>(),
@@ -1330,10 +1343,80 @@ public class ServiceTests
         var order = MakeOrderDto(balanceEur: 10m);
         _stripeService.IsStoreCheckoutConfigured.Returns(false);
 
-        var act = () => _service.CreateStripeCheckoutSessionAsync(order, 5m, "https://humans.test/order", TestContext.Current.CancellationToken);
+        var result = await _service.CreateStripeCheckoutSessionAsync(order, 5m, "https://humans.test/order", TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Stripe is not configured*");
+        result.ErrorKey.Should().Be("Store_CheckoutUnconfigured");
+        result.SessionUrl.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Checkout_refuses_non_positive_amount_without_calling_Stripe(int amount)
+    {
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+        var result = await _service.CreateStripeCheckoutSessionAsync(MakeOrderDto(balanceEur: 10m), amount,
+            "https://humans.test/order", TestContext.Current.CancellationToken);
+        result.ErrorKey.Should().Be("Store_PaymentPositive");
+        result.SessionUrl.Should().BeNull();
+        await _stripeService.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default,
+            default!, default!, default, default!, default);
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task Pay_localizes_refusals_and_hides_Stripe_diagnostics_with_detached_write_token(string culture)
+    {
+        using var scope = new CultureScope(culture);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var localizer = services.GetRequiredService<IStringLocalizer<StoreResource>>();
+        var actor = Guid.NewGuid();
+        var order = new Order { Id = Guid.NewGuid(), Year = 2026, State = OrderState.Open, CounterpartyName = "Camp" };
+        order.Lines.Add(new OrderLine { Id = Guid.NewGuid(), OrderId = order.Id, ProductId = Guid.NewGuid(),
+            Qty = 1, UnitPriceSnapshot = 10m });
+        _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+        var failure = new InvalidOperationException("Private Stripe diagnostic");
+        _stripeService.CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<string>(failure));
+        var users = Substitute.For<IUserServiceRead>();
+        users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var logger = Substitute.For<ILogger<StoreController>>();
+        var http = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test")) };
+        var url = Substitute.For<IUrlHelper>();
+        url.Action(Arg.Any<UrlActionContext>()).Returns("https://humans.test/order");
+        var controller = new StoreController(_service, _campService, authorization, users, logger, localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()), Url = url
+        };
+
+        (await controller.Pay(order.Id, 10.01m, TestContext.Current.CancellationToken))
+            .Should().BeOfType<RedirectToActionResult>();
+        controller.TempData["ErrorMessage"].Should().Be(localizer["Store_PaymentAboveBalance", 10m].Value);
+        await _stripeService.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default,
+            default!, default!, default, default!, default);
+
+        (await controller.Pay(order.Id, 5m, TestContext.Current.CancellationToken))
+            .Should().BeOfType<RedirectToActionResult>();
+        controller.TempData["ErrorMessage"].Should().Be(localizer["Store_CheckoutFailed"].Value);
+        controller.TempData["ErrorMessage"]!.ToString().Should().NotContain("Private Stripe diagnostic");
+        logger.ReceivedCalls().Should().ContainSingle(call => call.GetMethodInfo().Name == "Log"
+            && (LogLevel)call.GetArguments()[0]! == LogLevel.Error && ReferenceEquals(call.GetArguments()[3], failure));
+        await _stripeService.Received(1).CreateCheckoutSessionAsync(order.Id, 5m,
+            "https://humans.test/order", "https://humans.test/order", Arg.Any<string?>(), Arg.Any<string>(),
+            Arg.Is<CancellationToken>(token => !token.CanBeCanceled));
     }
 
     [HumansFact]

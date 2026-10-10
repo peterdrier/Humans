@@ -11,6 +11,8 @@ internal sealed record MutationResult(bool Succeeded, string? ErrorKey)
     public static MutationResult Failure(string errorKey) => new(false, errorKey);
 }
 
+internal sealed record CheckoutSessionResult(string? SessionUrl, string? ErrorKey, decimal? MaximumAmount = null);
+
 internal sealed record ProductSaveRequest(
     Guid? Id,
     int Year,

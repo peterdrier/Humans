@@ -109,4 +109,8 @@
   <data name="Store_ProductInactive" xml:space="preserve"><value>Ce produit ne peut plus être commandé.</value></data>
   <data name="Store_LineMissing" xml:space="preserve"><value>Cette ligne n’existe plus.</value></data>
   <data name="Store_LineWrongOrder" xml:space="preserve"><value>Cette ligne n’appartient pas à cette commande.</value></data>
+  <data name="Store_CheckoutUnconfigured" xml:space="preserve"><value>Le paiement Stripe n’est pas configuré. Contactez un administrateur.</value></data>
+  <data name="Store_PaymentPositive" xml:space="preserve"><value>Le montant du paiement doit être supérieur à zéro.</value></data>
+  <data name="Store_PaymentAboveBalance" xml:space="preserve"><value>Le montant du paiement ne peut pas dépasser le solde dû (EUR {0:0.00}).</value></data>
+  <data name="Store_PaymentPending" xml:space="preserve"><value>Un paiement de cette commande est en cours de règlement. Attendez qu’il soit confirmé ou échoue avant de payer à nouveau.</value></data>
 </root>

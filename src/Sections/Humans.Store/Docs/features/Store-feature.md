@@ -190,3 +190,5 @@ The Store section reads several environment variables — see `Store.md` *Stripe
 - [`ticket-vendor-integration.md`](../../../Humans.Tickets/Docs/features/ticket-vendor-integration.md) — sibling Stripe integration; same RAK + dashboard-only-refunds discipline
 
 - Line and billing-details refusals are returned as resource keys and localized by the member controller. Dependency failures are not interpreted as refusals or exposed as exception-message feedback.
+
+- Checkout business refusals use localized resource keys and amounts. Actual Stripe faults retain Error diagnostics and show only generic localized checkout failure feedback.

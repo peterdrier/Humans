@@ -155,14 +155,15 @@ internal sealed class StoreController(
             // session id we redirect to) has to exist whole or not at all
             // (nobodies-collective/Humans#950). The order read above keeps the
             // token — abandoning a read is free.
-            var sessionUrl = await storeService.CreateStripeCheckoutSessionAsync(
+            var result = await storeService.CreateStripeCheckoutSessionAsync(
                 order, amountEur, orderUrl, CancellationToken.None);
-            return Redirect(sessionUrl);
-        }
-        catch (InvalidOperationException ex)
-        {
-            SetError(ex.Message);
-            return RedirectToAction(nameof(Order), new { id });
+            if (result.ErrorKey is { } key)
+            {
+                SetError(result.MaximumAmount is { } maximumAmount
+                    ? localizer[key, maximumAmount].Value : localizer[key].Value);
+                return RedirectToAction(nameof(Order), new { id });
+            }
+            return Redirect(result.SessionUrl!);
         }
         catch (Exception ex)
         {

@@ -222,7 +222,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - Store index and order GETs retain request cancellation during viewer resolution as well as their existing token-capable reads. Payment, invoice and order mutations retain their existing token boundaries.
 
 - An order has **exactly one counterparty** — `CampSeasonId` xor `TeamId` is non-null. The invariant is service-enforced (in `Service.CreateOrderAsync` / `CreateTeamOrderAsync`), not DB-enforced.
-- **Team orders are non-billable.** `UpdateCounterpartyAsync` returns a localized refusal for any order whose `TeamId is not null`; `RecordStripePaymentAsync`, `CreateStripeCheckoutSessionAsync`, and `IssueInvoiceAsync` reject it with `InvalidOperationException`. The auth handler also permanently denies the `EditCounterparty` and `Pay` operations on team orders regardless of role.
+- **Team orders are non-billable.** `UpdateCounterpartyAsync` and `CreateStripeCheckoutSessionAsync` return localized refusals for any order whose `TeamId is not null`; `RecordStripePaymentAsync` and `IssueInvoiceAsync` reject it with `InvalidOperationException`. The auth handler also permanently denies the `EditCounterparty` and `Pay` operations on team orders regardless of role.
 - A team order is restricted to a **department** (top-level team — `ParentTeamId is null`). Sub-team orders are not supported.
 - At most **one team order per team per year** — enforced by `CreateTeamOrderAsync` via a repo lookup before insert.
 - Camp orders follow the lifecycle: **Open → InvoiceIssued**. There is no return-to-Open transition.
@@ -335,3 +335,5 @@ Acountax's call and change without a deploy:
 Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, Stripe payment recording, deposit-return / refund recording, and Holded invoice issuance are live. Bank-transfer / cash entry, treasury sync, and the Orders admin view are unbuilt — no code for them exists. See [`Store-feature.md`](features/Store-feature.md).
 
 - Line and counterparty mutations return resource-key refusals for invalid quantity, missing records, wrong-order lines, frozen line edits, unavailable products, catalog-year mismatch, and non-billable orders. Controllers localize these in all six cultures; expected refusals log a warning without an exception and perform no mutation (apart from the existing audited legacy-year repair). Dependency faults and cancellation propagate rather than becoming business feedback.
+
+- Checkout returns resource-key refusals for unavailable configuration, non-positive or excessive amounts, and a pending settlement. The controller localizes the outstanding balance and logs actual Stripe failures at Error with generic localized feedback; a dependency InvalidOperationException cannot become a business refusal. Stripe writes remain detached from request cancellation.

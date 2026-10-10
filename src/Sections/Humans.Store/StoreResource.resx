@@ -154,4 +154,8 @@
   <data name="Store_ProductInactive" xml:space="preserve"><value>This product is no longer available to order.</value></data>
   <data name="Store_LineMissing" xml:space="preserve"><value>This line no longer exists.</value></data>
   <data name="Store_LineWrongOrder" xml:space="preserve"><value>This line does not belong to this order.</value></data>
+  <data name="Store_CheckoutUnconfigured" xml:space="preserve"><value>Stripe checkout is not configured. Contact an administrator.</value></data>
+  <data name="Store_PaymentPositive" xml:space="preserve"><value>Payment amount must be greater than zero.</value></data>
+  <data name="Store_PaymentAboveBalance" xml:space="preserve"><value>Payment amount cannot exceed the outstanding balance (EUR {0:0.00}).</value></data>
+  <data name="Store_PaymentPending" xml:space="preserve"><value>A payment on this order is awaiting settlement. Wait for it to clear or fail before paying again.</value></data>
 </root>

@@ -133,14 +133,15 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task CreateStripeCheckoutSessionAsync_throws_on_team_order()
+    public async Task CreateStripeCheckoutSessionAsync_refuses_team_order()
     {
         var teamOrder = MakeOrderDto(
             counterpartyType: OrderCounterpartyType.Team,
             balanceEur: 0m);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.CreateStripeCheckoutSessionAsync(teamOrder, 10m, "https://x", TestContext.Current.CancellationToken));
+        var result = await _service.CreateStripeCheckoutSessionAsync(teamOrder, 10m, "https://x", TestContext.Current.CancellationToken);
+        result.ErrorKey.Should().Be("Store_NonBillableText");
+        result.SessionUrl.Should().BeNull();
     }
 
     [HumansFact]
