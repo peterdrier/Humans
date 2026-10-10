@@ -1297,49 +1297,48 @@ public sealed class TeamServiceTests : TeamsTestHarness
     // ==========================================================================
 
     [HumansFact]
-    public async Task RemoveMemberAsync_TeamNotFound_Throws()
+    public async Task RemoveMemberAsync_TeamNotFound_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _service.RemoveMemberAsync(Guid.NewGuid(), Guid.NewGuid(), actor.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.RemoveMemberAsync(Guid.NewGuid(), Guid.NewGuid(), actor.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not found*");
+        result.ErrorKey.Should().Be("Teams_RemoveMember_TeamMissing");
     }
 
     [HumansFact]
-    public async Task RemoveMemberAsync_SystemTeam_Throws()
+    public async Task RemoveMemberAsync_SystemTeam_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         var target = SeedUser(displayName: "Target");
         var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        SeedTeamMember(team.Id, target.Id);
+        var member = SeedTeamMember(team.Id, target.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _service.RemoveMemberAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*system team*");
+        result.ErrorKey.Should().Be("Teams_RemoveMember_SystemTeam");
+        member.LeftAt.Should().BeNull();
     }
 
     [HumansFact]
-    public async Task RemoveMemberAsync_ActorLacksPermission_Throws()
+    public async Task RemoveMemberAsync_ActorLacksPermission_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         var target = SeedUser(displayName: "Target");
         var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, target.Id);
+        var member = SeedTeamMember(team.Id, target.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _service.RemoveMemberAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*permission*");
+        result.ErrorKey.Should().Be("Teams_RemoveMember_Permission");
+        member.LeftAt.Should().BeNull();
     }
 
     [HumansFact]
-    public async Task RemoveMemberAsync_TargetNotAMember_Throws()
+    public async Task RemoveMemberAsync_TargetNotAMember_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         var target = SeedUser(displayName: "Target");
@@ -1347,10 +1346,27 @@ public sealed class TeamServiceTests : TeamsTestHarness
         SeedTeamMember(team.Id, actor.Id, TeamMemberRole.Coordinator);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _service.RemoveMemberAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not a member*");
+        result.ErrorKey.Should().Be("Teams_RemoveMember_NotMember");
+    }
+
+    [HumansFact]
+    public async Task ReassignAsync_RefusedRemovalStillAbortsMerge()
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var source = SeedUser(displayName: "Source");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        var member = SeedTeamMember(team.Id, source.Id);
+        SeedTeamMember(team.Id, target.Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        Func<Task> act = () => _service.ReassignAsync(source.Id, target.Id, actor.Id,
+            Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*permission*");
+        member.LeftAt.Should().BeNull();
     }
 
     [HumansFact]

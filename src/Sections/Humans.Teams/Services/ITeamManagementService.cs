@@ -335,9 +335,9 @@ internal interface ITeamManagementService : ITeamService
     /// <summary>
     /// Removes a member from a team (admin action). When the removed member was a
     /// coordinator, reconciles their Coordinators system-team membership as part of
-    /// the mutation.
+    /// the mutation. Known refusals return resource keys; dependency failures propagate.
     /// </summary>
-    Task RemoveMemberAsync(
+    Task<TeamMemberRemovalResult> RemoveMemberAsync(
         Guid teamId,
         Guid userId,
         Guid actorUserId,
@@ -575,3 +575,5 @@ internal sealed record TeamUpdateResult(
         if (!Succeeded) throw new InvalidOperationException(ErrorMessage ?? $"Team update rejected: {Conflict}");
     }
 }
+
+internal sealed record TeamMemberRemovalResult(string? ErrorKey = null, string? ErrorMessage = null);

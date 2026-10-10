@@ -579,4 +579,8 @@
   <data name="Teams_Notification_JoinRejected" xml:space="preserve"><value>No se ha aprobado tu solicitud para unirte a {0}</value></data>
   <data name="Teams_Notification_MemberRemoved" xml:space="preserve"><value>Se te ha eliminado de {0}</value></data>
   <data name="Teams_TeamDetail_Calendar" xml:space="preserve"><value>Calendario del equipo</value></data>
+  <data name="Teams_RemoveMember_TeamMissing" xml:space="preserve"><value>Equipo no encontrado.</value></data>
+  <data name="Teams_RemoveMember_SystemTeam" xml:space="preserve"><value>Los miembros de un equipo gestionado por el sistema no se pueden eliminar manualmente.</value></data>
+  <data name="Teams_RemoveMember_Permission" xml:space="preserve"><value>No tienes permiso para eliminar miembros de este equipo.</value></data>
+  <data name="Teams_RemoveMember_NotMember" xml:space="preserve"><value>Esta persona no es miembro de este equipo.</value></data>
 </root>

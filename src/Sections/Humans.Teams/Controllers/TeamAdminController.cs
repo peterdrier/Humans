@@ -258,16 +258,14 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
-        try
+        var result = await _teamService.RemoveMemberAsync(team.Id, userId, user.Id);
+        if (result.ErrorKey is { } errorKey)
         {
-            await _teamService.RemoveMemberAsync(team.Id, userId, user.Id);
+            logger.LogWarning("Refused member removal {MemberUserId} from team {TeamId} by user {UserId}: {ErrorKey}", userId, team.Id, user.Id, errorKey);
+            SetError(localizer[errorKey].Value);
+        }
+        else
             SetSuccess(localizer["Teams_TeamAdmin_MemberRemoved"].Value);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to remove member {MemberUserId} from team {TeamId} by user {UserId}: {Reason}", userId, team.Id, user.Id, ex.Message);
-            SetError(ex.Message);
-        }
 
         return RedirectToAction(nameof(Members), new { slug });
     }

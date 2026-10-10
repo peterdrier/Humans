@@ -1286,24 +1286,26 @@ internal sealed class TeamService(
         return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, teamId, userId);
     }
 
-    public async Task RemoveMemberAsync(
+    public async Task<TeamMemberRemovalResult> RemoveMemberAsync(
         Guid teamId,
         Guid userId,
         Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var team = await repo.GetByIdAsync(teamId, cancellationToken)
-            ?? throw new InvalidOperationException($"Team {teamId} not found");
+        var team = await repo.GetByIdAsync(teamId, cancellationToken);
+        if (team is null)
+            return RefuseMemberRemoval(teamId, userId, actorUserId, "Teams_RemoveMember_TeamMissing", $"Team {teamId} not found");
 
         if (team.IsSystemTeam)
-            throw new InvalidOperationException("Cannot remove members from system team manually");
+            return RefuseMemberRemoval(teamId, userId, actorUserId, "Teams_RemoveMember_SystemTeam", "Cannot remove members from system team manually");
 
         var canApprove = await CanUserApproveRequestsForTeamAsync(teamId, actorUserId, cancellationToken);
         if (!canApprove)
-            throw new InvalidOperationException("User does not have permission to remove members from this team");
+            return RefuseMemberRemoval(teamId, userId, actorUserId, "Teams_RemoveMember_Permission", "User does not have permission to remove members from this team");
 
-        var member = await repo.FindActiveMemberForMutationAsync(teamId, userId, cancellationToken)
-            ?? throw new InvalidOperationException("User is not a member of this team");
+        var member = await repo.FindActiveMemberForMutationAsync(teamId, userId, cancellationToken);
+        if (member is null)
+            return RefuseMemberRemoval(teamId, userId, actorUserId, "Teams_RemoveMember_NotMember", "User is not a member of this team");
 
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
@@ -1345,6 +1347,13 @@ internal sealed class TeamService(
         // reconcile as part of the mutation, not as a caller-remembered follow-up.
         if (wasCoordinator)
             await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
+        return new TeamMemberRemovalResult();
+    }
+
+    private TeamMemberRemovalResult RefuseMemberRemoval(Guid teamId, Guid userId, Guid actorId, string key, string message)
+    {
+        logger.LogWarning("Member removal refused for {UserId} from team {TeamId} by {ActorId}: {ErrorKey}", userId, teamId, actorId, key);
+        return new TeamMemberRemovalResult(key, message);
     }
 
     public async Task<TeamMember> AddMemberToTeamAsync(
@@ -2086,7 +2095,9 @@ internal sealed class TeamService(
                 await AddMemberToTeamAsync(membership.TeamId, targetUserId, actorUserId, cancellationToken);
             }
 
-            await RemoveMemberAsync(membership.TeamId, sourceUserId, actorUserId, cancellationToken);
+            var removal = await RemoveMemberAsync(membership.TeamId, sourceUserId, actorUserId, cancellationToken);
+            if (removal.ErrorKey is not null)
+                throw new InvalidOperationException(removal.ErrorMessage);
         }
 
         // TeamJoinRequest fold.

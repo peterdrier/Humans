@@ -579,4 +579,8 @@
   <data name="Teams_Notification_JoinRejected" xml:space="preserve"><value>No s’ha aprovat la teva sol·licitud per unir-te a {0}</value></data>
   <data name="Teams_Notification_MemberRemoved" xml:space="preserve"><value>T’han tret de {0}</value></data>
   <data name="Teams_TeamDetail_Calendar" xml:space="preserve"><value>Calendari de l’equip</value></data>
+  <data name="Teams_RemoveMember_TeamMissing" xml:space="preserve"><value>Equip no trobat.</value></data>
+  <data name="Teams_RemoveMember_SystemTeam" xml:space="preserve"><value>Els membres d’un equip gestionat pel sistema no es poden eliminar manualment.</value></data>
+  <data name="Teams_RemoveMember_Permission" xml:space="preserve"><value>No tens permís per eliminar membres d’aquest equip.</value></data>
+  <data name="Teams_RemoveMember_NotMember" xml:space="preserve"><value>Aquesta persona no és membre d’aquest equip.</value></data>
 </root>

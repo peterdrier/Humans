@@ -516,7 +516,7 @@ internal sealed class CachingTeamService(
         return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, teamId, userId);
     }
 
-    public Task RemoveMemberAsync(
+    public Task<TeamMemberRemovalResult> RemoveMemberAsync(
         Guid teamId,
         Guid userId,
         Guid actorUserId,
