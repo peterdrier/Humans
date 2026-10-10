@@ -583,21 +583,28 @@ internal sealed partial class WorkgroupService(
 
     // ── Settings ──────────────────────────────────────────────────────────
 
-    public Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default) =>
-        settings.GetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, ct);
+    public async Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default)
+    {
+        // Values saved before the setter normalized may still hold the pasted URL.
+        var stored = await settings.GetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, ct);
+        return stored is null ? null : NormalizeFolderId(stored);
+    }
 
     public async Task SetRootDriveFolderIdAsync(string folderId, Guid actorUserId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(folderId))
             throw new WorkgroupRuleException(WorkgroupErrorKeys.RootFolderNotConfigured);
 
-        // Secretaries paste the folder's browser URL as often as its id; store only the id.
-        var id = DriveFolderUrlId.Match(folderId) is { Success: true } m ? m.Groups["id"].Value : folderId.Trim();
+        var id = NormalizeFolderId(folderId);
         await settings.SetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, id, ct);
         await auditLog.LogAsync(AuditAction.WorkgroupsRootFolderUpdated,
             AuditEntityTypes.WorkgroupsSettings, Guid.Empty,
             $"Root Drive folder set to {id}", actorUserId);
     }
+
+    /// <summary>Secretaries paste the folder's browser URL as often as its id; only the id is kept.</summary>
+    private static string NormalizeFolderId(string value) =>
+        DriveFolderUrlId.Match(value) is { Success: true } m ? m.Groups["id"].Value : value.Trim();
 
     private static readonly Regex DriveFolderUrlId = new(@"/folders/(?<id>[A-Za-z0-9_-]+)", RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1));
 }

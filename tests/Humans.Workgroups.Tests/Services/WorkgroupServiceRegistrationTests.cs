@@ -120,6 +120,15 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
             SettingKeys.WorkgroupsRootDriveFolderId, "0AFLHTK5u0wymUk9PVA", Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task GetRootDriveFolderId_StoredUrl_ReturnsBareId()
+    {
+        Settings.GetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, Arg.Any<CancellationToken>())
+            .Returns("https://drive.google.com/drive/folders/0AFLHTK5u0wymUk9PVA");
+
+        (await NewService().GetRootDriveFolderIdAsync(Ct)).Should().Be("0AFLHTK5u0wymUk9PVA");
+    }
+
     [HumansTheory]
     [Xunit.InlineData("role")]
     [Xunit.InlineData("address")]

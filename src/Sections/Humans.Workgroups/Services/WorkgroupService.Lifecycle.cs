@@ -265,7 +265,7 @@ internal sealed partial class WorkgroupService
     /// </summary>
     private async Task<string> CreateGroupFolderAsync(Workgroup workgroup, CancellationToken ct)
     {
-        var root = await settings.GetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, ct);
+        var root = await GetRootDriveFolderIdAsync(ct);
         if (string.IsNullOrWhiteSpace(root))
             throw new WorkgroupRuleException(WorkgroupErrorKeys.RootFolderNotConfigured);
 
