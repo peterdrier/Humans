@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -45,6 +46,7 @@ public class ShiftAdminControllerTests
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly IVolunteerTrackingService _tracking = Substitute.For<IVolunteerTrackingService>();
+    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
     private readonly ILogger<ShiftAdminController> _logger = Substitute.For<ILogger<ShiftAdminController>>();
     private readonly IRotaCoordinatorMessageService _rotaMessenger = Substitute.For<IRotaCoordinatorMessageService>();
 
@@ -96,7 +98,8 @@ public class ShiftAdminControllerTests
             .Returns(Task.FromException(new InvalidOperationException(reason)));
         var signupBlockId = Guid.NewGuid();
         _signupService.BailRangeAsync(signupBlockId, UserId, null)
-            .Returns(Task.FromException(new InvalidOperationException(reason)));
+            .Returns(new BailRangeResult("Shifts_BailRange_NotAuthorized"));
+        _localizer["Shifts_BailRange_NotAuthorized"].Returns(new LocalizedString("Shifts_BailRange_NotAuthorized", reason));
         var ctrl = BuildSut();
 
         var result = action switch
@@ -113,7 +116,7 @@ public class ShiftAdminControllerTests
             string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
         arguments[0].Should().Be(LogLevel.Warning);
         arguments[3].Should().BeNull();
-        arguments[2]!.ToString().Should().Contain(reason);
+        arguments[2]!.ToString().Should().Contain(string.Equals(action, "BailRange", StringComparison.Ordinal) ? "Shifts_BailRange_NotAuthorized" : reason);
     }
 
     [HumansFact]
@@ -330,6 +333,22 @@ public class ShiftAdminControllerTests
             Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task BailRange_DependencyFaultPropagatesWithoutFeedback()
+    {
+        var blockId = Guid.NewGuid();
+        var fault = new InvalidOperationException("database diagnostic");
+        _signupService.BailRangeAsync(blockId, UserId, null)
+            .Returns(Task.FromException<BailRangeResult>(fault));
+        var controller = BuildSut();
+
+        var action = () => controller.BailRange(Slug, blockId, null);
+
+        (await action.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(fault);
+        controller.TempData.Should().BeEmpty();
+        _logger.ReceivedCalls().Should().BeEmpty();
+    }
+
     private ShiftAdminController BuildSut()
     {
         var ctrl = new ShiftAdminController(
@@ -344,7 +363,8 @@ public class ShiftAdminControllerTests
             new ShiftAdminPageBuilder(_shiftMgmt, Substitute.For<IMembershipCalculatorRead>(), _userService, _teamService),
             new ShiftVolunteerSearchBuilder(_burnSettings, _userService, _shiftView, _signupService, _tracking),
             _rotaMessenger,
-            _logger);
+            _logger,
+            _localizer);
 
         var http = new DefaultHttpContext
         {

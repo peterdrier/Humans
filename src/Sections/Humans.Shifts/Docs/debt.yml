@@ -3,10 +3,6 @@
 version: 1
 next_id: 9
 inbox:
-  - added: 2026-10-04
-    id: SHIFTS-7
-    what: "ShiftSignupService.BailRangeAsync throws localized InvalidOperationException messages for missing calendar, authorization and closed Early Entry. ShiftsController.BailRange displays every InvalidOperationException.Message as member feedback, including dependency faults. Preserve translated refusals while separating developer diagnostics. Found during the daily production sweep. Plan: BailRangeAsync returns a result record carrying the refusal key (missing calendar, not authorized, Early Entry closed) that ShiftsController localizes; other InvalidOperationExceptions propagate. Throw-to-result, pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
   - added: 2026-10-06
     id: SHIFTS-8
     what: "ShiftManagementService.DeleteEventAsync runs ShiftRepository.DeleteEventCascadeAsync, which deletes an event's shifts and signups, and evicts only the shift views — never IEarlyEntryInvalidator — so a shift-derived early-entry answer cached for a signed-up volunteer outlives the delete (/section-doctor on EarlyEntry 2026-10-06)."

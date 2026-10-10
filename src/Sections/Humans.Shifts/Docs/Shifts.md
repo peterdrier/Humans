@@ -416,3 +416,5 @@ folder) on its `Section` entry point, declaring the queue key and the roles that
 issues filed against it — `NoInfoAdmin`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.
+
+Range bail returns untranslated refusal keys for missing event calendar, unauthorized actors and closed Early Entry. Member and department-admin callers translate these keys and log expected refusals without exception objects. Dependency faults propagate and are never displayed as refusal feedback; empty blocks remain idempotent successes. Successful mutation, audit, notifications and early-entry cache invalidation are unchanged.

@@ -181,6 +181,46 @@ public class ShiftsControllerUserActiveSignupsTests
         Assert.Equal("Keeper", Assert.Single(model.UserActiveSignups).RotaName);
     }
 
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task BailRange_LocalizesRefusalKeysInTheMembersCulture(string culture)
+    {
+        const string key = "Shifts_BailRange_NotAuthorized";
+        using var scope = new Humans.Base.Extensions.CultureScope(culture);
+        var resources = new System.Resources.ResourceManager(typeof(ShiftsResource));
+        var translated = resources.GetString(key, System.Globalization.CultureInfo.CurrentUICulture)!;
+        _localizer[key].Returns(new LocalizedString(key, translated));
+        var blockId = Guid.NewGuid();
+        _signupService.BailRangeAsync(blockId, _userId, null).Returns(new BailRangeResult(key));
+        var controller = BuildSut();
+
+        (await controller.BailRange(blockId)).Should().BeOfType<RedirectToActionResult>();
+
+        translated.Should().NotBe(key);
+        controller.TempData["ErrorMessage"].Should().Be(translated);
+        controller.TempData.ContainsKey("SuccessMessage").Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task BailRange_DependencyFaultIsNotDisplayedAsMemberFeedback()
+    {
+        var blockId = Guid.NewGuid();
+        var fault = new InvalidOperationException("database diagnostic");
+        _signupService.BailRangeAsync(blockId, _userId, null)
+            .Returns(Task.FromException<BailRangeResult>(fault));
+        var controller = BuildSut();
+
+        var action = () => controller.BailRange(blockId);
+
+        (await action.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(fault);
+        controller.TempData.Should().BeEmpty();
+    }
+
     private async Task<ShiftBrowseViewModel> BuildBrowseModelAsync()
     {
         var ctrl = BuildSut();
