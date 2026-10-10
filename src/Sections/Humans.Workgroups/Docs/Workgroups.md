@@ -378,7 +378,7 @@ should end is the Board's decision, taken on the register in front of them.
 - **Calendar**: implements `ICalendarFeedContributor` (inbound) — per-user meetings of
   Active groups the user belongs to; public meetings of Active groups for the community
   calendar window. Calendar names nothing of Workgroups.
-- **GoogleIntegration**: implements `IGoogleDriveAccessSource` alongside Teams, using the same reconciliation engine (inbound) — Active group
+- **GoogleIntegration**: implements `IGoogleDriveAccessSource` (inbound) — Active group
   folders → Contributor for current members, Dormant → Viewer, root → Board/Asociado/Colaborador
   readers. Withdrawn folders remain claimed with an empty roster so existing direct
   grants are revoked. Calls `IGoogleSyncService.CreateSubfolderAsync` (registration) and

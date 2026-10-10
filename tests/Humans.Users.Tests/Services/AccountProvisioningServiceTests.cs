@@ -525,8 +525,13 @@ public class AccountProvisioningServiceTests
         var row = SeedPendingReplacement();
         if (string.Equals(change, "Verified", StringComparison.Ordinal)) row.IsVerified = true;
         if (string.Equals(change, "Provider", StringComparison.Ordinal)) row.Provider = "Google";
-        if (string.Equals(change, "Ambiguous", StringComparison.Ordinal)) _userEmailFake.Seed(new UserEmail {
-            Id = Guid.NewGuid(), UserId = Guid.NewGuid(), Email = row.Email, IsVerified = false });
+        if (string.Equals(change, "Ambiguous", StringComparison.Ordinal)) _userEmailFake.Seed(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            Email = row.Email,
+            IsVerified = false
+        });
         var plannedEmailId = string.Equals(change, "Missing", StringComparison.Ordinal) ? Guid.NewGuid() : row.Id;
         Func<Task> act = () => _service.ReplaceUnverifiedEmailAndProvisionAsync(
             row.UserId, plannedEmailId, row.Email, "Victim", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);

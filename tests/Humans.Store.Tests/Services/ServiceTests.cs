@@ -762,7 +762,9 @@ public class ServiceTests
         var ct = TestContext.Current.CancellationToken;
         var order = new Order
         {
-            Id = Guid.NewGuid(), Year = 0, State = OrderState.Open,
+            Id = Guid.NewGuid(),
+            Year = 0,
+            State = OrderState.Open,
             CampSeasonId = campOrder ? Guid.NewGuid() : null,
             TeamId = campOrder ? null : Guid.NewGuid(),
         };
@@ -1011,10 +1013,9 @@ public class ServiceTests
 
         var result = await _service.CreateProductAsync(draft, actor, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeTrue();
-        var newId = result.CreatedId!.Value;
 
         captured.Should().NotBeNull();
-        captured!.Id.Should().Be(newId);
+        var newId = captured!.Id;
         captured.Year.Should().Be(2026);
         captured.Name.Should().Be("Tent");
         captured.Description.Should().Be("Big tent");
@@ -1453,8 +1454,14 @@ public class ServiceTests
         var localizer = services.GetRequiredService<IStringLocalizer<StoreResource>>();
         var actor = Guid.NewGuid();
         var order = new Order { Id = Guid.NewGuid(), Year = 2026, State = OrderState.Open, CounterpartyName = "Camp" };
-        order.Lines.Add(new OrderLine { Id = Guid.NewGuid(), OrderId = order.Id, ProductId = Guid.NewGuid(),
-            Qty = 1, UnitPriceSnapshot = 10m });
+        order.Lines.Add(new OrderLine
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            ProductId = Guid.NewGuid(),
+            Qty = 1,
+            UnitPriceSnapshot = 10m
+        });
         _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
         var failure = new InvalidOperationException("Private Stripe diagnostic");
@@ -1468,14 +1475,18 @@ public class ServiceTests
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         var logger = Substitute.For<ILogger<StoreController>>();
-        var http = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test")) };
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
+        };
         var url = Substitute.For<IUrlHelper>();
         url.Action(Arg.Any<UrlActionContext>()).Returns("https://humans.test/order");
         var controller = new StoreController(_service, _campService, authorization, users, logger, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
-            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()), Url = url
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = url
         };
 
         (await controller.Pay(order.Id, 10.01m, TestContext.Current.CancellationToken))

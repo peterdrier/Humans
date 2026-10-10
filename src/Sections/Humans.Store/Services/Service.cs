@@ -206,7 +206,7 @@ internal sealed class Service(
             AuditAction.StoreProductCreated, AuditEntityTypes.Product, product.Id,
             $"Created store product '{product.Name}' for year {product.Year}",
             actorUserId);
-        return CatalogSaveResult.Success(created: true) with { CreatedId = product.Id };
+        return CatalogSaveResult.Success(created: true);
     }
 
     public async Task<AdminMutationResult> UpdateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)

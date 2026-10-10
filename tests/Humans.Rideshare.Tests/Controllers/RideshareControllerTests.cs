@@ -258,12 +258,15 @@ public sealed class RideshareControllerTests
         {
             "toast" => () => member.Accept(Guid.NewGuid(), Ct),
             "form" => () => member.Offer(new OfferFormViewModel
-                { MemberPlaceLabel = "Paris", DepartureDate = "2026-07-03" }, Ct),
+            { MemberPlaceLabel = "Paris", DepartureDate = "2026-07-03" }, Ct),
             "admin" => () => admin.Index(new RideshareSettingsViewModel
-                {
-                    DestinationLabel = "Burn", InboundWindowStart = "2026-07-01", InboundWindowEnd = "2026-07-03",
-                    OutboundWindowStart = "2026-07-10", OutboundWindowEnd = "2026-07-12"
-                }, Ct),
+            {
+                DestinationLabel = "Burn",
+                InboundWindowStart = "2026-07-01",
+                InboundWindowEnd = "2026-07-03",
+                OutboundWindowStart = "2026-07-10",
+                OutboundWindowEnd = "2026-07-12"
+            }, Ct),
             _ => throw new ArgumentOutOfRangeException(nameof(path))
         };
 

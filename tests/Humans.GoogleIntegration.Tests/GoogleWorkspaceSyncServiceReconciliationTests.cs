@@ -20,9 +20,10 @@ namespace Humans.GoogleIntegration.Tests;
 /// <see cref="GoogleWorkspaceSyncService.SyncResourcesByTypeAsync"/>, per
 /// nobodies-collective/Humans#508. PR #227 (sprint/20260415/batch-3) layered
 /// several fixes onto this flow and every bug was caught by review rather
-/// than by a failing test — this file seeds a real (InMemory) <c>GoogleIntegrationDbContext</c>
+/// than by a failing test — this file seeds a real (InMemory) <c>UsersDbContext</c>
 /// through the real <see cref="GoogleResourceRepository"/> and a real
-/// <see cref="TeamResourceService"/>, and drives the unified Drive engine against the
+/// <see cref="TeamResourceService"/> (resolved via the service-locator seam
+/// exactly as production does), and drives Drive reconciliation against the
 /// existing dev/test <see cref="StubGoogleDrivePermissionsClient"/> fake — no
 /// new fake Google layer was needed; reuse-first applies to test
 /// infrastructure too (memory/process/reuse-first-change-discipline.md).
@@ -76,8 +77,10 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
 
         IGoogleResourceRepository repository = new GoogleResourceRepository(GoogleIntegrationDbFactory);
 
-        // Real TeamResourceService backed by the same in-memory DbContext
-        // as the resource repository above — so
+        // Real TeamResourceService, resolved through the same service-locator seam
+        // GoogleWorkspaceSyncService uses in production
+        // (serviceProvider.GetRequiredService<ITeamResourceService>()), backed by
+        // the same in-memory DbContext as the resource repository above — so
         // deactivation writes land in the same table the test asserts against.
         var teamResourceService = new TeamResourceService(
             repository,
@@ -90,16 +93,9 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             clock: Clock,
             logger: NullLogger<TeamResourceService>.Instance);
 
-        var driveSource = Substitute.For<IGoogleDriveAccessSource>();
-        driveSource.GetExpectedAccessAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult(GoogleIntegrationDb.GoogleResources.Local
-                .Where(r => r.IsActive && r.ResourceType != GoogleResourceType.Group
-                    && (call.ArgAt<string?>(0) is null || string.Equals(r.GoogleId, call.ArgAt<string?>(0), StringComparison.Ordinal)))
-                .Select(r => r.GoogleId).Distinct(StringComparer.Ordinal).ToDictionary(id => id, _ => new GoogleDriveAccessClaim([]), StringComparer.Ordinal)));
-        var driveSync = new GoogleDriveAccessSyncService(
-            [driveSource], _drivePermissions, _userService, _userEmailService, _syncSettingsService,
-            AuditLog, _syncLog, _removalNotifications, repository, _teamService, teamResourceService,
-            Clock, NullLogger<GoogleDriveAccessSyncService>.Instance);
+        var serviceProvider = new ServiceLocatorBuilder()
+            .With<ITeamResourceService>(teamResourceService)
+            .Build();
 
         var options = Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" });
 
@@ -107,20 +103,21 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             Substitute.For<IGoogleGroupProvisioningClient>(),
             _drivePermissions,
             Substitute.For<IGoogleDirectoryClient>(),
+            _teamResourceClient,
             repository,
             Substitute.For<IGoogleSyncOutboxRepository>(),
             _teamService,
             _userService,
             _userEmailService,
             Substitute.For<IGoogleGroupSync>(),
-            driveSync,
-            [driveSource],
             AuditLog,
             _syncLog,
             _syncSettingsService,
+            _removalNotifications,
             Substitute.For<IGoogleDriveAccessSyncScheduler>(),
             options,
             Clock,
+            serviceProvider,
             NullLogger<GoogleWorkspaceSyncService>.Instance);
     }
 

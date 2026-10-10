@@ -1399,7 +1399,9 @@ public class SurveyServiceTests
         if (existingParticipation)
             db.SurveyInvitations.Add(new SurveyInvitation
             {
-                Id = participationId, SurveyId = survey.Id, UserId = userId,
+                Id = participationId,
+                SurveyId = survey.Id,
+                UserId = userId,
                 CreatedAt = _clock.GetCurrentInstant(),
             });
         await db.SaveChangesAsync(ct);

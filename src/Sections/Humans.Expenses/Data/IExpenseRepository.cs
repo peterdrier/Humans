@@ -46,7 +46,6 @@ internal interface IExpenseRepository : IRepository
         Guid reportId, Guid lineId, CancellationToken ct = default);
     Task<Guid> AddAttachmentAsync(
         ExpenseAttachment attachment, CancellationToken ct = default);
-    Task RemoveAttachmentAsync(Guid id, CancellationToken ct = default);
     /// <summary>Atomically replaces (or clears) a report line's attachment and removes superseded metadata.
     /// Returns whether the line exists and its removed attachment for post-commit file cleanup.</summary>
     Task<(bool Found, ExpenseAttachment? Replaced)> ReplaceLineAttachmentAsync(

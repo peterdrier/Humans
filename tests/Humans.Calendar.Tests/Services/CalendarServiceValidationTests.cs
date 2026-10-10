@@ -620,8 +620,10 @@ public class CalendarServiceValidationTests
         var repo = Substitute.For<ICalendarRepository>();
         var ev = new Humans.Calendar.Domain.CalendarEvent
         {
-            Id = Guid.NewGuid(), StartUtc = Instant.FromUtc(2026, 6, 1, 10, 0),
-            RecurrenceRule = "FREQ=DAILY", RecurrenceTimezone = "UTC"
+            Id = Guid.NewGuid(),
+            StartUtc = Instant.FromUtc(2026, 6, 1, 10, 0),
+            RecurrenceRule = "FREQ=DAILY",
+            RecurrenceTimezone = "UTC"
         };
         var failure = new InvalidOperationException("Private occurrence persistence diagnostic");
         repo.GetEventByIdAsync(ev.Id, Arg.Any<CancellationToken>()).Returns(lookup

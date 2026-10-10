@@ -1,7 +1,4 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.GoogleIntegration.Data;
-using Humans.Teams.Contracts;
-using NodaTime.Testing;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
@@ -18,13 +15,12 @@ namespace Humans.GoogleIntegration.Tests;
 public sealed class GoogleDriveAccessSyncServiceTests
 {
     private readonly IGoogleDrivePermissionsClient _drivePermissions = Substitute.For<IGoogleDrivePermissionsClient>();
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IGoogleSyncLogService _googleSyncLog = Substitute.For<IGoogleSyncLogService>();
     private readonly IGoogleRemovalNotificationService _removalNotifications = Substitute.For<IGoogleRemovalNotificationService>();
-    private readonly IGoogleResourceRepository _resources = Substitute.For<IGoogleResourceRepository>();
     private readonly RecordingLogger<GoogleDriveAccessSyncService> _logger = new();
     private readonly Instant _now = Instant.FromUtc(2026, 9, 10, 12, 0);
 
@@ -506,50 +502,6 @@ public sealed class GoogleDriveAccessSyncServiceTests
         diff.ErrorMessage.Should().Be("No Google Drive access source claims this folder");
     }
 
-    [HumansTheory]
-    [Xunit.InlineData("The recipient has no Google account", true)]
-    [Xunit.InlineData("Invalid sharing policy", false)]
-    public async Task LinkedFile_FailedGrantRetainsMetadataAndErrorWithoutMarkingSynced(string message, bool rejected)
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        var userId = Guid.NewGuid();
-        var resource = new GoogleResource { Id = Guid.NewGuid(), TeamId = Guid.NewGuid(),
-            GoogleId = "file-1", Name = "Team document", ResourceType = GoogleResourceType.DriveFile,
-            Url = "https://drive.google.com/file/d/file-1", DrivePermissionLevel = DrivePermissionLevel.Contributor };
-        _resources.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFile, Arg.Any<CancellationToken>())
-            .Returns([resource]);
-        var link = new TeamLink("Team", "team", "Contributor");
-        var source = Substitute.For<IGoogleDriveAccessSource>();
-        source.GetExpectedAccessAsync("file-1", Arg.Any<CancellationToken>()).Returns(
-            new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal) {
-                ["file-1"] = new(new() { [userId] = DrivePermissionLevel.Contributor }, [link],
-                    new Dictionary<Guid, IReadOnlyList<TeamLink>> { [userId] = [link] }) });
-        StubUsers((userId, "Alice", "alice@nobodies.team"));
-        StubFolder("file-1");
-        _drivePermissions.CreatePermissionAsync("file-1", "alice@nobodies.team", "writer", ct)
-            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed, new GoogleClientError(400, message)));
-
-        var diff = await CreateService(source).ReconcileOneAsync("file-1", SyncAction.Execute, ct, GoogleSyncSource.ManualSync);
-
-        diff.ResourceId.Should().Be(resource.Id);
-        diff.ResourceType.Should().Be("DriveFile");
-        diff.ResourceName.Should().Be(resource.Name);
-        diff.Url.Should().Be(resource.Url);
-        diff.LinkedTeams.Should().Equal(link);
-        diff.Members.Single().TeamLinks.Should().Equal(link);
-        diff.ErrorMessage.Should().Contain(message);
-        await _resources.Received(1).SetErrorMessageManyAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(resource.Id)), Arg.Is<string>(error => error.Contains(message)), ct);
-        await _resources.DidNotReceiveWithAnyArgs().MarkSyncedManyAsync(default!, default, default);
-        if (rejected)
-            await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(userId, GoogleEmailStatus.Rejected, ct);
-        else
-            await _userService.DidNotReceiveWithAnyArgs().TrySetGoogleEmailStatusFromSyncAsync(default, default, default);
-        await _googleSyncLog.Received(1).LogAsync(GoogleSyncLogAction.AccessGranted, resource.Id,
-            Arg.Any<string>(), nameof(GoogleDriveAccessSyncService), "alice@nobodies.team", "writer",
-            GoogleSyncSource.ManualSync, success: false, errorMessage: Arg.Any<string?>(), userId: userId, ct: ct);
-    }
-
     private GoogleDriveAccessSyncService CreateService(params IGoogleDriveAccessSource[] sources) => new(
         sources,
         _drivePermissions,
@@ -559,10 +511,6 @@ public sealed class GoogleDriveAccessSyncServiceTests
         _auditLogService,
         _googleSyncLog,
         _removalNotifications,
-        _resources,
-        Substitute.For<ITeamServiceRead>(),
-        Substitute.For<ITeamResourceService>(),
-        new FakeClock(_now),
         _logger);
 
     private readonly Dictionary<Guid, UserInfo> _usersById = new();
@@ -664,23 +612,23 @@ public sealed class GoogleDriveAccessSyncServiceTests
     private sealed class StaticSource(string folderId, params (Guid UserId, DrivePermissionLevel Level)[] access)
         : IGoogleDriveAccessSource
     {
-        public Task<Dictionary<string, GoogleDriveAccessClaim>> GetExpectedAccessAsync(
+        public Task<Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>> GetExpectedAccessAsync(
             string? folderId2 = null,
             CancellationToken ct = default)
         {
             if (folderId2 is not null && !string.Equals(folderId2, folderId, StringComparison.OrdinalIgnoreCase))
-                return Task.FromResult(new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.OrdinalIgnoreCase));
+                return Task.FromResult(new Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>(StringComparer.OrdinalIgnoreCase));
 
-            return Task.FromResult(new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.OrdinalIgnoreCase)
+            return Task.FromResult(new Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>(StringComparer.OrdinalIgnoreCase)
             {
-                [folderId] = new(access.ToDictionary(a => a.UserId, a => a.Level))
+                [folderId] = access.ToDictionary(a => a.UserId, a => a.Level)
             });
         }
     }
 
     private sealed class ThrowingSource : IGoogleDriveAccessSource
     {
-        public Task<Dictionary<string, GoogleDriveAccessClaim>> GetExpectedAccessAsync(
+        public Task<Dictionary<string, Dictionary<Guid, DrivePermissionLevel>>> GetExpectedAccessAsync(
             string? folderId = null,
             CancellationToken ct = default)
             => throw new InvalidOperationException("boom");

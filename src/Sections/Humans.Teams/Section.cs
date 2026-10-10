@@ -38,7 +38,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<TeamService>(sp =>
             (TeamService)sp.GetRequiredKeyedService<ITeamManagementService>(CachingTeamService.InnerServiceKey));
         services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<TeamService>());
-        services.AddScoped<IGoogleDriveAccessSource, TeamDriveAccessSource>();
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TeamService>());
         services.AddScoped<IEarlyEntryProvider>(sp => sp.GetRequiredService<TeamService>());
 

@@ -35,8 +35,7 @@ internal sealed record CatalogSaveResult(
     bool Succeeded,
     bool Created,
     string? ErrorField,
-    string? ErrorMessage,
-    Guid? CreatedId = null)
+    string? ErrorMessage)
 {
     public static CatalogSaveResult Success(bool created) => new(true, created, null, null);
 

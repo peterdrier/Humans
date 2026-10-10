@@ -615,10 +615,14 @@ internal sealed class ExpenseReportService(
         var previousAttachment = line.Attachment is { } previous
             ? new ExpenseAttachment
             {
-                Id = previous.Id, OriginalFileName = previous.OriginalFileName,
-                Extension = previous.Extension, ContentType = previous.ContentType,
-                SizeBytes = previous.SizeBytes, UploadedByUserId = previous.UploadedByUserId,
-                UploadedAt = previous.UploadedAt, HoldedUploadedAt = previous.HoldedUploadedAt,
+                Id = previous.Id,
+                OriginalFileName = previous.OriginalFileName,
+                Extension = previous.Extension,
+                ContentType = previous.ContentType,
+                SizeBytes = previous.SizeBytes,
+                UploadedByUserId = previous.UploadedByUserId,
+                UploadedAt = previous.UploadedAt,
+                HoldedUploadedAt = previous.HoldedUploadedAt,
             }
             : null;
 

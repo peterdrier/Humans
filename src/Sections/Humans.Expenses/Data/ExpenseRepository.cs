@@ -184,15 +184,6 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         return attachment.Id;
     }
 
-    public async Task RemoveAttachmentAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var att = await ctx.ExpenseAttachments.FirstOrDefaultAsync(a => a.Id == id, ct);
-        if (att is null) return;
-        ctx.ExpenseAttachments.Remove(att);
-        await ctx.SaveChangesAsync(ct);
-    }
-
     public async Task<(bool Found, ExpenseAttachment? Replaced)> ReplaceLineAttachmentAsync(
         Guid reportId, Guid lineId, ExpenseAttachment? attachment, CancellationToken ct = default)
     {

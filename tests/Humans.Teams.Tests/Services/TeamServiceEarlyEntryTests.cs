@@ -65,8 +65,13 @@ public sealed class TeamServiceEarlyEntryTests
     public async Task EditConflict_DoesNotProvisionGroupsOrAudit(int conflictValue, bool system)
     {
         var conflict = (TeamUpdateConflict)conflictValue;
-        var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha",
-            SystemTeamType = system ? Humans.Base.Enums.SystemTeamType.Volunteers : Humans.Base.Enums.SystemTeamType.None };
+        var team = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "Alpha",
+            Slug = "alpha",
+            SystemTeamType = system ? Humans.Base.Enums.SystemTeamType.Volunteers : Humans.Base.Enums.SystemTeamType.None
+        };
         _repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
         _repo.UpdateTeamAsync(team, Arg.Any<CancellationToken>()).Returns(conflict);
 

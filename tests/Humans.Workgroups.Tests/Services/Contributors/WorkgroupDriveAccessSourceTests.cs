@@ -31,7 +31,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
 
         var access = await NewSource().GetExpectedAccessAsync("withdrawn-folder", Ct);
 
-        access.Should().ContainKey("withdrawn-folder").WhoseValue.Access.Should().BeEmpty();
+        access.Should().ContainKey("withdrawn-folder").WhoseValue.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -43,7 +43,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
         var access = await NewSource().GetExpectedAccessAsync(ct: Ct);
 
         access.Should().ContainKey("folder-1");
-        access["folder-1"].Access.Should().ContainKey(coordinator).WhoseValue.Should().Be(DrivePermissionLevel.Contributor);
+        access["folder-1"].Should().ContainKey(coordinator).WhoseValue.Should().Be(DrivePermissionLevel.Contributor);
     }
 
     [HumansFact]
@@ -55,7 +55,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
 
         var access = await NewSource().GetExpectedAccessAsync(ct: Ct);
 
-        access["folder-2"].Access[coordinator].Should().Be(DrivePermissionLevel.Viewer);
+        access["folder-2"][coordinator].Should().Be(DrivePermissionLevel.Viewer);
     }
 
     [HumansFact]
@@ -92,7 +92,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
         var access = await NewSource().GetExpectedAccessAsync(ct: Ct);
 
         access.Should().ContainKey("root-folder");
-        var readers = access["root-folder"].Access;
+        var readers = access["root-folder"];
         readers[boardUserId].Should().Be(DrivePermissionLevel.Viewer);
         readers[colaborador].Should().Be(DrivePermissionLevel.Viewer);
         readers[asociado].Should().Be(DrivePermissionLevel.Viewer);

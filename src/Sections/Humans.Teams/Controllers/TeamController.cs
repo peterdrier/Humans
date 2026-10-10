@@ -302,20 +302,20 @@ internal sealed class TeamController(
             .ThenBy(slot => slot.RoleName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(slot => slot.SlotNumber)
             .Select(slot => new RosterSlotViewModel
-        {
-            TeamName = slot.TeamName,
-            TeamSlug = slot.TeamSlug,
-            RoleName = slot.RoleName,
-            RoleDescription = slot.RoleDescription,
-            RoleDefinitionId = slot.RoleDefinitionId,
-            SlotNumber = slot.SlotNumber,
-            Priority = Enum.TryParse<SlotPriority>(slot.Priority, out var sp) ? sp : SlotPriority.None,
-            PriorityBadgeClass = slot.PriorityBadgeClass,
-            Period = Enum.TryParse<RolePeriod>(slot.Period, out var rp) ? rp : RolePeriod.Event,
-            IsFilled = slot.IsFilled,
-            AssignedUserId = slot.AssignedUserId,
-            AssignedUserName = slot.AssignedUserName
-        }).ToList();
+            {
+                TeamName = slot.TeamName,
+                TeamSlug = slot.TeamSlug,
+                RoleName = slot.RoleName,
+                RoleDescription = slot.RoleDescription,
+                RoleDefinitionId = slot.RoleDefinitionId,
+                SlotNumber = slot.SlotNumber,
+                Priority = Enum.TryParse<SlotPriority>(slot.Priority, out var sp) ? sp : SlotPriority.None,
+                PriorityBadgeClass = slot.PriorityBadgeClass,
+                Period = Enum.TryParse<RolePeriod>(slot.Period, out var rp) ? rp : RolePeriod.Event,
+                IsFilled = slot.IsFilled,
+                AssignedUserId = slot.AssignedUserId,
+                AssignedUserName = slot.AssignedUserName
+            }).ToList();
 
         return View(new RosterSummaryViewModel { Slots = slots, PriorityFilter = priority, StatusFilter = status, PeriodFilter = period });
     }
@@ -381,10 +381,12 @@ internal sealed class TeamController(
             PendingRequests = (await teamService.GetPendingRequestsForUserAsync(user.Id, ct))
                 .Select(request => new TeamJoinRequestSummaryViewModel
                 {
-                    Id = request.Id, TeamId = request.TeamId,
+                    Id = request.Id,
+                    TeamId = request.TeamId,
                     TeamName = request.TeamName ?? string.Empty,
                     TeamSlug = request.TeamSlug ?? string.Empty,
-                    Status = request.Status, StatusBadgeClass = "bg-warning text-dark",
+                    Status = request.Status,
+                    StatusBadgeClass = "bg-warning text-dark",
                     RequestedAt = request.RequestedAt.ToDateTimeUtc()
                 }).ToList()
         };

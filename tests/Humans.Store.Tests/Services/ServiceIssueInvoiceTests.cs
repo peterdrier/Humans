@@ -465,8 +465,11 @@ public class ServiceIssueInvoiceTests
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         var logger = Substitute.For<ILogger<StoreController>>();
-        var http = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, _actor.ToString())], "test")) };
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, _actor.ToString())], "test"))
+        };
         var controller = new StoreController(_service, _camps, authorization, users, logger, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
