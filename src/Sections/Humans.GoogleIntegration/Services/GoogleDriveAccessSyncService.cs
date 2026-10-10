@@ -5,50 +5,69 @@ using Humans.Users.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Helpers;
 using Humans.GoogleIntegration.Services.Workspace;
+using Humans.GoogleIntegration.Data;
+using Humans.Teams.Contracts;
+using NodaTime;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>
-/// <see cref="IGoogleDriveSync"/> impl: reconciles Drive folders claimed
-/// through <see cref="IGoogleDriveAccessSource"/> — the source fan-out.
-/// Mirrors <see cref="GoogleGroupSyncService"/> exactly, for Drive folders
-/// instead of Groups. The Teams-keyed <c>google_resources</c> Drive path
-/// (<see cref="GoogleWorkspaceSyncService"/>) is untouched by this class.
-/// </summary>
+/// <summary>Reconciles Drive resources claimed by Teams and Workgroups through their public sources.</summary>
+[CrossSectionWrite("Drive sync records rejected Google addresses through Users.")]
 internal sealed class GoogleDriveAccessSyncService(
     IEnumerable<IGoogleDriveAccessSource> sources,
     IGoogleDrivePermissionsClient drivePermissions,
-    IUserServiceRead userService,
+    IUserService userService,
     IUserEmailService userEmailService,
     ISyncSettingsService syncSettingsService,
     IAuditLogService auditLogService,
     IGoogleSyncLogService googleSyncLog,
     IGoogleRemovalNotificationService removalNotifications,
+    IGoogleResourceRepository resourceRepository,
+    ITeamServiceRead teamService,
+    ITeamResourceService teamResourceService,
+    IClock clock,
     ILogger<GoogleDriveAccessSyncService> logger) : IGoogleDriveSync
 {
     public async Task<SyncPreviewResult> ReconcileAllAsync(
         SyncAction action,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        GoogleResourceType? resourceType = null,
+        GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
-        var claims = await LoadClaimsAsync(folderId: null, ct);
+        var resources = await LoadResourcesAsync(ct);
+        var claims = await LoadClaimsAsync(sources, folderId: null, logger, ct);
+        claims = claims.Select(claim => claim with
+        {
+            Resources = resources.Where(r => string.Equals(r.GoogleId, claim.FolderId, StringComparison.Ordinal)).ToList()
+        }).Where(claim => resourceType is null || (claim.Resources.Count == 0
+            ? resourceType == GoogleResourceType.DriveFolder
+            : claim.Resources.Any(r => r.ResourceType == resourceType)))
+            .Select(claim => claim with
+            {
+                Resources = claim.Resources.OrderBy(r => resourceType is not null && r.ResourceType != resourceType).ToList()
+            }).ToList();
         var diffs = new List<ResourceSyncDiff>();
 
         foreach (var claim in claims)
         {
-            diffs.Add(claim.IsCollision
-                ? await BuildCollisionDiffAsync(claim)
-                : await ReconcileClaimAsync(claim, action, ct));
+            diffs.Add(await ReconcileClaimSafelyAsync(claim, action, syncSource, ct));
         }
 
+        if (action == SyncAction.Execute
+            && await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, ct) == SyncMode.AddAndRemove)
+            await DeactivateRetiredTeamResourcesAsync(
+                resources.Where(r => resourceType is null || r.ResourceType == resourceType).ToList(), diffs, ct);
         return new SyncPreviewResult { Diffs = diffs };
     }
 
     public async Task<ResourceSyncDiff> ReconcileOneAsync(
         string folderId,
         SyncAction action,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
-        var claims = await LoadClaimsAsync(folderId, ct);
+        var resources = await LoadResourcesAsync(ct);
+        var claims = await LoadClaimsAsync(sources, folderId, logger, ct);
         var claim = claims.SingleOrDefault(c =>
             string.Equals(c.FolderId, folderId, StringComparison.OrdinalIgnoreCase));
 
@@ -56,25 +75,29 @@ internal sealed class GoogleDriveAccessSyncService(
         {
             const string error = "No Google Drive access source claims this folder";
             logger.LogWarning("Google Drive access sync: no source claims folder id {FolderId}", folderId);
-            return BuildErrorDiff(folderId, error);
+            return BuildDiff(new FolderClaim(folderId, 0, [], new([]),
+                resources.Where(r => string.Equals(r.GoogleId, folderId, StringComparison.Ordinal)).ToList()), [], error);
         }
 
-        return claim.IsCollision
-            ? await BuildCollisionDiffAsync(claim)
-            : await ReconcileClaimAsync(claim, action, ct);
+        claim = claim with
+        {
+            Resources = resources.Where(r => string.Equals(r.GoogleId, folderId, StringComparison.Ordinal)).ToList()
+        };
+        return await ReconcileClaimSafelyAsync(claim, action, syncSource, ct);
     }
 
     /// <summary>
     /// Loads every source's claims, one <see cref="IGoogleDriveAccessSource"/>
     /// at a time so a throwing source is skipped without aborting the others.
     /// </summary>
-    private async Task<IReadOnlyList<FolderClaim>> LoadClaimsAsync(string? folderId, CancellationToken ct)
+    internal static async Task<IReadOnlyList<FolderClaim>> LoadClaimsAsync(
+        IEnumerable<IGoogleDriveAccessSource> sources, string? folderId, ILogger logger, CancellationToken ct)
     {
-        var claims = new List<(string SourceName, string FolderId, Dictionary<Guid, DrivePermissionLevel> Access)>();
+        var claims = new List<(string SourceName, string FolderId, GoogleDriveAccessClaim Claim)>();
 
         foreach (var source in sources)
         {
-            Dictionary<string, Dictionary<Guid, DrivePermissionLevel>> expected;
+            Dictionary<string, GoogleDriveAccessClaim> expected;
             try
             {
                 expected = await source.GetExpectedAccessAsync(folderId, ct);
@@ -102,13 +125,94 @@ internal sealed class GoogleDriveAccessSyncService(
                 g.Key,
                 g.Count(),
                 g.Select(c => c.SourceName).Distinct(StringComparer.Ordinal).ToArray(),
-                g.First().Access))
+                g.First().Claim, []))
             .ToList();
+    }
+
+    private async Task<IReadOnlyList<GoogleResource>> LoadResourcesAsync(CancellationToken ct)
+    {
+        var resources = new List<GoogleResource>();
+        foreach (var type in new[] { GoogleResourceType.DriveFolder, GoogleResourceType.DriveFile, GoogleResourceType.SharedDrive })
+            resources.AddRange(await resourceRepository.GetActiveByResourceTypeAsync(type, ct));
+        return resources;
+    }
+
+    private async Task<ResourceSyncDiff> ReconcileClaimSafelyAsync(
+        FolderClaim claim, SyncAction action, GoogleSyncSource syncSource, CancellationToken ct)
+    {
+        ResourceSyncDiff diff;
+        try
+        {
+            diff = claim.IsCollision
+                ? await BuildCollisionDiffAsync(claim)
+                : await ReconcileClaimAsync(claim, action, syncSource, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Error syncing Drive resource {GoogleId}", claim.FolderId);
+            diff = BuildDiff(claim, [], ex.Message);
+        }
+
+        if (action == SyncAction.Execute && claim.Resources.Count > 0)
+        {
+            var ids = claim.Resources.Select(r => r.Id).ToList();
+            if (diff.ErrorMessage is not null)
+                await resourceRepository.SetErrorMessageManyAsync(ids, diff.ErrorMessage, ct);
+            else if (await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, ct) != SyncMode.None)
+                await resourceRepository.MarkSyncedManyAsync(ids, clock.GetCurrentInstant(), ct);
+        }
+        return diff;
+    }
+
+    private async Task DeactivateRetiredTeamResourcesAsync(
+        IReadOnlyList<GoogleResource> resources, IReadOnlyList<ResourceSyncDiff> diffs, CancellationToken ct)
+    {
+        var teamsById = await teamService.GetTeamsAsync(ct);
+        var diffsById = diffs.Where(d => d.GoogleId is not null)
+            .ToDictionary(d => d.GoogleId!, StringComparer.Ordinal);
+        foreach (var group in resources.Where(r => teamsById.TryGetValue(r.TeamId, out var team) && !team.IsActive)
+            .GroupBy(r => (r.TeamId, r.ResourceType)))
+        {
+            if (group.All(r => diffsById.TryGetValue(r.GoogleId, out var diff) && diff.ErrorMessage is null))
+                await teamResourceService.DeactivateResourcesForTeamAsync(group.Key.TeamId, group.Key.ResourceType, ct);
+        }
+    }
+
+    private async Task HydrateExtraMembersAsync(List<MemberSyncStatus> members, CancellationToken ct)
+    {
+        var extraEmails = members.Where(m => m.State == MemberSyncState.Extra)
+            .Select(m => m.Email).Distinct(GmailAliasEmailComparer.Instance).ToList();
+        if (extraEmails.Count == 0) return;
+        var owners = UserEmailMatchOwner.ByEmail(await userEmailService.MatchByEmailsAsync(extraEmails, ct));
+        var users = await userService.GetUserInfosAsync(owners.Values.Select(m => m.UserId).Distinct().ToList(), ct);
+        for (var i = 0; i < members.Count; i++)
+        {
+            var member = members[i];
+            if (member.State == MemberSyncState.Extra && owners.TryGetValue(member.Email, out var owner)
+                && users.TryGetValue(owner.UserId, out var user))
+                members[i] = member with { UserId = user.Id, DisplayName = user.BurnerName, ProfilePictureUrl = user.ProfilePictureUrl };
+        }
+    }
+
+    private static ResourceSyncDiff BuildDiff(FolderClaim claim, List<MemberSyncStatus> members, string? error = null)
+    {
+        var primary = claim.Resources.FirstOrDefault();
+        return new ResourceSyncDiff
+        {
+            ResourceId = primary?.Id ?? Guid.Empty,
+            ResourceName = primary?.Name ?? claim.FolderId,
+            ResourceType = (primary?.ResourceType ?? GoogleResourceType.DriveFolder).ToString(),
+            GoogleId = claim.FolderId, Url = primary?.Url, ErrorMessage = error,
+            PermissionLevel = primary is { DrivePermissionLevel: not DrivePermissionLevel.None }
+                ? primary.DrivePermissionLevel.ToString() : null,
+            LinkedTeams = claim.Claim.LinkedTeams?.ToList() ?? [], Members = members
+        };
     }
 
     private async Task<ResourceSyncDiff> ReconcileClaimAsync(
         FolderClaim claim,
         SyncAction action,
+        GoogleSyncSource syncSource,
         CancellationToken ct)
     {
         var expectedMembers = await HydrateExpectedMembersAsync(claim.Access, ct);
@@ -118,31 +222,32 @@ internal sealed class GoogleDriveAccessSyncService(
         {
             var error = $"Google Drive permission list failed (HTTP {permsResult.Error?.StatusCode}): {permsResult.Error?.RawMessage}";
             logger.LogWarning("Google Drive access sync failed for {FolderId}: {Error}", claim.FolderId, error);
-            return BuildErrorDiff(claim.FolderId, error);
+            return BuildDiff(claim, [], error);
         }
 
         var plan = BuildPlan(expectedMembers, permsResult.Permissions);
+        for (var i = 0; i < plan.Members.Count; i++)
+        {
+            var member = plan.Members[i];
+            if (member.UserId is { } userId && claim.Claim.MemberTeamLinks?.TryGetValue(userId, out var links) == true)
+                plan.Members[i] = member with { TeamLinks = links.ToList() };
+        }
+        await HydrateExtraMembersAsync(plan.Members, ct);
+        var errors = new List<string>();
 
         if (action == SyncAction.Execute)
         {
             var mode = await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, ct);
             if (mode != SyncMode.None)
             {
-                await ApplyMissingAndChangedAsync(claim, plan, mode, ct);
+                errors.AddRange(await ApplyMissingAndChangedAsync(claim, plan, mode, syncSource, ct));
 
                 if (mode == SyncMode.AddAndRemove)
-                    await ApplyExtraAsync(claim, plan, ct);
+                    errors.AddRange(await ApplyExtraAsync(claim, plan, syncSource, ct));
             }
         }
 
-        return new ResourceSyncDiff
-        {
-            ResourceId = Guid.Empty,
-            ResourceName = claim.FolderId,
-            ResourceType = GoogleResourceType.DriveFolder.ToString(),
-            GoogleId = claim.FolderId,
-            Members = plan.Members
-        };
+        return BuildDiff(claim, plan.Members, errors.Count == 0 ? null : string.Join("; ", errors));
     }
 
     private async Task<Dictionary<Guid, DriveExpectedMember>> HydrateExpectedMembersAsync(
@@ -187,7 +292,7 @@ internal sealed class GoogleDriveAccessSyncService(
                 continue;
 
             // Drive rejects a Gmail "+tag" address and reports/grants the
-            // canonical form (#945), same as the Teams-keyed Drive path.
+            // canonical form (#945), matching the immediate join gateway.
             var canonicalEmail = EmailNormalization.CanonicalizeGmail(email);
             result[userId] = new DriveExpectedMember(userId, canonicalEmail, user.BurnerName, user.ProfilePictureUrl, level);
         }
@@ -199,7 +304,10 @@ internal sealed class GoogleDriveAccessSyncService(
         IReadOnlyDictionary<Guid, DriveExpectedMember> expectedMembers,
         IReadOnlyList<DrivePermission> permissions)
     {
-        var byEmail = expectedMembers.Values.ToDictionary(m => m.Email, NormalizingEmailComparer.Instance);
+        // Drive canonicalizes Gmail aliases; union users resolving to the same address
+        // before planning so the highest claim wins rather than producing duplicate grants.
+        var byEmail = expectedMembers.Values.GroupBy(m => m.Email, NormalizingEmailComparer.Instance)
+            .ToDictionary(g => g.Key, g => g.MaxBy(m => m.Level)!, NormalizingEmailComparer.Instance);
 
         var allEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
         var directEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
@@ -230,7 +338,7 @@ internal sealed class GoogleDriveAccessSyncService(
         }
 
         var members = new List<MemberSyncStatus>();
-        foreach (var member in expectedMembers.Values)
+        foreach (var member in byEmail.Values)
         {
             roleByEmail.TryGetValue(member.Email, out var currentRole);
             inheritedLevelByEmail.TryGetValue(member.Email, out var inheritedLevel);
@@ -278,8 +386,9 @@ internal sealed class GoogleDriveAccessSyncService(
         return new DrivePlan(members, idByEmail);
     }
 
-    private async Task ApplyMissingAndChangedAsync(FolderClaim claim, DrivePlan plan, SyncMode mode, CancellationToken ct)
+    private async Task<List<string>> ApplyMissingAndChangedAsync(FolderClaim claim, DrivePlan plan, SyncMode mode, GoogleSyncSource syncSource, CancellationToken ct)
     {
+        var errors = new List<string>();
         foreach (var member in plan.Members.Where(m => m.State is MemberSyncState.Missing or MemberSyncState.WrongRole))
         {
             if (member.State == MemberSyncState.WrongRole && plan.PermissionIdByEmail.TryGetValue(member.Email, out var permissionId))
@@ -289,7 +398,7 @@ internal sealed class GoogleDriveAccessSyncService(
                 if (mode == SyncMode.AddOnly &&
                     !(DrivePermissionRoleMapper.Parse(member.CurrentRole) < DrivePermissionRoleMapper.Parse(member.ExpectedRole)))
                     continue;
-                await UpdateAndLogAsync(claim, member, permissionId, ct);
+                if (await UpdateAndLogAsync(claim, member, permissionId, syncSource, ct) is { } updateError) errors.Add(updateError);
                 continue;
             }
 
@@ -299,10 +408,10 @@ internal sealed class GoogleDriveAccessSyncService(
             {
                 case DrivePermissionCreateOutcome.Created:
                     await googleSyncLog.LogAsync(
-                        GoogleSyncLogAction.AccessGranted, Guid.Empty,
+                        GoogleSyncLogAction.AccessGranted, claim.ResourceId,
                         $"Granted Drive access ({role}) to {member.Email} ({claim.FolderId})",
                         nameof(GoogleDriveAccessSyncService),
-                        member.Email, role, GoogleSyncSource.ScheduledSync, success: true,
+                        member.Email, role, syncSource, success: true,
                         userId: member.UserId, ct: ct);
                     break;
                 case DrivePermissionCreateOutcome.AlreadyExists:
@@ -312,17 +421,22 @@ internal sealed class GoogleDriveAccessSyncService(
                     var error = $"Google Drive add failed for {member.Email} (HTTP {result.Error?.StatusCode}): {result.Error?.RawMessage}";
                     logger.LogWarning("Google Drive access sync failed for {FolderId} member {Email}: {Error}", claim.FolderId, member.Email, error);
                     await googleSyncLog.LogAsync(
-                        GoogleSyncLogAction.AccessGranted, Guid.Empty, error,
+                        GoogleSyncLogAction.AccessGranted, claim.ResourceId, error,
                         nameof(GoogleDriveAccessSyncService),
-                        member.Email, role, GoogleSyncSource.ScheduledSync, success: false,
+                        member.Email, role, syncSource, success: false,
                         errorMessage: error, userId: member.UserId, ct: ct);
+                    errors.Add(error);
+                    if (result.Error is { IsDriveTargetRejection: true } && member.UserId is { } rejectedUserId)
+                        await userService.TrySetGoogleEmailStatusFromSyncAsync(rejectedUserId, GoogleEmailStatus.Rejected, ct);
                     break;
             }
         }
+        return errors;
     }
 
-    private async Task ApplyExtraAsync(FolderClaim claim, DrivePlan plan, CancellationToken ct)
+    private async Task<List<string>> ApplyExtraAsync(FolderClaim claim, DrivePlan plan, GoogleSyncSource syncSource, CancellationToken ct)
     {
+        var errors = new List<string>();
         foreach (var member in plan.Members.Where(m => m.State == MemberSyncState.Extra))
         {
             if (!plan.PermissionIdByEmail.TryGetValue(member.Email, out var permissionId))
@@ -332,18 +446,20 @@ internal sealed class GoogleDriveAccessSyncService(
             {
                 // This is a mixed permission: only the direct elevation is extra.
                 // Preserve the inherited floor and do not claim all access was removed.
-                await UpdateAndLogAsync(claim, member, permissionId, ct);
+                if (await UpdateAndLogAsync(claim, member, permissionId, syncSource, ct) is { } error) errors.Add(error);
                 continue;
             }
 
             // Telling someone their access was removed when the delete failed (or the
             // permission turned out to be inherited and untouchable) is a false notice.
-            if (await DeleteAndLogAsync(claim, member.Email, member.UserId, permissionId, ct))
-                await NotifyRemovalAsync(member.Email, claim.FolderId, ct);
+            var deletion = await DeleteAndLogAsync(claim, member.Email, member.UserId, permissionId, syncSource, ct);
+            if (deletion.Error is not null) errors.Add(deletion.Error);
+            if (deletion.Deleted) await NotifyRemovalAsync(member.Email, claim, ct);
         }
+        return errors;
     }
 
-    private async Task UpdateAndLogAsync(FolderClaim claim, MemberSyncStatus member, string permissionId, CancellationToken ct)
+    private async Task<string?> UpdateAndLogAsync(FolderClaim claim, MemberSyncStatus member, string permissionId, GoogleSyncSource syncSource, CancellationToken ct)
     {
         var role = member.ExpectedRole!;
         var error = await drivePermissions.UpdatePermissionAsync(claim.FolderId, permissionId, role, ct);
@@ -358,25 +474,26 @@ internal sealed class GoogleDriveAccessSyncService(
                 claim.FolderId, member.Email, description);
 
         await googleSyncLog.LogAsync(
-            action, Guid.Empty, description, nameof(GoogleDriveAccessSyncService),
-            member.Email, role, GoogleSyncSource.ScheduledSync, success: error is null,
+            action, claim.ResourceId, description, nameof(GoogleDriveAccessSyncService),
+            member.Email, role, syncSource, success: error is null,
             errorMessage: error is null ? null : description, userId: member.UserId, ct: ct);
+        return error is null ? null : description;
     }
 
     /// <summary>Deletes one permission and logs the outcome. True only when Drive actually removed it.</summary>
-    private async Task<bool> DeleteAndLogAsync(FolderClaim claim, string email, Guid? userId, string permissionId, CancellationToken ct)
+    private async Task<(bool Deleted, string? Error)> DeleteAndLogAsync(FolderClaim claim, string email, Guid? userId, string permissionId, GoogleSyncSource syncSource, CancellationToken ct)
     {
         var result = await drivePermissions.DeletePermissionAsync(claim.FolderId, permissionId, ct);
         switch (result.Outcome)
         {
             case DrivePermissionDeleteOutcome.Deleted:
                 await googleSyncLog.LogAsync(
-                    GoogleSyncLogAction.AccessRevoked, Guid.Empty,
+                    GoogleSyncLogAction.AccessRevoked, claim.ResourceId,
                     $"Removed {email} from Drive folder {claim.FolderId}",
                     nameof(GoogleDriveAccessSyncService),
-                    email, "MEMBER", GoogleSyncSource.ScheduledSync, success: true,
+                    email, "MEMBER", syncSource, success: true,
                     userId: userId, ct: ct);
-                return true;
+                return (true, null);
             case DrivePermissionDeleteOutcome.InheritedPermission:
                 logger.LogWarning(
                     "Skipping removal of {Email} from {FolderId} — permission is inherited, not direct",
@@ -386,27 +503,28 @@ internal sealed class GoogleDriveAccessSyncService(
                 var error = $"Google Drive remove failed for {email} (HTTP {result.Error?.StatusCode}): {result.Error?.RawMessage}";
                 logger.LogWarning("Google Drive access sync failed for {FolderId} member {Email}: {Error}", claim.FolderId, email, error);
                 await googleSyncLog.LogAsync(
-                    GoogleSyncLogAction.AccessRevoked, Guid.Empty, error,
+                    GoogleSyncLogAction.AccessRevoked, claim.ResourceId, error,
                     nameof(GoogleDriveAccessSyncService),
-                    email, "MEMBER", GoogleSyncSource.ScheduledSync, success: false,
+                    email, "MEMBER", syncSource, success: false,
                     errorMessage: error, userId: userId, ct: ct);
-                break;
+                return (false, error);
         }
 
-        return false;
+        return (false, null);
     }
 
-    private async Task NotifyRemovalAsync(string email, string folderId, CancellationToken ct)
+    private async Task NotifyRemovalAsync(string email, FolderClaim claim, CancellationToken ct)
     {
         try
         {
             await removalNotifications.NotifyRemovalAsync(
-                email, GoogleResourceType.DriveFolder, resourceName: null, folderId,
+                email, claim.Resources.FirstOrDefault()?.ResourceType ?? GoogleResourceType.DriveFolder,
+                claim.Resources.FirstOrDefault()?.Name, claim.Resources.FirstOrDefault()?.Url ?? claim.FolderId,
                 SyncRemovalReason.Reconciliation, ct);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to enqueue Drive removal notification for {Email} from {FolderId}", email, folderId);
+            logger.LogError(ex, "Failed to enqueue Drive removal notification for {Email} from {FolderId}", email, claim.FolderId);
         }
     }
 
@@ -417,22 +535,13 @@ internal sealed class GoogleDriveAccessSyncService(
 
         await auditLogService.LogAsync(
             AuditAction.AnomalousPermissionDetected,
-            GoogleResourceType.DriveFolder.ToString(),
-            Guid.Empty,
+            (claim.Resources.FirstOrDefault()?.ResourceType ?? GoogleResourceType.DriveFolder).ToString(),
+            claim.ResourceId,
             error,
             nameof(GoogleDriveAccessSyncService));
 
-        return BuildErrorDiff(claim.FolderId, error);
+        return BuildDiff(claim, [], error);
     }
-
-    private static ResourceSyncDiff BuildErrorDiff(string folderId, string error) => new()
-    {
-        ResourceId = Guid.Empty,
-        ResourceName = folderId,
-        ResourceType = GoogleResourceType.DriveFolder.ToString(),
-        GoogleId = folderId,
-        ErrorMessage = error
-    };
 
     private static bool IsDirectManagedPermission(DrivePermission perm)
     {
@@ -446,9 +555,12 @@ internal sealed class GoogleDriveAccessSyncService(
         return perm.HasDirectComponent;
     }
 
-    private sealed record FolderClaim(string FolderId, int ClaimCount, string[] SourceNames, Dictionary<Guid, DrivePermissionLevel> Access)
+    internal sealed record FolderClaim(string FolderId, int ClaimCount, string[] SourceNames,
+        GoogleDriveAccessClaim Claim, IReadOnlyList<GoogleResource> Resources)
     {
         public bool IsCollision => ClaimCount > 1;
+        public Dictionary<Guid, DrivePermissionLevel> Access => Claim.Access;
+        public Guid ResourceId => Resources.FirstOrDefault()?.Id ?? Guid.Empty;
     }
 
     private sealed record DriveExpectedMember(Guid UserId, string Email, string DisplayName, string? ProfilePictureUrl, DrivePermissionLevel Level);
