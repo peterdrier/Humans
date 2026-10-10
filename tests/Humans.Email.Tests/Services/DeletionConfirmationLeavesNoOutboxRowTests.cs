@@ -115,7 +115,7 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
 
         await _transport.Received(1).SendAsync(
             ErasedEmail, ErasedName, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
-            Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(), Arg.Any<CancellationToken>(), true, "account_deleted");
     }
 
     [HumansFact]
@@ -124,7 +124,7 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
         _transport.SendAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), true, "account_deleted")
             .Returns(Task.FromException(new InvalidOperationException("SMTP down")));
 
         // The erasure has already committed by the time the courtesy mail goes out;

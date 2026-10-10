@@ -83,7 +83,8 @@ internal sealed class OutboxEmailService(
             // address for the same reason.
             await transport.SendAsync(
                 message.RecipientEmail, message.RecipientName, message.Subject,
-                wrappedHtml, plainText, message.ReplyTo, headers, cancellationToken: cancellationToken);
+                wrappedHtml, plainText, message.ReplyTo, headers, cancellationToken: cancellationToken,
+                redact: true, templateName: message.TemplateName);
 
             metrics.RecordEmailQueued(message.TemplateName);
             logger.LogInformation(

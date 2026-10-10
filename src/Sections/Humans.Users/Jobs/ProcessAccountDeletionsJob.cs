@@ -108,9 +108,9 @@ internal sealed class ProcessAccountDeletionsJob(
                         }
                         catch (Exception ex)
                         {
-                            logger.LogError(ex,
+                            logger.LogError(
                                 "Account {UserId} was anonymized but its deletion confirmation " +
-                                "could not be delivered", userId);
+                                "could not be delivered: {ExceptionType}", userId, ex.GetType().Name);
                         }
                     }
 

@@ -768,3 +768,5 @@ sends this section's stored issues to the Admin-only queue. The key is `Profiles
 `Users`: Profiles merged into this section at nobodies-collective/Humans#866 and stored
 rows still carry the old string, so the queue keeps its name (and `/Debug/Sections` lists
 it as an unmatched annotation, which is the rename showing rather than hiding).
+
+Deletion confirmations use the no-persistence email path. Delivery failures are terminal and logged by exception type only, without the erased address/name/subject or transport exception contents; they do not turn a completed erasure into a failed deletion.

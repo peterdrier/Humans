@@ -6,9 +6,13 @@ internal sealed class StubEmailTransport(ILogger<StubEmailTransport> logger) : I
         string subject, string htmlBody, string? plainTextBody,
         string? replyTo = null,
         IDictionary<string, string>? extraHeaders = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool redact = false, string? templateName = null)
     {
-        logger.LogInformation("[STUB] Email to {Recipient}: {Subject}", recipientEmail, subject);
+        if (redact)
+            logger.LogInformation("[STUB] Email: {TemplateName}", templateName);
+        else
+            logger.LogInformation("[STUB] Email to {Recipient}: {Subject}", recipientEmail, subject);
         return Task.CompletedTask;
     }
 }

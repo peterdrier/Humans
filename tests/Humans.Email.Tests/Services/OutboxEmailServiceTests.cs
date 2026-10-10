@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Humans.Base.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -95,6 +96,43 @@ public sealed class OutboxEmailServiceTests : IDisposable
         new(recipient, name, subject, html, template, category, replyTo, userId,
             campaignGrantId, campaignId, doNotPersist);
 
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Transport_RedactedLogsRetainOnlyTemplateAndFailureType(bool smtp, bool redact)
+    {
+        const string recipient = "erased[invalid";
+        const string subject = "Goodbye Erased Name";
+        const string template = "account_deleted";
+        ILogger logger = smtp ? Substitute.For<ILogger<SmtpEmailTransport>>() : Substitute.For<ILogger<StubEmailTransport>>();
+        IEmailTransport transport = smtp
+            ? new SmtpEmailTransport(Options.Create(new EmailSettings { FromAddress = "sender@example.com" }),
+                (ILogger<SmtpEmailTransport>)logger)
+            : new StubEmailTransport((ILogger<StubEmailTransport>)logger);
+        // Invalid MIME recipient fails before any network call, exercising SMTP's failure logging.
+        var failure = await Record.ExceptionAsync(() => transport.SendAsync(
+            recipient, "Erased Name", subject, "private body", null,
+            cancellationToken: TestContext.Current.CancellationToken, redact: redact, templateName: template));
+
+        if (smtp) failure.Should().NotBeNull();
+        else failure.Should().BeNull();
+        var args = logger.ReceivedCalls().Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).GetArguments();
+        var text = args[2]!.ToString()!;
+        if (redact)
+        {
+            text.Should().Contain(template).And.NotContain(recipient).And.NotContain(subject).And.NotContain("Erased Name");
+            args[3].Should().BeNull();
+            if (failure is not null) text.Should().Contain(failure.GetType().Name);
+        }
+        else
+        {
+            text.Should().Contain(recipient).And.Contain(subject);
+            if (smtp) args[3].Should().BeSameAs(failure);
+        }
+    }
+
     [HumansFact]
     public async Task SendAsync_WithCanonicalComposer_PreservesActionUrlInPlainText()
     {
@@ -177,7 +215,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         await _transport.Received(1).SendAsync(
             "alice@example.com", "Alice", "Subject",
             Arg.Is<string>(h => h.Contains("<p>Goodbye</p>")), "plain-text-stub",
-            Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(), Arg.Any<CancellationToken>(), true, "account_deleted");
 
         (await _emailDb.EmailOutboxMessages.AnyAsync(Xunit.TestContext.Current.CancellationToken))
             .Should().BeFalse();
@@ -303,7 +341,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Is<IDictionary<string, string>?>(h => h != null && h["Feedback-ID"] == "account_deleted:none:none:humans-nobodies"),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(), true, "account_deleted");
     }
 
     [HumansFact]
