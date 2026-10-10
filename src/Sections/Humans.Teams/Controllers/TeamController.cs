@@ -290,7 +290,18 @@ internal sealed class TeamController(
     {
         var roster = await teamService.GetRosterAsync(priority, status, period, ct);
 
-        var slots = roster.Select(slot => new RosterSlotViewModel
+        var slots = roster
+            .OrderBy(slot => slot.Priority switch
+            {
+                nameof(SlotPriority.Critical) => 0,
+                nameof(SlotPriority.Important) => 1,
+                nameof(SlotPriority.NiceToHave) => 2,
+                _ => 3
+            })
+            .ThenBy(slot => slot.TeamName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(slot => slot.RoleName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(slot => slot.SlotNumber)
+            .Select(slot => new RosterSlotViewModel
         {
             TeamName = slot.TeamName,
             TeamSlug = slot.TeamSlug,

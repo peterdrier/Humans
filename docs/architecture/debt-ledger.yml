@@ -213,21 +213,15 @@ themes:
     title: Display sorting below the presentation layer
     detect: "grep -cv '^#\\|^$' tests/Humans.Web.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt"
     review: light
-    last_swept: 2026-06-13
-    remaining: 3
-    baseline_entries: 21
+    last_swept: 2026-10-10
+    remaining: 0
+    baseline_entries: 18
     not_actionable: 18
     notes: >-
-      Counts re-measured 2026-09-20 — see `baseline_entries`/`not_actionable`/
-      `remaining`. The baseline file mixes two different things: TicketRepository
-      OrderBy/OrderByDescending lines Peter ruled STAY until the paged grid's
-      server-side sort is redesigned (`not_actionable`), and real multi-consumer
-      view-moves (`remaining`) — re-measured 2026-10-06: only the 3
-      TeamRepository.GetAllRoleDefinitionsAsync lines (TeamRosterSlotSummary is
-      `internal sealed`, so adding a SortOrder field is not public surface).
-      GoogleResource, Camp and Campaign are already done.
-      Plan: add `SortOrder` to TeamRosterSlotSummary and sort in the
-      GetRosterAsync view-model path; pre-approved per debt-sweep-standing-policy, list in PR.
+      Re-measured 2026-10-10: only 18 TicketRepository sorts remain, all
+      explicitly parked pending the paged-grid redesign. Teams roster ordering
+      now belongs to the controller, preserving the existing priority/name/slot
+      order; its redundant repository sort and three baseline entries are gone.
       `remaining` is what rotation sizes the work by; `baseline_entries` is
       what the detect command prints.
       Rule: repos don't sort for display. Per Peter (2026-06-13) the fix for a

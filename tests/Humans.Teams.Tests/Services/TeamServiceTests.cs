@@ -2735,7 +2735,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task GetRosterAsync_ExpandsSlotsAndSortsByPriorityThenName()
+    public async Task GetRosterAsync_ExpandsSlotsWithPrioritiesAndAssignments()
     {
         var alphaTeam = SeedTeam("Alpha");
         var betaTeam = SeedTeam("Beta");
@@ -2786,17 +2786,21 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var result = await _service.GetRosterAsync(priority: null, status: null, period: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Select(slot => (slot.TeamName, slot.RoleName, slot.SlotNumber))
-            .Should()
-            .ContainInOrder(
+            .Should().BeEquivalentTo(new[]
+            {
                 ("Beta", "Greeter", 1),
                 ("Alpha", "Lead", 1),
-                ("Alpha", "Lead", 2));
+                ("Alpha", "Lead", 2)
+            });
 
-        result[0].Priority.Should().Be(nameof(SlotPriority.Critical));
-        result[0].PriorityBadgeClass.Should().Be("bg-danger");
-        result[1].AssignedUserName.Should().Be("Assigned Human");
-        result[2].Priority.Should().Be(nameof(SlotPriority.None));
-        result[2].PriorityBadgeClass.Should().Be("bg-light text-dark");
+        var critical = result.Single(slot => string.Equals(slot.TeamName, "Beta", StringComparison.Ordinal));
+        critical.Priority.Should().Be(nameof(SlotPriority.Critical));
+        critical.PriorityBadgeClass.Should().Be("bg-danger");
+        result.Single(slot => string.Equals(slot.TeamName, "Alpha", StringComparison.Ordinal) && slot.SlotNumber == 1)
+            .AssignedUserName.Should().Be("Assigned Human");
+        var unprioritized = result.Single(slot => string.Equals(slot.TeamName, "Alpha", StringComparison.Ordinal) && slot.SlotNumber == 2);
+        unprioritized.Priority.Should().Be(nameof(SlotPriority.None));
+        unprioritized.PriorityBadgeClass.Should().Be("bg-light text-dark");
     }
 
     [HumansFact]

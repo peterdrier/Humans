@@ -1753,18 +1753,7 @@ internal sealed class TeamService(
         if (!string.IsNullOrEmpty(period))
             filtered = filtered.Where(s => string.Equals(s.Period, period, StringComparison.OrdinalIgnoreCase));
 
-        return filtered
-            .OrderBy(slot => slot.Priority switch
-            {
-                nameof(SlotPriority.Critical) => 0,
-                nameof(SlotPriority.Important) => 1,
-                nameof(SlotPriority.NiceToHave) => 2,
-                _ => 3
-            })
-            .ThenBy(slot => slot.TeamName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(slot => slot.RoleName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(slot => slot.SlotNumber)
-            .ToList();
+        return filtered.ToList();
     }
 
     public async Task<TeamRoleAssignment> AssignToRoleAsync(

@@ -515,7 +515,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .Include(d => d.Assignments)
                 .ThenInclude(a => a.TeamMember)
             .Where(d => d.Team.IsActive && d.Team.SystemTeamType == SystemTeamType.None)
-            .OrderBy(d => d.Team.Name).ThenBy(d => d.SortOrder).ThenBy(d => d.Name)
             .AsNoTracking()
             .ToListAsync(ct);
     }

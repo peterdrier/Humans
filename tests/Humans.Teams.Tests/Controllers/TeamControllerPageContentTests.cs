@@ -30,6 +30,41 @@ namespace Humans.Teams.Tests.Controllers;
 
 public class TeamControllerPageContentTests
 {
+    [HumansFact]
+    public async Task Roster_OrdersUnsortedOwnerDataByPriorityTeamRoleAndSlot()
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var teams = Substitute.For<ITeamManagementService>();
+        TeamRosterSlotSummary Slot(string team, string role, int number, SlotPriority priority) =>
+            new(team, team.ToLowerInvariant(), role, null, Guid.NewGuid(), number,
+                priority.ToString(), "", nameof(RolePeriod.Event), false, null, null);
+        teams.GetRosterAsync("Important", "Open", "Event", Arg.Any<CancellationToken>()).Returns(new[]
+        {
+            Slot("Beta", "Lead", 1, SlotPriority.Important),
+            Slot("Alpha", "Zulu", 1, SlotPriority.Important),
+            Slot("Alpha", "Lead", 2, SlotPriority.Important),
+            Slot("Zulu", "Lead", 1, SlotPriority.Critical),
+            Slot("alpha", "Lead", 1, SlotPriority.Important),
+            Slot("Alpha", "Lead", 3, SlotPriority.None)
+        });
+        var controller = new TeamController(
+            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserServiceRead>(),
+            Substitute.For<ITeamResourceServiceRead>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
+            new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
+            NullLogger<TeamController>.Instance);
+
+        var result = await controller.Roster("Important", "Open", "Event", Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<RosterSummaryViewModel>().Which;
+        model.Slots.Select(slot => (slot.TeamName, slot.RoleName, slot.SlotNumber)).Should().Equal(
+            ("Zulu", "Lead", 1), ("alpha", "Lead", 1), ("Alpha", "Lead", 2),
+            ("Alpha", "Zulu", 1), ("Beta", "Lead", 1), ("Alpha", "Lead", 3));
+        model.PriorityFilter.Should().Be("Important");
+        model.StatusFilter.Should().Be("Open");
+        model.PeriodFilter.Should().Be("Event");
+    }
+
     [HumansTheory]
     [Xunit.InlineData("create", false, false)]
     [Xunit.InlineData("edit", false, false)]
