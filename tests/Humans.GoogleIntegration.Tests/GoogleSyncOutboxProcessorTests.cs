@@ -20,7 +20,6 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
     private readonly GoogleIntegrationDbContext _dbContext;
 
     private readonly IGoogleSyncOutboxRepository _outboxRepository;
-    private readonly IGoogleResourceRepository _resourceRepository;
     private readonly IUserService _userService;
     private readonly ITeamService _teamService;
     private readonly IGoogleSyncService _googleSyncService;
@@ -38,10 +37,6 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         _dbContext = new GoogleIntegrationDbContext(options);
         var factory = new SingleContextFactory(options);
         _outboxRepository = new GoogleSyncOutboxRepository(factory);
-        _resourceRepository = Substitute.For<IGoogleResourceRepository>();
-        _resourceRepository
-            .GetActiveByTeamIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns([]);
         _userService = Substitute.For<IUserService>();
         // No test here seeds a user; the drain only reads this lookup to name the human in
         // its failure log, so an empty result is the whole fixture. Was an empty in-memory
@@ -63,7 +58,6 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
 
         _processor = new GoogleSyncOutboxProcessor(
             _outboxRepository,
-            _resourceRepository,
             _userService,
             _teamService,
             _googleSyncService,
@@ -117,23 +111,14 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ProcessQueuedAsync_EmailStatusFailure_RemainsPendingUntilTailSucceeds(bool resourceReadFails)
+    public async Task ProcessQueuedAsync_EmailStatusFailure_RemainsPendingUntilTailSucceeds(bool grantFails)
     {
         var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
         var fail = true;
         var failure = new DbUpdateException("Email status persistence unavailable");
-        _resourceRepository.GetActiveByTeamIdAsync(outboxEvent.TeamId, Arg.Any<CancellationToken>())
-            .Returns(_ =>
-            {
-                if (fail && resourceReadFails) throw failure;
-                return Task.FromResult<IReadOnlyList<GoogleResource>>(
-                    [new GoogleResource
-                    {
-                        Id = Guid.NewGuid(), TeamId = outboxEvent.TeamId,
-                        ResourceType = GoogleResourceType.DriveFolder, GoogleId = "folder",
-                        Name = "Folder", IsActive = true,
-                    }]);
-            });
+        _googleSyncService.AddUserToTeamResourcesAsync(outboxEvent.TeamId, outboxEvent.UserId,
+                Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>())
+            .Returns(_ => fail && grantFails ? throw failure : GoogleResourceGrantOutcome.Accepted);
         _userService.TrySetGoogleEmailStatusFromSyncAsync(
                 outboxEvent.UserId, GoogleEmailStatus.Valid, Arg.Any<CancellationToken>())
             .Returns(_ => fail ? throw failure : Task.FromResult(true));
@@ -154,7 +139,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         stored.ProcessedAt.Should().Be(_clock.GetCurrentInstant());
         stored.LastError.Should().BeNull();
         _metrics.Received(1).RecordSyncOperation("success");
-        await _userService.Received(resourceReadFails ? 1 : 2).TrySetGoogleEmailStatusFromSyncAsync(
+        await _userService.Received(grantFails ? 1 : 2).TrySetGoogleEmailStatusFromSyncAsync(
             outboxEvent.UserId, GoogleEmailStatus.Valid, Arg.Any<CancellationToken>());
     }
 
@@ -181,18 +166,6 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
     {
         _googleClient.IsConfigured.Returns(false);
         var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
-        _resourceRepository
-            .GetActiveByTeamIdAsync(outboxEvent.TeamId, Arg.Any<CancellationToken>())
-            .Returns([new GoogleResource
-            {
-                Id = Guid.NewGuid(),
-                TeamId = outboxEvent.TeamId,
-                ResourceType = GoogleResourceType.DriveFolder,
-                GoogleId = "folder",
-                Name = "Folder",
-                IsActive = true
-            }]);
-
         await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
 
         var pending = await _dbContext.GoogleSyncOutboxEvents
@@ -271,6 +244,25 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         return outboxEvent;
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(GoogleResourceGrantOutcome.Deferred)]
+    [Xunit.InlineData(GoogleResourceGrantOutcome.Failed)]
+    [Xunit.InlineData(GoogleResourceGrantOutcome.Accepted)]
+    public async Task ProcessQueuedAsync_OnlyAcceptedGrantMarksEmailValid(GoogleResourceGrantOutcome outcome)
+    {
+        var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        _googleSyncService.AddUserToTeamResourcesAsync(outboxEvent.TeamId, outboxEvent.UserId,
+                Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>()).Returns(outcome);
+
+        await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _userService.Received(outcome == GoogleResourceGrantOutcome.Accepted ? 1 : 0)
+            .TrySetGoogleEmailStatusFromSyncAsync(outboxEvent.UserId, GoogleEmailStatus.Valid,
+                Arg.Any<CancellationToken>());
+        (await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
+            .ProcessedAt.Should().NotBeNull();
+    }
+
     private sealed class SingleContextFactory(DbContextOptions<GoogleIntegrationDbContext> options)
         : IDbContextFactory<GoogleIntegrationDbContext>
     {
@@ -295,9 +287,9 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
                         new User { Id = survivorId, UserName = "s", Email = "s@example.org" },
                         [], [], [], null, []),
                 }));
-        _resourceRepository
-            .GetActiveByTeamIdAsync(outboxEvent.TeamId, Arg.Any<CancellationToken>())
-            .Returns([new GoogleResource { Id = Guid.NewGuid(), TeamId = outboxEvent.TeamId, ResourceType = GoogleResourceType.DriveFolder, GoogleId = "f", Name = "f", IsActive = true }]);
+        _googleSyncService.AddUserToTeamResourcesAsync(outboxEvent.TeamId, outboxEvent.UserId,
+                Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>())
+            .Returns(GoogleResourceGrantOutcome.Accepted);
 
         await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
 

@@ -312,12 +312,13 @@ public sealed class GoogleWorkspaceSyncServiceTests
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
 
-        await _syncService.AddUserToTeamResourcesAsync(
+        var outcome = await _syncService.AddUserToTeamResourcesAsync(
             TestTeamId,
             TestUserId,
             Xunit.TestContext.Current.CancellationToken,
             GoogleSyncSource.TeamMemberJoined);
 
+        outcome.Should().Be(GoogleResourceGrantOutcome.Deferred);
         await _drivePermissions.DidNotReceive()
             .CreatePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -450,6 +451,53 @@ public sealed class GoogleWorkspaceSyncServiceTests
             TestUserId,
             GoogleEmailStatus.Rejected,
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Created", false, false, GoogleResourceGrantOutcome.Accepted)]
+    [Xunit.InlineData("AlreadyExists", false, false, GoogleResourceGrantOutcome.Accepted)]
+    [Xunit.InlineData("Failed", false, false, GoogleResourceGrantOutcome.Failed)]
+    [Xunit.InlineData("Created", true, false, GoogleResourceGrantOutcome.Deferred)]
+    [Xunit.InlineData("Created", false, true, GoogleResourceGrantOutcome.Failed)]
+    public async Task AddUserToTeamResourcesAsync_ReturnsActualDriveAcceptance(
+        string vendorOutcome, bool groupOnly, bool anotherGrantFails, GoogleResourceGrantOutcome expected)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddAndRemove);
+        _userService.GetUserInfoAsync(TestUserId, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(TestUserId, TestUserEmail));
+        _userEmailService.GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())
+            .Returns([new UserEmailRowSnapshot(Guid.NewGuid(), TestUserId, TestUserEmail,
+                IsVerified: true, Provider: null, ProviderKey: null, IsGoogle: true, IsPrimary: false,
+                Visibility: null, VerificationSentAt: null, CreatedAt: default, UpdatedAt: default)]);
+        _resourceRepository.GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns(groupOnly
+                ? [new GoogleResource { Id = TestDriveFolderResourceId, TeamId = TestTeamId,
+                    ResourceType = GoogleResourceType.Group, GoogleId = "team@example.org", Name = "Group" }]
+                : [MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId)]);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, TestUserEmail,
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(Enum.Parse<DrivePermissionCreateOutcome>(vendorOutcome), Error: null));
+
+        if (anotherGrantFails)
+        {
+            _resourceRepository.GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+                .Returns([MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId),
+                    MakeDriveFolderResource(Guid.NewGuid(), TestTeamId, "failed-folder")]);
+            _drivePermissions.CreatePermissionAsync("failed-folder", TestUserEmail,
+                    Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed, Error: null));
+        }
+
+        (await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct))
+            .Should().Be(expected);
+        if (groupOnly)
+        {
+            await _googleGroupSync.Received(1).RequestSyncAsync("team@example.org", ct);
+            await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!, default);
+        }
     }
 
     [HumansFact]
