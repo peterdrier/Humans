@@ -221,8 +221,8 @@ internal sealed class WorkgroupsAdminController(
             logger.LogWarning("Workgroups admin {Action}: rule {Rule}",
                 ControllerContext.ActionDescriptor.ActionName, ex.Key);
             SetError(localizer[ex.Key, ex.Args]);
-            // Hand the typed text back so Details can prefill the form it came from.
-            if (draft is not null) TempData[DraftKey(ControllerContext.ActionDescriptor.ActionName)] = draft;
+            // Hand the typed text back so Details can prefill the form; bounded (textarea maxlength) to keep the TempData cookie small.
+            if (draft is { Length: <= 4000 }) TempData[DraftKey(ControllerContext.ActionDescriptor.ActionName)] = draft;
         }
 
         return string.IsNullOrEmpty(slug)
