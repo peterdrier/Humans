@@ -1256,4 +1256,13 @@
   <data name="ShiftSignups_Title" xml:space="preserve"><value>Inscripcions als torns</value></data>
   <data name="ShiftSignups_ConfirmedCount" xml:space="preserve"><value>{0} confirmats</value></data>
   <data name="ShiftSignups_MoreCount" xml:space="preserve"><value>+ {0} més</value></data>
+  <data name="Shifts_Delete_ConfirmedSignups" xml:space="preserve">
+    <value>No es pot eliminar: {0} persones tenen torns confirmats. Cancel·la o reassigna els seus torns primer.</value>
+  </data>
+  <data name="Shifts_Delete_RotaSuccess" xml:space="preserve">
+    <value>Quadrant eliminat.</value>
+  </data>
+  <data name="Shifts_Delete_ShiftSuccess" xml:space="preserve">
+    <value>Torn eliminat.</value>
+  </data>
 </root>

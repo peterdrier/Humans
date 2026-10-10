@@ -71,7 +71,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
             Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         _viewInvalidator = Substitute.For<IShiftViewInvalidator>();

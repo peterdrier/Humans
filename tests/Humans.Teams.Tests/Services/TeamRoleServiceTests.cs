@@ -71,7 +71,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             new EventCalendarResolver(Substitute.For<ISettingsService>()),
             Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
         _service = new TeamService(
             new TeamRepository(TeamsDbFactory),
             AuditLog,

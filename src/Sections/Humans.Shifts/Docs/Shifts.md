@@ -420,3 +420,5 @@ sends this section's stored issues to the Admin-only queue.
 Range bail returns untranslated refusal keys for missing event calendar, unauthorized actors and closed Early Entry. Member and department-admin callers translate these keys and log expected refusals without exception objects. Dependency faults propagate and are never displayed as refusal feedback; empty blocks remain idempotent successes. Successful mutation, audit, notifications and early-entry cache invalidation are unchanged.
 
 Event deletion evicts Early Entry answers and event dashboard/shift caches after the repository cascade attempt, including uncertain completion. Admin authorization remains before the mutation.
+
+- Rota and shift deletion return resource-key refusals for missing records or confirmed signups, warning without an exception before any cascade delete. Department coordinators receive refusal counts and successful deletion feedback in all six cultures. Dependency faults propagate instead of becoming refusal text; department ownership/authorization gates, confirmed-signup protection and existing cascade/cache behavior remain.

@@ -72,7 +72,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
             Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
     }
 
     private static TeamInfo ToTeamInfo(Team team) =>
@@ -125,7 +125,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var service = new ShiftManagementService(
             repo, AuditLog, AdminAuthorization, new ServiceLocatorBuilder().With(_teamService).Build(),
             cache, invalidator, NewCalendarResolver(), Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
         Func<Task> mutate = () => create
             ? service.CreateRotaAsync(rota, [Guid.NewGuid()])
             : service.UpdateRotaAsync(rota, [Guid.NewGuid()]);
@@ -150,7 +150,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         using var cache = new MemoryCache(new MemoryCacheOptions());
         cache.Set(ShiftManagementService.OverviewCacheKey(eventId, null), new object());
         var service = new ShiftManagementService(repo, AuditLog, AdminAuthorization,
-            new ServiceLocatorBuilder().Build(), cache, views, NewCalendarResolver(), Clock, ee);
+            new ServiceLocatorBuilder().Build(), cache, views, NewCalendarResolver(), Clock, ee, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
         var failure = new IOException("Delete completion is uncertain");
 
         var deletion = service.DeleteEventAsync(eventId, Xunit.TestContext.Current.CancellationToken);
@@ -196,7 +196,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
             Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         var deleted = await service.DeleteEventAsync(eventId, Xunit.TestContext.Current.CancellationToken);
 
@@ -1140,7 +1140,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     // ============================================================
 
     [HumansFact]
-    public async Task DeleteRotaAsync_WithConfirmedSignup_Throws()
+    public async Task DeleteRotaAsync_WithConfirmedSignup_Refuses()
     {
         // Arrange: rota with one Confirmed signup
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
@@ -1150,9 +1150,10 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act + Assert
-        var act = () => _service.DeleteRotaAsync(rota.Id);
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*confirmed*");
+        var result = await _service.DeleteRotaAsync(rota.Id);
+        result.ErrorKey.Should().Be("Shifts_Delete_ConfirmedSignups");
+        result.ConfirmedSignups.Should().Be(1);
+        (await ShiftsDb.Rotas.FindAsync(rota.Id)).Should().NotBeNull();
     }
 
     [HumansFact]
@@ -1301,5 +1302,5 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
-            Clock, Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
+            Clock, Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 }

@@ -68,7 +68,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             _viewInvalidator,
             NewCalendarResolver(),
             Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
     }
 
     // ============================================================
@@ -192,7 +192,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             new ServiceLocatorBuilder().With(_teamService).Build(),
             Cache, _viewInvalidator,
             new EventCalendarResolver(settingsService), Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         await service.CreateRotaAsync(NewRota(eventId, team.Id));
 
@@ -386,24 +386,23 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     // ============================================================
 
     [HumansFact]
-    public async Task DeleteShiftAsync_Throws_WhenShiftMissing()
+    public async Task DeleteShiftAsync_Refuses_WhenShiftMissing()
     {
-        var act = () => _service.DeleteShiftAsync(Guid.NewGuid());
-
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Shift not found.");
+        var result = await _service.DeleteShiftAsync(Guid.NewGuid());
+        result.ErrorKey.Should().Be("Shifts_Signup_ShiftNotFound");
     }
 
     [HumansFact]
-    public async Task DeleteShiftAsync_Throws_WhenAnySignupIsConfirmed()
+    public async Task DeleteShiftAsync_Refuses_WhenAnySignupIsConfirmed()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
         SeedSignup(shift, SeedUser("Alice").Id, SignupStatus.Confirmed);
         await SaveAllAsync(Ct);
 
-        var act = () => _service.DeleteShiftAsync(shift.Id);
-
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*1 humans have confirmed*");
+        var result = await _service.DeleteShiftAsync(shift.Id);
+        result.ErrorKey.Should().Be("Shifts_Delete_ConfirmedSignups");
+        result.ConfirmedSignups.Should().Be(1);
         (await ShiftsDb.Shifts.AsNoTracking().AnyAsync(s => s.Id == shift.Id, Ct)).Should().BeTrue();
     }
 

@@ -39,7 +39,7 @@ public class ShiftUrgencyTests
             Substitute.For<IShiftViewInvalidator>(),
             new EventCalendarResolver(Substitute.For<ISettingsService>()),
             new FakeClock(TestNow),
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>());
+            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
     }
 
     private static EventSettingsInfo MakeCalendar(
