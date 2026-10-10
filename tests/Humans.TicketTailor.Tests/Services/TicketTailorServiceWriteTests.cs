@@ -391,6 +391,7 @@ public class TicketTailorServiceWriteTests
         var act = () => service.CreateCheckInAsync("tt_1", Instant.FromUnixTimeSeconds(1751983320L), Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HttpRequestException>();
+        handler.RequestCount.Should().Be(1);
     }
 
     [HumansTheory]

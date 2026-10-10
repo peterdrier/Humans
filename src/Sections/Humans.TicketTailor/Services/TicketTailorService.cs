@@ -418,7 +418,6 @@ internal sealed class TicketTailorService : ITicketVendorService
         return donationCents > 0 ? donationCents / 100m : 0m;
     }
 
-    // One mapping for an issued ticket, whether it came from a list page or an issue response.
     private static VendorTicketDto ToVendorTicket(TtIssuedTicket ticket) => new(
         VendorTicketId: ticket.Id,
         VendorOrderId: ticket.OrderId,
