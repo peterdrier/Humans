@@ -606,5 +606,5 @@ internal sealed partial class WorkgroupService(
     private static string NormalizeFolderId(string value) =>
         DriveFolderUrlId.Match(value) is { Success: true } m ? m.Groups["id"].Value : value.Trim();
 
-    private static readonly Regex DriveFolderUrlId = new(@"/folders/(?<id>[A-Za-z0-9_-]+)", RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1));
+    private static readonly Regex DriveFolderUrlId = new(@"(?:/folders/|[?&]id=)(?<id>[A-Za-z0-9_-]+)", RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1));
 }
