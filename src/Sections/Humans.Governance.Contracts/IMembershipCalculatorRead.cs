@@ -1,3 +1,5 @@
+using NodaTime;
+
 namespace Humans.Governance.Contracts;
 
 /// <summary>
@@ -17,9 +19,10 @@ public interface IMembershipCalculatorRead
     Task<IReadOnlyList<Guid>> GetMissingConsentVersionsAsync(Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets users whose membership status should be set to Inactive due to missing consent.
+    /// Gets active-assignment users missing required consents whose grace period has expired.
+    /// A positive horizon includes deadlines within that duration for advance reminders; omitted means due now.
     /// </summary>
-    Task<IReadOnlyList<Guid>> GetUsersRequiringStatusUpdateAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Guid>> GetUsersRequiringStatusUpdateAsync(CancellationToken cancellationToken = default, Duration? expiringWithin = null);
 
     /// <summary>
     /// Filters a set of user IDs to only those who have all required consents.

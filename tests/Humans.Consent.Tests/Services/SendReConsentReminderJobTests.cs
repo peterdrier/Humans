@@ -38,7 +38,7 @@ public sealed class SendReConsentReminderJobTests
         var next = MakeUser("next@example.com");
         var cooling = MakeUser("cooling@example.com", now);
         var membership = Substitute.For<IMembershipCalculatorRead>();
-        membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+        membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
             .Returns(new[] { first.Id, next.Id, cooling.Id });
         var legal = Substitute.For<ILegalDocumentSyncServiceRead>();
         legal.GetRequiredVersionsAsync(Arg.Any<CancellationToken>()).Returns([]);
@@ -75,6 +75,8 @@ public sealed class SendReConsentReminderJobTests
                 && m.Subject == expectedSubject), Arg.Any<CancellationToken>());
         await email.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == next.Email), Arg.Any<CancellationToken>());
+        await membership.Received(1).GetUsersRequiringStatusUpdateAsync(
+            TestContext.Current.CancellationToken, Duration.FromDays(3));
         await users.Received(1).SetLastConsentReminderSentAsync(next.Id, now, Arg.Any<CancellationToken>());
         await email.DidNotReceive().SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == cooling.Email), Arg.Any<CancellationToken>());
@@ -101,7 +103,7 @@ public sealed class SendReConsentReminderJobTests
         var first = MakeUser("first@example.com");
         var next = MakeUser("next@example.com");
         var membership = Substitute.For<IMembershipCalculatorRead>();
-        membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+        membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
             .Returns(new[] { first.Id, next.Id });
         var legal = Substitute.For<ILegalDocumentSyncServiceRead>();
         legal.GetRequiredVersionsAsync(Arg.Any<CancellationToken>()).Returns([]);

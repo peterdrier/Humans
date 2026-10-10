@@ -66,7 +66,7 @@ internal sealed class SendReConsentReminderJob(
         try
         {
             var usersNeedingReminder = await membershipCalculator
-                .GetUsersRequiringStatusUpdateAsync(cancellationToken);
+                .GetUsersRequiringStatusUpdateAsync(cancellationToken, Duration.FromDays(daysBeforeSuspension));
 
             var requiredVersions = await legalDocService.GetRequiredVersionsAsync(cancellationToken);
             var requiredDocNames = requiredVersions

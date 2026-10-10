@@ -265,10 +265,6 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-10-06
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
-  - added: 2026-10-05
-    id: CENTRAL-76
-    what: "Consent's SendReConsentReminderJob selects recipients through Governance's GetUsersRequiringStatusUpdateAsync, which returns active-assignment users only after required consent grace periods have expired. The same audience feeds Users' suspension job 30 minutes later (04:00 reminder, 04:30 suspension), while the reminder email promises the configured ConsentReminderDaysBeforeSuspension (30) days remain. That setting affects wording only, not eligibility. Found during the daily debt sweep. Plan: add an optional `expiringWithin` horizon to the existing `IMembershipCalculatorRead.GetUsersRequiringStatusUpdateAsync`; reminder audience = pending-required consents expiring within `ConsentReminderDaysBeforeSuspension`, suspension audience and cooldown semantics unchanged; pre-approved per debt-sweep-standing-policy, list in PR."
-    review: panel
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-09-20
     id: CENTRAL-59
