@@ -104,7 +104,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         redirect.ActionName.Should().Be("Details");
         redirect.RouteValues!["slug"].Should().Be(workgroup.Id);
         sut.TempData[TempDataKeys.ErrorMessage].Should().Be("Use 4000 characters or fewer.");
-        sut.TempData.ContainsKey(WorkgroupsAdminController.DraftKey(action)).Should().BeFalse("oversized drafts are not stashed in TempData");
+        sut.TempData.ContainsKey(WorkgroupsAdminController.DraftKey(workgroup.Id, action)).Should().BeFalse("oversized drafts are not stashed in TempData");
         AssertRuleWarning(WorkgroupErrorKeys.TextTooLong);
         await using var db = OpenContext();
         (await db.Workgroups.FindAsync([workgroup.Id], Ct))!.Status.Should().Be(status);
@@ -130,7 +130,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         };
 
         result.Should().BeOfType<RedirectToActionResult>();
-        sut.TempData[WorkgroupsAdminController.DraftKey(action)].Should().Be(reasons);
+        sut.TempData[WorkgroupsAdminController.DraftKey(workgroup.Id, action)].Should().Be(reasons);
     }
 
     [HumansFact]

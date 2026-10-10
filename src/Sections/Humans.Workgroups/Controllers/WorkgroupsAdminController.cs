@@ -203,7 +203,7 @@ internal sealed class WorkgroupsAdminController(
     /// Admin POSTs land back on the group's Details page when the form carries its slug,
     /// otherwise on the queue. A rule failure flashes the error and redirects the same way.
     /// </summary>
-    internal static string DraftKey(string action) => $"WorkgroupsDraft:{action}";
+    internal static string DraftKey(Guid? id, string action) => $"WorkgroupsDraft:{id}:{action}";
 
     private async Task<IActionResult> ActAsync(
         Func<Guid, Task> action, string success, CancellationToken ct, Guid? id = null, string? slug = null, string? draft = null)
@@ -222,7 +222,7 @@ internal sealed class WorkgroupsAdminController(
                 ControllerContext.ActionDescriptor.ActionName, ex.Key);
             SetError(localizer[ex.Key, ex.Args]);
             // Hand the typed text back so Details can prefill the form; bounded (textarea maxlength) to keep the TempData cookie small.
-            if (draft is { Length: <= 4000 }) TempData[DraftKey(ControllerContext.ActionDescriptor.ActionName)] = draft;
+            if (draft is { Length: <= 4000 }) TempData[DraftKey(id, ControllerContext.ActionDescriptor.ActionName)] = draft;
         }
 
         return string.IsNullOrEmpty(slug)
