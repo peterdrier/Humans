@@ -164,7 +164,7 @@ internal sealed partial class WorkgroupService
         await AuditAsync(AuditAction.WorkgroupReactivated, workgroup,
             $"Reactivated '{workgroup.Name}'", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Reactivated, detail: null, ct);
-        // Active again: the source claims Contributor for the current members once more.
+        // Active again: the source claims ContentManager for the current members once more.
         await RequestDriveSyncAsync(workgroup, ct);
         await SetAccountActiveAsync(workgroup, isActive: true, ct);
         return new();

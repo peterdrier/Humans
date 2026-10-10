@@ -32,11 +32,11 @@ internal sealed class WorkgroupDriveAccessSource(
             if (workgroup.DriveFolderId is not { Length: > 0 } id)
                 continue;
 
-            // Active: the members are doing the work, so they write. Dormant: the folder is
-            // the association's record of what they did, so it goes read-only.
+            // Active: the members are doing the work, so they write and organize (move, trash).
+            // Dormant: the folder is the association's record of what they did, so it goes read-only.
             var level = workgroup.Status switch
             {
-                WorkgroupStatus.Active => DrivePermissionLevel.Contributor,
+                WorkgroupStatus.Active => DrivePermissionLevel.ContentManager,
                 WorkgroupStatus.Dormant => DrivePermissionLevel.Viewer,
                 _ => DrivePermissionLevel.None
             };
