@@ -189,6 +189,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 - The `Events` GDPR export includes the person’s personal and camp submissions in every status, with authored content and schedule fields, alongside favourites and category preferences. Only rows whose `SubmitterUserId` matches are included; internal moderator notes are excluded. Export reads do not alter rows.
 
 - Barrio bulk CSV uploads detect comma/semicolon separators from the first non-comment header line through CsvHelper’s quote-aware detector. Separators inside quoted working-column names cannot change the format; comments, reordered/extra columns and physical row numbers retain their existing behavior.
+- CSV header/cell refusals return keys and physical file-row arguments, with no importable rows on failure. The upload controller renders every refusal in the uploader's culture; unexpected parse/stream exceptions stay in logs and show generic feedback. Dependency `FormatException` text is never shown to members.
 
 - My Submissions, individual submit/edit forms, Schedule and Browse GETs preserve request cancellation through viewer, guide/burn settings, dropdown, submission, camp, favourite and submitter reads. Shared form helpers keep their default token for POST redisplays; event mutations and permission gates are unchanged.
 

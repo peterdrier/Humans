@@ -732,21 +732,15 @@ internal sealed class EventsController(
         var tz = GetTimeZone(eventSettings)
             ?? throw new InvalidOperationException("Event timezone not configured.");
 
-        List<BulkCsvRow> rows;
+        BulkCsvParseResult parsed;
         try
         {
             using var reader = new StreamReader(file.OpenReadStream(), System.Text.Encoding.UTF8);
-            rows = BulkEventCsvParser.Parse(await reader.ReadToEndAsync(HttpContext.RequestAborted), localizer);
+            parsed = BulkEventCsvParser.Parse(await reader.ReadToEndAsync(HttpContext.RequestAborted));
         }
         catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
         {
             throw;
-        }
-        catch (FormatException ex)
-        {
-            logger.LogWarning("Bulk CSV parse failed for camp slug {Slug}: {Message}", slug, ex.Message);
-            SetError(localizer["Events_Upload_ParseErrorDetail", ex.Message].Value);
-            return RedirectToAction(nameof(MySubmissions));
         }
         catch (CsvHelper.BadDataException ex)
         {
@@ -760,6 +754,16 @@ internal sealed class EventsController(
             SetError(localizer["Events_Upload_ParseFailed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
+
+        if (parsed.Errors.Count > 0)
+        {
+            logger.LogWarning("Bulk CSV validation failed for camp slug {Slug}: {ErrorKeys}",
+                slug, string.Join(", ", parsed.Errors.Select(error => error.Key)));
+            var detail = string.Join(" ", parsed.Errors.Select(error => localizer[error.Key, error.Args].Value));
+            SetError(localizer["Events_Upload_ParseErrorDetail", detail].Value);
+            return RedirectToAction(nameof(MySubmissions));
+        }
+        var rows = parsed.Rows;
 
         if (rows.Count == 0)
         {

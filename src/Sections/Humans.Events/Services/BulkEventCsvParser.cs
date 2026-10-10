@@ -1,5 +1,4 @@
 using System.Globalization;
-using Microsoft.Extensions.Localization;
 using CsvHelper;
 using CsvHelper.Configuration;
 using CsvHelper.Delegates;
@@ -14,14 +13,14 @@ namespace Humans.Events.Services;
 /// <see cref="BulkEventCsvRecordMap"/>. Columns are matched by header name in
 /// any order, unknown columns are ignored, the delimiter is auto-detected
 /// (Spanish Excel saves semicolons), comment lines (starting with <c>#</c>)
-/// are skipped, and quoted fields may span lines. Throws
-/// <see cref="FormatException"/> with ALL row errors (real file row numbers)
-/// on malformed input.
+/// are skipped, and quoted fields may span lines. Returns all header/cell
+/// refusal keys with physical file row arguments; no rows are importable when invalid.
 /// </summary>
 internal static class BulkEventCsvParser
 {
-    public static List<BulkCsvRow> Parse(string csvText, IStringLocalizer<EventsResource> localizer)
+    public static BulkCsvParseResult Parse(string csvText)
     {
+        var errors = new List<BulkCsvParseError>();
         var config = HumansCsv.ReadConfig();
         config.AllowComments = true;
         config.Comment = '#';
@@ -38,19 +37,19 @@ internal static class BulkEventCsvParser
         {
             if (args.InvalidHeaders.Length == 0) return;
             var missing = string.Join(", ", args.InvalidHeaders.SelectMany(h => h.Names));
-            throw new FormatException(localizer["Events_Upload_MissingRequiredColumns", missing].Value);
+            errors.Add(new("Events_Upload_MissingRequiredColumns", missing));
         };
 
         var rows = new List<BulkCsvRow>();
-        var errors = new List<string>();
 
         using var reader = new StringReader(csvText);
         using var csv = new CsvReader(reader, config);
         csv.Context.RegisterClassMap<BulkEventCsvRecordMap>();
 
-        if (!csv.Read()) return rows;
+        if (!csv.Read()) return new(rows, errors);
         csv.ReadHeader();
         csv.ValidateHeader<BulkEventCsvRecord>();
+        if (errors.Count > 0) return new([], errors);
 
         while (csv.Read())
         {
@@ -61,21 +60,21 @@ internal static class BulkEventCsvParser
             if (!string.IsNullOrWhiteSpace(record.Id))
             {
                 if (Guid.TryParse(record.Id, out var g)) id = g;
-                else errors.Add(localizer["Events_Upload_RowIdInvalidGuid", fileRow].Value);
+                else errors.Add(new("Events_Upload_RowIdInvalidGuid", fileRow));
             }
 
             if (!int.TryParse(record.DurationMinutes, CultureInfo.InvariantCulture, out var duration))
-                errors.Add(localizer["Events_Upload_RowDurationNotInteger", fileRow].Value);
+                errors.Add(new("Events_Upload_RowDurationNotInteger", fileRow));
             int? priority = null;
             if (!string.IsNullOrWhiteSpace(record.PriorityRank))
             {
                 if (int.TryParse(record.PriorityRank, CultureInfo.InvariantCulture, out var parsedPriority)) priority = parsedPriority;
-                else errors.Add(localizer["Events_Upload_RowPriorityNotInteger", fileRow].Value);
+                else errors.Add(new("Events_Upload_RowPriorityNotInteger", fileRow));
             }
 
             var isRecurring = false;
             if (!string.IsNullOrWhiteSpace(record.IsRecurring) && !bool.TryParse(record.IsRecurring, out isRecurring))
-                errors.Add(localizer["Events_Upload_RowRecurringBoolean", fileRow].Value);
+                errors.Add(new("Events_Upload_RowRecurringBoolean", fileRow));
 
             rows.Add(new BulkCsvRow(
                 fileRow, id,
@@ -87,10 +86,7 @@ internal static class BulkEventCsvParser
                 priority));
         }
 
-        if (errors.Count > 0)
-            throw new FormatException(string.Join(" ", errors));
-
-        return rows;
+        return new(errors.Count == 0 ? rows : [], errors);
     }
 
     /// <summary>Delimiter of the header line — the first non-comment, non-blank line.</summary>

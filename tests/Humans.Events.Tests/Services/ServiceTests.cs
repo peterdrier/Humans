@@ -826,7 +826,7 @@ public sealed class EventServiceTests
         _repo.Events.Add(existing);
 
         var bytes = await _service.BuildBulkUploadTemplateAsync(campId, "Fire Barrio", TestContext.Current.CancellationToken);
-        var rows = BulkEventCsvParser.Parse(HumansCsv.Utf8WithBom.GetString(bytes).TrimStart('\uFEFF'), _localizer);
+        var rows = BulkEventCsvParser.Parse(HumansCsv.Utf8WithBom.GetString(bytes).TrimStart('\uFEFF')).Rows;
 
         rows.Should().ContainSingle().Which.PriorityRank.Should().BeNull();
     }
