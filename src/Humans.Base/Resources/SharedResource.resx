@@ -394,6 +394,7 @@
   <!-- ======================== -->
   <data name="Nav_City" xml:space="preserve"><value>City</value></data>
   <data name="Nav_Rideshare" xml:space="preserve"><value>Rideshare</value></data>
+  <data name="Nav_Budget" xml:space="preserve"><value>Budget</value></data>
 
   <!-- ======================== -->
   <!-- Contribution & Board     -->
