@@ -51,34 +51,34 @@ internal sealed class WorkgroupsAdminController(
     [HttpPost("{id:guid}/Refer")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Refer(Guid id, string? note, string? slug, CancellationToken ct) =>
-        ActAsync(actor => workgroups.ReferAsync(id, actor, note, ct), "Referred to the Board", ct, slug, note);
+        ActAsync(actor => workgroups.ReferAsync(id, actor, note, ct), "Referred to the Board", ct, id, slug, note);
 
     [HttpPost("{id:guid}/Refuse")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Refuse(Guid id, string reasons, string? slug, CancellationToken ct) =>
-        ActAsync(actor => workgroups.RefuseAsync(id, actor, reasons, ct), "Registration refused", ct, slug, reasons);
+        ActAsync(actor => workgroups.RefuseAsync(id, actor, reasons, ct), "Registration refused", ct, id, slug, reasons);
 
     [HttpPost("{id:guid}/Withdraw")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Withdraw(Guid id, string reasons, string? slug, CancellationToken ct) =>
-        ActAsync(actor => workgroups.WithdrawAsync(id, actor, reasons, ct), "Registration withdrawn", ct, slug, reasons);
+        ActAsync(actor => workgroups.WithdrawAsync(id, actor, reasons, ct), "Registration withdrawn", ct, id, slug, reasons);
 
     [HttpPost("{id:guid}/Close")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Close(Guid id, string reasons, string? slug, CancellationToken ct) =>
-        ActAsync(actor => workgroups.CloseAsync(id, actor, reasons, ct), "Group closed", ct, slug, reasons);
+        ActAsync(actor => workgroups.CloseAsync(id, actor, reasons, ct), "Group closed", ct, id, slug, reasons);
 
     [HttpPost("{id:guid}/Reactivate")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Reactivate(Guid id, string? slug, CancellationToken ct) =>
-        ActAsync(actor => workgroups.ReactivateAsync(id, actor, ct), "Group reactivated", ct, slug);
+        ActAsync(actor => workgroups.ReactivateAsync(id, actor, ct), "Group reactivated", ct, id, slug);
 
     /// <summary>The Board's override of §5's member-run handover — a coordinatorless group needs one.</summary>
     [HttpPost("{id:guid}/Coordinators")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Coordinators(Guid id, Guid?[] coordinatorUserIds, string? slug, CancellationToken ct) =>
         ActAsync(actor => workgroups.SetCoordinatorsAsync(id, actor, coordinatorUserIds.OfType<Guid>().ToArray(), asAdmin: true, ct),
-            "Coordinators set", ct, slug);
+            "Coordinators set", ct, id, slug);
 
     // ── Bootstrapping (§21) ───────────────────────────────────────────────
 
@@ -135,7 +135,7 @@ internal sealed class WorkgroupsAdminController(
         if (!ModelState.IsValid)
         {
             SetError("Check the budget amount and account.");
-            return RedirectToAction("Details", "Workgroups", new { slug });
+            return RedirectToAction("Details", "Workgroups", new { slug = id });
         }
 
         try
@@ -153,7 +153,7 @@ internal sealed class WorkgroupsAdminController(
             logger.LogWarning("Workgroups admin Budget: rule {Rule}", ex.Key);
             SetError(localizer[ex.Key, ex.Args]);
         }
-        return RedirectToAction("Details", "Workgroups", new { slug });
+        return RedirectToAction("Details", "Workgroups", new { slug = id });
     }
 
     // ── The Board's reply ─────────────────────────────────────────────────
@@ -206,7 +206,7 @@ internal sealed class WorkgroupsAdminController(
     internal static string DraftKey(string action) => $"WorkgroupsDraft:{action}";
 
     private async Task<IActionResult> ActAsync(
-        Func<Guid, Task> action, string success, CancellationToken ct, string? slug = null, string? draft = null)
+        Func<Guid, Task> action, string success, CancellationToken ct, Guid? id = null, string? slug = null, string? draft = null)
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
@@ -227,7 +227,7 @@ internal sealed class WorkgroupsAdminController(
 
         return string.IsNullOrEmpty(slug)
             ? RedirectToAction(nameof(Index))
-            : RedirectToAction("Details", "Workgroups", new { slug });
+            : RedirectToAction("Details", "Workgroups", new { slug = id });
     }
 
     private async Task<IReadOnlyDictionary<Guid, UserInfo>> PeopleAsync(
